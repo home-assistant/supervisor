@@ -1,9 +1,8 @@
 """DNS docker object."""
 import logging
 
-from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
-from .const import DBUS_PATH, DBUS_VOLUME
+from .const import DBUS_PATH, DBUS_VOLUME, ENV_TIME
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

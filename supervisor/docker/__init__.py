@@ -50,12 +50,16 @@ class DockerInfo:
     version: AwesomeVersion = attr.ib()
     storage: str = attr.ib()
     logging: str = attr.ib()
+    cgroup: str = attr.ib()
 
     @staticmethod
     def new(data: dict[str, Any]):
         """Create a object from docker info."""
         return DockerInfo(
-            AwesomeVersion(data["ServerVersion"]), data["Driver"], data["LoggingDriver"]
+            AwesomeVersion(data["ServerVersion"]),
+            data["Driver"],
+            data["LoggingDriver"],
+            data["CgroupVersion"],
         )
 
     @property

@@ -7,7 +7,6 @@ from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dbus import DBus
 from ..utils.dt import utc_from_timestamp
 from .const import (
-    DBUS_ATTR_LOCALRTC,
     DBUS_ATTR_NTP,
     DBUS_ATTR_NTPSYNCHRONIZED,
     DBUS_ATTR_TIMEUSEC,
@@ -36,12 +35,6 @@ class TimeDate(DBusInterface):
     def timezone(self) -> str:
         """Return host timezone."""
         return self.properties[DBUS_ATTR_TIMEZONE]
-
-    @property
-    @dbus_property
-    def local_rtc(self) -> bool:
-        """Return if a local RTC exists."""
-        return self.properties[DBUS_ATTR_LOCALRTC]
 
     @property
     @dbus_property

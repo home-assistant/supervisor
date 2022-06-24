@@ -2,15 +2,13 @@
 import asyncio
 from contextlib import suppress
 import logging
-from pathlib import Path
 import re
 import secrets
 import shutil
-import time
 from typing import Awaitable, Optional
 
 import attr
-from awesomeversion import AwesomeVersion, AwesomeVersionException
+from awesomeversion import AwesomeVersion
 
 from supervisor.const import ATTR_HOMEASSISTANT
 
@@ -401,23 +399,6 @@ class HomeAssistantCore(CoreSysAttributes):
             return
         _LOGGER.info("Wait until Home Assistant is ready")
 
-        # Manage timeouts
-        timeout: bool = True
-        start_time = time.monotonic()
-        with suppress(AwesomeVersionException):
-            # Version provide early stage UI
-            if version >= AwesomeVersion("0.112.0"):
-                _LOGGER.debug("Disable startup timeouts - early UI")
-                timeout = False
-
-        # Database migration
-        migration_progress = False
-        migration_file = Path(self.sys_config.path_homeassistant, ".migration_progress")
-
-        # PIP installation
-        pip_progress = False
-        pip_file = Path(self.sys_config.path_homeassistant, ".pip_progress")
-
         while True:
             await asyncio.sleep(5)
 
@@ -431,36 +412,6 @@ class HomeAssistantCore(CoreSysAttributes):
                 _LOGGER.info("Detect a running Home Assistant instance")
                 self._error_state = False
                 return
-
-            # 3: Running DB Migration
-            if migration_file.exists():
-                if not migration_progress:
-                    migration_progress = True
-                    _LOGGER.info("Home Assistant record migration in progress")
-                continue
-            if migration_progress:
-                migration_progress = False  # Reset start time
-                start_time = time.monotonic()
-                _LOGGER.info("Home Assistant record migration done")
-
-            # 4: Running PIP installation
-            if pip_file.exists():
-                if not pip_progress:
-                    pip_progress = True
-                    _LOGGER.info("Home Assistant pip installation in progress")
-                continue
-            if pip_progress:
-                pip_progress = False  # Reset start time
-                start_time = time.monotonic()
-                _LOGGER.info("Home Assistant pip installation done")
-
-            # 5: Timeout
-            if (
-                timeout
-                and time.monotonic() - start_time > self.sys_homeassistant.wait_boot
-            ):
-                _LOGGER.warning("Don't wait anymore on Home Assistant startup!")
-                break
 
         self._error_state = True
         raise HomeAssistantCrashError()

@@ -90,7 +90,7 @@ def test_sanitize(coresys):
                 ["Host", "mydomain.com"],
                 ["Referer", "https://mydomain.com/api/hassio_ingress/xxx-xxx/"],
                 ["X-Forwarded-Host", "mydomain.com"],
-                ["X-Hassio-Key", "xxx"],
+                ["X-Supervisor-Key", "xxx"],
             ],
         },
     }
@@ -109,7 +109,7 @@ def test_sanitize(coresys):
         "request"
     ]["headers"]
     assert ["X-Forwarded-Host", "example.com"] in filtered["request"]["headers"]
-    assert ["X-Hassio-Key", "XXXXXXXXXXXXXXXXXXX"] in filtered["request"]["headers"]
+    assert ["X-Supervisor-Key", "xxx"] in filtered["request"]["headers"]
 
 
 def test_issues_on_report(coresys):

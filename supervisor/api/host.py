@@ -22,7 +22,6 @@ from ..const import (
     ATTR_SERVICES,
     ATTR_STATE,
     ATTR_TIMEZONE,
-    CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
 from .const import (
@@ -36,7 +35,7 @@ from .const import (
     ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
-    ATTR_USE_RTC,
+    CONTENT_TYPE_BINARY,
 )
 from .utils import api_process, api_process_raw, api_validate
 
@@ -70,7 +69,6 @@ class APIHost(CoreSysAttributes):
             ATTR_DT_UTC: self.sys_host.info.dt_utc,
             ATTR_DT_SYNCHRONIZED: self.sys_host.info.dt_synchronized,
             ATTR_USE_NTP: self.sys_host.info.use_ntp,
-            ATTR_USE_RTC: self.sys_host.info.use_rtc,
             ATTR_STARTUP_TIME: self.sys_host.info.startup_time,
             ATTR_BOOT_TIMESTAMP: self.sys_host.info.boot_timestamp,
             ATTR_BROADCAST_LLMNR: self.sys_host.info.broadcast_llmnr,
@@ -101,11 +99,7 @@ class APIHost(CoreSysAttributes):
     @api_process
     def reload(self, request):
         """Reload host data."""
-        return asyncio.shield(
-            asyncio.wait(
-                [self.sys_host.reload(), self.sys_resolution.evaluate.evaluate_system()]
-            )
-        )
+        return asyncio.shield(self.sys_host.reload())
 
     @api_process
     async def services(self, request):

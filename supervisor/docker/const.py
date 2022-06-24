@@ -19,3 +19,7 @@ class Capabilities(str, Enum):
 
 DBUS_PATH = "/run/dbus"
 DBUS_VOLUME = {"bind": DBUS_PATH, "mode": "ro"}
+
+ENV_TIME = "TZ"
+ENV_TOKEN = "SUPERVISOR_TOKEN"
+ENV_TOKEN_OLD = "HASSIO_TOKEN"

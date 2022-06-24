@@ -26,17 +26,18 @@ from ..const import (
     ATTR_SLUG,
     ATTR_TYPE,
     ATTR_VERSION,
-    CONTENT_TYPE_TAR,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
+from .const import CONTENT_TYPE_TAR
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 
-# Backwards compatible / Remove 2022.08
+# Backwards compatible
+# Remove: 2022.08
 _ALL_FOLDERS = ALL_FOLDERS + [FOLDER_HOMEASSISTANT]
 
 # pylint: disable=no-value-for-parameter

@@ -240,7 +240,7 @@ class RestAPI(CoreSysAttributes):
             [web.get("/available_updates", api_root.available_updates)]
         )
 
-        # Remove 2023
+        # Remove: 2023
         self.webapp.add_routes(
             [web.get("/supervisor/available_updates", api_root.available_updates)]
         )
@@ -323,17 +323,22 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/start", api_hass.start),
                 web.post("/core/check", api_hass.check),
                 web.post("/core/rebuild", api_hass.rebuild),
-                # Remove with old Supervisor fallback
+            ]
+        )
+
+        # Reroute from legacy
+        self.webapp.add_routes(
+            [
                 web.get("/homeassistant/info", api_hass.info),
                 web.get("/homeassistant/logs", api_hass.logs),
                 web.get("/homeassistant/stats", api_hass.stats),
                 web.post("/homeassistant/options", api_hass.options),
-                web.post("/homeassistant/update", api_hass.update),
                 web.post("/homeassistant/restart", api_hass.restart),
                 web.post("/homeassistant/stop", api_hass.stop),
                 web.post("/homeassistant/start", api_hass.start),
-                web.post("/homeassistant/check", api_hass.check),
+                web.post("/homeassistant/update", api_hass.update),
                 web.post("/homeassistant/rebuild", api_hass.rebuild),
+                web.post("/homeassistant/check", api_hass.check),
             ]
         )
 
@@ -350,7 +355,12 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/", api_proxy.api),
-                # Remove with old Supervisor fallback
+            ]
+        )
+
+        # Reroute from legacy
+        self.webapp.add_routes(
+            [
                 web.get("/homeassistant/api/websocket", api_proxy.websocket),
                 web.get("/homeassistant/websocket", api_proxy.websocket),
                 web.get("/homeassistant/api/stream", api_proxy.stream),
@@ -368,8 +378,10 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/addons", api_addons.list),
-                web.post("/addons/reload", api_addons.reload),
                 web.get("/addons/{addon}/info", api_addons.info),
+                web.get("/addons/{addon}/dark_icon", api_addons.dark_icon),
+                web.get("/addons/{addon}/logo", api_addons.logo),
+                web.get("/addons/{addon}/dark_logo", api_addons.dark_logo),
                 web.post("/addons/{addon}/uninstall", api_addons.uninstall),
                 web.post("/addons/{addon}/start", api_addons.start),
                 web.post("/addons/{addon}/stop", api_addons.stop),
@@ -381,12 +393,6 @@ class RestAPI(CoreSysAttributes):
                 web.get("/addons/{addon}/options/config", api_addons.options_config),
                 web.post("/addons/{addon}/rebuild", api_addons.rebuild),
                 web.get("/addons/{addon}/logs", api_addons.logs),
-                web.get("/addons/{addon}/icon", api_addons.icon),
-                web.get("/addons/{addon}/dark_icon", api_addons.dark_icon),
-                web.get("/addons/{addon}/logo", api_addons.logo),
-                web.get("/addons/{addon}/dark_logo", api_addons.dark_logo),
-                web.get("/addons/{addon}/changelog", api_addons.changelog),
-                web.get("/addons/{addon}/documentation", api_addons.documentation),
                 web.post("/addons/{addon}/stdin", api_addons.stdin),
                 web.post("/addons/{addon}/security", api_addons.security),
                 web.get("/addons/{addon}/stats", api_addons.stats),
@@ -414,21 +420,6 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get("/snapshots", api_backups.list),
-                web.post("/snapshots/reload", api_backups.reload),
-                web.post("/snapshots/new/full", api_backups.backup_full),
-                web.post("/snapshots/new/partial", api_backups.backup_partial),
-                web.post("/snapshots/new/upload", api_backups.upload),
-                web.get("/snapshots/{slug}/info", api_backups.info),
-                web.delete("/snapshots/{slug}", api_backups.remove),
-                web.post("/snapshots/{slug}/restore/full", api_backups.restore_full),
-                web.post(
-                    "/snapshots/{slug}/restore/partial",
-                    api_backups.restore_partial,
-                ),
-                web.get("/snapshots/{slug}/download", api_backups.download),
-                web.post("/snapshots/{slug}/remove", api_backups.remove),
-                # June 2021: /snapshots was renamed to /backups
                 web.get("/backups", api_backups.list),
                 web.post("/backups/reload", api_backups.reload),
                 web.post("/backups/new/full", api_backups.backup_full),
@@ -523,6 +514,15 @@ class RestAPI(CoreSysAttributes):
                 web.get("/store/addons", api_store.addons_list),
                 web.get("/store/addons/{addon}", api_store.addons_addon_info),
                 web.get("/store/addons/{addon}/{version}", api_store.addons_addon_info),
+                web.get("/store/addons/{addon}/icon", api_store.addons_addon_icon),
+                web.get("/store/addons/{addon}/logo", api_store.addons_addon_logo),
+                web.get(
+                    "/store/addons/{addon}/changelog", api_store.addons_addon_changelog
+                ),
+                web.get(
+                    "/store/addons/{addon}/documentation",
+                    api_store.addons_addon_documentation,
+                ),
                 web.post(
                     "/store/addons/{addon}/install", api_store.addons_addon_install
                 ),
@@ -551,8 +551,16 @@ class RestAPI(CoreSysAttributes):
         # Reroute from legacy
         self.webapp.add_routes(
             [
+                web.post("/addons/reload", api_store.reload),
                 web.post("/addons/{addon}/install", api_store.addons_addon_install),
                 web.post("/addons/{addon}/update", api_store.addons_addon_update),
+                web.get("/addons/{addon}/icon", api_store.addons_addon_icon),
+                web.get("/addons/{addon}/logo", api_store.addons_addon_logo),
+                web.get("/addons/{addon}/changelog", api_store.addons_addon_changelog),
+                web.get(
+                    "/addons/{addon}/documentation",
+                    api_store.addons_addon_documentation,
+                ),
             ]
         )
 

@@ -26,7 +26,6 @@ from ..const import (
     ATTR_TYPE,
     ATTR_UUID,
     ATTR_VERSION,
-    ATTR_WAIT_BOOT,
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
     BusEvent,
@@ -157,16 +156,6 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def watchdog(self, value: bool):
         """Return True if the watchdog should protect Home Assistant."""
         self._data[ATTR_WATCHDOG] = value
-
-    @property
-    def wait_boot(self) -> int:
-        """Return time to wait for Home Assistant startup."""
-        return self._data[ATTR_WAIT_BOOT]
-
-    @wait_boot.setter
-    def wait_boot(self, value: int):
-        """Set time to wait for Home Assistant startup."""
-        self._data[ATTR_WAIT_BOOT] = value
 
     @property
     def latest_version(self) -> Optional[AwesomeVersion]:
@@ -436,6 +425,5 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 ATTR_SSL,
                 ATTR_REFRESH_TOKEN,
                 ATTR_WATCHDOG,
-                ATTR_WAIT_BOOT,
             ):
                 self._data[attr] = data[attr]
