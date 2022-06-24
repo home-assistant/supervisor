@@ -516,6 +516,8 @@ class RestAPI(CoreSysAttributes):
                 web.get("/store/addons/{addon}/{version}", api_store.addons_addon_info),
                 web.get("/store/addons/{addon}/icon", api_store.addons_addon_icon),
                 web.get("/store/addons/{addon}/logo", api_store.addons_addon_logo),
+                web.get("/store/addons/{addon}/icon", api_store.addons_addon_dark_icon),
+                web.get("/store/addons/{addon}/logo", api_store.addons_addon_dark_logo),
                 web.get(
                     "/store/addons/{addon}/changelog", api_store.addons_addon_changelog
                 ),
@@ -554,8 +556,6 @@ class RestAPI(CoreSysAttributes):
                 web.post("/addons/reload", api_store.reload),
                 web.post("/addons/{addon}/install", api_store.addons_addon_install),
                 web.post("/addons/{addon}/update", api_store.addons_addon_update),
-                web.get("/addons/{addon}/icon", api_store.addons_addon_icon),
-                web.get("/addons/{addon}/logo", api_store.addons_addon_logo),
                 web.get("/addons/{addon}/changelog", api_store.addons_addon_changelog),
                 web.get(
                     "/addons/{addon}/documentation",

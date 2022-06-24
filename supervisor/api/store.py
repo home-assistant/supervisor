@@ -218,11 +218,39 @@ class APIStore(CoreSysAttributes):
             return png.read()
 
     @api_process_raw(CONTENT_TYPE_PNG)
+    async def addons_addon_dark_icon(self, request: web.Request) -> bytes:
+        """Return dark icon from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_icon:
+            raise APIError(f"No icon found for add-on {addon.slug}!")
+
+        if addon.with_dark_icon:
+            with addon.path_dark_icon.open("rb") as png:
+                return png.read()
+
+        with addon.path_icon.open("rb") as png:
+            return png.read()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
     async def addons_addon_logo(self, request: web.Request) -> bytes:
         """Return logo from add-on."""
         addon = self._extract_addon(request)
         if not addon.with_logo:
             raise APIError(f"No logo found for add-on {addon.slug}!")
+
+        with addon.path_logo.open("rb") as png:
+            return png.read()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def addons_addon_dark_logo(self, request: web.Request) -> bytes:
+        """Return dark logo from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_logo:
+            raise APIError(f"No logo found for add-on {addon.slug}!")
+
+        if addon.with_dark_logo:
+            with addon.path_dark_logo.open("rb") as png:
+                return png.read()
 
         with addon.path_logo.open("rb") as png:
             return png.read()
