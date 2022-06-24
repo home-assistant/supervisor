@@ -162,6 +162,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_AVAILABLE: addon.available,
                 ATTR_DETACHED: addon.is_detached,
                 ATTR_HOMEASSISTANT: addon.homeassistant_version,
+                ATTR_STATE: addon.state,
                 ATTR_REPOSITORY: addon.repository,
                 ATTR_BUILD: addon.need_build,
                 ATTR_URL: addon.url,
