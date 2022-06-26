@@ -174,7 +174,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=UpdaterJobError,
         limit=JobExecutionLimit.THROTTLE_WAIT,
-        throttle_period=timedelta(seconds=30),
+        throttle_period=timedelta(seconds=600),
     )
     async def fetch_data(self):
         """Fetch current versions from Github.
