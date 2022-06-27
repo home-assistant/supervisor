@@ -103,6 +103,12 @@ class APIStore(CoreSysAttributes):
     ) -> dict[str, Any]:
         """Generate addon information."""
 
+        installed = (
+            self.sys_addons.get(addon.slug, local_only=True)
+            if addon.is_installed
+            else None
+        )
+
         data = {
             ATTR_ADVANCED: addon.advanced,
             ATTR_ARCH: addon.supported_arch,
@@ -118,10 +124,12 @@ class APIStore(CoreSysAttributes):
             ATTR_REPOSITORY: addon.repository,
             ATTR_SLUG: addon.slug,
             ATTR_STAGE: addon.stage,
-            ATTR_UPDATE_AVAILABLE: addon.need_update if addon.is_installed else False,
+            ATTR_UPDATE_AVAILABLE: installed.need_update
+            if addon.is_installed
+            else False,
             ATTR_URL: addon.url,
             ATTR_VERSION_LATEST: addon.latest_version,
-            ATTR_VERSION: addon.version if addon.is_installed else None,
+            ATTR_VERSION: installed.version if addon.is_installed else None,
         }
         if extended:
             data.update(
