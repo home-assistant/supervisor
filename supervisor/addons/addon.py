@@ -682,7 +682,7 @@ class Addon(AddonModel):
             command_return = await self.instance.run_inside(command)
             if command_return.exit_code != 0:
                 _LOGGER.debug(
-                    "Pre-/Post backup command faild with: %s", command_return.output
+                    "Pre-/Post backup command failed with: %s", command_return.output
                 )
                 raise AddonsError(
                     f"Pre-/Post backup command returned error code: {command_return.exit_code}",
@@ -692,7 +692,7 @@ class Addon(AddonModel):
             raise AddonsError(
                 f"Failed running pre-/post backup command {command}: {str(err)}",
                 _LOGGER.error,
-            )
+            ) from err
 
     async def backup(self, tar_file: tarfile.TarFile) -> None:
         """Backup state of an add-on."""
