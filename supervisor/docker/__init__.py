@@ -56,10 +56,10 @@ class DockerInfo:
     def new(data: dict[str, Any]):
         """Create a object from docker info."""
         return DockerInfo(
-            AwesomeVersion(data["ServerVersion"]),
-            data["Driver"],
-            data["LoggingDriver"],
-            data["CgroupVersion"],
+            AwesomeVersion(data.get("ServerVersion", "0.0.0")),
+            data.get("Driver", "unknown"),
+            data.get("LoggingDriver", "unknown"),
+            data.get("CgroupVersion", "1"),
         )
 
     @property
