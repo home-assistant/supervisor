@@ -116,6 +116,8 @@ class Core(CoreSysAttributes):
             self.sys_host.load(),
             # Adjust timezone / time settings
             self._adjust_system_datetime(),
+            # Start docker events monitor
+            self.sys_docker.monitor.start(),
             # Load Plugins container
             self.sys_plugins.load(),
             # load last available data
@@ -278,7 +280,13 @@ class Core(CoreSysAttributes):
         # Stage 1
         try:
             async with async_timeout.timeout(10):
-                await asyncio.wait([self.sys_api.stop(), self.sys_scheduler.shutdown()])
+                await asyncio.wait(
+                    [
+                        self.sys_api.stop(),
+                        self.sys_scheduler.shutdown(),
+                        self.sys_docker.monitor.stop(),
+                    ]
+                )
         except asyncio.TimeoutError:
             _LOGGER.warning("Stage 1: Force Shutdown!")
 
@@ -304,6 +312,9 @@ class Core(CoreSysAttributes):
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
             self.state = CoreState.SHUTDOWN
+
+        # Stop docker events monitor
+        await self.sys_docker.monitor.stop()
 
         # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(AddonStartup.APPLICATION)

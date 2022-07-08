@@ -54,6 +54,8 @@ class PluginAudio(PluginBase):
 
     async def load(self) -> None:
         """Load Audio setup."""
+        self.start_watchdog()
+
         # Initialize Client Template
         try:
             self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
@@ -147,7 +149,7 @@ class PluginAudio(PluginBase):
             raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
 
     async def start(self) -> None:
-        """Run CoreDNS."""
+        """Run Audio plugin."""
         _LOGGER.info("Starting Audio plugin")
         try:
             await self.instance.run()
@@ -155,7 +157,7 @@ class PluginAudio(PluginBase):
             raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
 
     async def stop(self) -> None:
-        """Stop CoreDNS."""
+        """Stop Audio plugin."""
         _LOGGER.info("Stopping Audio plugin")
         try:
             await self.instance.stop()
@@ -163,14 +165,14 @@ class PluginAudio(PluginBase):
             raise AudioError("Can't stop Audio plugin", _LOGGER.error) from err
 
     async def stats(self) -> DockerStats:
-        """Return stats of CoreDNS."""
+        """Return stats of Audio plugin."""
         try:
             return await self.instance.stats()
         except DockerError as err:
             raise AudioError() from err
 
     async def repair(self) -> None:
-        """Repair CoreDNS plugin."""
+        """Repair Audio plugin."""
         if await self.instance.exists():
             return
 

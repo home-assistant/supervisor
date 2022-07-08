@@ -45,6 +45,8 @@ class PluginObserver(PluginBase):
 
     async def load(self) -> None:
         """Load observer setup."""
+        self.start_watchdog()
+
         # Check observer state
         try:
             # Evaluate Version if we lost this information
@@ -138,12 +140,6 @@ class PluginObserver(PluginBase):
             return await self.instance.stats()
         except DockerError as err:
             raise ObserverError() from err
-
-    async def rebuild(self) -> None:
-        """Rebuild Observer Docker container."""
-        with suppress(DockerError):
-            await self.instance.stop()
-        await self.start()
 
     async def check_system_runtime(self) -> bool:
         """Check if the observer is running."""

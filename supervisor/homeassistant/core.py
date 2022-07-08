@@ -10,7 +10,9 @@ from typing import Awaitable, Optional
 import attr
 from awesomeversion import AwesomeVersion
 
-from supervisor.const import ATTR_HOMEASSISTANT
+from supervisor.const import ATTR_HOMEASSISTANT, BusEvent
+from supervisor.docker.const import ContainerState
+from supervisor.docker.monitor import DockerContainerStateEvent
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
@@ -25,7 +27,7 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
-from .const import LANDINGPAGE
+from .const import LANDINGPAGE, WATCHDOG_RETRY_SECONDS
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -57,6 +59,10 @@ class HomeAssistantCore(CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
+        self.sys_bus.register_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+        )
+
         try:
             # Evaluate Version if we lost this information
             if not self.sys_homeassistant.version:
@@ -432,3 +438,52 @@ class HomeAssistantCore(CoreSysAttributes):
             await self.instance.install(self.sys_homeassistant.version)
         except DockerError:
             _LOGGER.error("Repairing of Home Assistant failed")
+
+    async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
+        """Process state changes in Home Assistant container and restart if necessary."""
+        if not (event.name == self.instance.name and self.sys_homeassistant.watchdog):
+            return
+
+        if event.state == ContainerState.UNHEALTHY:
+            while await self.instance.current_state() == event.state:
+                # Don't interrupt a task in progress or if rollback is handling it
+                if not (self.in_progress or self.error_state):
+                    _LOGGER.warning(
+                        "Watchdog found Home Assistant is unhealthy, restarting..."
+                    )
+                    try:
+                        await self.restart()
+                    except HomeAssistantError as err:
+                        _LOGGER.error("Watchdog restart of Home Assistant failed!")
+                        self.sys_capture_exception(err)
+                    else:
+                        break
+
+                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+
+        elif event.state == ContainerState.FAILED:
+            rebuild = False
+            while await self.instance.current_state() == event.state:
+                # Don't interrupt a task in progress or if rollback is handling it
+                if not (self.in_progress or self.error_state):
+                    _LOGGER.warning(
+                        "Watchdog found Home Assistant failed, restarting..."
+                    )
+                    if not rebuild:
+                        try:
+                            await self.start()
+                        except HomeAssistantError as err:
+                            self.sys_capture_exception(err)
+                            rebuild = True
+                        else:
+                            break
+
+                    try:
+                        await self.rebuild()
+                    except HomeAssistantError as err:
+                        _LOGGER.error("Watchdog reanimation of Home Assistant failed!")
+                        self.sys_capture_exception(err)
+                    else:
+                        break
+
+                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)

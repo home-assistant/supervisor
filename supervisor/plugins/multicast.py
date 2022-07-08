@@ -37,6 +37,8 @@ class PluginMulticast(PluginBase):
 
     async def load(self) -> None:
         """Load multicast setup."""
+        self.start_watchdog()
+
         # Check Multicast state
         try:
             # Evaluate Version if we lost this information

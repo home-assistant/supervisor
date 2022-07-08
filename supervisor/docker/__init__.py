@@ -16,6 +16,9 @@ from docker.models.images import ImageCollection
 from docker.models.networks import Network
 import requests
 
+from supervisor.coresys import CoreSys
+from supervisor.docker.monitor import DockerMonitor
+
 from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
@@ -27,6 +30,7 @@ from ..const import (
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
+from .const import LABEL_MANAGED
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -97,7 +101,7 @@ class DockerAPI:
     This class is not AsyncIO safe!
     """
 
-    def __init__(self):
+    def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
         self.docker: DockerClient = DockerClient(
             base_url=f"unix:/{str(SOCKET_DOCKER)}", version="auto", timeout=900
@@ -105,6 +109,7 @@ class DockerAPI:
         self.network: DockerNetwork = DockerNetwork(self.docker)
         self._info: DockerInfo = DockerInfo.new(self.docker.info())
         self.config: DockerConfig = DockerConfig()
+        self._monitor: DockerMonitor = DockerMonitor(coresys, self.docker)
 
     @property
     def images(self) -> ImageCollection:
@@ -126,6 +131,11 @@ class DockerAPI:
         """Return local docker info."""
         return self._info
 
+    @property
+    def monitor(self) -> DockerMonitor:
+        """Return events monitor."""
+        return self._monitor
+
     def run(
         self,
         image: str,
@@ -141,6 +151,13 @@ class DockerAPI:
         name: Optional[str] = kwargs.get("name")
         network_mode: Optional[str] = kwargs.get("network_mode")
         hostname: Optional[str] = kwargs.get("hostname")
+
+        if "labels" not in kwargs:
+            kwargs["labels"] = {}
+        elif isinstance(kwargs["labels"], list):
+            kwargs["labels"] = {label: "" for label in kwargs["labels"]}
+
+        kwargs["labels"][LABEL_MANAGED] = ""
 
         # Setup DNS
         if dns:

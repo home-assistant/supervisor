@@ -48,9 +48,12 @@ from ..const import (
     AddonBoot,
     AddonStartup,
     AddonState,
+    BusEvent,
 )
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
+from ..docker.const import ContainerState
+from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
     AddonConfigurationError,
@@ -58,7 +61,6 @@ from ..exceptions import (
     AddonsNotSupportedError,
     ConfigurationFileError,
     DockerError,
-    DockerRequestError,
     HostAppArmorError,
 )
 from ..hardware.data import Device
@@ -66,7 +68,7 @@ from ..homeassistant.const import WSEvent, WSType
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
-from .const import AddonBackupMode
+from .const import WATCHDOG_RETRY_SECONDS, AddonBackupMode
 from .model import AddonModel, Data
 from .options import AddonOptions
 from .utils import remove_data
@@ -135,14 +137,15 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
+        self.sys_bus.register_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
+        )
+        self.sys_bus.register_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+        )
+
         with suppress(DockerError):
             await self.instance.attach(version=self.version)
-
-            # Evaluate state
-            if await self.instance.is_running():
-                self.state = AddonState.STARTED
-            else:
-                self.state = AddonState.STOPPED
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -613,27 +616,17 @@ class Addon(AddonModel):
         # Start Add-on
         try:
             await self.instance.run()
-        except DockerRequestError as err:
-            self.state = AddonState.ERROR
-            raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError() from err
-        else:
-            self.state = AddonState.STARTED
 
     async def stop(self) -> None:
         """Stop add-on."""
         try:
             await self.instance.stop()
-        except DockerRequestError as err:
-            self.state = AddonState.ERROR
-            raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError() from err
-        else:
-            self.state = AddonState.STOPPED
 
     async def restart(self) -> None:
         """Restart add-on."""
@@ -886,3 +879,64 @@ class Addon(AddonModel):
         Return Coroutine.
         """
         return self.instance.check_trust()
+
+    async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
+        """Set addon state from container state."""
+        if event.name != self.instance.name:
+            return
+
+        if event.state == ContainerState.RUNNING:
+            self.state = AddonState.STARTED
+        elif event.state == ContainerState.STOPPED:
+            self.state = AddonState.STOPPED
+        elif event.state == ContainerState.FAILED:
+            self.state = AddonState.ERROR
+
+    async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
+        """Process state changes in addon container and restart if necessary."""
+        if not (event.name == self.instance.name and self.watchdog):
+            return
+
+        if event.state == ContainerState.UNHEALTHY:
+            while await self.instance.current_state() == event.state:
+                if not self.in_progress:
+                    _LOGGER.warning(
+                        "Watchdog found addon %s is unhealthy, restarting...", self.name
+                    )
+                    try:
+                        await self.restart()
+                    except AddonsError as err:
+                        _LOGGER.error("Watchdog restart of addon %s failed!", self.name)
+                        self.sys_capture_exception(err)
+                    else:
+                        break
+
+                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+
+        elif event.state == ContainerState.FAILED:
+            rebuild = False
+            while await self.instance.current_state() == event.state:
+                if not self.in_progress:
+                    _LOGGER.warning(
+                        "Watchdog found addon %s failed, restarting...", self.name
+                    )
+                    if not rebuild:
+                        try:
+                            await self.start()
+                        except AddonsError as err:
+                            self.sys_capture_exception(err)
+                            rebuild = True
+                        else:
+                            break
+
+                    try:
+                        await self.rebuild()
+                    except AddonsError as err:
+                        _LOGGER.error(
+                            "Watchdog reanimation of addon %s failed!", self.name
+                        )
+                        self.sys_capture_exception(err)
+                    else:
+                        break
+
+                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)

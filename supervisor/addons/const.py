@@ -11,3 +11,4 @@ class AddonBackupMode(str, Enum):
 
 ATTR_BACKUP = "backup"
 ATTR_CODENOTARY = "codenotary"
+WATCHDOG_RETRY_SECONDS = 10

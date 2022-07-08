@@ -1,13 +1,23 @@
 """Supervisor plugins base class."""
 from abc import ABC, abstractmethod
+import asyncio
+from contextlib import suppress
+import logging
 from typing import Awaitable, Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from ..const import ATTR_IMAGE, ATTR_VERSION
+from supervisor.docker.const import ContainerState
+from supervisor.docker.monitor import DockerContainerStateEvent
+
+from ..const import ATTR_IMAGE, ATTR_VERSION, BusEvent
 from ..coresys import CoreSysAttributes
 from ..docker.interface import DockerInterface
+from ..exceptions import DockerError, PluginError
 from ..utils.common import FileConfiguration
+from .const import WATCHDOG_RETRY_SECONDS
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
@@ -83,6 +93,71 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         Return a coroutine.
         """
         return self.instance.is_failed()
+
+    def start_watchdog(self) -> None:
+        """Register docker container listener for plugin."""
+        self.sys_bus.register_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+        )
+
+    async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
+        """Process state changes in plugin container and restart if necessary."""
+        if not (event.name == self.instance.name):
+            return
+
+        if event.state == ContainerState.UNHEALTHY:
+            while await self.instance.current_state() == event.state:
+                if not self.in_progress:
+                    _LOGGER.warning(
+                        "Watchdog found %s plugin is unhealthy, restarting...",
+                        self.slug,
+                    )
+                    try:
+                        await self.rebuild()
+                    except PluginError as err:
+                        _LOGGER.error(
+                            "Watchdog restart of %s plugin failed!", self.slug
+                        )
+                        self.sys_capture_exception(err)
+                    else:
+                        break
+
+                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+
+        elif event.state in [ContainerState.FAILED, ContainerState.STOPPED]:
+            rebuild = event.state == ContainerState.FAILED
+            while await self.instance.current_state() == event.state:
+                if not self.in_progress:
+                    _LOGGER.warning(
+                        "Watchdog found %s plugin %s, restarting...",
+                        self.slug,
+                        event.state.value,
+                    )
+                    try:
+                        if rebuild:
+                            await self.rebuild()
+                        else:
+                            await self.start()
+                    except PluginError as err:
+                        _LOGGER.error(
+                            "Watchdog reanimation of %s plugin failed!", self.slug
+                        )
+                        self.sys_capture_exception(err)
+                        rebuild = True
+                    else:
+                        break
+
+                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+
+    async def rebuild(self) -> None:
+        """Rebuild system plugin."""
+        with suppress(DockerError):
+            await self.instance.stop()
+        await self.start()
+
+    @abstractmethod
+    async def start(self) -> None:
+        """Start system plugin."""
 
     @abstractmethod
     async def load(self) -> None:

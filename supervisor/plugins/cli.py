@@ -44,6 +44,8 @@ class PluginCli(PluginBase):
 
     async def load(self) -> None:
         """Load cli setup."""
+        self.start_watchdog()
+
         # Check cli state
         try:
             # Evaluate Version if we lost this information

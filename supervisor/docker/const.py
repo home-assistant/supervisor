@@ -17,9 +17,22 @@ class Capabilities(str, Enum):
     SYS_TIME = "SYS_TIME"
 
 
+class ContainerState(str, Enum):
+    """State of supervisor managed docker container."""
+
+    FAILED = "failed"
+    HEALTHY = "healthy"
+    RUNNING = "running"
+    STOPPED = "stopped"
+    UNHEALTHY = "unhealthy"
+    UNKNOWN = "unknown"
+
+
 DBUS_PATH = "/run/dbus"
 DBUS_VOLUME = {"bind": DBUS_PATH, "mode": "ro"}
 
 ENV_TIME = "TZ"
 ENV_TOKEN = "SUPERVISOR_TOKEN"
 ENV_TOKEN_OLD = "HASSIO_TOKEN"
+
+LABEL_MANAGED = "supervisor_managed"

@@ -15,6 +15,8 @@ import jinja2
 import voluptuous as vol
 
 from supervisor.dbus.const import MulticastProtocolEnabled
+from supervisor.docker.const import ContainerState
+from supervisor.docker.monitor import DockerContainerStateEvent
 
 from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys
@@ -128,6 +130,8 @@ class PluginDns(PluginBase):
 
     async def load(self) -> None:
         """Load DNS setup."""
+        self.start_watchdog()
+
         # Initialize CoreDNS Template
         try:
             self.resolv_template = jinja2.Template(RESOLV_TMPL.read_text())
@@ -263,6 +267,13 @@ class PluginDns(PluginBase):
         self._loop = False
 
         await self.sys_addons.sync_dns()
+
+    async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
+        """Check for loop on failure before processing state change event."""
+        if event.name == self.instance.name and event.state == ContainerState.FAILED:
+            await self.loop_detection()
+
+        return await super().watchdog_container(event)
 
     async def loop_detection(self) -> None:
         """Check if there was a loop found."""
