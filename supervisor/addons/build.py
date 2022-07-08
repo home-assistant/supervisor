@@ -50,6 +50,9 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         if not self._data[ATTR_BUILD_FROM]:
             return f"ghcr.io/home-assistant/{self.sys_arch.default}-base:latest"
 
+        if isinstance(self._data[ATTR_BUILD_FROM], str):
+            return self._data[ATTR_BUILD_FROM]
+
         # Evaluate correct base image
         arch = self.sys_arch.match(list(self._data[ATTR_BUILD_FROM].keys()))
         return self._data[ATTR_BUILD_FROM][arch]
