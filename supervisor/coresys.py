@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from .core import Core
     from .dbus.manager import DBusManager
     from .discovery import Discovery
+    from .docker.monitor import DockerMonitor
     from .hardware.manager import HardwareManager
     from .homeassistant.module import HomeAssistant
     from .host.manager import HostManager
@@ -90,6 +91,7 @@ class CoreSys:
         self._jobs: JobManager | None = None
         self._security: Security | None = None
         self._bus: Bus | None = None
+        self._docker_monitor: DockerMonitor | None = None
 
         # Set default header for aiohttp
         self._websession._default_headers = MappingProxyType(
@@ -129,6 +131,18 @@ class CoreSys:
     def docker(self) -> DockerAPI:
         """Return DockerAPI object."""
         return self._docker
+
+    @property
+    def docker_monitor(self) -> DockerMonitor:
+        """Return Docker Monitor object."""
+        return self._docker_monitor
+
+    @docker_monitor.setter
+    def docker_monitor(self, value: DockerMonitor) -> None:
+        """Set a Docker Monitor object."""
+        if self._docker_monitor:
+            raise RuntimeError("Docker Monitor already set!")
+        self._docker_monitor = value
 
     @property
     def scheduler(self) -> Scheduler:
@@ -548,6 +562,11 @@ class CoreSysAttributes:
     def sys_docker(self) -> DockerAPI:
         """Return DockerAPI object."""
         return self.coresys.docker
+
+    @property
+    def sys_docker_monitor(self) -> DockerMonitor:
+        """Return Docker Monitor object."""
+        return self.coresys.docker_monitor
 
     @property
     def sys_scheduler(self) -> Scheduler:

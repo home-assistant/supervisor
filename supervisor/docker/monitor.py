@@ -3,7 +3,6 @@ from dataclasses import dataclass
 import logging
 from typing import Optional
 
-from docker.client import DockerClient
 from docker.types.daemon import CancellableStream
 
 from supervisor.const import BusEvent
@@ -27,23 +26,18 @@ class DockerContainerStateEvent:
 class DockerMonitor(CoreSysAttributes):
     """Docker monitor for supervisor."""
 
-    def __init__(self, coresys: CoreSys, client: DockerClient):
+    def __init__(self, coresys: CoreSys):
         """Initialize Docker monitor object."""
         self.coresys = coresys
-        self._client = client
         self._events: Optional[CancellableStream] = None
 
-    async def start(self):
+    async def load(self):
         """Start docker events monitor."""
-        if self._events:
-            _LOGGER.warning("Docker events monitor already started!")
-            return
-
-        self._events = self._client.events(decode=True)
+        self._events = self.sys_docker.events
         self.sys_create_task(self._monitor())
         _LOGGER.info("Started docker events monitor")
 
-    async def stop(self):
+    async def unload(self):
         """Stop docker events monitor."""
         self._events.close()
         _LOGGER.info("Stopped docker events monitor")

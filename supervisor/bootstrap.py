@@ -13,6 +13,7 @@ from sentry_sdk.integrations.excepthook import ExcepthookIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.threading import ThreadingIntegration
 
+from supervisor.docker.monitor import DockerMonitor
 from supervisor.jobs import JobManager
 
 from .addons import AddonManager
@@ -87,6 +88,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.scheduler = Scheduler(coresys)
     coresys.security = Security(coresys)
     coresys.bus = Bus(coresys)
+    coresys.docker_monitor = DockerMonitor(coresys)
 
     # diagnostics
     setup_diagnostics(coresys)
