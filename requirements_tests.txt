@@ -11,5 +11,5 @@ pytest-asyncio==0.18.3
 pytest-cov==3.0.0
 pytest-timeout==2.1.0
 pytest==7.1.2
-pyupgrade==2.34.0
+pyupgrade==2.37.0
 time-machine==2.7.1
