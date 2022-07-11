@@ -1,8 +1,9 @@
 """OS support on supervisor."""
 import asyncio
+from collections.abc import Awaitable
 import logging
 from pathlib import Path
-from typing import Awaitable, Optional
+from typing import Optional
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException

@@ -1,11 +1,12 @@
 """Home Assistant control object."""
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Awaitable, Optional
+from typing import Optional
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError

@@ -1,7 +1,8 @@
 """Init file for Supervisor Audio RESTful API."""
 import asyncio
+from collections.abc import Awaitable
 import logging
-from typing import Any, Awaitable
+from typing import Any
 
 from aiohttp import web
 import attr

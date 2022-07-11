@@ -1,11 +1,12 @@
 """Home Assistant control object."""
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 import logging
 import re
 import secrets
 import shutil
-from typing import Awaitable, Optional
+from typing import Optional
 
 import attr
 from awesomeversion import AwesomeVersion

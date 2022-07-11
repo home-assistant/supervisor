@@ -1,6 +1,7 @@
 """Network Manager implementation for DBUS."""
+from collections.abc import Awaitable
 import logging
-from typing import Any, Awaitable
+from typing import Any
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.dbus import DBus

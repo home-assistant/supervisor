@@ -1,9 +1,10 @@
 """Main file for Supervisor."""
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
 import logging
-from typing import Awaitable, Optional
+from typing import Optional
 
 import async_timeout
 

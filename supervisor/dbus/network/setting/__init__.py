@@ -1,6 +1,7 @@
 """Connection object for Network Manager."""
+from collections.abc import Awaitable
 import logging
-from typing import Any, Awaitable, Optional
+from typing import Any, Optional
 
 from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
 from ....utils.dbus import DBus

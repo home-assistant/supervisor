@@ -3,10 +3,11 @@
 Code: https://github.com/home-assistant/plugin-cli
 """
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 import logging
 import secrets
-from typing import Awaitable, Optional
+from typing import Optional
 
 from awesomeversion import AwesomeVersion
 

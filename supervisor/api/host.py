@@ -1,6 +1,6 @@
 """Init file for Supervisor host RESTful API."""
 import asyncio
-from typing import Awaitable
+from collections.abc import Awaitable
 
 from aiohttp import web
 import voluptuous as vol

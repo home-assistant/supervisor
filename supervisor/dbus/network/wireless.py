@@ -1,5 +1,6 @@
 """Connection object for Network Manager."""
-from typing import Any, Awaitable, Optional
+from collections.abc import Awaitable
+from typing import Any, Optional
 
 from ...utils.dbus import DBus
 from ..const import (

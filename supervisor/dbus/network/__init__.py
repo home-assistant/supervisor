@@ -1,7 +1,8 @@
 """Network Manager implementation for DBUS."""
 import asyncio
+from collections.abc import Awaitable
 import logging
-from typing import Any, Awaitable
+from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 import sentry_sdk

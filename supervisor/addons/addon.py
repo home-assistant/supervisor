@@ -1,5 +1,6 @@
 """Init file for Supervisor add-ons."""
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 from copy import deepcopy
 from ipaddress import IPv4Address
@@ -10,7 +11,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Final, Optional
+from typing import Any, Final, Optional
 
 import aiohttp
 from deepmerge import Merger

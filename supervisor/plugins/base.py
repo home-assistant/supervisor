@@ -1,6 +1,7 @@
 """Supervisor plugins base class."""
 from abc import ABC, abstractmethod
-from typing import Awaitable, Optional
+from collections.abc import Awaitable
+from typing import Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
