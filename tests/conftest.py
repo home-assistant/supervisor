@@ -27,7 +27,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.resolved import Resolved
 from supervisor.dbus.systemd import Systemd
 from supervisor.dbus.timedate import TimeDate
-from supervisor.docker import DockerAPI
+from supervisor.docker.manager import DockerAPI
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dbus import DBus
@@ -48,20 +48,28 @@ def docker() -> DockerAPI:
     """Mock DockerAPI."""
     images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
 
-    with patch("supervisor.docker.DockerClient", return_value=MagicMock()), patch(
-        "supervisor.docker.DockerAPI.images", return_value=MagicMock()
-    ), patch("supervisor.docker.DockerAPI.containers", return_value=MagicMock()), patch(
-        "supervisor.docker.DockerAPI.api", return_value=MagicMock()
+    with patch(
+        "supervisor.docker.manager.DockerClient", return_value=MagicMock()
     ), patch(
-        "supervisor.docker.DockerAPI.images.list", return_value=images
+        "supervisor.docker.manager.DockerAPI.images", return_value=MagicMock()
     ), patch(
-        "supervisor.docker.DockerAPI.info",
+        "supervisor.docker.manager.DockerAPI.containers", return_value=MagicMock()
+    ), patch(
+        "supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()
+    ), patch(
+        "supervisor.docker.manager.DockerAPI.images.list", return_value=images
+    ), patch(
+        "supervisor.docker.manager.DockerAPI.info",
         return_value=MagicMock(),
     ), patch(
-        "supervisor.docker.DockerConfig",
+        "supervisor.docker.manager.DockerConfig",
         return_value=MagicMock(),
+    ), patch(
+        "supervisor.docker.manager.DockerAPI.load", return_value=None
+    ), patch(
+        "supervisor.docker.manager.DockerAPI.unload", return_value=None
     ):
-        docker_obj = DockerAPI()
+        docker_obj = DockerAPI(MagicMock())
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
         docker_obj.info.version = "1.0.0"

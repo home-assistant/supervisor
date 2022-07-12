@@ -16,7 +16,6 @@ import requests
 
 from supervisor.docker.monitor import DockerContainerStateEvent
 
-from . import CommandReturn
 from ..const import (
     ATTR_PASSWORD,
     ATTR_REGISTRY,
@@ -39,6 +38,7 @@ from ..exceptions import (
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .const import ContainerState
+from .manager import CommandReturn
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

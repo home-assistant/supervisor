@@ -31,13 +31,13 @@ class DockerMonitor(CoreSysAttributes):
         self.coresys = coresys
         self._events: Optional[CancellableStream] = None
 
-    async def load(self):
+    async def start(self):
         """Start docker events monitor."""
         self._events = self.sys_docker.events
         self.sys_create_task(self._monitor())
         _LOGGER.info("Started docker events monitor")
 
-    async def unload(self):
+    async def stop(self):
         """Stop docker events monitor."""
         self._events.close()
         _LOGGER.info("Stopped docker events monitor")

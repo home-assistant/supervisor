@@ -116,8 +116,8 @@ class Core(CoreSysAttributes):
             self.sys_host.load(),
             # Adjust timezone / time settings
             self._adjust_system_datetime(),
-            # Start docker events monitor
-            self.sys_docker_monitor.load(),
+            # Start docker monitoring
+            self.sys_docker.load(),
             # Load Plugins container
             self.sys_plugins.load(),
             # load last available data
@@ -284,7 +284,7 @@ class Core(CoreSysAttributes):
                     [
                         self.sys_api.stop(),
                         self.sys_scheduler.shutdown(),
-                        self.sys_docker_monitor.unload(),
+                        self.sys_docker.unload(),
                     ]
                 )
         except asyncio.TimeoutError:
@@ -313,8 +313,8 @@ class Core(CoreSysAttributes):
         if self.state == CoreState.RUNNING:
             self.state = CoreState.SHUTDOWN
 
-        # Stop docker events monitor
-        await self.sys_docker_monitor.unload()
+        # Stop docker monitoring
+        await self.sys_docker.unload()
 
         # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(AddonStartup.APPLICATION)
