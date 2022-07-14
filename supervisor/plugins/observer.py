@@ -43,35 +43,6 @@ class PluginObserver(PluginBase):
         """Return an access token for the Observer API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
 
-    async def load(self) -> None:
-        """Load observer setup."""
-        self.start_watchdog()
-
-        # Check observer state
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info(
-                "No observer plugin Docker image %s found.", self.instance.image
-            )
-
-            # Install observer
-            with suppress(ObserverError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run Observer
-        with suppress(ObserverError):
-            if not await self.instance.is_running():
-                await self.start()
-
     async def install(self) -> None:
         """Install observer."""
         _LOGGER.info("Running setup for observer plugin")

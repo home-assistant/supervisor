@@ -1,7 +1,8 @@
-"""Test watchdog for plugins."""
+"""Test base plugin functionality."""
 import asyncio
 from unittest.mock import patch
 
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.const import BusEvent
@@ -12,6 +13,7 @@ from supervisor.exceptions import (
     AudioError,
     CliError,
     CoreDNSError,
+    DockerError,
     MulticastError,
     ObserverError,
     PluginError,
@@ -47,6 +49,16 @@ async def mock_current_state(state: ContainerState) -> ContainerState:
     return state
 
 
+async def mock_is_running(running: bool) -> bool:
+    """Mock for is running method."""
+    return running
+
+
+async def mock_get_latest_version(version: AwesomeVersion) -> AwesomeVersion:
+    """Mock for get latest version method."""
+    return version
+
+
 @pytest.mark.parametrize(
     "plugin",
     [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
@@ -54,7 +66,10 @@ async def mock_current_state(state: ContainerState) -> ContainerState:
 )
 async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
     """Test plugin watchdog works correctly."""
-    plugin.start_watchdog()
+    with patch.object(type(plugin.instance), "attach"), patch.object(
+        type(plugin.instance), "is_running", return_value=mock_is_running(True)
+    ):
+        await plugin.load()
 
     with patch.object(type(plugin), "rebuild") as rebuild, patch.object(
         type(plugin), "start"
@@ -150,7 +165,10 @@ async def test_plugin_watchdog_rebuild_on_failure(
     coresys: CoreSys, plugin: PluginBase, error: PluginError
 ) -> None:
     """Test plugin watchdog rebuilds if start fails."""
-    plugin.start_watchdog()
+    with patch.object(type(plugin.instance), "attach"), patch.object(
+        type(plugin.instance), "is_running", return_value=mock_is_running(True)
+    ):
+        await plugin.load()
 
     with patch("supervisor.plugins.base.WATCHDOG_RETRY_SECONDS", 0), patch.object(
         type(plugin), "rebuild"
@@ -176,3 +194,111 @@ async def test_plugin_watchdog_rebuild_on_failure(
         await asyncio.sleep(0.1)
         start.assert_called_once()
         rebuild.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "plugin",
+    [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
+    indirect=True,
+)
+async def test_plugin_load_running_container(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test plugins load and attach to a running container."""
+    test_version = AwesomeVersion("2022.7.3")
+    with patch.object(
+        type(coresys.bus), "register_event"
+    ) as register_event, patch.object(
+        type(plugin.instance), "attach"
+    ) as attach, patch.object(
+        type(plugin), "install"
+    ) as install, patch.object(
+        type(plugin), "start"
+    ) as start, patch.object(
+        type(plugin.instance),
+        "get_latest_version",
+        return_value=mock_get_latest_version(test_version),
+    ), patch.object(
+        type(plugin.instance), "is_running", return_value=mock_is_running(True)
+    ):
+        await plugin.load()
+        register_event.assert_any_call(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
+        )
+        attach.assert_called_once_with(
+            version=test_version, skip_state_event_if_down=True
+        )
+        install.assert_not_called()
+        start.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "plugin",
+    [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
+    indirect=True,
+)
+async def test_plugin_load_stopped_container(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test plugins load and start existing container."""
+    test_version = AwesomeVersion("2022.7.3")
+    with patch.object(
+        type(coresys.bus), "register_event"
+    ) as register_event, patch.object(
+        type(plugin.instance), "attach"
+    ) as attach, patch.object(
+        type(plugin), "install"
+    ) as install, patch.object(
+        type(plugin), "start"
+    ) as start, patch.object(
+        type(plugin.instance),
+        "get_latest_version",
+        return_value=mock_get_latest_version(test_version),
+    ), patch.object(
+        type(plugin.instance), "is_running", return_value=mock_is_running(False)
+    ):
+        await plugin.load()
+        register_event.assert_any_call(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
+        )
+        attach.assert_called_once_with(
+            version=test_version, skip_state_event_if_down=True
+        )
+        install.assert_not_called()
+        start.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "plugin",
+    [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
+    indirect=True,
+)
+async def test_plugin_load_missing_container(
+    coresys: CoreSys, plugin: PluginBase
+) -> None:
+    """Test plugins load and create and start container."""
+    test_version = AwesomeVersion("2022.7.3")
+    with patch.object(
+        type(coresys.bus), "register_event"
+    ) as register_event, patch.object(
+        type(plugin.instance), "attach", side_effect=DockerError()
+    ) as attach, patch.object(
+        type(plugin), "install"
+    ) as install, patch.object(
+        type(plugin), "start"
+    ) as start, patch.object(
+        type(plugin.instance),
+        "get_latest_version",
+        return_value=mock_get_latest_version(test_version),
+    ), patch.object(
+        type(plugin.instance), "is_running", return_value=mock_is_running(False)
+    ):
+        await plugin.load()
+        register_event.assert_any_call(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
+        )
+        attach.assert_called_once_with(
+            version=test_version, skip_state_event_if_down=True
+        )
+        install.assert_called_once()
+        start.assert_called_once()

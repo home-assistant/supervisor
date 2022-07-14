@@ -159,9 +159,36 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     async def start(self) -> None:
         """Start system plugin."""
 
-    @abstractmethod
     async def load(self) -> None:
         """Load system plugin."""
+        self.start_watchdog()
+
+        # Check plugin state
+        try:
+            # Evaluate Version if we lost this information
+            if not self.version:
+                self.version = await self.instance.get_latest_version()
+
+            await self.instance.attach(
+                version=self.version, skip_state_event_if_down=True
+            )
+        except DockerError:
+            _LOGGER.info(
+                "No %s plugin Docker image %s found.", self.slug, self.instance.image
+            )
+
+            # Install plugin
+            with suppress(PluginError):
+                await self.install()
+        else:
+            self.version = self.instance.version
+            self.image = self.instance.image
+            self.save_data()
+
+        # Run plugin
+        with suppress(PluginError):
+            if not await self.instance.is_running():
+                await self.start()
 
     @abstractmethod
     async def install(self) -> None:

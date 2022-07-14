@@ -28,6 +28,7 @@ from supervisor.dbus.resolved import Resolved
 from supervisor.dbus.systemd import Systemd
 from supervisor.dbus.timedate import TimeDate
 from supervisor.docker.manager import DockerAPI
+from supervisor.docker.monitor import DockerMonitor
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dbus import DBus
@@ -65,9 +66,9 @@ def docker() -> DockerAPI:
         "supervisor.docker.manager.DockerConfig",
         return_value=MagicMock(),
     ), patch(
-        "supervisor.docker.manager.DockerAPI.load", return_value=None
+        "supervisor.docker.manager.DockerAPI.load"
     ), patch(
-        "supervisor.docker.manager.DockerAPI.unload", return_value=None
+        "supervisor.docker.manager.DockerAPI.unload"
     ):
         docker_obj = DockerAPI(MagicMock())
         docker_obj.info.logging = "journald"
@@ -227,6 +228,7 @@ async def coresys(loop, docker, network_manager, aiohttp_client, run_dir) -> Cor
 
     # Mock docker
     coresys_obj._docker = docker
+    coresys_obj.docker._monitor = DockerMonitor(coresys_obj)
 
     # Set internet state
     coresys_obj.supervisor._connectivity = True

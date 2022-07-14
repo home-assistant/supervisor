@@ -54,36 +54,13 @@ class PluginAudio(PluginBase):
 
     async def load(self) -> None:
         """Load Audio setup."""
-        self.start_watchdog()
-
         # Initialize Client Template
         try:
             self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
         except OSError as err:
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
 
-        # Check Audio state
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
-
-            # Install PulseAudio
-            with suppress(AudioError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run PulseAudio
-        with suppress(AudioError):
-            if not await self.instance.is_running():
-                await self.start()
+        await super().load()
 
         # Setup default asound config
         asound = self.sys_config.path_audio.joinpath("asound")

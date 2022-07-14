@@ -11,7 +11,7 @@ from typing import Any, Awaitable
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
 import docker
-from docker.models.resource import Model
+from docker.models.containers import Container
 import requests
 
 from supervisor.docker.monitor import DockerContainerStateEvent
@@ -55,7 +55,7 @@ MAP_ARCH = {
 }
 
 
-def _container_state_from_model(docker_container: Model) -> ContainerState:
+def _container_state_from_model(docker_container: Container) -> ContainerState:
     """Get container state from model."""
     if docker_container.status == "running":
         if "Health" in docker_container.attrs["State"]:
@@ -328,11 +328,15 @@ class DockerInterface(CoreSysAttributes):
         return _container_state_from_model(docker_container)
 
     @process_lock
-    def attach(self, version: AwesomeVersion):
+    def attach(
+        self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
+    ) -> Awaitable[None]:
         """Attach to running Docker container."""
-        return self.sys_run_in_executor(self._attach, version)
+        return self.sys_run_in_executor(self._attach, version, skip_state_event_if_down)
 
-    def _attach(self, version: AwesomeVersion) -> None:
+    def _attach(
+        self, version: AwesomeVersion, skip_state_event_if_down: bool = False
+    ) -> None:
         """Attach to running docker container.
 
         Need run inside executor.
@@ -342,7 +346,10 @@ class DockerInterface(CoreSysAttributes):
             self._meta = docker_container.attrs
 
             state = _container_state_from_model(docker_container)
-            if state != ContainerState.STOPPED:
+            if not (
+                skip_state_event_if_down
+                and state in [ContainerState.STOPPED, ContainerState.FAILED]
+            ):
                 # Fire event with current state of container
                 self.sys_bus.fire_event(
                     BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
@@ -350,8 +357,6 @@ class DockerInterface(CoreSysAttributes):
                         self.name, state, docker_container.id, int(time())
                     ),
                 )
-
-            return
 
         with suppress(docker.errors.DockerException, requests.RequestException):
             if not self._meta and self.image:

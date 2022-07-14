@@ -15,7 +15,7 @@ from supervisor.plugins.dns import HostEntry
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
-from tests.plugins.test_plugin_watchdog import mock_current_state
+from tests.plugins.test_plugin_base import mock_current_state, mock_is_running
 
 
 @pytest.fixture(name="docker_interface")
@@ -141,13 +141,20 @@ async def test_loop_detection_on_failure(coresys: CoreSys):
     assert len(coresys.resolution.issues) == 0
     assert len(coresys.resolution.suggestions) == 0
 
-    with patch.object(type(coresys.plugins.dns.instance), "attach"):
+    with patch.object(type(coresys.plugins.dns.instance), "attach"), patch.object(
+        type(coresys.plugins.dns.instance),
+        "is_running",
+        return_value=mock_is_running(True),
+    ):
         await coresys.plugins.dns.load()
 
     with patch.object(type(coresys.plugins.dns), "rebuild") as rebuild, patch.object(
         type(coresys.plugins.dns.instance),
         "current_state",
-        return_value=mock_current_state(ContainerState.FAILED),
+        side_effect=[
+            mock_current_state(ContainerState.FAILED),
+            mock_current_state(ContainerState.FAILED),
+        ],
     ), patch.object(type(coresys.plugins.dns.instance), "logs") as logs:
         logs.return_value = mock_logs(b"")
         coresys.bus.fire_event(
