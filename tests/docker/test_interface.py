@@ -3,17 +3,18 @@ from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
 
 from awesomeversion import AwesomeVersion
-from docker.errors import DockerException
+from docker.errors import DockerException, NotFound
 from docker.models.containers import Container
 from docker.models.images import Image
 import pytest
+from requests import RequestException
 
 from supervisor.const import BusEvent, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import DockerError
+from supervisor.exceptions import DockerAPIError, DockerError, DockerRequestError
 
 
 @pytest.fixture(autouse=True)
@@ -86,6 +87,28 @@ async def test_current_state(
         new=PropertyMock(return_value=container_collection),
     ):
         assert await coresys.homeassistant.core.instance.current_state() == expected
+
+
+async def test_current_state_failures(coresys: CoreSys):
+    """Test failure states for current state."""
+    container_collection = MagicMock()
+    with patch(
+        "supervisor.docker.manager.DockerAPI.containers",
+        new=PropertyMock(return_value=container_collection),
+    ):
+        container_collection.get.side_effect = NotFound("dne")
+        assert (
+            await coresys.homeassistant.core.instance.current_state()
+            == ContainerState.UNKNOWN
+        )
+
+        container_collection.get.side_effect = DockerException()
+        with pytest.raises(DockerAPIError):
+            await coresys.homeassistant.core.instance.current_state()
+
+        container_collection.get.side_effect = RequestException()
+        with pytest.raises(DockerRequestError):
+            await coresys.homeassistant.core.instance.current_state()
 
 
 @pytest.mark.parametrize(
