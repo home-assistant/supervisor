@@ -1,8 +1,10 @@
 """Supervisor docker monitor based on events."""
 from dataclasses import dataclass
 import logging
+from threading import Thread
 from typing import Optional
 
+from docker.models.containers import Container
 from docker.types.daemon import CancellableStream
 
 from supervisor.const import BusEvent
@@ -23,31 +25,46 @@ class DockerContainerStateEvent:
     time: int
 
 
-class DockerMonitor(CoreSysAttributes):
+class DockerMonitor(CoreSysAttributes, Thread):
     """Docker monitor for supervisor."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker monitor object."""
+        super().__init__()
         self.coresys = coresys
         self._events: Optional[CancellableStream] = None
+        self._unlabeled_managed_containers: list[str] = []
 
-    async def start(self):
+    def watch_container(self, container: Container):
+        """If container is missing the managed label, add name to list."""
+        if LABEL_MANAGED not in container.attrs["Config"]["Labels"]:
+            self._unlabeled_managed_containers += [container.name]
+
+    async def load(self):
         """Start docker events monitor."""
         self._events = self.sys_docker.events
-        self.sys_create_task(self._monitor())
+        Thread.start(self)
         _LOGGER.info("Started docker events monitor")
 
-    async def stop(self):
+    async def unload(self):
         """Stop docker events monitor."""
         self._events.close()
+        try:
+            self.join(timeout=5)
+        except RuntimeError:
+            pass
+
         _LOGGER.info("Stopped docker events monitor")
 
-    async def _monitor(self):
+    def run(self):
         """Monitor and process docker events."""
         for event in self._events:
             attributes: dict[str, str] = event.get("Actor", {}).get("Attributes", {})
 
-            if event["Type"] == "container" and LABEL_MANAGED in attributes:
+            if event["Type"] == "container" and (
+                LABEL_MANAGED in attributes
+                or attributes["name"] in self._unlabeled_managed_containers
+            ):
                 container_state: Optional[ContainerState] = None
                 action: str = event["Action"]
 
@@ -65,7 +82,8 @@ class DockerMonitor(CoreSysAttributes):
                     container_state = ContainerState.UNHEALTHY
 
                 if container_state:
-                    self.sys_bus.fire_event(
+                    self.sys_loop.call_soon_threadsafe(
+                        self.sys_bus.fire_event,
                         BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
                         DockerContainerStateEvent(
                             name=attributes["name"],

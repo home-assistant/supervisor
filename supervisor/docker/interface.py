@@ -344,6 +344,7 @@ class DockerInterface(CoreSysAttributes):
         with suppress(docker.errors.DockerException, requests.RequestException):
             docker_container = self.sys_docker.containers.get(self.name)
             self._meta = docker_container.attrs
+            self.sys_docker.monitor.watch_container(docker_container)
 
             state = _container_state_from_model(docker_container)
             if not (

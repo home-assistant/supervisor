@@ -31,6 +31,7 @@ from ..const import (
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
+from .const import LABEL_MANAGED
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -143,11 +144,11 @@ class DockerAPI:
 
     async def load(self) -> None:
         """Start docker events monitor."""
-        await self.monitor.start()
+        await self.monitor.load()
 
     async def unload(self) -> None:
         """Stop docker events monitor."""
-        await self.monitor.stop()
+        await self.monitor.unload()
 
     def run(
         self,
@@ -164,6 +165,13 @@ class DockerAPI:
         name: Optional[str] = kwargs.get("name")
         network_mode: Optional[str] = kwargs.get("network_mode")
         hostname: Optional[str] = kwargs.get("hostname")
+
+        if "labels" not in kwargs:
+            kwargs["labels"] = {}
+        elif isinstance(kwargs["labels"], list):
+            kwargs["labels"] = {label: "" for label in kwargs["labels"]}
+
+        kwargs["labels"][LABEL_MANAGED] = ""
 
         # Setup DNS
         if dns:
