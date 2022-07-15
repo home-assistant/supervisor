@@ -113,7 +113,7 @@ async def test_unlabeled_container(coresys: CoreSys):
             "Name": "homeassistant",
             "Id": "abc123",
             "State": {"Status": "running"},
-            "Config": {"Labels": {}},
+            "Config": {},
         }
     )
     with patch(

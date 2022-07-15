@@ -141,6 +141,7 @@ async def test_attach_existing_container(
 ):
     """Test attaching to existing container."""
     attrs["Id"] = "abc123"
+    attrs["Config"] = {}
     container_collection = MagicMock()
     container_collection.get.return_value = Container(attrs)
     with patch(

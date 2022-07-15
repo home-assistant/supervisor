@@ -37,7 +37,7 @@ class DockerMonitor(CoreSysAttributes, Thread):
 
     def watch_container(self, container: Container):
         """If container is missing the managed label, add name to list."""
-        if LABEL_MANAGED not in container.attrs["Config"]["Labels"]:
+        if LABEL_MANAGED not in container.labels:
             self._unlabeled_managed_containers += [container.name]
 
     async def load(self):
