@@ -13,7 +13,6 @@ import sentry_sdk
 
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV, SERVER_SOFTWARE
-from .docker import DockerAPI
 from .utils.dt import UTC, get_time_zone
 
 if TYPE_CHECKING:
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
     from .core import Core
     from .dbus.manager import DBusManager
     from .discovery import Discovery
+    from .docker.manager import DockerAPI
     from .hardware.manager import HardwareManager
     from .homeassistant.module import HomeAssistant
     from .host.manager import HostManager
@@ -63,9 +63,9 @@ class CoreSys:
 
         # Global objects
         self._config: CoreConfig = CoreConfig()
-        self._docker: DockerAPI = DockerAPI()
 
         # Internal objects pointers
+        self._docker: DockerAPI | None = None
         self._core: Core | None = None
         self._arch: CpuArch | None = None
         self._auth: Auth | None = None
@@ -128,7 +128,16 @@ class CoreSys:
     @property
     def docker(self) -> DockerAPI:
         """Return DockerAPI object."""
+        if self._docker is None:
+            raise RuntimeError("Docker not set!")
         return self._docker
+
+    @docker.setter
+    def docker(self, value: DockerAPI) -> None:
+        """Set docker object."""
+        if self._docker:
+            raise RuntimeError("Docker already set!")
+        self._docker = value
 
     @property
     def scheduler(self) -> Scheduler:

@@ -42,36 +42,11 @@ class PluginCli(PluginBase):
         """Return an access token for the Supervisor API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
 
-    async def load(self) -> None:
-        """Load cli setup."""
-        # Check cli state
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info("No cli plugin Docker image %s found.", self.instance.image)
-
-            # Install cli
-            with suppress(CliError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run CLI
-        with suppress(CliError):
-            if not await self.instance.is_running():
-                await self.start()
-
     async def install(self) -> None:
         """Install cli."""
         _LOGGER.info("Running setup for CLI plugin")
         while True:
-            # read audio tag and install it
+            # read cli tag and install it
             if not self.latest_version:
                 await self.sys_updater.reload()
 

@@ -60,28 +60,7 @@ class PluginAudio(PluginBase):
         except OSError as err:
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
 
-        # Check Audio state
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
-
-            # Install PulseAudio
-            with suppress(AudioError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run PulseAudio
-        with suppress(AudioError):
-            if not await self.instance.is_running():
-                await self.start()
+        await super().load()
 
         # Setup default asound config
         asound = self.sys_config.path_audio.joinpath("asound")
@@ -147,7 +126,7 @@ class PluginAudio(PluginBase):
             raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
 
     async def start(self) -> None:
-        """Run CoreDNS."""
+        """Run Audio plugin."""
         _LOGGER.info("Starting Audio plugin")
         try:
             await self.instance.run()
@@ -155,7 +134,7 @@ class PluginAudio(PluginBase):
             raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
 
     async def stop(self) -> None:
-        """Stop CoreDNS."""
+        """Stop Audio plugin."""
         _LOGGER.info("Stopping Audio plugin")
         try:
             await self.instance.stop()
@@ -163,14 +142,14 @@ class PluginAudio(PluginBase):
             raise AudioError("Can't stop Audio plugin", _LOGGER.error) from err
 
     async def stats(self) -> DockerStats:
-        """Return stats of CoreDNS."""
+        """Return stats of Audio plugin."""
         try:
             return await self.instance.stats()
         except DockerError as err:
             raise AudioError() from err
 
     async def repair(self) -> None:
-        """Repair CoreDNS plugin."""
+        """Repair Audio plugin."""
         if await self.instance.exists():
             return
 

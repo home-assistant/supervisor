@@ -35,38 +35,11 @@ class PluginMulticast(PluginBase):
         """Return latest version of Multicast."""
         return self.sys_updater.version_multicast
 
-    async def load(self) -> None:
-        """Load multicast setup."""
-        # Check Multicast state
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info(
-                "No Multicast plugin Docker image %s found.", self.instance.image
-            )
-
-            # Install Multicast plugin
-            with suppress(MulticastError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run Multicast plugin
-        with suppress(MulticastError):
-            if not await self.instance.is_running():
-                await self.start()
-
     async def install(self) -> None:
         """Install Multicast."""
         _LOGGER.info("Running setup for Multicast plugin")
         while True:
-            # read homeassistant tag and install it
+            # read multicast tag and install it
             if not self.latest_version:
                 await self.sys_updater.reload()
 

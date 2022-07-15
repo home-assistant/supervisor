@@ -33,7 +33,9 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         """Return True if the container run with Privileged."""
         return self.meta_host.get("Privileged", False)
 
-    def _attach(self, version: AwesomeVersion) -> None:
+    def _attach(
+        self, version: AwesomeVersion, skip_state_event_if_down: bool = False
+    ) -> None:
         """Attach to running docker container.
 
         Need run inside executor.

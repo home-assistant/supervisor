@@ -6,6 +6,7 @@ from awesomeversion import AwesomeVersion
 from ..const import CoreState
 
 LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
+WATCHDOG_RETRY_SECONDS = 10
 
 CLOSING_STATES = [
     CoreState.SHUTDOWN,

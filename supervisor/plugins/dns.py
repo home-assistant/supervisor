@@ -15,6 +15,8 @@ import jinja2
 import voluptuous as vol
 
 from supervisor.dbus.const import MulticastProtocolEnabled
+from supervisor.docker.const import ContainerState
+from supervisor.docker.monitor import DockerContainerStateEvent
 
 from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys
@@ -138,31 +140,8 @@ class PluginDns(PluginBase):
         except OSError as err:
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
-        # Check CoreDNS state
         self._init_hosts()
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info(
-                "No CoreDNS plugin Docker image %s found.", self.instance.image
-            )
-
-            # Install CoreDNS
-            with suppress(CoreDNSError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run CoreDNS
-        with suppress(CoreDNSError):
-            if not await self.instance.is_running():
-                await self.start()
+        await super().load()
 
         # Update supervisor
         self._write_resolv(HOST_RESOLV)
@@ -263,6 +242,13 @@ class PluginDns(PluginBase):
         self._loop = False
 
         await self.sys_addons.sync_dns()
+
+    async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
+        """Check for loop on failure before processing state change event."""
+        if event.name == self.instance.name and event.state == ContainerState.FAILED:
+            await self.loop_detection()
+
+        return await super().watchdog_container(event)
 
     async def loop_detection(self) -> None:
         """Check if there was a loop found."""

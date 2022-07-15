@@ -115,10 +115,17 @@ class HassOSDataDiskError(HassOSError):
     """Issues with the DataDisk feature from HAOS."""
 
 
+# All Plugins
+
+
+class PluginError(HassioError):
+    """Plugin error."""
+
+
 # HaCli
 
 
-class CliError(HassioError):
+class CliError(PluginError):
     """HA cli exception."""
 
 
@@ -129,7 +136,7 @@ class CliUpdateError(CliError):
 # Observer
 
 
-class ObserverError(HassioError):
+class ObserverError(PluginError):
     """General Observer exception."""
 
 
@@ -140,7 +147,7 @@ class ObserverUpdateError(ObserverError):
 # Multicast
 
 
-class MulticastError(HassioError):
+class MulticastError(PluginError):
     """Multicast exception."""
 
 
@@ -151,7 +158,7 @@ class MulticastUpdateError(MulticastError):
 # DNS
 
 
-class CoreDNSError(HassioError):
+class CoreDNSError(PluginError):
     """CoreDNS exception."""
 
 
@@ -159,10 +166,10 @@ class CoreDNSUpdateError(CoreDNSError):
     """Error on update of a CoreDNS."""
 
 
-# DNS
+# Audio
 
 
-class AudioError(HassioError):
+class AudioError(PluginError):
     """PulseAudio exception."""
 
 
