@@ -167,6 +167,7 @@ class AddonManager(CoreSysAttributes):
 
         self.data.install(store)
         addon = Addon(self.coresys, slug)
+        await addon.load()
 
         if not addon.path_data.is_dir():
             _LOGGER.info(
