@@ -1,7 +1,9 @@
 """Test Home Assistant Add-ons."""
 
 import asyncio
-from unittest.mock import patch
+from unittest.mock import MagicMock, PropertyMock, patch
+
+from docker.errors import DockerException
 
 from supervisor.addons.addon import Addon
 from supervisor.const import AddonState, BusEvent
@@ -243,3 +245,35 @@ async def test_addon_watchdog_rebuild_on_failure(
         await asyncio.sleep(0)
         start.assert_called_once()
         rebuild.assert_called_once()
+
+
+async def test_listener_attached_on_install(coresys: CoreSys, repository):
+    """Test events listener attached on addon install."""
+    container_collection = MagicMock()
+    container_collection.get.side_effect = DockerException()
+    with patch(
+        "supervisor.arch.CpuArch.supported", new=PropertyMock(return_value=["amd64"])
+    ), patch(
+        "supervisor.docker.manager.DockerAPI.containers",
+        new=PropertyMock(return_value=container_collection),
+    ), patch(
+        "pathlib.Path.is_dir", return_value=True
+    ), patch(
+        "supervisor.addons.addon.Addon.need_build", new=PropertyMock(return_value=False)
+    ), patch(
+        "supervisor.addons.model.AddonModel.with_ingress",
+        new=PropertyMock(return_value=False),
+    ):
+        await coresys.addons.install.__wrapped__(coresys.addons, TEST_ADDON_SLUG)
+
+    coresys.bus.fire_event(
+        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+        DockerContainerStateEvent(
+            name=f"addon_{TEST_ADDON_SLUG}",
+            state=ContainerState.RUNNING,
+            id="abc123",
+            time=1,
+        ),
+    )
+    await asyncio.sleep(0)
+    assert coresys.addons.get(TEST_ADDON_SLUG).state == AddonState.STARTED
