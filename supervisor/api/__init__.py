@@ -52,7 +52,10 @@ class RestAPI(CoreSysAttributes):
                 self.security.system_validation,
                 self.security.token_validation,
             ],
-            handler_args={"max_line_size": MAX_LINE_SIZE},
+            handler_args={
+                "max_line_size": MAX_LINE_SIZE,
+                "max_field_size": MAX_LINE_SIZE,
+            },
         )
 
         # service stuff
