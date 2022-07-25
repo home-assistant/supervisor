@@ -36,6 +36,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 MAX_CLIENT_SIZE: int = 1024**2 * 16
+MAX_LINE_SIZE: int = 24570
 
 
 class RestAPI(CoreSysAttributes):
@@ -51,6 +52,10 @@ class RestAPI(CoreSysAttributes):
                 self.security.system_validation,
                 self.security.token_validation,
             ],
+            handler_args={
+                "max_line_size": MAX_LINE_SIZE,
+                "max_field_size": MAX_LINE_SIZE,
+            },
         )
 
         # service stuff
