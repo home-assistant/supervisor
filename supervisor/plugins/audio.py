@@ -12,10 +12,17 @@ from typing import Optional
 from awesomeversion import AwesomeVersion
 import jinja2
 
+from ..const import LogLevel
 from ..coresys import CoreSys
 from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
-from ..exceptions import AudioError, AudioUpdateError, DockerError
+from ..exceptions import (
+    AudioError,
+    AudioUpdateError,
+    ConfigurationFileError,
+    DockerError,
+)
+from ..utils.json import write_json_file
 from .base import PluginBase
 from .const import FILE_HASSIO_AUDIO
 from .validate import SCHEMA_AUDIO_CONFIG
@@ -46,6 +53,11 @@ class PluginAudio(PluginBase):
     def path_extern_asound(self) -> PurePath:
         """Return path of default asound config file."""
         return self.sys_config.path_extern_audio.joinpath("asound")
+
+    @property
+    def pulse_audio_config(self) -> Path:
+        """Return Path to pulse audio config file."""
+        return Path(self.sys_config.path_audio, "pulse_audio.json")
 
     @property
     def latest_version(self) -> Optional[AwesomeVersion]:
@@ -120,6 +132,7 @@ class PluginAudio(PluginBase):
     async def restart(self) -> None:
         """Restart Audio plugin."""
         _LOGGER.info("Restarting Audio plugin")
+        self._write_config()
         try:
             await self.instance.restart()
         except DockerError as err:
@@ -128,6 +141,7 @@ class PluginAudio(PluginBase):
     async def start(self) -> None:
         """Run Audio plugin."""
         _LOGGER.info("Starting Audio plugin")
+        self._write_config()
         try:
             await self.instance.run()
         except DockerError as err:
@@ -171,3 +185,17 @@ class PluginAudio(PluginBase):
             default_source=input_profile,
             default_sink=output_profile,
         )
+
+    def _write_config(self):
+        """Write pulse audio config."""
+        try:
+            write_json_file(
+                self.pulse_audio_config,
+                {
+                    "debug": self.sys_config.logging == LogLevel.DEBUG,
+                },
+            )
+        except ConfigurationFileError as err:
+            raise AudioError(
+                f"Can't update pulse audio config: {err}", _LOGGER.error
+            ) from err
