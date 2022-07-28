@@ -189,6 +189,14 @@ class Job(CoreSysAttributes):
                 f"'{self._method.__qualname__}' blocked from execution, host Network Manager not available"
             )
 
+        if (
+            JobCondition.SUPERVISOR_UPDATED in self.conditions
+            and self.sys_supervisor.need_update
+        ):
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, supervisor needs to be updated first"
+            )
+
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""
         if self.limit not in (
