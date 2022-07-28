@@ -20,6 +20,7 @@ class JobCondition(str, Enum):
     HAOS = "haos"
     OS_AGENT = "os_agent"
     HOST_NETWORK = "host_network"
+    SUPERVISOR_UPDATED = "supervisor_updated"
 
 
 class JobExecutionLimit(str, Enum):

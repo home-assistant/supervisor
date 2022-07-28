@@ -2,7 +2,7 @@
 # pylint: disable=protected-access,import-error
 import asyncio
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 
@@ -355,3 +355,28 @@ async def test_exectution_limit_once(coresys: CoreSys, loop: asyncio.BaseEventLo
         await test.execute(0.1)
 
     await run_task
+
+
+async def test_supervisor_updated(coresys: CoreSys):
+    """Test the supervisor updated decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=JobCondition.SUPERVISOR_UPDATED)
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    assert not coresys.supervisor.need_update
+    assert await test.execute()
+
+    with patch.object(
+        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+    ):
+        assert not await test.execute()
