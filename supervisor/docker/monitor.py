@@ -63,7 +63,7 @@ class DockerMonitor(CoreSysAttributes, Thread):
 
             if event["Type"] == "container" and (
                 LABEL_MANAGED in attributes
-                or attributes["name"] in self._unlabeled_managed_containers
+                or attributes.get("name") in self._unlabeled_managed_containers
             ):
                 container_state: Optional[ContainerState] = None
                 action: str = event["Action"]
