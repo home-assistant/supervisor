@@ -914,23 +914,17 @@ class Addon(AddonModel):
                 await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
 
         elif event.state == ContainerState.FAILED:
-            rebuild = False
+            # Ensure failed container is removed before attempting reanimation
+            with suppress(DockerError):
+                await self.instance.stop(remove_container=True)
+
             while await self.instance.current_state() == event.state:
                 if not self.in_progress:
                     _LOGGER.warning(
                         "Watchdog found addon %s failed, restarting...", self.name
                     )
-                    if not rebuild:
-                        try:
-                            await self.start()
-                        except AddonsError as err:
-                            self.sys_capture_exception(err)
-                            rebuild = True
-                        else:
-                            break
-
                     try:
-                        await self.rebuild()
+                        await self.start()
                     except AddonsError as err:
                         _LOGGER.error(
                             "Watchdog reanimation of addon %s failed!", self.name
