@@ -356,6 +356,9 @@ class Addon(AddonModel):
     @property
     def ingress_panel(self) -> Optional[bool]:
         """Return True if the add-on access support ingress."""
+        if not self.with_ingress:
+            return None
+
         return self.persist[ATTR_INGRESS_PANEL]
 
     @ingress_panel.setter
