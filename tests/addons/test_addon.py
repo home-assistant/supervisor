@@ -132,7 +132,6 @@ async def mock_current_state(state: ContainerState) -> ContainerState:
 
 async def mock_stop() -> None:
     """Mock for stop method."""
-    pass
 
 
 async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> None:
