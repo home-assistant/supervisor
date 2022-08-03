@@ -13,32 +13,6 @@
           "remoteRoot": "/usr/src/supervisor"
         }
       ]
-    },
-    {
-      "name": "Odroid debug",
-      "type": "python",
-      "request": "attach",
-      "port": 33333,
-      "host": "odroid-dev.lan",
-      "pathMappings": [
-        {
-          "localRoot": "${workspaceFolder}",
-          "remoteRoot": "/usr/src/supervisor"
-        }
-      ]
-    },
-    {
-      "name": "Yellow debug",
-      "type": "python",
-      "request": "attach",
-      "port": 33333,
-      "host": "yellow-dev.lan",
-      "pathMappings": [
-        {
-          "localRoot": "${workspaceFolder}",
-          "remoteRoot": "/usr/src/supervisor"
-        }
-      ]
     }
   ]
 }
