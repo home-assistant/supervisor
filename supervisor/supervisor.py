@@ -158,6 +158,7 @@ class Supervisor(CoreSysAttributes):
                     "Can't update AppArmor profile!", _LOGGER.error
                 ) from err
 
+    @Job(conditions=[JobCondition.NOT_FROZEN], on_condition=SupervisorJobError)
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update Home Assistant version."""
         version = version or self.latest_version

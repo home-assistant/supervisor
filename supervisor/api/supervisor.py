@@ -19,6 +19,7 @@ from ..const import (
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
     ATTR_FORCE_SECURITY,
+    ATTR_FREEZE,
     ATTR_HEALTHY,
     ATTR_ICON,
     ATTR_IP_ADDRESS,
@@ -142,6 +143,9 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]
+
+        if ATTR_FREEZE in body:
+            self.sys_updater.freeze = body[ATTR_FREEZE]
 
         # Save changes before processing addons in case of errors
         self.sys_updater.save_data()

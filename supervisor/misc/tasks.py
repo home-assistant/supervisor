@@ -119,6 +119,7 @@ class Tasks(CoreSysAttributes):
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
             JobCondition.RUNNING,
+            JobCondition.NOT_FROZEN,
         ]
     )
     async def _update_supervisor(self):

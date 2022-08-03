@@ -17,6 +17,7 @@ from .const import (
     ATTR_DIAGNOSTICS,
     ATTR_DNS,
     ATTR_FORCE_SECURITY,
+    ATTR_FREEZE,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
@@ -134,6 +135,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
             extra=vol.REMOVE_EXTRA,
         ),
         vol.Optional(ATTR_OTA): vol.Url(),
+        vol.Optional(ATTR_FREEZE, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )

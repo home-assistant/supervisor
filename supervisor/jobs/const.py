@@ -21,6 +21,7 @@ class JobCondition(str, Enum):
     OS_AGENT = "os_agent"
     HOST_NETWORK = "host_network"
     SUPERVISOR_UPDATED = "supervisor_updated"
+    NOT_FROZEN = "not_frozen"
 
 
 class JobExecutionLimit(str, Enum):

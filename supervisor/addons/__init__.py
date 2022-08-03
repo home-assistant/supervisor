@@ -148,6 +148,7 @@ class AddonManager(CoreSysAttributes):
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
             JobCondition.HEALTHY,
+            JobCondition.SUPERVISOR_UPDATED,
         ],
         on_condition=AddonsJobError,
     )
@@ -250,6 +251,7 @@ class AddonManager(CoreSysAttributes):
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
             JobCondition.HEALTHY,
+            JobCondition.SUPERVISOR_UPDATED,
         ],
         on_condition=AddonsJobError,
     )

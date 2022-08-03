@@ -24,7 +24,7 @@ from ..exceptions import (
     ConfigurationFileError,
     DockerError,
 )
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..utils.json import write_json_file
 from .base import PluginBase
@@ -112,6 +112,15 @@ class PluginAudio(PluginBase):
         self.image = self.sys_updater.image_audio
         self.save_data()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+            JobCondition.SUPERVISOR_UPDATED,
+        ],
+        on_condition=AudioJobError,
+    )
     async def update(self, version: Optional[str] = None) -> None:
         """Update Audio plugin."""
         version = version or self.latest_version

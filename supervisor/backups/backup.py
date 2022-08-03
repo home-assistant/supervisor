@@ -31,6 +31,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_USERNAME,
     ATTR_VERSION,
@@ -121,7 +122,7 @@ class Backup(CoreSysAttributes):
 
     @property
     def homeassistant_version(self):
-        """Return backupbackup Home Assistant version."""
+        """Return backup Home Assistant version."""
         if self.homeassistant is None:
             return None
         return self._data[ATTR_HOMEASSISTANT][ATTR_VERSION]
@@ -130,6 +131,11 @@ class Backup(CoreSysAttributes):
     def homeassistant(self):
         """Return backup Home Assistant data."""
         return self._data[ATTR_HOMEASSISTANT]
+
+    @property
+    def supervisor_version(self):
+        """Return backup Supervisor version."""
+        return self._data[ATTR_SUPERVISOR_VERSION]
 
     @property
     def docker(self):
@@ -161,11 +167,12 @@ class Backup(CoreSysAttributes):
     def new(self, slug, name, date, sys_type, password=None, compressed=True):
         """Initialize a new backup."""
         # Init metadata
-        self._data[ATTR_VERSION] = 2
+        self._data[ATTR_VERSION] = 3
         self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date
         self._data[ATTR_TYPE] = sys_type
+        self._data[ATTR_SUPERVISOR_VERSION] = self.sys_supervisor.version
 
         # Add defaults
         self._data = SCHEMA_BACKUP(self._data)

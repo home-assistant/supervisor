@@ -222,6 +222,11 @@ class Job(CoreSysAttributes):
                 f"'{self._method.__qualname__}' blocked from execution, host Network Manager not available"
             )
 
+        if JobCondition.NOT_FROZEN in self.conditions and self.sys_updater.freeze:
+            raise JobCondition(
+                f"'{self._method.__qualname__}' blocked from execution, can't update while in freeze state"
+            )
+
         if (
             JobCondition.SUPERVISOR_UPDATED in self.conditions
             and self.sys_supervisor.need_update

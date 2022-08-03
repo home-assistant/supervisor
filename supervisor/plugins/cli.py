@@ -16,7 +16,7 @@ from ..docker.cli import DockerCli
 from ..docker.const import ContainerState
 from ..docker.stats import DockerStats
 from ..exceptions import CliError, CliJobError, CliUpdateError, DockerError
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from .base import PluginBase
 from .const import (
@@ -72,6 +72,15 @@ class PluginCli(PluginBase):
         self.image = self.sys_updater.image_cli
         self.save_data()
 
+    @Job(
+        conditions=[
+            JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
+            JobCondition.INTERNET_HOST,
+            JobCondition.SUPERVISOR_UPDATED,
+        ],
+        on_condition=CliJobError,
+    )
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update local HA cli."""
         version = version or self.latest_version

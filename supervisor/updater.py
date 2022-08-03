@@ -14,6 +14,7 @@ from .const import (
     ATTR_CHANNEL,
     ATTR_CLI,
     ATTR_DNS,
+    ATTR_FREEZE,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
@@ -169,6 +170,16 @@ class Updater(FileConfiguration, CoreSysAttributes):
     def channel(self, value: UpdateChannel):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
+
+    @property
+    def freeze(self) -> bool:
+        """Return if in an update freeze."""
+        return self._data[ATTR_FREEZE]
+
+    @freeze.setter
+    def freeze(self, value: bool) -> None:
+        """Set update freeze."""
+        self._data[ATTR_FREEZE] = value
 
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
