@@ -212,6 +212,11 @@ class APIStore(CoreSysAttributes):
     @api_process
     async def addons_addon_info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
+        return await self.addons_addon_info_wrapped(request)
+
+    # Used by legacy routing for addons/{addon}/info, can be refactored out when that is removed (1/2023)
+    async def addons_addon_info_wrapped(self, request: web.Request) -> dict[str, Any]:
+        """Return add-on information directly (not api)."""
         addon: AddonStore = self._extract_addon(request)
         return self._generate_addon_information(addon, True)
 
