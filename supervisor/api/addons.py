@@ -96,7 +96,13 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
-from ..exceptions import APIError, APIForbidden, PwnedError, PwnedSecret
+from ..exceptions import (
+    APIAddonNotInstalled,
+    APIError,
+    APIForbidden,
+    PwnedError,
+    PwnedSecret,
+)
 from ..validate import docker_ports
 from .const import ATTR_SIGNED, CONTENT_TYPE_BINARY
 from .utils import api_process, api_process_raw, api_validate, json_loads
@@ -140,7 +146,7 @@ class APIAddons(CoreSysAttributes):
         if not addon:
             raise APIError(f"Addon {addon_slug} does not exist")
         if not isinstance(addon, Addon) or not addon.is_installed:
-            raise APIError("Addon is not installed")
+            raise APIAddonNotInstalled("Addon is not installed")
 
         return addon
 
@@ -177,7 +183,6 @@ class APIAddons(CoreSysAttributes):
         """Reload all add-on data from store."""
         await asyncio.shield(self.sys_store.reload())
 
-    @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
         addon: AnyAddon = self._extract_addon(request)

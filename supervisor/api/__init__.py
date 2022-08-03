@@ -1,9 +1,12 @@
 """Init file for Supervisor RESTful API."""
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from aiohttp import web
+
+from supervisor.api.utils import api_process
+from supervisor.exceptions import APIAddonNotInstalled
 
 from ..coresys import CoreSys, CoreSysAttributes
 from .addons import APIAddons
@@ -383,7 +386,6 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/addons", api_addons.list),
-                web.get("/addons/{addon}/info", api_addons.info),
                 web.post("/addons/{addon}/uninstall", api_addons.uninstall),
                 web.post("/addons/{addon}/start", api_addons.start),
                 web.post("/addons/{addon}/stop", api_addons.stop),
@@ -400,6 +402,20 @@ class RestAPI(CoreSysAttributes):
                 web.get("/addons/{addon}/stats", api_addons.stats),
             ]
         )
+
+        # Legacy routing to support requests for not installed addons
+        api_store = APIStore()
+        api_store.coresys = self.coresys
+
+        @api_process
+        async def addons_addon_info(request: web.Request) -> dict[str, Any]:
+            """Route to store if info requested for not installed addon."""
+            try:
+                return await api_addons.info(request)
+            except APIAddonNotInstalled:
+                return await api_store.addons_addon_info(request)
+
+        self.webapp.add_routes([web.get("/addons/{addon}/info", addons_addon_info)])
 
     def _register_ingress(self) -> None:
         """Register Ingress functions."""

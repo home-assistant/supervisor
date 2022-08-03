@@ -263,6 +263,10 @@ class APIForbidden(APIError):
     """API forbidden error."""
 
 
+class APIAddonNotInstalled(APIError):
+    """Not installed addon requested at addons API."""
+
+
 # Service / Discovery
 
 
