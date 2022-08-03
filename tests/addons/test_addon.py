@@ -10,7 +10,6 @@ from supervisor.const import AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsError
 
 from ..const import TEST_ADDON_SLUG
 
@@ -131,6 +130,10 @@ async def mock_current_state(state: ContainerState) -> ContainerState:
     return state
 
 
+async def mock_stop() -> None:
+    """Mock for stop method."""
+
+
 async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> None:
     """Test addon watchdog works correctly."""
     with patch.object(type(install_addon_ssh.instance), "attach"):
@@ -159,18 +162,23 @@ async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> Non
 
         restart.reset_mock()
         current_state.return_value = mock_current_state(ContainerState.FAILED)
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
-                state=ContainerState.FAILED,
-                id="abc123",
-                time=1,
-            ),
-        )
-        await asyncio.sleep(0)
-        restart.assert_not_called()
-        start.assert_called_once()
+
+        with patch.object(
+            type(install_addon_ssh.instance), "stop", return_value=mock_stop()
+        ) as stop:
+            coresys.bus.fire_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                DockerContainerStateEvent(
+                    name=f"addon_{TEST_ADDON_SLUG}",
+                    state=ContainerState.FAILED,
+                    id="abc123",
+                    time=1,
+                ),
+            )
+            await asyncio.sleep(0)
+            stop.assert_called_once_with(remove_container=True)
+            restart.assert_not_called()
+            start.assert_called_once()
 
         start.reset_mock()
         # Do not process event if container state has changed since fired
@@ -215,36 +223,6 @@ async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> Non
         await asyncio.sleep(0)
         restart.assert_not_called()
         start.assert_not_called()
-
-
-async def test_addon_watchdog_rebuild_on_failure(
-    coresys: CoreSys, install_addon_ssh: Addon
-) -> None:
-    """Test addon watchdog rebuilds if start fails."""
-    with patch.object(type(install_addon_ssh.instance), "attach"):
-        await install_addon_ssh.load()
-
-    install_addon_ssh.watchdog = True
-
-    with patch.object(Addon, "start", side_effect=AddonsError()) as start, patch.object(
-        Addon, "rebuild"
-    ) as rebuild, patch.object(
-        type(install_addon_ssh.instance),
-        "current_state",
-        return_value=mock_current_state(ContainerState.FAILED),
-    ):
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
-                state=ContainerState.FAILED,
-                id="abc123",
-                time=1,
-            ),
-        )
-        await asyncio.sleep(0)
-        start.assert_called_once()
-        rebuild.assert_called_once()
 
 
 async def test_listener_attached_on_install(coresys: CoreSys, repository):
