@@ -34,3 +34,10 @@ async def test_addons_info_not_installed(
     result = await resp.json()
     assert result["data"]["version_latest"] == "9.2.1"
     assert result["data"]["version"] is None
+    assert result["data"]["state"] == "unknown"
+    assert result["data"]["options"] == {
+        "authorized_keys": [],
+        "apks": [],
+        "password": "",
+        "server": {"tcp_forwarding": False},
+    }

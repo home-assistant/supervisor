@@ -6,6 +6,7 @@ from typing import Any, Optional
 from aiohttp import web
 
 from supervisor.api.utils import api_process
+from supervisor.const import AddonState
 from supervisor.exceptions import APIAddonNotInstalled
 
 from ..coresys import CoreSys, CoreSysAttributes
@@ -413,7 +414,14 @@ class RestAPI(CoreSysAttributes):
             try:
                 return await api_addons.info(request)
             except APIAddonNotInstalled:
-                return await api_store.addons_addon_info(request)
+                # Route to store/{addon}/info but add missing fields
+                return dict(
+                    await api_store.addons_addon_info_wrapped(request),
+                    state=AddonState.UNKNOWN,
+                    options=self.sys_addons.store.get(
+                        request.match_info.get("addon")
+                    ).options,
+                )
 
         self.webapp.add_routes([web.get("/addons/{addon}/info", addons_addon_info)])
 
