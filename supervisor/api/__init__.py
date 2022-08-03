@@ -418,9 +418,7 @@ class RestAPI(CoreSysAttributes):
                 return dict(
                     await api_store.addons_addon_info_wrapped(request),
                     state=AddonState.UNKNOWN,
-                    options=self.sys_addons.store.get(
-                        request.match_info.get("addon")
-                    ).options,
+                    options=self.sys_addons.store[request.match_info["addon"]].options,
                 )
 
         self.webapp.add_routes([web.get("/addons/{addon}/info", addons_addon_info)])
