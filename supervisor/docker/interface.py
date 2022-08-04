@@ -355,7 +355,7 @@ class DockerInterface(CoreSysAttributes):
                 self.sys_loop.call_soon_threadsafe(
                     self.sys_bus.fire_event,
                     BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-                     DockerContainerStateEvent(
+                    DockerContainerStateEvent(
                         self.name, state, docker_container.id, int(time())
                     ),
                 )
