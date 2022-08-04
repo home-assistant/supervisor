@@ -352,7 +352,8 @@ class DockerInterface(CoreSysAttributes):
                 and state in [ContainerState.STOPPED, ContainerState.FAILED]
             ):
                 # Fire event with current state of container
-                self.sys_bus.fire_event(
+                self.sys_loop.call_soon_threadsafe(
+                    self.sys_bus.fire_event,
                     BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
                     DockerContainerStateEvent(
                         self.name, state, docker_container.id, int(time())
