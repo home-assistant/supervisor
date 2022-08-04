@@ -2,7 +2,7 @@ black==22.6.0
 codecov==2.1.12
 coverage==6.4.2
 flake8-docstrings==1.6.0
-flake8==5.0.3
+flake8==5.0.4
 pre-commit==2.20.0
 pydocstyle==6.1.1
 pylint==2.14.5
