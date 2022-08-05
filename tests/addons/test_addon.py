@@ -103,6 +103,18 @@ async def test_addon_state_listener(coresys: CoreSys, install_addon_ssh: Addon) 
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
                 name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.HEALTHY,
+                id="abc123",
+                time=1,
+            ),
+        )
+        await asyncio.sleep(0)
+        assert install_addon_ssh.state == AddonState.STARTED
+
+        coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
                 state=ContainerState.FAILED,
                 id="abc123",
                 time=1,

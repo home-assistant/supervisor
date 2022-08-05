@@ -888,7 +888,11 @@ class Addon(AddonModel):
         if event.name != self.instance.name:
             return
 
-        if event.state == ContainerState.RUNNING:
+        if event.state in [
+            ContainerState.RUNNING,
+            ContainerState.HEALTHY,
+            ContainerState.UNHEALTHY,
+        ]:
             self.state = AddonState.STARTED
         elif event.state == ContainerState.STOPPED:
             self.state = AddonState.STOPPED
