@@ -2,16 +2,19 @@
 # pylint: disable=protected-access,import-error
 import asyncio
 from datetime import timedelta
+from typing import Optional
 from unittest.mock import PropertyMock, patch
 
 import pytest
+import time_machine
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HassioError, JobException
+from supervisor.exceptions import HassioError, JobException, PluginJobError
 from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.resolution.const import UnhealthyReason
+from supervisor.utils.dt import utcnow
 
 
 async def test_healthy(coresys: CoreSys):
@@ -220,7 +223,7 @@ async def test_ignore_conditions(coresys: CoreSys):
 
 
 async def test_exception_conditions(coresys: CoreSys):
-    """Test the ignore conditions decorator."""
+    """Test the on condition decorator."""
 
     class TestClass:
         """Test class."""
@@ -247,7 +250,7 @@ async def test_exception_conditions(coresys: CoreSys):
 async def test_exectution_limit_single_wait(
     coresys: CoreSys, loop: asyncio.BaseEventLoop
 ):
-    """Test the ignore conditions decorator."""
+    """Test the single wait job execution limit."""
 
     class TestClass:
         """Test class."""
@@ -269,10 +272,10 @@ async def test_exectution_limit_single_wait(
     await asyncio.gather(*[test.execute(0.1), test.execute(0.1), test.execute(0.1)])
 
 
-async def test_exectution_limit_throttle_wait(
+async def test_execution_limit_throttle_wait(
     coresys: CoreSys, loop: asyncio.BaseEventLoop
 ):
-    """Test the ignore conditions decorator."""
+    """Test the throttle wait job execution limit."""
 
     class TestClass:
         """Test class."""
@@ -298,6 +301,47 @@ async def test_exectution_limit_throttle_wait(
 
     await asyncio.gather(*[test.execute(0.1)])
     assert test.call == 1
+
+
+@pytest.mark.parametrize("error", [None, PluginJobError])
+async def test_execution_limit_throttle_rate_limit(
+    coresys: CoreSys, loop: asyncio.BaseEventLoop, error: Optional[JobException]
+):
+    """Test the throttle wait job execution limit."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.run = asyncio.Lock()
+            self.call = 0
+
+        @Job(
+            limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+            throttle_period=timedelta(hours=1),
+            throttle_max_calls=2,
+            on_condition=error,
+        )
+        async def execute(self):
+            """Execute the class method."""
+            self.call += 1
+
+    test = TestClass(coresys)
+
+    await asyncio.gather(*[test.execute(), test.execute()])
+    assert test.call == 2
+
+    with pytest.raises(JobException if error is None else error):
+        await test.execute()
+
+    assert test.call == 2
+
+    with time_machine.travel(utcnow() + timedelta(hours=1)):
+        await test.execute()
+
+    assert test.call == 3
 
 
 async def test_exectution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEventLoop):

@@ -12,19 +12,28 @@ from typing import Optional
 from awesomeversion import AwesomeVersion
 import jinja2
 
+from supervisor.docker.const import ContainerState
+from supervisor.jobs.const import JobExecutionLimit
+from supervisor.jobs.decorator import Job
+
 from ..const import LogLevel
 from ..coresys import CoreSys
 from ..docker.audio import DockerAudio
 from ..docker.stats import DockerStats
 from ..exceptions import (
     AudioError,
+    AudioJobError,
     AudioUpdateError,
     ConfigurationFileError,
     DockerError,
 )
 from ..utils.json import write_json_file
 from .base import PluginBase
-from .const import FILE_HASSIO_AUDIO
+from .const import (
+    FILE_HASSIO_AUDIO,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -199,3 +208,13 @@ class PluginAudio(PluginBase):
             raise AudioError(
                 f"Can't update pulse audio config: {err}", _LOGGER.error
             ) from err
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=AudioJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)
