@@ -65,5 +65,5 @@ class EvaluateDockerConfiguration(EvaluateBase):
         return (
             storage_driver != EXPECTED_STORAGE
             or logging_driver != EXPECTED_LOGGING
-            or cgroup_version not in CGROUP_V2_VERSION
+            or cgroup_version not in expected_version
         )
