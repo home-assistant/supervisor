@@ -38,7 +38,7 @@ SYSTEMD_JOURNAL_VOLATILE = Path("/run/log/journal")
 DOCKER_NETWORK = "hassio"
 DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
 DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
-DOCKER_NETWORK_LINK_LOCAL = ip_network("fd00:172:30:32::/64")
+DOCKER_NETWORK_ULA = ip_network("fd00:172:30:32::/64")
 
 # This needs to match the dockerd --cpu-rt-runtime= argument.
 DOCKER_CPU_RUNTIME_TOTAL = 950_000
