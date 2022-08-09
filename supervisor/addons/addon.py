@@ -58,6 +58,7 @@ from ..docker.stats import DockerStats
 from ..exceptions import (
     AddonConfigurationError,
     AddonsError,
+    AddonsJobError,
     AddonsNotSupportedError,
     ConfigurationFileError,
     DockerError,
@@ -65,10 +66,18 @@ from ..exceptions import (
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
-from .const import WATCHDOG_RETRY_SECONDS, AddonBackupMode
+from .const import (
+    WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_RETRY_SECONDS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+    AddonBackupMode,
+)
 from .model import AddonModel, Data
 from .options import AddonOptions
 from .utils import remove_data
@@ -103,6 +112,54 @@ class Addon(AddonModel):
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
         self._state: AddonState = AddonState.UNKNOWN
+
+        @Job(
+            name=f"addon_{slug}_restart_after_problem",
+            limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+            throttle_period=WATCHDOG_THROTTLE_PERIOD,
+            throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+            on_condition=AddonsJobError,
+        )
+        async def restart_after_problem(addon: Addon, state: ContainerState):
+            """Restart unhealthy or failed addon."""
+            attempts = 0
+            while await addon.instance.current_state() == state:
+                if not addon.in_progress:
+                    _LOGGER.warning(
+                        "Watchdog found addon %s is %s, restarting...",
+                        addon.name,
+                        state.value,
+                    )
+                    try:
+                        if state == ContainerState.FAILED:
+                            # Ensure failed container is removed before attempting reanimation
+                            if attempts == 0:
+                                with suppress(DockerError):
+                                    await addon.instance.stop(remove_container=True)
+
+                            await addon.start()
+                        else:
+                            await addon.restart()
+                    except AddonsError as err:
+                        attempts = attempts + 1
+                        _LOGGER.error(
+                            "Watchdog restart of addon %s failed!", addon.name
+                        )
+                        addon.sys_capture_exception(err)
+                    else:
+                        break
+
+                if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                    _LOGGER.critical(
+                        "Watchdog cannot restart addon %s, failed all %s attempts",
+                        addon.name,
+                        attempts,
+                    )
+                    break
+
+                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+
+        self._restart_after_problem = restart_after_problem
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -904,40 +961,5 @@ class Addon(AddonModel):
         if not (event.name == self.instance.name and self.watchdog):
             return
 
-        if event.state == ContainerState.UNHEALTHY:
-            while await self.instance.current_state() == event.state:
-                if not self.in_progress:
-                    _LOGGER.warning(
-                        "Watchdog found addon %s is unhealthy, restarting...", self.name
-                    )
-                    try:
-                        await self.restart()
-                    except AddonsError as err:
-                        _LOGGER.error("Watchdog restart of addon %s failed!", self.name)
-                        self.sys_capture_exception(err)
-                    else:
-                        break
-
-                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
-
-        elif event.state == ContainerState.FAILED:
-            # Ensure failed container is removed before attempting reanimation
-            with suppress(DockerError):
-                await self.instance.stop(remove_container=True)
-
-            while await self.instance.current_state() == event.state:
-                if not self.in_progress:
-                    _LOGGER.warning(
-                        "Watchdog found addon %s failed, restarting...", self.name
-                    )
-                    try:
-                        await self.start()
-                    except AddonsError as err:
-                        _LOGGER.error(
-                            "Watchdog reanimation of addon %s failed!", self.name
-                        )
-                        self.sys_capture_exception(err)
-                    else:
-                        break
-
-                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+        if event.state in [ContainerState.FAILED, ContainerState.UNHEALTHY]:
+            await self._restart_after_problem(self, event.state)

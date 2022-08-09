@@ -30,3 +30,4 @@ class JobExecutionLimit(str, Enum):
     ONCE = "once"
     THROTTLE = "throttle"
     THROTTLE_WAIT = "throttle_wait"
+    THROTTLE_RATE_LIMIT = "throttle_rate_limit"

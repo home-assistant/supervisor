@@ -122,6 +122,10 @@ class PluginError(HassioError):
     """Plugin error."""
 
 
+class PluginJobError(PluginError, JobException):
+    """Raise on job error with plugin."""
+
+
 # HaCli
 
 
@@ -131,6 +135,10 @@ class CliError(PluginError):
 
 class CliUpdateError(CliError):
     """Error on update of a HA cli."""
+
+
+class CliJobError(CliError, PluginJobError):
+    """Raise on job error with cli plugin."""
 
 
 # Observer
@@ -144,6 +152,10 @@ class ObserverUpdateError(ObserverError):
     """Error on update of a Observer."""
 
 
+class ObserverJobError(ObserverError, PluginJobError):
+    """Raise on job error with observer plugin."""
+
+
 # Multicast
 
 
@@ -153,6 +165,10 @@ class MulticastError(PluginError):
 
 class MulticastUpdateError(MulticastError):
     """Error on update of a multicast."""
+
+
+class MulticastJobError(MulticastError, PluginJobError):
+    """Raise on job error with multicast plugin."""
 
 
 # DNS
@@ -166,6 +182,10 @@ class CoreDNSUpdateError(CoreDNSError):
     """Error on update of a CoreDNS."""
 
 
+class CoreDNSJobError(CoreDNSError, PluginJobError):
+    """Raise on job error with dns plugin."""
+
+
 # Audio
 
 
@@ -175,6 +195,10 @@ class AudioError(PluginError):
 
 class AudioUpdateError(AudioError):
     """Error on update of a Audio."""
+
+
+class AudioJobError(AudioError, PluginJobError):
+    """Raise on job error with audio plugin."""
 
 
 # Addons

@@ -13,6 +13,7 @@ from awesomeversion import AwesomeVersion
 from supervisor.const import ATTR_HOMEASSISTANT, BusEvent
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.jobs.const import JobExecutionLimit
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.homeassistant import DockerHomeAssistant
@@ -27,7 +28,13 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
-from .const import LANDINGPAGE, WATCHDOG_RETRY_SECONDS
+from .const import (
+    LANDINGPAGE,
+    WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_RETRY_SECONDS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -444,46 +451,48 @@ class HomeAssistantCore(CoreSysAttributes):
         if not (event.name == self.instance.name and self.sys_homeassistant.watchdog):
             return
 
-        if event.state == ContainerState.UNHEALTHY:
-            while await self.instance.current_state() == event.state:
-                # Don't interrupt a task in progress or if rollback is handling it
-                if not (self.in_progress or self.error_state):
-                    _LOGGER.warning(
-                        "Watchdog found Home Assistant is unhealthy, restarting..."
-                    )
+        if event.state in [ContainerState.FAILED, ContainerState.UNHEALTHY]:
+            await self._restart_after_problem(event.state)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed Home Assistant."""
+        attempts = 0
+        while await self.instance.current_state() == state:
+            # Don't interrupt a task in progress or if rollback is handling it
+            if not (self.in_progress or self.error_state):
+                _LOGGER.warning(
+                    "Watchdog found Home Assistant %s, restarting...", state.value
+                )
+                if state == ContainerState.FAILED and attempts == 0:
                     try:
-                        await self.restart()
+                        await self.start()
                     except HomeAssistantError as err:
-                        _LOGGER.error("Watchdog restart of Home Assistant failed!")
                         self.sys_capture_exception(err)
                     else:
                         break
 
-                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
-
-        elif event.state == ContainerState.FAILED:
-            rebuild = False
-            while await self.instance.current_state() == event.state:
-                # Don't interrupt a task in progress or if rollback is handling it
-                if not (self.in_progress or self.error_state):
-                    _LOGGER.warning(
-                        "Watchdog found Home Assistant failed, restarting..."
-                    )
-                    if not rebuild:
-                        try:
-                            await self.start()
-                        except HomeAssistantError as err:
-                            self.sys_capture_exception(err)
-                            rebuild = True
-                        else:
-                            break
-
-                    try:
+                try:
+                    if state == ContainerState.FAILED:
                         await self.rebuild()
-                    except HomeAssistantError as err:
-                        _LOGGER.error("Watchdog reanimation of Home Assistant failed!")
-                        self.sys_capture_exception(err)
                     else:
-                        break
+                        await self.restart()
+                except HomeAssistantError as err:
+                    attempts = attempts + 1
+                    _LOGGER.error("Watchdog restart of Home Assistant failed!")
+                    self.sys_capture_exception(err)
+                else:
+                    break
 
-                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+            if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                _LOGGER.critical(
+                    "Watchdog cannot restart Home Assistant, failed all %s attempts",
+                    attempts,
+                )
+                break
+
+            await asyncio.sleep(WATCHDOG_RETRY_SECONDS)

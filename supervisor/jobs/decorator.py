@@ -28,6 +28,7 @@ class Job(CoreSysAttributes):
         on_condition: Optional[JobException] = None,
         limit: Optional[JobExecutionLimit] = None,
         throttle_period: Optional[timedelta] = None,
+        throttle_max_calls: Optional[int] = None,
     ):
         """Initialize the Job class."""
         self.name = name
@@ -36,16 +37,29 @@ class Job(CoreSysAttributes):
         self.on_condition = on_condition
         self.limit = limit
         self.throttle_period = throttle_period
+        self.throttle_max_calls = throttle_max_calls
         self._lock: Optional[asyncio.Semaphore] = None
         self._method = None
         self._last_call = datetime.min
+        self._rate_limited_calls: Optional[list[datetime]] = None
 
         # Validate Options
         if (
-            self.limit in (JobExecutionLimit.THROTTLE, JobExecutionLimit.THROTTLE_WAIT)
+            self.limit
+            in (
+                JobExecutionLimit.THROTTLE,
+                JobExecutionLimit.THROTTLE_WAIT,
+                JobExecutionLimit.THROTTLE_RATE_LIMIT,
+            )
             and self.throttle_period is None
         ):
             raise RuntimeError("Using Job without a Throttle period!")
+
+        if self.limit == JobExecutionLimit.THROTTLE_RATE_LIMIT:
+            if self.throttle_max_calls is None:
+                raise RuntimeError("Using rate limit without throttle max calls!")
+
+            self._rate_limited_calls = []
 
     def _post_init(self, args: tuple[Any]) -> None:
         """Runtime init."""
@@ -99,10 +113,29 @@ class Job(CoreSysAttributes):
                 if time_since_last_call < self.throttle_period:
                     self._release_exception_limits()
                     return
+            elif self.limit == JobExecutionLimit.THROTTLE_RATE_LIMIT:
+                # Only reprocess array when necessary (at limit)
+                if len(self._rate_limited_calls) >= self.throttle_max_calls:
+                    self._rate_limited_calls = [
+                        call
+                        for call in self._rate_limited_calls
+                        if call > datetime.now() - self.throttle_period
+                    ]
+
+                if len(self._rate_limited_calls) >= self.throttle_max_calls:
+                    on_condition = (
+                        JobException if self.on_condition is None else self.on_condition
+                    )
+                    raise on_condition(
+                        f"Rate limit exceeded, more then {self.throttle_max_calls} calls in {self.throttle_period}",
+                    )
 
             # Execute Job
             try:
                 self._last_call = datetime.now()
+                if self._rate_limited_calls is not None:
+                    self._rate_limited_calls.append(self._last_call)
+
                 return await self._method(*args, **kwargs)
             except HassioError as err:
                 raise err
@@ -207,7 +240,10 @@ class Job(CoreSysAttributes):
             return
 
         if self.limit == JobExecutionLimit.ONCE and self._lock.locked():
-            raise self.on_condition("Another job is running")
+            on_condition = (
+                JobException if self.on_condition is None else self.on_condition
+            )
+            raise on_condition("Another job is running")
 
         await self._lock.acquire()
 

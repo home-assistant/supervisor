@@ -13,11 +13,23 @@ from awesomeversion import AwesomeVersion
 
 from ..const import ATTR_ACCESS_TOKEN
 from ..coresys import CoreSys
+from ..docker.const import ContainerState
 from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
-from ..exceptions import DockerError, ObserverError, ObserverUpdateError
+from ..exceptions import (
+    DockerError,
+    ObserverError,
+    ObserverJobError,
+    ObserverUpdateError,
+)
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from .base import PluginBase
-from .const import FILE_HASSIO_OBSERVER
+from .const import (
+    FILE_HASSIO_OBSERVER,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_OBSERVER_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -137,3 +149,13 @@ class PluginObserver(PluginBase):
         except DockerError as err:
             _LOGGER.error("Repair of HA observer failed")
             self.sys_capture_exception(err)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=ObserverJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)

@@ -17,6 +17,8 @@ import voluptuous as vol
 from supervisor.dbus.const import MulticastProtocolEnabled
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.jobs.const import JobExecutionLimit
+from supervisor.jobs.decorator import Job
 
 from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys
@@ -25,6 +27,7 @@ from ..docker.stats import DockerStats
 from ..exceptions import (
     ConfigurationFileError,
     CoreDNSError,
+    CoreDNSJobError,
     CoreDNSUpdateError,
     DockerError,
 )
@@ -32,7 +35,12 @@ from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
 from ..validate import dns_url
 from .base import PluginBase
-from .const import ATTR_FALLBACK, FILE_HASSIO_DNS
+from .const import (
+    ATTR_FALLBACK,
+    FILE_HASSIO_DNS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -249,6 +257,16 @@ class PluginDns(PluginBase):
             await self.loop_detection()
 
         return await super().watchdog_container(event)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=CoreDNSJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)
 
     async def loop_detection(self) -> None:
         """Check if there was a loop found."""

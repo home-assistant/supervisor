@@ -9,12 +9,25 @@ from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
+from supervisor.docker.const import ContainerState
+from supervisor.jobs.const import JobExecutionLimit
+from supervisor.jobs.decorator import Job
+
 from ..coresys import CoreSys
 from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
-from ..exceptions import DockerError, MulticastError, MulticastUpdateError
+from ..exceptions import (
+    DockerError,
+    MulticastError,
+    MulticastJobError,
+    MulticastUpdateError,
+)
 from .base import PluginBase
-from .const import FILE_HASSIO_MULTICAST
+from .const import (
+    FILE_HASSIO_MULTICAST,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_MULTICAST_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -127,3 +140,13 @@ class PluginMulticast(PluginBase):
         except DockerError as err:
             _LOGGER.error("Repair of Multicast failed")
             self.sys_capture_exception(err)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=MulticastJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)

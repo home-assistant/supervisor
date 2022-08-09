@@ -13,10 +13,17 @@ from awesomeversion import AwesomeVersion
 from ..const import ATTR_ACCESS_TOKEN
 from ..coresys import CoreSys
 from ..docker.cli import DockerCli
+from ..docker.const import ContainerState
 from ..docker.stats import DockerStats
-from ..exceptions import CliError, CliUpdateError, DockerError
+from ..exceptions import CliError, CliJobError, CliUpdateError, DockerError
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from .base import PluginBase
-from .const import FILE_HASSIO_CLI
+from .const import (
+    FILE_HASSIO_CLI,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_CLI_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -136,3 +143,13 @@ class PluginCli(PluginBase):
         except DockerError as err:
             _LOGGER.error("Repair of HA cli failed")
             self.sys_capture_exception(err)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=CliJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)
