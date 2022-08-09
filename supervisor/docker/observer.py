@@ -55,6 +55,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
             },
             volumes={"/run/docker.sock": {"bind": "/run/docker.sock", "mode": "ro"}},
             ports={"80/tcp": 4357},
+            oom_score_adj=-300,
         )
 
         self._meta = docker_container.attrs
