@@ -94,7 +94,6 @@ class DockerNetwork:
         ipam_pool_v6 = docker.types.IPAMPool(
             subnet=str(DOCKER_NETWORK_ULA),
             gateway=str(DOCKER_NETWORK_ULA[1]),
-            iprange=str(DOCKER_NETWORK_ULA),
         )
 
         ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool_v4, ipam_pool_v6])
