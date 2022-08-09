@@ -18,8 +18,6 @@ from securetar import atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from supervisor.jobs.const import JobExecutionLimit
-
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -68,6 +66,7 @@ from ..exceptions import (
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
+from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
