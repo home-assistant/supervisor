@@ -93,7 +93,7 @@ class DockerNetwork:
         )
         ipam_pool_v6 = docker.types.IPAMPool(
             subnet=str(DOCKER_NETWORK_LINK_LOCAL),
-            gateway=str(self.gateway),
+            gateway=str(DOCKER_NETWORK_LINK_LOCAL[1]),
             iprange=str(DOCKER_NETWORK_LINK_LOCAL),
         )
 
