@@ -8,8 +8,6 @@ from .base import EvaluateBase
 
 EXPECTED_LOGGING = "journald"
 EXPECTED_STORAGE = "overlay2"
-CGROUP_V1_VERSION = "1"
-CGROUP_V2_VERSION = "2"
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -41,7 +39,6 @@ class EvaluateDockerConfiguration(EvaluateBase):
         """Run evaluation."""
         storage_driver = self.sys_docker.info.storage
         logging_driver = self.sys_docker.info.logging
-        cgroup_version = self.sys_docker.info.cgroup
 
         if storage_driver != EXPECTED_STORAGE:
             _LOGGER.warning(
@@ -53,17 +50,4 @@ class EvaluateDockerConfiguration(EvaluateBase):
                 "Docker logging driver %s is not supported!", logging_driver
             )
 
-        expected_version = [CGROUP_V1_VERSION]
-        if self.coresys.os.available:
-            expected_version.append(CGROUP_V2_VERSION)
-
-        if cgroup_version not in expected_version:
-            _LOGGER.warning(
-                "Docker cgroup version %s is not supported!", cgroup_version
-            )
-
-        return (
-            storage_driver != EXPECTED_STORAGE
-            or logging_driver != EXPECTED_LOGGING
-            or cgroup_version not in expected_version
-        )
+        return storage_driver != EXPECTED_STORAGE or logging_driver != EXPECTED_LOGGING
