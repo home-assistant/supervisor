@@ -5,7 +5,6 @@ from unittest.mock import patch
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.evaluations.docker_configuration import (
-    EXPECTED_CGROUP_VERSION,
     EXPECTED_LOGGING,
     EXPECTED_STORAGE,
     EvaluateDockerConfiguration,
@@ -21,28 +20,18 @@ async def test_evaluation(coresys: CoreSys):
 
     coresys.docker.info.storage = "unsupported"
     coresys.docker.info.logging = EXPECTED_LOGGING
-    coresys.docker.info.cgroup = EXPECTED_CGROUP_VERSION
     await docker_configuration()
     assert docker_configuration.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
     coresys.docker.info.storage = EXPECTED_STORAGE
     coresys.docker.info.logging = "unsupported"
-    coresys.docker.info.cgroup = EXPECTED_CGROUP_VERSION
     await docker_configuration()
     assert docker_configuration.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
     coresys.docker.info.storage = EXPECTED_STORAGE
     coresys.docker.info.logging = EXPECTED_LOGGING
-    coresys.docker.info.cgroup = "unsupported"
-    await docker_configuration()
-    assert docker_configuration.reason in coresys.resolution.unsupported
-    coresys.resolution.unsupported.clear()
-
-    coresys.docker.info.storage = EXPECTED_STORAGE
-    coresys.docker.info.logging = EXPECTED_LOGGING
-    coresys.docker.info.cgroup = EXPECTED_CGROUP_VERSION
     await docker_configuration()
     assert docker_configuration.reason not in coresys.resolution.unsupported
 

@@ -37,6 +37,7 @@ class UnsupportedReason(str, Enum):
     DNS_SERVER = "dns_server"
     DOCKER_CONFIGURATION = "docker_configuration"
     DOCKER_VERSION = "docker_version"
+    CGROUP_VERSION = "cgroup_version"
     JOB_CONDITIONS = "job_conditions"
     LXC = "lxc"
     NETWORK_MANAGER = "network_manager"
