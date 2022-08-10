@@ -344,7 +344,7 @@ class Core(CoreSysAttributes):
         if (
             self.sys_config.timezone
             or self.sys_host.info.timezone not in ("Etc/UTC", None)
-        ) and (self.sys_host.info.dt_synchronized or self.sys_supervisor.connectivity):
+        ) and self.sys_host.info.dt_synchronized:
             return
 
         # Get Timezone data
@@ -355,24 +355,21 @@ class Core(CoreSysAttributes):
         except WhoamiError as err:
             _LOGGER.warning("Can't adjust Time/Date settings: %s", err)
             return
-        else:
-            if not self.sys_config.timezone:
-                self.sys_config.timezone = data.timezone
-            return
 
-        # Adjust timesettings in case SSL fails
-        try:
-            data = await retrieve_whoami(self.sys_websession, with_ssl=False)
-        except WhoamiError as err:
-            _LOGGER.error("Can't adjust Time/Date settings: %s", err)
-            return
-        else:
-            if not self.sys_config.timezone:
-                self.sys_config.timezone = data.timezone
+        # SSL Issue & possible time drift
+        if not data:
+            try:
+                data = await retrieve_whoami(self.sys_websession, with_ssl=False)
+            except WhoamiError as err:
+                _LOGGER.error("Can't adjust Time/Date settings: %s", err)
+                return
+
+        if not self.sys_config.timezone:
+            self.sys_config.timezone = data.timezone
 
         # Calculate if system time is out of sync
         delta = data.dt_utc - utcnow()
-        if delta < timedelta(days=7) or self.sys_host.info.dt_synchronized:
+        if delta < timedelta(days=6) or self.sys_host.info.dt_synchronized:
             return
 
         _LOGGER.warning("System time/date shift over more as 7days found!")
