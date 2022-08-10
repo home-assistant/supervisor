@@ -11,10 +11,10 @@ from awesomeversion import AwesomeVersion
 
 from .const import (
     ATTR_AUDIO,
+    ATTR_AUTO_UPDATE,
     ATTR_CHANNEL,
     ATTR_CLI,
     ATTR_DNS,
-    ATTR_FREEZE,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
@@ -172,14 +172,14 @@ class Updater(FileConfiguration, CoreSysAttributes):
         self._data[ATTR_CHANNEL] = value
 
     @property
-    def freeze(self) -> bool:
-        """Return if in an update freeze."""
-        return self._data[ATTR_FREEZE]
+    def auto_update(self) -> bool:
+        """Return if Supervisor auto updates enabled."""
+        return self._data[ATTR_AUTO_UPDATE]
 
-    @freeze.setter
-    def freeze(self, value: bool) -> None:
-        """Set update freeze."""
-        self._data[ATTR_FREEZE] = value
+    @auto_update.setter
+    def auto_update(self, value: bool) -> None:
+        """Set Supervisor auto updates enabled."""
+        self._data[ATTR_AUTO_UPDATE] = value
 
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],

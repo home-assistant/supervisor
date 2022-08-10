@@ -28,7 +28,7 @@ from ..exceptions import (
     CoreDNSUpdateError,
     DockerError,
 )
-from ..jobs.const import JobCondition, JobExecutionLimit
+from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
@@ -37,6 +37,7 @@ from .base import PluginBase
 from .const import (
     ATTR_FALLBACK,
     FILE_HASSIO_DNS,
+    PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
@@ -180,12 +181,7 @@ class PluginDns(PluginBase):
         self.write_hosts()
 
     @Job(
-        conditions=[
-            JobCondition.FREE_SPACE,
-            JobCondition.HEALTHY,
-            JobCondition.INTERNET_HOST,
-            JobCondition.SUPERVISOR_UPDATED,
-        ],
+        conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=CoreDNSJobError,
     )
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:

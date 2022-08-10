@@ -7,7 +7,7 @@ import tarfile
 from tempfile import TemporaryDirectory
 from typing import Any, Awaitable, Optional
 
-from awesomeversion import AwesomeVersionCompareException
+from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -133,7 +133,7 @@ class Backup(CoreSysAttributes):
         return self._data[ATTR_HOMEASSISTANT]
 
     @property
-    def supervisor_version(self):
+    def supervisor_version(self) -> AwesomeVersion:
         """Return backup Supervisor version."""
         return self._data[ATTR_SUPERVISOR_VERSION]
 
@@ -167,7 +167,7 @@ class Backup(CoreSysAttributes):
     def new(self, slug, name, date, sys_type, password=None, compressed=True):
         """Initialize a new backup."""
         # Init metadata
-        self._data[ATTR_VERSION] = 3
+        self._data[ATTR_VERSION] = 2
         self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date

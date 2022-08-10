@@ -1,11 +1,13 @@
 """A collection of tasks."""
 import logging
 
+from ..addons.const import ADDON_UPDATE_CONDITIONS
 from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError, HomeAssistantError, ObserverError
 from ..host.const import HostFeature
 from ..jobs.decorator import Job, JobCondition
+from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -33,6 +35,8 @@ RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 RUN_REFRESH_ADDON = 15
 
 RUN_CHECK_CONNECTIVITY = 30
+
+PLUGIN_AUTO_UPDATE_CONDITIONS = PLUGIN_UPDATE_CONDITIONS + [JobCondition.RUNNING]
 
 
 class Tasks(CoreSysAttributes):
@@ -82,15 +86,7 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.info("All core tasks are scheduled")
 
-    @Job(
-        conditions=[
-            JobCondition.HEALTHY,
-            JobCondition.FREE_SPACE,
-            JobCondition.INTERNET_HOST,
-            JobCondition.RUNNING,
-            JobCondition.SUPERVISOR_UPDATED,
-        ]
-    )
+    @Job(conditions=ADDON_UPDATE_CONDITIONS + [JobCondition.RUNNING])
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
         for addon in self.sys_addons.all:
@@ -116,10 +112,11 @@ class Tasks(CoreSysAttributes):
 
     @Job(
         conditions=[
+            JobCondition.AUTO_UPDATE,
             JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
             JobCondition.RUNNING,
-            JobCondition.NOT_FROZEN,
         ]
     )
     async def _update_supervisor(self):
@@ -174,7 +171,7 @@ class Tasks(CoreSysAttributes):
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
-    @Job(conditions=[JobCondition.RUNNING, JobCondition.SUPERVISOR_UPDATED])
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_cli(self):
         """Check and run update of cli."""
         if not self.sys_plugins.cli.need_update:
@@ -185,7 +182,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.cli.update()
 
-    @Job(conditions=[JobCondition.RUNNING, JobCondition.SUPERVISOR_UPDATED])
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_dns(self):
         """Check and run update of CoreDNS plugin."""
         if not self.sys_plugins.dns.need_update:
@@ -197,7 +194,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.dns.update()
 
-    @Job(conditions=[JobCondition.RUNNING, JobCondition.SUPERVISOR_UPDATED])
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_audio(self):
         """Check and run update of PulseAudio plugin."""
         if not self.sys_plugins.audio.need_update:
@@ -209,7 +206,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.audio.update()
 
-    @Job(conditions=[JobCondition.RUNNING, JobCondition.SUPERVISOR_UPDATED])
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_observer(self):
         """Check and run update of Observer plugin."""
         if not self.sys_plugins.observer.need_update:
@@ -221,7 +218,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.observer.update()
 
-    @Job(conditions=[JobCondition.RUNNING, JobCondition.SUPERVISOR_UPDATED])
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_multicast(self):
         """Check and run update of multicast."""
         if not self.sys_plugins.multicast.need_update:

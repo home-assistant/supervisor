@@ -24,12 +24,13 @@ from ..exceptions import (
     ConfigurationFileError,
     DockerError,
 )
-from ..jobs.const import JobCondition, JobExecutionLimit
+from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..utils.json import write_json_file
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_AUDIO,
+    PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
@@ -113,12 +114,7 @@ class PluginAudio(PluginBase):
         self.save_data()
 
     @Job(
-        conditions=[
-            JobCondition.FREE_SPACE,
-            JobCondition.HEALTHY,
-            JobCondition.INTERNET_HOST,
-            JobCondition.SUPERVISOR_UPDATED,
-        ],
+        conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=AudioJobError,
     )
     async def update(self, version: Optional[str] = None) -> None:

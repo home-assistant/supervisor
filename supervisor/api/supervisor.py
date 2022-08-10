@@ -10,6 +10,7 @@ from ..const import (
     ATTR_ADDONS,
     ATTR_ADDONS_REPOSITORIES,
     ATTR_ARCH,
+    ATTR_AUTO_UPDATE,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_CHANNEL,
@@ -19,7 +20,6 @@ from ..const import (
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
     ATTR_FORCE_SECURITY,
-    ATTR_FREEZE,
     ATTR_HEALTHY,
     ATTR_ICON,
     ATTR_IP_ADDRESS,
@@ -97,6 +97,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG: self.sys_config.debug,
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
+            ATTR_AUTO_UPDATE: self.sys_updater.auto_update,
             # Depricated
             ATTR_ADDONS: [
                 {
@@ -144,8 +145,8 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]
 
-        if ATTR_FREEZE in body:
-            self.sys_updater.freeze = body[ATTR_FREEZE]
+        if ATTR_AUTO_UPDATE in body:
+            self.sys_updater.auto_update = body[ATTR_AUTO_UPDATE]
 
         # Save changes before processing addons in case of errors
         self.sys_updater.save_data()

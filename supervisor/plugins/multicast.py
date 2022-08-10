@@ -19,11 +19,12 @@ from ..exceptions import (
     MulticastJobError,
     MulticastUpdateError,
 )
-from ..jobs.const import JobCondition, JobExecutionLimit
+from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_MULTICAST,
+    PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
@@ -70,12 +71,7 @@ class PluginMulticast(PluginBase):
         self.save_data()
 
     @Job(
-        conditions=[
-            JobCondition.FREE_SPACE,
-            JobCondition.HEALTHY,
-            JobCondition.INTERNET_HOST,
-            JobCondition.SUPERVISOR_UPDATED,
-        ],
+        conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=MulticastJobError,
     )
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:

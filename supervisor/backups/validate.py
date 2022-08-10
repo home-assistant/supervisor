@@ -80,11 +80,9 @@ def v1_protected(protected: bool | str) -> bool:
 # pylint: disable=no-value-for-parameter
 SCHEMA_BACKUP = vol.Schema(
     {
-        vol.Optional(ATTR_VERSION, default=1): vol.All(
-            vol.Coerce(int), vol.In((1, 2, 3))
-        ),
+        vol.Optional(ATTR_VERSION, default=1): vol.All(vol.Coerce(int), vol.In((1, 2))),
         vol.Optional(
-            ATTR_SUPERVISOR_VERSION, default=AwesomeVersion("2022.08.0")
+            ATTR_SUPERVISOR_VERSION, default=AwesomeVersion("2022.08.3")
         ): version_tag,
         vol.Required(ATTR_SLUG): str,
         vol.Required(ATTR_TYPE): vol.Coerce(BackupType),
