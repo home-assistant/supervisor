@@ -369,10 +369,10 @@ class Core(CoreSysAttributes):
 
         # Calculate if system time is out of sync
         delta = data.dt_utc - utcnow()
-        if delta < timedelta(days=6) or self.sys_host.info.dt_synchronized:
+        if delta <= timedelta(days=3) or self.sys_host.info.dt_synchronized:
             return
 
-        _LOGGER.warning("System time/date shift over more as 7days found!")
+        _LOGGER.warning("System time/date shift over more as 3 days found!")
         await self.sys_host.control.set_datetime(data.dt_utc)
         await self.sys_supervisor.check_connectivity()
 
