@@ -356,7 +356,7 @@ class Core(CoreSysAttributes):
             _LOGGER.warning("Can't adjust Time/Date settings: %s", err)
             return
 
-        # SSL Issue & possible time drift
+        # SSL Date Issue & possible time drift
         if not data:
             try:
                 data = await retrieve_whoami(self.sys_websession, with_ssl=False)
