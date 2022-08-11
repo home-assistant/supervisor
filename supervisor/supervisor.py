@@ -158,14 +158,6 @@ class Supervisor(CoreSysAttributes):
                     "Can't update AppArmor profile!", _LOGGER.error
                 ) from err
 
-    @Job(
-        conditions=[
-            JobCondition.FREE_SPACE,
-            JobCondition.HEALTHY,
-            JobCondition.INTERNET_HOST,
-        ],
-        on_condition=SupervisorJobError,
-    )
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update Supervisor version."""
         version = version or self.latest_version
