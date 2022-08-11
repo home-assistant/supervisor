@@ -424,3 +424,53 @@ async def test_supervisor_updated(coresys: CoreSys):
         type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
     ):
         assert not await test.execute()
+
+
+async def test_plugins_updated(coresys: CoreSys):
+    """Test the plugins updated decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=JobCondition.PLUGINS_UPDATED)
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    assert 0 == len(
+        [plugin.slug for plugin in coresys.plugins.all_plugins if plugin.need_update]
+    )
+    assert await test.execute()
+
+    with patch.object(
+        type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
+    ):
+        assert not await test.execute()
+
+
+async def test_auto_update(coresys: CoreSys):
+    """Test the auto update decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=JobCondition.AUTO_UPDATE)
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    assert coresys.updater.auto_update is True
+    assert await test.execute()
+
+    coresys.updater.auto_update = False
+    assert not await test.execute()

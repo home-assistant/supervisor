@@ -4,12 +4,14 @@ import asyncio
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from docker.errors import DockerException
+import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.const import AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.exceptions import AddonsJobError
 
 from ..const import TEST_ADDON_SLUG
 
@@ -267,3 +269,26 @@ async def test_listener_attached_on_install(coresys: CoreSys, repository):
     )
     await asyncio.sleep(0)
     assert coresys.addons.get(TEST_ADDON_SLUG).state == AddonState.STARTED
+
+
+async def test_install_update_fails_if_out_of_date(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test install or update of addon fails when supervisor or plugin is out of date."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+    ):
+        with pytest.raises(AddonsJobError):
+            await coresys.addons.install(TEST_ADDON_SLUG)
+        with pytest.raises(AddonsJobError):
+            await install_addon_ssh.update()
+
+    with patch.object(
+        type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
+    ):
+        with pytest.raises(AddonsJobError):
+            await coresys.addons.install(TEST_ADDON_SLUG)
+        with pytest.raises(AddonsJobError):
+            await install_addon_ssh.update()

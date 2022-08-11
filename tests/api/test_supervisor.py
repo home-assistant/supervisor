@@ -101,3 +101,16 @@ async def test_api_supervisor_options_repo_error_with_config_change(
     assert coresys.config.debug
     coresys.updater.save_data.assert_called_once()
     coresys.config.save_data.assert_called_once()
+
+
+async def test_api_supervisor_options_auto_update(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test disabling auto update via api."""
+    assert coresys.updater.auto_update is True
+
+    response = await api_client.post("/supervisor/options", json={"auto_update": False})
+
+    assert response.status == 200
+
+    assert coresys.updater.auto_update is False

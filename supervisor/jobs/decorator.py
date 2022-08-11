@@ -226,7 +226,7 @@ class Job(CoreSysAttributes):
             JobCondition.AUTO_UPDATE in self.conditions
             and not self.sys_updater.auto_update
         ):
-            raise JobCondition(
+            raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, supervisor auto updates disabled"
             )
 

@@ -1,6 +1,6 @@
 """Test base plugin functionality."""
 import asyncio
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -11,12 +11,18 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AudioError,
+    AudioJobError,
     CliError,
+    CliJobError,
     CoreDNSError,
+    CoreDNSJobError,
     DockerError,
     MulticastError,
+    MulticastJobError,
     ObserverError,
+    ObserverJobError,
     PluginError,
+    PluginJobError,
 )
 from supervisor.plugins.audio import PluginAudio
 from supervisor.plugins.base import PluginBase
@@ -302,3 +308,26 @@ async def test_plugin_load_missing_container(
         )
         install.assert_called_once()
         start.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "plugin,error",
+    [
+        (PluginAudio, AudioJobError),
+        (PluginCli, CliJobError),
+        (PluginDns, CoreDNSJobError),
+        (PluginMulticast, MulticastJobError),
+        (PluginObserver, ObserverJobError),
+    ],
+    indirect=["plugin"],
+)
+async def test_update_fails_if_out_of_date(
+    coresys: CoreSys, plugin: PluginBase, error: PluginJobError
+):
+    """Test update of plugins fail when supervisor is out of date."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+    ), pytest.raises(error):
+        await plugin.update()
