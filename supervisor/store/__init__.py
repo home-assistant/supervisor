@@ -2,9 +2,6 @@
 import asyncio
 import logging
 
-from supervisor.store.validate import SCHEMA_STORE_FILE
-from supervisor.utils.common import FileConfiguration
-
 from ..const import ATTR_REPOSITORIES, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -17,11 +14,16 @@ from ..exceptions import (
 )
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..utils.common import FileConfiguration
 from .addon import AddonStore
 from .const import FILE_HASSIO_STORE, StoreType
 from .data import StoreData
 from .repository import Repository
-from .validate import BUILTIN_REPOSITORIES, ensure_builtin_repositories
+from .validate import (
+    BUILTIN_REPOSITORIES,
+    SCHEMA_STORE_FILE,
+    ensure_builtin_repositories,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

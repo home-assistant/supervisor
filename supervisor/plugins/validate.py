@@ -2,10 +2,9 @@
 
 import voluptuous as vol
 
-from supervisor.plugins.const import ATTR_FALLBACK
-
 from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION
 from ..validate import dns_server_list, docker_image, token, version_tag
+from .const import ATTR_FALLBACK
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_DNS_CONFIG = vol.Schema(

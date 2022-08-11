@@ -17,9 +17,6 @@ from docker.models.networks import Network
 from docker.types.daemon import CancellableStream
 import requests
 
-from supervisor.coresys import CoreSys
-from supervisor.docker.monitor import DockerMonitor
-
 from ..const import (
     ATTR_REGISTRIES,
     DNS_SUFFIX,
@@ -28,10 +25,12 @@ from ..const import (
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
 )
+from ..coresys import CoreSys
 from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
 from .const import LABEL_MANAGED
+from .monitor import DockerMonitor
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

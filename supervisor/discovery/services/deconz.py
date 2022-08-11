@@ -1,8 +1,7 @@
 """Discovery service for MQTT."""
 import voluptuous as vol
 
-from supervisor.validate import network_port
-
+from ...validate import network_port
 from ..const import ATTR_API_KEY, ATTR_HOST, ATTR_PORT, ATTR_SERIAL
 
 SCHEMA = vol.Schema(

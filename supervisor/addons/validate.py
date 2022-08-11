@@ -7,8 +7,6 @@ import uuid
 
 import voluptuous as vol
 
-from supervisor.addons.const import AddonBackupMode
-
 from ..const import (
     ARCH_ALL,
     ATTR_ACCESS_TOKEN,
@@ -110,7 +108,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
-from .const import ATTR_BACKUP, ATTR_CODENOTARY
+from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

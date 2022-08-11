@@ -5,8 +5,6 @@ from typing import Any, Awaitable, Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from supervisor.addons.const import AddonBackupMode
-
 from ..const import (
     ATTR_ADVANCED,
     ATTR_APPARMOR,
@@ -79,7 +77,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import Capabilities
-from .const import ATTR_BACKUP, ATTR_CODENOTARY
+from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE, RE_VOLUME
 

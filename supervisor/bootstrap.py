@@ -13,9 +13,6 @@ from sentry_sdk.integrations.excepthook import ExcepthookIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.threading import ThreadingIntegration
 
-from supervisor.docker.manager import DockerAPI
-from supervisor.jobs import JobManager
-
 from .addons import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
@@ -39,10 +36,12 @@ from .core import Core
 from .coresys import CoreSys
 from .dbus.manager import DBusManager
 from .discovery import Discovery
+from .docker.manager import DockerAPI
 from .hardware.manager import HardwareManager
 from .homeassistant.module import HomeAssistant
 from .host.manager import HostManager
 from .ingress import Ingress
+from .jobs import JobManager
 from .misc.filter import filter_data
 from .misc.scheduler import Scheduler
 from .misc.tasks import Tasks

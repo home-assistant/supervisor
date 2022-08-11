@@ -9,11 +9,8 @@ from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
-from supervisor.docker.const import ContainerState
-from supervisor.jobs.const import JobExecutionLimit
-from supervisor.jobs.decorator import Job
-
 from ..coresys import CoreSys
+from ..docker.const import ContainerState
 from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
 from ..exceptions import (
@@ -22,6 +19,8 @@ from ..exceptions import (
     MulticastJobError,
     MulticastUpdateError,
 )
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_MULTICAST,

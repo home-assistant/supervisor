@@ -10,13 +10,11 @@ from typing import Awaitable, Optional
 import attr
 from awesomeversion import AwesomeVersion
 
-from supervisor.const import ATTR_HOMEASSISTANT, BusEvent
-from supervisor.docker.const import ContainerState
-from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.jobs.const import JobExecutionLimit
-
+from ..const import ATTR_HOMEASSISTANT, BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.const import ContainerState
 from ..docker.homeassistant import DockerHomeAssistant
+from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
     DockerError,
@@ -25,6 +23,7 @@ from ..exceptions import (
     HomeAssistantJobError,
     HomeAssistantUpdateError,
 )
+from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock

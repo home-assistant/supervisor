@@ -6,11 +6,10 @@ from typing import Optional
 from aiodns import DNSResolver
 from aiodns.error import DNSError
 
-from supervisor.jobs.const import JobCondition, JobExecutionLimit
-from supervisor.jobs.decorator import Job
-
 from ...const import CoreState
 from ...coresys import CoreSys
+from ...jobs.const import JobCondition, JobExecutionLimit
+from ...jobs.decorator import Job
 from ..const import DNS_CHECK_HOST, ContextType, IssueType
 from .base import CheckBase
 

@@ -12,13 +12,10 @@ from typing import Optional
 from awesomeversion import AwesomeVersion
 import jinja2
 
-from supervisor.docker.const import ContainerState
-from supervisor.jobs.const import JobExecutionLimit
-from supervisor.jobs.decorator import Job
-
 from ..const import LogLevel
 from ..coresys import CoreSys
 from ..docker.audio import DockerAudio
+from ..docker.const import ContainerState
 from ..docker.stats import DockerStats
 from ..exceptions import (
     AudioError,
@@ -27,6 +24,8 @@ from ..exceptions import (
     ConfigurationFileError,
     DockerError,
 )
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from ..utils.json import write_json_file
 from .base import PluginBase
 from .const import (

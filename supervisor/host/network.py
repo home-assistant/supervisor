@@ -8,9 +8,6 @@ import logging
 
 import attr
 
-from supervisor.jobs.const import JobCondition
-from supervisor.jobs.decorator import Job
-
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
@@ -32,6 +29,8 @@ from ..exceptions import (
     HostNetworkNotFound,
     HostNotSupportedError,
 )
+from ..jobs.const import JobCondition
+from ..jobs.decorator import Job
 from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

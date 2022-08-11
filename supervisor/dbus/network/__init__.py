@@ -6,9 +6,6 @@ from typing import Any, Awaitable
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 import sentry_sdk
 
-from supervisor.dbus.network.connection import NetworkConnection
-from supervisor.dbus.network.setting import NetworkSetting
-
 from ...exceptions import (
     DBusError,
     DBusFatalError,
@@ -30,8 +27,10 @@ from ..const import (
 )
 from ..interface import DBusInterface
 from ..utils import dbus_connected
+from .connection import NetworkConnection
 from .dns import NetworkManagerDNS
 from .interface import NetworkInterface
+from .setting import NetworkSetting
 from .settings import NetworkManagerSettings
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
