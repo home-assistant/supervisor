@@ -7,9 +7,8 @@ from typing import Optional
 from docker.models.containers import Container
 from docker.types.daemon import CancellableStream
 
-from supervisor.const import BusEvent
-from supervisor.coresys import CoreSys, CoreSysAttributes
-
+from ..const import BusEvent
+from ..coresys import CoreSys, CoreSysAttributes
 from .const import LABEL_MANAGED, ContainerState
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

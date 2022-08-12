@@ -4,9 +4,8 @@ from datetime import datetime
 import logging
 from typing import Optional
 
-from supervisor.dbus.const import MulticastProtocolEnabled
-
 from ..coresys import CoreSysAttributes
+from ..dbus.const import MulticastProtocolEnabled
 from ..exceptions import DBusError, HostError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

@@ -7,12 +7,11 @@ from typing import Awaitable, Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from supervisor.docker.const import ContainerState
-from supervisor.docker.monitor import DockerContainerStateEvent
-
 from ..const import ATTR_IMAGE, ATTR_VERSION, BusEvent
 from ..coresys import CoreSysAttributes
+from ..docker.const import ContainerState
 from ..docker.interface import DockerInterface
+from ..docker.monitor import DockerContainerStateEvent
 from ..exceptions import DockerError, PluginError
 from ..utils.common import FileConfiguration
 from .const import WATCHDOG_MAX_ATTEMPTS, WATCHDOG_RETRY_SECONDS

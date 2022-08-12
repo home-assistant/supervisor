@@ -2,10 +2,9 @@
 
 import voluptuous as vol
 
-from supervisor.store.const import StoreType
-
 from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_REPOSITORIES, ATTR_URL
 from ..validate import RE_REPOSITORY
+from .const import StoreType
 
 URL_COMMUNITY_ADDONS = "https://github.com/hassio-addons/repository"
 URL_ESPHOME = "https://github.com/esphome/home-assistant-addon"

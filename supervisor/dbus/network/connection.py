@@ -2,8 +2,6 @@
 from ipaddress import ip_address, ip_interface
 from typing import Optional
 
-from supervisor.dbus.utils import dbus_connected
-
 from ...const import ATTR_ADDRESS, ATTR_PREFIX
 from ...utils.dbus import DBus
 from ..const import (
@@ -26,6 +24,7 @@ from ..const import (
     ConnectionStateType,
 )
 from ..interface import DBusInterfaceProxy
+from ..utils import dbus_connected
 from .configuration import IpConfiguration
 
 

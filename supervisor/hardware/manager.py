@@ -5,10 +5,9 @@ from typing import Optional
 
 import pyudev
 
-from supervisor.hardware.const import UdevSubsystem
-
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
+from .const import UdevSubsystem
 from .data import Device
 from .disk import HwDisk
 from .helper import HwHelper

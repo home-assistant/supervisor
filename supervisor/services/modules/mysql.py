@@ -4,10 +4,9 @@ from typing import Any
 
 import voluptuous as vol
 
-from supervisor.addons.addon import Addon
-from supervisor.exceptions import ServicesError
-from supervisor.validate import network_port
-
+from ...addons.addon import Addon
+from ...exceptions import ServicesError
+from ...validate import network_port
 from ..const import (
     ATTR_ADDON,
     ATTR_HOST,

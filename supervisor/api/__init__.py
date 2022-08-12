@@ -5,11 +5,9 @@ from typing import Any, Optional
 
 from aiohttp import web
 
-from supervisor.api.utils import api_process
-from supervisor.const import AddonState
-from supervisor.exceptions import APIAddonNotInstalled
-
+from ..const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import APIAddonNotInstalled
 from .addons import APIAddons
 from .audio import APIAudio
 from .auth import APIAuth
@@ -35,6 +33,7 @@ from .security import APISecurity
 from .services import APIServices
 from .store import APIStore
 from .supervisor import APISupervisor
+from .utils import api_process
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

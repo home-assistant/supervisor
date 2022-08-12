@@ -1,8 +1,7 @@
 """Discovery service for Almond."""
 import voluptuous as vol
 
-from supervisor.validate import network_port
-
+from ...validate import network_port
 from ..const import ATTR_HOST, ATTR_PORT
 
 SCHEMA = vol.Schema(

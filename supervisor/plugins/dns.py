@@ -14,15 +14,12 @@ from awesomeversion import AwesomeVersion
 import jinja2
 import voluptuous as vol
 
-from supervisor.dbus.const import MulticastProtocolEnabled
-from supervisor.docker.const import ContainerState
-from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.jobs.const import JobExecutionLimit
-from supervisor.jobs.decorator import Job
-
 from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys
+from ..dbus.const import MulticastProtocolEnabled
+from ..docker.const import ContainerState
 from ..docker.dns import DockerDNS
+from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
     ConfigurationFileError,
@@ -31,6 +28,8 @@ from ..exceptions import (
     CoreDNSUpdateError,
     DockerError,
 )
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
 from ..validate import dns_url

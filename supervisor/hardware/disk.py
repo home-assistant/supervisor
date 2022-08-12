@@ -4,9 +4,8 @@ from pathlib import Path
 import shutil
 from typing import Union
 
-from supervisor.exceptions import HardwareNotFound
-
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import HardwareNotFound
 from .const import UdevSubsystem
 from .data import Device
 
