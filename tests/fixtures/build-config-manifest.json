@@ -1,0 +1,7 @@
+{
+  "build_from": "mycustom/base-image:latest",
+  "squash": false,
+  "args": {
+    "my_build_arg": "xy"
+  }
+}
