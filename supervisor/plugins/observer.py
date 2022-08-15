@@ -27,6 +27,7 @@ from ..jobs.decorator import Job
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_OBSERVER,
+    PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
@@ -77,6 +78,10 @@ class PluginObserver(PluginBase):
         self.image = self.sys_updater.image_observer
         self.save_data()
 
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=ObserverJobError,
+    )
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update local HA observer."""
         version = version or self.latest_version

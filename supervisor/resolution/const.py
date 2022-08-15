@@ -46,6 +46,7 @@ class UnsupportedReason(str, Enum):
     PRIVILEGED = "privileged"
     SOFTWARE = "software"
     SOURCE_MODS = "source_mods"
+    SUPERVISOR_VERSION = "supervisor_version"
     SYSTEMD = "systemd"
     SYSTEMD_RESOLVED = "systemd_resolved"
 

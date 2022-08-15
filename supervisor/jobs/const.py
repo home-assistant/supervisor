@@ -12,22 +12,24 @@ ATTR_IGNORE_CONDITIONS = "ignore_conditions"
 class JobCondition(str, Enum):
     """Job condition enum."""
 
+    AUTO_UPDATE = "auto_update"
     FREE_SPACE = "free_space"
-    HEALTHY = "healthy"
-    INTERNET_SYSTEM = "internet_system"
-    INTERNET_HOST = "internet_host"
-    RUNNING = "running"
     HAOS = "haos"
-    OS_AGENT = "os_agent"
+    HEALTHY = "healthy"
     HOST_NETWORK = "host_network"
+    INTERNET_HOST = "internet_host"
+    INTERNET_SYSTEM = "internet_system"
+    OS_AGENT = "os_agent"
+    PLUGINS_UPDATED = "plugins_updated"
+    RUNNING = "running"
     SUPERVISOR_UPDATED = "supervisor_updated"
 
 
 class JobExecutionLimit(str, Enum):
     """Job Execution limits."""
 
-    SINGLE_WAIT = "single_wait"
     ONCE = "once"
+    SINGLE_WAIT = "single_wait"
     THROTTLE = "throttle"
     THROTTLE_WAIT = "throttle_wait"
     THROTTLE_RATE_LIMIT = "throttle_rate_limit"

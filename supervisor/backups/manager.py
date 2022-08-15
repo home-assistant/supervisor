@@ -316,6 +316,14 @@ class BackupManager(CoreSysAttributes):
             _LOGGER.error("Invalid password for backup %s", backup.slug)
             return False
 
+        if backup.supervisor_version > self.sys_supervisor.version:
+            _LOGGER.error(
+                "Backup was made on supervisor version %s, can't restore on %s. Must update supervisor first.",
+                backup.supervisor_version,
+                self.sys_supervisor.version,
+            )
+            return False
+
         _LOGGER.info("Full-Restore %s start", backup.slug)
         async with self.lock:
             self.sys_core.state = CoreState.FREEZE
@@ -368,6 +376,14 @@ class BackupManager(CoreSysAttributes):
 
         if backup.homeassistant is None and homeassistant:
             _LOGGER.error("No Home Assistant Core data inside the backup")
+            return False
+
+        if backup.supervisor_version > self.sys_supervisor.version:
+            _LOGGER.error(
+                "Backup was made on supervisor version %s, can't restore on %s. Must update supervisor first.",
+                backup.supervisor_version,
+                self.sys_supervisor.version,
+            )
             return False
 
         _LOGGER.info("Partial-Restore %s start", backup.slug)

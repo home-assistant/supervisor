@@ -24,6 +24,7 @@ from ..jobs.decorator import Job
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_MULTICAST,
+    PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
@@ -69,6 +70,10 @@ class PluginMulticast(PluginBase):
         self.image = self.sys_updater.image_multicast
         self.save_data()
 
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=MulticastJobError,
+    )
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update Multicast plugin."""
         version = version or self.latest_version

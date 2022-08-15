@@ -30,6 +30,7 @@ from ..utils.json import write_json_file
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_AUDIO,
+    PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
@@ -112,6 +113,10 @@ class PluginAudio(PluginBase):
         self.image = self.sys_updater.image_audio
         self.save_data()
 
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=AudioJobError,
+    )
     async def update(self, version: Optional[str] = None) -> None:
         """Update Audio plugin."""
         version = version or self.latest_version

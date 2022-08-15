@@ -1,9 +1,13 @@
 """Test Home Assistant OS functionality."""
 
+from unittest.mock import PropertyMock, patch
+
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import HassOSJobError
 
 # pylint: disable=protected-access
 
@@ -57,3 +61,16 @@ def test_ota_url_os_name_rel_5_downgrade(coresys: CoreSys) -> None:
 
     url = coresys.os._get_download_url(AwesomeVersion(versionstr))
     assert url == url_formatted
+
+
+async def test_update_fails_if_out_of_date(coresys: CoreSys) -> None:
+    """Test update of OS fails if Supervisor is out of date."""
+    coresys.core.state = CoreState.RUNNING
+    with patch.object(
+        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+    ), patch.object(
+        type(coresys.os), "available", new=PropertyMock(return_value=True)
+    ), pytest.raises(
+        HassOSJobError
+    ):
+        await coresys.os.update()

@@ -24,6 +24,7 @@ from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
 from ..utils import check_exception_chain
 from .addon import Addon
+from .const import ADDON_UPDATE_CONDITIONS
 from .data import AddonsData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -144,11 +145,7 @@ class AddonManager(CoreSysAttributes):
                 self.sys_capture_exception(err)
 
     @Job(
-        conditions=[
-            JobCondition.FREE_SPACE,
-            JobCondition.INTERNET_HOST,
-            JobCondition.HEALTHY,
-        ],
+        conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
     )
     async def install(self, slug: str) -> None:
@@ -246,11 +243,7 @@ class AddonManager(CoreSysAttributes):
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
     @Job(
-        conditions=[
-            JobCondition.FREE_SPACE,
-            JobCondition.INTERNET_HOST,
-            JobCondition.HEALTHY,
-        ],
+        conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
     )
     async def update(self, slug: str, backup: Optional[bool] = False) -> None:

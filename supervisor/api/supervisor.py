@@ -10,6 +10,7 @@ from ..const import (
     ATTR_ADDONS,
     ATTR_ADDONS_REPOSITORIES,
     ATTR_ARCH,
+    ATTR_AUTO_UPDATE,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_CHANNEL,
@@ -64,6 +65,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_DIAGNOSTICS): vol.Boolean(),
         vol.Optional(ATTR_CONTENT_TRUST): vol.Boolean(),
         vol.Optional(ATTR_FORCE_SECURITY): vol.Boolean(),
+        vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
     }
 )
 
@@ -96,6 +98,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG: self.sys_config.debug,
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
+            ATTR_AUTO_UPDATE: self.sys_updater.auto_update,
             # Depricated
             ATTR_ADDONS: [
                 {
@@ -142,6 +145,9 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]
+
+        if ATTR_AUTO_UPDATE in body:
+            self.sys_updater.auto_update = body[ATTR_AUTO_UPDATE]
 
         # Save changes before processing addons in case of errors
         self.sys_updater.save_data()

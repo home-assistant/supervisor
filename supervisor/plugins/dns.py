@@ -37,6 +37,7 @@ from .base import PluginBase
 from .const import (
     ATTR_FALLBACK,
     FILE_HASSIO_DNS,
+    PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
@@ -179,6 +180,10 @@ class PluginDns(PluginBase):
         # Init Hosts
         self.write_hosts()
 
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=CoreDNSJobError,
+    )
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update CoreDNS plugin."""
         version = version or self.latest_version

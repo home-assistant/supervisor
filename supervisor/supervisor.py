@@ -159,7 +159,7 @@ class Supervisor(CoreSysAttributes):
                 ) from err
 
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
-        """Update Home Assistant version."""
+        """Update Supervisor version."""
         version = version or self.latest_version
 
         if version == self.sys_supervisor.version:

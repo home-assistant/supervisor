@@ -7,7 +7,7 @@ import tarfile
 from tempfile import TemporaryDirectory
 from typing import Any, Awaitable, Optional
 
-from awesomeversion import AwesomeVersionCompareException
+from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -31,6 +31,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_USERNAME,
     ATTR_VERSION,
@@ -121,7 +122,7 @@ class Backup(CoreSysAttributes):
 
     @property
     def homeassistant_version(self):
-        """Return backupbackup Home Assistant version."""
+        """Return backup Home Assistant version."""
         if self.homeassistant is None:
             return None
         return self._data[ATTR_HOMEASSISTANT][ATTR_VERSION]
@@ -130,6 +131,11 @@ class Backup(CoreSysAttributes):
     def homeassistant(self):
         """Return backup Home Assistant data."""
         return self._data[ATTR_HOMEASSISTANT]
+
+    @property
+    def supervisor_version(self) -> AwesomeVersion:
+        """Return backup Supervisor version."""
+        return self._data[ATTR_SUPERVISOR_VERSION]
 
     @property
     def docker(self):
@@ -166,6 +172,7 @@ class Backup(CoreSysAttributes):
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date
         self._data[ATTR_TYPE] = sys_type
+        self._data[ATTR_SUPERVISOR_VERSION] = self.sys_supervisor.version
 
         # Add defaults
         self._data = SCHEMA_BACKUP(self._data)

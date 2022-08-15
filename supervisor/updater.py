@@ -11,6 +11,7 @@ from awesomeversion import AwesomeVersion
 
 from .const import (
     ATTR_AUDIO,
+    ATTR_AUTO_UPDATE,
     ATTR_CHANNEL,
     ATTR_CLI,
     ATTR_DNS,
@@ -169,6 +170,16 @@ class Updater(FileConfiguration, CoreSysAttributes):
     def channel(self, value: UpdateChannel):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
+
+    @property
+    def auto_update(self) -> bool:
+        """Return if Supervisor auto updates enabled."""
+        return self._data[ATTR_AUTO_UPDATE]
+
+    @auto_update.setter
+    def auto_update(self, value: bool) -> None:
+        """Set Supervisor auto updates enabled."""
+        self._data[ATTR_AUTO_UPDATE] = value
 
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],

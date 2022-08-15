@@ -21,6 +21,7 @@ from ..jobs.decorator import Job
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_CLI,
+    PLUGIN_UPDATE_CONDITIONS,
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
@@ -72,6 +73,10 @@ class PluginCli(PluginBase):
         self.image = self.sys_updater.image_cli
         self.save_data()
 
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=CliJobError,
+    )
     async def update(self, version: Optional[AwesomeVersion] = None) -> None:
         """Update local HA cli."""
         version = version or self.latest_version

@@ -9,6 +9,7 @@ import voluptuous as vol
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_AUDIO,
+    ATTR_AUTO_UPDATE,
     ATTR_CHANNEL,
     ATTR_CLI,
     ATTR_CONTENT_TRUST,
@@ -134,6 +135,7 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
             extra=vol.REMOVE_EXTRA,
         ),
         vol.Optional(ATTR_OTA): vol.Url(),
+        vol.Optional(ATTR_AUTO_UPDATE, default=True): bool,
     },
     extra=vol.REMOVE_EXTRA,
 )

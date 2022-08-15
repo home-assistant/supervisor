@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from ..backups.const import BackupType
@@ -19,6 +20,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
     CRYPTO_AES128,
@@ -79,6 +81,9 @@ def v1_protected(protected: bool | str) -> bool:
 SCHEMA_BACKUP = vol.Schema(
     {
         vol.Optional(ATTR_VERSION, default=1): vol.All(vol.Coerce(int), vol.In((1, 2))),
+        vol.Optional(
+            ATTR_SUPERVISOR_VERSION, default=AwesomeVersion("2022.08.3")
+        ): version_tag,
         vol.Required(ATTR_SLUG): str,
         vol.Required(ATTR_TYPE): vol.Coerce(BackupType),
         vol.Required(ATTR_NAME): str,

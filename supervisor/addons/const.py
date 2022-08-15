@@ -2,6 +2,8 @@
 from datetime import timedelta
 from enum import Enum
 
+from ..jobs.const import JobCondition
+
 
 class AddonBackupMode(str, Enum):
     """Backup mode of an Add-on."""
@@ -16,3 +18,11 @@ WATCHDOG_RETRY_SECONDS = 10
 WATCHDOG_MAX_ATTEMPTS = 5
 WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)
 WATCHDOG_THROTTLE_MAX_CALLS = 10
+
+ADDON_UPDATE_CONDITIONS = [
+    JobCondition.FREE_SPACE,
+    JobCondition.HEALTHY,
+    JobCondition.INTERNET_HOST,
+    JobCondition.PLUGINS_UPDATED,
+    JobCondition.SUPERVISOR_UPDATED,
+]

@@ -182,8 +182,8 @@ class Core(CoreSysAttributes):
         # Mark booted partition as healthy
         await self.sys_os.mark_healthy()
 
-        # On release channel, try update itself
-        if self.sys_supervisor.need_update:
+        # On release channel, try update itself if auto update enabled
+        if self.sys_supervisor.need_update and self.sys_updater.auto_update:
             try:
                 if not self.healthy:
                     _LOGGER.warning("Ignoring Supervisor updates!")

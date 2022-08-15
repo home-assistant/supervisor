@@ -182,6 +182,8 @@ class HomeAssistantCore(CoreSysAttributes):
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
+            JobCondition.PLUGINS_UPDATED,
+            JobCondition.SUPERVISOR_UPDATED,
         ],
         on_condition=HomeAssistantJobError,
     )

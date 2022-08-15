@@ -223,11 +223,26 @@ class Job(CoreSysAttributes):
             )
 
         if (
+            JobCondition.AUTO_UPDATE in self.conditions
+            and not self.sys_updater.auto_update
+        ):
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, supervisor auto updates disabled"
+            )
+
+        if (
             JobCondition.SUPERVISOR_UPDATED in self.conditions
             and self.sys_supervisor.need_update
         ):
             raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, supervisor needs to be updated first"
+            )
+
+        if JobCondition.PLUGINS_UPDATED in self.conditions and 0 < len(
+            [plugin for plugin in self.sys_plugins.all_plugins if plugin.need_update]
+        ):
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, plugin(s) {', '.join([plugin.slug for plugin in self.sys_plugins.all_plugins if plugin.need_update])} need to be updated first"
             )
 
     async def _acquire_exection_limit(self) -> None:

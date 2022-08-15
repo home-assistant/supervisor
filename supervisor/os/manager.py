@@ -173,6 +173,7 @@ class OSManager(CoreSysAttributes):
             JobCondition.HAOS,
             JobCondition.INTERNET_SYSTEM,
             JobCondition.RUNNING,
+            JobCondition.SUPERVISOR_UPDATED,
         ],
         limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,

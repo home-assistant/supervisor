@@ -1,6 +1,6 @@
 """Test BackupManager class."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from supervisor.backups.const import BackupType
 from supervisor.backups.manager import BackupManager
@@ -271,3 +271,53 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
     backup_instance.restore_homeassistant.assert_called_once()
 
     assert coresys.core.state == CoreState.RUNNING
+
+
+async def test_fail_invalid_full_backup(coresys: CoreSys, full_backup_mock: MagicMock):
+    """Test restore fails with invalid backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    manager = BackupManager(coresys)
+
+    backup_instance = full_backup_mock.return_value
+    backup_instance.protected = True
+    backup_instance.set_password.return_value = False
+
+    assert await manager.do_restore_full(backup_instance) is False
+
+    backup_instance.protected = False
+    backup_instance.supervisor_version = "2022.08.4"
+    with patch.object(
+        type(coresys.supervisor), "version", new=PropertyMock(return_value="2022.08.3")
+    ):
+        assert await manager.do_restore_full(backup_instance) is False
+
+
+async def test_fail_invalid_partial_backup(
+    coresys: CoreSys, partial_backup_mock: MagicMock
+):
+    """Test restore fails with invalid backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    manager = BackupManager(coresys)
+
+    backup_instance = partial_backup_mock.return_value
+    backup_instance.protected = True
+    backup_instance.set_password.return_value = False
+
+    assert await manager.do_restore_partial(backup_instance) is False
+
+    backup_instance.protected = False
+    backup_instance.homeassistant = None
+
+    assert (
+        await manager.do_restore_partial(backup_instance, homeassistant=True) is False
+    )
+
+    backup_instance.supervisor_version = "2022.08.4"
+    with patch.object(
+        type(coresys.supervisor), "version", new=PropertyMock(return_value="2022.08.3")
+    ):
+        assert await manager.do_restore_partial(backup_instance) is False
