@@ -36,7 +36,6 @@ env:
   DEFAULT_PYTHON: "3.10"
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
-  WHEELS_TAG: musllinux_1_2
 
 jobs:
   init:
@@ -94,7 +93,7 @@ jobs:
         uses: home-assistant/wheels@2022.06.7
         with:
           abi: cp310
-          tag: ${{ env.WHEELS_TAG }}
+          tag: musllinux_1_2
           arch: ${{ matrix.arch }}
           wheels-key: ${{ secrets.WHEELS_KEY }}
           apk: "libffi-dev;openssl-dev"

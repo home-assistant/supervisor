@@ -7,7 +7,7 @@ repos:
           - --safe
           - --quiet
           - --target-version
-          - py39
+          - py310
         files: ^((supervisor|tests)/.+)?[^/]+\.py$
   - repo: https://gitlab.com/pycqa/flake8
     rev: 3.8.3
@@ -31,4 +31,4 @@ repos:
     rev: v2.32.1
     hooks:
       - id: pyupgrade
-        args: [--py39-plus]
+        args: [--py310-plus]
