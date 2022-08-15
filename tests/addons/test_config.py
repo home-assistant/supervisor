@@ -248,7 +248,3 @@ def test_watchdog_url():
     ):
         config["watchdog"] = test_options
         assert vd.SCHEMA_ADDON_CONFIG(config)
-
-
-async def test_addon_build_from():
-    """Test build per arch or manifest approach."""
