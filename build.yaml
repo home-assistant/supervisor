@@ -1,11 +1,11 @@
 image: homeassistant/{arch}-hassio-supervisor
 shadow_repository: ghcr.io/home-assistant
 build_from:
-  aarch64: ghcr.io/home-assistant/aarch64-base-python:3.9-alpine3.14
-  armhf: ghcr.io/home-assistant/armhf-base-python:3.9-alpine3.14
-  armv7: ghcr.io/home-assistant/armv7-base-python:3.9-alpine3.14
-  amd64: ghcr.io/home-assistant/amd64-base-python:3.9-alpine3.14
-  i386: ghcr.io/home-assistant/i386-base-python:3.9-alpine3.14
+  aarch64: ghcr.io/home-assistant/aarch64-base-python:3.10-alpine3.16
+  armhf: ghcr.io/home-assistant/armhf-base-python:3.10-alpine3.16
+  armv7: ghcr.io/home-assistant/armv7-base-python:3.10-alpine3.16
+  amd64: ghcr.io/home-assistant/amd64-base-python:3.10-alpine3.16
+  i386: ghcr.io/home-assistant/i386-base-python:3.10-alpine3.16
 codenotary:
   signer: notary@home-assistant.io
   base_image: notary@home-assistant.io

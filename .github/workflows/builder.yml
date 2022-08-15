@@ -33,10 +33,10 @@ on:
       - setup.py
 
 env:
-  DEFAULT_PYTHON: 3.9
+  DEFAULT_PYTHON: 3.10
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
-  WHEELS_TAG: 3.9-alpine3.14
+  WHEELS_TAG: musllinux_1_2
 
 jobs:
   init:
@@ -91,14 +91,13 @@ jobs:
 
       - name: Build wheels
         if: needs.init.outputs.requirements == 'true'
-        uses: home-assistant/wheels@2022.01.2
+        uses: home-assistant/wheels@2022.06.7
         with:
+          abi: cp310
           tag: ${{ env.WHEELS_TAG }}
           arch: ${{ matrix.arch }}
-          wheels-host: wheels.hass.io
           wheels-key: ${{ secrets.WHEELS_KEY }}
-          wheels-user: wheels
-          apk: "build-base;libffi-dev;openssl-dev;cargo"
+          apk: "libffi-dev;openssl-dev"
           skip-binary: aiohttp
           requirements: "requirements.txt"
 
