@@ -27,7 +27,7 @@ class EvaluateSupervisorVersion(EvaluateBase):
     @property
     def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.RUNNING]
+        return [CoreState.RUNNING, CoreState.STARTUP]
 
     async def evaluate(self) -> None:
         """Run evaluation."""
