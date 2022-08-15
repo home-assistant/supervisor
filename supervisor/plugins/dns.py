@@ -45,8 +45,10 @@ from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# pylint: disable=no-member
 HOSTS_TMPL: Path = Path(__file__).parents[1].joinpath("data/hosts.tmpl")
 RESOLV_TMPL: Path = Path(__file__).parents[1].joinpath("data/resolv.tmpl")
+# pylint: enable=no-member
 HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
 
