@@ -1,7 +1,6 @@
 """Helpers to check and fix issues with free space."""
 from datetime import timedelta
 import logging
-from typing import Optional
 
 from ...coresys import CoreSys
 from ...exceptions import ResolutionFixupError, ResolutionFixupJobError
@@ -28,7 +27,7 @@ class FixupSystemExecuteIntegrity(FixupBase):
         limit=JobExecutionLimit.THROTTLE,
         throttle_period=timedelta(hours=8),
     )
-    async def process_fixup(self, reference: Optional[str] = None) -> None:
+    async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
         result = await self.sys_security.integrity_check()
 

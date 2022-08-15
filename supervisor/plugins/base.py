@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import asyncio
 from contextlib import suppress
 import logging
-from typing import Awaitable, Optional
+from typing import Awaitable
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
@@ -26,7 +26,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     instance: DockerInterface
 
     @property
-    def version(self) -> Optional[AwesomeVersion]:
+    def version(self) -> AwesomeVersion | None:
         """Return current version of the plugin."""
         return self._data.get(ATTR_VERSION)
 
@@ -49,7 +49,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     @property
     @abstractmethod
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of the plugin."""
 
     @property
@@ -189,7 +189,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         """Install system plugin."""
 
     @abstractmethod
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: str | None = None) -> None:
         """Update system plugin."""
 
     @abstractmethod

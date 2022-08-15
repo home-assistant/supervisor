@@ -1,6 +1,5 @@
 """Audio docker object."""
 import logging
-from typing import Optional
 
 import docker
 
@@ -63,7 +62,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         return [docker.types.Ulimit(name="rtprio", soft=10, hard=10)]
 
     @property
-    def cpu_rt_runtime(self) -> Optional[int]:
+    def cpu_rt_runtime(self) -> int | None:
         """Limit CPU real-time runtime in microseconds."""
         if not self.sys_docker.info.support_cpu_realtime:
             return None

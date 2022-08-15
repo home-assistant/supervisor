@@ -5,7 +5,7 @@ import logging
 import re
 import secrets
 import shutil
-from typing import Awaitable, Optional
+from typing import Awaitable
 
 import attr
 from awesomeversion import AwesomeVersion
@@ -189,8 +189,8 @@ class HomeAssistantCore(CoreSysAttributes):
     )
     async def update(
         self,
-        version: Optional[AwesomeVersion] = None,
-        backup: Optional[bool] = False,
+        version: AwesomeVersion | None = None,
+        backup: bool | None = False,
     ) -> None:
         """Update HomeAssistant version."""
         version = version or self.sys_homeassistant.latest_version

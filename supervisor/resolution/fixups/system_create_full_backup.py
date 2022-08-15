@@ -1,6 +1,5 @@
 """Helpers to check and fix issues with free space."""
 import logging
-from typing import Optional
 
 from ...coresys import CoreSys
 from ..const import ContextType, SuggestionType
@@ -17,7 +16,7 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupSystemCreateFullBackup(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: Optional[str] = None) -> None:
+    async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Creating a full backup")
         await self.sys_backups.do_backup_full()

@@ -2,7 +2,7 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Awaitable, Optional
+from typing import Awaitable
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
@@ -26,9 +26,9 @@ class OSManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._datadisk: DataDisk = DataDisk(coresys)
         self._available: bool = False
-        self._version: Optional[AwesomeVersion] = None
-        self._board: Optional[str] = None
-        self._os_name: Optional[str] = None
+        self._version: AwesomeVersion | None = None
+        self._board: str | None = None
+        self._os_name: str | None = None
 
     @property
     def available(self) -> bool:
@@ -36,12 +36,12 @@ class OSManager(CoreSysAttributes):
         return self._available
 
     @property
-    def version(self) -> Optional[AwesomeVersion]:
+    def version(self) -> AwesomeVersion | None:
         """Return version of HassOS."""
         return self._version
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return version of HassOS."""
         return self.sys_updater.version_hassos
 
@@ -54,12 +54,12 @@ class OSManager(CoreSysAttributes):
             return False
 
     @property
-    def board(self) -> Optional[str]:
+    def board(self) -> str | None:
         """Return board name."""
         return self._board
 
     @property
-    def os_name(self) -> Optional[str]:
+    def os_name(self) -> str | None:
         """Return OS name."""
         return self._os_name
 
@@ -178,7 +178,7 @@ class OSManager(CoreSysAttributes):
         limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,
     )
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update HassOS system."""
         version = version or self.latest_version
 

@@ -1,7 +1,7 @@
 """Init file for Supervisor Docker object."""
 from ipaddress import IPv4Address
 import logging
-from typing import Awaitable, Optional
+from typing import Awaitable
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 import docker
@@ -23,7 +23,7 @@ class DockerHomeAssistant(DockerInterface):
     """Docker Supervisor wrapper for Home Assistant."""
 
     @property
-    def machine(self) -> Optional[str]:
+    def machine(self) -> str | None:
         """Return machine of Home Assistant Docker image."""
         if self._meta and LABEL_MACHINE in self._meta["Config"]["Labels"]:
             return self._meta["Config"]["Labels"][LABEL_MACHINE]

@@ -2,7 +2,7 @@
 from contextlib import suppress
 from datetime import datetime, timedelta, timezone, tzinfo
 import re
-from typing import Any, Optional
+from typing import Any
 import zoneinfo
 
 import ciso8601
@@ -43,7 +43,7 @@ def parse_datetime(dt_str):
         kws["microsecond"] = kws["microsecond"].ljust(6, "0")
     tzinfo_str = kws.pop("tzinfo")
 
-    tzinfo_val: Optional[tzinfo] = None
+    tzinfo_val: tzinfo | None = None
     if tzinfo_str == "Z":
         tzinfo_val = UTC
     elif tzinfo_str is not None:
@@ -70,7 +70,7 @@ def utc_from_timestamp(timestamp: float) -> datetime:
     return datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC)
 
 
-def get_time_zone(time_zone_str: str) -> Optional[tzinfo]:
+def get_time_zone(time_zone_str: str) -> tzinfo | None:
     """Get time zone from string. Return None if unable to determine."""
     try:
         return zoneinfo.ZoneInfo(time_zone_str)

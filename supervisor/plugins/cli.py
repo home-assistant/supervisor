@@ -6,7 +6,7 @@ import asyncio
 from contextlib import suppress
 import logging
 import secrets
-from typing import Awaitable, Optional
+from typing import Awaitable
 
 from awesomeversion import AwesomeVersion
 
@@ -41,7 +41,7 @@ class PluginCli(PluginBase):
         self.instance: DockerCli = DockerCli(coresys)
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return version of latest cli."""
         return self.sys_updater.version_cli
 
@@ -77,7 +77,7 @@ class PluginCli(PluginBase):
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=CliJobError,
     )
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update local HA cli."""
         version = version or self.latest_version
         old_image = self.image

@@ -1,6 +1,4 @@
 """Handle internal services discovery."""
-from typing import Optional
-
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import SERVICE_MQTT, SERVICE_MYSQL
 from .data import ServicesData
@@ -25,7 +23,7 @@ class ServiceManager(CoreSysAttributes):
         """Return a list of services."""
         return list(self.services_obj.values())
 
-    def get(self, slug: str) -> Optional[ServiceInterface]:
+    def get(self, slug: str) -> ServiceInterface | None:
         """Return service object from slug."""
         return self.services_obj.get(slug)
 

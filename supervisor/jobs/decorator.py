@@ -3,7 +3,7 @@ import asyncio
 from datetime import datetime, timedelta
 from functools import wraps
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import sentry_sdk
 
@@ -22,13 +22,13 @@ class Job(CoreSysAttributes):
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        conditions: Optional[list[JobCondition]] = None,
+        name: str | None = None,
+        conditions: list[JobCondition] | None = None,
         cleanup: bool = True,
-        on_condition: Optional[JobException] = None,
-        limit: Optional[JobExecutionLimit] = None,
-        throttle_period: Optional[timedelta] = None,
-        throttle_max_calls: Optional[int] = None,
+        on_condition: JobException | None = None,
+        limit: JobExecutionLimit | None = None,
+        throttle_period: timedelta | None = None,
+        throttle_max_calls: int | None = None,
     ):
         """Initialize the Job class."""
         self.name = name
@@ -38,10 +38,10 @@ class Job(CoreSysAttributes):
         self.limit = limit
         self.throttle_period = throttle_period
         self.throttle_max_calls = throttle_max_calls
-        self._lock: Optional[asyncio.Semaphore] = None
+        self._lock: asyncio.Semaphore | None = None
         self._method = None
         self._last_call = datetime.min
-        self._rate_limited_calls: Optional[list[datetime]] = None
+        self._rate_limited_calls: list[datetime] | None = None
 
         # Validate Options
         if (

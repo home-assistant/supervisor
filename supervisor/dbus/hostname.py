@@ -1,6 +1,6 @@
 """D-Bus interface for hostname."""
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dbus import DBus
@@ -43,37 +43,37 @@ class Hostname(DBusInterface):
 
     @property
     @dbus_property
-    def hostname(self) -> Optional[str]:
+    def hostname(self) -> str | None:
         """Return local hostname."""
         return self.properties[DBUS_ATTR_STATIC_HOSTNAME]
 
     @property
     @dbus_property
-    def chassis(self) -> Optional[str]:
+    def chassis(self) -> str | None:
         """Return local chassis type."""
         return self.properties[DBUS_ATTR_CHASSIS]
 
     @property
     @dbus_property
-    def deployment(self) -> Optional[str]:
+    def deployment(self) -> str | None:
         """Return local deployment type."""
         return self.properties[DBUS_ATTR_DEPLOYMENT]
 
     @property
     @dbus_property
-    def kernel(self) -> Optional[str]:
+    def kernel(self) -> str | None:
         """Return local kernel version."""
         return self.properties[DBUS_ATTR_KERNEL_RELEASE]
 
     @property
     @dbus_property
-    def operating_system(self) -> Optional[str]:
+    def operating_system(self) -> str | None:
         """Return local operating system."""
         return self.properties[DBUS_ATTR_OPERATING_SYSTEM_PRETTY_NAME]
 
     @property
     @dbus_property
-    def cpe(self) -> Optional[str]:
+    def cpe(self) -> str | None:
         """Return local CPE."""
         return self.properties[DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME]
 

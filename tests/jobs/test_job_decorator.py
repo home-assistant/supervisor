@@ -2,7 +2,6 @@
 # pylint: disable=protected-access,import-error
 import asyncio
 from datetime import timedelta
-from typing import Optional
 from unittest.mock import PropertyMock, patch
 
 import pytest
@@ -305,7 +304,7 @@ async def test_execution_limit_throttle_wait(
 
 @pytest.mark.parametrize("error", [None, PluginJobError])
 async def test_execution_limit_throttle_rate_limit(
-    coresys: CoreSys, loop: asyncio.BaseEventLoop, error: Optional[JobException]
+    coresys: CoreSys, loop: asyncio.BaseEventLoop, error: JobException | None
 ):
     """Test the throttle wait job execution limit."""
 

@@ -7,7 +7,6 @@ from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
-from typing import Optional
 
 import attr
 from awesomeversion import AwesomeVersion
@@ -69,8 +68,8 @@ class PluginDns(PluginBase):
         self.slug = "dns"
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
-        self.resolv_template: Optional[jinja2.Template] = None
-        self.hosts_template: Optional[jinja2.Template] = None
+        self.resolv_template: jinja2.Template | None = None
+        self.hosts_template: jinja2.Template | None = None
 
         self._hosts: list[HostEntry] = []
         self._loop: bool = False
@@ -108,7 +107,7 @@ class PluginDns(PluginBase):
         self._data[ATTR_SERVERS] = value
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
 
@@ -186,7 +185,7 @@ class PluginDns(PluginBase):
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=CoreDNSJobError,
     )
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update CoreDNS plugin."""
         version = version or self.latest_version
         old_image = self.image
@@ -392,7 +391,7 @@ class PluginDns(PluginBase):
         if write:
             self.write_hosts()
 
-    def _search_host(self, names: list[str]) -> Optional[HostEntry]:
+    def _search_host(self, names: list[str]) -> HostEntry | None:
         """Search a host entry."""
         for entry in self._hosts:
             for name in names:

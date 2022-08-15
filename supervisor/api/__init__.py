@@ -1,7 +1,7 @@
 """Init file for Supervisor RESTful API."""
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from aiohttp import web
 
@@ -63,7 +63,7 @@ class RestAPI(CoreSysAttributes):
 
         # service stuff
         self._runner: web.AppRunner = web.AppRunner(self.webapp)
-        self._site: Optional[web.TCPSite] = None
+        self._site: web.TCPSite | None = None
 
     async def load(self) -> None:
         """Register REST API Calls."""

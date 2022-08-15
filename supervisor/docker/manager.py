@@ -4,7 +4,7 @@ from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -154,16 +154,16 @@ class DockerAPI:
         image: str,
         tag: str = "latest",
         dns: bool = True,
-        ipv4: Optional[IPv4Address] = None,
+        ipv4: IPv4Address | None = None,
         **kwargs: Any,
     ) -> Container:
         """Create a Docker container and run it.
 
         Need run inside executor.
         """
-        name: Optional[str] = kwargs.get("name")
-        network_mode: Optional[str] = kwargs.get("network_mode")
-        hostname: Optional[str] = kwargs.get("hostname")
+        name: str | None = kwargs.get("name")
+        network_mode: str | None = kwargs.get("network_mode")
+        hostname: str | None = kwargs.get("hostname")
 
         if "labels" not in kwargs:
             kwargs["labels"] = {}
@@ -242,7 +242,7 @@ class DockerAPI:
         self,
         image: str,
         tag: str = "latest",
-        command: Optional[str] = None,
+        command: str | None = None,
         **kwargs: Any,
     ) -> CommandReturn:
         """Create a temporary container and run command.

@@ -1,6 +1,4 @@
 """NetworkInterface object for Network Manager."""
-from typing import Optional
-
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_CONNECTION,
@@ -32,9 +30,9 @@ class NetworkInterface(DBusInterfaceProxy):
 
         self.primary = False
 
-        self._connection: Optional[NetworkConnection] = None
-        self._settings: Optional[NetworkSetting] = None
-        self._wireless: Optional[NetworkWireless] = None
+        self._connection: NetworkConnection | None = None
+        self._settings: NetworkSetting | None = None
+        self._wireless: NetworkWireless | None = None
         self._nm_dbus: DBus = nm_dbus
 
     @property
@@ -58,17 +56,17 @@ class NetworkInterface(DBusInterfaceProxy):
         return self.properties[DBUS_ATTR_MANAGED]
 
     @property
-    def connection(self) -> Optional[NetworkConnection]:
+    def connection(self) -> NetworkConnection | None:
         """Return the connection used for this interface."""
         return self._connection
 
     @property
-    def settings(self) -> Optional[NetworkSetting]:
+    def settings(self) -> NetworkSetting | None:
         """Return the connection settings used for this interface."""
         return self._settings
 
     @property
-    def wireless(self) -> Optional[NetworkWireless]:
+    def wireless(self) -> NetworkWireless | None:
         """Return the wireless data for this interface."""
         return self._wireless
 

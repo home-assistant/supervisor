@@ -5,7 +5,6 @@ Code: https://github.com/home-assistant/plugin-multicast
 import asyncio
 from contextlib import suppress
 import logging
-from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
@@ -44,7 +43,7 @@ class PluginMulticast(PluginBase):
         self.instance: DockerMulticast = DockerMulticast(coresys)
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of Multicast."""
         return self.sys_updater.version_multicast
 
@@ -74,7 +73,7 @@ class PluginMulticast(PluginBase):
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=MulticastJobError,
     )
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Multicast plugin."""
         version = version or self.latest_version
         old_image = self.image

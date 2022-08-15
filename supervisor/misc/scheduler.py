@@ -2,7 +2,7 @@
 import asyncio
 from datetime import date, datetime, time, timedelta
 import logging
-from typing import Awaitable, Callable, Optional, Union
+from typing import Awaitable, Callable
 from uuid import UUID, uuid4
 
 import async_timeout
@@ -20,10 +20,10 @@ class _Task:
 
     id: UUID = attr.ib()
     coro_callback: Callable[..., Awaitable[None]] = attr.ib(eq=False)
-    interval: Union[float, time] = attr.ib(eq=False)
+    interval: float | time = attr.ib(eq=False)
     repeat: bool = attr.ib(eq=False)
-    job: Optional[asyncio.tasks.Task] = attr.ib(eq=False)
-    next: Optional[asyncio.TimerHandle] = attr.ib(eq=False)
+    job: asyncio.tasks.Task | None = attr.ib(eq=False)
+    next: asyncio.TimerHandle | None = attr.ib(eq=False)
 
 
 class Scheduler(CoreSysAttributes):
@@ -37,7 +37,7 @@ class Scheduler(CoreSysAttributes):
     def register_task(
         self,
         coro_callback: Callable[..., Awaitable[None]],
-        interval: Union[float, time],
+        interval: float | time,
         repeat: bool = True,
     ) -> UUID:
         """Schedule a coroutine.

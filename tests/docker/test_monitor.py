@@ -1,7 +1,7 @@
 """Test docker events monitor."""
 
 import asyncio
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -84,7 +84,7 @@ from supervisor.docker.monitor import DockerContainerStateEvent
     ],
 )
 async def test_events(
-    coresys: CoreSys, event: dict[str, Any], expected: Optional[ContainerState]
+    coresys: CoreSys, event: dict[str, Any], expected: ContainerState | None
 ):
     """Test events created from docker events."""
     event["Actor"]["Attributes"]["name"] = "some_container"

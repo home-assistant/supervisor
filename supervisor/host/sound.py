@@ -2,7 +2,6 @@
 from datetime import timedelta
 from enum import Enum
 import logging
-from typing import Optional
 
 import attr
 from pulsectl import Pulse, PulseError, PulseIndexError, PulseOperationFailed
@@ -47,7 +46,7 @@ class AudioStream:
     volume: float = attr.ib()
     mute: bool = attr.ib()
     default: bool = attr.ib()
-    card: Optional[int] = attr.ib()
+    card: int | None = attr.ib()
     applications: list[AudioApplication] = attr.ib()
 
 

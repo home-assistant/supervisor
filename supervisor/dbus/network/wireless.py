@@ -1,5 +1,5 @@
 """Connection object for Network Manager."""
-from typing import Any, Awaitable, Optional
+from typing import Any, Awaitable
 
 from ...utils.dbus import DBus
 from ..const import (
@@ -24,10 +24,10 @@ class NetworkWireless(DBusInterfaceProxy):
         self.object_path = object_path
         self.properties = {}
 
-        self._active: Optional[NetworkWirelessAP] = None
+        self._active: NetworkWirelessAP | None = None
 
     @property
-    def active(self) -> Optional[NetworkWirelessAP]:
+    def active(self) -> NetworkWirelessAP | None:
         """Return details about active connection."""
         return self._active
 

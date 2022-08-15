@@ -1,7 +1,6 @@
 """Validate functions."""
 import ipaddress
 import re
-from typing import Optional, Union
 
 from awesomeversion import AwesomeVersion
 import voluptuous as vol
@@ -57,8 +56,8 @@ token = vol.Match(r"^[0-9a-f]{32,256}$")
 
 
 def version_tag(
-    value: Union[str, None, int, float, AwesomeVersion]
-) -> Optional[AwesomeVersion]:
+    value: str | None | int | float | AwesomeVersion,
+) -> AwesomeVersion | None:
     """Validate main version handling."""
     if value is None:
         return None

@@ -1,7 +1,7 @@
 """Init file for Supervisor add-on data."""
 import logging
 from pathlib import Path
-from typing import Any, Awaitable, Optional
+from typing import Any, Awaitable
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -89,7 +89,7 @@ class StoreData(CoreSysAttributes):
         self.repositories[slug] = repository_info
         self._read_addons_folder(path, slug)
 
-    def _find_addons(self, path: Path, repository: dict) -> Optional[list[Path]]:
+    def _find_addons(self, path: Path, repository: dict) -> list[Path] | None:
         """Find add-ons in the path."""
         try:
             # Generate a list without artefact, safe for corruptions

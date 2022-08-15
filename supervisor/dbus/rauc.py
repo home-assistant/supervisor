@@ -1,6 +1,5 @@
 """D-Bus interface for rauc."""
 import logging
-from typing import Optional
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dbus import DBus
@@ -29,11 +28,11 @@ class Rauc(DBusInterface):
 
     def __init__(self):
         """Initialize Properties."""
-        self._operation: Optional[str] = None
-        self._last_error: Optional[str] = None
-        self._compatible: Optional[str] = None
-        self._variant: Optional[str] = None
-        self._boot_slot: Optional[str] = None
+        self._operation: str | None = None
+        self._last_error: str | None = None
+        self._compatible: str | None = None
+        self._variant: str | None = None
+        self._boot_slot: str | None = None
 
     async def connect(self):
         """Connect to D-Bus."""
@@ -45,27 +44,27 @@ class Rauc(DBusInterface):
             _LOGGER.warning("Host has no rauc support. OTA updates have been disabled.")
 
     @property
-    def operation(self) -> Optional[str]:
+    def operation(self) -> str | None:
         """Return the current (global) operation."""
         return self._operation
 
     @property
-    def last_error(self) -> Optional[str]:
+    def last_error(self) -> str | None:
         """Return the last message of the last error that occurred."""
         return self._last_error
 
     @property
-    def compatible(self) -> Optional[str]:
+    def compatible(self) -> str | None:
         """Return the system compatible string."""
         return self._compatible
 
     @property
-    def variant(self) -> Optional[str]:
+    def variant(self) -> str | None:
         """Return the system variant string."""
         return self._variant
 
     @property
-    def boot_slot(self) -> Optional[str]:
+    def boot_slot(self) -> str | None:
         """Return the used boot slot."""
         return self._boot_slot
 

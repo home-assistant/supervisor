@@ -1,7 +1,7 @@
 """Interface class for D-Bus wrappers."""
 from abc import ABC, abstractmethod
 from functools import wraps
-from typing import Any, Optional
+from typing import Any
 
 from ..utils.dbus import DBus
 
@@ -22,8 +22,8 @@ def dbus_property(func):
 class DBusInterface(ABC):
     """Handle D-Bus interface for hostname/system."""
 
-    dbus: Optional[DBus] = None
-    name: Optional[str] = None
+    dbus: DBus | None = None
+    name: str | None = None
 
     @property
     def is_connected(self):
@@ -42,9 +42,9 @@ class DBusInterface(ABC):
 class DBusInterfaceProxy(ABC):
     """Handle D-Bus interface proxy."""
 
-    dbus: Optional[DBus] = None
-    object_path: Optional[str] = None
-    properties: Optional[dict[str, Any]] = None
+    dbus: DBus | None = None
+    object_path: str | None = None
+    properties: dict[str, Any] | None = None
 
     @abstractmethod
     async def connect(self):

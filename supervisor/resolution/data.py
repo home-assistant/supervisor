@@ -1,5 +1,4 @@
 """Data objects."""
-from typing import Optional
 from uuid import UUID, uuid4
 
 import attr
@@ -13,7 +12,7 @@ class Issue:
 
     type: IssueType = attr.ib()
     context: ContextType = attr.ib()
-    reference: Optional[str] = attr.ib(default=None)
+    reference: str | None = attr.ib(default=None)
     uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)
 
 
@@ -23,5 +22,5 @@ class Suggestion:
 
     type: SuggestionType = attr.ib()
     context: ContextType = attr.ib()
-    reference: Optional[str] = attr.ib(default=None)
+    reference: str | None = attr.ib(default=None)
     uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)

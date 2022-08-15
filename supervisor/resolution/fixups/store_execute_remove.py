@@ -1,6 +1,5 @@
 """Helpers to check and fix issues with free space."""
 import logging
-from typing import Optional
 
 from ...coresys import CoreSys
 from ...exceptions import ResolutionFixupError, StoreError, StoreNotFound
@@ -18,7 +17,7 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupStoreExecuteRemove(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: Optional[str] = None) -> None:
+    async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Remove invalid Store: %s", reference)
         try:

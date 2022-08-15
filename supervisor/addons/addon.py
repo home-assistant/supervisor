@@ -10,7 +10,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Final, Optional
+from typing import Any, Awaitable, Final
 
 import aiohttp
 from deepmerge import Merger
@@ -240,7 +240,7 @@ class Addon(AddonModel):
         return self._available(self.data_store)
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> str | None:
         """Return installed version."""
         return self.persist[ATTR_VERSION]
 
@@ -264,7 +264,7 @@ class Addon(AddonModel):
         )
 
     @options.setter
-    def options(self, value: Optional[dict[str, Any]]) -> None:
+    def options(self, value: dict[str, Any] | None) -> None:
         """Store user add-on options."""
         self.persist[ATTR_OPTIONS] = {} if value is None else deepcopy(value)
 
@@ -309,17 +309,17 @@ class Addon(AddonModel):
         return self.persist[ATTR_UUID]
 
     @property
-    def supervisor_token(self) -> Optional[str]:
+    def supervisor_token(self) -> str | None:
         """Return access token for Supervisor API."""
         return self.persist.get(ATTR_ACCESS_TOKEN)
 
     @property
-    def ingress_token(self) -> Optional[str]:
+    def ingress_token(self) -> str | None:
         """Return access token for Supervisor API."""
         return self.persist.get(ATTR_INGRESS_TOKEN)
 
     @property
-    def ingress_entry(self) -> Optional[str]:
+    def ingress_entry(self) -> str | None:
         """Return ingress external URL."""
         if self.with_ingress:
             return f"/api/hassio_ingress/{self.ingress_token}"
@@ -341,12 +341,12 @@ class Addon(AddonModel):
         self.persist[ATTR_PROTECTED] = value
 
     @property
-    def ports(self) -> Optional[dict[str, Optional[int]]]:
+    def ports(self) -> dict[str, int | None] | None:
         """Return ports of add-on."""
         return self.persist.get(ATTR_NETWORK, super().ports)
 
     @ports.setter
-    def ports(self, value: Optional[dict[str, Optional[int]]]) -> None:
+    def ports(self, value: dict[str, int | None] | None) -> None:
         """Set custom ports of add-on."""
         if value is None:
             self.persist.pop(ATTR_NETWORK, None)
@@ -361,7 +361,7 @@ class Addon(AddonModel):
         self.persist[ATTR_NETWORK] = new_ports
 
     @property
-    def ingress_url(self) -> Optional[str]:
+    def ingress_url(self) -> str | None:
         """Return URL to ingress url."""
         if not self.with_ingress:
             return None
@@ -372,7 +372,7 @@ class Addon(AddonModel):
         return url
 
     @property
-    def webui(self) -> Optional[str]:
+    def webui(self) -> str | None:
         """Return URL to webui or None."""
         url = super().webui
         if not url:
@@ -400,7 +400,7 @@ class Addon(AddonModel):
         return f"{proto}://[HOST]:{port}{s_suffix}"
 
     @property
-    def ingress_port(self) -> Optional[int]:
+    def ingress_port(self) -> int | None:
         """Return Ingress port."""
         if not self.with_ingress:
             return None
@@ -411,7 +411,7 @@ class Addon(AddonModel):
         return port
 
     @property
-    def ingress_panel(self) -> Optional[bool]:
+    def ingress_panel(self) -> bool | None:
         """Return True if the add-on access support ingress."""
         if not self.with_ingress:
             return None
@@ -424,19 +424,19 @@ class Addon(AddonModel):
         self.persist[ATTR_INGRESS_PANEL] = value
 
     @property
-    def audio_output(self) -> Optional[str]:
+    def audio_output(self) -> str | None:
         """Return a pulse profile for output or None."""
         if not self.with_audio:
             return None
         return self.persist.get(ATTR_AUDIO_OUTPUT)
 
     @audio_output.setter
-    def audio_output(self, value: Optional[str]):
+    def audio_output(self, value: str | None):
         """Set audio output profile settings."""
         self.persist[ATTR_AUDIO_OUTPUT] = value
 
     @property
-    def audio_input(self) -> Optional[str]:
+    def audio_input(self) -> str | None:
         """Return pulse profile for input or None."""
         if not self.with_audio:
             return None
@@ -444,12 +444,12 @@ class Addon(AddonModel):
         return self.persist.get(ATTR_AUDIO_INPUT)
 
     @audio_input.setter
-    def audio_input(self, value: Optional[str]) -> None:
+    def audio_input(self, value: str | None) -> None:
         """Set audio input settings."""
         self.persist[ATTR_AUDIO_INPUT] = value
 
     @property
-    def image(self) -> Optional[str]:
+    def image(self) -> str | None:
         """Return image name of add-on."""
         return self.persist.get(ATTR_IMAGE)
 

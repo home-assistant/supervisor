@@ -1,6 +1,5 @@
 """Supervisor job manager."""
 import logging
-from typing import Optional
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..utils.common import FileConfiguration
@@ -18,7 +17,7 @@ class SupervisorJob(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.name: str = name
         self._progress: int = 0
-        self._stage: Optional[str] = None
+        self._stage: str | None = None
 
     @property
     def progress(self) -> int:
@@ -26,13 +25,11 @@ class SupervisorJob(CoreSysAttributes):
         return self._progress
 
     @property
-    def stage(self) -> Optional[str]:
+    def stage(self) -> str | None:
         """Return the current stage."""
         return self._stage
 
-    def update(
-        self, progress: Optional[int] = None, stage: Optional[str] = None
-    ) -> None:
+    def update(self, progress: int | None = None, stage: str | None = None) -> None:
         """Update the job object."""
         if progress is not None:
             if progress >= round(100):
