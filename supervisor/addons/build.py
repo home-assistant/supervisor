@@ -15,6 +15,7 @@ from ..const import (
     META_ADDON,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.interface import MAP_ARCH
 from ..exceptions import ConfigurationFileError
 from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
@@ -49,6 +50,9 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         """Return base image for this add-on."""
         if not self._data[ATTR_BUILD_FROM]:
             return f"ghcr.io/home-assistant/{self.sys_arch.default}-base:latest"
+
+        if isinstance(self._data[ATTR_BUILD_FROM], str):
+            return self._data[ATTR_BUILD_FROM]
 
         # Evaluate correct base image
         arch = self.sys_arch.match(list(self._data[ATTR_BUILD_FROM].keys()))
@@ -87,6 +91,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             "pull": True,
             "forcerm": not self.sys_dev,
             "squash": self.squash,
+            "platform": MAP_ARCH[self.sys_arch.match(self.addon.arch)],
             "labels": {
                 "io.hass.version": version,
                 "io.hass.arch": self.sys_arch.default,

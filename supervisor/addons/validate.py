@@ -351,8 +351,9 @@ SCHEMA_ADDON_CONFIG = vol.All(
 # pylint: disable=no-value-for-parameter
 SCHEMA_BUILD_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_BUILD_FROM, default=dict): vol.Schema(
-            {vol.In(ARCH_ALL): vol.Match(RE_DOCKER_IMAGE_BUILD)}
+        vol.Optional(ATTR_BUILD_FROM, default=dict): vol.Any(
+            vol.Match(RE_DOCKER_IMAGE_BUILD),
+            vol.Schema({vol.In(ARCH_ALL): vol.Match(RE_DOCKER_IMAGE_BUILD)}),
         ),
         vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
         vol.Optional(ATTR_ARGS, default=dict): vol.Schema({str: str}),
