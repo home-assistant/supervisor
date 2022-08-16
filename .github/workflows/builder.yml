@@ -87,6 +87,14 @@ jobs:
         uses: actions/checkout@v3.0.2
         with:
           fetch-depth: 0
+      
+      - name: Write env-file
+        #if: needs.init.outputs.requirements == 'true'
+        run: |
+          (
+            # Fix out of memory issues with rust
+            echo "CARGO_NET_GIT_FETCH_WITH_CLI=true"
+          ) > .env_file
 
       - name: Build wheels
         #if: needs.init.outputs.requirements == 'true'
@@ -98,6 +106,7 @@ jobs:
           wheels-key: ${{ secrets.WHEELS_KEY }}
           apk: "libffi-dev;openssl-dev"
           skip-binary: aiohttp
+          env-file: true
           requirements: "requirements.txt"
 
       - name: Set version
