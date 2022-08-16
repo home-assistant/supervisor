@@ -3,7 +3,6 @@ from datetime import datetime
 import logging
 import os
 from pathlib import Path, PurePath
-from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
@@ -63,7 +62,7 @@ class CoreConfig(FileConfiguration):
         super().__init__(FILE_HASSIO_CONFIG, SCHEMA_SUPERVISOR_CONFIG)
 
     @property
-    def timezone(self) -> Optional[str]:
+    def timezone(self) -> str | None:
         """Return system timezone."""
         timezone = self._data.get(ATTR_TIMEZONE)
         if timezone != _UTC:
@@ -89,7 +88,7 @@ class CoreConfig(FileConfiguration):
         self._data[ATTR_VERSION] = value
 
     @property
-    def image(self) -> Optional[str]:
+    def image(self) -> str | None:
         """Return supervisor image."""
         return self._data.get(ATTR_IMAGE)
 
@@ -129,7 +128,7 @@ class CoreConfig(FileConfiguration):
         self._data[ATTR_DEBUG_BLOCK] = value
 
     @property
-    def diagnostics(self) -> Optional[bool]:
+    def diagnostics(self) -> bool | None:
         """Return bool if diagnostics is set otherwise None."""
         return self._data[ATTR_DIAGNOSTICS]
 

@@ -3,7 +3,6 @@ import asyncio
 import logging
 from pathlib import Path
 from pprint import pformat
-from typing import Optional
 
 import pyudev
 
@@ -24,8 +23,8 @@ class HwMonitor(CoreSysAttributes):
         """Initialize Hardware Monitor object."""
         self.coresys: CoreSys = coresys
         self.context = pyudev.Context()
-        self.monitor: Optional[pyudev.Monitor] = None
-        self.observer: Optional[pyudev.MonitorObserver] = None
+        self.monitor: pyudev.Monitor | None = None
+        self.observer: pyudev.MonitorObserver | None = None
 
     async def load(self) -> None:
         """Start hardware monitor."""
@@ -70,8 +69,8 @@ class HwMonitor(CoreSysAttributes):
         ):
             return
 
-        hw_action: Optional[HardwareAction] = None
-        device: Optional[Device] = None
+        hw_action: HardwareAction | None = None
+        device: Device | None = None
 
         ##
         # Remove

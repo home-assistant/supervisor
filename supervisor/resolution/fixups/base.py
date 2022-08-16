@@ -1,7 +1,6 @@
 """Baseclass for system fixup."""
 from abc import ABC, abstractmethod
 import logging
-from typing import Optional
 
 from ...coresys import CoreSys, CoreSysAttributes
 from ...exceptions import ResolutionFixupError
@@ -21,7 +20,7 @@ class FixupBase(ABC, CoreSysAttributes):
     async def __call__(self) -> None:
         """Execute the evaluation."""
         # Get suggestion to fix
-        fixing_suggestion: Optional[Suggestion] = None
+        fixing_suggestion: Suggestion | None = None
         for suggestion in self.sys_resolution.suggestions:
             if suggestion.type != self.suggestion or suggestion.context != self.context:
                 continue
@@ -49,7 +48,7 @@ class FixupBase(ABC, CoreSysAttributes):
             self.sys_resolution.dismiss_issue(issue)
 
     @abstractmethod
-    async def process_fixup(self, reference: Optional[str] = None) -> None:
+    async def process_fixup(self, reference: str | None = None) -> None:
         """Run processing of fixup."""
 
     @property

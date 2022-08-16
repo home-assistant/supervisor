@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Optional
+from typing import Any, Awaitable
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
@@ -57,8 +57,8 @@ class Backup(CoreSysAttributes):
         self._tarfile: Path = tar_file
         self._data: dict[str, Any] = {}
         self._tmp = None
-        self._key: Optional[bytes] = None
-        self._aes: Optional[Cipher] = None
+        self._key: bytes | None = None
+        self._aes: Cipher | None = None
 
     @property
     def version(self) -> int:

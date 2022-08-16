@@ -1,7 +1,5 @@
 """Core Exceptions."""
-
-
-from typing import Callable, Optional
+from typing import Callable
 
 
 class HassioError(Exception):
@@ -9,8 +7,8 @@ class HassioError(Exception):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        logger: Optional[Callable[..., None]] = None,
+        message: str | None = None,
+        logger: Callable[..., None] | None = None,
     ) -> None:
         """Raise & log."""
         if logger is not None and message is not None:

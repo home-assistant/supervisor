@@ -2,7 +2,6 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
-from typing import Optional
 
 import docker
 import requests
@@ -99,8 +98,8 @@ class DockerNetwork:
     def attach_container(
         self,
         container: docker.models.containers.Container,
-        alias: Optional[list[str]] = None,
-        ipv4: Optional[IPv4Address] = None,
+        alias: list[str] | None = None,
+        ipv4: IPv4Address | None = None,
     ) -> None:
         """Attach container to Supervisor network.
 

@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 import logging
 from threading import Thread
-from typing import Optional
 
 from docker.models.containers import Container
 from docker.types.daemon import CancellableStream
@@ -31,7 +30,7 @@ class DockerMonitor(CoreSysAttributes, Thread):
         """Initialize Docker monitor object."""
         super().__init__()
         self.coresys = coresys
-        self._events: Optional[CancellableStream] = None
+        self._events: CancellableStream | None = None
         self._unlabeled_managed_containers: list[str] = []
 
     def watch_container(self, container: Container):
@@ -64,7 +63,7 @@ class DockerMonitor(CoreSysAttributes, Thread):
                 LABEL_MANAGED in attributes
                 or attributes.get("name") in self._unlabeled_managed_containers
             ):
-                container_state: Optional[ContainerState] = None
+                container_state: ContainerState | None = None
                 action: str = event["Action"]
 
                 if action == "start":

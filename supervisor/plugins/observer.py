@@ -6,7 +6,6 @@ import asyncio
 from contextlib import suppress
 import logging
 import secrets
-from typing import Optional
 
 import aiohttp
 from awesomeversion import AwesomeVersion
@@ -47,7 +46,7 @@ class PluginObserver(PluginBase):
         self.instance: DockerObserver = DockerObserver(coresys)
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return version of latest observer."""
         return self.sys_updater.version_observer
 
@@ -82,7 +81,7 @@ class PluginObserver(PluginBase):
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=ObserverJobError,
     )
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update local HA observer."""
         version = version or self.latest_version
         old_image = self.image

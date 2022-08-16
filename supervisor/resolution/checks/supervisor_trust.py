@@ -1,6 +1,5 @@
 """Helpers to check supervisor trust."""
 import logging
-from typing import Optional
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -35,7 +34,7 @@ class CheckSupervisorTrust(CheckBase):
         except CodeNotaryError:
             pass
 
-    async def approve_check(self, reference: Optional[str] = None) -> bool:
+    async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
         try:
             await self.sys_supervisor.check_trust()

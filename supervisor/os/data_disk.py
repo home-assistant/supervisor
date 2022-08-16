@@ -1,7 +1,6 @@
 """Home Assistant Operating-System DataDisk."""
 import logging
 from pathlib import Path
-from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
@@ -29,7 +28,7 @@ class DataDisk(CoreSysAttributes):
         self.coresys = coresys
 
     @property
-    def disk_used(self) -> Optional[Path]:
+    def disk_used(self) -> Path | None:
         """Return Path to used Disk for data."""
         return self.sys_dbus.agent.datadisk.current_device
 

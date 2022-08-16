@@ -6,7 +6,6 @@ ENV \
     SUPERVISOR_API=http://localhost
 
 ARG \
-    BUILD_ARCH \
     CAS_VERSION
 
 # Install base
@@ -40,7 +39,7 @@ COPY requirements.txt .
 RUN \
     export MAKEFLAGS="-j$(nproc)" \
     && pip3 install --no-cache-dir --no-index --only-binary=:all: --find-links \
-        "https://wheels.home-assistant.io/alpine-$(cut -d '.' -f 1-2 < /etc/alpine-release)/${BUILD_ARCH}/" \
+        "https://wheels.home-assistant.io/musllinux/" \
         -r ./requirements.txt \
     && rm -f requirements.txt
 

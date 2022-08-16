@@ -1,7 +1,6 @@
 """Helpers to check DNS servers for IPv6 errors."""
 import asyncio
 from datetime import timedelta
-from typing import Optional
 
 from aiodns import DNSResolver
 from aiodns.error import DNSError
@@ -48,7 +47,7 @@ class CheckDNSServerIPv6Errors(CheckBase):
             self.sys_capture_exception(results[i])
 
     @Job(conditions=[JobCondition.INTERNET_SYSTEM])
-    async def approve_check(self, reference: Optional[str] = None) -> bool:
+    async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
         if reference not in self.dns_servers:
             return False

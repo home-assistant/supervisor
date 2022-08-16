@@ -5,7 +5,7 @@ from ipaddress import IPv4Address
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Awaitable, Optional
+from typing import Awaitable
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError
@@ -158,7 +158,7 @@ class Supervisor(CoreSysAttributes):
                     "Can't update AppArmor profile!", _LOGGER.error
                 ) from err
 
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Supervisor version."""
         version = version or self.latest_version
 

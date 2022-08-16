@@ -3,7 +3,6 @@ import asyncio
 import functools as ft
 import logging
 from pathlib import Path
-from typing import Optional
 
 import git
 
@@ -27,7 +26,7 @@ class GitRepo(CoreSysAttributes):
     def __init__(self, coresys: CoreSys, path: Path, url: str):
         """Initialize Git base wrapper."""
         self.coresys: CoreSys = coresys
-        self.repo: Optional[git.Repo] = None
+        self.repo: git.Repo | None = None
         self.path: Path = path
         self.lock: asyncio.Lock = asyncio.Lock()
 

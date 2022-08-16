@@ -2,7 +2,6 @@
 import asyncio
 from datetime import datetime
 import logging
-from typing import Optional
 
 from ..coresys import CoreSysAttributes
 from ..dbus.const import MulticastProtocolEnabled
@@ -19,86 +18,86 @@ class InfoCenter(CoreSysAttributes):
         self.coresys = coresys
 
     @property
-    def hostname(self) -> Optional[str]:
+    def hostname(self) -> str | None:
         """Return local hostname."""
         return self.sys_dbus.hostname.hostname
 
     @property
-    def llmnr_hostname(self) -> Optional[str]:
+    def llmnr_hostname(self) -> str | None:
         """Return local llmnr hostname."""
         return self.sys_dbus.resolved.llmnr_hostname
 
     @property
-    def broadcast_llmnr(self) -> Optional[bool]:
+    def broadcast_llmnr(self) -> bool | None:
         """Host is broadcasting llmnr name."""
         if self.sys_dbus.resolved.llmnr:
             return self.sys_dbus.resolved.llmnr == MulticastProtocolEnabled.YES
         return None
 
     @property
-    def broadcast_mdns(self) -> Optional[bool]:
+    def broadcast_mdns(self) -> bool | None:
         """Host is broadcasting mdns name."""
         if self.sys_dbus.resolved.multicast_dns:
             return self.sys_dbus.resolved.multicast_dns == MulticastProtocolEnabled.YES
         return None
 
     @property
-    def chassis(self) -> Optional[str]:
+    def chassis(self) -> str | None:
         """Return local chassis type."""
         return self.sys_dbus.hostname.chassis
 
     @property
-    def deployment(self) -> Optional[str]:
+    def deployment(self) -> str | None:
         """Return local deployment type."""
         return self.sys_dbus.hostname.deployment
 
     @property
-    def kernel(self) -> Optional[str]:
+    def kernel(self) -> str | None:
         """Return local kernel version."""
         return self.sys_dbus.hostname.kernel
 
     @property
-    def operating_system(self) -> Optional[str]:
+    def operating_system(self) -> str | None:
         """Return local operating system."""
         return self.sys_dbus.hostname.operating_system
 
     @property
-    def cpe(self) -> Optional[str]:
+    def cpe(self) -> str | None:
         """Return local CPE."""
         return self.sys_dbus.hostname.cpe
 
     @property
-    def timezone(self) -> Optional[str]:
+    def timezone(self) -> str | None:
         """Return host timezone."""
         return self.sys_dbus.timedate.timezone
 
     @property
-    def dt_utc(self) -> Optional[datetime]:
+    def dt_utc(self) -> datetime | None:
         """Return host UTC time."""
         return self.sys_dbus.timedate.dt_utc
 
     @property
-    def use_rtc(self) -> Optional[bool]:
+    def use_rtc(self) -> bool | None:
         """Return true if host have an RTC."""
         return self.sys_dbus.timedate.local_rtc
 
     @property
-    def use_ntp(self) -> Optional[bool]:
+    def use_ntp(self) -> bool | None:
         """Return true if host using NTP."""
         return self.sys_dbus.timedate.ntp
 
     @property
-    def dt_synchronized(self) -> Optional[bool]:
+    def dt_synchronized(self) -> bool | None:
         """Return true if host time is syncronized."""
         return self.sys_dbus.timedate.ntp_synchronized
 
     @property
-    def startup_time(self) -> Optional[float]:
+    def startup_time(self) -> float | None:
         """Return startup time in seconds."""
         return self.sys_dbus.systemd.startup_time
 
     @property
-    def boot_timestamp(self) -> Optional[int]:
+    def boot_timestamp(self) -> int | None:
         """Return the boot timestamp."""
         return self.sys_dbus.systemd.boot_timestamp
 

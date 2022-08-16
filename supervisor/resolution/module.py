@@ -1,6 +1,6 @@
 """Supervisor resolution center."""
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
@@ -142,8 +142,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self,
         issue: IssueType,
         context: ContextType,
-        reference: Optional[str] = None,
-        suggestions: Optional[list[SuggestionType]] = None,
+        reference: str | None = None,
+        suggestions: list[SuggestionType] | None = None,
     ) -> None:
         """Create issues and suggestion."""
         self.issues = Issue(issue, context, reference)

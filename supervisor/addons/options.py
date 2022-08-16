@@ -3,7 +3,7 @@ import hashlib
 import logging
 from pathlib import Path
 import re
-from typing import Any, Union
+from typing import Any
 
 import voluptuous as vol
 
@@ -293,7 +293,7 @@ class UiOptions(CoreSysAttributes):
         multiple: bool = False,
     ) -> None:
         """Validate a single element."""
-        ui_node: dict[str, Union[str, bool, float, list[str]]] = {"name": key}
+        ui_node: dict[str, str | bool | float | list[str]] = {"name": key}
 
         # If multiple
         if multiple:

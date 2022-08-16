@@ -3,7 +3,7 @@ import asyncio
 from contextlib import suppress
 from datetime import timedelta
 import logging
-from typing import Awaitable, Optional
+from typing import Awaitable
 
 import async_timeout
 
@@ -31,7 +31,7 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self._state: Optional[CoreState] = None
+        self._state: CoreState | None = None
         self.exit_code: int = 0
 
     @property

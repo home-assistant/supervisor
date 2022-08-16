@@ -3,7 +3,7 @@ import asyncio
 from contextlib import suppress
 import logging
 import tarfile
-from typing import Optional, Union
+from typing import Union
 
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
@@ -53,7 +53,7 @@ class AddonManager(CoreSysAttributes):
         """Return a list of all installed add-ons."""
         return list(self.local.values())
 
-    def get(self, addon_slug: str, local_only: bool = False) -> Optional[AnyAddon]:
+    def get(self, addon_slug: str, local_only: bool = False) -> AnyAddon | None:
         """Return an add-on from slug.
 
         Prio:
@@ -66,7 +66,7 @@ class AddonManager(CoreSysAttributes):
             return self.store.get(addon_slug)
         return None
 
-    def from_token(self, token: str) -> Optional[Addon]:
+    def from_token(self, token: str) -> Addon | None:
         """Return an add-on from Supervisor token."""
         for addon in self.installed:
             if token == addon.supervisor_token:
@@ -246,7 +246,7 @@ class AddonManager(CoreSysAttributes):
         conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
     )
-    async def update(self, slug: str, backup: Optional[bool] = False) -> None:
+    async def update(self, slug: str, backup: bool | None = False) -> None:
         """Update add-on."""
         if slug not in self.local:
             raise AddonsError(f"Add-on {slug} is not installed", _LOGGER.error)

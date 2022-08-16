@@ -3,7 +3,6 @@ from datetime import datetime
 import logging
 from pathlib import Path
 import re
-from typing import Optional
 
 import pyudev
 
@@ -42,7 +41,7 @@ class HwHelper(CoreSysAttributes):
         return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.USB))
 
     @property
-    def last_boot(self) -> Optional[str]:
+    def last_boot(self) -> str | None:
         """Return last boot time."""
         try:
             stats: str = _PROC_STAT.read_text(encoding="utf-8")
@@ -51,7 +50,7 @@ class HwHelper(CoreSysAttributes):
             return None
 
         # parse stat file
-        found: Optional[re.Match] = _RE_BOOT_TIME.search(stats)
+        found: re.Match | None = _RE_BOOT_TIME.search(stats)
         if not found:
             _LOGGER.error("Can't found last boot time!")
             return None

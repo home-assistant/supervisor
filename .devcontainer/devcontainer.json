@@ -10,7 +10,7 @@
     "visualstudioexptteam.vscodeintellicode",
     "esbenp.prettier-vscode"
   ],
-  "mounts": [ "type=volume,target=/var/lib/docker" ],
+  "mounts": ["type=volume,target=/var/lib/docker"],
   "settings": {
     "terminal.integrated.profiles.linux": {
       "zsh": {
@@ -26,7 +26,7 @@
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true,
     "python.formatting.provider": "black",
-    "python.formatting.blackArgs": ["--target-version", "py39"],
+    "python.formatting.blackArgs": ["--target-version", "py310"],
     "python.formatting.blackPath": "/usr/local/bin/black",
     "python.linting.banditPath": "/usr/local/bin/bandit",
     "python.linting.flake8Path": "/usr/local/bin/flake8",

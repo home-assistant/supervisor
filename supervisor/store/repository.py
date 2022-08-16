@@ -1,7 +1,6 @@
 """Represent a Supervisor repository."""
 import logging
 from pathlib import Path
-from typing import Optional
 
 import voluptuous as vol
 
@@ -24,7 +23,7 @@ class Repository(CoreSysAttributes):
     def __init__(self, coresys: CoreSys, repository: str):
         """Initialize repository object."""
         self.coresys: CoreSys = coresys
-        self.git: Optional[GitRepo] = None
+        self.git: GitRepo | None = None
 
         self.source: str = repository
         if repository == StoreType.LOCAL:

@@ -7,7 +7,6 @@ from contextlib import suppress
 import logging
 from pathlib import Path, PurePath
 import shutil
-from typing import Optional
 
 from awesomeversion import AwesomeVersion
 import jinja2
@@ -38,8 +37,10 @@ from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# pylint: disable=no-member
 PULSE_CLIENT_TMPL: Path = Path(__file__).parents[1].joinpath("data/pulse-client.tmpl")
 ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
+# pylint: enable=no-member
 
 
 class PluginAudio(PluginBase):
@@ -51,7 +52,7 @@ class PluginAudio(PluginBase):
         self.slug = "audio"
         self.coresys: CoreSys = coresys
         self.instance: DockerAudio = DockerAudio(coresys)
-        self.client_template: Optional[jinja2.Template] = None
+        self.client_template: jinja2.Template | None = None
 
     @property
     def path_extern_pulse(self) -> PurePath:
@@ -69,7 +70,7 @@ class PluginAudio(PluginBase):
         return Path(self.sys_config.path_audio, "pulse_audio.json")
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of Audio."""
         return self.sys_updater.version_audio
 
@@ -117,7 +118,7 @@ class PluginAudio(PluginBase):
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=AudioJobError,
     )
-    async def update(self, version: Optional[str] = None) -> None:
+    async def update(self, version: str | None = None) -> None:
         """Update Audio plugin."""
         version = version or self.latest_version
         old_image = self.image

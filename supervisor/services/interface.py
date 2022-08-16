@@ -1,6 +1,6 @@
 """Interface for single service."""
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 import voluptuous as vol
 
@@ -54,7 +54,7 @@ class ServiceInterface(CoreSysAttributes, ABC):
         """Save changes."""
         self.sys_services.data.save_data()
 
-    def get_service_data(self) -> Optional[dict[str, Any]]:
+    def get_service_data(self) -> dict[str, Any] | None:
         """Return the requested service data."""
         if self.enabled:
             return self._data

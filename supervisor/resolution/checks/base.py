@@ -1,7 +1,6 @@
 """Baseclass for system checks."""
 from abc import ABC, abstractmethod
 import logging
-from typing import Optional
 
 from ...const import ATTR_ENABLED, CoreState
 from ...coresys import CoreSys, CoreSysAttributes
@@ -60,7 +59,7 @@ class CheckBase(ABC, CoreSysAttributes):
         """Run check if not affected by issue."""
 
     @abstractmethod
-    async def approve_check(self, reference: Optional[str] = None) -> bool:
+    async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
 
     @property

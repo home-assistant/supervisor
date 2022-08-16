@@ -1,6 +1,6 @@
 """Connection object for Network Manager."""
 import logging
-from typing import Any, Awaitable, Optional
+from typing import Any, Awaitable
 
 from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
 from ....utils.dbus import DBus
@@ -59,46 +59,46 @@ class NetworkSetting(DBusInterfaceProxy):
         self.object_path = object_path
         self.properties = {}
 
-        self._connection: Optional[ConnectionProperties] = None
-        self._wireless: Optional[WirelessProperties] = None
-        self._wireless_security: Optional[WirelessSecurityProperties] = None
-        self._ethernet: Optional[EthernetProperties] = None
-        self._vlan: Optional[VlanProperties] = None
-        self._ipv4: Optional[IpProperties] = None
-        self._ipv6: Optional[IpProperties] = None
+        self._connection: ConnectionProperties | None = None
+        self._wireless: WirelessProperties | None = None
+        self._wireless_security: WirelessSecurityProperties | None = None
+        self._ethernet: EthernetProperties | None = None
+        self._vlan: VlanProperties | None = None
+        self._ipv4: IpProperties | None = None
+        self._ipv6: IpProperties | None = None
 
     @property
-    def connection(self) -> Optional[ConnectionProperties]:
+    def connection(self) -> ConnectionProperties | None:
         """Return connection properties if any."""
         return self._connection
 
     @property
-    def wireless(self) -> Optional[WirelessProperties]:
+    def wireless(self) -> WirelessProperties | None:
         """Return wireless properties if any."""
         return self._wireless
 
     @property
-    def wireless_security(self) -> Optional[WirelessSecurityProperties]:
+    def wireless_security(self) -> WirelessSecurityProperties | None:
         """Return wireless security properties if any."""
         return self._wireless_security
 
     @property
-    def ethernet(self) -> Optional[EthernetProperties]:
+    def ethernet(self) -> EthernetProperties | None:
         """Return Ethernet properties if any."""
         return self._ethernet
 
     @property
-    def vlan(self) -> Optional[VlanProperties]:
+    def vlan(self) -> VlanProperties | None:
         """Return Vlan properties if any."""
         return self._vlan
 
     @property
-    def ipv4(self) -> Optional[IpProperties]:
+    def ipv4(self) -> IpProperties | None:
         """Return ipv4 properties if any."""
         return self._ipv4
 
     @property
-    def ipv6(self) -> Optional[IpProperties]:
+    def ipv6(self) -> IpProperties | None:
         """Return ipv6 properties if any."""
         return self._ipv6
 

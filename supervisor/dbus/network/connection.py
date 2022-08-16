@@ -1,6 +1,5 @@
 """Connection object for Network Manager."""
 from ipaddress import ip_address, ip_interface
-from typing import Optional
 
 from ...const import ATTR_ADDRESS, ATTR_PREFIX
 from ...utils.dbus import DBus
@@ -39,8 +38,8 @@ class NetworkConnection(DBusInterfaceProxy):
         self.object_path = object_path
         self.properties = {}
 
-        self._ipv4: Optional[IpConfiguration] = None
-        self._ipv6: Optional[IpConfiguration] = None
+        self._ipv4: IpConfiguration | None = None
+        self._ipv6: IpConfiguration | None = None
 
     @property
     def id(self) -> str:
@@ -68,12 +67,12 @@ class NetworkConnection(DBusInterfaceProxy):
         return self.properties[DBUS_ATTR_CONNECTION]
 
     @property
-    def ipv4(self) -> Optional[IpConfiguration]:
+    def ipv4(self) -> IpConfiguration | None:
         """Return a ip4 configuration object for the connection."""
         return self._ipv4
 
     @property
-    def ipv6(self) -> Optional[IpConfiguration]:
+    def ipv6(self) -> IpConfiguration | None:
         """Return a ip6 configuration object for the connection."""
         return self._ipv6
 
