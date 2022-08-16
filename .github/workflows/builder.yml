@@ -89,7 +89,7 @@ jobs:
           fetch-depth: 0
       
       - name: Write env-file
-        #if: needs.init.outputs.requirements == 'true'
+        if: needs.init.outputs.requirements == 'true'
         run: |
           (
             # Fix out of memory issues with rust
@@ -97,7 +97,7 @@ jobs:
           ) > .env_file
 
       - name: Build wheels
-        #if: needs.init.outputs.requirements == 'true'
+        if: needs.init.outputs.requirements == 'true'
         uses: home-assistant/wheels@2022.06.7
         with:
           abi: cp310
