@@ -360,7 +360,7 @@ class Core(CoreSysAttributes):
         if not data:
             try:
                 data = await retrieve_whoami(self.sys_websession, with_ssl=False)
-            except WhoamiSSLError as err:
+            except WhoamiError as err:
                 _LOGGER.error("Can't adjust Time/Date settings: %s", err)
                 return
 
