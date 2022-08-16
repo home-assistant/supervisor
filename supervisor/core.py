@@ -360,19 +360,18 @@ class Core(CoreSysAttributes):
         if not data:
             try:
                 data = await retrieve_whoami(self.sys_websession, with_ssl=False)
-            except WhoamiError as err:
+            except WhoamiSSLError as err:
                 _LOGGER.error("Can't adjust Time/Date settings: %s", err)
                 return
 
-        if not self.sys_config.timezone:
-            self.sys_config.timezone = data.timezone
+        self.sys_config.timezone = self.sys_config.timezone or data.timezone
 
         # Calculate if system time is out of sync
         delta = data.dt_utc - utcnow()
         if delta <= timedelta(days=3) or self.sys_host.info.dt_synchronized:
             return
 
-        _LOGGER.warning("System time/date shift over more as 3 days found!")
+        _LOGGER.warning("System time/date shift over more than 3 days found!")
         await self.sys_host.control.set_datetime(data.dt_utc)
         await self.sys_supervisor.check_connectivity()
 
