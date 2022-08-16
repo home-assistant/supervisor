@@ -1,6 +1,6 @@
 """Test add custom repository."""
 import json
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 
@@ -10,6 +10,7 @@ from supervisor.exceptions import (
     StoreError,
     StoreGitCloneError,
     StoreGitError,
+    StoreJobError,
     StoreNotFound,
 )
 from supervisor.resolution.const import SuggestionType
@@ -287,3 +288,22 @@ async def test_add_with_update_repositories(
 
     assert repository.source in coresys.store.repository_urls
     assert "http://example.com" in coresys.store.repository_urls
+
+
+@pytest.mark.parametrize("use_update", [True, False])
+async def test_add_repository_fails_if_out_of_date(
+    coresys: CoreSys, store_manager: StoreManager, use_update: bool
+):
+    """Test adding a repository fails when supervisor not updated."""
+    with patch.object(
+        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+    ), pytest.raises(StoreJobError):
+        if use_update:
+            await store_manager.update_repositories(
+                coresys.store.repository_urls + ["http://example.com"],
+                add_with_errors=True,
+            )
+        else:
+            await store_manager.add_repository(
+                "http://example.com", add_with_errors=True
+            )

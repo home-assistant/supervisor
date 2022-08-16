@@ -59,7 +59,7 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(self._update_observer, RUN_UPDATE_OBSERVER)
 
         # Reload
-        self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
+        self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_ADDONS)
         self.sys_scheduler.register_task(self.sys_updater.reload, RUN_RELOAD_UPDATER)
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
@@ -316,3 +316,8 @@ class Tasks(CoreSysAttributes):
                 await self.sys_host.network.check_connectivity()
         finally:
             self._cache["connectivity"] = 0
+
+    @Job(conditions=[JobCondition.SUPERVISOR_UPDATED])
+    async def _reload_store(self) -> None:
+        """Reload store and check for addon updates."""
+        await self.sys_store.reload()
