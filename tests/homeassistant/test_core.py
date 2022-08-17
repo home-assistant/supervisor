@@ -4,7 +4,7 @@ from unittest.mock import PropertyMock, patch
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HomeAssistantJobError
+from supervisor.exceptions import AudioUpdateError, HomeAssistantJobError
 
 
 async def test_update_fails_if_out_of_date(coresys: CoreSys):
@@ -18,5 +18,9 @@ async def test_update_fails_if_out_of_date(coresys: CoreSys):
 
     with patch.object(
         type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
-    ), pytest.raises(HomeAssistantJobError):
+    ), patch.object(
+        type(coresys.plugins.audio), "update", side_effect=AudioUpdateError
+    ), pytest.raises(
+        HomeAssistantJobError
+    ):
         await coresys.homeassistant.core.update()

@@ -92,7 +92,7 @@ class Job(CoreSysAttributes):
             # Handle condition
             if self.conditions:
                 try:
-                    self._check_conditions()
+                    await self._check_conditions()
                 except JobConditionException as err:
                     error_msg = str(err)
                     if self.on_condition is None:
@@ -150,7 +150,7 @@ class Job(CoreSysAttributes):
 
         return wrapper
 
-    def _check_conditions(self):
+    async def _check_conditions(self):
         """Check conditions."""
         used_conditions = set(self.conditions) - set(self.sys_jobs.ignore_conditions)
         ignored_conditions = set(self.conditions) & set(self.sys_jobs.ignore_conditions)
@@ -238,12 +238,21 @@ class Job(CoreSysAttributes):
                 f"'{self._method.__qualname__}' blocked from execution, supervisor needs to be updated first"
             )
 
-        if JobCondition.PLUGINS_UPDATED in self.conditions and 0 < len(
-            [plugin for plugin in self.sys_plugins.all_plugins if plugin.need_update]
+        if JobCondition.PLUGINS_UPDATED in self.conditions and (
+            out_of_date := [
+                plugin for plugin in self.sys_plugins.all_plugins if plugin.need_update
+            ]
         ):
-            raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, plugin(s) {', '.join([plugin.slug for plugin in self.sys_plugins.all_plugins if plugin.need_update])} need to be updated first"
+            errors = await asyncio.gather(
+                *[plugin.update() for plugin in out_of_date], return_exceptions=True
             )
+
+            if update_failures := [
+                out_of_date[i].slug for i in range(len(errors)) if errors[i] is not None
+            ]:
+                raise JobConditionException(
+                    f"'{self._method.__qualname__}' blocked from execution, was unable to update plugin(s) {', '.join(update_failures)} and all plugins must be up to date first"
+                )
 
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""

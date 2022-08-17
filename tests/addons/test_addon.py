@@ -11,7 +11,7 @@ from supervisor.const import AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsJobError
+from supervisor.exceptions import AddonsJobError, AudioUpdateError
 
 from ..const import TEST_ADDON_SLUG
 
@@ -287,6 +287,8 @@ async def test_install_update_fails_if_out_of_date(
 
     with patch.object(
         type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
+    ), patch.object(
+        type(coresys.plugins.audio), "update", side_effect=AudioUpdateError
     ):
         with pytest.raises(AddonsJobError):
             await coresys.addons.install(TEST_ADDON_SLUG)
