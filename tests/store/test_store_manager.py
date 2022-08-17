@@ -1,9 +1,12 @@
 """Test store manager."""
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
+
+import pytest
 
 from supervisor.bootstrap import migrate_system_env
 from supervisor.const import ATTR_ADDONS_CUSTOM_LIST
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import StoreJobError
 from supervisor.store import StoreManager
 from supervisor.store.repository import Repository
 
@@ -100,3 +103,11 @@ async def test_load_from_core_config(coresys: CoreSys):
 
     coresys.config.save_data.assert_called_once()
     coresys.store.save_data.assert_called_once()
+
+
+async def test_reload_fails_if_out_of_date(coresys: CoreSys):
+    """Test reload fails when supervisor not updated."""
+    with patch.object(
+        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+    ), pytest.raises(StoreJobError):
+        await coresys.store.reload()
