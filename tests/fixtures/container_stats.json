@@ -14,7 +14,10 @@
     "online_cpus": 24
   },
   "memory_stats": {
-    "usage": 250000000,
-    "limit": 330000000000
+    "usage": 60000000,
+    "stats": {
+      "cache": 300000
+    },
+    "limit": 4000000000
   }
 }

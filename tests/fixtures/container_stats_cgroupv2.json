@@ -1,0 +1,99 @@
+{
+  "read": "2022-08-17T14:39:53.107857116Z",
+  "preread": "2022-08-17T14:39:52.100845337Z",
+  "pids_stats": { "current": 29, "limit": 4234 },
+  "blkio_stats": {
+    "io_service_bytes_recursive": [
+      { "major": 179, "minor": 0, "op": "read", "value": 0 },
+      { "major": 179, "minor": 0, "op": "write", "value": 413696 }
+    ],
+    "io_serviced_recursive": null,
+    "io_queue_recursive": null,
+    "io_service_time_recursive": null,
+    "io_wait_time_recursive": null,
+    "io_merged_recursive": null,
+    "io_time_recursive": null,
+    "sectors_recursive": null
+  },
+  "num_procs": 0,
+  "storage_stats": {},
+  "cpu_stats": {
+    "cpu_usage": {
+      "total_usage": 190,
+      "usage_in_kernelmode": 725181000,
+      "usage_in_usermode": 4916544000
+    },
+    "system_cpu_usage": 200,
+    "online_cpus": 6,
+    "throttling_data": {
+      "periods": 0,
+      "throttled_periods": 0,
+      "throttled_time": 0
+    }
+  },
+  "precpu_stats": {
+    "cpu_usage": {
+      "total_usage": 100,
+      "usage_in_kernelmode": 725181000,
+      "usage_in_usermode": 4916544000
+    },
+    "system_cpu_usage": 100,
+    "online_cpus": 6,
+    "throttling_data": {
+      "periods": 0,
+      "throttled_periods": 0,
+      "throttled_time": 0
+    }
+  },
+  "memory_stats": {
+    "usage": 60000000,
+    "stats": {
+      "active_anon": 32768,
+      "active_file": 290816,
+      "anon": 53714944,
+      "anon_thp": 4194304,
+      "file": 565248,
+      "file_dirty": 0,
+      "file_mapped": 0,
+      "file_writeback": 0,
+      "inactive_anon": 53682176,
+      "inactive_file": 300000,
+      "kernel_stack": 475136,
+      "pgactivate": 49,
+      "pgdeactivate": 0,
+      "pgfault": 90791,
+      "pglazyfree": 0,
+      "pglazyfreed": 0,
+      "pgmajfault": 0,
+      "pgrefill": 0,
+      "pgscan": 0,
+      "pgsteal": 0,
+      "shmem": 0,
+      "slab": 2539120,
+      "slab_reclaimable": 2106952,
+      "slab_unreclaimable": 432168,
+      "sock": 0,
+      "thp_collapse_alloc": 0,
+      "thp_fault_alloc": 4,
+      "unevictable": 0,
+      "workingset_activate": 0,
+      "workingset_nodereclaim": 0,
+      "workingset_refault": 0
+    },
+    "limit": 4000000000
+  },
+  "name": "/addon_local_test",
+  "id": "38cf89dc726cd0b74d205a044eb8de16db12d715b425cce5db3aef086e737836",
+  "networks": {
+    "eth0": {
+      "rx_bytes": 1243260,
+      "rx_packets": 6214,
+      "rx_errors": 0,
+      "rx_dropped": 0,
+      "tx_bytes": 5274,
+      "tx_packets": 50,
+      "tx_errors": 0,
+      "tx_dropped": 0
+    }
+  }
+}
