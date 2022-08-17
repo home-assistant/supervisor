@@ -9,7 +9,12 @@ import time_machine
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HassioError, JobException, PluginJobError
+from supervisor.exceptions import (
+    AudioUpdateError,
+    HassioError,
+    JobException,
+    PluginJobError,
+)
 from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.resolution.const import UnhealthyReason
@@ -448,8 +453,11 @@ async def test_plugins_updated(coresys: CoreSys):
 
     with patch.object(
         type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
+    ), patch.object(
+        type(coresys.plugins.audio), "update", side_effect=[AudioUpdateError, None]
     ):
         assert not await test.execute()
+        assert await test.execute()
 
 
 async def test_auto_update(coresys: CoreSys):
