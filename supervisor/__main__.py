@@ -28,7 +28,8 @@ if __name__ == "__main__":
     bootstrap.initialize_logging()
 
     # Init async event loop
-    loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     # Check if all information are available to setup Supervisor
     bootstrap.check_environment()
