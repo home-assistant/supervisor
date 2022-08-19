@@ -8,8 +8,8 @@ import attr
 class IpConfiguration:
     """NetworkSettingsIPConfig object for Network Manager."""
 
-    gateway: IPv6Address | IPv6Address | None = attr.ib()
-    nameservers: list[IPv6Address | IPv6Address] = attr.ib()
+    gateway: IPv4Address | IPv6Address | None = attr.ib()
+    nameservers: list[IPv4Address | IPv6Address] = attr.ib()
     address: list[IPv4Interface | IPv6Interface] = attr.ib()
 
 
