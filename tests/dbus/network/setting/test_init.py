@@ -87,6 +87,7 @@ async def mock_call_dbus_get_settings_signature(
         assert settings["connection"]["uuid"] == Variant(
             "s", "0c23631e-2118-355c-bbb0-8943229cb0d6"
         )
+        assert settings["connection"]["autoconnect"] == Variant("b", True)
 
         assert "ipv4" in settings
         assert settings["ipv4"]["gateway"] == Variant("s", "192.168.2.1")
