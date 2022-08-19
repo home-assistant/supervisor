@@ -51,6 +51,7 @@ def get_connection_from_interface(
         "uuid": Variant("s", uuid),
         "llmnr": Variant("i", 2),
         "mdns": Variant("i", 2),
+        "autoconnect": Variant("b", True),
     }
 
     if interface.type != InterfaceType.VLAN:
