@@ -66,7 +66,6 @@ class IssueType(str, Enum):
 
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
-    DHCP_FAILURE = "dhcp_failure"
     DNS_LOOP = "dns_loop"
     DNS_SERVER_FAILED = "dns_server_failed"
     DNS_SERVER_IPV6_ERROR = "dns_server_ipv6_error"
@@ -74,6 +73,7 @@ class IssueType(str, Enum):
     FATAL_ERROR = "fatal_error"
     FREE_SPACE = "free_space"
     MISSING_IMAGE = "missing_image"
+    NETWORK_CONNECTION_PROBLEM = "network_connection_problem"
     PWNED = "pwned"
     SECURITY = "security"
     TRUST = "trust"

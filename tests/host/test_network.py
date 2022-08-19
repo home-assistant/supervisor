@@ -3,7 +3,7 @@ from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import Mock, PropertyMock, patch
 
 from supervisor.coresys import CoreSys
-from supervisor.dbus.const import InterfaceMethod
+from supervisor.dbus.const import ConnectionStateFlags, InterfaceMethod
 from supervisor.host.const import InterfaceType
 from supervisor.host.network import Interface, IpConfig
 
@@ -67,10 +67,11 @@ async def test_load_with_disabled_methods(coresys: CoreSys):
         activate_connection.assert_not_called()
 
 
-async def test_load_with_dhcp_error(coresys: CoreSys):
-    """Test load does not update interfaces with DHCP issues."""
+async def test_load_with_network_connection_issues(coresys: CoreSys):
+    """Test load does not update interfaces with network connection issues."""
     with patch(
-        "supervisor.resolution.checks.dhcp.CheckDHCP.check_interface", return_value=True
+        "supervisor.dbus.network.connection.NetworkConnection.state_flags",
+        new=PropertyMock(return_value={ConnectionStateFlags.IP6_READY}),
     ), patch(
         "supervisor.dbus.network.connection.NetworkConnection.ipv4",
         new=PropertyMock(return_value=None),

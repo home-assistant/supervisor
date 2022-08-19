@@ -31,7 +31,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
-from ..resolution.checks.dhcp import CheckDHCP
+from ..resolution.checks.network_interface import CheckNetworkInterface
 from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -112,7 +112,7 @@ class NetworkManager(CoreSysAttributes):
         interfaces = [
             Interface.from_dbus_interface(interface)
             for interface in self.sys_dbus.network.interfaces.values()
-            if not CheckDHCP.check_interface(interface)
+            if not CheckNetworkInterface.check_interface(interface)
         ]
         with suppress(HostNetworkNotFound):
             await asyncio.gather(
