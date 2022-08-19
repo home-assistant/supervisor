@@ -15,10 +15,10 @@ from supervisor.resolution.validate import get_valid_modules
 def fixture_mock_dns_query():
     """Mock aiodns query."""
     with patch(
-        "supervisor.resolution.checks.dns_server_failure.DNSResolver.query",
+        "supervisor.resolution.checks.dns_server.DNSResolver.query",
         new_callable=AsyncMock,
     ), patch(
-        "supervisor.resolution.checks.dns_server_ipv6_error.DNSResolver.query",
+        "supervisor.resolution.checks.dns_server_ipv6.DNSResolver.query",
         new_callable=AsyncMock,
     ):
         yield
