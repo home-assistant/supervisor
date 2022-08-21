@@ -386,7 +386,7 @@ def install_addon_ssh(coresys: CoreSys, repository):
 async def mock_full_backup(coresys: CoreSys, tmp_path):
     """Mock a full backup."""
     mock_backup = Backup(coresys, Path(tmp_path, "test_backup"))
-    mock_backup.new("test", "Test", "2022-08-19T00:00:00.000000+00:00", BackupType.FULL)
+    mock_backup.new("test", "Test", utcnow().isoformat(), BackupType.FULL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
     mock_backup._data[ATTR_ADDONS] = [

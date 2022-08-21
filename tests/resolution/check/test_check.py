@@ -57,7 +57,7 @@ async def test_if_check_make_issue(coresys: CoreSys):
     assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
 
 
-async def test_if_check_cleanup_issue(coresys: CoreSys):
+async def test_if_check_cleanup_issue(coresys: CoreSys, mock_full_backup):
     """Test check for setup."""
     coresys.core.state = CoreState.RUNNING
     coresys.security.content_trust = False
