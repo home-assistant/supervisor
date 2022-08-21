@@ -30,3 +30,8 @@ class FixupSystemCreateFullBackup(FixupBase):
     def context(self) -> ContextType:
         """Return a ContextType enum."""
         return ContextType.SYSTEM
+
+    @property
+    def auto(self) -> bool:
+        """Return if a fixup can be apply as auto fix."""
+        return self.sys_backups.auto_backup

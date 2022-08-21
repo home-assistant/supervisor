@@ -74,6 +74,7 @@ class IssueType(str, Enum):
     FREE_SPACE = "free_space"
     IPV4_CONNECTION_PROBLEM = "ipv4_connection_problem"
     MISSING_IMAGE = "missing_image"
+    NO_CURRENT_BACKUP = "no_current_backup"
     PWNED = "pwned"
     SECURITY = "security"
     TRUST = "trust"
@@ -94,3 +95,4 @@ class SuggestionType(str, Enum):
     EXECUTE_STOP = "execute_stop"
     EXECUTE_INTEGRITY = "execute_integrity"
     REGISTRY_LOGIN = "registry_login"
+    REDUCE_MAX_FULL_BACKUPS = "reduce_max_full_backups"

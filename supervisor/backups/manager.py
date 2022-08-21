@@ -6,24 +6,33 @@ import logging
 from pathlib import Path
 
 from ..addons.addon import Addon
-from ..const import FOLDER_HOMEASSISTANT, CoreState
+from ..const import (
+    ATTR_AUTO_BACKUP,
+    ATTR_DAYS_UNTIL_STALE,
+    ATTR_MAX_FULL_BACKUPS,
+    FILE_HASSIO_BACKUPS,
+    FOLDER_HOMEASSISTANT,
+    CoreState,
+)
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
 from ..jobs.decorator import Job, JobCondition
+from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
 from .backup import Backup
 from .const import BackupType
 from .utils import create_slug
-from .validate import ALL_FOLDERS
+from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class BackupManager(CoreSysAttributes):
+class BackupManager(FileConfiguration, CoreSysAttributes):
     """Manage backups."""
 
     def __init__(self, coresys):
         """Initialize a backup manager."""
+        super().__init__(FILE_HASSIO_BACKUPS, SCHEMA_BACKUPS_CONFIG)
         self.coresys = coresys
         self._backups = {}
         self.lock = asyncio.Lock()
@@ -32,6 +41,47 @@ class BackupManager(CoreSysAttributes):
     def list_backups(self) -> set[Backup]:
         """Return a list of all backup objects."""
         return set(self._backups.values())
+
+    @property
+    def days_until_stale(self) -> int:
+        """Get days until backup is considered stale."""
+        return self._data[ATTR_DAYS_UNTIL_STALE]
+
+    @days_until_stale.setter
+    def days_until_stale(self, value: int) -> None:
+        """Set days until backup is considered stale."""
+        self._data[ATTR_DAYS_UNTIL_STALE] = value
+
+    @property
+    def auto_backup(self) -> bool:
+        """Return if automatic backups are enabled."""
+        return self._data[ATTR_AUTO_BACKUP]
+
+    @auto_backup.setter
+    def auto_backup(self, value: bool) -> None:
+        """Enable or disable automatic backups."""
+        self._data[ATTR_AUTO_BACKUP] = value
+
+    @property
+    def max_full_backups(self) -> int:
+        """Return maximum number of full backups to keep."""
+        return self._data[ATTR_MAX_FULL_BACKUPS]
+
+    @max_full_backups.setter
+    def max_full_backups(self, value: int) -> None:
+        """Set maximum number of full backups to keep."""
+        self._data[ATTR_MAX_FULL_BACKUPS] = value
+
+    @property
+    def too_many_full_backups(self):
+        """Return if there are too many full backups."""
+        return self.max_full_backups < len(
+            [
+                backup
+                for backup in self.list_backups
+                if backup.sys_type == BackupType.FULL
+            ]
+        )
 
     def get(self, slug):
         """Return backup object."""

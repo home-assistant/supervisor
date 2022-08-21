@@ -1,22 +1,18 @@
-"""Test evaluation base."""
+"""Test clear full backup fixup."""
 # pylint: disable=import-error,protected-access
-from pathlib import Path
-
-from securetar import SecureTarFile
+import pytest
 
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
-from supervisor.const import ATTR_DATE, ATTR_SLUG, ATTR_TYPE
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, SuggestionType
 from supervisor.resolution.data import Suggestion
 from supervisor.resolution.fixups.system_clear_full_backup import (
     FixupSystemClearFullBackup,
 )
-from supervisor.utils.dt import utcnow
 
 
-async def test_fixup(coresys: CoreSys, tmp_path):
+async def test_fixup(coresys: CoreSys, backups: list[Backup]):
     """Test fixup."""
     clear_full_backup = FixupSystemClearFullBackup(coresys)
 
@@ -25,20 +21,6 @@ async def test_fixup(coresys: CoreSys, tmp_path):
     coresys.resolution.suggestions = Suggestion(
         SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
     )
-
-    for slug in ["sn1", "sn2", "sn3", "sn4", "sn5"]:
-        temp_tar = Path(tmp_path, f"{slug}.tar")
-        with SecureTarFile(temp_tar, "w"):
-            pass
-        backup = Backup(coresys, temp_tar)
-        backup._data = {  # pylint: disable=protected-access
-            ATTR_SLUG: slug,
-            ATTR_DATE: utcnow().isoformat(),
-            ATTR_TYPE: BackupType.PARTIAL
-            if "1" in slug or "5" in slug
-            else BackupType.FULL,
-        }
-        coresys.backups._backups[backup.slug] = backup
 
     newest_full_backup = coresys.backups._backups["sn4"]
 
@@ -52,7 +34,38 @@ async def test_fixup(coresys: CoreSys, tmp_path):
     assert newest_full_backup in coresys.backups.list_backups
     assert (
         len([x for x in coresys.backups.list_backups if x.sys_type == BackupType.FULL])
-        == 1
+        == 2
     )
 
     assert len(coresys.resolution.suggestions) == 0
+
+
+@pytest.mark.parametrize("backups", [10], indirect=True)
+async def test_increased_max_full_backups(coresys: CoreSys, backups: list[Backup]):
+    """Test fixup with increased max full backups."""
+    clear_full_backup = FixupSystemClearFullBackup(coresys)
+
+    coresys.backups.max_full_backups = 5
+    coresys.resolution.suggestions = Suggestion(
+        SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
+    )
+
+    assert (
+        len([x for x in coresys.backups.list_backups if x.sys_type == BackupType.FULL])
+        == 8
+    )
+
+    await clear_full_backup()
+    assert (
+        len([x for x in coresys.backups.list_backups if x.sys_type == BackupType.FULL])
+        == 5
+    )
+    assert len(coresys.resolution.suggestions) == 0
+
+
+async def test_fixup_auto_backup(coresys: CoreSys):
+    """Test fixup is auto when auto backup enabled."""
+    coresys.backups.auto_backup = True
+
+    clear_full_backup = FixupSystemClearFullBackup(coresys)
+    assert clear_full_backup.auto is True
