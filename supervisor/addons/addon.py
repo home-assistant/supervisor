@@ -112,6 +112,9 @@ class Addon(AddonModel):
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
         self._state: AddonState = AddonState.UNKNOWN
+        self._manual_stop: bool = (
+            self.sys_hardware.helper.last_boot == self.sys_config.last_boot
+        )
 
         @Job(
             name=f"addon_{slug}_restart_after_problem",
@@ -682,6 +685,7 @@ class Addon(AddonModel):
 
     async def stop(self) -> None:
         """Stop add-on."""
+        self._manual_stop = True
         try:
             await self.instance.stop()
         except DockerError as err:
@@ -950,6 +954,7 @@ class Addon(AddonModel):
             ContainerState.HEALTHY,
             ContainerState.UNHEALTHY,
         ]:
+            self._manual_stop = False
             self.state = AddonState.STARTED
         elif event.state == ContainerState.STOPPED:
             self.state = AddonState.STOPPED
@@ -958,8 +963,15 @@ class Addon(AddonModel):
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in addon container and restart if necessary."""
-        if not (event.name == self.instance.name and self.watchdog):
+        if (
+            not (event.name == self.instance.name and self.watchdog)
+            or self._manual_stop
+        ):
             return
 
-        if event.state in [ContainerState.FAILED, ContainerState.UNHEALTHY]:
+        if event.state in [
+            ContainerState.FAILED,
+            ContainerState.STOPPED,
+            ContainerState.UNHEALTHY,
+        ]:
             await self._restart_after_problem(self, event.state)
