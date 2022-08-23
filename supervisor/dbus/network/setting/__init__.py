@@ -34,15 +34,32 @@ ATTR_AUTH_ALG = "auth-alg"
 ATTR_KEY_MGMT = "key-mgmt"
 ATTR_INTERFACE_NAME = "interface-name"
 
+IPV4_6_IGNORE_FIELDS = [
+    "addresses",
+    "address-data",
+    "dns",
+    "gateway",
+    "method",
+]
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def _merge_settings_attribute(
-    base_settings: Any, new_settings: Any, attribute: str
+    base_settings: Any,
+    new_settings: Any,
+    attribute: str,
+    *,
+    ignore_current_value: list[str] = None,
 ) -> None:
     """Merge settings attribute if present."""
     if attribute in new_settings:
         if attribute in base_settings:
+            if ignore_current_value:
+                for field in ignore_current_value:
+                    if field in base_settings[attribute]:
+                        del base_settings[attribute][field]
+
             base_settings[attribute].update(new_settings[attribute])
         else:
             base_settings[attribute] = new_settings[attribute]
@@ -121,13 +138,18 @@ class NetworkSetting(DBusInterfaceProxy):
             new_settings, settings, CONF_ATTR_802_WIRELESS_SECURITY
         )
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_VLAN)
-        _merge_settings_attribute(new_settings, settings, CONF_ATTR_IPV4)
-        if "addresses" in new_settings[CONF_ATTR_IPV4]:
-            del new_settings[CONF_ATTR_IPV4]["addresses"]
-
-        _merge_settings_attribute(new_settings, settings, CONF_ATTR_IPV6)
-        if "addresses" in new_settings[CONF_ATTR_IPV6]:
-            del new_settings[CONF_ATTR_IPV6]["addresses"]
+        _merge_settings_attribute(
+            new_settings,
+            settings,
+            CONF_ATTR_IPV4,
+            ignore_current_value=IPV4_6_IGNORE_FIELDS,
+        )
+        _merge_settings_attribute(
+            new_settings,
+            settings,
+            CONF_ATTR_IPV6,
+            ignore_current_value=IPV4_6_IGNORE_FIELDS,
+        )
 
         return await self.dbus.Settings.Connection.Update(("a{sa{sv}}", new_settings))
 

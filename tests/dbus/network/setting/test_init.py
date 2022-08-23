@@ -90,14 +90,10 @@ async def mock_call_dbus_get_settings_signature(
         assert settings["connection"]["autoconnect"] == Variant("b", True)
 
         assert "ipv4" in settings
-        assert settings["ipv4"]["gateway"] == Variant("s", "192.168.2.1")
         assert settings["ipv4"]["method"] == Variant("s", "auto")
-        assert settings["ipv4"]["dns"] == Variant("au", [16951488])
-        assert len(settings["ipv4"]["address-data"].value) == 1
-        assert settings["ipv4"]["address-data"].value[0]["address"] == Variant(
-            "s", "192.168.2.148"
-        )
-        assert settings["ipv4"]["address-data"].value[0]["prefix"] == Variant("u", 24)
+        assert "gateway" not in settings["ipv4"]
+        assert "dns" not in settings["ipv4"]
+        assert "address-data" not in settings["ipv4"]
         assert "addresses" not in settings["ipv4"]
         assert len(settings["ipv4"]["route-data"].value) == 1
         assert settings["ipv4"]["route-data"].value[0]["dest"] == Variant(
@@ -113,8 +109,11 @@ async def mock_call_dbus_get_settings_signature(
 
         assert "ipv6" in settings
         assert settings["ipv6"]["method"] == Variant("s", "auto")
-        assert settings["ipv6"]["addr-gen-mode"] == Variant("i", 0)
+        assert "gateway" not in settings["ipv6"]
+        assert "dns" not in settings["ipv6"]
+        assert "address-data" not in settings["ipv6"]
         assert "addresses" not in settings["ipv6"]
+        assert settings["ipv6"]["addr-gen-mode"] == Variant("i", 0)
 
         assert "proxy" in settings
 
