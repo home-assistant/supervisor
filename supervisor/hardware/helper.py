@@ -41,7 +41,7 @@ class HwHelper(CoreSysAttributes):
         return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.USB))
 
     @property
-    def last_boot(self) -> str | None:
+    def last_boot(self) -> datetime | None:
         """Return last boot time."""
         try:
             stats: str = _PROC_STAT.read_text(encoding="utf-8")
