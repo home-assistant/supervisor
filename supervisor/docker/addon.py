@@ -489,6 +489,7 @@ class DockerAddon(DockerInterface):
                 environment=self.environment,
                 volumes=self.volumes,
                 tmpfs=self.tmpfs,
+                oom_score_adj=200,
             )
         except DockerNotFound:
             self.sys_resolution.create_issue(

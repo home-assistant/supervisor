@@ -149,6 +149,7 @@ class DockerHomeAssistant(DockerInterface):
                 ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
             },
             tmpfs={"/tmp": ""},
+            oom_score_adj=-300,
         )
 
         self._meta = docker_container.attrs
