@@ -3,7 +3,6 @@ from ...backups.const import BackupType
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
-from ..data import Suggestion
 from .base import CheckBase
 
 
@@ -22,10 +21,6 @@ class CheckBackups(CheckBase):
                 IssueType.NO_CURRENT_BACKUP,
                 ContextType.SYSTEM,
                 suggestions=[SuggestionType.CREATE_FULL_BACKUP],
-            )
-        elif self.sys_backups.auto_backup and self.sys_backups.too_many_full_backups:
-            self.sys_resolution.suggestions = Suggestion(
-                SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
             )
 
     async def approve_check(self, reference: str | None = None) -> bool:

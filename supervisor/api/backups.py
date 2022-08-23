@@ -9,15 +9,9 @@ from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
-from ..backups.validate import (
-    ALL_FOLDERS,
-    FOLDER_HOMEASSISTANT,
-    days_until_stale,
-    max_full_backups,
-)
+from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT, days_until_stale
 from ..const import (
     ATTR_ADDONS,
-    ATTR_AUTO_BACKUP,
     ATTR_BACKUPS,
     ATTR_COMPRESSED,
     ATTR_CONTENT,
@@ -25,7 +19,6 @@ from ..const import (
     ATTR_DAYS_UNTIL_STALE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
-    ATTR_MAX_FULL_BACKUPS,
     ATTR_NAME,
     ATTR_PASSWORD,
     ATTR_PROTECTED,
@@ -79,9 +72,7 @@ SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
 
 SCHEMA_OPTIONS = vol.Schema(
     {
-        vol.Optional(ATTR_AUTO_BACKUP): vol.Boolean(),
         vol.Optional(ATTR_DAYS_UNTIL_STALE): days_until_stale,
-        vol.Optional(ATTR_MAX_FULL_BACKUPS): max_full_backups,
     }
 )
 
@@ -107,7 +98,6 @@ class APIBackups(CoreSysAttributes):
                 ATTR_SIZE: backup.size,
                 ATTR_PROTECTED: backup.protected,
                 ATTR_COMPRESSED: backup.compressed,
-                ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
                 ATTR_CONTENT: {
                     ATTR_HOMEASSISTANT: backup.homeassistant_version is not None,
                     ATTR_ADDONS: backup.addon_list,
@@ -133,9 +123,7 @@ class APIBackups(CoreSysAttributes):
         """Return backup list and manager info."""
         return {
             ATTR_BACKUPS: self._list_backups(),
-            ATTR_AUTO_BACKUP: self.sys_backups.auto_backup,
             ATTR_DAYS_UNTIL_STALE: self.sys_backups.days_until_stale,
-            ATTR_MAX_FULL_BACKUPS: self.sys_backups.max_full_backups,
         }
 
     @api_process
@@ -143,14 +131,8 @@ class APIBackups(CoreSysAttributes):
         """Set backup manager options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_AUTO_BACKUP in body:
-            self.sys_backups.auto_backup = body[ATTR_AUTO_BACKUP]
-
         if ATTR_DAYS_UNTIL_STALE in body:
             self.sys_backups.days_until_stale = body[ATTR_DAYS_UNTIL_STALE]
-
-        if ATTR_MAX_FULL_BACKUPS in body:
-            self.sys_backups.max_full_backups = body[ATTR_MAX_FULL_BACKUPS]
 
         self.sys_backups.save_data()
 

@@ -27,11 +27,3 @@ async def test_fixup(coresys: CoreSys):
 
     mock_backups.assert_called()
     assert len(coresys.resolution.suggestions) == 0
-
-
-async def test_fixup_auto_backup(coresys: CoreSys):
-    """Test fixup is auto when auto backup enabled."""
-    coresys.backups.auto_backup = True
-
-    create_full_backup = FixupSystemCreateFullBackup(coresys)
-    assert create_full_backup.auto is True

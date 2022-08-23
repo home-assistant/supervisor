@@ -7,9 +7,7 @@ from pathlib import Path
 
 from ..addons.addon import Addon
 from ..const import (
-    ATTR_AUTO_BACKUP,
     ATTR_DAYS_UNTIL_STALE,
-    ATTR_MAX_FULL_BACKUPS,
     FILE_HASSIO_BACKUPS,
     FOLDER_HOMEASSISTANT,
     CoreState,
@@ -51,37 +49,6 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
     def days_until_stale(self, value: int) -> None:
         """Set days until backup is considered stale."""
         self._data[ATTR_DAYS_UNTIL_STALE] = value
-
-    @property
-    def auto_backup(self) -> bool:
-        """Return if automatic backups are enabled."""
-        return self._data[ATTR_AUTO_BACKUP]
-
-    @auto_backup.setter
-    def auto_backup(self, value: bool) -> None:
-        """Enable or disable automatic backups."""
-        self._data[ATTR_AUTO_BACKUP] = value
-
-    @property
-    def max_full_backups(self) -> int:
-        """Return maximum number of full backups to keep."""
-        return self._data[ATTR_MAX_FULL_BACKUPS]
-
-    @max_full_backups.setter
-    def max_full_backups(self, value: int) -> None:
-        """Set maximum number of full backups to keep."""
-        self._data[ATTR_MAX_FULL_BACKUPS] = value
-
-    @property
-    def too_many_full_backups(self):
-        """Return if there are too many full backups."""
-        return self.max_full_backups < len(
-            [
-                backup
-                for backup in self.list_backups
-                if backup.sys_type == BackupType.FULL
-            ]
-        )
 
     def get(self, slug):
         """Return backup object."""

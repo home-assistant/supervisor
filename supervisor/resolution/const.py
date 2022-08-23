@@ -95,4 +95,3 @@ class SuggestionType(str, Enum):
     EXECUTE_STOP = "execute_stop"
     EXECUTE_INTEGRITY = "execute_integrity"
     REGISTRY_LOGIN = "registry_login"
-    REDUCE_MAX_FULL_BACKUPS = "reduce_max_full_backups"

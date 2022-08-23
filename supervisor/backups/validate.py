@@ -9,7 +9,6 @@ import voluptuous as vol
 from ..backups.const import BackupType
 from ..const import (
     ATTR_ADDONS,
-    ATTR_AUTO_BACKUP,
     ATTR_COMPRESSED,
     ATTR_CRYPTO,
     ATTR_DATE,
@@ -17,7 +16,6 @@ from ..const import (
     ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
-    ATTR_MAX_FULL_BACKUPS,
     ATTR_NAME,
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
@@ -33,7 +31,6 @@ from ..const import (
     FOLDER_SHARE,
     FOLDER_SSL,
 )
-from ..resolution.const import MINIMUM_FULL_BACKUPS
 from ..store.validate import repositories
 from ..validate import SCHEMA_DOCKER_CONFIG, version_tag
 
@@ -83,7 +80,6 @@ def v1_protected(protected: bool | str) -> bool:
 
 # pylint: disable=no-value-for-parameter
 days_until_stale = vol.All(vol.Coerce(int), vol.Range(min=1))
-max_full_backups = vol.All(vol.Coerce(int), vol.Range(min=1))
 
 SCHEMA_BACKUP = vol.Schema(
     {
@@ -137,10 +133,6 @@ SCHEMA_BACKUP = vol.Schema(
 
 SCHEMA_BACKUPS_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_AUTO_BACKUP, default=False): vol.Boolean(),
         vol.Optional(ATTR_DAYS_UNTIL_STALE, default=30): days_until_stale,
-        vol.Optional(
-            ATTR_MAX_FULL_BACKUPS, default=MINIMUM_FULL_BACKUPS
-        ): max_full_backups,
     }
 )

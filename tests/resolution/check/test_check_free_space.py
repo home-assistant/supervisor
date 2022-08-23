@@ -1,9 +1,10 @@
 """Test check free space fixup."""
 # pylint: disable=import-error,protected-access
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
+from supervisor.backups.const import BackupType
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.free_space import CheckFreeSpace
@@ -16,15 +17,14 @@ async def fixture_suggestion(
 ) -> SuggestionType | None:
     """Set up test for suggestion."""
     if request.param == SuggestionType.CLEAR_FULL_BACKUP:
+        backup = MagicMock()
+        backup.sys_type = BackupType.FULL
         with patch.object(
             type(coresys.backups),
-            "too_many_full_backups",
-            new=PropertyMock(return_value=True),
+            "list_backups",
+            new=PropertyMock(return_value=[backup, backup, backup]),
         ):
             yield SuggestionType.CLEAR_FULL_BACKUP
-    elif request.param == SuggestionType.REDUCE_MAX_FULL_BACKUPS:
-        coresys.backups.max_full_backups = 10
-        yield request.param
     else:
         yield request.param
 
@@ -38,7 +38,7 @@ async def test_base(coresys: CoreSys):
 
 @pytest.mark.parametrize(
     "suggestion",
-    [None, SuggestionType.CLEAR_FULL_BACKUP, SuggestionType.REDUCE_MAX_FULL_BACKUPS],
+    [None, SuggestionType.CLEAR_FULL_BACKUP],
     indirect=True,
 )
 async def test_check(coresys: CoreSys, suggestion: SuggestionType | None):
