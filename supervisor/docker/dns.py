@@ -50,6 +50,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
                 str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "rw"},
                 DBUS_PATH: DBUS_VOLUME,
             },
+            oom_score_adj=-300,
         )
 
         self._meta = docker_container.attrs
