@@ -1,4 +1,4 @@
-"""Helpers to check DNS servers for failure."""
+"""Helpers to check DNS servers for IPv6 errors."""
 import asyncio
 from datetime import timedelta
 
@@ -9,17 +9,17 @@ from ...const import CoreState
 from ...coresys import CoreSys
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
-from ..const import DNS_CHECK_HOST, ContextType, IssueType
+from ..const import DNS_CHECK_HOST, DNS_ERROR_NO_DATA, ContextType, IssueType
 from .base import CheckBase
 
 
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
-    return CheckDNSServerFailures(coresys)
+    return CheckDNSServerIPv6(coresys)
 
 
-class CheckDNSServerFailures(CheckBase):
-    """CheckDNSServerFailures class for check."""
+class CheckDNSServerIPv6(CheckBase):
+    """CheckDNSServerIPv6 class for check."""
 
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
@@ -33,9 +33,14 @@ class CheckDNSServerFailures(CheckBase):
             *[self._check_server(server) for server in dns_servers],
             return_exceptions=True,
         )
-        for i in (r for r in range(len(results)) if isinstance(results[r], DNSError)):
+        for i in (
+            r
+            for r in range(len(results))
+            if isinstance(results[r], DNSError)
+            and results[r].args[0] != DNS_ERROR_NO_DATA
+        ):
             self.sys_resolution.create_issue(
-                IssueType.DNS_SERVER_FAILED,
+                IssueType.DNS_SERVER_IPV6_ERROR,
                 ContextType.DNS_SERVER,
                 reference=dns_servers[i],
             )
@@ -49,8 +54,9 @@ class CheckDNSServerFailures(CheckBase):
 
         try:
             await self._check_server(reference)
-        except DNSError:
-            return True
+        except DNSError as dns_error:
+            if dns_error.args[0] != DNS_ERROR_NO_DATA:
+                return True
 
         return False
 
@@ -58,7 +64,7 @@ class CheckDNSServerFailures(CheckBase):
         """Check a DNS server and report issues."""
         ip_addr = server[6:] if server.startswith("dns://") else server
         resolver = DNSResolver(nameservers=[ip_addr])
-        await resolver.query(DNS_CHECK_HOST, "A")
+        await resolver.query(DNS_CHECK_HOST, "AAAA")
 
     @property
     def dns_servers(self) -> list[str]:
@@ -68,7 +74,7 @@ class CheckDNSServerFailures(CheckBase):
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.DNS_SERVER_FAILED
+        return IssueType.DNS_SERVER_IPV6_ERROR
 
     @property
     def context(self) -> ContextType:
