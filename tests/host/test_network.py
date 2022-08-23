@@ -1,8 +1,9 @@
 """Test network manager."""
-from unittest.mock import Mock, patch
+from ipaddress import IPv4Address, IPv6Address
+from unittest.mock import Mock, PropertyMock, patch
 
 from supervisor.coresys import CoreSys
-from supervisor.dbus.const import InterfaceMethod
+from supervisor.dbus.const import ConnectionStateFlags, InterfaceMethod
 from supervisor.host.const import InterfaceType
 from supervisor.host.network import Interface, IpConfig
 
@@ -24,6 +25,14 @@ async def test_load(coresys: CoreSys):
         assert len(coresys.host.network.interfaces) == 2
         assert coresys.host.network.interfaces[0].name == "eth0"
         assert coresys.host.network.interfaces[0].enabled is True
+        assert coresys.host.network.interfaces[0].ipv4.method == InterfaceMethod.AUTO
+        assert coresys.host.network.interfaces[0].ipv4.gateway == IPv4Address(
+            "192.168.2.1"
+        )
+        assert coresys.host.network.interfaces[0].ipv6.method == InterfaceMethod.AUTO
+        assert coresys.host.network.interfaces[0].ipv6.gateway == IPv6Address(
+            "fe80::da58:d7ff:fe00:9c69"
+        )
         assert coresys.host.network.interfaces[1].name == "wlan0"
         assert coresys.host.network.interfaces[1].enabled is False
 
@@ -56,3 +65,31 @@ async def test_load_with_disabled_methods(coresys: CoreSys):
         await coresys.host.network.load()
 
         activate_connection.assert_not_called()
+
+
+async def test_load_with_network_connection_issues(coresys: CoreSys):
+    """Test load does not update interfaces with network connection issues."""
+    with patch(
+        "supervisor.dbus.network.connection.NetworkConnection.state_flags",
+        new=PropertyMock(return_value={ConnectionStateFlags.IP6_READY}),
+    ), patch(
+        "supervisor.dbus.network.connection.NetworkConnection.ipv4",
+        new=PropertyMock(return_value=None),
+    ), patch.object(
+        coresys.host.sys_dbus.network,
+        "activate_connection",
+        new=Mock(wraps=coresys.host.sys_dbus.network.activate_connection),
+    ) as activate_connection:
+        await coresys.host.network.load()
+
+        activate_connection.assert_not_called()
+
+        assert len(coresys.host.network.interfaces) == 2
+        assert coresys.host.network.interfaces[0].name == "eth0"
+        assert coresys.host.network.interfaces[0].enabled is True
+        assert coresys.host.network.interfaces[0].ipv4.method == InterfaceMethod.AUTO
+        assert coresys.host.network.interfaces[0].ipv4.gateway is None
+        assert coresys.host.network.interfaces[0].ipv6.method == InterfaceMethod.AUTO
+        assert coresys.host.network.interfaces[0].ipv6.gateway == IPv6Address(
+            "fe80::da58:d7ff:fe00:9c69"
+        )

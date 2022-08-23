@@ -6,7 +6,7 @@
   "Type": "802-3-ethernet",
   "Devices": ["/org/freedesktop/NetworkManager/Devices/1"],
   "State": 2,
-  "StateFlags": 12,
+  "StateFlags": 92,
   "Default": true,
   "Ip4Config": "/org/freedesktop/NetworkManager/IP4Config/1",
   "Dhcp4Config": "/org/freedesktop/NetworkManager/DHCP4Config/1",

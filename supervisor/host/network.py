@@ -31,6 +31,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
+from ..resolution.checks.network_interface import CheckNetworkInterface
 from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -109,8 +110,9 @@ class NetworkManager(CoreSysAttributes):
 
         # Apply current settings on each interface so OS can update any out of date defaults
         interfaces = [
-            Interface.from_dbus_interface(self.sys_dbus.network.interfaces[i])
-            for i in self.sys_dbus.network.interfaces
+            Interface.from_dbus_interface(interface)
+            for interface in self.sys_dbus.network.interfaces.values()
+            if not CheckNetworkInterface.check_interface(interface)
         ]
         with suppress(HostNetworkNotFound):
             await asyncio.gather(
@@ -345,6 +347,16 @@ class Interface:
     @staticmethod
     def from_dbus_interface(inet: NetworkInterface) -> Interface:
         """Concert a dbus interface into normal Interface."""
+        ipv4_method = (
+            Interface._map_nm_method(inet.settings.ipv4.method)
+            if inet.settings and inet.settings.ipv4
+            else InterfaceMethod.DISABLED
+        )
+        ipv6_method = (
+            Interface._map_nm_method(inet.settings.ipv6.method)
+            if inet.settings and inet.settings.ipv6
+            else InterfaceMethod.DISABLED
+        )
         return Interface(
             inet.name,
             inet.settings is not None,
@@ -352,21 +364,21 @@ class Interface:
             inet.primary,
             Interface._map_nm_type(inet.type),
             IpConfig(
-                Interface._map_nm_method(inet.settings.ipv4.method),
+                ipv4_method,
                 inet.connection.ipv4.address,
                 inet.connection.ipv4.gateway,
                 inet.connection.ipv4.nameservers,
             )
             if inet.connection and inet.connection.ipv4
-            else IpConfig(InterfaceMethod.DISABLED, [], None, []),
+            else IpConfig(ipv4_method, [], None, []),
             IpConfig(
-                Interface._map_nm_method(inet.settings.ipv6.method),
+                ipv6_method,
                 inet.connection.ipv6.address,
                 inet.connection.ipv6.gateway,
                 inet.connection.ipv6.nameservers,
             )
             if inet.connection and inet.connection.ipv6
-            else IpConfig(InterfaceMethod.DISABLED, [], None, []),
+            else IpConfig(ipv6_method, [], None, []),
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
         )

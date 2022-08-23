@@ -112,6 +112,7 @@ DBUS_ATTR_RESOLV_CONF_MODE = "ResolvConfMode"
 DBUS_ATTR_RCMANAGER = "RcManager"
 DBUS_ATTR_SSID = "Ssid"
 DBUS_ATTR_STATE = "State"
+DBUS_ATTR_STATE_FLAGS = "StateFlags"
 DBUS_ATTR_STATIC_HOSTNAME = "StaticHostname"
 DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME = "OperatingSystemCPEName"
 DBUS_ATTR_STRENGTH = "Strength"
@@ -159,6 +160,23 @@ class ConnectionStateType(int, Enum):
     ACTIVATED = 2
     DEACTIVATING = 3
     DEACTIVATED = 4
+
+
+class ConnectionStateFlags(int, Enum):
+    """Connection state flags.
+
+    https://developer-old.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActivationStateFlags
+    """
+
+    NONE = 0
+    IS_MASTER = 0x1
+    IS_SLAVE = 0x2
+    LAYER2_READY = 0x4
+    IP4_READY = 0x8
+    IP6_READY = 0x10
+    MASTER_HAS_SLAVES = 0x20
+    LIFETIME_BOUND_TO_PROFILE_VISIBILITY = 0x40
+    EXTERNAL = 0x80
 
 
 class ConnectivityState(int, Enum):

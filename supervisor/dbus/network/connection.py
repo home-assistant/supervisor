@@ -13,6 +13,7 @@ from ..const import (
     DBUS_ATTR_NAMESERVER_DATA,
     DBUS_ATTR_NAMESERVERS,
     DBUS_ATTR_STATE,
+    DBUS_ATTR_STATE_FLAGS,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_UUID,
     DBUS_IFACE_CONNECTION_ACTIVE,
@@ -20,6 +21,7 @@ from ..const import (
     DBUS_IFACE_IP6CONFIG,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
+    ConnectionStateFlags,
     ConnectionStateType,
 )
 from ..interface import DBusInterfaceProxy
@@ -40,6 +42,7 @@ class NetworkConnection(DBusInterfaceProxy):
 
         self._ipv4: IpConfiguration | None = None
         self._ipv6: IpConfiguration | None = None
+        self._state_flags: set[ConnectionStateFlags] = {ConnectionStateFlags.NONE}
 
     @property
     def id(self) -> str:
@@ -60,6 +63,11 @@ class NetworkConnection(DBusInterfaceProxy):
     def state(self) -> ConnectionStateType:
         """Return the state of the connection."""
         return self.properties[DBUS_ATTR_STATE]
+
+    @property
+    def state_flags(self) -> set[ConnectionStateFlags]:
+        """Return state flags of the connection."""
+        return self._state_flags
 
     @property
     def setting_object(self) -> int:
@@ -85,6 +93,13 @@ class NetworkConnection(DBusInterfaceProxy):
     async def update(self):
         """Update connection information."""
         self.properties = await self.dbus.get_properties(DBUS_IFACE_CONNECTION_ACTIVE)
+
+        # State Flags
+        self._state_flags = {
+            flag
+            for flag in ConnectionStateFlags
+            if flag.value & self.properties[DBUS_ATTR_STATE_FLAGS]
+        } or {ConnectionStateFlags.NONE}
 
         # IPv4
         if self.properties[DBUS_ATTR_IP4CONFIG] != DBUS_OBJECT_BASE:

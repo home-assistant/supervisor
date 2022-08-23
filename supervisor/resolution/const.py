@@ -73,6 +73,7 @@ class IssueType(str, Enum):
     FATAL_ERROR = "fatal_error"
     FREE_SPACE = "free_space"
     MISSING_IMAGE = "missing_image"
+    NETWORK_CONNECTION_PROBLEM = "network_connection_problem"
     PWNED = "pwned"
     SECURITY = "security"
     TRUST = "trust"
