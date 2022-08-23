@@ -134,5 +134,6 @@ SCHEMA_BACKUP = vol.Schema(
 SCHEMA_BACKUPS_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_DAYS_UNTIL_STALE, default=30): days_until_stale,
-    }
+    },
+    extra=vol.REMOVE_EXTRA,
 )
