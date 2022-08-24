@@ -154,4 +154,6 @@ async def test_api_resolution_suggestions_for_issue(coresys: CoreSys, api_client
     result = await resp.json()
 
     assert result["data"]["suggestions"][0]["uuid"] == execute_reset.uuid
+    assert result["data"]["suggestions"][0]["auto"] is True
     assert result["data"]["suggestions"][1]["uuid"] == execute_remove.uuid
+    assert result["data"]["suggestions"][1]["auto"] is False

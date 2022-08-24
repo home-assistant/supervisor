@@ -7,6 +7,7 @@ import attr
 import voluptuous as vol
 
 from ..const import (
+    ATTR_AUTO,
     ATTR_CHECKS,
     ATTR_ENABLED,
     ATTR_ISSUES,
@@ -17,6 +18,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, ResolutionNotFound
+from ..resolution.data import Suggestion
 from .utils import api_process, api_validate
 
 SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): bool})
@@ -25,6 +27,18 @@ SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): bool})
 class APIResoulution(CoreSysAttributes):
     """Handle REST API for resoulution."""
 
+    def _generate_suggestion_information(self, suggestion: Suggestion):
+        """Generate suggestion information for response."""
+        resp = attr.asdict(suggestion)
+        resp[ATTR_AUTO] = bool(
+            [
+                fix
+                for fix in self.sys_resolution.fixup.fixes_for_suggestion(suggestion)
+                if fix.auto
+            ]
+        )
+        return resp
+
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return resolution information."""
@@ -32,7 +46,7 @@ class APIResoulution(CoreSysAttributes):
             ATTR_UNSUPPORTED: self.sys_resolution.unsupported,
             ATTR_UNHEALTHY: self.sys_resolution.unhealthy,
             ATTR_SUGGESTIONS: [
-                attr.asdict(suggestion)
+                self._generate_suggestion_information(suggestion)
                 for suggestion in self.sys_resolution.suggestions
             ],
             ATTR_ISSUES: [attr.asdict(issue) for issue in self.sys_resolution.issues],
@@ -71,7 +85,7 @@ class APIResoulution(CoreSysAttributes):
             issue = self.sys_resolution.get_issue(request.match_info.get("issue"))
             return {
                 ATTR_SUGGESTIONS: [
-                    attr.asdict(suggestion)
+                    self._generate_suggestion_information(suggestion)
                     for suggestion in self.sys_resolution.suggestions_for_issue(issue)
                 ]
             }
