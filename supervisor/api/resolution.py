@@ -27,7 +27,7 @@ class APIResoulution(CoreSysAttributes):
 
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
-        """Return network information."""
+        """Return resolution information."""
         return {
             ATTR_UNSUPPORTED: self.sys_resolution.unsupported,
             ATTR_UNHEALTHY: self.sys_resolution.unhealthy,
@@ -63,6 +63,20 @@ class APIResoulution(CoreSysAttributes):
             self.sys_resolution.dismiss_suggestion(suggestion)
         except ResolutionNotFound:
             raise APIError("The supplied UUID is not a valid suggestion") from None
+
+    @api_process
+    async def suggestions_for_issue(self, request: web.Request) -> dict[str, Any]:
+        """Return suggestions that fix an issue."""
+        try:
+            issue = self.sys_resolution.get_issue(request.match_info.get("issue"))
+            return {
+                ATTR_SUGGESTIONS: [
+                    attr.asdict(suggestion)
+                    for suggestion in self.sys_resolution.suggestions_for_issue(issue)
+                ]
+            }
+        except ResolutionNotFound:
+            raise APIError("The supplied UUID is not a valid issue") from None
 
     @api_process
     async def dismiss_issue(self, request: web.Request) -> None:
