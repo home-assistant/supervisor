@@ -17,10 +17,13 @@ class FixupBase(ABC, CoreSysAttributes):
         """Initialize the fixup class."""
         self.coresys = coresys
 
-    async def __call__(self) -> None:
+    async def __call__(self, fixing_suggestion: Suggestion | None = None) -> None:
         """Execute the evaluation."""
-        # Get suggestion to fix
-        fixing_suggestion: Suggestion | None = next(iter(self.all_suggestions), None)
+        if not fixing_suggestion:
+            # Get suggestion to fix
+            fixing_suggestion: Suggestion | None = next(
+                iter(self.all_suggestions), None
+            )
 
         # No suggestion
         if fixing_suggestion is None:
