@@ -20,12 +20,7 @@ class FixupBase(ABC, CoreSysAttributes):
     async def __call__(self) -> None:
         """Execute the evaluation."""
         # Get suggestion to fix
-        fixing_suggestion: Suggestion | None = None
-        for suggestion in self.sys_resolution.suggestions:
-            if suggestion.type != self.suggestion or suggestion.context != self.context:
-                continue
-            fixing_suggestion = suggestion
-            break
+        fixing_suggestion: Suggestion | None = next(iter(self.all_suggestions), None)
 
         # No suggestion
         if fixing_suggestion is None:
@@ -38,14 +33,11 @@ class FixupBase(ABC, CoreSysAttributes):
         except ResolutionFixupError:
             return
 
-        self.sys_resolution.dismiss_suggestion(fixing_suggestion)
-
         # Cleanup issue
-        for issue_type in self.issues:
-            issue = Issue(issue_type, self.context, fixing_suggestion.reference)
-            if issue not in self.sys_resolution.issues:
-                continue
+        for issue in self.sys_resolution.issues_for_suggestion(fixing_suggestion):
             self.sys_resolution.dismiss_issue(issue)
+
+        self.sys_resolution.dismiss_suggestion(fixing_suggestion)
 
     @abstractmethod
     async def process_fixup(self, reference: str | None = None) -> None:
@@ -70,6 +62,24 @@ class FixupBase(ABC, CoreSysAttributes):
     def auto(self) -> bool:
         """Return if a fixup can be apply as auto fix."""
         return False
+
+    @property
+    def all_suggestions(self) -> list[Suggestion]:
+        """List of all suggestions which when applied run this fixup."""
+        return [
+            suggestion
+            for suggestion in self.sys_resolution.suggestions
+            if suggestion.type == self.suggestion and suggestion.context == self.context
+        ]
+
+    @property
+    def all_issues(self) -> list[Issue]:
+        """List of all issues which could be fixed by this fixup."""
+        return [
+            issue
+            for issue in self.sys_resolution.issues
+            if issue.type in self.issues and issue.context == self.context
+        ]
 
     @property
     def slug(self) -> str:
