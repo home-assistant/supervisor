@@ -153,7 +153,14 @@ async def test_api_resolution_suggestions_for_issue(coresys: CoreSys, api_client
     resp = await api_client.get(f"/resolution/issue/{corrupt_repo.uuid}/suggestions")
     result = await resp.json()
 
-    assert result["data"]["suggestions"][0]["uuid"] == execute_reset.uuid
-    assert result["data"]["suggestions"][0]["auto"] is True
-    assert result["data"]["suggestions"][1]["uuid"] == execute_remove.uuid
-    assert result["data"]["suggestions"][1]["auto"] is False
+    suggestion = [
+        su for su in result["data"]["suggestions"] if su["uuid"] == execute_reset.uuid
+    ]
+    assert bool(suggestion)
+    assert suggestion[0]["auto"] is True
+
+    suggestion = [
+        su for su in result["data"]["suggestions"] if su["uuid"] == execute_remove.uuid
+    ]
+    assert bool(suggestion)
+    assert suggestion[0]["auto"] is False
