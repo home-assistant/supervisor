@@ -2,6 +2,7 @@
 import logging
 from typing import Any
 
+from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
 from ..utils.common import FileConfiguration
@@ -82,6 +83,9 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         )
         self._issues.append(issue)
 
+        # Event on issue creation
+        self.sys_bus.fire_event(BusEvent.ISSUE_CHANGED, issue)
+
     @property
     def suggestions(self) -> list[Suggestion]:
         """Return a list of suggestions that can handled."""
@@ -92,6 +96,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         """Add suggestion."""
         if suggestion in self._suggestions:
             return
+
         _LOGGER.info(
             "Create new suggestion %s - %s / %s",
             suggestion.type,
@@ -99,6 +104,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             suggestion.reference,
         )
         self._suggestions.append(suggestion)
+
+        # Event on suggestion added to issue
+        for issue in self.issues_for_suggestion(suggestion):
+            self.sys_bus.fire_event(BusEvent.ISSUE_CHANGED, issue)
 
     @property
     def unsupported(self) -> list[UnsupportedReason]:
@@ -146,13 +155,11 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         suggestions: list[SuggestionType] | None = None,
     ) -> None:
         """Create issues and suggestion."""
-        self.issues = Issue(issue, context, reference)
-        if not suggestions:
-            return
+        if suggestions:
+            for suggestion in suggestions:
+                self.suggestions = Suggestion(suggestion, context, reference)
 
-        # Add suggestions
-        for suggestion in suggestions:
-            self.suggestions = Suggestion(suggestion, context, reference)
+        self.issues = Issue(issue, context, reference)
 
     async def load(self):
         """Load the resoulution manager."""
@@ -191,6 +198,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             )
         self._suggestions.remove(suggestion)
 
+        # Event on suggestion removed from issues
+        for issue in self.issues_for_suggestion(suggestion):
+            self.sys_bus.fire_event(BusEvent.ISSUE_CHANGED, issue)
+
     def dismiss_issue(self, issue: Issue) -> None:
         """Dismiss suggested action."""
         if issue not in self._issues:
@@ -199,8 +210,29 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             )
         self._issues.remove(issue)
 
+        # Event on issue removal
+        self.sys_bus.fire_event(BusEvent.ISSUE_REMOVED, issue)
+
     def dismiss_unsupported(self, reason: Issue) -> None:
         """Dismiss a reason for unsupported."""
         if reason not in self._unsupported:
             raise ResolutionError(f"The reason {reason} is not active", _LOGGER.warning)
         self._unsupported.remove(reason)
+
+    def suggestions_for_issue(self, issue: Issue) -> set[Suggestion]:
+        """Get suggestions that fix an issue."""
+        return {
+            suggestion
+            for fix in self.fixup.fixes_for_issue(issue)
+            for suggestion in fix.all_suggestions
+            if suggestion.reference == issue.reference
+        }
+
+    def issues_for_suggestion(self, suggestion: Suggestion) -> set[Issue]:
+        """Get issues fixed by a suggestion."""
+        return {
+            issue
+            for fix in self.fixup.fixes_for_suggestion(suggestion)
+            for issue in fix.all_issues
+            if issue.reference == suggestion.reference
+        }

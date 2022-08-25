@@ -97,6 +97,7 @@ ATTR_AUDIO_INPUT = "audio_input"
 ATTR_AUDIO_OUTPUT = "audio_output"
 ATTR_AUTH = "auth"
 ATTR_AUTH_API = "auth_api"
+ATTR_AUTO = "auto"
 ATTR_AUTO_UPDATE = "auto_update"
 ATTR_AVAILABLE = "available"
 ATTR_BACKUP = "backup"
@@ -441,6 +442,8 @@ class BusEvent(str, Enum):
 
     HARDWARE_NEW_DEVICE = "hardware_new_device"
     HARDWARE_REMOVE_DEVICE = "hardware_remove_device"
+    ISSUE_CHANGED = "issue_changed"
+    ISSUE_REMOVED = "issue_removed"
     DOCKER_CONTAINER_STATE_CHANGE = "docker_container_state_change"
 
 

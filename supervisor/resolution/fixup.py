@@ -5,7 +5,7 @@ import logging
 from ..coresys import CoreSys, CoreSysAttributes
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
-from .data import Suggestion
+from .data import Issue, Suggestion
 from .fixups.base import FixupBase
 from .validate import get_valid_modules
 
@@ -51,9 +51,23 @@ class ResolutionFixup(CoreSysAttributes):
 
         _LOGGER.info("System autofix complete")
 
+    def fixes_for_suggestion(self, suggestion: Suggestion) -> list[FixupBase]:
+        """Get fixups to run if the suggestion is applied."""
+        return [
+            fix
+            for fix in self.all_fixes
+            if fix.suggestion == suggestion.type and fix.context == suggestion.context
+        ]
+
+    def fixes_for_issue(self, issue: Issue) -> list[FixupBase]:
+        """Get fixups that would fix the issue if run."""
+        return [
+            fix
+            for fix in self.all_fixes
+            if issue.type in fix.issues and issue.context == fix.context
+        ]
+
     async def apply_fixup(self, suggestion: Suggestion) -> None:
         """Apply a fixup for a suggestion."""
-        for fix in self.all_fixes:
-            if fix.suggestion != suggestion.type or fix.context != suggestion.context:
-                continue
+        for fix in self.fixes_for_suggestion(suggestion):
             await fix()
