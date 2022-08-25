@@ -220,3 +220,22 @@ async def test_events_on_issue_changes(coresys: CoreSys):
 
     change_handler.assert_not_called()
     remove_handler.assert_called_once_with(issue)
+
+
+async def test_resolution_apply_suggestion_multiple_copies(coresys: CoreSys):
+    """Test resolution manager applies correct suggestion when has multiple that differ by reference."""
+    coresys.resolution.suggestions = remove_store_1 = Suggestion(
+        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_1"
+    )
+    coresys.resolution.suggestions = remove_store_2 = Suggestion(
+        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_2"
+    )
+    coresys.resolution.suggestions = remove_store_3 = Suggestion(
+        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_3"
+    )
+
+    await coresys.resolution.apply_suggestion(remove_store_2)
+
+    assert remove_store_1 in coresys.resolution.suggestions
+    assert remove_store_2 not in coresys.resolution.suggestions
+    assert remove_store_3 in coresys.resolution.suggestions

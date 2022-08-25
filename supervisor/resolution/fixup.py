@@ -70,4 +70,4 @@ class ResolutionFixup(CoreSysAttributes):
     async def apply_fixup(self, suggestion: Suggestion) -> None:
         """Apply a fixup for a suggestion."""
         for fix in self.fixes_for_suggestion(suggestion):
-            await fix()
+            await fix(suggestion)
