@@ -963,10 +963,11 @@ class Addon(AddonModel):
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in addon container and restart if necessary."""
-        if (
-            not (event.name == self.instance.name and self.watchdog)
-            or self._manual_stop
-        ):
+        if event.name != self.instance.name:
+            return
+
+        # Skip watchdog if not enabled or manual stopped
+        if not self.watchdog or self._manual_stop:
             return
 
         if event.state in [
