@@ -95,9 +95,13 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.SUPERVISOR_UPDATED],
         on_condition=StoreJobError,
     )
-    async def add_repository(
+    async def add_repository(self, url: str, *, persist: bool = True) -> None:
+        """Add a repository."""
+        await self._add_repository(url, persist=persist, add_with_errors=False)
+
+    async def _add_repository(
         self, url: str, *, persist: bool = True, add_with_errors: bool = False
-    ):
+    ) -> None:
         """Add a repository."""
         if url == URL_HASSIO_ADDONS:
             url = StoreType.CORE
@@ -216,7 +220,9 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         # Add new repositories
         add_errors = await asyncio.gather(
             *[
-                self.add_repository(url, persist=False, add_with_errors=add_with_errors)
+                self._add_repository(url, persist=False, add_with_errors=True)
+                if add_with_errors
+                else self.add_repository(url, persist=False)
                 for url in new_rep - old_rep
             ],
             return_exceptions=True,
