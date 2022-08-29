@@ -93,7 +93,7 @@ def get_connection_from_interface(
     if not interface.ipv6 or interface.ipv6.method == InterfaceMethod.AUTO:
         ipv6["method"] = Variant("s", "auto")
     elif interface.ipv6.method == InterfaceMethod.DISABLED:
-        ipv6["method"] = Variant("s", "disabled")
+        ipv6["method"] = Variant("s", "link-local")
     else:
         ipv6["method"] = Variant("s", "manual")
         ipv6["dns"] = Variant(
