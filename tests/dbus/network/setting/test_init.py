@@ -6,6 +6,7 @@ from dbus_next.signature import Variant
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
+from supervisor.host.const import InterfaceMethod
 from supervisor.host.network import Interface
 
 from tests.const import TEST_INTERFACE
@@ -149,3 +150,21 @@ async def test_update(coresys: CoreSys):
         new=mock_call_dbus_get_settings_signature,
     ):
         await coresys.dbus.network.interfaces[TEST_INTERFACE].settings.update(conn)
+
+
+async def test_ipv6_disabled_is_link_local(coresys: CoreSys):
+    """Test disabled equals link local for ipv6."""
+    await coresys.dbus.network.interfaces[TEST_INTERFACE].connect()
+    interface = Interface.from_dbus_interface(
+        coresys.dbus.network.interfaces[TEST_INTERFACE]
+    )
+    interface.ipv4.method = InterfaceMethod.DISABLED
+    interface.ipv6.method = InterfaceMethod.DISABLED
+    conn = get_connection_from_interface(
+        interface,
+        name=coresys.dbus.network.interfaces[TEST_INTERFACE].settings.connection.id,
+        uuid=coresys.dbus.network.interfaces[TEST_INTERFACE].settings.connection.uuid,
+    )
+
+    assert conn["ipv4"]["method"] == Variant("s", "disabled")
+    assert conn["ipv6"]["method"] == Variant("s", "link-local")
