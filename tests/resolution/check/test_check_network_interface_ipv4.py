@@ -12,6 +12,8 @@ from supervisor.resolution.checks.network_interface_ipv4 import (
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 
+TEST_ISSUE = Issue(IssueType.IPV4_CONNECTION_PROBLEM, ContextType.SYSTEM, "eth0")
+
 
 async def test_base(coresys: CoreSys):
     """Test check basics."""
@@ -21,13 +23,16 @@ async def test_base(coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    "state_flags",
+    "state_flags,issues",
     [
-        {ConnectionStateFlags.IP6_READY},
-        {ConnectionStateFlags.NONE},
+        ({ConnectionStateFlags.IP4_READY}, []),
+        ({ConnectionStateFlags.IP6_READY}, [TEST_ISSUE]),
+        ({ConnectionStateFlags.NONE}, [TEST_ISSUE]),
     ],
 )
-async def test_check(coresys: CoreSys, state_flags: set[ConnectionStateFlags]):
+async def test_check(
+    coresys: CoreSys, state_flags: set[ConnectionStateFlags], issues: list[Issue]
+):
     """Test check."""
     network_interface = CheckNetworkInterfaceIPV4(coresys)
     coresys.core.state = CoreState.RUNNING
@@ -43,19 +48,20 @@ async def test_check(coresys: CoreSys, state_flags: set[ConnectionStateFlags]):
     ):
         await network_interface.run_check()
 
-    assert coresys.resolution.issues == [
-        Issue(IssueType.IPV4_CONNECTION_PROBLEM, ContextType.SYSTEM, "eth0")
-    ]
+    assert coresys.resolution.issues == issues
 
 
 @pytest.mark.parametrize(
-    "state_flags",
+    "state_flags,approved",
     [
-        {ConnectionStateFlags.IP6_READY},
-        {ConnectionStateFlags.NONE},
+        ({ConnectionStateFlags.IP4_READY}, False),
+        ({ConnectionStateFlags.IP6_READY}, True),
+        ({ConnectionStateFlags.NONE}, True),
     ],
 )
-async def test_approve(coresys: CoreSys, state_flags: set[ConnectionStateFlags]):
+async def test_approve(
+    coresys: CoreSys, state_flags: set[ConnectionStateFlags], approved: bool
+):
     """Test check."""
     network_interface = CheckNetworkInterfaceIPV4(coresys)
     coresys.core.state = CoreState.RUNNING
@@ -66,7 +72,7 @@ async def test_approve(coresys: CoreSys, state_flags: set[ConnectionStateFlags])
         "supervisor.dbus.network.connection.NetworkConnection.state_flags",
         new=PropertyMock(return_value=state_flags),
     ):
-        assert await network_interface.approve_check("eth0")
+        assert await network_interface.approve_check("eth0") is approved
 
 
 async def test_did_run(coresys: CoreSys):
