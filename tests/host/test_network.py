@@ -29,10 +29,12 @@ async def test_load(coresys: CoreSys):
         assert coresys.host.network.interfaces[0].ipv4.gateway == IPv4Address(
             "192.168.2.1"
         )
+        assert coresys.host.network.interfaces[0].ipv4.ready is True
         assert coresys.host.network.interfaces[0].ipv6.method == InterfaceMethod.AUTO
         assert coresys.host.network.interfaces[0].ipv6.gateway == IPv6Address(
             "fe80::da58:d7ff:fe00:9c69"
         )
+        assert coresys.host.network.interfaces[0].ipv6.ready is True
         assert coresys.host.network.interfaces[1].name == "wlan0"
         assert coresys.host.network.interfaces[1].enabled is False
 
@@ -52,8 +54,8 @@ async def test_load_with_disabled_methods(coresys: CoreSys):
             False,
             False,
             InterfaceType.ETHERNET,
-            IpConfig(InterfaceMethod.DISABLED, [], None, []),
-            IpConfig(InterfaceMethod.DISABLED, [], None, []),
+            IpConfig(InterfaceMethod.DISABLED, [], None, [], False),
+            IpConfig(InterfaceMethod.DISABLED, [], None, [], False),
             None,
             None,
         ),

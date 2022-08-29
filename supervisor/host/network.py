@@ -12,6 +12,7 @@ from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
     DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
+    ConnectionStateFlags,
     ConnectionStateType,
     ConnectivityState,
     DeviceType,
@@ -309,6 +310,7 @@ class IpConfig:
     address: list[IPv4Interface | IPv6Interface] = attr.ib()
     gateway: IPv4Address | IPv6Address | None = attr.ib()
     nameservers: list[IPv4Address | IPv6Address] = attr.ib()
+    ready: bool = attr.ib()
 
 
 @attr.s(slots=True)
@@ -357,6 +359,14 @@ class Interface:
             if inet.settings and inet.settings.ipv6
             else InterfaceMethod.DISABLED
         )
+        ipv4_ready = (
+            bool(inet.connection)
+            and ConnectionStateFlags.IP4_READY in inet.connection.state_flags
+        )
+        ipv6_ready = (
+            bool(inet.connection)
+            and ConnectionStateFlags.IP6_READY in inet.connection.state_flags
+        )
         return Interface(
             inet.name,
             inet.settings is not None,
@@ -368,17 +378,19 @@ class Interface:
                 inet.connection.ipv4.address,
                 inet.connection.ipv4.gateway,
                 inet.connection.ipv4.nameservers,
+                ipv4_ready,
             )
             if inet.connection and inet.connection.ipv4
-            else IpConfig(ipv4_method, [], None, []),
+            else IpConfig(ipv4_method, [], None, [], ipv4_ready),
             IpConfig(
                 ipv6_method,
                 inet.connection.ipv6.address,
                 inet.connection.ipv6.gateway,
                 inet.connection.ipv6.nameservers,
+                ipv6_ready,
             )
             if inet.connection and inet.connection.ipv6
-            else IpConfig(ipv6_method, [], None, []),
+            else IpConfig(ipv6_method, [], None, [], ipv6_ready),
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
         )
