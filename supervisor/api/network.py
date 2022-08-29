@@ -30,6 +30,7 @@ from ..const import (
     ATTR_PARENT,
     ATTR_PRIMARY,
     ATTR_PSK,
+    ATTR_READY,
     ATTR_SIGNAL,
     ATTR_SSID,
     ATTR_SUPERVISOR_INTERNET,
@@ -89,6 +90,7 @@ def ipconfig_struct(config: IpConfig) -> dict[str, Any]:
         ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway) if config.gateway else None,
+        ATTR_READY: config.ready,
     }
 
 

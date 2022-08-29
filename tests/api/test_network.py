@@ -31,12 +31,14 @@ async def test_api_network_info(api_client, coresys):
                 "gateway": None,
                 "method": "disabled",
                 "nameservers": [],
+                "ready": False,
             }
             assert interface["ipv6"] == {
                 "address": [],
                 "gateway": None,
                 "method": "disabled",
                 "nameservers": [],
+                "ready": False,
             }
 
     assert result["data"]["docker"]["interface"] == DOCKER_NETWORK
@@ -53,6 +55,7 @@ async def test_api_network_interface_info(api_client):
     assert result["data"]["ipv4"]["address"][-1] == "192.168.2.148/24"
     assert result["data"]["ipv4"]["gateway"] == "192.168.2.1"
     assert result["data"]["ipv4"]["nameservers"] == ["192.168.2.2"]
+    assert result["data"]["ipv4"]["ready"] is True
     assert (
         result["data"]["ipv6"]["address"][0] == "2a03:169:3df5:0:6be9:2588:b26a:a679/64"
     )
@@ -65,6 +68,7 @@ async def test_api_network_interface_info(api_client):
         "2001:1620:2777:1::10",
         "2001:1620:2777:2::20",
     ]
+    assert result["data"]["ipv6"]["ready"] is True
     assert result["data"]["interface"] == TEST_INTERFACE
 
 
@@ -76,6 +80,7 @@ async def test_api_network_interface_info_default(api_client):
     assert result["data"]["ipv4"]["address"][-1] == "192.168.2.148/24"
     assert result["data"]["ipv4"]["gateway"] == "192.168.2.1"
     assert result["data"]["ipv4"]["nameservers"] == ["192.168.2.2"]
+    assert result["data"]["ipv4"]["ready"] is True
     assert (
         result["data"]["ipv6"]["address"][0] == "2a03:169:3df5:0:6be9:2588:b26a:a679/64"
     )
@@ -88,6 +93,7 @@ async def test_api_network_interface_info_default(api_client):
         "2001:1620:2777:1::10",
         "2001:1620:2777:2::20",
     ]
+    assert result["data"]["ipv6"]["ready"] is True
     assert result["data"]["interface"] == TEST_INTERFACE
 
 
