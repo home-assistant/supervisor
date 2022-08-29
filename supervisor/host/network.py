@@ -402,6 +402,7 @@ class Interface:
             NMInterfaceMethod.AUTO: InterfaceMethod.AUTO,
             NMInterfaceMethod.DISABLED: InterfaceMethod.DISABLED,
             NMInterfaceMethod.MANUAL: InterfaceMethod.STATIC,
+            NMInterfaceMethod.LINK_LOCAL: InterfaceMethod.DISABLED,
         }
 
         return mapping.get(method, InterfaceMethod.DISABLED)
