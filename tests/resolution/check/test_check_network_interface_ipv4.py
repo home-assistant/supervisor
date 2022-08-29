@@ -6,29 +6,30 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectionStateFlags
-from supervisor.resolution.checks.network_interface import CheckNetworkInterface
+from supervisor.resolution.checks.network_interface_ipv4 import (
+    CheckNetworkInterfaceIPV4,
+)
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 
 
 async def test_base(coresys: CoreSys):
     """Test check basics."""
-    network_interface = CheckNetworkInterface(coresys)
-    assert network_interface.slug == "network_interface"
+    network_interface = CheckNetworkInterfaceIPV4(coresys)
+    assert network_interface.slug == "network_interface_ipv4"
     assert network_interface.enabled
 
 
 @pytest.mark.parametrize(
     "state_flags",
     [
-        {ConnectionStateFlags.IP4_READY},
         {ConnectionStateFlags.IP6_READY},
         {ConnectionStateFlags.NONE},
     ],
 )
 async def test_check(coresys: CoreSys, state_flags: set[ConnectionStateFlags]):
     """Test check."""
-    network_interface = CheckNetworkInterface(coresys)
+    network_interface = CheckNetworkInterfaceIPV4(coresys)
     coresys.core.state = CoreState.RUNNING
 
     assert len(coresys.resolution.issues) == 0
@@ -43,21 +44,20 @@ async def test_check(coresys: CoreSys, state_flags: set[ConnectionStateFlags]):
         await network_interface.run_check()
 
     assert coresys.resolution.issues == [
-        Issue(IssueType.NETWORK_CONNECTION_PROBLEM, ContextType.SYSTEM, "eth0")
+        Issue(IssueType.IPV4_CONNECTION_PROBLEM, ContextType.SYSTEM, "eth0")
     ]
 
 
 @pytest.mark.parametrize(
     "state_flags",
     [
-        {ConnectionStateFlags.IP4_READY},
         {ConnectionStateFlags.IP6_READY},
         {ConnectionStateFlags.NONE},
     ],
 )
 async def test_approve(coresys: CoreSys, state_flags: set[ConnectionStateFlags]):
     """Test check."""
-    network_interface = CheckNetworkInterface(coresys)
+    network_interface = CheckNetworkInterfaceIPV4(coresys)
     coresys.core.state = CoreState.RUNNING
 
     assert not await network_interface.approve_check("eth0")
@@ -71,14 +71,14 @@ async def test_approve(coresys: CoreSys, state_flags: set[ConnectionStateFlags])
 
 async def test_did_run(coresys: CoreSys):
     """Test that the check ran as expected."""
-    network_interface = CheckNetworkInterface(coresys)
+    network_interface = CheckNetworkInterfaceIPV4(coresys)
     should_run = network_interface.states
     should_not_run = [state for state in CoreState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 
     with patch(
-        "supervisor.resolution.checks.network_interface.CheckNetworkInterface.run_check",
+        "supervisor.resolution.checks.network_interface_ipv4.CheckNetworkInterfaceIPV4.run_check",
         return_value=None,
     ) as check:
         for state in should_run:

@@ -9,18 +9,18 @@ from .base import CheckBase
 
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
-    return CheckNetworkInterface(coresys)
+    return CheckNetworkInterfaceIPV4(coresys)
 
 
-class CheckNetworkInterface(CheckBase):
-    """CheckNetworkInterface class for check."""
+class CheckNetworkInterfaceIPV4(CheckBase):
+    """CheckNetworkInterfaceIPV4 class for check."""
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for interface in self.sys_dbus.network.interfaces.values():
-            if CheckNetworkInterface.check_interface(interface):
+            if CheckNetworkInterfaceIPV4.check_interface(interface):
                 self.sys_resolution.create_issue(
-                    IssueType.NETWORK_CONNECTION_PROBLEM,
+                    IssueType.IPV4_CONNECTION_PROBLEM,
                     ContextType.SYSTEM,
                     interface.name,
                 )
@@ -32,7 +32,7 @@ class CheckNetworkInterface(CheckBase):
 
         interface = self.sys_dbus.network.interfaces.get(reference)
 
-        return interface and CheckNetworkInterface.check_interface(interface)
+        return interface and CheckNetworkInterfaceIPV4.check_interface(interface)
 
     @staticmethod
     def check_interface(interface: NetworkInterface) -> bool:
@@ -44,13 +44,12 @@ class CheckNetworkInterface(CheckBase):
             interface.connection.state
             in [ConnectionStateType.ACTIVATED, ConnectionStateType.ACTIVATING]
             and ConnectionStateFlags.IP4_READY in interface.connection.state_flags
-            and ConnectionStateFlags.IP6_READY in interface.connection.state_flags
         )
 
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.NETWORK_CONNECTION_PROBLEM
+        return IssueType.IPV4_CONNECTION_PROBLEM
 
     @property
     def context(self) -> ContextType:
