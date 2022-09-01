@@ -279,3 +279,28 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         if self.sys_core.state in CLOSING_STATES:
             return
         self.sys_create_task(self.async_send_message(message))
+
+    async def async_supervisor_event(
+        self, event: WSEvent, data: dict[str, Any] | None = None
+    ):
+        """Send a supervisor/event command to Home Assistant."""
+        try:
+            await self.async_send_message(
+                {
+                    ATTR_TYPE: WSType.SUPERVISOR_EVENT,
+                    ATTR_DATA: {
+                        ATTR_EVENT: event,
+                        ATTR_DATA: data or {},
+                    },
+                }
+            )
+        except HomeAssistantWSNotSupported:
+            pass
+        except HomeAssistantWSError as err:
+            _LOGGER.error(err)
+
+    def supervisor_event(self, event: WSEvent, data: dict[str, Any] | None = None):
+        """Send a supervisor/event command to Home Assistant."""
+        if self.sys_core.state in CLOSING_STATES:
+            return
+        self.sys_create_task(self.async_supervisor_event(event, data))

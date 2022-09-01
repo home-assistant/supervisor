@@ -6,11 +6,10 @@ import attr
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
+from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from .check import ResolutionCheck
 from .const import (
-    EVENT_ISSUE_CHANGED,
-    EVENT_ISSUE_REMOVED,
     FILE_CONFIG_RESOLUTION,
     SCHEDULED_HEALTHCHECK,
     ContextType,
@@ -87,8 +86,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._issues.append(issue)
 
         # Event on issue creation
-        self.sys_homeassistant.websocket.supervisor_update_event(
-            EVENT_ISSUE_CHANGED, attr.asdict(issue)
+        self.sys_homeassistant.websocket.supervisor_event(
+            WSEvent.ISSUE_CHANGED, attr.asdict(issue)
         )
 
     @property
@@ -112,8 +111,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         # Event on suggestion added to issue
         for issue in self.issues_for_suggestion(suggestion):
-            self.sys_homeassistant.websocket.supervisor_update_event(
-                EVENT_ISSUE_CHANGED, attr.asdict(issue)
+            self.sys_homeassistant.websocket.supervisor_event(
+                WSEvent.ISSUE_CHANGED, attr.asdict(issue)
             )
 
     @property
@@ -207,8 +206,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         # Event on suggestion removed from issues
         for issue in self.issues_for_suggestion(suggestion):
-            self.sys_homeassistant.websocket.supervisor_update_event(
-                EVENT_ISSUE_CHANGED, attr.asdict(issue)
+            self.sys_homeassistant.websocket.supervisor_event(
+                WSEvent.ISSUE_CHANGED, attr.asdict(issue)
             )
 
     def dismiss_issue(self, issue: Issue) -> None:
@@ -220,8 +219,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._issues.remove(issue)
 
         # Event on issue removal
-        self.sys_homeassistant.websocket.supervisor_update_event(
-            EVENT_ISSUE_REMOVED, attr.asdict(issue)
+        self.sys_homeassistant.websocket.supervisor_event(
+            WSEvent.ISSUE_REMOVED, attr.asdict(issue)
         )
 
     def dismiss_unsupported(self, reason: Issue) -> None:

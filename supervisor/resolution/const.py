@@ -14,9 +14,6 @@ MINIMUM_FULL_BACKUPS = 2
 DNS_CHECK_HOST = "_checkdns.home-assistant.io"
 DNS_ERROR_NO_DATA = 1
 
-EVENT_ISSUE_CHANGED = "issue_changed"
-EVENT_ISSUE_REMOVED = "issue_removed"
-
 
 class ContextType(str, Enum):
     """Place where somethings was happening."""

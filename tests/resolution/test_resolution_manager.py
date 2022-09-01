@@ -20,7 +20,6 @@ from supervisor.resolution.data import Issue, Suggestion
 
 def test_properies_unsupported(coresys: CoreSys):
     """Test resolution manager properties unsupported."""
-
     assert coresys.core.supported
 
     coresys.resolution.unsupported = UnsupportedReason.OS
@@ -29,7 +28,6 @@ def test_properies_unsupported(coresys: CoreSys):
 
 def test_properies_unhealthy(coresys: CoreSys):
     """Test resolution manager properties unhealthy."""
-
     assert coresys.core.healthy
 
     coresys.resolution.unhealthy = UnhealthyReason.SUPERVISOR
@@ -187,8 +185,7 @@ def _supervisor_event_message(event: str, data: dict[str, Any]) -> dict[str, Any
     return {
         "type": "supervisor/event",
         "data": {
-            "event": "supervisor_update",
-            "update_key": event,
+            "event": event,
             "data": data,
         },
     }
