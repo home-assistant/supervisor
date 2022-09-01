@@ -1,7 +1,7 @@
 """Network Manager implementation for DBUS."""
 import asyncio
 import logging
-from typing import Any, Awaitable
+from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 import sentry_sdk
@@ -16,6 +16,7 @@ from ...exceptions import (
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CONNECTION_ENABLED,
+    DBUS_ATTR_CONNECTIVITY,
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_ATTR_VERSION,
@@ -107,9 +108,12 @@ class NetworkManager(DBusInterface):
         return con_setting, active_con
 
     @dbus_connected
-    async def check_connectivity(self) -> Awaitable[Any]:
+    async def check_connectivity(self, *, force: bool = False) -> int:
         """Check the connectivity of the host."""
-        return await self.dbus.CheckConnectivity()
+        if force:
+            return (await self.dbus.CheckConnectivity())[0]
+        else:
+            return await self.dbus.get_property(DBUS_IFACE_NM, DBUS_ATTR_CONNECTIVITY)
 
     async def connect(self) -> None:
         """Connect to system's D-Bus."""

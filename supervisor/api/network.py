@@ -220,7 +220,9 @@ class APINetwork(CoreSysAttributes):
     @api_process
     def reload(self, request: web.Request) -> Awaitable[None]:
         """Reload network data."""
-        return asyncio.shield(self.sys_host.network.update())
+        return asyncio.shield(
+            self.sys_host.network.update(force_connectivity_check=True)
+        )
 
     @api_process
     async def scan_accesspoints(self, request: web.Request) -> dict[str, Any]:

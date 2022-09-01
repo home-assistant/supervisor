@@ -1,15 +1,16 @@
 """Test NetwrokInterface API."""
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from supervisor.const import DOCKER_NETWORK, DOCKER_NETWORK_MASK
+from supervisor.coresys import CoreSys
 
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
 
 
 @pytest.mark.asyncio
-async def test_api_network_info(api_client, coresys):
+async def test_api_network_info(api_client, coresys: CoreSys):
     """Test network manager api."""
     resp = await api_client.get("/network/info")
     result = await resp.json()
@@ -98,21 +99,27 @@ async def test_api_network_interface_info_default(api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_network_interface_update(api_client):
+async def test_api_network_interface_update(api_client, coresys: CoreSys):
     """Test network manager api."""
-    resp = await api_client.post(
-        f"/network/interface/{TEST_INTERFACE}/update",
-        json={
-            "ipv4": {
-                "method": "static",
-                "nameservers": ["1.1.1.1"],
-                "address": ["192.168.2.148/24"],
-                "gateway": "192.168.1.1",
-            }
-        },
-    )
-    result = await resp.json()
-    assert result["result"] == "ok"
+    with patch.object(
+        type(coresys.host.sys_dbus.network),
+        "check_connectivity",
+        new=Mock(wraps=coresys.host.sys_dbus.network.check_connectivity),
+    ) as check_connectivity:
+        resp = await api_client.post(
+            f"/network/interface/{TEST_INTERFACE}/update",
+            json={
+                "ipv4": {
+                    "method": "static",
+                    "nameservers": ["1.1.1.1"],
+                    "address": ["192.168.2.148/24"],
+                    "gateway": "192.168.1.1",
+                }
+            },
+        )
+        result = await resp.json()
+        assert result["result"] == "ok"
+        check_connectivity.assert_called_once_with(force=True)
 
 
 @pytest.mark.asyncio
@@ -196,7 +203,17 @@ async def test_api_network_wireless_scan(api_client):
 @pytest.mark.asyncio
 async def test_api_network_reload(api_client, coresys):
     """Test network manager reload api."""
-    resp = await api_client.post("/network/reload")
-    result = await resp.json()
+    with patch.object(type(coresys.dbus.network.dbus), "call_dbus") as call_dbus:
+        resp = await api_client.post("/network/reload")
+        result = await resp.json()
 
-    assert result["result"] == "ok"
+        assert result["result"] == "ok"
+        assert (
+            call_dbus.call_args_list[0][0][0]
+            == "org.freedesktop.NetworkManager.Settings.Connection.GetSettings"
+        )
+        # Check that we forced NM to do an immediate connectivity check
+        assert (
+            call_dbus.call_args_list[1][0][0]
+            == "org.freedesktop.NetworkManager.CheckConnectivity"
+        )

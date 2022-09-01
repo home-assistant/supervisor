@@ -94,6 +94,10 @@ def dbus() -> DBus:
 
         return load_json_fixture(f"{fixture}.json")
 
+    async def mock_get_property(dbus_obj, interface, name):
+        properties = await mock_get_properties(dbus_obj, interface)
+        return properties[name]
+
     async def mock_wait_for_signal(self):
         if (
             self._interface + "." + self._method
@@ -146,6 +150,8 @@ def dbus() -> DBus:
     ), patch(
         "supervisor.utils.dbus.DBusSignalWrapper.wait_for_signal",
         new=mock_wait_for_signal,
+    ), patch(
+        "supervisor.utils.dbus.DBus.get_property", new=mock_get_property
     ):
         yield dbus_commands
 

@@ -184,22 +184,22 @@ class Job(CoreSysAttributes):
                 f"'{self._method.__qualname__}' blocked from execution, not enough free space ({self.sys_host.info.free_space}GB) left on the device"
             )
 
-        if (
-            JobCondition.INTERNET_SYSTEM in self.conditions
-            and not self.sys_supervisor.connectivity
-        ):
-            raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, no supervisor internet connection"
-            )
+        if JobCondition.INTERNET_SYSTEM in self.conditions:
+            await self.sys_supervisor.check_connectivity()
+            if not self.sys_supervisor.connectivity:
+                raise JobConditionException(
+                    f"'{self._method.__qualname__}' blocked from execution, no supervisor internet connection"
+                )
 
-        if (
-            JobCondition.INTERNET_HOST in self.conditions
-            and self.sys_host.network.connectivity is not None
-            and not self.sys_host.network.connectivity
-        ):
-            raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, no host internet connection"
-            )
+        if JobCondition.INTERNET_HOST in self.conditions:
+            await self.sys_host.network.check_connectivity()
+            if (
+                self.sys_host.network.connectivity is not None
+                and not self.sys_host.network.connectivity
+            ):
+                raise JobConditionException(
+                    f"'{self._method.__qualname__}' blocked from execution, no host internet connection"
+                )
 
         if JobCondition.HAOS in self.conditions and not self.sys_os.available:
             raise JobConditionException(

@@ -1,6 +1,9 @@
 """Test network manager."""
+import asyncio
 from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import Mock, PropertyMock, patch
+
+import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectionStateFlags, InterfaceMethod
@@ -11,10 +14,14 @@ from supervisor.host.network import Interface, IpConfig
 async def test_load(coresys: CoreSys):
     """Test network manager load."""
     with patch.object(
-        coresys.host.sys_dbus.network,
+        type(coresys.host.sys_dbus.network),
         "activate_connection",
         new=Mock(wraps=coresys.host.sys_dbus.network.activate_connection),
-    ) as activate_connection:
+    ) as activate_connection, patch.object(
+        type(coresys.host.sys_dbus.network),
+        "check_connectivity",
+        new=Mock(wraps=coresys.host.sys_dbus.network.check_connectivity),
+    ) as check_connectivity:
         await coresys.host.network.load()
 
         assert coresys.host.network.connectivity is True
@@ -42,6 +49,10 @@ async def test_load(coresys: CoreSys):
             "/org/freedesktop/NetworkManager/Settings/1",
             "/org/freedesktop/NetworkManager/Devices/1",
         )
+
+        assert check_connectivity.call_count == 2
+        assert check_connectivity.call_args_list[0][1] == {"force": False}
+        assert check_connectivity.call_args_list[1][1] == {"force": False}
 
 
 async def test_load_with_disabled_methods(coresys: CoreSys):
@@ -95,3 +106,49 @@ async def test_load_with_network_connection_issues(coresys: CoreSys):
         assert coresys.host.network.interfaces[0].ipv6.gateway == IPv6Address(
             "fe80::da58:d7ff:fe00:9c69"
         )
+
+
+@pytest.mark.parametrize("force", [True, False])
+async def test_check_connectivity(coresys: CoreSys, force: bool):
+    """Test check connectivity."""
+    coresys.host.network.connectivity = None
+    await asyncio.sleep(0)
+
+    with patch.object(
+        type(coresys.homeassistant.websocket), "async_send_message"
+    ) as send_message:
+        await coresys.host.network.check_connectivity(force=force)
+        await asyncio.sleep(0)
+
+        assert coresys.host.network.connectivity is True
+        send_message.assert_called_once_with(
+            {
+                "type": "supervisor/event",
+                "data": {
+                    "event": "supervisor_update",
+                    "update_key": "network",
+                    "data": {"host_internet": True},
+                },
+            }
+        )
+
+        send_message.reset_mock()
+        with patch.object(
+            type(coresys.dbus.network),
+            "connectivity_enabled",
+            new=PropertyMock(return_value=False),
+        ):
+            await coresys.host.network.check_connectivity(force=force)
+            await asyncio.sleep(0)
+
+            assert coresys.host.network.connectivity is None
+            send_message.assert_called_once_with(
+                {
+                    "type": "supervisor/event",
+                    "data": {
+                        "event": "supervisor_update",
+                        "update_key": "network",
+                        "data": {"host_internet": None},
+                    },
+                }
+            )

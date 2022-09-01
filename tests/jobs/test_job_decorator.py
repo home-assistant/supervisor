@@ -2,8 +2,9 @@
 # pylint: disable=protected-access,import-error
 import asyncio
 from datetime import timedelta
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from aiohttp.client_exceptions import ClientError
 import pytest
 import time_machine
 
@@ -43,7 +44,22 @@ async def test_healthy(coresys: CoreSys):
     assert not await test.execute()
 
 
-async def test_internet(coresys: CoreSys):
+@pytest.mark.parametrize(
+    "connectivity,head_side_effect,host_result,system_result",
+    [
+        (4, None, True, True),
+        (4, ClientError(), True, None),
+        (0, None, None, True),
+        (0, ClientError(), None, None),
+    ],
+)
+async def test_internet(
+    coresys: CoreSys,
+    connectivity: int,
+    head_side_effect: Exception | None,
+    host_result: bool | None,
+    system_result: bool | None,
+):
     """Test the internet decorator."""
     coresys.core.state = CoreState.RUNNING
 
@@ -66,25 +82,19 @@ async def test_internet(coresys: CoreSys):
 
     test = TestClass(coresys)
 
-    coresys.host.network._connectivity = True
-    coresys.supervisor._connectivity = True
-    assert await test.execute_host()
-    assert await test.execute_system()
-
-    coresys.host.network._connectivity = True
-    coresys.supervisor._connectivity = False
-    assert await test.execute_host()
-    assert not await test.execute_system()
-
-    coresys.host.network._connectivity = None
-    coresys.supervisor._connectivity = True
-    assert await test.execute_host()
-    assert await test.execute_system()
-
-    coresys.host.network._connectivity = False
-    coresys.supervisor._connectivity = True
-    assert not await test.execute_host()
-    assert await test.execute_system()
+    mock_websession = AsyncMock()
+    mock_websession.head.side_effect = head_side_effect
+    with patch.object(
+        type(coresys.dbus.network.dbus), "get_property", return_value=connectivity
+    ), patch.object(
+        CoreSys, "websession", new=PropertyMock(return_value=mock_websession)
+    ), patch.object(
+        type(coresys.supervisor),
+        "_check_connectivity_throttled",
+        new=coresys.supervisor._check_connectivity,
+    ):
+        assert await test.execute_host() is host_result
+        assert await test.execute_system() is system_result
 
 
 async def test_free_space(coresys: CoreSys):
