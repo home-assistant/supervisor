@@ -26,7 +26,7 @@ from ..const import (
     DBUS_OBJECT_NM,
     DeviceType,
 )
-from ..interface import DBusInterface
+from ..interface import DBusInterface, dbus_property
 from ..utils import dbus_connected
 from .connection import NetworkConnection
 from .dns import NetworkManagerDNS
@@ -71,13 +71,15 @@ class NetworkManager(DBusInterface):
         return self._interfaces
 
     @property
+    @dbus_property
     def connectivity_enabled(self) -> bool:
         """Return if connectivity check is enabled."""
         return self.properties[DBUS_ATTR_CONNECTION_ENABLED]
 
     @property
+    @dbus_property
     def version(self) -> AwesomeVersion:
-        """Return if connectivity check is enabled."""
+        """Return Network Manager version."""
         return AwesomeVersion(self.properties[DBUS_ATTR_VERSION])
 
     @dbus_connected
