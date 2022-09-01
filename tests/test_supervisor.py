@@ -8,11 +8,12 @@ import pytest
 import time_machine
 
 from supervisor.coresys import CoreSys
+from supervisor.supervisor import Supervisor
 from supervisor.utils.dt import utcnow
 
 
 @pytest.fixture(name="websession")
-async def fixture_webession(coresys: CoreSys):
+async def fixture_webession(coresys: CoreSys) -> AsyncMock:
     """Mock of websession."""
     mock_websession = AsyncMock()
     with patch.object(
@@ -21,22 +22,33 @@ async def fixture_webession(coresys: CoreSys):
         yield mock_websession
 
 
+@pytest.fixture(name="supervisor_unthrottled")
+async def fixture_supervisor_unthrottled(coresys: CoreSys) -> Supervisor:
+    """Get supervisor object with connectivity check throttle removed."""
+    with patch.object(
+        type(coresys.supervisor),
+        "_check_connectivity_throttled",
+        new=coresys.supervisor._check_connectivity,  # pylint: disable=protected-access
+    ):
+        yield coresys.supervisor
+
+
 @pytest.mark.parametrize(
     "side_effect,connectivity", [(ClientError(), False), (None, True)]
 )
 async def test_connectivity_check(
-    coresys: CoreSys,
+    supervisor_unthrottled: Supervisor,
     websession: AsyncMock,
     side_effect: Exception | None,
     connectivity: bool,
 ):
     """Test connectivity check."""
-    assert coresys.supervisor.connectivity is True
+    assert supervisor_unthrottled.connectivity is True
 
     websession.head.side_effect = side_effect
-    await coresys.supervisor.check_connectivity()
+    await supervisor_unthrottled.check_connectivity()
 
-    assert coresys.supervisor.connectivity is connectivity
+    assert supervisor_unthrottled.connectivity is connectivity
 
 
 @pytest.mark.parametrize("side_effect,call_count", [(ClientError(), 3), (None, 2)])
