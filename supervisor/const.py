@@ -443,8 +443,6 @@ class BusEvent(str, Enum):
 
     HARDWARE_NEW_DEVICE = "hardware_new_device"
     HARDWARE_REMOVE_DEVICE = "hardware_remove_device"
-    ISSUE_CHANGED = "issue_changed"
-    ISSUE_REMOVED = "issue_removed"
     DOCKER_CONTAINER_STATE_CHANGE = "docker_container_state_change"
 
 

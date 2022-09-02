@@ -32,4 +32,6 @@ class WSEvent(str, Enum):
     """Websocket events."""
 
     ADDON = "addon"
+    ISSUE_CHANGED = "issue_changed"
+    ISSUE_REMOVED = "issue_removed"
     SUPERVISOR_UPDATE = "supervisor_update"

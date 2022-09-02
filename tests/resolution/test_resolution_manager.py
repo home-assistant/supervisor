@@ -1,9 +1,11 @@
 """Tests for resolution manager."""
+import asyncio
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
+import attr
 import pytest
 
-from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionError
 from supervisor.resolution.const import (
@@ -18,7 +20,6 @@ from supervisor.resolution.data import Issue, Suggestion
 
 def test_properies_unsupported(coresys: CoreSys):
     """Test resolution manager properties unsupported."""
-
     assert coresys.core.supported
 
     coresys.resolution.unsupported = UnsupportedReason.OS
@@ -27,7 +28,6 @@ def test_properies_unsupported(coresys: CoreSys):
 
 def test_properies_unhealthy(coresys: CoreSys):
     """Test resolution manager properties unhealthy."""
-
     assert coresys.core.healthy
 
     coresys.resolution.unhealthy = UnhealthyReason.SUPERVISOR
@@ -180,46 +180,68 @@ async def test_issues_for_suggestion(coresys: CoreSys):
     }
 
 
+def _supervisor_event_message(event: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Make mock supervisor event message for ha websocket."""
+    return {
+        "type": "supervisor/event",
+        "data": {
+            "event": event,
+            "data": data,
+        },
+    }
+
+
 async def test_events_on_issue_changes(coresys: CoreSys):
     """Test events fired when an issue changes."""
-    coresys.bus.register_event(BusEvent.ISSUE_CHANGED, change_handler := AsyncMock())
-    coresys.bus.register_event(BusEvent.ISSUE_REMOVED, remove_handler := AsyncMock())
+    with patch.object(
+        type(coresys.homeassistant.websocket), "async_send_message"
+    ) as send_message:
+        # Creating an issue with a suggestion should fire exactly one issue changed event
+        assert coresys.resolution.issues == []
+        assert coresys.resolution.suggestions == []
+        coresys.resolution.create_issue(
+            IssueType.CORRUPT_REPOSITORY,
+            ContextType.STORE,
+            "test_repo",
+            [SuggestionType.EXECUTE_RESET],
+        )
+        await asyncio.sleep(0)
 
-    # Creating an issue with a suggestion should fire exactly one event
-    assert coresys.resolution.issues == []
-    assert coresys.resolution.suggestions == []
-    coresys.resolution.create_issue(
-        IssueType.CORRUPT_REPOSITORY,
-        ContextType.STORE,
-        "test_repo",
-        [SuggestionType.EXECUTE_RESET],
-    )
+        assert len(coresys.resolution.issues) == 1
+        assert len(coresys.resolution.suggestions) == 1
+        issue = coresys.resolution.issues[0]
+        suggestion = coresys.resolution.suggestions[0]
+        send_message.assert_called_once_with(
+            _supervisor_event_message("issue_changed", attr.asdict(issue))
+        )
 
-    assert len(coresys.resolution.issues) == 1
-    assert len(coresys.resolution.suggestions) == 1
-    issue = coresys.resolution.issues[0]
-    suggestion = coresys.resolution.suggestions[0]
-    change_handler.assert_called_once_with(issue)
+        # Adding a suggestion that fixes the issue changes it
+        send_message.reset_mock()
+        coresys.resolution.suggestions = execute_remove = Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
+        )
+        await asyncio.sleep(0)
+        send_message.assert_called_once_with(
+            _supervisor_event_message("issue_changed", attr.asdict(issue))
+        )
 
-    # Adding and removing a suggestion that fixes the issue should fire another
-    change_handler.reset_mock()
-    coresys.resolution.suggestions = execute_remove = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
-    )
-    change_handler.assert_called_once_with(issue)
+        # Removing a suggestion that fixes the issue changes it again
+        send_message.reset_mock()
+        coresys.resolution.dismiss_suggestion(execute_remove)
+        await asyncio.sleep(0)
+        send_message.assert_called_once_with(
+            _supervisor_event_message("issue_changed", attr.asdict(issue))
+        )
 
-    change_handler.reset_mock()
-    coresys.resolution.dismiss_suggestion(execute_remove)
-    change_handler.assert_called_once_with(issue)
-    remove_handler.assert_not_called()
+        # Applying a suggestion should only fire an issue removed event
+        send_message.reset_mock()
+        with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
+            await coresys.resolution.apply_suggestion(suggestion)
 
-    # Applying a suggestion should only fire the issue removed event
-    change_handler.reset_mock()
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
-        await coresys.resolution.apply_suggestion(suggestion)
-
-    change_handler.assert_not_called()
-    remove_handler.assert_called_once_with(issue)
+        await asyncio.sleep(0)
+        send_message.assert_called_once_with(
+            _supervisor_event_message("issue_removed", attr.asdict(issue))
+        )
 
 
 async def test_resolution_apply_suggestion_multiple_copies(coresys: CoreSys):
