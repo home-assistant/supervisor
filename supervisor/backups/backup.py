@@ -465,8 +465,11 @@ class Backup(CoreSysAttributes):
         self._data[ATTR_HOMEASSISTANT] = {ATTR_VERSION: self.sys_homeassistant.version}
 
         # Backup Home Assistant Core config directory
+        tar_name = Path(
+            self._tmp.name, f"homeassistant.tar{'.gz' if self.compressed else ''}"
+        )
         homeassistant_file = SecureTarFile(
-            Path(self._tmp.name, "homeassistant.tar.gz"), "w", key=self._key
+            tar_name, "w", key=self._key, gzip=self.compressed
         )
 
         await self.sys_homeassistant.backup(homeassistant_file)
@@ -479,8 +482,11 @@ class Backup(CoreSysAttributes):
         await self.sys_homeassistant.core.stop()
 
         # Restore Home Assistant Core config directory
+        tar_name = Path(
+            self._tmp.name, f"homeassistant.tar{'.gz' if self.compressed else ''}"
+        )
         homeassistant_file = SecureTarFile(
-            Path(self._tmp.name, "homeassistant.tar.gz"), "r", key=self._key
+            tar_name, "r", key=self._key, gzip=self.compressed
         )
 
         await self.sys_homeassistant.restore(homeassistant_file)
