@@ -21,7 +21,7 @@ class EvaluateSupervisorVersion(EvaluateBase):
 
     @property
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
+        """Return a string that is printed when self.evaluate is True."""
         return "Not using latest version of Supervisor and auto update is disabled."
 
     @property

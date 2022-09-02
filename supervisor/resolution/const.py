@@ -32,6 +32,7 @@ class UnsupportedReason(str, Enum):
     """Reasons for unsupported status."""
 
     APPARMOR = "apparmor"
+    CONNECTIVITY_CHECK = "connectivity_check"
     CONTENT_TRUST = "content_trust"
     DBUS = "dbus"
     DNS_SERVER = "dns_server"
