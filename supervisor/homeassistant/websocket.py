@@ -262,7 +262,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         except HomeAssistantWSNotSupported:
             pass
         except HomeAssistantWSError as err:
-            _LOGGER.error(err)
+            _LOGGER.error("Could not send message to Home Assistant due to %s", err)
 
     def supervisor_update_event(
         self,
@@ -297,7 +297,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         except HomeAssistantWSNotSupported:
             pass
         except HomeAssistantWSError as err:
-            _LOGGER.error(err)
+            _LOGGER.error("Could not send message to Home Assistant due to %s", err)
 
     def supervisor_event(self, event: WSEvent, data: dict[str, Any] | None = None):
         """Send a supervisor/event command to Home Assistant."""
