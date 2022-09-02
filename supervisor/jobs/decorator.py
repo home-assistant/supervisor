@@ -3,12 +3,12 @@ import asyncio
 from datetime import datetime, timedelta
 from functools import wraps
 import logging
-from typing import Any
+from typing import Any, Callable
 
 import sentry_sdk
 
 from ..const import CoreState
-from ..coresys import CoreSysAttributes
+from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, JobConditionException, JobException
 from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
@@ -27,7 +27,9 @@ class Job(CoreSysAttributes):
         cleanup: bool = True,
         on_condition: JobException | None = None,
         limit: JobExecutionLimit | None = None,
-        throttle_period: timedelta | None = None,
+        throttle_period: timedelta
+        | Callable[[CoreSys, datetime, list[datetime] | None], timedelta]
+        | None = None,
         throttle_max_calls: int | None = None,
     ):
         """Initialize the Job class."""
@@ -36,7 +38,7 @@ class Job(CoreSysAttributes):
         self.cleanup = cleanup
         self.on_condition = on_condition
         self.limit = limit
-        self.throttle_period = throttle_period
+        self._throttle_period = throttle_period
         self.throttle_max_calls = throttle_max_calls
         self._lock: asyncio.Semaphore | None = None
         self._method = None
@@ -51,7 +53,7 @@ class Job(CoreSysAttributes):
                 JobExecutionLimit.THROTTLE_WAIT,
                 JobExecutionLimit.THROTTLE_RATE_LIMIT,
             )
-            and self.throttle_period is None
+            and self._throttle_period is None
         ):
             raise RuntimeError("Using Job without a Throttle period!")
 
@@ -60,6 +62,19 @@ class Job(CoreSysAttributes):
                 raise RuntimeError("Using rate limit without throttle max calls!")
 
             self._rate_limited_calls = []
+
+    @property
+    def throttle_period(self) -> timedelta | None:
+        """Return throttle period."""
+        if self._throttle_period is None:
+            return None
+
+        if isinstance(self._throttle_period, timedelta):
+            return self._throttle_period
+
+        return self._throttle_period(
+            self.coresys, self._last_call, self._rate_limited_calls
+        )
 
     def _post_init(self, args: tuple[Any]) -> None:
         """Runtime init."""

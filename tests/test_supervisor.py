@@ -5,11 +5,9 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 
 from aiohttp.client_exceptions import ClientError
 import pytest
-import time_machine
 
 from supervisor.coresys import CoreSys
 from supervisor.supervisor import Supervisor
-from supervisor.utils.dt import utcnow
 
 
 @pytest.fixture(name="websession")
@@ -25,10 +23,9 @@ async def fixture_webession(coresys: CoreSys) -> AsyncMock:
 @pytest.fixture(name="supervisor_unthrottled")
 async def fixture_supervisor_unthrottled(coresys: CoreSys) -> Supervisor:
     """Get supervisor object with connectivity check throttle removed."""
-    with patch.object(
-        type(coresys.supervisor),
-        "_check_connectivity_throttled",
-        new=coresys.supervisor._check_connectivity,  # pylint: disable=protected-access
+    with patch(
+        "supervisor.supervisor._check_connectivity_throttle_period",
+        return_value=timedelta(),
     ):
         yield coresys.supervisor
 
@@ -51,7 +48,7 @@ async def test_connectivity_check(
     assert supervisor_unthrottled.connectivity is connectivity
 
 
-@pytest.mark.parametrize("side_effect,call_count", [(ClientError(), 3), (None, 2)])
+@pytest.mark.parametrize("side_effect,call_count", [(ClientError(), 3), (None, 1)])
 async def test_connectivity_check_throttling(
     coresys: CoreSys,
     websession: AsyncMock,
@@ -66,8 +63,3 @@ async def test_connectivity_check_throttling(
         await coresys.supervisor.check_connectivity()
 
     assert websession.head.call_count == call_count
-
-    with time_machine.travel(utcnow() + timedelta(minutes=10)):
-        await coresys.supervisor.check_connectivity()
-
-    assert websession.head.call_count == call_count + 1

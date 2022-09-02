@@ -84,14 +84,11 @@ async def test_internet(
 
     mock_websession = AsyncMock()
     mock_websession.head.side_effect = head_side_effect
+    coresys.supervisor.connectivity = None
     with patch.object(
         type(coresys.dbus.network.dbus), "get_property", return_value=connectivity
     ), patch.object(
         CoreSys, "websession", new=PropertyMock(return_value=mock_websession)
-    ), patch.object(
-        type(coresys.supervisor),
-        "_check_connectivity_throttled",
-        new=coresys.supervisor._check_connectivity,
     ):
         assert await test.execute_host() is host_result
         assert await test.execute_system() is system_result
