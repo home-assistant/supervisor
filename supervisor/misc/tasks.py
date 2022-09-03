@@ -5,7 +5,6 @@ from ..addons.const import ADDON_UPDATE_CONDITIONS
 from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError, HomeAssistantError, ObserverError
-from ..host.const import HostFeature
 from ..jobs.decorator import Job, JobCondition
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 
@@ -33,8 +32,6 @@ RUN_WATCHDOG_ADDON_APPLICATON = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
 RUN_REFRESH_ADDON = 15
-
-RUN_CHECK_CONNECTIVITY = 30
 
 PLUGIN_AUTO_UPDATE_CONDITIONS = PLUGIN_UPDATE_CONDITIONS + [JobCondition.RUNNING]
 
@@ -78,11 +75,6 @@ class Tasks(CoreSysAttributes):
 
         # Refresh
         self.sys_scheduler.register_task(self._refresh_addon, RUN_REFRESH_ADDON)
-
-        # Connectivity
-        self.sys_scheduler.register_task(
-            self._check_connectivity, RUN_CHECK_CONNECTIVITY
-        )
 
         _LOGGER.info("All core tasks are scheduled")
 
@@ -290,32 +282,6 @@ class Tasks(CoreSysAttributes):
 
             # Adjust state
             addon.state = AddonState.STOPPED
-
-    async def _check_connectivity(self) -> None:
-        """Check system connectivity."""
-        value = self._cache.get("connectivity", 0)
-
-        # Need only full check if not connected or each 10min
-        if value >= 600:
-            pass
-        elif (
-            self.sys_supervisor.connectivity
-            and self.sys_host.network.connectivity is None
-        ) or (
-            self.sys_supervisor.connectivity
-            and self.sys_host.network.connectivity is not None
-            and self.sys_host.network.connectivity
-        ):
-            self._cache["connectivity"] = value + RUN_CHECK_CONNECTIVITY
-            return
-
-        # Check connectivity
-        try:
-            await self.sys_supervisor.check_connectivity()
-            if HostFeature.NETWORK in self.sys_host.features:
-                await self.sys_host.network.check_connectivity()
-        finally:
-            self._cache["connectivity"] = 0
 
     @Job(conditions=[JobCondition.SUPERVISOR_UPDATED])
     async def _reload_store(self) -> None:

@@ -11,10 +11,14 @@ from supervisor.host.network import Interface, IpConfig
 async def test_load(coresys: CoreSys):
     """Test network manager load."""
     with patch.object(
-        coresys.host.sys_dbus.network,
+        type(coresys.host.sys_dbus.network),
         "activate_connection",
         new=Mock(wraps=coresys.host.sys_dbus.network.activate_connection),
-    ) as activate_connection:
+    ) as activate_connection, patch.object(
+        type(coresys.host.sys_dbus.network),
+        "check_connectivity",
+        new=Mock(wraps=coresys.host.sys_dbus.network.check_connectivity),
+    ) as check_connectivity:
         await coresys.host.network.load()
 
         assert coresys.host.network.connectivity is True
@@ -42,6 +46,10 @@ async def test_load(coresys: CoreSys):
             "/org/freedesktop/NetworkManager/Settings/1",
             "/org/freedesktop/NetworkManager/Devices/1",
         )
+
+        assert check_connectivity.call_count == 2
+        assert check_connectivity.call_args_list[0][1] == {"force": False}
+        assert check_connectivity.call_args_list[1][1] == {"force": False}
 
 
 async def test_load_with_disabled_methods(coresys: CoreSys):

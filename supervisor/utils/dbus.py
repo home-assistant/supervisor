@@ -38,6 +38,7 @@ def _remove_dbus_signature(data: Any) -> Any:
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
+DBUS_METHOD_GET: str = "org.freedesktop.DBus.Properties.Get"
 DBUS_METHOD_SET: str = "org.freedesktop.DBus.Properties.Set"
 
 
@@ -186,6 +187,14 @@ class DBus:
             _LOGGER.error("No attributes returned for %s", interface)
             raise DBusFatalError() from err
 
+    async def get_property(self, interface: str, name: str) -> Any:
+        """Read value of single property from interface."""
+        try:
+            return (await self.call_dbus(DBUS_METHOD_GET, interface, name))[0]
+        except IndexError as err:
+            _LOGGER.error("No attribute returned for %s on %s", name, interface)
+            raise DBusFatalError() from err
+
     async def set_property(
         self,
         interface: str,
@@ -275,7 +284,6 @@ class DBusSignalWrapper:
 
     async def __aenter__(self):
         """Install match for signals and start collecting signal messages."""
-
         _LOGGER.debug("Install match for signal %s.%s", self._interface, self._member)
         await self._dbus._bus.call(
             Message(
@@ -298,7 +306,6 @@ class DBusSignalWrapper:
 
     async def __aexit__(self, exc_t, exc_v, exc_tb):
         """Stop collecting signal messages and remove match for signals."""
-
         self._dbus._bus.remove_message_handler(self._message_handler)
 
         await self._dbus._bus.call(

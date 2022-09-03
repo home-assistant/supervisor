@@ -1,6 +1,7 @@
 """Home Assistant control object."""
 import asyncio
 from contextlib import suppress
+from datetime import timedelta
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
@@ -25,15 +26,24 @@ from .exceptions import (
     SupervisorJobError,
     SupervisorUpdateError,
 )
-from .jobs.decorator import Job, JobCondition
+from .jobs.const import JobCondition, JobExecutionLimit
+from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType
 from .utils.codenotary import calc_checksum
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+def _check_connectivity_throttle_period(coresys: CoreSys, *_) -> timedelta:
+    """Throttle period for connectivity check."""
+    if coresys.supervisor.connectivity:
+        return timedelta(minutes=10)
+
+    return timedelta()
+
+
 class Supervisor(CoreSysAttributes):
-    """Home Assistant core object for handle it."""
+    """Supervisor object."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize hass object."""
@@ -42,7 +52,7 @@ class Supervisor(CoreSysAttributes):
         self._connectivity: bool = True
 
     async def load(self) -> None:
-        """Prepare Home Assistant object."""
+        """Prepare Supervisor object."""
         try:
             await self.instance.attach(version=self.version)
         except DockerError:
@@ -243,6 +253,10 @@ class Supervisor(CoreSysAttributes):
         except DockerError:
             _LOGGER.error("Repair of Supervisor failed")
 
+    @Job(
+        limit=JobExecutionLimit.THROTTLE,
+        throttle_period=_check_connectivity_throttle_period,
+    )
     async def check_connectivity(self):
         """Check the connection."""
         timeout = aiohttp.ClientTimeout(total=10)

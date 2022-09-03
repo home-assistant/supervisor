@@ -82,15 +82,16 @@ class NetworkManager(CoreSysAttributes):
 
         return list(dict.fromkeys(servers))
 
-    async def check_connectivity(self):
+    async def check_connectivity(self, *, force: bool = False):
         """Check the internet connection."""
         if not self.sys_dbus.network.connectivity_enabled:
+            self.connectivity = None
             return
 
         # Check connectivity
         try:
-            state = await self.sys_dbus.network.check_connectivity()
-            self.connectivity = state[0] == ConnectivityState.CONNECTIVITY_FULL
+            state = await self.sys_dbus.network.check_connectivity(force=force)
+            self.connectivity = state == ConnectivityState.CONNECTIVITY_FULL
         except DBusError as err:
             _LOGGER.warning("Can't update connectivity information: %s", err)
             self.connectivity = False
@@ -128,7 +129,7 @@ class NetworkManager(CoreSysAttributes):
                 ]
             )
 
-    async def update(self):
+    async def update(self, *, force_connectivity_check: bool = False):
         """Update properties over dbus."""
         _LOGGER.info("Updating local network information")
         try:
@@ -140,7 +141,7 @@ class NetworkManager(CoreSysAttributes):
                 "No network D-Bus connection available", _LOGGER.error
             ) from err
 
-        await self.check_connectivity()
+        await self.check_connectivity(force=force_connectivity_check)
 
     async def apply_changes(
         self, interface: Interface, *, update_only: bool = False
@@ -247,7 +248,8 @@ class NetworkManager(CoreSysAttributes):
                     state = msg[0]
                     _LOGGER.debug("Active connection state changed to %s", state)
 
-        await self.update()
+        # update_only means not done by user so don't force a check afterwards
+        await self.update(force_connectivity_check=not update_only)
 
     async def scan_wifi(self, interface: Interface) -> list[AccessPoint]:
         """Scan on Interface for AccessPoint."""
