@@ -1,5 +1,6 @@
 """Representation of a backup file."""
 from base64 import b64decode, b64encode
+from datetime import timedelta
 import json
 import logging
 from pathlib import Path
@@ -40,6 +41,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError, BackupError
 from ..utils import remove_folder
+from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import write_json_file
 from .const import BackupType
 from .utils import key_to_iv, password_to_key
@@ -163,6 +165,13 @@ class Backup(CoreSysAttributes):
     def tarfile(self):
         """Return path to backup tarfile."""
         return self._tarfile
+
+    @property
+    def is_current(self):
+        """Return true if backup is current, false if stale."""
+        return parse_datetime(self.date) >= utcnow() - timedelta(
+            days=self.sys_backups.days_until_stale
+        )
 
     def new(self, slug, name, date, sys_type, password=None, compressed=True):
         """Initialize a new backup."""

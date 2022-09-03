@@ -75,6 +75,7 @@ class IssueType(str, Enum):
     FREE_SPACE = "free_space"
     IPV4_CONNECTION_PROBLEM = "ipv4_connection_problem"
     MISSING_IMAGE = "missing_image"
+    NO_CURRENT_BACKUP = "no_current_backup"
     PWNED = "pwned"
     SECURITY = "security"
     TRUST = "trust"

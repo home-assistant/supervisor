@@ -12,6 +12,7 @@ from ..const import (
     ATTR_COMPRESSED,
     ATTR_CRYPTO,
     ATTR_DATE,
+    ATTR_DAYS_UNTIL_STALE,
     ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
@@ -78,6 +79,8 @@ def v1_protected(protected: bool | str) -> bool:
 
 
 # pylint: disable=no-value-for-parameter
+days_until_stale = vol.All(vol.Coerce(int), vol.Range(min=1))
+
 SCHEMA_BACKUP = vol.Schema(
     {
         vol.Optional(ATTR_VERSION, default=1): vol.All(vol.Coerce(int), vol.In((1, 2))),
@@ -126,4 +129,11 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Optional(ATTR_REPOSITORIES, default=list): repositories,
     },
     extra=vol.ALLOW_EXTRA,
+)
+
+SCHEMA_BACKUPS_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_DAYS_UNTIL_STALE, default=30): days_until_stale,
+    },
+    extra=vol.REMOVE_EXTRA,
 )

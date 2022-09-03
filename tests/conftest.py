@@ -11,13 +11,30 @@ from aiohttp import web
 from awesomeversion import AwesomeVersion
 from dbus_next import introspection as intr
 import pytest
+from securetar import SecureTarFile
 
 from supervisor import config as su_config
 from supervisor.addons.addon import Addon
 from supervisor.addons.validate import SCHEMA_ADDON_SYSTEM
 from supervisor.api import RestAPI
+from supervisor.backups.backup import Backup
+from supervisor.backups.const import BackupType
+from supervisor.backups.validate import ALL_FOLDERS
 from supervisor.bootstrap import initialize_coresys
-from supervisor.const import ATTR_ADDONS_CUSTOM_LIST, ATTR_REPOSITORIES, REQUEST_FROM
+from supervisor.const import (
+    ATTR_ADDONS,
+    ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_DATE,
+    ATTR_FOLDERS,
+    ATTR_HOMEASSISTANT,
+    ATTR_NAME,
+    ATTR_REPOSITORIES,
+    ATTR_SIZE,
+    ATTR_SLUG,
+    ATTR_TYPE,
+    ATTR_VERSION,
+    REQUEST_FROM,
+)
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.const import DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
@@ -32,6 +49,7 @@ from supervisor.docker.monitor import DockerMonitor
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dbus import DBus
+from supervisor.utils.dt import utcnow
 
 from .common import exists_fixture, load_fixture, load_json_fixture
 from .const import TEST_ADDON_SLUG
@@ -368,3 +386,50 @@ def install_addon_ssh(coresys: CoreSys, repository):
     addon = Addon(coresys, store.slug)
     coresys.addons.local[addon.slug] = addon
     yield addon
+
+
+@pytest.fixture
+async def mock_full_backup(coresys: CoreSys, tmp_path):
+    """Mock a full backup."""
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"))
+    mock_backup.new("test", "Test", utcnow().isoformat(), BackupType.FULL)
+    mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
+    mock_backup.docker = {}
+    mock_backup._data[ATTR_ADDONS] = [
+        {
+            ATTR_SLUG: "local_ssh",
+            ATTR_NAME: "SSH",
+            ATTR_VERSION: "1.0.0",
+            ATTR_SIZE: 0,
+        }
+    ]
+    mock_backup._data[ATTR_FOLDERS] = ALL_FOLDERS
+    mock_backup._data[ATTR_HOMEASSISTANT] = {
+        ATTR_VERSION: AwesomeVersion("2022.8.0"),
+        ATTR_SIZE: 0,
+    }
+    coresys.backups._backups = {"test": mock_backup}
+    yield mock_backup
+
+
+@pytest.fixture
+async def backups(
+    coresys: CoreSys, tmp_path, request: pytest.FixtureRequest
+) -> list[Backup]:
+    """Create and return mock backups."""
+    for i in range(request.param if hasattr(request, "param") else 5):
+        slug = f"sn{i+1}"
+        temp_tar = Path(tmp_path, f"{slug}.tar")
+        with SecureTarFile(temp_tar, "w"):
+            pass
+        backup = Backup(coresys, temp_tar)
+        backup._data = {  # pylint: disable=protected-access
+            ATTR_SLUG: slug,
+            ATTR_DATE: utcnow().isoformat(),
+            ATTR_TYPE: BackupType.PARTIAL
+            if "1" == slug[-1] or "5" == slug[-1]
+            else BackupType.FULL,
+        }
+        coresys.backups._backups[backup.slug] = backup
+
+    yield coresys.backups.list_backups

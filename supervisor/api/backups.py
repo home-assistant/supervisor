@@ -9,13 +9,14 @@ from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
-from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT
+from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT, days_until_stale
 from ..const import (
     ATTR_ADDONS,
     ATTR_BACKUPS,
     ATTR_COMPRESSED,
     ATTR_CONTENT,
     ATTR_DATE,
+    ATTR_DAYS_UNTIL_STALE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
@@ -24,6 +25,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
 )
@@ -68,6 +70,12 @@ SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
     }
 )
 
+SCHEMA_OPTIONS = vol.Schema(
+    {
+        vol.Optional(ATTR_DAYS_UNTIL_STALE): days_until_stale,
+    }
+)
+
 
 class APIBackups(CoreSysAttributes):
     """Handle RESTful API for backups functions."""
@@ -79,27 +87,30 @@ class APIBackups(CoreSysAttributes):
             raise APIError("Backup does not exist")
         return backup
 
+    def _list_backups(self):
+        """Return list of backups."""
+        return [
+            {
+                ATTR_SLUG: backup.slug,
+                ATTR_NAME: backup.name,
+                ATTR_DATE: backup.date,
+                ATTR_TYPE: backup.sys_type,
+                ATTR_SIZE: backup.size,
+                ATTR_PROTECTED: backup.protected,
+                ATTR_COMPRESSED: backup.compressed,
+                ATTR_CONTENT: {
+                    ATTR_HOMEASSISTANT: backup.homeassistant_version is not None,
+                    ATTR_ADDONS: backup.addon_list,
+                    ATTR_FOLDERS: backup.folders,
+                },
+            }
+            for backup in self.sys_backups.list_backups
+        ]
+
     @api_process
     async def list(self, request):
         """Return backup list."""
-        data_backups = []
-        for backup in self.sys_backups.list_backups:
-            data_backups.append(
-                {
-                    ATTR_SLUG: backup.slug,
-                    ATTR_NAME: backup.name,
-                    ATTR_DATE: backup.date,
-                    ATTR_TYPE: backup.sys_type,
-                    ATTR_SIZE: backup.size,
-                    ATTR_PROTECTED: backup.protected,
-                    ATTR_COMPRESSED: backup.compressed,
-                    ATTR_CONTENT: {
-                        ATTR_HOMEASSISTANT: backup.homeassistant_version is not None,
-                        ATTR_ADDONS: backup.addon_list,
-                        ATTR_FOLDERS: backup.folders,
-                    },
-                }
-            )
+        data_backups = self._list_backups()
 
         if request.path == "/snapshots":
             # Kept for backwards compability
@@ -108,13 +119,31 @@ class APIBackups(CoreSysAttributes):
         return {ATTR_BACKUPS: data_backups}
 
     @api_process
+    async def info(self, request):
+        """Return backup list and manager info."""
+        return {
+            ATTR_BACKUPS: self._list_backups(),
+            ATTR_DAYS_UNTIL_STALE: self.sys_backups.days_until_stale,
+        }
+
+    @api_process
+    async def options(self, request):
+        """Set backup manager options."""
+        body = await api_validate(SCHEMA_OPTIONS, request)
+
+        if ATTR_DAYS_UNTIL_STALE in body:
+            self.sys_backups.days_until_stale = body[ATTR_DAYS_UNTIL_STALE]
+
+        self.sys_backups.save_data()
+
+    @api_process
     async def reload(self, request):
         """Reload backup list."""
         await asyncio.shield(self.sys_backups.reload())
         return True
 
     @api_process
-    async def info(self, request):
+    async def backup_info(self, request):
         """Return backup info."""
         backup = self._extract_slug(request)
 
@@ -137,6 +166,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_SIZE: backup.size,
             ATTR_COMPRESSED: backup.compressed,
             ATTR_PROTECTED: backup.protected,
+            ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
             ATTR_HOMEASSISTANT: backup.homeassistant_version,
             ATTR_ADDONS: data_addons,
             ATTR_REPOSITORIES: backup.repositories,

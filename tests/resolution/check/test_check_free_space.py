@@ -1,11 +1,32 @@
-"""Test evaluation base."""
+"""Test check free space fixup."""
 # pylint: disable=import-error,protected-access
-from unittest.mock import patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
+
+from supervisor.backups.const import BackupType
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.free_space import CheckFreeSpace
-from supervisor.resolution.const import IssueType
+from supervisor.resolution.const import IssueType, SuggestionType
+
+
+@pytest.fixture(name="suggestion")
+async def fixture_suggestion(
+    coresys: CoreSys, request: pytest.FixtureRequest
+) -> SuggestionType | None:
+    """Set up test for suggestion."""
+    if request.param == SuggestionType.CLEAR_FULL_BACKUP:
+        backup = MagicMock()
+        backup.sys_type = BackupType.FULL
+        with patch.object(
+            type(coresys.backups),
+            "list_backups",
+            new=PropertyMock(return_value=[backup, backup, backup]),
+        ):
+            yield SuggestionType.CLEAR_FULL_BACKUP
+    else:
+        yield request.param
 
 
 async def test_base(coresys: CoreSys):
@@ -15,7 +36,12 @@ async def test_base(coresys: CoreSys):
     assert free_space.enabled
 
 
-async def test_check(coresys: CoreSys):
+@pytest.mark.parametrize(
+    "suggestion",
+    [None, SuggestionType.CLEAR_FULL_BACKUP],
+    indirect=True,
+)
+async def test_check(coresys: CoreSys, suggestion: SuggestionType | None):
     """Test check."""
     free_space = CheckFreeSpace(coresys)
     coresys.core.state = CoreState.RUNNING
@@ -31,6 +57,11 @@ async def test_check(coresys: CoreSys):
         await free_space.run_check()
 
     assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
+
+    if suggestion:
+        assert coresys.resolution.suggestions[-1].type == suggestion
+    else:
+        assert len(coresys.resolution.suggestions) == 0
 
 
 async def test_approve(coresys: CoreSys):

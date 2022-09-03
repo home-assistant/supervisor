@@ -17,6 +17,7 @@ SUPERVISOR_DATA = Path("/data")
 
 FILE_HASSIO_ADDONS = Path(SUPERVISOR_DATA, "addons.json")
 FILE_HASSIO_AUTH = Path(SUPERVISOR_DATA, "auth.json")
+FILE_HASSIO_BACKUPS = Path(SUPERVISOR_DATA, "backups.json")
 FILE_HASSIO_CONFIG = Path(SUPERVISOR_DATA, "config.json")
 FILE_HASSIO_DISCOVERY = Path(SUPERVISOR_DATA, "discovery.json")
 FILE_HASSIO_DOCKER = Path(SUPERVISOR_DATA, "docker.json")
@@ -131,6 +132,7 @@ ATTR_CPU_PERCENT = "cpu_percent"
 ATTR_CRYPTO = "crypto"
 ATTR_DATA = "data"
 ATTR_DATE = "date"
+ATTR_DAYS_UNTIL_STALE = "days_until_stale"
 ATTR_DEBUG = "debug"
 ATTR_DEBUG_BLOCK = "debug_block"
 ATTR_DEFAULT = "default"
