@@ -16,7 +16,7 @@ class CheckBackups(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
-        if self.approve_check():
+        if await self.approve_check():
             self.sys_resolution.create_issue(
                 IssueType.NO_CURRENT_BACKUP,
                 ContextType.SYSTEM,
