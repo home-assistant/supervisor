@@ -389,10 +389,34 @@ def install_addon_ssh(coresys: CoreSys, repository):
 
 
 @pytest.fixture
-async def mock_full_backup(coresys: CoreSys, tmp_path):
+async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a full backup."""
     mock_backup = Backup(coresys, Path(tmp_path, "test_backup"))
     mock_backup.new("test", "Test", utcnow().isoformat(), BackupType.FULL)
+    mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
+    mock_backup.docker = {}
+    mock_backup._data[ATTR_ADDONS] = [
+        {
+            ATTR_SLUG: "local_ssh",
+            ATTR_NAME: "SSH",
+            ATTR_VERSION: "1.0.0",
+            ATTR_SIZE: 0,
+        }
+    ]
+    mock_backup._data[ATTR_FOLDERS] = ALL_FOLDERS
+    mock_backup._data[ATTR_HOMEASSISTANT] = {
+        ATTR_VERSION: AwesomeVersion("2022.8.0"),
+        ATTR_SIZE: 0,
+    }
+    coresys.backups._backups = {"test": mock_backup}
+    yield mock_backup
+
+
+@pytest.fixture
+async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
+    """Mock a partial backup."""
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"))
+    mock_backup.new("test", "Test", utcnow().isoformat(), BackupType.PARTIAL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
     mock_backup._data[ATTR_ADDONS] = [
