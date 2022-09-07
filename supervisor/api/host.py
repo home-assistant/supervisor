@@ -175,17 +175,17 @@ class APIHost(CoreSysAttributes):
                 "Invalid content type requested. Only text/plain supported for now."
             )
 
-        range = request.headers.get(RANGE)
+        range_header = request.headers.get(RANGE)
 
-        async with self.sys_host.logs.journald_logs(params, range) as resp:
+        async with self.sys_host.logs.journald_logs(params, range_header) as resp:
             try:
                 response = web.StreamResponse()
                 response.content_type = CONTENT_TYPE_TEXT
                 await response.prepare(request)
                 async for data in resp.content:
                     await response.write(data)
-            except ConnectionResetError:
-                _LOGGER.info("Connection reset (client probably disconnected)")
-            except Exception:
-                _LOGGER.exception("Error while returning log data", exc_info=True)
+            except ConnectionResetError as ex:
+                raise APIError(
+                    "Connection reset when trying to fetch data from systemd-journald."
+                ) from ex
             return response

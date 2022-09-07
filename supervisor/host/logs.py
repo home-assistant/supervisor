@@ -33,7 +33,9 @@ class LogsControl(CoreSysAttributes):
         return SYSTEMD_JOURNAL_GATEWAYD_SOCKET.is_socket()
 
     @asynccontextmanager
-    async def journald_logs(self, params, range) -> AsyncIterator[ClientResponse]:
+    async def journald_logs(
+        self, params, range_header
+    ) -> AsyncIterator[ClientResponse]:
         """Get logs from systemd-journal-gatewayd."""
 
         if not self.available:
@@ -45,8 +47,8 @@ class LogsControl(CoreSysAttributes):
 
         async with ClientSession(connector=conn) as session:
             headers = {ACCEPT: "text/plain"}
-            if range:
-                headers[RANGE] = range
+            if range_header:
+                headers[RANGE] = range_header
             async with session.get(
                 "http://localhost/entries",
                 headers=headers,
