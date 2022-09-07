@@ -48,6 +48,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SERVICE = "service"
 IDENTIFIER = "identifier"
+BOOTID = "bootid"
 
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
@@ -154,14 +155,16 @@ class APIHost(CoreSysAttributes):
         return self.sys_host.info.get_dmesg()
 
     @api_process
-    async def advanced_logs(self, request: web.Request) -> web.StreamResponse:
+    async def advanced_logs(
+        self, request: web.Request, follow=False
+    ) -> web.StreamResponse:
         """Return systemd-journald logs."""
         params = {}
         if IDENTIFIER in request.match_info:
             params["SYSLOG_IDENTIFIER"] = request.match_info.get(IDENTIFIER)
-        if "boot" in request.query:
-            params["boot"] = ""
-        if "follow" in request.query:
+        if BOOTID in request.match_info:
+            params["_BOOT_ID"] = request.match_info.get(BOOTID)
+        if follow:
             params["follow"] = ""
 
         if ACCEPT in request.headers and request.headers[ACCEPT] not in [

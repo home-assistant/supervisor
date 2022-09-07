@@ -1,4 +1,5 @@
 """Init file for Supervisor RESTful API."""
+from functools import partial
 import logging
 from pathlib import Path
 from typing import Any
@@ -105,7 +106,28 @@ class RestAPI(CoreSysAttributes):
                 web.get("/host/info", api_host.info),
                 web.get("/host/logs", api_host.logs),
                 web.get("/host/logs/entries", api_host.advanced_logs),
+                web.get(
+                    "/host/logs/entries/follow",
+                    partial(api_host.advanced_logs, follow=True),
+                ),
                 web.get("/host/logs/{identifier}/entries", api_host.advanced_logs),
+                web.get(
+                    "/host/logs/{identifier}/entries/follow",
+                    partial(api_host.advanced_logs, follow=True),
+                ),
+                web.get("/host/logs/boot/{bootid}/entries", api_host.advanced_logs),
+                web.get(
+                    "/host/logs/boot/{bootid}/entries/follow",
+                    partial(api_host.advanced_logs, follow=True),
+                ),
+                web.get(
+                    "/host/logs/boot/{bootid}/{identifier}/entries",
+                    api_host.advanced_logs,
+                ),
+                web.get(
+                    "/host/logs/boot/{bootid}/{identifier}/entries/follow",
+                    partial(api_host.advanced_logs, follow=True),
+                ),
                 web.post("/host/reboot", api_host.reboot),
                 web.post("/host/shutdown", api_host.shutdown),
                 web.post("/host/reload", api_host.reload),
