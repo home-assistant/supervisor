@@ -1,5 +1,7 @@
 """Test Host API."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -118,3 +120,60 @@ async def test_api_llmnr_mdns_info(
     assert result["data"]["broadcast_llmnr"] is True
     assert result["data"]["broadcast_mdns"] is False
     assert result["data"]["llmnr_hostname"] == "homeassistant"
+
+
+async def test_advanced_logs_errors(api_client):
+    """Test advanced logging API errors."""
+    # coresys = coresys_logs_control
+    resp = await api_client.get("/host/logs/entries")
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert result["message"] == "No systemd-journal-gatewayd Unix socket available"
+
+    headers = {"Accept": "application/json"}
+    resp = await api_client.get("/host/logs/entries", headers=headers)
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert (
+        result["message"]
+        == "Invalid content type requested. Only text/plain supported for now."
+    )
+
+
+async def test_advanced_logs(api_client):
+    """Test advanced logging API entries with identifier and custom boot."""
+    with patch("supervisor.host.logs.LogsControl.available", return_value=True), patch(
+        "supervisor.host.logs.LogsControl.journald_logs", new=MagicMock()
+    ) as mock:
+        await api_client.get("/host/logs/entries")
+        mock.assert_called_once_with({}, None)
+
+        mock.reset_mock()
+
+        identifier = "dropbear"
+        await api_client.get(f"/host/logs/{identifier}/entries")
+        mock.assert_called_once_with({"SYSLOG_IDENTIFIER": identifier}, None)
+
+        mock.reset_mock()
+
+        bootid = "798cc03bcd77465482b6a1c43dc6a5fc"
+        await api_client.get(f"/host/logs/boot/{bootid}/entries")
+        mock.assert_called_once_with({"_BOOT_ID": bootid}, None)
+
+        mock.reset_mock()
+
+        await api_client.get(f"/host/logs/boot/{bootid}/{identifier}/entries")
+        mock.assert_called_once_with(
+            {"_BOOT_ID": bootid, "SYSLOG_IDENTIFIER": identifier}, None
+        )
+
+        mock.reset_mock()
+
+        headers = {"Range": "entries=:-19:10"}
+        await api_client.get("/host/logs/entries", headers=headers)
+        mock.assert_called_once_with({}, headers["Range"])
+
+        mock.reset_mock()
+
+        await api_client.get("/host/logs/entries/follow")
+        mock.assert_called_once_with({"follow": ""}, None)
