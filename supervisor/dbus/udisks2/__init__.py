@@ -59,6 +59,7 @@ class UDisks2(DBusInterface):
         filesystem_devices: list[UDisks2Filesystem] = []
         for block_device in await self.dbus.Manager.GetBlockDevices():
             filesystem_device = UDisks2Filesystem(block_device)
+            # If we get a key error, this block device is not a filesystem device
             try:
                 assert filesystem_device.mountpoints
             except KeyError:
