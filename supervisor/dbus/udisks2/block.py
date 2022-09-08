@@ -36,12 +36,12 @@ class FstabConfigDetailsDataType(TypedDict):
 class FstabConfigDetails:
     """fstab configuration details."""
 
-    fsname: str
     dir: str
     type: str
     opts: str
     freq: int
     passno: int
+    fsname: str | None = None
 
     @staticmethod
     def from_dict(data: FstabConfigDetailsDataType) -> "FstabConfigDetails":
@@ -57,14 +57,17 @@ class FstabConfigDetails:
 
     def to_dict(self) -> FstabConfigDetailsDataType:
         """Return dict representation."""
-        return {
-            "fsname": bytearray(self.fsname),
+        data = {
+            "fsname": bytearray(self.fsname) if self.fsname else None,
             "dir": bytearray(self.dir),
             "type": bytearray(self.type),
             "opts": bytearray(self.opts),
             "freq": self.freq,
             "passno": self.passno,
         }
+        if not data["fsname"]:
+            data.pop("fsname")
+        return data
 
 
 CrypttabConfigDetailsDataType = TypedDict(
@@ -83,11 +86,11 @@ CrypttabConfigDetailsDataType = TypedDict(
 class CrypttabConfigDetails:
     """crypttab configuration details."""
 
-    name: str
     device: str
-    passphrase_path: str
     passphrase_contents: str
     options: str
+    name: str | None = None
+    passphrase_path: str | None = None
 
     @staticmethod
     def from_dict(data: CrypttabConfigDetailsDataType) -> "CrypttabConfigDetails":
@@ -102,13 +105,17 @@ class CrypttabConfigDetails:
 
     def to_dict(self) -> CrypttabConfigDetailsDataType:
         """Return dict representation."""
-        return {
-            "name": bytearray(self.name),
+        data = {
+            "name": bytearray(self.name) if self.name else None,
             "device": bytearray(self.device),
-            "passphrase-path": bytearray(self.passphrase_path),
+            "passphrase-path": bytearray(self.passphrase_path) if self.passphrase_path else None,
             "passphrase-contents": bytearray(self.passphrase_contents),
             "options": bytearray(self.options),
         }
+        for key in ("name", "passphrase-path"):
+            if not data[key]:
+                data.pop(key)
+        return data
 
 
 class UDisks2Block(DBusInterfaceProxy):
