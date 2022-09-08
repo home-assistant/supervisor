@@ -2,6 +2,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, TypedDict
+
 from typing_extensions import Required
 
 from ...utils.dbus import DBus
