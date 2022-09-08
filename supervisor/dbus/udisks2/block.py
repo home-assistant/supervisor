@@ -9,9 +9,11 @@ from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_DEVICE,
+    DBUS_ATTR_DEVICE_NUMBER,
     DBUS_ATTR_ID,
     DBUS_ATTR_READ_ONLY,
     DBUS_ATTR_SIZE,
+    DBUS_ATTR_SYMLINKS,
     DBUS_IFACE_BLOCK,
     DBUS_NAME_UDISKS2,
 )
@@ -152,6 +154,20 @@ class UDisks2Block(DBusInterfaceProxy):
     def read_only(self) -> bool:
         """Return whether device is read only."""
         return self.properties[DBUS_ATTR_READ_ONLY]
+
+    @property
+    @dbus_property
+    def symlinks(self) -> list[str]:
+        """Return list of symlinks."""
+        return [
+            bytes(symlink).decode() for symlink in self.properties[DBUS_ATTR_SYMLINKS]
+        ]
+
+    @property
+    @dbus_property
+    def device_number(self) -> int:
+        """Return device number."""
+        return self.properties[DBUS_ATTR_DEVICE_NUMBER]
 
     @property
     @dbus_property
