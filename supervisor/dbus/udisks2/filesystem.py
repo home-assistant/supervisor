@@ -1,11 +1,7 @@
 """Interface to UDisks2 Filesystem over D-Bus."""
 from typing import Any
 
-from ..const import (
-    DBUS_ATTR_MOUNTPOINTS,
-    DBUS_ATTR_SIZE,
-    DBUS_IFACE_FILESYSTEM,
-)
+from ..const import DBUS_ATTR_MOUNTPOINTS, DBUS_ATTR_SIZE, DBUS_IFACE_FILESYSTEM
 from ..interface import dbus_property
 from ..utils import dbus_connected
 from .block import UDisks2Block
