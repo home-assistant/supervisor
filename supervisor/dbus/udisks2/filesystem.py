@@ -1,5 +1,6 @@
 """Interface to UDisks2 Filesystem over D-Bus."""
 from typing import Any
+
 from ..const import (
     DBUS_ATTR_MOUNTPOINTS,
     DBUS_ATTR_SIZE,

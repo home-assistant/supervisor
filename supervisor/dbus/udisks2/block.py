@@ -1,6 +1,5 @@
 """Interface to UDisks2 Block Device over D-Bus."""
-from typing import Any, TypedDict
-from typing_extensions import Required
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from ...utils.dbus import DBus
 from ..const import (
@@ -14,6 +13,9 @@ from ..const import (
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
+
+if TYPE_CHECKING:
+    from typing_extensions import Required
 
 
 class FstabConfigurationDetailsDataType(TypedDict):
