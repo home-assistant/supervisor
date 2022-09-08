@@ -87,9 +87,12 @@ class UDisks2Block(DBusInterfaceProxy):
     @dbus_property
     def configuration(
         self,
-    ) -> list[tuple[
-        str, FstabConfigurationDetailsDataType | CrypttabConfigurationDetailsDataType
-    ]]:
+    ) -> list[
+        tuple[
+            str,
+            FstabConfigurationDetailsDataType | CrypttabConfigurationDetailsDataType,
+        ]
+    ]:
         """Return device configuration."""
         return self.properties[DBUS_ATTR_CONFIGURATION]
 
