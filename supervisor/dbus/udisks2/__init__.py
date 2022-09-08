@@ -60,7 +60,7 @@ class UDisks2(DBusInterface):
         for block_device in await self.dbus.Manager.GetBlockDevices():
             filesystem_device = UDisks2Filesystem(block_device)
             try:
-                filesystem_device.mountpoints
+                assert filesystem_device.mountpoints
             except KeyError:
                 continue
             filesystem_devices.append(filesystem_device)
