@@ -58,7 +58,7 @@ class UDisks2(DBusInterface):
 
     @dbus_connected
     async def get_filesystems(self) -> list[UDisks2Filesystem]:
-        """Return list of all block devices."""
+        """Return list of all block devices containing a mountable filesystem."""
         filesystem_devices: list[UDisks2Filesystem] = []
         for block_device in await self.dbus.Manager.GetBlockDevices():
             filesystem_device = UDisks2Filesystem(block_device)
