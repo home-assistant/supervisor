@@ -70,21 +70,11 @@ class FstabConfigDetails:
 CrypttabConfigDetailsDataType = TypedDict(
     "CrypttabConfigurationDetailsDataType",
     {
-        "name": Required[
-            bytearray,
-        ],
-        "device": Required[
-            bytearray,
-        ],
-        "passphrase-path": Required[
-            bytearray,
-        ],
-        "passphrase-contents": Required[
-            bytearray,
-        ],
-        "options": Required[
-            bytearray,
-        ],
+        "name": Required[bytearray],
+        "device": Required[bytearray],
+        "passphrase-path": Required[bytearray],
+        "passphrase-contents": Required[bytearray],
+        "options": Required[bytearray],
     },
 )
 
