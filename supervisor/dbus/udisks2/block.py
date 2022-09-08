@@ -1,4 +1,5 @@
 """Interface to UDisks2 Block Device over D-Bus."""
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any, TypedDict
 from typing_extensions import Required
@@ -155,17 +156,16 @@ class UDisks2Block(DBusInterfaceProxy):
     @dbus_property
     def configuration(
         self,
-    ) -> list[tuple[str, FstabConfigDetails | CrypttabConfigDetails]]:
+    ) -> dict[str, list[FstabConfigDetails | CrypttabConfigDetails]]:
         """Return device configuration."""
-        return [
-            (
-                type_,
+        configuration = defaultdict(list)
+        for type_, details in self.properties[DBUS_ATTR_CONFIGURATION]:
+            configuration[type_].append(
                 FstabConfigDetails.from_dict(details)
                 if "dir" in details
-                else CrypttabConfigDetails.from_dict(details),
+                else CrypttabConfigDetails.from_dict(details)
             )
-            for type_, details in self.properties[DBUS_ATTR_CONFIGURATION]
-        ]
+        return dict(configuration)
 
     @property
     @dbus_property
