@@ -1,5 +1,6 @@
 """Interface to UDisks2 Block Device over D-Bus."""
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import Any, TypedDict
+from typing_extensions import Required
 
 from ...utils.dbus import DBus
 from ..const import (
@@ -14,41 +15,140 @@ from ..const import (
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 
-if TYPE_CHECKING:
-    from typing_extensions import Required
 
-
-class FstabConfigurationDetailsDataType(TypedDict):
+class FstabConfigDetailsDataType(TypedDict):
     """fstab configuration details data type."""
 
-    fsname: bytes
-    dir: bytes
-    type: bytes
-    opts: bytes
+    fsname: bytearray
+    dir: bytearray
+    type: bytearray
+    opts: bytearray
     freq: int
     passno: int
 
 
-CrypttabConfigurationDetailsDataType = TypedDict(
+class FstabConfigDetails:
+    """fstab configuration details."""
+
+    def __init__(self, data: FstabConfigDetailsDataType) -> None:
+        """Initialize FstabConfigurationDetails object."""
+        self.data = data
+
+    @property
+    def fsname(self) -> str:
+        """Return fsname."""
+        return bytes(self.data["fsname"]).decode()
+
+    @property
+    def dir(self) -> str:
+        """Return dir."""
+        return bytes(self.data["dir"]).decode()
+
+    @property
+    def type(self) -> str:
+        """Return type."""
+        return bytes(self.data["type"]).decode()
+
+    @property
+    def opts(self) -> str:
+        """Return opts."""
+        return bytes(self.data["opts"]).decode()
+
+    @property
+    def freq(self) -> int:
+        """Return freq."""
+        return self.data["freq"]
+
+    @property
+    def passno(self) -> int:
+        """Return passno."""
+        return self.data["passno"]
+
+    @staticmethod
+    def from_fstab_to_dbus(
+        fsname: str, dir: str, type_: str, opts: str, freq: int, passno: int
+    ) -> dict[str, bytearray | int]:
+        """Convert fstab configuration to D-Bus format."""
+        return {
+            "fsname": bytearray(fsname),
+            "dir": bytearray(dir),
+            "type": bytearray(type_),
+            "opts": bytearray(opts),
+            "freq": freq,
+            "passno": passno,
+        }
+
+
+CrypttabConfigDetailsDataType = TypedDict(
     "CrypttabConfigurationDetailsDataType",
     {
         "name": Required[
-            bytes,
+            bytearray,
         ],
         "device": Required[
-            bytes,
+            bytearray,
         ],
         "passphrase-path": Required[
-            bytes,
+            bytearray,
         ],
         "passphrase-contents": Required[
-            bytes,
+            bytearray,
         ],
         "options": Required[
-            bytes,
+            bytearray,
         ],
     },
 )
+
+
+class CrypttabConfigDetails:
+    """crypttab configuration details."""
+
+    def __init__(self, data: CrypttabConfigDetailsDataType) -> None:
+        """Initialize CrypttabConfigurationDetails object."""
+        self.data = data
+
+    @property
+    def name(self) -> str:
+        """Return name."""
+        return bytes(self.data["name"]).decode()
+
+    @property
+    def device(self) -> str:
+        """Return device."""
+        return bytes(self.data["device"]).decode()
+
+    @property
+    def passphrase_path(self) -> str:
+        """Return passphrase_path."""
+        return bytes(self.data["passphrase-path"]).decode()
+
+    @property
+    def passphrase_contents(self) -> str:
+        """Return passphrase_contents."""
+        return bytes(self.data["passphrase-contents"]).decode()
+
+    @property
+    def options(self) -> str:
+        """Return options."""
+        return bytes(self.data["options"]).decode()
+
+    @staticmethod
+    def from_crypttab_to_dbus(
+        name: str,
+        device: str,
+        passphrase_path: str,
+        passphrase_contents: str,
+        options: str,
+    ) -> dict[str, bytearray]:
+        """Convert crypttab configuration to D-Bus format."""
+        return {
+            "name": bytearray(name.encode()),
+            "device": bytearray(device.encode()),
+            "passphrase-path": (passphrase_path.encode()),
+            "passphrase-contents": (passphrase_contents.encode()),
+            "options": (options.encode()),
+        }
 
 
 class UDisks2Block(DBusInterfaceProxy):
@@ -89,14 +189,17 @@ class UDisks2Block(DBusInterfaceProxy):
     @dbus_property
     def configuration(
         self,
-    ) -> list[
-        tuple[
-            str,
-            FstabConfigurationDetailsDataType | CrypttabConfigurationDetailsDataType,
-        ]
-    ]:
+    ) -> list[tuple[str, FstabConfigDetails | CrypttabConfigDetails]]:
         """Return device configuration."""
-        return self.properties[DBUS_ATTR_CONFIGURATION]
+        return [
+            (
+                type_,
+                FstabConfigDetails(details)
+                if "dir" in details
+                else CrypttabConfigDetails(details),
+            )
+            for type_, details in self.properties[DBUS_ATTR_CONFIGURATION]
+        ]
 
     @property
     @dbus_property
@@ -109,7 +212,7 @@ class UDisks2Block(DBusInterfaceProxy):
         self,
         item: tuple[
             str,
-            FstabConfigurationDetailsDataType | CrypttabConfigurationDetailsDataType,
+            FstabConfigDetailsDataType | CrypttabConfigDetailsDataType
         ],
         options: dict[str, Any] = None,
     ):
@@ -124,7 +227,7 @@ class UDisks2Block(DBusInterfaceProxy):
         self,
         item: tuple[
             str,
-            FstabConfigurationDetailsDataType | CrypttabConfigurationDetailsDataType,
+            FstabConfigDetailsDataType | CrypttabConfigDetailsDataType
         ],
         options: dict[str, Any] = None,
     ):
@@ -141,11 +244,11 @@ class UDisks2Block(DBusInterfaceProxy):
         self,
         old_item: tuple[
             str,
-            FstabConfigurationDetailsDataType | CrypttabConfigurationDetailsDataType,
+            FstabConfigDetailsDataType | CrypttabConfigDetailsDataType
         ],
         new_item: tuple[
             str,
-            FstabConfigurationDetailsDataType | CrypttabConfigurationDetailsDataType,
+            FstabConfigDetailsDataType | CrypttabConfigDetailsDataType
         ],
         options: dict[str, Any] = None,
     ):
