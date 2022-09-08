@@ -108,7 +108,9 @@ class CrypttabConfigDetails:
         data = {
             "name": bytearray(self.name) if self.name else None,
             "device": bytearray(self.device),
-            "passphrase-path": bytearray(self.passphrase_path) if self.passphrase_path else None,
+            "passphrase-path": bytearray(self.passphrase_path)
+            if self.passphrase_path
+            else None,
             "passphrase-contents": bytearray(self.passphrase_contents),
             "options": bytearray(self.options),
         }
