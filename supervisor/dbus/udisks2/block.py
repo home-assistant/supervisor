@@ -1,4 +1,5 @@
 """Interface to UDisks2 Block Device over D-Bus."""
+from dataclasses import dataclass
 from typing import Any, TypedDict
 from typing_extensions import Required
 
@@ -27,55 +28,38 @@ class FstabConfigDetailsDataType(TypedDict):
     passno: int
 
 
+@dataclass
 class FstabConfigDetails:
     """fstab configuration details."""
 
-    def __init__(self, data: FstabConfigDetailsDataType) -> None:
-        """Initialize FstabConfigurationDetails object."""
-        self.data = data
-
-    @property
-    def fsname(self) -> str:
-        """Return fsname."""
-        return bytes(self.data["fsname"]).decode()
-
-    @property
-    def dir(self) -> str:
-        """Return dir."""
-        return bytes(self.data["dir"]).decode()
-
-    @property
-    def type(self) -> str:
-        """Return type."""
-        return bytes(self.data["type"]).decode()
-
-    @property
-    def opts(self) -> str:
-        """Return opts."""
-        return bytes(self.data["opts"]).decode()
-
-    @property
-    def freq(self) -> int:
-        """Return freq."""
-        return self.data["freq"]
-
-    @property
-    def passno(self) -> int:
-        """Return passno."""
-        return self.data["passno"]
+    fsname: str
+    dir: str
+    type: str
+    opts: str
+    freq: int
+    passno: int
 
     @staticmethod
-    def from_fstab_to_dbus(
-        fsname: str, dir: str, type_: str, opts: str, freq: int, passno: int
-    ) -> dict[str, bytearray | int]:
-        """Convert fstab configuration to D-Bus format."""
+    def from_dict(data: FstabConfigDetailsDataType) -> "FstabConfigDetails":
+        """Create FstabConfigDetails from dict."""
+        return FstabConfigDetails(
+            fsname=bytes(data["fsname"]).decode(),
+            dir=bytes(data["dir"]).decode(),
+            type=bytes(data["type"]).decode(),
+            opts=bytes(data["opts"]).decode(),
+            freq=data["freq"],
+            passno=data["passno"],
+        )
+
+    def to_dict(self) -> FstabConfigDetailsDataType:
+        """Return dict representation."""
         return {
-            "fsname": bytearray(fsname),
-            "dir": bytearray(dir),
-            "type": bytearray(type_),
-            "opts": bytearray(opts),
-            "freq": freq,
-            "passno": passno,
+            "fsname": bytearray(self.fsname),
+            "dir": bytearray(self.dir),
+            "type": bytearray(self.type),
+            "opts": bytearray(self.opts),
+            "freq": self.freq,
+            "passno": self.passno,
         }
 
 
@@ -101,53 +85,35 @@ CrypttabConfigDetailsDataType = TypedDict(
 )
 
 
+@dataclass
 class CrypttabConfigDetails:
     """crypttab configuration details."""
 
-    def __init__(self, data: CrypttabConfigDetailsDataType) -> None:
-        """Initialize CrypttabConfigurationDetails object."""
-        self.data = data
-
-    @property
-    def name(self) -> str:
-        """Return name."""
-        return bytes(self.data["name"]).decode()
-
-    @property
-    def device(self) -> str:
-        """Return device."""
-        return bytes(self.data["device"]).decode()
-
-    @property
-    def passphrase_path(self) -> str:
-        """Return passphrase_path."""
-        return bytes(self.data["passphrase-path"]).decode()
-
-    @property
-    def passphrase_contents(self) -> str:
-        """Return passphrase_contents."""
-        return bytes(self.data["passphrase-contents"]).decode()
-
-    @property
-    def options(self) -> str:
-        """Return options."""
-        return bytes(self.data["options"]).decode()
+    name: str
+    device: str
+    passphrase_path: str
+    passphrase_contents: str
+    options: str
 
     @staticmethod
-    def from_crypttab_to_dbus(
-        name: str,
-        device: str,
-        passphrase_path: str,
-        passphrase_contents: str,
-        options: str,
-    ) -> dict[str, bytearray]:
-        """Convert crypttab configuration to D-Bus format."""
+    def from_dict(data: CrypttabConfigDetailsDataType) -> "CrypttabConfigDetails":
+        """Create CrypttabConfigDetails from dict."""
+        return CrypttabConfigDetails(
+            name=bytes(data["name"]).decode(),
+            device=bytes(data["device"]).decode(),
+            passphrase_path=bytes(data["passphrase-path"]).decode(),
+            passphrase_contents=bytes(data["passphrase-contents"]).decode(),
+            options=bytes(data["options"]).decode(),
+        )
+
+    def to_dict(self) -> CrypttabConfigDetailsDataType:
+        """Return dict representation."""
         return {
-            "name": bytearray(name.encode()),
-            "device": bytearray(device.encode()),
-            "passphrase-path": (passphrase_path.encode()),
-            "passphrase-contents": (passphrase_contents.encode()),
-            "options": (options.encode()),
+            "name": bytearray(self.name),
+            "device": bytearray(self.device),
+            "passphrase-path": bytearray(self.passphrase_path),
+            "passphrase-contents": bytearray(self.passphrase_contents),
+            "options": bytearray(self.options),
         }
 
 
@@ -194,9 +160,9 @@ class UDisks2Block(DBusInterfaceProxy):
         return [
             (
                 type_,
-                FstabConfigDetails(details)
+                FstabConfigDetails.from_dict(details)
                 if "dir" in details
-                else CrypttabConfigDetails(details),
+                else CrypttabConfigDetails.from_dict(details),
             )
             for type_, details in self.properties[DBUS_ATTR_CONFIGURATION]
         ]
@@ -210,53 +176,49 @@ class UDisks2Block(DBusInterfaceProxy):
     @dbus_connected
     async def add_configuration_item(
         self,
-        item: tuple[
-            str,
-            FstabConfigDetailsDataType | CrypttabConfigDetailsDataType
-        ],
-        options: dict[str, Any] = None,
-    ):
-        """Add new configuration item."""
-        if not options:
-            options = {}
-        await self.dbus.Block.AddConfigurationItem(("sa{sv}", item), ("a{sv}", options))
-        await self.update()
-
-    @dbus_connected
-    async def remove_configuration_item(
-        self,
-        item: tuple[
-            str,
-            FstabConfigDetailsDataType | CrypttabConfigDetailsDataType
-        ],
-        options: dict[str, Any] = None,
-    ):
-        """Remove existing configuration item."""
-        if not options:
-            options = {}
-        await self.dbus.Block.RemoveConfigurationItem(
-            ("sa{sv}", item), ("a{sv}", options)
-        )
-        await self.update()
-
-    @dbus_connected
-    async def update_configuration_item(
-        self,
-        old_item: tuple[
-            str,
-            FstabConfigDetailsDataType | CrypttabConfigDetailsDataType
-        ],
-        new_item: tuple[
-            str,
-            FstabConfigDetailsDataType | CrypttabConfigDetailsDataType
-        ],
+        type_: str,
+        details: FstabConfigDetails | CrypttabConfigDetails,
         options: dict[str, Any] = None,
     ):
         """Add new configuration item."""
         if not options:
             options = {}
         await self.dbus.Block.AddConfigurationItem(
-            ("sa{sv}", old_item), ("sa{sv}", new_item), ("a{sv}", options)
+            ("(sa{sv})", (type_, details.to_dict())), ("a{sv}", options)
+        )
+        await self.update()
+
+    @dbus_connected
+    async def remove_configuration_item(
+        self,
+        type_: str,
+        details: FstabConfigDetails | CrypttabConfigDetails,
+        options: dict[str, Any] = None,
+    ):
+        """Remove existing configuration item."""
+        if not options:
+            options = {}
+        await self.dbus.Block.RemoveConfigurationItem(
+            ("(sa{sv})", (type_, details.to_dict())), ("a{sv}", options)
+        )
+        await self.update()
+
+    @dbus_connected
+    async def update_configuration_item(
+        self,
+        old_type: str,
+        old_details: FstabConfigDetails | CrypttabConfigDetails,
+        new_type: str,
+        new_details: FstabConfigDetails | CrypttabConfigDetails,
+        options: dict[str, Any] = None,
+    ):
+        """Add new configuration item."""
+        if not options:
+            options = {}
+        await self.dbus.Block.AddConfigurationItem(
+            ("(sa{sv})", (old_type, old_details.to_dict())),
+            ("(sa{sv})", (new_type, new_details.to_dict())),
+            ("a{sv}", options),
         )
         await self.update()
 
