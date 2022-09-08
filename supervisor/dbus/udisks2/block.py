@@ -50,7 +50,10 @@ CrypttabConfigurationDetailsDataType = TypedDict(
 
 
 class UDisks2Block(DBusInterfaceProxy):
-    """Block device object for UDisks2."""
+    """Handle D-Bus interface for UDisks2 block device object.
+
+    http://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Block.html
+    """
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""

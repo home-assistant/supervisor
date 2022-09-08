@@ -11,7 +11,10 @@ from .block import UDisks2Block
 
 
 class UDisks2Filesystem(UDisks2Block):
-    """Filesystem device object for UDisks2."""
+    """Handle D-Bus interface for UDisks2 filesystem device object.
+
+    http://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Filesystem.html
+    """
 
     @property
     @dbus_property

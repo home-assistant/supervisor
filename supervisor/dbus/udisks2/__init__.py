@@ -20,7 +20,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class UDisks2(DBusInterface):
-    """UDisks2 function handler."""
+    """Handle D-Bus interface for UDisks2.
+
+    http://storaged.org/doc/udisks2-api/latest/
+    """
 
     name = DBUS_NAME_UDISKS2
 
