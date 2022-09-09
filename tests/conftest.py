@@ -225,7 +225,9 @@ async def resolved(dbus: DBus) -> Resolved:
 
 
 @pytest.fixture
-async def coresys(loop, docker, network_manager, aiohttp_client, run_dir) -> CoreSys:
+async def coresys(
+    event_loop, docker, network_manager, aiohttp_client, run_dir
+) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system"), patch(
         "supervisor.bootstrap.setup_diagnostics"
