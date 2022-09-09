@@ -1,6 +1,6 @@
 """Connection object for Network Manager."""
 import logging
-from typing import Any, Awaitable
+from typing import Any
 
 from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
 from ....utils.dbus import DBus
@@ -120,9 +120,9 @@ class NetworkSetting(DBusInterfaceProxy):
         return self._ipv6
 
     @dbus_connected
-    def get_settings(self) -> Awaitable[Any]:
+    async def get_settings(self) -> dict[str, Any]:
         """Return connection settings."""
-        return self.dbus.Settings.Connection.GetSettings()
+        return (await self.dbus.Settings.Connection.GetSettings())[0]
 
     @dbus_connected
     async def update(self, settings: Any) -> None:
@@ -154,14 +154,14 @@ class NetworkSetting(DBusInterfaceProxy):
         return await self.dbus.Settings.Connection.Update(("a{sa{sv}}", new_settings))
 
     @dbus_connected
-    def delete(self) -> Awaitable[None]:
+    async def delete(self) -> None:
         """Delete connection settings."""
-        return self.dbus.Settings.Connection.Delete()
+        await self.dbus.Settings.Connection.Delete()
 
     async def connect(self) -> None:
         """Get connection information."""
         self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
-        data = (await self.get_settings())[0]
+        data = await self.get_settings()
 
         # Get configuration settings we care about
         # See: https://developer-old.gnome.org/NetworkManager/stable/ch01.html

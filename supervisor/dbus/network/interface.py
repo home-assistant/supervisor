@@ -11,7 +11,7 @@ from ..const import (
     DBUS_OBJECT_BASE,
     DeviceType,
 )
-from ..interface import DBusInterfaceProxy
+from ..interface import DBusInterfaceProxy, dbus_property
 from .connection import NetworkConnection
 from .setting import NetworkSetting
 from .wireless import NetworkWireless
@@ -36,21 +36,25 @@ class NetworkInterface(DBusInterfaceProxy):
         self._nm_dbus: DBus = nm_dbus
 
     @property
+    @dbus_property
     def name(self) -> str:
         """Return interface name."""
         return self.properties[DBUS_ATTR_DEVICE_INTERFACE]
 
     @property
+    @dbus_property
     def type(self) -> int:
         """Return interface type."""
         return self.properties[DBUS_ATTR_DEVICE_TYPE]
 
     @property
+    @dbus_property
     def driver(self) -> str:
         """Return interface driver."""
         return self.properties[DBUS_ATTR_DRIVER]
 
     @property
+    @dbus_property
     def managed(self) -> bool:
         """Return interface driver."""
         return self.properties[DBUS_ATTR_MANAGED]

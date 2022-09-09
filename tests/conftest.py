@@ -37,7 +37,11 @@ from supervisor.const import (
 )
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent import OSAgent
-from supervisor.dbus.const import DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
+from supervisor.dbus.const import (
+    DBUS_OBJECT_BASE,
+    DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
+    DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED,
+)
 from supervisor.dbus.hostname import Hostname
 from supervisor.dbus.interface import DBusInterface
 from supervisor.dbus.network import NetworkManager
@@ -113,15 +117,19 @@ def dbus() -> DBus:
         return load_json_fixture(f"{fixture}.json")
 
     async def mock_get_property(dbus_obj, interface, name):
+        dbus_commands.append(f"{dbus_obj.object_path}-{interface}.{name}")
         properties = await mock_get_properties(dbus_obj, interface)
         return properties[name]
 
     async def mock_wait_for_signal(self):
         if (
-            self._interface + "." + self._method
+            self._interface + "." + self._member
             == DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
         ):
             return [2, 0]
+
+        if self._interface + "." + self._member == DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED:
+            return [0]
 
     async def mock_signal___aenter__(self):
         return self
@@ -132,7 +140,12 @@ def dbus() -> DBus:
     async def mock_init_proxy(self):
 
         filetype = "xml"
-        fixture = self.object_path.replace("/", "_")[1:]
+        fixture = (
+            self.object_path.replace("/", "_")[1:]
+            if self.object_path != DBUS_OBJECT_BASE
+            else self.bus_name.replace(".", "_")
+        )
+
         if not exists_fixture(f"{fixture}.{filetype}"):
             fixture = re.sub(r"_[0-9]+$", "", fixture)
 
@@ -147,12 +160,18 @@ def dbus() -> DBus:
     async def mock_call_dbus(
         self, method: str, *args: list[Any], remove_signature: bool = True
     ):
+        if self.object_path != DBUS_OBJECT_BASE:
+            fixture = self.object_path.replace("/", "_")[1:]
+            fixture = f"{fixture}-{method.split('.')[-1]}"
+        else:
+            fixture = method.replace(".", "_")
 
-        fixture = self.object_path.replace("/", "_")[1:]
-        fixture = f"{fixture}-{method.split('.')[-1]}"
-        dbus_commands.append(fixture)
+        dbus_commands.append(f"{self.object_path}-{method}")
 
-        return load_json_fixture(f"{fixture}.json")
+        if exists_fixture(f"{fixture}.json"):
+            return load_json_fixture(f"{fixture}.json")
+
+        return []
 
     with patch("supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",

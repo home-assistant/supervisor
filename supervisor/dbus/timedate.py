@@ -66,20 +66,14 @@ class TimeDate(DBusInterface):
             )
 
     @dbus_connected
-    def set_time(self, utc: datetime):
-        """Set time & date on host as UTC.
-
-        Return a coroutine.
-        """
-        return self.dbus.SetTime(int(utc.timestamp() * 1000000), False, False)
+    async def set_time(self, utc: datetime) -> None:
+        """Set time & date on host as UTC."""
+        await self.dbus.SetTime(int(utc.timestamp() * 1000000), False, False)
 
     @dbus_connected
-    def set_ntp(self, use_ntp: bool):
-        """Turn NTP on or off.
-
-        Return a coroutine.
-        """
-        return self.dbus.SetNTP(use_ntp)
+    async def set_ntp(self, use_ntp: bool) -> None:
+        """Turn NTP on or off."""
+        await self.dbus.SetNTP(use_ntp, False)
 
     @dbus_connected
     async def update(self):

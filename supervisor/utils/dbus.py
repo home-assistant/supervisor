@@ -204,14 +204,9 @@ class DBus:
         """Set a property from interface."""
         return await self.call_dbus(DBUS_METHOD_SET, interface, name, value)
 
-    def signal(self, signal_member) -> DBusSignalWrapper:
+    def signal(self, signal_member: str) -> DBusSignalWrapper:
         """Get signal context manager for this object."""
         return DBusSignalWrapper(self, signal_member)
-
-    async def wait_signal(self, signal_member) -> Any:
-        """Wait for signal on this object."""
-        async with self.signal(signal_member) as signal:
-            return await signal.wait_for_signal()
 
     def __getattr__(self, name: str) -> DBusCallWrapper:
         """Map to dbus method."""
@@ -299,7 +294,7 @@ class DBusSignalWrapper:
         self._dbus._bus.add_message_handler(self._message_handler)
         return self
 
-    async def wait_for_signal(self) -> Message:
+    async def wait_for_signal(self) -> Any:
         """Wait for signal and returns signal payload."""
         msg = await self._messages.get()
         return msg.body

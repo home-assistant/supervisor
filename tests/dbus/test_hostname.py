@@ -22,12 +22,15 @@ async def test_dbus_hostname_info(coresys: CoreSys):
     assert coresys.dbus.hostname.operating_system == "Home Assistant OS 6.0.dev20210504"
 
 
-async def test_dbus_sethostname(coresys: CoreSys):
+async def test_dbus_sethostname(coresys: CoreSys, dbus: list[str]):
     """Set hostname on backend."""
-
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.hostname.set_static_hostname("StarWars")
 
     await coresys.dbus.hostname.connect()
 
+    dbus.clear()
     await coresys.dbus.hostname.set_static_hostname("StarWars")
+    assert dbus == [
+        "/org/freedesktop/hostname1-org.freedesktop.hostname1.SetStaticHostname"
+    ]

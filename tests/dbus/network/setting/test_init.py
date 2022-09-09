@@ -11,6 +11,61 @@ from supervisor.host.network import Interface
 
 from tests.const import TEST_INTERFACE
 
+SETTINGS_WITH_SIGNATURE = {
+    "connection": {
+        "id": Variant("s", "Wired connection 1"),
+        "interface-name": Variant("s", "eth0"),
+        "permissions": Variant("as", []),
+        "timestamp": Variant("t", 1598125548),
+        "type": Variant("s", "802-3-ethernet"),
+        "uuid": Variant("s", "0c23631e-2118-355c-bbb0-8943229cb0d6"),
+    },
+    "ipv4": {
+        "address-data": Variant(
+            "aa{sv}",
+            [
+                {
+                    "address": Variant("s", "192.168.2.148"),
+                    "prefix": Variant("u", 24),
+                }
+            ],
+        ),
+        "addresses": Variant("aau", [[2483202240, 24, 16951488]]),
+        "dns": Variant("au", [16951488]),
+        "dns-search": Variant("as", []),
+        "gateway": Variant("s", "192.168.2.1"),
+        "method": Variant("s", "auto"),
+        "route-data": Variant(
+            "aa{sv}",
+            [
+                {
+                    "dest": Variant("s", "192.168.122.0"),
+                    "prefix": Variant("u", 24),
+                    "next-hop": Variant("s", "10.10.10.1"),
+                }
+            ],
+        ),
+        "routes": Variant("aau", [[8038592, 24, 17435146, 0]]),
+    },
+    "ipv6": {
+        "address-data": Variant("aa{sv}", []),
+        "addresses": Variant("a(ayuay)", []),
+        "dns": Variant("au", []),
+        "dns-search": Variant("as", []),
+        "method": Variant("s", "auto"),
+        "route-data": Variant("aa{sv}", []),
+        "routes": Variant("aau", []),
+        "addr-gen-mode": Variant("i", 0),
+    },
+    "proxy": {},
+    "802-3-ethernet": {
+        "auto-negotiate": Variant("b", False),
+        "mac-address-blacklist": Variant("as", []),
+        "s390-options": Variant("a{ss}", {}),
+    },
+    "802-11-wireless": {"ssid": Variant("ay", bytes([78, 69, 84, 84]))},
+}
+
 
 async def mock_call_dbus_get_settings_signature(
     method: str, *args: list[Any], remove_signature: bool = True
@@ -20,62 +75,7 @@ async def mock_call_dbus_get_settings_signature(
         method == "org.freedesktop.NetworkManager.Settings.Connection.GetSettings"
         and not remove_signature
     ):
-        return [
-            {
-                "connection": {
-                    "id": Variant("s", "Wired connection 1"),
-                    "interface-name": Variant("s", "eth0"),
-                    "permissions": Variant("as", []),
-                    "timestamp": Variant("t", 1598125548),
-                    "type": Variant("s", "802-3-ethernet"),
-                    "uuid": Variant("s", "0c23631e-2118-355c-bbb0-8943229cb0d6"),
-                },
-                "ipv4": {
-                    "address-data": Variant(
-                        "aa{sv}",
-                        [
-                            {
-                                "address": Variant("s", "192.168.2.148"),
-                                "prefix": Variant("u", 24),
-                            }
-                        ],
-                    ),
-                    "addresses": Variant("aau", [[2483202240, 24, 16951488]]),
-                    "dns": Variant("au", [16951488]),
-                    "dns-search": Variant("as", []),
-                    "gateway": Variant("s", "192.168.2.1"),
-                    "method": Variant("s", "auto"),
-                    "route-data": Variant(
-                        "aa{sv}",
-                        [
-                            {
-                                "dest": Variant("s", "192.168.122.0"),
-                                "prefix": Variant("u", 24),
-                                "next-hop": Variant("s", "10.10.10.1"),
-                            }
-                        ],
-                    ),
-                    "routes": Variant("aau", [[8038592, 24, 17435146, 0]]),
-                },
-                "ipv6": {
-                    "address-data": Variant("aa{sv}", []),
-                    "addresses": Variant("a(ayuay)", []),
-                    "dns": Variant("au", []),
-                    "dns-search": Variant("as", []),
-                    "method": Variant("s", "auto"),
-                    "route-data": Variant("aa{sv}", []),
-                    "routes": Variant("aau", []),
-                    "addr-gen-mode": Variant("i", 0),
-                },
-                "proxy": {},
-                "802-3-ethernet": {
-                    "auto-negotiate": Variant("b", False),
-                    "mac-address-blacklist": Variant("as", []),
-                    "s390-options": Variant("a{ss}", {}),
-                },
-                "802-11-wireless": {"ssid": Variant("ay", bytes([78, 69, 84, 84]))},
-            }
-        ]
+        return [SETTINGS_WITH_SIGNATURE]
     else:
         assert method == "org.freedesktop.NetworkManager.Settings.Connection.Update"
         assert len(args[0]) == 2

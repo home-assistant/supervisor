@@ -19,7 +19,6 @@ from ..dbus.const import (
     InterfaceMethod as NMInterfaceMethod,
     WirelessMethodType,
 )
-from ..dbus.network.accesspoint import NetworkWirelessAP
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.setting.generate import get_connection_from_interface
@@ -270,27 +269,17 @@ class NetworkManager(CoreSysAttributes):
             await asyncio.sleep(5)
 
         # Process AP
-        accesspoints: list[AccessPoint] = []
-        for ap_object in (await inet.wireless.get_all_accesspoints())[0]:
-            accesspoint = NetworkWirelessAP(ap_object)
-
-            try:
-                await accesspoint.connect()
-            except DBusError as err:
-                _LOGGER.warning("Can't process an AP: %s", err)
-                continue
-            else:
-                accesspoints.append(
-                    AccessPoint(
-                        WifiMode[WirelessMethodType(accesspoint.mode).name],
-                        accesspoint.ssid,
-                        accesspoint.mac,
-                        accesspoint.frequency,
-                        accesspoint.strength,
-                    )
-                )
-
-        return accesspoints
+        return [
+            AccessPoint(
+                WifiMode[WirelessMethodType(accesspoint.mode).name],
+                accesspoint.ssid,
+                accesspoint.mac,
+                accesspoint.frequency,
+                accesspoint.strength,
+            )
+            for accesspoint in await inet.wireless.get_all_accesspoints()
+            if accesspoint.dbus
+        ]
 
 
 @attr.s(slots=True)

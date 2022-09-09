@@ -1,4 +1,4 @@
-"""D-Bus interface for hostname."""
+"""Network Manager DNS Manager object."""
 from ipaddress import ip_address
 import logging
 
