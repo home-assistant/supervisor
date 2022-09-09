@@ -51,10 +51,12 @@ class UDisks2(DBusInterface):
     @dbus_connected
     async def get_block_devices(self) -> list[UDisks2Block]:
         """Return list of all block devices."""
-        return [
-            UDisks2Block(block_device)
-            for block_device in await self.dbus.Manager.GetBlockDevices()
-        ]
+        devices: list[UDisks2Block] = []
+        for block_device in await self.dbus.Manager.GetBlockDevices():
+            device = UDisks2Block(block_device)
+            await device.connect()
+            devices.append(device)
+        return devices
 
     @dbus_connected
     async def get_filesystems(self) -> list[UDisks2Filesystem]:
@@ -62,6 +64,7 @@ class UDisks2(DBusInterface):
         filesystem_devices: list[UDisks2Filesystem] = []
         for block_device in await self.dbus.Manager.GetBlockDevices():
             filesystem_device = UDisks2Filesystem(block_device)
+            await filesystem_device.connect()
             # If we get a key error, this block device is not a filesystem device
             try:
                 assert filesystem_device.mountpoints
