@@ -22,7 +22,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class TimeDate(DBusInterface):
-    """Timedate function handler."""
+    """Timedate function handler.
+
+    https://www.freedesktop.org/software/systemd/man/org.freedesktop.timedate1.html
+    """
 
     name = DBUS_NAME_TIMEDATE
 
