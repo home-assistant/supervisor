@@ -4,7 +4,7 @@ from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -35,8 +35,8 @@ from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MIN_SUPPORTED_DOCKER = "19.03.0"
-DOCKER_NETWORK_HOST = "host"
+MIN_SUPPORTED_DOCKER: Final = AwesomeVersion("20.10.0")
+DOCKER_NETWORK_HOST: Final = "host"
 
 
 @attr.s(frozen=True)
