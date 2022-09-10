@@ -20,6 +20,15 @@ def setup(coresys: CoreSys) -> EvaluateBase:
 class EvaluateCGroupVersion(EvaluateBase):
     """Evaluate Docker configuration."""
 
+    def __init__(self, coresys: CoreSys) -> None:
+        """Initialize the evaluation class."""
+        super().__init__(coresys)
+        self.coresys = coresys
+
+        self._expected_versions = {CGROUP_V1_VERSION}
+        if self.coresys.os.available:
+            self._expected_versions.add(CGROUP_V2_VERSION)
+
     @property
     def reason(self) -> UnsupportedReason:
         """Return a UnsupportedReason enum."""
@@ -27,28 +36,14 @@ class EvaluateCGroupVersion(EvaluateBase):
 
     @property
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
-        return "The CGroup version used by Docker is not supported"
+        """Return a string that is printed when self.evaluate is True."""
+        return f"Docker cgroup version {self.sys_docker.info.cgroup} is not supported! {self._expected_versions}"
 
     @property
     def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.SETUP]
 
-    async def evaluate(self):
+    async def evaluate(self) -> bool:
         """Run evaluation."""
-        cgroup_version = self.sys_docker.info.cgroup
-
-        expected_version = [CGROUP_V1_VERSION]
-        if self.coresys.os.available:
-            expected_version.append(CGROUP_V2_VERSION)
-
-        if cgroup_version not in expected_version:
-            _LOGGER.warning(
-                "Docker cgroup version %s is not supported! %s",
-                cgroup_version,
-                expected_version,
-            )
-            return True
-
-        return False
+        return self.sys_docker.info.cgroup not in self._expected_versions

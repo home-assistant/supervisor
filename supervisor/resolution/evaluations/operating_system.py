@@ -23,7 +23,7 @@ class EvaluateOperatingSystem(EvaluateBase):
 
     @property
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
+        """Return a string that is printed when self.evaluate is True."""
         return f"Detected unsupported OS: {self.sys_host.info.operating_system}"
 
     @property
