@@ -22,7 +22,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class TimeDate(DBusInterface):
-    """Timedate function handler."""
+    """Timedate function handler.
+
+    https://www.freedesktop.org/software/systemd/man/org.freedesktop.timedate1.html
+    """
 
     name = DBUS_NAME_TIMEDATE
 
@@ -66,20 +69,14 @@ class TimeDate(DBusInterface):
             )
 
     @dbus_connected
-    def set_time(self, utc: datetime):
-        """Set time & date on host as UTC.
-
-        Return a coroutine.
-        """
-        return self.dbus.SetTime(int(utc.timestamp() * 1000000), False, False)
+    async def set_time(self, utc: datetime) -> None:
+        """Set time & date on host as UTC."""
+        await self.dbus.SetTime(int(utc.timestamp() * 1000000), False, False)
 
     @dbus_connected
-    def set_ntp(self, use_ntp: bool):
-        """Turn NTP on or off.
-
-        Return a coroutine.
-        """
-        return self.dbus.SetNTP(use_ntp)
+    async def set_ntp(self, use_ntp: bool) -> None:
+        """Turn NTP on or off."""
+        await self.dbus.SetNTP(use_ntp, False)
 
     @dbus_connected
     async def update(self):

@@ -1,8 +1,9 @@
 """D-Bus interface for rauc."""
 import logging
+from typing import Any
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus import DBus
+from ..utils.dbus import DBus, DBusSignalWrapper
 from .const import (
     DBUS_ATTR_BOOT_SLOT,
     DBUS_ATTR_COMPATIBLE,
@@ -69,36 +70,24 @@ class Rauc(DBusInterface):
         return self._boot_slot
 
     @dbus_connected
-    def install(self, raucb_file):
-        """Install rauc bundle file.
-
-        Return a coroutine.
-        """
-        return self.dbus.Installer.Install(str(raucb_file))
+    async def install(self, raucb_file) -> None:
+        """Install rauc bundle file."""
+        await self.dbus.Installer.Install(str(raucb_file))
 
     @dbus_connected
-    def get_slot_status(self):
-        """Get slot status.
-
-        Return a coroutine.
-        """
-        return self.dbus.Installer.GetSlotStatus()
+    async def get_slot_status(self) -> list[tuple[str, dict[str, Any]]]:
+        """Get slot status."""
+        return (await self.dbus.Installer.GetSlotStatus())[0]
 
     @dbus_connected
-    def signal_completed(self):
-        """Return a signal wrapper for completed signal.
-
-        Return a coroutine.
-        """
-        return self.dbus.wait_signal(DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED)
+    def signal_completed(self) -> DBusSignalWrapper:
+        """Return a signal wrapper for completed signal."""
+        return self.dbus.signal(DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED)
 
     @dbus_connected
-    def mark(self, state: RaucState, slot_identifier: str):
-        """Get slot status.
-
-        Return a coroutine.
-        """
-        return self.dbus.Installer.Mark(state, slot_identifier)
+    async def mark(self, state: RaucState, slot_identifier: str) -> tuple[str, str]:
+        """Get slot status."""
+        return await self.dbus.Installer.Mark(state, slot_identifier)
 
     @dbus_connected
     async def update(self):

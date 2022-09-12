@@ -43,7 +43,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class Resolved(DBusInterface):
-    """Handle D-Bus interface for systemd-resolved."""
+    """Handle D-Bus interface for systemd-resolved.
+
+    https://www.freedesktop.org/software/systemd/man/org.freedesktop.resolve1.html
+    """
 
     name = DBUS_NAME_RESOLVED
 

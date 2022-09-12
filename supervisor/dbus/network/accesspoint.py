@@ -10,7 +10,7 @@ from ..const import (
     DBUS_IFACE_ACCESSPOINT,
     DBUS_NAME_NM,
 )
-from ..interface import DBusInterfaceProxy
+from ..interface import DBusInterfaceProxy, dbus_property
 
 
 class NetworkWirelessAP(DBusInterfaceProxy):
@@ -25,26 +25,31 @@ class NetworkWirelessAP(DBusInterfaceProxy):
         self.properties = {}
 
     @property
+    @dbus_property
     def ssid(self) -> str:
         """Return details about ssid."""
         return bytes(self.properties[DBUS_ATTR_SSID]).decode()
 
     @property
+    @dbus_property
     def frequency(self) -> int:
         """Return details about frequency."""
         return self.properties[DBUS_ATTR_FREQUENCY]
 
     @property
+    @dbus_property
     def mac(self) -> str:
         """Return details about mac address."""
         return self.properties[DBUS_ATTR_HWADDRESS]
 
     @property
+    @dbus_property
     def mode(self) -> int:
         """Return details about mac address."""
         return self.properties[DBUS_ATTR_MODE]
 
     @property
+    @dbus_property
     def strength(self) -> int:
         """Return details about mac address."""
         return int(self.properties[DBUS_ATTR_STRENGTH])

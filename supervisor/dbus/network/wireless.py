@@ -1,5 +1,6 @@
-"""Connection object for Network Manager."""
-from typing import Any, Awaitable
+"""Wireless object for Network Manager."""
+import asyncio
+import logging
 
 from ...utils.dbus import DBus
 from ..const import (
@@ -11,6 +12,8 @@ from ..const import (
 from ..interface import DBusInterfaceProxy
 from ..utils import dbus_connected
 from .accesspoint import NetworkWirelessAP
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkWireless(DBusInterfaceProxy):
@@ -32,14 +35,23 @@ class NetworkWireless(DBusInterfaceProxy):
         return self._active
 
     @dbus_connected
-    def request_scan(self) -> Awaitable[None]:
+    async def request_scan(self) -> None:
         """Request a new AP scan."""
-        return self.dbus.Device.Wireless.RequestScan(("a{sv}", {}))
+        await self.dbus.Device.Wireless.RequestScan(("a{sv}", {}))
 
     @dbus_connected
-    def get_all_accesspoints(self) -> Awaitable[Any]:
+    async def get_all_accesspoints(self) -> list[NetworkWirelessAP]:
         """Return a list of all access points path."""
-        return self.dbus.Device.Wireless.GetAllAccessPoints()
+        accesspoints_data = (await self.dbus.Device.Wireless.GetAllAccessPoints())[0]
+        accesspoints = [NetworkWirelessAP(ap_obj) for ap_obj in accesspoints_data]
+
+        for err in await asyncio.gather(
+            *[ap.connect() for ap in accesspoints], return_exceptions=True
+        ):
+            if err:
+                _LOGGER.warning("Can't process an AP: %s", err)
+
+        return accesspoints
 
     async def connect(self) -> None:
         """Get connection information."""

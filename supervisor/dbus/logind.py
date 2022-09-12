@@ -11,7 +11,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class Logind(DBusInterface):
-    """Logind function handler."""
+    """Logind function handler.
+
+    https://www.freedesktop.org/software/systemd/man/org.freedesktop.login1.html
+    """
 
     name = DBUS_NAME_LOGIND
 
@@ -25,17 +28,11 @@ class Logind(DBusInterface):
             _LOGGER.info("No systemd-logind support on the host.")
 
     @dbus_connected
-    def reboot(self):
-        """Reboot host computer.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.Reboot(False)
+    async def reboot(self) -> None:
+        """Reboot host computer."""
+        await self.dbus.Manager.Reboot(False)
 
     @dbus_connected
-    def power_off(self):
-        """Power off host computer.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.PowerOff(False)
+    async def power_off(self) -> None:
+        """Power off host computer."""
+        await self.dbus.Manager.PowerOff(False)

@@ -24,7 +24,7 @@ from ..const import (
     ConnectionStateFlags,
     ConnectionStateType,
 )
-from ..interface import DBusInterfaceProxy
+from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .configuration import IpConfiguration
 
@@ -45,21 +45,25 @@ class NetworkConnection(DBusInterfaceProxy):
         self._state_flags: set[ConnectionStateFlags] = {ConnectionStateFlags.NONE}
 
     @property
+    @dbus_property
     def id(self) -> str:
         """Return the id of the connection."""
         return self.properties[DBUS_ATTR_ID]
 
     @property
+    @dbus_property
     def type(self) -> str:
         """Return the type of the connection."""
         return self.properties[DBUS_ATTR_TYPE]
 
     @property
+    @dbus_property
     def uuid(self) -> str:
         """Return the uuid of the connection."""
         return self.properties[DBUS_ATTR_UUID]
 
     @property
+    @dbus_property
     def state(self) -> ConnectionStateType:
         """Return the state of the connection."""
         return self.properties[DBUS_ATTR_STATE]
@@ -70,7 +74,8 @@ class NetworkConnection(DBusInterfaceProxy):
         return self._state_flags
 
     @property
-    def setting_object(self) -> int:
+    @dbus_property
+    def setting_object(self) -> str:
         """Return the connection object path."""
         return self.properties[DBUS_ATTR_CONNECTION]
 

@@ -21,7 +21,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class Systemd(DBusInterface):
-    """Systemd function handler."""
+    """Systemd function handler.
+
+    https://www.freedesktop.org/software/systemd/man/org.freedesktop.systemd1.html
+    """
 
     name = DBUS_NAME_SYSTEMD
 
@@ -58,60 +61,41 @@ class Systemd(DBusInterface):
         return self.properties[DBUS_ATTR_FINISH_TIMESTAMP]
 
     @dbus_connected
-    def reboot(self):
-        """Reboot host computer.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.Reboot()
+    async def reboot(self) -> None:
+        """Reboot host computer."""
+        await self.dbus.Manager.Reboot()
 
     @dbus_connected
-    def power_off(self):
-        """Power off host computer.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.PowerOff()
+    async def power_off(self) -> None:
+        """Power off host computer."""
+        await self.dbus.Manager.PowerOff()
 
     @dbus_connected
-    def start_unit(self, unit, mode):
-        """Start a systemd service unit.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.StartUnit(unit, mode)
+    async def start_unit(self, unit, mode) -> str:
+        """Start a systemd service unit. Return job object path."""
+        return (await self.dbus.Manager.StartUnit(unit, mode))[0]
 
     @dbus_connected
-    def stop_unit(self, unit, mode):
-        """Stop a systemd service unit.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.StopUnit(unit, mode)
+    async def stop_unit(self, unit, mode) -> str:
+        """Stop a systemd service unit."""
+        return (await self.dbus.Manager.StopUnit(unit, mode))[0]
 
     @dbus_connected
-    def reload_unit(self, unit, mode):
-        """Reload a systemd service unit.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.ReloadOrRestartUnit(unit, mode)
+    async def reload_unit(self, unit, mode) -> str:
+        """Reload a systemd service unit."""
+        return (await self.dbus.Manager.ReloadOrRestartUnit(unit, mode))[0]
 
     @dbus_connected
-    def restart_unit(self, unit, mode):
-        """Restart a systemd service unit.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.RestartUnit(unit, mode)
+    async def restart_unit(self, unit, mode):
+        """Restart a systemd service unit."""
+        return (await self.dbus.Manager.RestartUnit(unit, mode))[0]
 
     @dbus_connected
-    def list_units(self):
-        """Return a list of available systemd services.
-
-        Return a coroutine.
-        """
-        return self.dbus.Manager.ListUnits()
+    async def list_units(
+        self,
+    ) -> list[str, str, str, str, str, str, str, int, str, str]:
+        """Return a list of available systemd services."""
+        return (await self.dbus.Manager.ListUnits())[0]
 
     @dbus_connected
     async def update(self):

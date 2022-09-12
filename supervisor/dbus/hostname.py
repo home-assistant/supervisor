@@ -22,7 +22,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class Hostname(DBusInterface):
-    """Handle D-Bus interface for hostname/system."""
+    """Handle D-Bus interface for hostname/system.
+
+    https://www.freedesktop.org/software/systemd/man/org.freedesktop.hostname1.html
+    """
 
     name = DBUS_NAME_HOSTNAME
 
@@ -78,12 +81,9 @@ class Hostname(DBusInterface):
         return self.properties[DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME]
 
     @dbus_connected
-    def set_static_hostname(self, hostname: str):
-        """Change local hostname.
-
-        Return a coroutine.
-        """
-        return self.dbus.SetStaticHostname(hostname, False)
+    async def set_static_hostname(self, hostname: str) -> None:
+        """Change local hostname."""
+        await self.dbus.SetStaticHostname(hostname, False)
 
     @dbus_connected
     async def update(self):

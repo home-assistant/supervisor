@@ -195,8 +195,12 @@ class OSManager(CoreSysAttributes):
         ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.name)
 
         try:
-            await self.sys_dbus.rauc.install(ext_ota)
-            completed = await self.sys_dbus.rauc.signal_completed()
+            async with self.sys_dbus.rauc.signal_completed() as signal:
+                # Start listening for signals before triggering install
+                # This prevents a race condition with install complete signal
+
+                await self.sys_dbus.rauc.install(ext_ota)
+                completed = await signal.wait_for_signal()
 
         except DBusError as err:
             raise HassOSUpdateError("Rauc communication error", _LOGGER.error) from err

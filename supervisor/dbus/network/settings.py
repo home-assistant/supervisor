@@ -1,6 +1,8 @@
 """Network Manager implementation for DBUS."""
 import logging
-from typing import Any, Awaitable
+from typing import Any
+
+from supervisor.dbus.network.setting import NetworkSetting
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.dbus import DBus
@@ -29,11 +31,16 @@ class NetworkManagerSettings(DBusInterface):
             )
 
     @dbus_connected
-    def add_connection(self, settings: Any) -> Awaitable[Any]:
+    async def add_connection(self, settings: Any) -> NetworkSetting:
         """Add new connection."""
-        return self.dbus.Settings.AddConnection(("a{sa{sv}}", settings))
+        obj_con_setting = (
+            await self.dbus.Settings.AddConnection(("a{sa{sv}}", settings))
+        )[0]
+        con_setting = NetworkSetting(obj_con_setting)
+        await con_setting.connect()
+        return con_setting
 
     @dbus_connected
-    def reload_connections(self) -> Awaitable[Any]:
+    async def reload_connections(self) -> bool:
         """Reload all local connection files."""
-        return self.dbus.Settings.ReloadConnections()
+        return (await self.dbus.Settings.ReloadConnections())[0]

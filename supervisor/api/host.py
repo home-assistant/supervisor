@@ -120,25 +120,25 @@ class APIHost(CoreSysAttributes):
     def service_start(self, request):
         """Start a service."""
         unit = request.match_info.get(SERVICE)
-        return asyncio.shield(self.sys_host.services.start(unit))
+        return [asyncio.shield(self.sys_host.services.start(unit))]
 
     @api_process
     def service_stop(self, request):
         """Stop a service."""
         unit = request.match_info.get(SERVICE)
-        return asyncio.shield(self.sys_host.services.stop(unit))
+        return [asyncio.shield(self.sys_host.services.stop(unit))]
 
     @api_process
     def service_reload(self, request):
         """Reload a service."""
         unit = request.match_info.get(SERVICE)
-        return asyncio.shield(self.sys_host.services.reload(unit))
+        return [asyncio.shield(self.sys_host.services.reload(unit))]
 
     @api_process
     def service_restart(self, request):
         """Restart a service."""
         unit = request.match_info.get(SERVICE)
-        return asyncio.shield(self.sys_host.services.restart(unit))
+        return [asyncio.shield(self.sys_host.services.restart(unit))]
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request: web.Request) -> Awaitable[bytes]:
