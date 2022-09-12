@@ -2,6 +2,8 @@
 import logging
 from typing import Any
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dbus import DBus
 from .const import (
@@ -32,10 +34,10 @@ class Systemd(DBusInterface):
         """Initialize Properties."""
         self.properties: dict[str, Any] = {}
 
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_SYSTEMD, DBUS_OBJECT_SYSTEMD)
+            self.dbus = await DBus.connect(bus, DBUS_NAME_SYSTEMD, DBUS_OBJECT_SYSTEMD)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd")
         except DBusInterfaceError:

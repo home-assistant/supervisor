@@ -1,8 +1,12 @@
 """D-Bus interface objects."""
 import logging
 
+from dbus_next import BusType
+from dbus_next.aio.message_bus import MessageBus
+
 from ..const import SOCKET_DBUS
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import DBusFatalError
 from .agent import OSAgent
 from .hostname import Hostname
 from .interface import DBusInterface
@@ -31,6 +35,7 @@ class DBusManager(CoreSysAttributes):
         self._agent: OSAgent = OSAgent()
         self._timedate: TimeDate = TimeDate()
         self._resolved: Resolved = Resolved()
+        self._bus: MessageBus | None = None
 
     @property
     def systemd(self) -> Systemd:
@@ -72,6 +77,11 @@ class DBusManager(CoreSysAttributes):
         """Return the resolved interface."""
         return self._resolved
 
+    @property
+    def bus(self) -> MessageBus | None:
+        """Return the message bus."""
+        return self._bus
+
     async def load(self) -> None:
         """Connect interfaces to D-Bus."""
         if not SOCKET_DBUS.exists():
@@ -79,6 +89,15 @@ class DBusManager(CoreSysAttributes):
                 "No D-Bus support on Host. Disabled any kind of host control!"
             )
             return
+
+        try:
+            self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
+        except Exception as err:
+            raise DBusFatalError(
+                "Cannot connect to system D-Bus. Disabled any kind of host control!"
+            ) from err
+
+        _LOGGER.info("Connected to system D-Bus.")
 
         dbus_loads: list[DBusInterface] = [
             self.agent,
@@ -93,8 +112,13 @@ class DBusManager(CoreSysAttributes):
         for dbus in dbus_loads:
             _LOGGER.info("Load dbus interface %s", dbus.name)
             try:
-                await dbus.connect()
+                await dbus.connect(self._bus)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't load dbus interface %s: %s", dbus.name, err)
 
         self.sys_host.supported_features.cache_clear()
+
+    async def unload(self) -> None:
+        """Close connection to D-Bus."""
+        self._bus.disconnect()
+        _LOGGER.info("Closed conection to system D-Bus.")

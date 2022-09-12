@@ -1,6 +1,8 @@
 """Connection object for Network Manager."""
 from ipaddress import ip_address, ip_interface
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ...const import ATTR_ADDRESS, ATTR_PREFIX
 from ...utils.dbus import DBus
 from ..const import (
@@ -89,9 +91,9 @@ class NetworkConnection(DBusInterfaceProxy):
         """Return a ip6 configuration object for the connection."""
         return self._ipv6
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
         await self.update()
 
     @dbus_connected
@@ -108,7 +110,9 @@ class NetworkConnection(DBusInterfaceProxy):
 
         # IPv4
         if self.properties[DBUS_ATTR_IP4CONFIG] != DBUS_OBJECT_BASE:
-            ip4 = await DBus.connect(DBUS_NAME_NM, self.properties[DBUS_ATTR_IP4CONFIG])
+            ip4 = await DBus.connect(
+                self.dbus.bus, DBUS_NAME_NM, self.properties[DBUS_ATTR_IP4CONFIG]
+            )
             ip4_data = await ip4.get_properties(DBUS_IFACE_IP4CONFIG)
 
             self._ipv4 = IpConfiguration(
@@ -127,7 +131,9 @@ class NetworkConnection(DBusInterfaceProxy):
 
         # IPv6
         if self.properties[DBUS_ATTR_IP6CONFIG] != DBUS_OBJECT_BASE:
-            ip6 = await DBus.connect(DBUS_NAME_NM, self.properties[DBUS_ATTR_IP6CONFIG])
+            ip6 = await DBus.connect(
+                self.dbus.bus, DBUS_NAME_NM, self.properties[DBUS_ATTR_IP6CONFIG]
+            )
             ip6_data = await ip6.get_properties(DBUS_IFACE_IP6CONFIG)
 
             self._ipv6 = IpConfiguration(

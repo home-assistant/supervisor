@@ -22,8 +22,11 @@ def test_remove_dbus_signature():
 
 async def test_dbus_prepare_args(coresys: CoreSys):
     """Check D-Bus dynamic argument builder."""
-    dbus = DBus("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
-    signature, args = dbus._prepare_args(
+    dbus = DBus(
+        coresys.dbus.bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1"
+    )
+    # pylint: disable=protected-access
+    signature, _ = dbus._prepare_args(
         True, 1, 1.0, "Value", ("a{sv}", {"Key": "Value"})
     )
     assert signature == "bidsa{sv}"

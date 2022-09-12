@@ -11,7 +11,7 @@ async def test_rauc(coresys: CoreSys):
     assert coresys.dbus.rauc.boot_slot is None
     assert coresys.dbus.rauc.operation is None
 
-    await coresys.dbus.rauc.connect()
+    await coresys.dbus.rauc.connect(coresys.dbus.bus)
     await coresys.dbus.rauc.update()
 
     assert coresys.dbus.rauc.boot_slot == "B"
@@ -23,7 +23,7 @@ async def test_install(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.rauc.install("rauc_file")
 
-    await coresys.dbus.rauc.connect()
+    await coresys.dbus.rauc.connect(coresys.dbus.bus)
 
     dbus.clear()
     async with coresys.dbus.rauc.signal_completed() as signal:
@@ -38,7 +38,7 @@ async def test_get_slot_status(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.rauc.get_slot_status()
 
-    await coresys.dbus.rauc.connect()
+    await coresys.dbus.rauc.connect(coresys.dbus.bus)
 
     dbus.clear()
     slot_status = await coresys.dbus.rauc.get_slot_status()
@@ -59,7 +59,7 @@ async def test_mark(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.rauc.mark(RaucState.GOOD, "booted")
 
-    await coresys.dbus.rauc.connect()
+    await coresys.dbus.rauc.connect(coresys.dbus.bus)
 
     dbus.clear()
     mark = await coresys.dbus.rauc.mark(RaucState.GOOD, "booted")

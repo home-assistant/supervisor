@@ -1,5 +1,7 @@
 """Connection object for Network Manager."""
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_FREQUENCY,
@@ -54,7 +56,7 @@ class NetworkWirelessAP(DBusInterfaceProxy):
         """Return details about mac address."""
         return int(self.properties[DBUS_ATTR_STRENGTH])
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
         self.properties = await self.dbus.get_properties(DBUS_IFACE_ACCESSPOINT)

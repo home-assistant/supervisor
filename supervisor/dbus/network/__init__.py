@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
+from dbus_next.aio.message_bus import MessageBus
 import sentry_sdk
 
 from ...exceptions import (
@@ -92,7 +93,7 @@ class NetworkManager(DBusInterface):
         )
         obj_active_con = result[0]
         active_con = NetworkConnection(obj_active_con)
-        await active_con.connect()
+        await active_con.connect(self.dbus.bus)
         return active_con
 
     @dbus_connected
@@ -106,7 +107,9 @@ class NetworkManager(DBusInterface):
 
         con_setting = NetworkSetting(obj_con_setting)
         active_con = NetworkConnection(obj_active_con)
-        await asyncio.gather(con_setting.connect(), active_con.connect())
+        await asyncio.gather(
+            con_setting.connect(self.dbus.bus), active_con.connect(self.dbus.bus)
+        )
         return con_setting, active_con
 
     @dbus_connected
@@ -117,12 +120,12 @@ class NetworkManager(DBusInterface):
         else:
             return await self.dbus.get_property(DBUS_IFACE_NM, DBUS_ATTR_CONNECTIVITY)
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_NM, DBUS_OBJECT_NM)
-            await self.dns.connect()
-            await self.settings.connect()
+            self.dbus = await DBus.connect(bus, DBUS_NAME_NM, DBUS_OBJECT_NM)
+            await self.dns.connect(bus)
+            await self.settings.connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to Network Manager")
         except DBusInterfaceError:
@@ -167,7 +170,7 @@ class NetworkManager(DBusInterface):
 
             # Connect to interface
             try:
-                await interface.connect()
+                await interface.connect(self.dbus.bus)
             except (DBusFatalError, DBusInterfaceMethodError) as err:
                 # Docker creates and deletes interfaces quite often, sometimes
                 # this causes a race condition: A device disappears while we

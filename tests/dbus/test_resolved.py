@@ -52,7 +52,7 @@ async def test_dbus_resolved_info(coresys_ip_bytes: CoreSys):
 
     assert coresys.dbus.resolved.dns is None
 
-    await coresys.dbus.resolved.connect()
+    await coresys.dbus.resolved.connect(coresys.dbus.bus)
     await coresys.dbus.resolved.update()
 
     assert coresys.dbus.resolved.llmnr_hostname == "homeassistant"

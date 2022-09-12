@@ -2,6 +2,8 @@
 from ipaddress import ip_address
 import logging
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ...const import (
     ATTR_DOMAINS,
     ATTR_INTERFACE,
@@ -53,10 +55,10 @@ class NetworkManagerDNS(DBusInterface):
         """Return Propertie configuraton."""
         return self._configuration
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_NM, DBUS_OBJECT_DNS)
+            self.dbus = await DBus.connect(bus, DBUS_NAME_NM, DBUS_OBJECT_DNS)
         except DBusError:
             _LOGGER.warning("Can't connect to DnsManager")
         except DBusInterfaceError:

@@ -2,12 +2,13 @@
 import logging
 from typing import Any
 
-from supervisor.dbus.network.setting import NetworkSetting
+from dbus_next.aio.message_bus import MessageBus
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.dbus import DBus
 from ..const import DBUS_NAME_NM, DBUS_OBJECT_SETTINGS
 from ..interface import DBusInterface
+from ..network.setting import NetworkSetting
 from ..utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -19,10 +20,10 @@ class NetworkManagerSettings(DBusInterface):
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Settings.html
     """
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_NM, DBUS_OBJECT_SETTINGS)
+            self.dbus = await DBus.connect(bus, DBUS_NAME_NM, DBUS_OBJECT_SETTINGS)
         except DBusError:
             _LOGGER.warning("Can't connect to Network Manager Settings")
         except DBusInterfaceError:
@@ -37,7 +38,7 @@ class NetworkManagerSettings(DBusInterface):
             await self.dbus.Settings.AddConnection(("a{sa{sv}}", settings))
         )[0]
         con_setting = NetworkSetting(obj_con_setting)
-        await con_setting.connect()
+        await con_setting.connect(self.dbus.bus)
         return con_setting
 
     @dbus_connected

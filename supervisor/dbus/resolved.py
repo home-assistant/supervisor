@@ -4,6 +4,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dbus import DBus
 from .const import (
@@ -54,10 +56,12 @@ class Resolved(DBusInterface):
         """Initialize Properties."""
         self.properties: dict[str, Any] = {}
 
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_RESOLVED, DBUS_OBJECT_RESOLVED)
+            self.dbus = await DBus.connect(
+                bus, DBUS_NAME_RESOLVED, DBUS_OBJECT_RESOLVED
+            )
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-resolved.")
         except DBusInterfaceError:

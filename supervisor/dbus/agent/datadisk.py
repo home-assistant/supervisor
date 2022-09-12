@@ -2,6 +2,8 @@
 from pathlib import Path
 from typing import Any
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CURRENT_DEVICE,
@@ -26,9 +28,9 @@ class DataDisk(DBusInterface):
         """Return current device used for data."""
         return Path(self.properties[DBUS_ATTR_CURRENT_DEVICE])
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_DATADISK)
+        self.dbus = await DBus.connect(bus, DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_DATADISK)
 
     @dbus_connected
     async def update(self):

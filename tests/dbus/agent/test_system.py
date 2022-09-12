@@ -11,7 +11,7 @@ async def test_dbus_osagent_system_wipe(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.agent.system.schedule_wipe_device()
 
-    await coresys.dbus.agent.connect()
+    await coresys.dbus.agent.connect(coresys.dbus.bus)
 
     dbus.clear()
     assert await coresys.dbus.agent.system.schedule_wipe_device() is None

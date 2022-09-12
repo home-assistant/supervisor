@@ -10,6 +10,7 @@ from uuid import uuid4
 from aiohttp import web
 from awesomeversion import AwesomeVersion
 from dbus_next import introspection as intr
+from dbus_next.aio.message_bus import MessageBus
 import pytest
 from securetar import SecureTarFile
 
@@ -103,7 +104,13 @@ def docker() -> DockerAPI:
 
 
 @pytest.fixture
-def dbus() -> DBus:
+async def dbus_bus() -> MessageBus:
+    """Message bus mock."""
+    yield AsyncMock(spec=MessageBus)
+
+
+@pytest.fixture
+def dbus(dbus_bus: MessageBus) -> DBus:
     """Mock DBUS."""
     dbus_commands = []
 
@@ -189,63 +196,67 @@ def dbus() -> DBus:
         new=mock_wait_for_signal,
     ), patch(
         "supervisor.utils.dbus.DBus.get_property", new=mock_get_property
+    ), patch(
+        "supervisor.dbus.manager.MessageBus.connect", return_value=dbus_bus
     ):
         yield dbus_commands
 
 
 @pytest.fixture
-async def network_manager(dbus) -> NetworkManager:
+async def network_manager(dbus, dbus_bus: MessageBus) -> NetworkManager:
     """Mock NetworkManager."""
     nm_obj = NetworkManager()
     nm_obj.dbus = dbus
 
     # Init
-    await nm_obj.connect()
+    await nm_obj.connect(dbus_bus)
     await nm_obj.update()
 
     yield nm_obj
 
 
-async def mock_dbus_interface(dbus: DBus, instance: DBusInterface) -> DBusInterface:
+async def mock_dbus_interface(
+    dbus: DBus, dbus_bus: MessageBus, instance: DBusInterface
+) -> DBusInterface:
     """Mock dbus for a DBusInterface instance."""
     instance.dbus = dbus
-    await instance.connect()
+    await instance.connect(dbus_bus)
     return instance
 
 
 @pytest.fixture
-async def hostname(dbus: DBus) -> Hostname:
+async def hostname(dbus: DBus, dbus_bus: MessageBus) -> Hostname:
     """Mock Hostname."""
-    yield await mock_dbus_interface(dbus, Hostname())
+    yield await mock_dbus_interface(dbus, dbus_bus, Hostname())
 
 
 @pytest.fixture
-async def timedate(dbus: DBus) -> TimeDate:
+async def timedate(dbus: DBus, dbus_bus: MessageBus) -> TimeDate:
     """Mock Timedate."""
-    yield await mock_dbus_interface(dbus, TimeDate())
+    yield await mock_dbus_interface(dbus, dbus_bus, TimeDate())
 
 
 @pytest.fixture
-async def systemd(dbus: DBus) -> Systemd:
+async def systemd(dbus: DBus, dbus_bus: MessageBus) -> Systemd:
     """Mock Systemd."""
-    yield await mock_dbus_interface(dbus, Systemd())
+    yield await mock_dbus_interface(dbus, dbus_bus, Systemd())
 
 
 @pytest.fixture
-async def os_agent(dbus: DBus) -> OSAgent:
+async def os_agent(dbus: DBus, dbus_bus: MessageBus) -> OSAgent:
     """Mock OSAgent."""
-    yield await mock_dbus_interface(dbus, OSAgent())
+    yield await mock_dbus_interface(dbus, dbus_bus, OSAgent())
 
 
 @pytest.fixture
-async def resolved(dbus: DBus) -> Resolved:
+async def resolved(dbus: DBus, dbus_bus: MessageBus) -> Resolved:
     """Mock REsolved."""
-    yield await mock_dbus_interface(dbus, Resolved())
+    yield await mock_dbus_interface(dbus, dbus_bus, Resolved())
 
 
 @pytest.fixture
 async def coresys(
-    event_loop, docker, network_manager, aiohttp_client, run_dir
+    event_loop, docker, network_manager, dbus_bus, aiohttp_client, run_dir
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system"), patch(
@@ -269,6 +280,7 @@ async def coresys(
     coresys_obj._machine_id = uuid4()
 
     # Mock host communication
+    coresys_obj._dbus._bus = dbus_bus
     coresys_obj._dbus._network = network_manager
 
     # Mock docker

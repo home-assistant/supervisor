@@ -3,6 +3,8 @@ from datetime import datetime
 import logging
 from typing import Any
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dbus import DBus
 from ..utils.dt import utc_from_timestamp
@@ -57,10 +59,12 @@ class TimeDate(DBusInterface):
         """Return the system UTC time."""
         return utc_from_timestamp(self.properties[DBUS_ATTR_TIMEUSEC] / 1000000)
 
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_TIMEDATE, DBUS_OBJECT_TIMEDATE)
+            self.dbus = await DBus.connect(
+                bus, DBUS_NAME_TIMEDATE, DBUS_OBJECT_TIMEDATE
+            )
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-timedate")
         except DBusInterfaceError:
