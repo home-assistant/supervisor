@@ -29,7 +29,7 @@ async def test_llmnr_mdns_info(api_client, coresys: CoreSys):
         assert result["data"]["llmnr"] is False
         assert result["data"]["mdns"] is False
 
-    await coresys.dbus.resolved.connect()
+    await coresys.dbus.resolved.connect(coresys.dbus.bus)
     await coresys.dbus.resolved.update()
 
     resp = await api_client.get("/dns/info")

@@ -14,7 +14,7 @@ async def test_timezone(run_dir, coresys: CoreSys):
     assert coresys.timezone == "UTC"
     assert coresys.config.timezone is None
 
-    await coresys.dbus.timedate.connect()
+    await coresys.dbus.timedate.connect(coresys.dbus.bus)
     await coresys.dbus.timedate.update()
     assert coresys.timezone == "Etc/UTC"
 

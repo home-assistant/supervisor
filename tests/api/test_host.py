@@ -23,7 +23,7 @@ async def test_api_host_info(api_client, coresys_disk_info: CoreSys):
     """Test host info api."""
     coresys = coresys_disk_info
 
-    await coresys.dbus.agent.connect()
+    await coresys.dbus.agent.connect(coresys.dbus.bus)
     await coresys.dbus.agent.update()
 
     resp = await api_client.get("/host/info")
@@ -106,7 +106,7 @@ async def test_api_llmnr_mdns_info(api_client, coresys_disk_info: CoreSys):
     assert result["data"]["llmnr_hostname"] is None
 
     coresys.host.sys_dbus.resolved.is_connected = True
-    await coresys.dbus.resolved.connect()
+    await coresys.dbus.resolved.connect(coresys.dbus.bus)
     await coresys.dbus.resolved.update()
 
     resp = await api_client.get("/host/info")

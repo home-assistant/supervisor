@@ -13,7 +13,7 @@ from supervisor.hardware.data import Device
 @pytest.mark.asyncio
 async def tests_datadisk_current(coresys: CoreSys):
     """Test current datadisk."""
-    await coresys.dbus.agent.connect()
+    await coresys.dbus.agent.connect(coresys.dbus.bus)
     await coresys.dbus.agent.update()
 
     assert coresys.os.datadisk.disk_used == PosixPath("/dev/sda")
@@ -22,7 +22,7 @@ async def tests_datadisk_current(coresys: CoreSys):
 @pytest.mark.asyncio
 async def test_datadisk_move(coresys: CoreSys):
     """Test datadisk moved without exists device."""
-    await coresys.dbus.agent.connect()
+    await coresys.dbus.agent.connect(coresys.dbus.bus)
     await coresys.dbus.agent.update()
     coresys.os._available = True
 
@@ -33,7 +33,7 @@ async def test_datadisk_move(coresys: CoreSys):
 @pytest.mark.asyncio
 async def test_datadisk_list(coresys: CoreSys):
     """Test docker info api."""
-    await coresys.dbus.agent.connect()
+    await coresys.dbus.agent.connect(coresys.dbus.bus)
     await coresys.dbus.agent.update()
 
     coresys.hardware.update_device(
