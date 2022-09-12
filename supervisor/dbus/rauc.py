@@ -74,12 +74,12 @@ class Rauc(DBusInterface):
     @dbus_connected
     async def install(self, raucb_file) -> None:
         """Install rauc bundle file."""
-        await self.dbus.Installer.Install(str(raucb_file))
+        await self.dbus.Installer.call_install(str(raucb_file))
 
     @dbus_connected
     async def get_slot_status(self) -> list[tuple[str, dict[str, Any]]]:
         """Get slot status."""
-        return (await self.dbus.Installer.GetSlotStatus())[0]
+        return await self.dbus.Installer.call_get_slot_status()
 
     @dbus_connected
     def signal_completed(self) -> DBusSignalWrapper:
@@ -89,7 +89,7 @@ class Rauc(DBusInterface):
     @dbus_connected
     async def mark(self, state: RaucState, slot_identifier: str) -> tuple[str, str]:
         """Get slot status."""
-        return await self.dbus.Installer.Mark(state, slot_identifier)
+        return await self.dbus.Installer.call_mark(state, slot_identifier)
 
     @dbus_connected
     async def update(self):

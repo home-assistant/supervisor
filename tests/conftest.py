@@ -3,14 +3,14 @@ from functools import partial
 from inspect import unwrap
 from pathlib import Path
 import re
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp import web
 from awesomeversion import AwesomeVersion
-from dbus_next import introspection as intr
 from dbus_next.aio.message_bus import MessageBus
+from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
+from dbus_next.introspection import Method, Property, Signal
 import pytest
 from securetar import SecureTarFile
 
@@ -53,7 +53,7 @@ from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
-from supervisor.utils.dbus import DBus
+from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES, DBus
 from supervisor.utils.dt import utcnow
 
 from .common import exists_fixture, load_fixture, load_json_fixture
@@ -103,30 +103,45 @@ def docker() -> DockerAPI:
         yield docker_obj
 
 
+def _get_dbus_name(intr_list: list[Method | Property | Signal], snake_case: str) -> str:
+    """Find name in introspection list, fallback to ignore case match."""
+    name = "".join([part.capitalize() for part in snake_case.split("_")])
+    names = [item.name for item in intr_list]
+    if name in names:
+        return name
+
+    # Acronyms like NTP can't be easily converted back to camel case. Fallback to ignore case match
+    lower_name = name.lower()
+    for val in names:
+        if lower_name == val.lower():
+            return val
+
+    raise AttributeError(f"Could not find match for {name} in D-Bus introspection!")
+
+
 @pytest.fixture
 async def dbus_bus() -> MessageBus:
     """Message bus mock."""
-    yield AsyncMock(spec=MessageBus)
+    bus = AsyncMock(spec=MessageBus)
+    setattr(bus, "_name_owners", {})
+    yield bus
+
+
+def mock_get_properties(object_path: str, interface: str) -> str:
+    """Mock get dbus properties."""
+    latest = object_path.split("/")[-1]
+    fixture = interface.replace(".", "_")
+
+    if latest.isnumeric():
+        fixture = f"{fixture}_{latest}"
+
+    return load_json_fixture(f"{fixture}.json")
 
 
 @pytest.fixture
 def dbus(dbus_bus: MessageBus) -> DBus:
     """Mock DBUS."""
     dbus_commands = []
-
-    async def mock_get_properties(dbus_obj, interface):
-        latest = dbus_obj.object_path.split("/")[-1]
-        fixture = interface.replace(".", "_")
-
-        if latest.isnumeric():
-            fixture = f"{fixture}_{latest}"
-
-        return load_json_fixture(f"{fixture}.json")
-
-    async def mock_get_property(dbus_obj, interface, name):
-        dbus_commands.append(f"{dbus_obj.object_path}-{interface}.{name}")
-        properties = await mock_get_properties(dbus_obj, interface)
-        return properties[name]
 
     async def mock_wait_for_signal(self):
         if (
@@ -161,41 +176,69 @@ def dbus(dbus_bus: MessageBus) -> DBus:
                 fixture = f"{fixture}_~"
 
         # Use dbus-next infrastructure to parse introspection xml
-        node = intr.Node.parse(load_fixture(f"{fixture}.{filetype}"))
-        self._add_interfaces(node)
+        self._proxy_obj = ProxyObject(
+            self.bus_name,
+            self.object_path,
+            load_fixture(f"{fixture}.{filetype}"),
+            dbus_bus,
+        )
+        self._add_interfaces()
 
     async def mock_call_dbus(
-        self, method: str, *args: list[Any], remove_signature: bool = True
+        proxy_interface: ProxyInterface,
+        method: str,
+        *args,
+        remove_signature: bool = True,
     ):
-        if self.object_path != DBUS_OBJECT_BASE:
-            fixture = self.object_path.replace("/", "_")[1:]
-            fixture = f"{fixture}-{method.split('.')[-1]}"
-        else:
-            fixture = method.replace(".", "_")
+        if (
+            proxy_interface.introspection.name == DBUS_INTERFACE_PROPERTIES
+            and method == "call_get_all"
+        ):
+            return mock_get_properties(proxy_interface.path, args[0])
 
-        dbus_commands.append(f"{self.object_path}-{method}")
+        [dbus_type, dbus_name] = method.split("_", 1)
+
+        if dbus_type in ["get", "set"]:
+            dbus_name = _get_dbus_name(
+                proxy_interface.introspection.properties, dbus_name
+            )
+            dbus_commands.append(
+                f"{proxy_interface.path}-{proxy_interface.introspection.name}.{dbus_name}"
+            )
+
+            if dbus_type == "set":
+                return
+
+            return mock_get_properties(
+                proxy_interface.path, proxy_interface.introspection.name
+            )[dbus_name]
+
+        dbus_name = _get_dbus_name(proxy_interface.introspection.methods, dbus_name)
+        dbus_commands.append(
+            f"{proxy_interface.path}-{proxy_interface.introspection.name}.{dbus_name}"
+        )
+
+        if proxy_interface.path != DBUS_OBJECT_BASE:
+            fixture = proxy_interface.path.replace("/", "_")[1:]
+            fixture = f"{fixture}-{dbus_name}"
+        else:
+            fixture = (
+                f'{proxy_interface.introspection.name.replace(".", "_")}_{dbus_name}'
+            )
 
         if exists_fixture(f"{fixture}.json"):
             return load_json_fixture(f"{fixture}.json")
 
-        return []
-
     with patch("supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus), patch(
         "supervisor.dbus.interface.DBusInterface.is_connected",
         return_value=True,
-    ), patch(
-        "supervisor.utils.dbus.DBus.get_properties", new=mock_get_properties
-    ), patch(
-        "supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy
-    ), patch(
+    ), patch("supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy), patch(
         "supervisor.utils.dbus.DBusSignalWrapper.__aenter__", new=mock_signal___aenter__
     ), patch(
         "supervisor.utils.dbus.DBusSignalWrapper.__aexit__", new=mock_signal___aexit__
     ), patch(
         "supervisor.utils.dbus.DBusSignalWrapper.wait_for_signal",
         new=mock_wait_for_signal,
-    ), patch(
-        "supervisor.utils.dbus.DBus.get_property", new=mock_get_property
     ), patch(
         "supervisor.dbus.manager.MessageBus.connect", return_value=dbus_bus
     ):

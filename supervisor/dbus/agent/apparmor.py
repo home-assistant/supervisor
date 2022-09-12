@@ -41,9 +41,11 @@ class AppArmor(DBusInterface):
     @dbus_connected
     async def load_profile(self, profile: Path, cache: Path) -> None:
         """Load/Update AppArmor profile."""
-        await self.dbus.AppArmor.LoadProfile(profile.as_posix(), cache.as_posix())
+        await self.dbus.AppArmor.call_load_profile(profile.as_posix(), cache.as_posix())
 
     @dbus_connected
     async def unload_profile(self, profile: Path, cache: Path) -> None:
         """Remove AppArmor profile."""
-        await self.dbus.AppArmor.UnloadProfile(profile.as_posix(), cache.as_posix())
+        await self.dbus.AppArmor.call_unload_profile(
+            profile.as_posix(), cache.as_posix()
+        )

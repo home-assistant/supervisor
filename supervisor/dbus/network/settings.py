@@ -34,9 +34,7 @@ class NetworkManagerSettings(DBusInterface):
     @dbus_connected
     async def add_connection(self, settings: Any) -> NetworkSetting:
         """Add new connection."""
-        obj_con_setting = (
-            await self.dbus.Settings.AddConnection(("a{sa{sv}}", settings))
-        )[0]
+        obj_con_setting = await self.dbus.Settings.call_add_connection(settings)
         con_setting = NetworkSetting(obj_con_setting)
         await con_setting.connect(self.dbus.bus)
         return con_setting
@@ -44,4 +42,4 @@ class NetworkManagerSettings(DBusInterface):
     @dbus_connected
     async def reload_connections(self) -> bool:
         """Reload all local connection files."""
-        return (await self.dbus.Settings.ReloadConnections())[0]
+        return await self.dbus.Settings.call_reload_connections()

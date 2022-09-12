@@ -40,9 +40,9 @@ class DataDisk(DBusInterface):
     @dbus_connected
     async def change_device(self, device: Path) -> None:
         """Migrate data disk to a new device."""
-        await self.dbus.DataDisk.ChangeDevice(device.as_posix())
+        await self.dbus.DataDisk.call_change_device(device.as_posix())
 
     @dbus_connected
     async def reload_device(self) -> None:
         """Reload device data."""
-        await self.dbus.DataDisk.ReloadDevice()
+        await self.dbus.DataDisk.call_reload_device()

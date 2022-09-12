@@ -87,7 +87,7 @@ class Hostname(DBusInterface):
     @dbus_connected
     async def set_static_hostname(self, hostname: str) -> None:
         """Change local hostname."""
-        await self.dbus.SetStaticHostname(hostname, False)
+        await self.dbus.call_set_static_hostname(hostname, False)
 
     @dbus_connected
     async def update(self):

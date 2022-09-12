@@ -2,12 +2,14 @@
 from typing import Any
 from unittest.mock import patch
 
+from dbus_next.aio.proxy_object import ProxyInterface
 from dbus_next.signature import Variant
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.host.const import InterfaceMethod
 from supervisor.host.network import Interface
+from supervisor.utils.dbus import DBus
 
 from tests.const import TEST_INTERFACE
 
@@ -68,19 +70,14 @@ SETTINGS_WITH_SIGNATURE = {
 
 
 async def mock_call_dbus_get_settings_signature(
-    method: str, *args: list[Any], remove_signature: bool = True
+    _: ProxyInterface, method: str, *args, remove_signature: bool = True
 ) -> list[dict[str, Any]]:
     """Call dbus method mock for get settings that keeps signature."""
-    if (
-        method == "org.freedesktop.NetworkManager.Settings.Connection.GetSettings"
-        and not remove_signature
-    ):
-        return [SETTINGS_WITH_SIGNATURE]
+    if method == "call_get_settings" and not remove_signature:
+        return SETTINGS_WITH_SIGNATURE
     else:
-        assert method == "org.freedesktop.NetworkManager.Settings.Connection.Update"
-        assert len(args[0]) == 2
-        assert args[0][0] == "a{sa{sv}}"
-        settings = args[0][1]
+        assert method == "call_update"
+        settings = args[0]
 
         assert "connection" in settings
         assert settings["connection"]["id"] == Variant("s", "Supervisor eth0")
@@ -145,7 +142,7 @@ async def test_update(coresys: CoreSys):
     )
 
     with patch.object(
-        coresys.dbus.network.interfaces[TEST_INTERFACE].settings.dbus,
+        DBus,
         "call_dbus",
         new=mock_call_dbus_get_settings_signature,
     ):

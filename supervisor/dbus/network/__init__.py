@@ -17,7 +17,6 @@ from ...exceptions import (
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CONNECTION_ENABLED,
-    DBUS_ATTR_CONNECTIVITY,
     DBUS_ATTR_DEVICES,
     DBUS_ATTR_PRIMARY_CONNECTION,
     DBUS_ATTR_VERSION,
@@ -88,10 +87,9 @@ class NetworkManager(DBusInterface):
         self, connection_object: str, device_object: str
     ) -> NetworkConnection:
         """Activate a connction on a device."""
-        result = await self.dbus.ActivateConnection(
-            ("o", connection_object), ("o", device_object), ("o", DBUS_OBJECT_BASE)
+        obj_active_con = await self.dbus.call_activate_connection(
+            connection_object, device_object, DBUS_OBJECT_BASE
         )
-        obj_active_con = result[0]
         active_con = NetworkConnection(obj_active_con)
         await active_con.connect(self.dbus.bus)
         return active_con
@@ -101,8 +99,11 @@ class NetworkManager(DBusInterface):
         self, settings: Any, device_object: str
     ) -> tuple[NetworkSetting, NetworkConnection]:
         """Activate a connction on a device."""
-        obj_con_setting, obj_active_con = await self.dbus.AddAndActivateConnection(
-            ("a{sa{sv}}", settings), ("o", device_object), ("o", DBUS_OBJECT_BASE)
+        (
+            obj_con_setting,
+            obj_active_con,
+        ) = await self.dbus.call_add_and_activate_connection(
+            settings, device_object, DBUS_OBJECT_BASE
         )
 
         con_setting = NetworkSetting(obj_con_setting)
@@ -116,9 +117,9 @@ class NetworkManager(DBusInterface):
     async def check_connectivity(self, *, force: bool = False) -> int:
         """Check the connectivity of the host."""
         if force:
-            return (await self.dbus.CheckConnectivity())[0]
+            return await self.dbus.call_check_connectivity()
         else:
-            return await self.dbus.get_property(DBUS_IFACE_NM, DBUS_ATTR_CONNECTIVITY)
+            return await self.dbus.get_connectivity()
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""

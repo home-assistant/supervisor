@@ -112,7 +112,7 @@ class DBusManager(CoreSysAttributes):
         for dbus in dbus_loads:
             _LOGGER.info("Load dbus interface %s", dbus.name)
             try:
-                await dbus.connect(self._bus)
+                await dbus.connect(self.bus)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't load dbus interface %s: %s", dbus.name, err)
 
@@ -120,5 +120,9 @@ class DBusManager(CoreSysAttributes):
 
     async def unload(self) -> None:
         """Close connection to D-Bus."""
-        self._bus.disconnect()
+        if not self.bus:
+            _LOGGER.warning("No D-Bus connection to close.")
+            return
+
+        self.bus.disconnect()
         _LOGGER.info("Closed conection to system D-Bus.")

@@ -1,41 +1,39 @@
-[
-  {
-    "connection": {
-      "id": "Wired connection 1",
-      "interface-name": "eth0",
-      "permissions": [],
-      "timestamp": 1598125548,
-      "type": "802-3-ethernet",
-      "uuid": "0c23631e-2118-355c-bbb0-8943229cb0d6"
-    },
-    "ipv4": {
-      "address-data": [{ "address": "192.168.2.148", "prefix": 24 }],
-      "addresses": [[2483202240, 24, 16951488]],
-      "dns": [16951488],
-      "dns-search": [],
-      "gateway": "192.168.2.1",
-      "method": "auto",
-      "route-data": [
-        { "dest": "192.168.122.0", "prefix": 24, "next-hop": "10.10.10.1" }
-      ],
-      "routes": [[8038592, 24, 17435146, 0]]
-    },
-    "ipv6": {
-      "address-data": [],
-      "addresses": [],
-      "dns": [],
-      "dns-search": [],
-      "method": "auto",
-      "route-data": [],
-      "routes": [],
-      "addr-gen-mode": 0
-    },
-    "proxy": {},
-    "802-3-ethernet": {
-      "auto-negotiate": false,
-      "mac-address-blacklist": [],
-      "s390-options": {}
-    },
-    "802-11-wireless": { "ssid": [78, 69, 84, 84] }
-  }
-]
+{
+  "connection": {
+    "id": "Wired connection 1",
+    "interface-name": "eth0",
+    "permissions": [],
+    "timestamp": 1598125548,
+    "type": "802-3-ethernet",
+    "uuid": "0c23631e-2118-355c-bbb0-8943229cb0d6"
+  },
+  "ipv4": {
+    "address-data": [{ "address": "192.168.2.148", "prefix": 24 }],
+    "addresses": [[2483202240, 24, 16951488]],
+    "dns": [16951488],
+    "dns-search": [],
+    "gateway": "192.168.2.1",
+    "method": "auto",
+    "route-data": [
+      { "dest": "192.168.122.0", "prefix": 24, "next-hop": "10.10.10.1" }
+    ],
+    "routes": [[8038592, 24, 17435146, 0]]
+  },
+  "ipv6": {
+    "address-data": [],
+    "addresses": [],
+    "dns": [],
+    "dns-search": [],
+    "method": "auto",
+    "route-data": [],
+    "routes": [],
+    "addr-gen-mode": 0
+  },
+  "proxy": {},
+  "802-3-ethernet": {
+    "auto-negotiate": false,
+    "mac-address-blacklist": [],
+    "s390-options": {}
+  },
+  "802-11-wireless": { "ssid": [78, 69, 84, 84] }
+}
