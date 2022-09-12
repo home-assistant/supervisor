@@ -1,4 +1,7 @@
 """NetworkInterface object for Network Manager."""
+
+from dbus_next.aio.message_bus import MessageBus
+
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_CONNECTION,
@@ -74,9 +77,9 @@ class NetworkInterface(DBusInterfaceProxy):
         """Return the wireless data for this interface."""
         return self._wireless
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Get device information."""
-        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
         self.properties = await self.dbus.get_properties(DBUS_IFACE_DEVICE)
 
         # Abort if device is not managed
@@ -88,14 +91,14 @@ class NetworkInterface(DBusInterfaceProxy):
             self._connection = NetworkConnection(
                 self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
             )
-            await self._connection.connect()
+            await self._connection.connect(bus)
 
         # Attach settings
         if self.connection and self.connection.setting_object != DBUS_OBJECT_BASE:
             self._settings = NetworkSetting(self.connection.setting_object)
-            await self._settings.connect()
+            await self._settings.connect(bus)
 
         # Wireless
         if self.type == DeviceType.WIRELESS:
             self._wireless = NetworkWireless(self.object_path)
-            await self._wireless.connect()
+            await self._wireless.connect(bus)

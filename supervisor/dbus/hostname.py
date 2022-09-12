@@ -2,6 +2,8 @@
 import logging
 from typing import Any
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dbus import DBus
 from .const import (
@@ -33,10 +35,12 @@ class Hostname(DBusInterface):
         """Initialize Properties."""
         self.properties: dict[str, Any] = {}
 
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_HOSTNAME, DBUS_OBJECT_HOSTNAME)
+            self.dbus = await DBus.connect(
+                bus, DBUS_NAME_HOSTNAME, DBUS_OBJECT_HOSTNAME
+            )
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-hostname")
         except DBusInterfaceError:

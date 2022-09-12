@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from awesomeversion import AwesomeVersion
+from dbus_next.aio.message_bus import MessageBus
 
 from ...utils.dbus import DBus
 from ..const import (
@@ -28,9 +29,9 @@ class AppArmor(DBusInterface):
         """Return version of host AppArmor parser."""
         return AwesomeVersion(self.properties[DBUS_ATTR_PARSER_VERSION])
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_APPARMOR)
+        self.dbus = await DBus.connect(bus, DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_APPARMOR)
 
     @dbus_connected
     async def update(self):

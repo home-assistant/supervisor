@@ -10,7 +10,7 @@ async def test_dbus_hostname_info(coresys: CoreSys):
     """Test coresys dbus connection."""
     assert coresys.dbus.hostname.hostname is None
 
-    await coresys.dbus.hostname.connect()
+    await coresys.dbus.hostname.connect(coresys.dbus.bus)
     await coresys.dbus.hostname.update()
 
     assert coresys.dbus.hostname.hostname == "homeassistant-n2"
@@ -27,7 +27,7 @@ async def test_dbus_sethostname(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.hostname.set_static_hostname("StarWars")
 
-    await coresys.dbus.hostname.connect()
+    await coresys.dbus.hostname.connect(coresys.dbus.bus)
 
     dbus.clear()
     await coresys.dbus.hostname.set_static_hostname("StarWars")

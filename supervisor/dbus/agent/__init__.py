@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from awesomeversion import AwesomeVersion
+from dbus_next.aio.message_bus import MessageBus
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ...utils.dbus import DBus
@@ -78,14 +79,14 @@ class OSAgent(DBusInterface):
             self.dbus.set_property(DBUS_IFACE_HAOS, DBUS_ATTR_DIAGNOSTICS, value)
         )
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_HAOS, DBUS_OBJECT_HAOS)
-            await self.cgroup.connect()
-            await self.apparmor.connect()
-            await self.system.connect()
-            await self.datadisk.connect()
+            self.dbus = await DBus.connect(bus, DBUS_NAME_HAOS, DBUS_OBJECT_HAOS)
+            await self.cgroup.connect(bus)
+            await self.apparmor.connect(bus)
+            await self.system.connect(bus)
+            await self.datadisk.connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to OS-Agent")
         except DBusInterfaceError:

@@ -5,8 +5,8 @@ import asyncio
 import logging
 from typing import Any
 
-from dbus_next import BusType, InvalidIntrospectionError, Message, MessageType
-from dbus_next.aio import MessageBus
+from dbus_next import InvalidIntrospectionError, Message, MessageType
+from dbus_next.aio.message_bus import MessageBus
 from dbus_next.introspection import Node
 from dbus_next.signature import Variant
 
@@ -45,29 +45,29 @@ DBUS_METHOD_SET: str = "org.freedesktop.DBus.Properties.Set"
 class DBus:
     """DBus handler."""
 
-    def __init__(self, bus_name: str, object_path: str) -> None:
+    def __init__(self, bus: MessageBus, bus_name: str, object_path: str) -> None:
         """Initialize dbus object."""
         self.bus_name: str = bus_name
         self.object_path: str = object_path
         self.methods: set[str] = set()
         self.signals: set[str] = set()
-        self._bus: MessageBus | None = None
-
-    def __del__(self):
-        """Delete dbus object."""
-        if self._bus:
-            self._bus.disconnect()
+        self._bus: MessageBus = bus
 
     @staticmethod
-    async def connect(bus_name: str, object_path: str) -> DBus:
+    async def connect(bus: MessageBus, bus_name: str, object_path: str) -> DBus:
         """Read object data."""
-        self = DBus(bus_name, object_path)
+        self = DBus(bus, bus_name, object_path)
 
         # pylint: disable=protected-access
         await self._init_proxy()
 
         _LOGGER.debug("Connect to D-Bus: %s - %s", bus_name, object_path)
         return self
+
+    @property
+    def bus(self) -> MessageBus:
+        """Return message bus."""
+        return self._bus
 
     def _add_interfaces(self, introspection: Any):
         # Read available methods
@@ -88,10 +88,6 @@ class DBus:
         """Read interface data."""
         # Wait for dbus object to be available after restart
         introspection: Node | None = None
-        try:
-            self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-        except Exception as err:
-            raise DBusFatalError() from err
 
         for _ in range(3):
             try:

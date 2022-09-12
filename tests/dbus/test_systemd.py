@@ -16,7 +16,7 @@ async def test_dbus_systemd_info(coresys: CoreSys):
     assert coresys.dbus.systemd.boot_timestamp is None
     assert coresys.dbus.systemd.startup_time is None
 
-    await coresys.dbus.systemd.connect()
+    await coresys.dbus.systemd.connect(coresys.dbus.bus)
 
     async def mock_get_properties(dbus_obj, interface):
         return load_json_fixture(
@@ -35,7 +35,7 @@ async def test_reboot(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.systemd.reboot()
 
-    await coresys.dbus.systemd.connect()
+    await coresys.dbus.systemd.connect(coresys.dbus.bus)
 
     dbus.clear()
     assert await coresys.dbus.systemd.reboot() is None
@@ -47,7 +47,7 @@ async def test_power_off(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.systemd.power_off()
 
-    await coresys.dbus.systemd.connect()
+    await coresys.dbus.systemd.connect(coresys.dbus.bus)
 
     dbus.clear()
     assert await coresys.dbus.systemd.power_off() is None
@@ -61,7 +61,7 @@ async def test_start_unit(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.systemd.start_unit("test_unit", "replace")
 
-    await coresys.dbus.systemd.connect()
+    await coresys.dbus.systemd.connect(coresys.dbus.bus)
 
     dbus.clear()
     assert (
@@ -78,7 +78,7 @@ async def test_stop_unit(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.systemd.stop_unit("test_unit", "replace")
 
-    await coresys.dbus.systemd.connect()
+    await coresys.dbus.systemd.connect(coresys.dbus.bus)
 
     dbus.clear()
     assert (
@@ -95,7 +95,7 @@ async def test_restart_unit(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.systemd.restart_unit("test_unit", "replace")
 
-    await coresys.dbus.systemd.connect()
+    await coresys.dbus.systemd.connect(coresys.dbus.bus)
 
     dbus.clear()
     assert (
@@ -112,7 +112,7 @@ async def test_reload_unit(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.systemd.reload_unit("test_unit", "replace")
 
-    await coresys.dbus.systemd.connect()
+    await coresys.dbus.systemd.connect(coresys.dbus.bus)
 
     dbus.clear()
     assert (
@@ -129,7 +129,7 @@ async def test_list_units(coresys: CoreSys, dbus: list[str]):
     with pytest.raises(DBusNotConnectedError):
         await coresys.dbus.systemd.list_units()
 
-    await coresys.dbus.systemd.connect()
+    await coresys.dbus.systemd.connect(coresys.dbus.bus)
 
     dbus.clear()
     units = await coresys.dbus.systemd.list_units()

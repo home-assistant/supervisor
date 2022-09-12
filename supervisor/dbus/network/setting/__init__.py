@@ -2,6 +2,8 @@
 import logging
 from typing import Any
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
 from ....utils.dbus import DBus
 from ...const import DBUS_NAME_NM
@@ -158,9 +160,9 @@ class NetworkSetting(DBusInterfaceProxy):
         """Delete connection settings."""
         await self.dbus.Settings.Connection.Delete()
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
         data = await self.get_settings()
 
         # Get configuration settings we care about

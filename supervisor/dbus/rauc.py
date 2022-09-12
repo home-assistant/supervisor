@@ -2,6 +2,8 @@
 import logging
 from typing import Any
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dbus import DBus, DBusSignalWrapper
 from .const import (
@@ -35,10 +37,10 @@ class Rauc(DBusInterface):
         self._variant: str | None = None
         self._boot_slot: str | None = None
 
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_RAUC, DBUS_OBJECT_BASE)
+            self.dbus = await DBus.connect(bus, DBUS_NAME_RAUC, DBUS_OBJECT_BASE)
         except DBusError:
             _LOGGER.warning("Can't connect to rauc")
         except DBusInterfaceError:

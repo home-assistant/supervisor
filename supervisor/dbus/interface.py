@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from typing import Any
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ..utils.dbus import DBus
 
 
@@ -31,7 +33,7 @@ class DBusInterface(ABC):
         return self.dbus is not None
 
     @abstractmethod
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
 
     def disconnect(self):
@@ -47,5 +49,5 @@ class DBusInterfaceProxy(ABC):
     properties: dict[str, Any] | None = None
 
     @abstractmethod
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""

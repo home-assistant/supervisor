@@ -2,6 +2,8 @@
 import asyncio
 import logging
 
+from dbus_next.aio.message_bus import MessageBus
+
 from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_ACCESSPOINT,
@@ -46,16 +48,16 @@ class NetworkWireless(DBusInterfaceProxy):
         accesspoints = [NetworkWirelessAP(ap_obj) for ap_obj in accesspoints_data]
 
         for err in await asyncio.gather(
-            *[ap.connect() for ap in accesspoints], return_exceptions=True
+            *[ap.connect(self.dbus.bus) for ap in accesspoints], return_exceptions=True
         ):
             if err:
                 _LOGGER.warning("Can't process an AP: %s", err)
 
         return accesspoints
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
+        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
         self.properties = await self.dbus.get_properties(DBUS_IFACE_DEVICE_WIRELESS)
 
         # Get details from current active
@@ -63,4 +65,4 @@ class NetworkWireless(DBusInterfaceProxy):
             self._active = NetworkWirelessAP(
                 self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
             )
-            await self._active.connect()
+            await self._active.connect(bus)

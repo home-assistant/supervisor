@@ -134,7 +134,7 @@ async def mock_call_dbus_get_settings_signature(
 
 async def test_update(coresys: CoreSys):
     """Test network manager update."""
-    await coresys.dbus.network.interfaces[TEST_INTERFACE].connect()
+    await coresys.dbus.network.interfaces[TEST_INTERFACE].connect(coresys.dbus.bus)
     interface = Interface.from_dbus_interface(
         coresys.dbus.network.interfaces[TEST_INTERFACE]
     )
@@ -154,7 +154,7 @@ async def test_update(coresys: CoreSys):
 
 async def test_ipv6_disabled_is_link_local(coresys: CoreSys):
     """Test disabled equals link local for ipv6."""
-    await coresys.dbus.network.interfaces[TEST_INTERFACE].connect()
+    await coresys.dbus.network.interfaces[TEST_INTERFACE].connect(coresys.dbus.bus)
     interface = Interface.from_dbus_interface(
         coresys.dbus.network.interfaces[TEST_INTERFACE]
     )
