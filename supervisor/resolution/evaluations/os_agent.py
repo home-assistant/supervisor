@@ -22,7 +22,7 @@ class EvaluateOSAgent(EvaluateBase):
 
     @property
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
+        """Return a string that is printed when self.evaluate is True."""
         return "OS-Agent is not correctly working"
 
     @property

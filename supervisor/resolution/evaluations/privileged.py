@@ -21,7 +21,7 @@ class EvaluatePrivileged(EvaluateBase):
 
     @property
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
+        """Return a string that is printed when self.evaluate is True."""
         return "Supervisor does not run in Privileged mode."
 
     @property
