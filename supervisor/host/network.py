@@ -301,7 +301,7 @@ class IpConfig:
     address: list[IPv4Interface | IPv6Interface] = attr.ib()
     gateway: IPv4Address | IPv6Address | None = attr.ib()
     nameservers: list[IPv4Address | IPv6Address] = attr.ib()
-    ready: bool = attr.ib()
+    ready: bool | None = attr.ib()
 
 
 @attr.s(slots=True)

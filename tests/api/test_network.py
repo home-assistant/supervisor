@@ -213,3 +213,17 @@ async def test_api_network_reload(api_client, coresys, dbus: list[str]):
         "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
         in dbus
     )
+
+
+async def test_api_network_vlan(api_client, coresys: CoreSys, dbus: list[str]):
+    """Test creating a vlan."""
+    dbus.clear()
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE}/vlan/1", json={"ipv4": {"method": "auto"}}
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert (
+        "/org/freedesktop/NetworkManager/Settings-org.freedesktop.NetworkManager.Settings.AddConnection"
+        in dbus
+    )
