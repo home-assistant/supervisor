@@ -19,11 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       python-version: ${{ steps.python.outputs.python-version }}
-    name: Prepare Python ${{ env.DEFAULT_PYTHON }} dependencies
+    name: Prepare Python dependencies
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@v3.0.2
-      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
+      - name: Set up Python
         id: python
         uses: actions/setup-python@v4.2.0
         with:
