@@ -196,12 +196,14 @@ class APINetwork(CoreSysAttributes):
         for key, config in body.items():
             if key == ATTR_IPV4:
                 interface.ipv4 = attr.evolve(
-                    interface.ipv4 or IpConfig(InterfaceMethod.STATIC, [], None, []),
+                    interface.ipv4
+                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
                     **config,
                 )
             elif key == ATTR_IPV6:
                 interface.ipv6 = attr.evolve(
-                    interface.ipv6 or IpConfig(InterfaceMethod.STATIC, [], None, []),
+                    interface.ipv6
+                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
                     **config,
                 )
             elif key == ATTR_WIFI:
@@ -259,6 +261,7 @@ class APINetwork(CoreSysAttributes):
                 body[ATTR_IPV4].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV4].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV4].get(ATTR_NAMESERVERS, []),
+                None,
             )
 
         ipv6_config = None
@@ -268,6 +271,7 @@ class APINetwork(CoreSysAttributes):
                 body[ATTR_IPV6].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV6].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV6].get(ATTR_NAMESERVERS, []),
+                None,
             )
 
         vlan_interface = Interface(
