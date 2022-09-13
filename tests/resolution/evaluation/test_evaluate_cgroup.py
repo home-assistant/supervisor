@@ -34,6 +34,21 @@ async def test_evaluation(coresys: CoreSys):
     assert cgroup_version.reason not in coresys.resolution.unsupported
 
 
+async def test_evaluation_os_available(coresys: CoreSys):
+    """Test evaluation with OS available."""
+    cgroup_version = EvaluateCGroupVersion(coresys)
+    coresys.core.state = CoreState.SETUP
+
+    coresys.os._available = True
+    coresys.docker.info.cgroup = CGROUP_V2_VERSION
+    await cgroup_version()
+    assert cgroup_version.reason not in coresys.resolution.unsupported
+
+    coresys.docker.info.cgroup = CGROUP_V1_VERSION
+    await cgroup_version()
+    assert cgroup_version.reason not in coresys.resolution.unsupported
+
+
 async def test_did_run(coresys: CoreSys):
     """Test that the evaluation ran as expected."""
     cgroup_version = EvaluateCGroupVersion(coresys)
