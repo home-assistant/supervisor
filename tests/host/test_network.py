@@ -13,48 +13,42 @@ from supervisor.host.network import Interface, IpConfig
 from supervisor.utils.dbus import DBus
 
 
-async def test_load(coresys: CoreSys):
+async def test_load(coresys: CoreSys, dbus: list[str]):
     """Test network manager load."""
-    with patch.object(
-        type(coresys.host.sys_dbus.network),
-        "activate_connection",
-        new=Mock(wraps=coresys.host.sys_dbus.network.activate_connection),
-    ) as activate_connection, patch.object(
-        type(coresys.host.sys_dbus.network),
-        "check_connectivity",
-        new=Mock(wraps=coresys.host.sys_dbus.network.check_connectivity),
-    ) as check_connectivity:
-        await coresys.host.network.load()
+    dbus.clear()
+    await coresys.host.network.load()
 
-        assert coresys.host.network.connectivity is True
+    assert coresys.host.network.connectivity is True
 
-        assert len(coresys.host.network.dns_servers) == 1
-        assert str(coresys.host.network.dns_servers[0]) == "192.168.30.1"
+    assert len(coresys.host.network.dns_servers) == 1
+    assert str(coresys.host.network.dns_servers[0]) == "192.168.30.1"
 
-        assert len(coresys.host.network.interfaces) == 2
-        assert coresys.host.network.interfaces[0].name == "eth0"
-        assert coresys.host.network.interfaces[0].enabled is True
-        assert coresys.host.network.interfaces[0].ipv4.method == InterfaceMethod.AUTO
-        assert coresys.host.network.interfaces[0].ipv4.gateway == IPv4Address(
-            "192.168.2.1"
-        )
-        assert coresys.host.network.interfaces[0].ipv4.ready is True
-        assert coresys.host.network.interfaces[0].ipv6.method == InterfaceMethod.AUTO
-        assert coresys.host.network.interfaces[0].ipv6.gateway == IPv6Address(
-            "fe80::da58:d7ff:fe00:9c69"
-        )
-        assert coresys.host.network.interfaces[0].ipv6.ready is True
-        assert coresys.host.network.interfaces[1].name == "wlan0"
-        assert coresys.host.network.interfaces[1].enabled is False
+    assert len(coresys.host.network.interfaces) == 2
+    assert coresys.host.network.interfaces[0].name == "eth0"
+    assert coresys.host.network.interfaces[0].enabled is True
+    assert coresys.host.network.interfaces[0].ipv4.method == InterfaceMethod.AUTO
+    assert coresys.host.network.interfaces[0].ipv4.gateway == IPv4Address("192.168.2.1")
+    assert coresys.host.network.interfaces[0].ipv4.ready is True
+    assert coresys.host.network.interfaces[0].ipv6.method == InterfaceMethod.AUTO
+    assert coresys.host.network.interfaces[0].ipv6.gateway == IPv6Address(
+        "fe80::da58:d7ff:fe00:9c69"
+    )
+    assert coresys.host.network.interfaces[0].ipv6.ready is True
+    assert coresys.host.network.interfaces[1].name == "wlan0"
+    assert coresys.host.network.interfaces[1].enabled is False
 
-        activate_connection.assert_called_once_with(
-            "/org/freedesktop/NetworkManager/Settings/1",
-            "/org/freedesktop/NetworkManager/Devices/1",
-        )
-
-        assert check_connectivity.call_count == 2
-        assert check_connectivity.call_args_list[0][1] == {"force": False}
-        assert check_connectivity.call_args_list[1][1] == {"force": False}
+    assert (
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.ActivateConnection"
+        in dbus
+    )
+    assert (
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.Connectivity"
+        in dbus
+    )
+    assert (
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
+        not in dbus
+    )
 
 
 async def test_load_with_disabled_methods(coresys: CoreSys):
@@ -82,7 +76,7 @@ async def test_load_with_disabled_methods(coresys: CoreSys):
         activate_connection.assert_not_called()
 
 
-async def test_load_with_network_connection_issues(coresys: CoreSys):
+async def test_load_with_network_connection_issues(coresys: CoreSys, dbus: list[str]):
     """Test load does not update interfaces with network connection issues."""
     with patch(
         "supervisor.dbus.network.connection.NetworkConnection.state_flags",
@@ -90,14 +84,14 @@ async def test_load_with_network_connection_issues(coresys: CoreSys):
     ), patch(
         "supervisor.dbus.network.connection.NetworkConnection.ipv4",
         new=PropertyMock(return_value=None),
-    ), patch.object(
-        coresys.host.sys_dbus.network,
-        "activate_connection",
-        new=Mock(wraps=coresys.host.sys_dbus.network.activate_connection),
-    ) as activate_connection:
+    ):
+        dbus.clear()
         await coresys.host.network.load()
 
-        activate_connection.assert_not_called()
+        assert (
+            "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.ActivateConnection"
+            not in dbus
+        )
 
         assert len(coresys.host.network.interfaces) == 2
         assert coresys.host.network.interfaces[0].name == "eth0"
