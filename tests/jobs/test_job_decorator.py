@@ -85,8 +85,8 @@ async def test_internet(
     mock_websession = AsyncMock()
     mock_websession.head.side_effect = head_side_effect
     coresys.supervisor.connectivity = None
-    with patch.object(
-        type(coresys.dbus.network.dbus), "get_property", return_value=connectivity
+    with patch(
+        "supervisor.utils.dbus.DBus.call_dbus", return_value=connectivity
     ), patch.object(
         CoreSys, "websession", new=PropertyMock(return_value=mock_websession)
     ):

@@ -10,33 +10,29 @@ from supervisor.coresys import CoreSys
 
 async def test_connectivity_not_connected(coresys: CoreSys):
     """Test host unknown connectivity."""
-    with patch("supervisor.utils.dbus.DBus.get_property", return_value=0):
+    with patch("supervisor.utils.dbus.DBus.call_dbus", return_value=0):
         await coresys.host.network.check_connectivity()
         assert not coresys.host.network.connectivity
 
-    with patch("supervisor.utils.dbus.DBus.call_dbus", return_value=[0]):
         await coresys.host.network.check_connectivity(force=True)
         assert not coresys.host.network.connectivity
 
 
-async def test_connectivity_connected(coresys: CoreSys):
+async def test_connectivity_connected(coresys: CoreSys, dbus: list[str]):
     """Test host full connectivity."""
-    # Variation on above since our default fixture for each of these returns 4
-    with patch(
-        "supervisor.utils.dbus.DBus.get_property", return_value=4
-    ) as get_property, patch(
-        "supervisor.utils.dbus.DBus.call_dbus", return_value=[4]
-    ) as call_dbus:
-        await coresys.host.network.check_connectivity()
-        assert coresys.host.network.connectivity
-        get_property.assert_called_once()
-        call_dbus.assert_not_called()
+    dbus.clear()
+    await coresys.host.network.check_connectivity()
+    assert coresys.host.network.connectivity
+    assert dbus == [
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.Connectivity"
+    ]
 
-        get_property.reset_mock()
-        await coresys.host.network.check_connectivity(force=True)
-        assert coresys.host.network.connectivity
-        get_property.assert_not_called()
-        call_dbus.assert_called_once()
+    dbus.clear()
+    await coresys.host.network.check_connectivity(force=True)
+    assert coresys.host.network.connectivity
+    assert dbus == [
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
+    ]
 
 
 @pytest.mark.parametrize("force", [True, False])

@@ -2,6 +2,7 @@
 from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import Mock, PropertyMock, patch
 
+from dbus_next.aio.proxy_object import ProxyInterface
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -127,24 +128,34 @@ async def test_scan_wifi(coresys: CoreSys):
 async def test_scan_wifi_with_failures(coresys: CoreSys, caplog):
     """Test scanning wifi with accesspoint processing failures."""
     # pylint: disable=protected-access
-    init_proxy = coresys.dbus.network.dbus._init_proxy
+    init_proxy = DBus._init_proxy
+    call_dbus = DBus.call_dbus
 
     async def mock_init_proxy(self):
         if self.object_path != "/org/freedesktop/NetworkManager/AccessPoint/99999":
-            return await init_proxy()
+            return await init_proxy(self)
 
         raise DBusFatalError("Fail")
 
-    with patch("supervisor.host.network.asyncio.sleep"), patch.object(
-        DBus,
-        "call_dbus",
-        return_value=[
-            [
+    async def mock_call_dbus(
+        proxy_interface: ProxyInterface,
+        method: str,
+        *args,
+        remove_signature: bool = True,
+    ):
+        if method == "call_get_all_access_points":
+            return [
                 "/org/freedesktop/NetworkManager/AccessPoint/43099",
                 "/org/freedesktop/NetworkManager/AccessPoint/43100",
                 "/org/freedesktop/NetworkManager/AccessPoint/99999",
             ]
-        ],
+
+        return await call_dbus(
+            proxy_interface, method, *args, remove_signature=remove_signature
+        )
+
+    with patch("supervisor.host.network.asyncio.sleep"), patch(
+        "supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus
     ), patch.object(DBus, "_init_proxy", new=mock_init_proxy):
         aps = await coresys.host.network.scan_wifi(coresys.host.network.get("wlan0"))
         assert len(aps) == 2
