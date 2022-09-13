@@ -1,5 +1,5 @@
 """Test NetwrokInterface API."""
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -99,27 +99,28 @@ async def test_api_network_interface_info_default(api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_network_interface_update(api_client, coresys: CoreSys):
+async def test_api_network_interface_update(
+    api_client, coresys: CoreSys, dbus: list[str]
+):
     """Test network manager api."""
-    with patch.object(
-        type(coresys.host.sys_dbus.network),
-        "check_connectivity",
-        new=Mock(wraps=coresys.host.sys_dbus.network.check_connectivity),
-    ) as check_connectivity:
-        resp = await api_client.post(
-            f"/network/interface/{TEST_INTERFACE}/update",
-            json={
-                "ipv4": {
-                    "method": "static",
-                    "nameservers": ["1.1.1.1"],
-                    "address": ["192.168.2.148/24"],
-                    "gateway": "192.168.1.1",
-                }
-            },
-        )
-        result = await resp.json()
-        assert result["result"] == "ok"
-        check_connectivity.assert_called_once_with(force=True)
+    dbus.clear()
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE}/update",
+        json={
+            "ipv4": {
+                "method": "static",
+                "nameservers": ["1.1.1.1"],
+                "address": ["192.168.2.148/24"],
+                "gateway": "192.168.1.1",
+            }
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert (
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
+        in dbus
+    )
 
 
 @pytest.mark.asyncio
