@@ -106,7 +106,7 @@ class DBus:
             proxy_interface.path,
         )
         try:
-            body = await getattr(proxy_interface, method)(proxy_interface, *args)
+            body = await getattr(proxy_interface, method)(*args)
             return DBus.remove_dbus_signature(body) if remove_signature else body
         except DBusError as err:
             raise DBus.from_dbus_error(err)
