@@ -201,19 +201,15 @@ async def test_api_network_wireless_scan(api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_network_reload(api_client, coresys):
+async def test_api_network_reload(api_client, coresys, dbus: list[str]):
     """Test network manager reload api."""
-    with patch.object(type(coresys.dbus.network.dbus), "call_dbus") as call_dbus:
-        resp = await api_client.post("/network/reload")
-        result = await resp.json()
+    dbus.clear()
+    resp = await api_client.post("/network/reload")
+    result = await resp.json()
 
-        assert result["result"] == "ok"
-        assert (
-            call_dbus.call_args_list[0][0][0]
-            == "org.freedesktop.NetworkManager.Settings.Connection.GetSettings"
-        )
-        # Check that we forced NM to do an immediate connectivity check
-        assert (
-            call_dbus.call_args_list[1][0][0]
-            == "org.freedesktop.NetworkManager.CheckConnectivity"
-        )
+    assert result["result"] == "ok"
+    # Check that we forced NM to do an immediate connectivity check
+    assert (
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
+        in dbus
+    )

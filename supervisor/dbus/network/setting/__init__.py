@@ -124,14 +124,14 @@ class NetworkSetting(DBusInterfaceProxy):
     @dbus_connected
     async def get_settings(self) -> dict[str, Any]:
         """Return connection settings."""
-        return (await self.dbus.Settings.Connection.GetSettings())[0]
+        return await self.dbus.Settings.Connection.call_get_settings()
 
     @dbus_connected
     async def update(self, settings: Any) -> None:
         """Update connection settings."""
-        new_settings = (
-            await self.dbus.Settings.Connection.GetSettings(remove_signature=False)
-        )[0]
+        new_settings = await self.dbus.Settings.Connection.call_get_settings(
+            remove_signature=False
+        )
 
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_CONNECTION)
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_802_ETHERNET)
@@ -153,12 +153,12 @@ class NetworkSetting(DBusInterfaceProxy):
             ignore_current_value=IPV4_6_IGNORE_FIELDS,
         )
 
-        return await self.dbus.Settings.Connection.Update(("a{sa{sv}}", new_settings))
+        await self.dbus.Settings.Connection.call_update(new_settings)
 
     @dbus_connected
     async def delete(self) -> None:
         """Delete connection settings."""
-        await self.dbus.Settings.Connection.Delete()
+        await self.dbus.Settings.Connection.call_delete()
 
     async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""

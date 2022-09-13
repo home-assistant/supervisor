@@ -315,16 +315,32 @@ class DBusInterfaceError(HassioNotSupportedError):
     """D-Bus interface not connected."""
 
 
+class DBusObjectError(HassioNotSupportedError):
+    """D-Bus object not defined."""
+
+
+class DBusInterfaceMethodError(DBusInterfaceError):
+    """D-Bus method not defined or input does not match signature."""
+
+
+class DBusInterfacePropertyError(DBusInterfaceError):
+    """D-Bus property not defined or is read-only."""
+
+
+class DBusInterfaceSignalError(DBusInterfaceError):
+    """D-Bus signal not defined."""
+
+
 class DBusFatalError(DBusError):
     """D-Bus call going wrong."""
 
 
-class DBusInterfaceMethodError(DBusInterfaceError):
-    """D-Bus method was not defined."""
-
-
 class DBusParseError(DBusError):
     """D-Bus parse error."""
+
+
+class DBusTimeoutError(DBusError):
+    """D-Bus call timed out."""
 
 
 # util/apparmor

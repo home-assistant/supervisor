@@ -75,9 +75,7 @@ class OSAgent(DBusInterface):
     @dbus_property
     def diagnostics(self, value: bool) -> None:
         """Enable or disable OS-Agent diagnostics."""
-        asyncio.create_task(
-            self.dbus.set_property(DBUS_IFACE_HAOS, DBUS_ATTR_DIAGNOSTICS, value)
-        )
+        asyncio.create_task(self.dbus.set_diagnostics(value))
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""

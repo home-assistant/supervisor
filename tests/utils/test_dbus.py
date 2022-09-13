@@ -1,32 +1,19 @@
 """Check dbus-next implementation."""
 from dbus_next.signature import Variant
 
-from supervisor.coresys import CoreSys
-from supervisor.utils.dbus import DBus, _remove_dbus_signature
+from supervisor.utils.dbus import DBus
 
 
 def test_remove_dbus_signature():
     """Check D-Bus signature clean-up."""
-    test = _remove_dbus_signature(Variant("s", "Value"))
+    test = DBus.remove_dbus_signature(Variant("s", "Value"))
     assert isinstance(test, str)
     assert test == "Value"
 
-    test_dict = _remove_dbus_signature({"Key": Variant("s", "Value")})
+    test_dict = DBus.remove_dbus_signature({"Key": Variant("s", "Value")})
     assert isinstance(test_dict["Key"], str)
     assert test_dict["Key"] == "Value"
 
-    test_dict = _remove_dbus_signature([Variant("s", "Value")])
+    test_dict = DBus.remove_dbus_signature([Variant("s", "Value")])
     assert isinstance(test_dict[0], str)
     assert test_dict[0] == "Value"
-
-
-async def test_dbus_prepare_args(coresys: CoreSys):
-    """Check D-Bus dynamic argument builder."""
-    dbus = DBus(
-        coresys.dbus.bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1"
-    )
-    # pylint: disable=protected-access
-    signature, _ = dbus._prepare_args(
-        True, 1, 1.0, "Value", ("a{sv}", {"Key": "Value"})
-    )
-    assert signature == "bidsa{sv}"

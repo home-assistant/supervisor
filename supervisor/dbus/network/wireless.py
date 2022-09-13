@@ -39,12 +39,12 @@ class NetworkWireless(DBusInterfaceProxy):
     @dbus_connected
     async def request_scan(self) -> None:
         """Request a new AP scan."""
-        await self.dbus.Device.Wireless.RequestScan(("a{sv}", {}))
+        await self.dbus.Device.Wireless.call_request_scan({})
 
     @dbus_connected
     async def get_all_accesspoints(self) -> list[NetworkWirelessAP]:
         """Return a list of all access points path."""
-        accesspoints_data = (await self.dbus.Device.Wireless.GetAllAccessPoints())[0]
+        accesspoints_data = await self.dbus.Device.Wireless.call_get_all_access_points()
         accesspoints = [NetworkWirelessAP(ap_obj) for ap_obj in accesspoints_data]
 
         for err in await asyncio.gather(

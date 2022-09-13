@@ -65,39 +65,39 @@ class Systemd(DBusInterface):
     @dbus_connected
     async def reboot(self) -> None:
         """Reboot host computer."""
-        await self.dbus.Manager.Reboot()
+        await self.dbus.Manager.call_reboot()
 
     @dbus_connected
     async def power_off(self) -> None:
         """Power off host computer."""
-        await self.dbus.Manager.PowerOff()
+        await self.dbus.Manager.call_power_off()
 
     @dbus_connected
     async def start_unit(self, unit, mode) -> str:
-        """Start a systemd service unit. Return job object path."""
-        return (await self.dbus.Manager.StartUnit(unit, mode))[0]
+        """Start a systemd service unit. Returns object path of job."""
+        return await self.dbus.Manager.call_start_unit(unit, mode)
 
     @dbus_connected
     async def stop_unit(self, unit, mode) -> str:
-        """Stop a systemd service unit."""
-        return (await self.dbus.Manager.StopUnit(unit, mode))[0]
+        """Stop a systemd service unit. Returns object path of job."""
+        return await self.dbus.Manager.call_stop_unit(unit, mode)
 
     @dbus_connected
     async def reload_unit(self, unit, mode) -> str:
-        """Reload a systemd service unit."""
-        return (await self.dbus.Manager.ReloadOrRestartUnit(unit, mode))[0]
+        """Reload a systemd service unit. Returns object path of job."""
+        return await self.dbus.Manager.call_reload_or_restart_unit(unit, mode)
 
     @dbus_connected
-    async def restart_unit(self, unit, mode):
-        """Restart a systemd service unit."""
-        return (await self.dbus.Manager.RestartUnit(unit, mode))[0]
+    async def restart_unit(self, unit, mode) -> str:
+        """Restart a systemd service unit. Returns object path of job."""
+        return await self.dbus.Manager.call_restart_unit(unit, mode)
 
     @dbus_connected
     async def list_units(
         self,
-    ) -> list[str, str, str, str, str, str, str, int, str, str]:
+    ) -> list[tuple[str, str, str, str, str, str, str, int, str, str]]:
         """Return a list of available systemd services."""
-        return (await self.dbus.Manager.ListUnits())[0]
+        return await self.dbus.Manager.call_list_units()
 
     @dbus_connected
     async def update(self):
