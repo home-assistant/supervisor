@@ -40,7 +40,7 @@ from ..exceptions import (
 )
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
-from ..jobs.decorator import Job, JobCondition
+from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .const import (
@@ -694,7 +694,7 @@ class DockerAddon(DockerInterface):
         )
         job.result()
 
-    @Job(conditions=[JobCondition.OS_AGENT])
+    @Job(conditions=[JobCondition.OS_AGENT], limit=JobExecutionLimit.SINGLE_WAIT)
     async def _hardware_events(self, device: Device) -> None:
         """Process Hardware events for adjust device access."""
         if not any(
