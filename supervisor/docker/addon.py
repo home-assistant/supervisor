@@ -40,7 +40,7 @@ from ..exceptions import (
 )
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
-from ..jobs.decorator import Job, JobCondition
+from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from .const import (
@@ -694,7 +694,7 @@ class DockerAddon(DockerInterface):
         )
         job.result()
 
-    @Job(conditions=[JobCondition.OS_AGENT])
+    @Job(conditions=[JobCondition.OS_AGENT], limit=JobExecutionLimit.SINGLE_WAIT)
     async def _hardware_events(self, device: Device) -> None:
         """Process Hardware events for adjust device access."""
         if not any(
@@ -716,15 +716,19 @@ class DockerAddon(DockerInterface):
                 f"Can't process Hardware Event on {self.name}: {err!s}", _LOGGER.error
             ) from err
 
+        permission = self.sys_hardware.policy.get_cgroups_rule(device)
         try:
             await self.sys_dbus.agent.cgroup.add_devices_allowed(
-                docker_container.id, self.sys_hardware.policy.get_cgroups_rule(device)
+                docker_container.id, permission
             )
             _LOGGER.info(
-                "Added cgroup permissions for device %s to %s", device.path, self.name
+                "Added cgroup permissions '%s' for device %s to %s",
+                permission,
+                device.path,
+                self.name,
             )
         except DBusError as err:
             raise DockerError(
-                f"Can't set cgroup permission on the host for {self.name}",
+                f"Can't set cgroup permission '{permission}' on the host for {self.name}",
                 _LOGGER.error,
             ) from err
