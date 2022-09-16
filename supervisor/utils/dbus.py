@@ -193,9 +193,9 @@ class DBus:
     def disconnect(self):
         """Remove all active signal listeners."""
         for intr, signals in self._signal_monitors.items():
-            for name, fns in signals.items():
-                for fn in fns:
-                    getattr(self._proxies[intr], f"off_{name}")(fn)
+            for name, callbacks in signals.items():
+                for callback in callbacks:
+                    getattr(self._proxies[intr], f"off_{name}")(callback)
 
         self._signal_monitors = {}
 
