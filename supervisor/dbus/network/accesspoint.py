@@ -1,8 +1,7 @@
 """Connection object for Network Manager."""
 
-from dbus_next.aio.message_bus import MessageBus
+from typing import Any
 
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_FREQUENCY,
     DBUS_ATTR_HWADDRESS,
@@ -21,10 +20,15 @@ class NetworkWirelessAP(DBusInterfaceProxy):
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.AccessPoint.html
     """
 
+    bus_name: str = DBUS_NAME_NM
+    properties_interface: str = DBUS_IFACE_ACCESSPOINT
+    # Don't sync these. They may disappear and strength changes a lot
+    sync_properties: bool = False
+
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkWireless AP object."""
-        self.object_path = object_path
-        self.properties = {}
+        self.object_path: str = object_path
+        self.properties: dict[str, Any] = {}
 
     @property
     @dbus_property
@@ -47,16 +51,11 @@ class NetworkWirelessAP(DBusInterfaceProxy):
     @property
     @dbus_property
     def mode(self) -> int:
-        """Return details about mac address."""
+        """Return details about mode."""
         return self.properties[DBUS_ATTR_MODE]
 
     @property
     @dbus_property
     def strength(self) -> int:
-        """Return details about mac address."""
+        """Return details about strength."""
         return int(self.properties[DBUS_ATTR_STRENGTH])
-
-    async def connect(self, bus: MessageBus) -> None:
-        """Get connection information."""
-        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_ACCESSPOINT)

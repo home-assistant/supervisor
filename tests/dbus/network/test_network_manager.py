@@ -1,4 +1,5 @@
 """Test NetworkInterface."""
+import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
@@ -7,8 +8,10 @@ from supervisor.dbus.const import ConnectionStateType
 from supervisor.dbus.network import NetworkManager
 from supervisor.exceptions import HostNotSupportedError
 
+from .setting.test_init import SETTINGS_WITH_SIGNATURE
+
+from tests.common import fire_property_change_signal
 from tests.const import TEST_INTERFACE
-from tests.dbus.network.setting.test_init import SETTINGS_WITH_SIGNATURE
 
 # pylint: disable=protected-access
 
@@ -17,6 +20,15 @@ from tests.dbus.network.setting.test_init import SETTINGS_WITH_SIGNATURE
 async def test_network_manager(network_manager: NetworkManager):
     """Test network manager update."""
     assert TEST_INTERFACE in network_manager.interfaces
+    assert network_manager.connectivity_enabled is True
+
+    fire_property_change_signal(network_manager, {"ConnectivityCheckEnabled": False})
+    await asyncio.sleep(0)
+    assert network_manager.connectivity_enabled is False
+
+    fire_property_change_signal(network_manager, {"ConnectivityCheckEnabled": True})
+    await asyncio.sleep(0)
+    assert network_manager.connectivity_enabled is True
 
 
 @pytest.mark.asyncio
@@ -54,9 +66,12 @@ async def test_activate_connection(network_manager: NetworkManager, dbus: list[s
         "/org/freedesktop/NetworkManager/Devices/1",
     )
     assert connection.state == ConnectionStateType.ACTIVATED
-    assert connection.setting_object == "/org/freedesktop/NetworkManager/Settings/1"
+    assert (
+        connection.settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
+    )
     assert dbus == [
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.ActivateConnection"
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.ActivateConnection",
+        "/org/freedesktop/NetworkManager/Settings/1-org.freedesktop.NetworkManager.Settings.Connection.GetSettings",
     ]
 
 
@@ -71,7 +86,9 @@ async def test_add_and_activate_connection(
     assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
     assert settings.ipv4.method == "auto"
     assert connection.state == ConnectionStateType.ACTIVATED
-    assert connection.setting_object == "/org/freedesktop/NetworkManager/Settings/1"
+    assert (
+        connection.settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
+    )
     assert dbus == [
         "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.AddAndActivateConnection",
         "/org/freedesktop/NetworkManager/Settings/1-org.freedesktop.NetworkManager.Settings.Connection.GetSettings",

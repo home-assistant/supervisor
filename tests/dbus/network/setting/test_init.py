@@ -1,4 +1,5 @@
 """Test Network Manager Connection object."""
+import asyncio
 from typing import Any
 from unittest.mock import patch
 
@@ -11,6 +12,7 @@ from supervisor.host.const import InterfaceMethod
 from supervisor.host.network import Interface
 from supervisor.utils.dbus import DBus
 
+from tests.common import fire_watched_signal
 from tests.const import TEST_INTERFACE
 
 SETTINGS_WITH_SIGNATURE = {
@@ -165,3 +167,19 @@ async def test_ipv6_disabled_is_link_local(coresys: CoreSys):
 
     assert conn["ipv4"]["method"] == Variant("s", "disabled")
     assert conn["ipv6"]["method"] == Variant("s", "link-local")
+
+
+async def test_watching_updated_signal(coresys: CoreSys, dbus: list[str]):
+    """Test get settings called on update signal."""
+    await coresys.dbus.network.interfaces[TEST_INTERFACE].connect(coresys.dbus.bus)
+    dbus.clear()
+
+    fire_watched_signal(
+        coresys.dbus.network.interfaces[TEST_INTERFACE].settings,
+        "org.freedesktop.NetworkManager.Settings.Connection.Updated",
+        [],
+    )
+    await asyncio.sleep(0)
+    assert dbus == [
+        "/org/freedesktop/NetworkManager/Settings/1-org.freedesktop.NetworkManager.Settings.Connection.GetSettings"
+    ]

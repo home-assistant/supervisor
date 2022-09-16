@@ -7,7 +7,6 @@ from awesomeversion import AwesomeVersion
 from dbus_next.aio.message_bus import MessageBus
 
 from ...exceptions import DBusError, DBusInterfaceError
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_DIAGNOSTICS,
     DBUS_ATTR_VERSION,
@@ -15,7 +14,7 @@ from ..const import (
     DBUS_NAME_HAOS,
     DBUS_OBJECT_HAOS,
 )
-from ..interface import DBusInterface, dbus_property
+from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .apparmor import AppArmor
 from .cgroup import CGroup
@@ -25,10 +24,13 @@ from .system import System
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class OSAgent(DBusInterface):
+class OSAgent(DBusInterfaceProxy):
     """Handle D-Bus interface for OS-Agent."""
 
-    name = DBUS_NAME_HAOS
+    name: str = DBUS_NAME_HAOS
+    bus_name: str = DBUS_NAME_HAOS
+    object_path: str = DBUS_OBJECT_HAOS
+    properties_interface: str = DBUS_IFACE_HAOS
 
     def __init__(self) -> None:
         """Initialize Properties."""
@@ -79,8 +81,9 @@ class OSAgent(DBusInterface):
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
+        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            self.dbus = await DBus.connect(bus, DBUS_NAME_HAOS, DBUS_OBJECT_HAOS)
+            await super().connect(bus)
             await self.cgroup.connect(bus)
             await self.apparmor.connect(bus)
             await self.system.connect(bus)
@@ -93,8 +96,20 @@ class OSAgent(DBusInterface):
             )
 
     @dbus_connected
-    async def update(self):
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
         """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_HAOS)
-        await self.apparmor.update()
-        await self.datadisk.update()
+        await super().update(changed)
+
+        if not changed and self.apparmor.is_connected:
+            await self.apparmor.update()
+
+        if not changed and self.datadisk.is_connected:
+            await self.datadisk.update()
+
+    def disconnect(self) -> None:
+        """Disconnect from D-Bus."""
+        self.cgroup.disconnect()
+        self.apparmor.disconnect()
+        self.system.disconnect()
+        self.datadisk.disconnect()
+        super().disconnect()

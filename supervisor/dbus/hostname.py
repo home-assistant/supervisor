@@ -5,7 +5,6 @@ from typing import Any
 from dbus_next.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus import DBus
 from .const import (
     DBUS_ATTR_CHASSIS,
     DBUS_ATTR_DEPLOYMENT,
@@ -17,19 +16,22 @@ from .const import (
     DBUS_NAME_HOSTNAME,
     DBUS_OBJECT_HOSTNAME,
 )
-from .interface import DBusInterface, dbus_property
+from .interface import DBusInterfaceProxy, dbus_property
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Hostname(DBusInterface):
+class Hostname(DBusInterfaceProxy):
     """Handle D-Bus interface for hostname/system.
 
     https://www.freedesktop.org/software/systemd/man/org.freedesktop.hostname1.html
     """
 
-    name = DBUS_NAME_HOSTNAME
+    name: str = DBUS_NAME_HOSTNAME
+    bus_name: str = DBUS_NAME_HOSTNAME
+    object_path: str = DBUS_OBJECT_HOSTNAME
+    properties_interface: str = DBUS_IFACE_HOSTNAME
 
     def __init__(self):
         """Initialize Properties."""
@@ -37,10 +39,9 @@ class Hostname(DBusInterface):
 
     async def connect(self, bus: MessageBus):
         """Connect to system's D-Bus."""
+        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            self.dbus = await DBus.connect(
-                bus, DBUS_NAME_HOSTNAME, DBUS_OBJECT_HOSTNAME
-            )
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-hostname")
         except DBusInterfaceError:
@@ -88,8 +89,3 @@ class Hostname(DBusInterface):
     async def set_static_hostname(self, hostname: str) -> None:
         """Change local hostname."""
         await self.dbus.call_set_static_hostname(hostname, False)
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_HOSTNAME)

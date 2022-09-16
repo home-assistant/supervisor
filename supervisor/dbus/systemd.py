@@ -5,7 +5,6 @@ from typing import Any
 from dbus_next.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus import DBus
 from .const import (
     DBUS_ATTR_FINISH_TIMESTAMP,
     DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC,
@@ -16,19 +15,24 @@ from .const import (
     DBUS_NAME_SYSTEMD,
     DBUS_OBJECT_SYSTEMD,
 )
-from .interface import DBusInterface, dbus_property
+from .interface import DBusInterfaceProxy, dbus_property
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Systemd(DBusInterface):
+class Systemd(DBusInterfaceProxy):
     """Systemd function handler.
 
     https://www.freedesktop.org/software/systemd/man/org.freedesktop.systemd1.html
     """
 
-    name = DBUS_NAME_SYSTEMD
+    name: str = DBUS_NAME_SYSTEMD
+    bus_name: str = DBUS_NAME_SYSTEMD
+    object_path: str = DBUS_OBJECT_SYSTEMD
+    # NFailedUnits is the only property that emits a change signal and we don't use it
+    sync_properties: bool = False
+    properties_interface: str = DBUS_IFACE_SYSTEMD_MANAGER
 
     def __init__(self) -> None:
         """Initialize Properties."""
@@ -36,8 +40,9 @@ class Systemd(DBusInterface):
 
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
+        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            self.dbus = await DBus.connect(bus, DBUS_NAME_SYSTEMD, DBUS_OBJECT_SYSTEMD)
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd")
         except DBusInterfaceError:
@@ -98,8 +103,3 @@ class Systemd(DBusInterface):
     ) -> list[tuple[str, str, str, str, str, str, str, int, str, str]]:
         """Return a list of available systemd services."""
         return await self.dbus.Manager.call_list_units()
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_SYSTEMD_MANAGER)

@@ -5,7 +5,7 @@ from supervisor.coresys import CoreSys
 from supervisor.dbus.const import MulticastProtocolEnabled
 
 
-async def test_llmnr_mdns_info(api_client, coresys: CoreSys):
+async def test_llmnr_mdns_info(api_client, coresys: CoreSys, dbus_is_connected):
     """Test llmnr and mdns in info api."""
     coresys.host.sys_dbus.resolved.is_connected = False
 

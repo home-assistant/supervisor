@@ -1,5 +1,6 @@
 """Test systemd-resolved dbus interface."""
 
+import asyncio
 from socket import AF_INET6, inet_aton, inet_pton
 from unittest.mock import patch
 
@@ -13,6 +14,8 @@ from supervisor.dbus.const import (
     MulticastProtocolEnabled,
     ResolvConfMode,
 )
+
+from tests.common import fire_property_change_signal
 
 DNS_IP_FIELDS = [
     "DNS",
@@ -113,3 +116,11 @@ async def test_dbus_resolved_info(coresys_ip_bytes: CoreSys):
     ]
     assert coresys.dbus.resolved.dns_stub_listener == DNSStubListenerEnabled.NO
     assert coresys.dbus.resolved.resolv_conf_mode == ResolvConfMode.FOREIGN
+
+    fire_property_change_signal(coresys.dbus.resolved, {"LLMNRHostname": "test"})
+    await asyncio.sleep(0)
+    assert coresys.dbus.resolved.llmnr_hostname == "test"
+
+    fire_property_change_signal(coresys.dbus.resolved, {}, ["LLMNRHostname"])
+    await asyncio.sleep(0)
+    assert coresys.dbus.resolved.llmnr_hostname == "homeassistant"

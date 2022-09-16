@@ -1,10 +1,13 @@
 """Test Datadisk/Agent dbus interface."""
+import asyncio
 from pathlib import Path
 
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import DBusNotConnectedError
+
+from tests.common import fire_property_change_signal
 
 
 async def test_dbus_osagent_datadisk(coresys: CoreSys):
@@ -14,6 +17,16 @@ async def test_dbus_osagent_datadisk(coresys: CoreSys):
     await coresys.dbus.agent.connect(coresys.dbus.bus)
     await coresys.dbus.agent.update()
 
+    assert coresys.dbus.agent.datadisk.current_device.as_posix() == "/dev/sda"
+
+    fire_property_change_signal(
+        coresys.dbus.agent.datadisk, {"CurrentDevice": "/dev/sda1"}
+    )
+    await asyncio.sleep(0)
+    assert coresys.dbus.agent.datadisk.current_device.as_posix() == "/dev/sda1"
+
+    fire_property_change_signal(coresys.dbus.agent.datadisk, {}, ["CurrentDevice"])
+    await asyncio.sleep(0)
     assert coresys.dbus.agent.datadisk.current_device.as_posix() == "/dev/sda"
 
 

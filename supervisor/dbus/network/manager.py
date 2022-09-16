@@ -1,4 +1,5 @@
 """Network Manager implementation for DBUS."""
+import asyncio
 import logging
 from typing import Any
 
@@ -13,6 +14,7 @@ from ...exceptions import (
     DBusInterfaceMethodError,
     HostNotSupportedError,
 )
+from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_DEVICES,
@@ -22,10 +24,9 @@ from ..const import (
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
     DBUS_OBJECT_NM,
-    ConnectivityState,
     DeviceType,
 )
-from ..interface import DBusInterfaceProxy, dbus_property
+from ..interface import DBusInterface, dbus_property
 from ..utils import dbus_connected
 from .connection import NetworkConnection
 from .dns import NetworkManagerDNS
@@ -38,16 +39,13 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 MINIMAL_VERSION = AwesomeVersion("1.14.6")
 
 
-class NetworkManager(DBusInterfaceProxy):
+class NetworkManager(DBusInterface):
     """Handle D-Bus interface for Network Manager.
 
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.html
     """
 
-    name: str = DBUS_NAME_NM
-    bus_name: str = DBUS_NAME_NM
-    object_path: str = DBUS_OBJECT_NM
-    properties_interface: str = DBUS_IFACE_NM
+    name = DBUS_NAME_NM
 
     def __init__(self) -> None:
         """Initialize Properties."""
@@ -101,16 +99,22 @@ class NetworkManager(DBusInterfaceProxy):
         self, settings: Any, device_object: str
     ) -> tuple[NetworkSetting, NetworkConnection]:
         """Activate a connction on a device."""
-        (_, obj_active_con,) = await self.dbus.call_add_and_activate_connection(
+        (
+            obj_con_setting,
+            obj_active_con,
+        ) = await self.dbus.call_add_and_activate_connection(
             settings, device_object, DBUS_OBJECT_BASE
         )
 
+        con_setting = NetworkSetting(obj_con_setting)
         active_con = NetworkConnection(obj_active_con)
-        await active_con.connect(self.dbus.bus)
-        return active_con.settings, active_con
+        await asyncio.gather(
+            con_setting.connect(self.dbus.bus), active_con.connect(self.dbus.bus)
+        )
+        return con_setting, active_con
 
     @dbus_connected
-    async def check_connectivity(self, *, force: bool = False) -> ConnectivityState:
+    async def check_connectivity(self, *, force: bool = False) -> int:
         """Check the connectivity of the host."""
         if force:
             return await self.dbus.call_check_connectivity()
@@ -119,9 +123,8 @@ class NetworkManager(DBusInterfaceProxy):
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
-        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            await super().connect(bus)
+            self.dbus = await DBus.connect(bus, DBUS_NAME_NM, DBUS_OBJECT_NM)
             await self.dns.connect(bus)
             await self.settings.connect(bus)
         except DBusError:
@@ -156,15 +159,11 @@ class NetworkManager(DBusInterfaceProxy):
         )
 
     @dbus_connected
-    async def update(self, changed: dict[str, Any] | None = None) -> None:
+    async def update(self):
         """Update Properties."""
-        await super().update(changed)
+        self.properties = await self.dbus.get_properties(DBUS_IFACE_NM)
 
-        if not changed and self.dns.is_connected:
-            await self.dns.update()
-
-        if changed and DBUS_ATTR_DEVICES not in changed:
-            return
+        await self.dns.update()
 
         self._interfaces.clear()
         for device in self.properties[DBUS_ATTR_DEVICES]:
@@ -204,13 +203,3 @@ class NetworkManager(DBusInterfaceProxy):
                 interface.primary = True
 
             self._interfaces[interface.name] = interface
-
-    def disconnect(self) -> None:
-        """Disconnect from D-Bus."""
-        self.dns.disconnect()
-        self.settings.disconnect()
-
-        for intr in self.interfaces.values():
-            intr.disconnect()
-
-        super().disconnect()

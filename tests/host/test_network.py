@@ -1,16 +1,21 @@
 """Test network manager."""
+import asyncio
 from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import Mock, PropertyMock, patch
 
 from dbus_next.aio.proxy_object import ProxyInterface
 import pytest
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectionStateFlags, InterfaceMethod
 from supervisor.exceptions import DBusFatalError, HostNotSupportedError
+from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.host.const import InterfaceType, WifiMode
 from supervisor.host.network import Interface, IpConfig
 from supervisor.utils.dbus import DBus
+
+from tests.common import fire_property_change_signal
 
 
 async def test_load(coresys: CoreSys, dbus: list[str]):
@@ -155,3 +160,94 @@ async def test_scan_wifi_with_failures(coresys: CoreSys, caplog):
         assert len(aps) == 2
 
     assert "Can't process an AP" in caplog.text
+
+
+async def test_host_connectivity_changed(coresys: CoreSys):
+    """Test host connectivity changed."""
+    # pylint: disable=protected-access
+    client = coresys.homeassistant.websocket._client
+    await coresys.host.network.load()
+
+    assert coresys.host.network.connectivity is True
+
+    fire_property_change_signal(coresys.dbus.network, {"Connectivity": 1})
+    await asyncio.sleep(0)
+    assert coresys.host.network.connectivity is False
+    await asyncio.sleep(0)
+    client.async_send_command.assert_called_once_with(
+        {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": WSEvent.SUPERVISOR_UPDATE,
+                "update_key": "network",
+                "data": {"host_internet": False},
+            },
+        }
+    )
+
+    client.async_send_command.reset_mock()
+    fire_property_change_signal(coresys.dbus.network, {}, ["Connectivity"])
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert coresys.host.network.connectivity is True
+    await asyncio.sleep(0)
+    client.async_send_command.assert_called_once_with(
+        {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": WSEvent.SUPERVISOR_UPDATE,
+                "update_key": "network",
+                "data": {"host_internet": True},
+            },
+        }
+    )
+
+
+async def test_host_connectivity_disabled(coresys: CoreSys):
+    """Test host connectivity check disabled."""
+    # pylint: disable=protected-access
+    client = coresys.homeassistant.websocket._client
+    await coresys.host.network.load()
+
+    coresys.core.state = CoreState.RUNNING
+    await asyncio.sleep(0)
+    client.async_send_command.reset_mock()
+
+    assert "connectivity_check" not in coresys.resolution.unsupported
+    assert coresys.host.network.connectivity is True
+
+    fire_property_change_signal(
+        coresys.dbus.network, {"ConnectivityCheckEnabled": False}
+    )
+    await asyncio.sleep(0)
+    assert coresys.host.network.connectivity is None
+    await asyncio.sleep(0)
+    client.async_send_command.assert_called_once_with(
+        {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": WSEvent.SUPERVISOR_UPDATE,
+                "update_key": "network",
+                "data": {"host_internet": None},
+            },
+        }
+    )
+    assert "connectivity_check" in coresys.resolution.unsupported
+
+    client.async_send_command.reset_mock()
+    fire_property_change_signal(coresys.dbus.network, {}, ["ConnectivityCheckEnabled"])
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert coresys.host.network.connectivity is True
+    await asyncio.sleep(0)
+    client.async_send_command.assert_called_once_with(
+        {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": WSEvent.SUPERVISOR_UPDATE,
+                "update_key": "network",
+                "data": {"host_internet": True},
+            },
+        }
+    )
+    assert "connectivity_check" not in coresys.resolution.unsupported

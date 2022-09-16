@@ -5,9 +5,8 @@ from typing import Any
 from dbus_next.aio.message_bus import MessageBus
 
 from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
-from ....utils.dbus import DBus
 from ...const import DBUS_NAME_NM
-from ...interface import DBusInterfaceProxy
+from ...interface import DBusInterface
 from ...utils import dbus_connected
 from ..configuration import (
     ConnectionProperties,
@@ -67,16 +66,17 @@ def _merge_settings_attribute(
             base_settings[attribute] = new_settings[attribute]
 
 
-class NetworkSetting(DBusInterfaceProxy):
+class NetworkSetting(DBusInterface):
     """Network connection setting object for Network Manager.
 
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Settings.Connection.html
     """
 
+    bus_name: str = DBUS_NAME_NM
+
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        self.object_path = object_path
-        self.properties = {}
+        self.object_path: str = object_path
 
         self._connection: ConnectionProperties | None = None
         self._wireless: WirelessProperties | None = None
@@ -162,7 +162,21 @@ class NetworkSetting(DBusInterfaceProxy):
 
     async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
+        await super().connect(bus)
+        await self.reload()
+
+        # pylint: disable=unnecessary-lambda
+        # wrapper created by annotation fails the signature test, varargs not supported
+        self.dbus.Settings.Connection.on_updated(lambda: self.reload())
+
+    def disconnect(self) -> None:
+        """Disconnect from D-Bus."""
+        self.dbus.Settings.Connection.off_updated(self.reload)
+        super().disconnect()
+
+    @dbus_connected
+    async def reload(self):
+        """Get current settings for connection."""
         data = await self.get_settings()
 
         # Get configuration settings we care about

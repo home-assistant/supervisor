@@ -1,4 +1,5 @@
 """D-Bus interface objects."""
+import asyncio
 import logging
 
 from dbus_next import BusType
@@ -82,6 +83,20 @@ class DBusManager(CoreSysAttributes):
         """Return the message bus."""
         return self._bus
 
+    @property
+    def all(self) -> list[DBusInterface]:
+        """Return all managed dbus interfaces."""
+        return [
+            self.agent,
+            self.systemd,
+            self.logind,
+            self.hostname,
+            self.timedate,
+            self.network,
+            self.rauc,
+            self.resolved,
+        ]
+
     async def load(self) -> None:
         """Connect interfaces to D-Bus."""
         if not SOCKET_DBUS.exists():
@@ -99,22 +114,17 @@ class DBusManager(CoreSysAttributes):
 
         _LOGGER.info("Connected to system D-Bus.")
 
-        dbus_loads: list[DBusInterface] = [
-            self.agent,
-            self.systemd,
-            self.logind,
-            self.hostname,
-            self.timedate,
-            self.network,
-            self.rauc,
-            self.resolved,
-        ]
-        for dbus in dbus_loads:
-            _LOGGER.info("Load dbus interface %s", dbus.name)
-            try:
-                await dbus.connect(self.bus)
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't load dbus interface %s: %s", dbus.name, err)
+        errors = await asyncio.gather(
+            *[dbus.connect(self.bus) for dbus in self.all], return_exceptions=True
+        )
+
+        for err in errors:
+            if err:
+                _LOGGER.warning(
+                    "Can't load dbus interface %s: %s",
+                    self.all[errors.index(err)].name,
+                    err,
+                )
 
         self.sys_host.supported_features.cache_clear()
 
@@ -123,6 +133,9 @@ class DBusManager(CoreSysAttributes):
         if not self.bus:
             _LOGGER.warning("No D-Bus connection to close.")
             return
+
+        for dbus in self.all:
+            dbus.disconnect()
 
         self.bus.disconnect()
         _LOGGER.info("Closed conection to system D-Bus.")

@@ -5,7 +5,7 @@ from typing import Any
 from dbus_next.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus import DBus, DBusSignalWrapper
+from ..utils.dbus import DBusSignalWrapper
 from .const import (
     DBUS_ATTR_BOOT_SLOT,
     DBUS_ATTR_COMPATIBLE,
@@ -18,16 +18,19 @@ from .const import (
     DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED,
     RaucState,
 )
-from .interface import DBusInterface
+from .interface import DBusInterfaceProxy
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Rauc(DBusInterface):
+class Rauc(DBusInterfaceProxy):
     """Handle D-Bus interface for rauc."""
 
-    name = DBUS_NAME_RAUC
+    name: str = DBUS_NAME_RAUC
+    bus_name: str = DBUS_NAME_RAUC
+    object_path: str = DBUS_OBJECT_BASE
+    properties_interface: str = DBUS_IFACE_RAUC_INSTALLER
 
     def __init__(self):
         """Initialize Properties."""
@@ -37,10 +40,13 @@ class Rauc(DBusInterface):
         self._variant: str | None = None
         self._boot_slot: str | None = None
 
+        self.properties: dict[str, Any] = {}
+
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
+        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            self.dbus = await DBus.connect(bus, DBUS_NAME_RAUC, DBUS_OBJECT_BASE)
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to rauc")
         except DBusInterfaceError:
@@ -92,15 +98,15 @@ class Rauc(DBusInterface):
         return await self.dbus.Installer.call_mark(state, slot_identifier)
 
     @dbus_connected
-    async def update(self):
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
         """Update Properties."""
-        data = await self.dbus.get_properties(DBUS_IFACE_RAUC_INSTALLER)
-        if not data:
+        await super().update(changed)
+        if not self.properties:
             _LOGGER.warning("Can't get properties for rauc")
             return
 
-        self._operation = data.get(DBUS_ATTR_OPERATION)
-        self._last_error = data.get(DBUS_ATTR_LAST_ERROR)
-        self._compatible = data.get(DBUS_ATTR_COMPATIBLE)
-        self._variant = data.get(DBUS_ATTR_VARIANT)
-        self._boot_slot = data.get(DBUS_ATTR_BOOT_SLOT)
+        self._operation = self.properties.get(DBUS_ATTR_OPERATION)
+        self._last_error = self.properties.get(DBUS_ATTR_LAST_ERROR)
+        self._compatible = self.properties.get(DBUS_ATTR_COMPATIBLE)
+        self._variant = self.properties.get(DBUS_ATTR_VARIANT)
+        self._boot_slot = self.properties.get(DBUS_ATTR_BOOT_SLOT)

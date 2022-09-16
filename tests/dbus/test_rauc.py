@@ -1,21 +1,35 @@
 """Test rauc dbus interface."""
+import asyncio
+
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import RaucState
 from supervisor.exceptions import DBusNotConnectedError
 
+from tests.common import fire_property_change_signal
+
 
 async def test_rauc(coresys: CoreSys):
     """Test rauc properties."""
     assert coresys.dbus.rauc.boot_slot is None
     assert coresys.dbus.rauc.operation is None
+    assert coresys.dbus.rauc.last_error is None
 
     await coresys.dbus.rauc.connect(coresys.dbus.bus)
     await coresys.dbus.rauc.update()
 
     assert coresys.dbus.rauc.boot_slot == "B"
     assert coresys.dbus.rauc.operation == "idle"
+    assert coresys.dbus.rauc.last_error == ""
+
+    fire_property_change_signal(coresys.dbus.rauc, {"LastError": "Error!"})
+    await asyncio.sleep(0)
+    assert coresys.dbus.rauc.last_error == "Error!"
+
+    fire_property_change_signal(coresys.dbus.rauc, {}, ["LastError"])
+    await asyncio.sleep(0)
+    assert coresys.dbus.rauc.last_error == ""
 
 
 async def test_install(coresys: CoreSys, dbus: list[str]):

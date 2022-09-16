@@ -7,7 +7,7 @@ from supervisor.coresys import CoreSys
 from supervisor.resolution.evaluations.network_manager import EvaluateNetworkManager
 
 
-async def test_evaluation(coresys: CoreSys):
+async def test_evaluation(coresys: CoreSys, dbus_is_connected):
     """Test evaluation."""
     network_manager = EvaluateNetworkManager(coresys)
     coresys.core.state = CoreState.RUNNING

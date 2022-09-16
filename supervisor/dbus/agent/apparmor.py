@@ -3,21 +3,23 @@ from pathlib import Path
 from typing import Any
 
 from awesomeversion import AwesomeVersion
-from dbus_next.aio.message_bus import MessageBus
 
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_PARSER_VERSION,
     DBUS_IFACE_HAOS_APPARMOR,
     DBUS_NAME_HAOS,
     DBUS_OBJECT_HAOS_APPARMOR,
 )
-from ..interface import DBusInterface, dbus_property
+from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 
 
-class AppArmor(DBusInterface):
+class AppArmor(DBusInterfaceProxy):
     """AppArmor object for OS Agent."""
+
+    bus_name: str = DBUS_NAME_HAOS
+    object_path: str = DBUS_OBJECT_HAOS_APPARMOR
+    properties_interface: str = DBUS_IFACE_HAOS_APPARMOR
 
     def __init__(self) -> None:
         """Initialize Properties."""
@@ -28,15 +30,6 @@ class AppArmor(DBusInterface):
     def version(self) -> AwesomeVersion:
         """Return version of host AppArmor parser."""
         return AwesomeVersion(self.properties[DBUS_ATTR_PARSER_VERSION])
-
-    async def connect(self, bus: MessageBus) -> None:
-        """Get connection information."""
-        self.dbus = await DBus.connect(bus, DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_APPARMOR)
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_HAOS_APPARMOR)
 
     @dbus_connected
     async def load_profile(self, profile: Path, cache: Path) -> None:

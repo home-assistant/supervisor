@@ -71,7 +71,6 @@ class SystemControl(CoreSysAttributes):
 
         _LOGGER.info("Set hostname %s", hostname)
         await self.sys_dbus.hostname.set_static_hostname(hostname)
-        await self.sys_dbus.hostname.update()
 
     async def set_datetime(self, new_time: datetime) -> None:
         """Update host clock with new (utc) datetime."""

@@ -98,29 +98,21 @@ class HostManager(CoreSysAttributes):
 
         return features
 
-    async def reload(
-        self,
-        *,
-        services: bool = True,
-        network: bool = True,
-        agent: bool = True,
-        audio: bool = True,
-    ):
+    async def reload(self):
         """Reload host functions."""
         await self.info.update()
 
-        if services and self.sys_dbus.systemd.is_connected:
+        if self.sys_dbus.systemd.is_connected:
             await self.services.update()
 
-        if network and self.sys_dbus.network.is_connected:
+        if self.sys_dbus.network.is_connected:
             await self.network.update()
 
-        if agent and self.sys_dbus.agent.is_connected:
+        if self.sys_dbus.agent.is_connected:
             await self.sys_dbus.agent.update()
 
-        if audio:
-            with suppress(PulseAudioError):
-                await self.sound.update()
+        with suppress(PulseAudioError):
+            await self.sound.update()
 
         _LOGGER.info("Host information reload completed")
         self.supported_features.cache_clear()  # pylint: disable=no-member
@@ -128,7 +120,12 @@ class HostManager(CoreSysAttributes):
     async def load(self):
         """Load host information."""
         with suppress(HassioError):
-            await self.reload(network=False)
+            if self.sys_dbus.systemd.is_connected:
+                await self.services.update()
+
+            with suppress(PulseAudioError):
+                await self.sound.update()
+
             await self.network.load()
 
         # Register for events
