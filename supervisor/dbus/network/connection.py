@@ -101,6 +101,12 @@ class NetworkConnection(DBusInterfaceProxy):
 
         # IPv4
         if not changed or DBUS_ATTR_IP4CONFIG in changed:
+            if (
+                self._ipv4
+                and self._ipv4.is_connected
+                and self._ipv4.object_path == self.properties[DBUS_ATTR_IP4CONFIG]
+            ):
+                await self._ipv4.update()
             if self.properties[DBUS_ATTR_IP4CONFIG] != DBUS_OBJECT_BASE:
                 self._ipv4 = IpConfiguration(self.properties[DBUS_ATTR_IP4CONFIG])
                 await self._ipv4.connect(self.dbus.bus)
@@ -109,6 +115,12 @@ class NetworkConnection(DBusInterfaceProxy):
 
         # IPv6
         if not changed or DBUS_ATTR_IP6CONFIG in changed:
+            if (
+                self._ipv6
+                and self._ipv6.is_connected
+                and self._ipv6.object_path == self.properties[DBUS_ATTR_IP6CONFIG]
+            ):
+                await self._ipv6.update()
             if self.properties[DBUS_ATTR_IP6CONFIG] != DBUS_OBJECT_BASE:
                 self._ipv6 = IpConfiguration(
                     self.properties[DBUS_ATTR_IP6CONFIG], False
@@ -119,6 +131,12 @@ class NetworkConnection(DBusInterfaceProxy):
 
         # Settings
         if not changed or DBUS_ATTR_CONNECTION in changed:
+            if (
+                self._settings
+                and self._settings.is_connected
+                and self._settings.object_path == self.properties[DBUS_ATTR_CONNECTION]
+            ):
+                await self._settings.reload()
             if self.properties[DBUS_ATTR_CONNECTION] != DBUS_OBJECT_BASE:
                 self._settings = NetworkSetting(self.properties[DBUS_ATTR_CONNECTION])
                 await self._settings.connect(self.dbus.bus)

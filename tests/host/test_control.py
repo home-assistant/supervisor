@@ -19,6 +19,6 @@ async def test_set_hostname(coresys: CoreSys, dbus: list[str]):
         "/org/freedesktop/hostname1-org.freedesktop.hostname1.SetStaticHostname"
     ]
 
-    await fire_property_change_signal(coresys.dbus.hostname, {"StaticHostname": "test"})
+    fire_property_change_signal(coresys.dbus.hostname, {"StaticHostname": "test"})
     await asyncio.sleep(0)
     assert coresys.dbus.hostname.hostname == "test"

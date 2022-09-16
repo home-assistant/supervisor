@@ -97,6 +97,13 @@ class NetworkInterface(DBusInterfaceProxy):
 
         # If active connection exists
         if not changed or DBUS_ATTR_ACTIVE_CONNECTION in changed:
+            if (
+                self._connection
+                and self._connection.is_connected
+                and self._connection.object_path
+                == self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
+            ):
+                await self.connection.update()
             if self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
                 self._connection = NetworkConnection(
                     self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
@@ -106,12 +113,14 @@ class NetworkInterface(DBusInterfaceProxy):
                 self._connection = None
 
         # Wireless
-        if not changed and self.type == DeviceType.WIRELESS:
-            if not self.wireless:
+        if not changed or DBUS_ATTR_DEVICE_TYPE in changed:
+            if self.type != DeviceType.WIRELESS:
+                self._wireless = None
+            elif self.wireless and self.wireless.is_connected:
+                await self._wireless.update()
+            else:
                 self._wireless = NetworkWireless(self.object_path)
                 await self._wireless.connect(self.dbus.bus)
-            else:
-                self._wireless.update()
 
     def disconnect(self) -> None:
         """Disconnect from D-Bus."""

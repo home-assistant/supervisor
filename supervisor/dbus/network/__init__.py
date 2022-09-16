@@ -166,23 +166,28 @@ class NetworkManager(DBusInterfaceProxy):
         if changed and DBUS_ATTR_DEVICES not in changed:
             return
 
-        self._interfaces.clear()
+        interfaces = {}
+        curr_devices = {intr.object_path: intr for intr in self.interfaces.values()}
         for device in self.properties[DBUS_ATTR_DEVICES]:
-            interface = NetworkInterface(self.dbus, device)
+            if device in curr_devices and curr_devices[device].is_connected:
+                interface = curr_devices[device]
+                await interface.update()
+            else:
+                interface = NetworkInterface(self.dbus, device)
 
-            # Connect to interface
-            try:
-                await interface.connect(self.dbus.bus)
-            except (DBusFatalError, DBusInterfaceMethodError) as err:
-                # Docker creates and deletes interfaces quite often, sometimes
-                # this causes a race condition: A device disappears while we
-                # try to query it. Ignore those cases.
-                _LOGGER.warning("Can't process %s: %s", device, err)
-                continue
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.exception("Error while processing interface: %s", err)
-                sentry_sdk.capture_exception(err)
-                continue
+                # Connect to interface
+                try:
+                    await interface.connect(self.dbus.bus)
+                except (DBusFatalError, DBusInterfaceMethodError) as err:
+                    # Docker creates and deletes interfaces quite often, sometimes
+                    # this causes a race condition: A device disappears while we
+                    # try to query it. Ignore those cases.
+                    _LOGGER.warning("Can't process %s: %s", device, err)
+                    continue
+                except Exception as err:  # pylint: disable=broad-except
+                    _LOGGER.exception("Error while processing interface: %s", err)
+                    sentry_sdk.capture_exception(err)
+                    continue
 
             # Skeep interface
             if (
@@ -203,7 +208,9 @@ class NetworkManager(DBusInterfaceProxy):
             ):
                 interface.primary = True
 
-            self._interfaces[interface.name] = interface
+            interfaces[interface.name] = interface
+
+        self._interfaces = interfaces
 
     def disconnect(self) -> None:
         """Disconnect from D-Bus."""

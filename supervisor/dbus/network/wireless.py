@@ -62,7 +62,14 @@ class NetworkWireless(DBusInterfaceProxy):
 
         # Get details from current active
         if not changed or DBUS_ATTR_ACTIVE_ACCESSPOINT in changed:
-            if self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT] != DBUS_OBJECT_BASE:
+            if (
+                self._active
+                and self._active.is_connected
+                and self._active.object_path
+                == self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
+            ):
+                await self._active.update()
+            elif self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT] != DBUS_OBJECT_BASE:
                 self._active = NetworkWirelessAP(
                     self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
                 )
