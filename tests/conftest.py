@@ -336,6 +336,9 @@ async def coresys(
     su_config.ADDONS_GIT = Path(
         Path(__file__).parent.joinpath("fixtures"), "addons/git"
     )
+    su_config.APPARMOR_DATA = Path(
+        Path(__file__).parent.joinpath("fixtures"), "apparmor"
+    )
 
     # WebSocket
     coresys_obj.homeassistant.api.check_api_state = mock_async_return_true

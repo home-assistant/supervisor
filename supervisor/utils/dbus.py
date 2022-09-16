@@ -254,6 +254,8 @@ class DBusCallWrapper:
             if dbus_type == "on":
 
                 def _on_signal(callback: Callable):
+                    getattr(self._proxy, name)(callback)
+
                     # pylint: disable=protected-access
                     if self.interface not in self.dbus._signal_monitors:
                         self.dbus._signal_monitors[self.interface] = {}
@@ -267,11 +269,11 @@ class DBusCallWrapper:
                             callback
                         )
 
-                    getattr(self._proxy, name)(callback)
-
                 return _on_signal
 
             def _off_signal(callback: Callable):
+                getattr(self._proxy, name)(callback)
+
                 # pylint: disable=protected-access
                 if (
                     self.interface not in self.dbus._signal_monitors
@@ -291,8 +293,6 @@ class DBusCallWrapper:
                         del self.dbus._signal_monitors[self.interface][dbus_name]
                         if not self.dbus._signal_monitors[self.interface]:
                             del self.dbus._signal_monitors[self.interface]
-
-                getattr(self._proxy, name)(callback)
 
             return _off_signal
 

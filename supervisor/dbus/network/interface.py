@@ -104,7 +104,7 @@ class NetworkInterface(DBusInterfaceProxy):
                 == self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
             ):
                 await self.connection.update()
-            if self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
+            elif self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
                 self._connection = NetworkConnection(
                     self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
                 )
