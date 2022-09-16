@@ -78,7 +78,9 @@ class PluginAudio(PluginBase):
         """Load Audio setup."""
         # Initialize Client Template
         try:
-            self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
+            self.client_template = jinja2.Template(
+                PULSE_CLIENT_TMPL.read_text(encoding="utf-8")
+            )
         except OSError as err:
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
 
