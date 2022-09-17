@@ -40,3 +40,11 @@ async def test_ipv6_configuration(network_manager: NetworkManager):
     fire_property_change_signal(ipv6, {}, ["Gateway"])
     await asyncio.sleep(0)
     assert ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
+
+
+async def test_gateway_empty_string(network_manager: NetworkManager):
+    """Test empty string in gateway returns None."""
+    ipv4 = network_manager.interfaces[TEST_INTERFACE].connection.ipv4
+    fire_property_change_signal(ipv4, {"Gateway": ""})
+    await asyncio.sleep(0)
+    assert ipv4.gateway is None
