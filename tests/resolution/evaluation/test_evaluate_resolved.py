@@ -1,25 +1,24 @@
 """Test evaluate systemd-resolved."""
 
-from unittest.mock import PropertyMock, patch
+from unittest.mock import patch
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.evaluations.resolved import EvaluateResolved
 
 
-async def test_evaluation(coresys: CoreSys):
+async def test_evaluation(coresys: CoreSys, dbus_is_connected):
     """Test evaluation."""
     resolved = EvaluateResolved(coresys)
     coresys.core.state = CoreState.SETUP
 
     assert resolved.reason not in coresys.resolution.unsupported
 
-    with patch.object(
-        type(coresys.dbus.resolved), "is_connected", PropertyMock(return_value=False)
-    ):
-        await resolved()
-        assert resolved.reason in coresys.resolution.unsupported
+    coresys.dbus.resolved.is_connected = False
+    await resolved()
+    assert resolved.reason in coresys.resolution.unsupported
 
+    coresys.dbus.resolved.is_connected = True
     await resolved()
     assert resolved.reason not in coresys.resolution.unsupported
 

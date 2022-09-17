@@ -6,7 +6,6 @@ from typing import Any
 from dbus_next.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus import DBus
 from ..utils.dt import utc_from_timestamp
 from .const import (
     DBUS_ATTR_NTP,
@@ -17,19 +16,22 @@ from .const import (
     DBUS_NAME_TIMEDATE,
     DBUS_OBJECT_TIMEDATE,
 )
-from .interface import DBusInterface, dbus_property
+from .interface import DBusInterfaceProxy, dbus_property
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class TimeDate(DBusInterface):
+class TimeDate(DBusInterfaceProxy):
     """Timedate function handler.
 
     https://www.freedesktop.org/software/systemd/man/org.freedesktop.timedate1.html
     """
 
-    name = DBUS_NAME_TIMEDATE
+    name: str = DBUS_NAME_TIMEDATE
+    bus_name: str = DBUS_NAME_TIMEDATE
+    object_path: str = DBUS_OBJECT_TIMEDATE
+    properties_interface: str = DBUS_IFACE_TIMEDATE
 
     def __init__(self) -> None:
         """Initialize Properties."""
@@ -61,10 +63,9 @@ class TimeDate(DBusInterface):
 
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
+        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            self.dbus = await DBus.connect(
-                bus, DBUS_NAME_TIMEDATE, DBUS_OBJECT_TIMEDATE
-            )
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-timedate")
         except DBusInterfaceError:
@@ -81,8 +82,3 @@ class TimeDate(DBusInterface):
     async def set_ntp(self, use_ntp: bool) -> None:
         """Turn NTP on or off."""
         await self.dbus.call_set_ntp(use_ntp, False)
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_TIMEDATE)

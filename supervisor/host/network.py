@@ -5,12 +5,16 @@ import asyncio
 from contextlib import suppress
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 import logging
+from typing import Any
 
 import attr
 
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
+    DBUS_ATTR_CONNECTION_ENABLED,
+    DBUS_ATTR_CONNECTIVITY,
+    DBUS_IFACE_NM,
     DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
     ConnectionStateFlags,
     ConnectionStateType,
@@ -32,6 +36,7 @@ from ..exceptions import (
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
+from ..utils.dbus import DBus
 from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -51,10 +56,16 @@ class NetworkManager(CoreSysAttributes):
         return self._connectivity
 
     @connectivity.setter
-    def connectivity(self, state: bool) -> None:
+    def connectivity(self, state: bool | None) -> None:
         """Set host connectivity state."""
         if self._connectivity == state:
             return
+
+        if state is None or self._connectivity is None:
+            self.sys_create_task(
+                self.sys_resolution.evaluate.get("connectivity_check")()
+            )
+
         self._connectivity = state
         self.sys_homeassistant.websocket.supervisor_update_event(
             "network", {ATTR_HOST_INTERNET: state}
@@ -107,8 +118,6 @@ class NetworkManager(CoreSysAttributes):
     @Job(conditions=JobCondition.HOST_NETWORK)
     async def load(self):
         """Load network information and reapply defaults over dbus."""
-        await self.update()
-
         # Apply current settings on each interface so OS can update any out of date defaults
         interfaces = [
             Interface.from_dbus_interface(interface)
@@ -127,6 +136,34 @@ class NetworkManager(CoreSysAttributes):
                     )
                 ]
             )
+
+        self.sys_dbus.network.dbus.properties.on_properties_changed(
+            self._check_connectivity_changed
+        )
+
+    async def _check_connectivity_changed(
+        self, interface: str, changed: dict[str, Any], invalidated: list[str]
+    ):
+        """Check if connectivity property has changed."""
+        if interface != DBUS_IFACE_NM:
+            return
+
+        changed = DBus.remove_dbus_signature(changed)
+        connectivity_check: bool | None = changed.get(DBUS_ATTR_CONNECTION_ENABLED)
+        connectivity: bool | None = changed.get(DBUS_ATTR_CONNECTIVITY)
+
+        if (
+            connectivity_check is True
+            or DBUS_ATTR_CONNECTION_ENABLED in invalidated
+            or DBUS_ATTR_CONNECTIVITY in invalidated
+        ):
+            self.sys_create_task(self.check_connectivity())
+
+        elif connectivity_check is False:
+            self.connectivity = None
+
+        elif connectivity is not None:
+            self.connectivity = connectivity == ConnectivityState.CONNECTIVITY_FULL
 
     async def update(self, *, force_connectivity_check: bool = False):
         """Update properties over dbus."""
@@ -366,18 +403,22 @@ class Interface:
             Interface._map_nm_type(inet.type),
             IpConfig(
                 ipv4_method,
-                inet.connection.ipv4.address,
+                inet.connection.ipv4.address if inet.connection.ipv4.address else [],
                 inet.connection.ipv4.gateway,
-                inet.connection.ipv4.nameservers,
+                inet.connection.ipv4.nameservers
+                if inet.connection.ipv4.nameservers
+                else [],
                 ipv4_ready,
             )
             if inet.connection and inet.connection.ipv4
             else IpConfig(ipv4_method, [], None, [], ipv4_ready),
             IpConfig(
                 ipv6_method,
-                inet.connection.ipv6.address,
+                inet.connection.ipv6.address if inet.connection.ipv6.address else [],
                 inet.connection.ipv6.gateway,
-                inet.connection.ipv6.nameservers,
+                inet.connection.ipv6.nameservers
+                if inet.connection.ipv6.nameservers
+                else [],
                 ipv6_ready,
             )
             if inet.connection and inet.connection.ipv6

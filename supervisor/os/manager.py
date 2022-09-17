@@ -145,7 +145,6 @@ class OSManager(CoreSysAttributes):
         self._board = cpe.get_target_hardware()[0]
         self._os_name = cpe.get_product()[0]
 
-        await self.sys_dbus.rauc.update()
         await self.datadisk.load()
 
         _LOGGER.info(

@@ -1,16 +1,7 @@
 """NetworkConnection object4s for Network Manager."""
-from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
+from ipaddress import IPv4Address, IPv6Address
 
 import attr
-
-
-@attr.s(slots=True)
-class IpConfiguration:
-    """NetworkSettingsIPConfig object for Network Manager."""
-
-    gateway: IPv4Address | IPv6Address | None = attr.ib()
-    nameservers: list[IPv4Address | IPv6Address] = attr.ib()
-    address: list[IPv4Interface | IPv6Interface] = attr.ib()
 
 
 @attr.s(slots=True)

@@ -1,9 +1,13 @@
 """Test hostname dbus interface."""
 
+import asyncio
+
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import DBusNotConnectedError
+
+from tests.common import fire_property_change_signal
 
 
 async def test_dbus_hostname_info(coresys: CoreSys):
@@ -20,6 +24,14 @@ async def test_dbus_hostname_info(coresys: CoreSys):
         == "cpe:2.3:o:home-assistant:haos:6.0.dev20210504:*:development:*:*:*:odroid-n2:*"
     )
     assert coresys.dbus.hostname.operating_system == "Home Assistant OS 6.0.dev20210504"
+
+    fire_property_change_signal(coresys.dbus.hostname, {"StaticHostname": "test"})
+    await asyncio.sleep(0)
+    assert coresys.dbus.hostname.hostname == "test"
+
+    fire_property_change_signal(coresys.dbus.hostname, {}, ["StaticHostname"])
+    await asyncio.sleep(0)
+    assert coresys.dbus.hostname.hostname == "homeassistant-n2"
 
 
 async def test_dbus_sethostname(coresys: CoreSys, dbus: list[str]):

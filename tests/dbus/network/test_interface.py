@@ -1,4 +1,5 @@
 """Test NetwrokInterface."""
+import asyncio
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 
 import pytest
@@ -6,6 +7,7 @@ import pytest
 from supervisor.dbus.const import DeviceType, InterfaceMethod
 from supervisor.dbus.network import NetworkManager
 
+from tests.common import fire_property_change_signal
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
 
 
@@ -39,6 +41,14 @@ async def test_network_interface_ethernet(network_manager: NetworkManager):
     assert interface.settings.ipv4.method == InterfaceMethod.AUTO
     assert interface.settings.ipv6.method == InterfaceMethod.AUTO
     assert interface.settings.connection.id == "Wired connection 1"
+
+    fire_property_change_signal(interface.connection, {"State": 4})
+    await asyncio.sleep(0)
+    assert interface.connection.state == 4
+
+    fire_property_change_signal(interface.connection, {}, ["State"])
+    await asyncio.sleep(0)
+    assert interface.connection.state == 2
 
 
 @pytest.mark.asyncio

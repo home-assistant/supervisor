@@ -10,7 +10,6 @@ from aiohttp import web
 from awesomeversion import AwesomeVersion
 from dbus_next.aio.message_bus import MessageBus
 from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
-from dbus_next.introspection import Method, Property, Signal
 import pytest
 from securetar import SecureTarFile
 
@@ -56,7 +55,7 @@ from supervisor.store.repository import Repository
 from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES, DBus
 from supervisor.utils.dt import utcnow
 
-from .common import exists_fixture, load_fixture, load_json_fixture
+from .common import exists_fixture, get_dbus_name, load_fixture, load_json_fixture
 from .const import TEST_ADDON_SLUG
 
 # pylint: disable=redefined-outer-name, protected-access
@@ -101,22 +100,6 @@ def docker() -> DockerAPI:
         docker_obj.config.registries = {}
 
         yield docker_obj
-
-
-def _get_dbus_name(intr_list: list[Method | Property | Signal], snake_case: str) -> str:
-    """Find name in introspection list, fallback to ignore case match."""
-    name = "".join([part.capitalize() for part in snake_case.split("_")])
-    names = [item.name for item in intr_list]
-    if name in names:
-        return name
-
-    # Acronyms like NTP can't be easily converted back to camel case. Fallback to ignore case match
-    lower_name = name.lower()
-    for val in names:
-        if lower_name == val.lower():
-            return val
-
-    raise AttributeError(f"Could not find match for {name} in D-Bus introspection!")
 
 
 @pytest.fixture
@@ -199,7 +182,7 @@ def dbus(dbus_bus: MessageBus) -> DBus:
         [dbus_type, dbus_name] = method.split("_", 1)
 
         if dbus_type in ["get", "set"]:
-            dbus_name = _get_dbus_name(
+            dbus_name = get_dbus_name(
                 proxy_interface.introspection.properties, dbus_name
             )
             dbus_commands.append(
@@ -213,7 +196,7 @@ def dbus(dbus_bus: MessageBus) -> DBus:
                 proxy_interface.path, proxy_interface.introspection.name
             )[dbus_name]
 
-        dbus_name = _get_dbus_name(proxy_interface.introspection.methods, dbus_name)
+        dbus_name = get_dbus_name(proxy_interface.introspection.methods, dbus_name)
         dbus_commands.append(
             f"{proxy_interface.path}-{proxy_interface.introspection.name}.{dbus_name}"
         )
@@ -230,9 +213,8 @@ def dbus(dbus_bus: MessageBus) -> DBus:
             return load_json_fixture(f"{fixture}.json")
 
     with patch("supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus), patch(
-        "supervisor.dbus.interface.DBusInterface.is_connected",
-        return_value=True,
-    ), patch("supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy), patch(
+        "supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy
+    ), patch(
         "supervisor.utils.dbus.DBusSignalWrapper.__aenter__", new=mock_signal___aenter__
     ), patch(
         "supervisor.utils.dbus.DBusSignalWrapper.__aexit__", new=mock_signal___aexit__
@@ -243,6 +225,16 @@ def dbus(dbus_bus: MessageBus) -> DBus:
         "supervisor.dbus.manager.MessageBus.connect", return_value=dbus_bus
     ):
         yield dbus_commands
+
+
+@pytest.fixture
+async def dbus_is_connected():
+    """Mock DBusInterface.is_connected for tests."""
+    with patch(
+        "supervisor.dbus.interface.DBusInterface.is_connected",
+        return_value=True,
+    ) as is_connected:
+        yield is_connected
 
 
 @pytest.fixture
@@ -343,6 +335,9 @@ async def coresys(
     )
     su_config.ADDONS_GIT = Path(
         Path(__file__).parent.joinpath("fixtures"), "addons/git"
+    )
+    su_config.APPARMOR_DATA = Path(
+        Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )
 
     # WebSocket

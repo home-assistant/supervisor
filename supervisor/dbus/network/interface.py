@@ -1,5 +1,7 @@
 """NetworkInterface object for Network Manager."""
 
+from typing import Any
+
 from dbus_next.aio.message_bus import MessageBus
 
 from ...utils.dbus import DBus
@@ -15,6 +17,7 @@ from ..const import (
     DeviceType,
 )
 from ..interface import DBusInterfaceProxy, dbus_property
+from ..utils import dbus_connected
 from .connection import NetworkConnection
 from .setting import NetworkSetting
 from .wireless import NetworkWireless
@@ -26,15 +29,17 @@ class NetworkInterface(DBusInterfaceProxy):
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Device.html
     """
 
+    bus_name: str = DBUS_NAME_NM
+    properties_interface: str = DBUS_IFACE_DEVICE
+
     def __init__(self, nm_dbus: DBus, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        self.object_path = object_path
-        self.properties = {}
+        self.object_path: str = object_path
+        self.properties: dict[str, Any] = {}
 
-        self.primary = False
+        self.primary: bool = False
 
         self._connection: NetworkConnection | None = None
-        self._settings: NetworkSetting | None = None
         self._wireless: NetworkWireless | None = None
         self._nm_dbus: DBus = nm_dbus
 
@@ -70,7 +75,7 @@ class NetworkInterface(DBusInterfaceProxy):
     @property
     def settings(self) -> NetworkSetting | None:
         """Return the connection settings used for this interface."""
-        return self._settings
+        return self.connection.settings if self.connection else None
 
     @property
     def wireless(self) -> NetworkWireless | None:
@@ -78,27 +83,49 @@ class NetworkInterface(DBusInterfaceProxy):
         return self._wireless
 
     async def connect(self, bus: MessageBus) -> None:
-        """Get device information."""
-        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_DEVICE)
+        """Connect to D-Bus."""
+        return await super().connect(bus)
+
+    @dbus_connected
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus."""
+        await super().update(changed)
 
         # Abort if device is not managed
         if not self.managed:
             return
 
         # If active connection exists
-        if self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
-            self._connection = NetworkConnection(
-                self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
-            )
-            await self._connection.connect(bus)
-
-        # Attach settings
-        if self.connection and self.connection.setting_object != DBUS_OBJECT_BASE:
-            self._settings = NetworkSetting(self.connection.setting_object)
-            await self._settings.connect(bus)
+        if not changed or DBUS_ATTR_ACTIVE_CONNECTION in changed:
+            if (
+                self._connection
+                and self._connection.is_connected
+                and self._connection.object_path
+                == self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
+            ):
+                await self.connection.update()
+            elif self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
+                self._connection = NetworkConnection(
+                    self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
+                )
+                await self._connection.connect(self.dbus.bus)
+            else:
+                self._connection = None
 
         # Wireless
-        if self.type == DeviceType.WIRELESS:
-            self._wireless = NetworkWireless(self.object_path)
-            await self._wireless.connect(bus)
+        if not changed or DBUS_ATTR_DEVICE_TYPE in changed:
+            if self.type != DeviceType.WIRELESS:
+                self._wireless = None
+            elif self.wireless and self.wireless.is_connected:
+                await self._wireless.update()
+            else:
+                self._wireless = NetworkWireless(self.object_path)
+                await self._wireless.connect(self.dbus.bus)
+
+    def disconnect(self) -> None:
+        """Disconnect from D-Bus."""
+        if self.connection:
+            self.connection.disconnect()
+        if self.wireless:
+            self.wireless.disconnect()
+        super().disconnect()

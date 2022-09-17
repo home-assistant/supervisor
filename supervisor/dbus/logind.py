@@ -4,7 +4,6 @@ import logging
 from dbus_next.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus import DBus
 from .const import DBUS_NAME_LOGIND, DBUS_OBJECT_LOGIND
 from .interface import DBusInterface
 from .utils import dbus_connected
@@ -19,11 +18,14 @@ class Logind(DBusInterface):
     """
 
     name = DBUS_NAME_LOGIND
+    bus_name: str = DBUS_NAME_LOGIND
+    object_path: str = DBUS_OBJECT_LOGIND
 
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
+        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            self.dbus = await DBus.connect(bus, DBUS_NAME_LOGIND, DBUS_OBJECT_LOGIND)
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-logind")
         except DBusInterfaceError:

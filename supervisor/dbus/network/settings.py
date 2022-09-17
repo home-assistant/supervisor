@@ -5,7 +5,6 @@ from typing import Any
 from dbus_next.aio.message_bus import MessageBus
 
 from ...exceptions import DBusError, DBusInterfaceError
-from ...utils.dbus import DBus
 from ..const import DBUS_NAME_NM, DBUS_OBJECT_SETTINGS
 from ..interface import DBusInterface
 from ..network.setting import NetworkSetting
@@ -20,10 +19,13 @@ class NetworkManagerSettings(DBusInterface):
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Settings.html
     """
 
+    bus_name: str = DBUS_NAME_NM
+    object_path: str = DBUS_OBJECT_SETTINGS
+
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(bus, DBUS_NAME_NM, DBUS_OBJECT_SETTINGS)
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to Network Manager Settings")
         except DBusInterfaceError:

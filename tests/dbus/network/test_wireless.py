@@ -1,5 +1,29 @@
 """Test Network Manager Wireless object."""
+import asyncio
+
 from supervisor.dbus.network import NetworkManager
+
+from tests.common import fire_property_change_signal
+
+
+async def test_wireless(network_manager: NetworkManager):
+    """Test wireless properties."""
+    assert network_manager.interfaces["wlan0"].wireless.active is None
+
+    fire_property_change_signal(
+        network_manager.interfaces["wlan0"].wireless,
+        {"ActiveAccessPoint": "/org/freedesktop/NetworkManager/AccessPoint/43099"},
+    )
+    await asyncio.sleep(0)
+    assert (
+        network_manager.interfaces["wlan0"].wireless.active.mac == "E4:57:40:A9:D7:DE"
+    )
+
+    fire_property_change_signal(
+        network_manager.interfaces["wlan0"].wireless, {}, ["ActiveAccessPoint"]
+    )
+    await asyncio.sleep(0)
+    assert network_manager.interfaces["wlan0"].wireless.active is None
 
 
 async def test_request_scan(network_manager: NetworkManager, dbus: list[str]):

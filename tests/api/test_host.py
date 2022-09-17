@@ -32,7 +32,9 @@ async def test_api_host_info(api_client, coresys_disk_info: CoreSys):
     assert result["data"]["apparmor_version"] == "2.13.2"
 
 
-async def test_api_host_features(api_client, coresys_disk_info: CoreSys):
+async def test_api_host_features(
+    api_client, coresys_disk_info: CoreSys, dbus_is_connected
+):
     """Test host info features."""
     coresys = coresys_disk_info
 
@@ -93,7 +95,9 @@ async def test_api_host_features(api_client, coresys_disk_info: CoreSys):
     assert "resolved" in result["data"]["features"]
 
 
-async def test_api_llmnr_mdns_info(api_client, coresys_disk_info: CoreSys):
+async def test_api_llmnr_mdns_info(
+    api_client, coresys_disk_info: CoreSys, dbus_is_connected
+):
     """Test llmnr and mdns details in info."""
     coresys = coresys_disk_info
 

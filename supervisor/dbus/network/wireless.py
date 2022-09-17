@@ -1,10 +1,8 @@
 """Wireless object for Network Manager."""
 import asyncio
 import logging
+from typing import Any
 
-from dbus_next.aio.message_bus import MessageBus
-
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_ACCESSPOINT,
     DBUS_IFACE_DEVICE_WIRELESS,
@@ -24,10 +22,13 @@ class NetworkWireless(DBusInterfaceProxy):
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Device.Wireless.html
     """
 
+    bus_name: str = DBUS_NAME_NM
+    properties_interface: str = DBUS_IFACE_DEVICE_WIRELESS
+
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        self.object_path = object_path
-        self.properties = {}
+        self.object_path: str = object_path
+        self.properties: dict[str, Any] = {}
 
         self._active: NetworkWirelessAP | None = None
 
@@ -55,14 +56,23 @@ class NetworkWireless(DBusInterfaceProxy):
 
         return accesspoints
 
-    async def connect(self, bus: MessageBus) -> None:
-        """Get connection information."""
-        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_DEVICE_WIRELESS)
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus."""
+        await super().update(changed)
 
         # Get details from current active
-        if self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT] != DBUS_OBJECT_BASE:
-            self._active = NetworkWirelessAP(
-                self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
-            )
-            await self._active.connect(bus)
+        if not changed or DBUS_ATTR_ACTIVE_ACCESSPOINT in changed:
+            if (
+                self._active
+                and self._active.is_connected
+                and self._active.object_path
+                == self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
+            ):
+                await self._active.update()
+            elif self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT] != DBUS_OBJECT_BASE:
+                self._active = NetworkWirelessAP(
+                    self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
+                )
+                await self._active.connect(self.dbus.bus)
+            else:
+                self._active = None

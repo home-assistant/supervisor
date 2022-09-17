@@ -1,26 +1,19 @@
 """Connection object for Network Manager."""
-from ipaddress import ip_address, ip_interface
 
-from dbus_next.aio.message_bus import MessageBus
+from typing import Any
 
-from ...const import ATTR_ADDRESS, ATTR_PREFIX
-from ...utils.dbus import DBus
+from supervisor.dbus.network.setting import NetworkSetting
+
 from ..const import (
-    DBUS_ATTR_ADDRESS_DATA,
     DBUS_ATTR_CONNECTION,
-    DBUS_ATTR_GATEWAY,
     DBUS_ATTR_ID,
     DBUS_ATTR_IP4CONFIG,
     DBUS_ATTR_IP6CONFIG,
-    DBUS_ATTR_NAMESERVER_DATA,
-    DBUS_ATTR_NAMESERVERS,
     DBUS_ATTR_STATE,
     DBUS_ATTR_STATE_FLAGS,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_UUID,
     DBUS_IFACE_CONNECTION_ACTIVE,
-    DBUS_IFACE_IP4CONFIG,
-    DBUS_IFACE_IP6CONFIG,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
     ConnectionStateFlags,
@@ -28,7 +21,7 @@ from ..const import (
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
-from .configuration import IpConfiguration
+from .ip_configuration import IpConfiguration
 
 
 class NetworkConnection(DBusInterfaceProxy):
@@ -37,14 +30,18 @@ class NetworkConnection(DBusInterfaceProxy):
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Connection.Active.html
     """
 
+    bus_name: str = DBUS_NAME_NM
+    properties_interface: str = DBUS_IFACE_CONNECTION_ACTIVE
+
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        self.object_path = object_path
-        self.properties = {}
+        self.object_path: str = object_path
+        self.properties: dict[str, Any] = {}
 
         self._ipv4: IpConfiguration | None = None
         self._ipv6: IpConfiguration | None = None
         self._state_flags: set[ConnectionStateFlags] = {ConnectionStateFlags.NONE}
+        self._settings: NetworkSetting | None = None
 
     @property
     @dbus_property
@@ -76,10 +73,9 @@ class NetworkConnection(DBusInterfaceProxy):
         return self._state_flags
 
     @property
-    @dbus_property
-    def setting_object(self) -> str:
-        """Return the connection object path."""
-        return self.properties[DBUS_ATTR_CONNECTION]
+    def settings(self) -> NetworkSetting | None:
+        """Return settings."""
+        return self._settings
 
     @property
     def ipv4(self) -> IpConfiguration | None:
@@ -91,15 +87,10 @@ class NetworkConnection(DBusInterfaceProxy):
         """Return a ip6 configuration object for the connection."""
         return self._ipv6
 
-    async def connect(self, bus: MessageBus) -> None:
-        """Get connection information."""
-        self.dbus = await DBus.connect(bus, DBUS_NAME_NM, self.object_path)
-        await self.update()
-
     @dbus_connected
-    async def update(self):
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
         """Update connection information."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_CONNECTION_ACTIVE)
+        await super().update(changed)
 
         # State Flags
         self._state_flags = {
@@ -109,43 +100,55 @@ class NetworkConnection(DBusInterfaceProxy):
         } or {ConnectionStateFlags.NONE}
 
         # IPv4
-        if self.properties[DBUS_ATTR_IP4CONFIG] != DBUS_OBJECT_BASE:
-            ip4 = await DBus.connect(
-                self.dbus.bus, DBUS_NAME_NM, self.properties[DBUS_ATTR_IP4CONFIG]
-            )
-            ip4_data = await ip4.get_properties(DBUS_IFACE_IP4CONFIG)
-
-            self._ipv4 = IpConfiguration(
-                ip_address(ip4_data[DBUS_ATTR_GATEWAY])
-                if ip4_data.get(DBUS_ATTR_GATEWAY)
-                else None,
-                [
-                    ip_address(nameserver[ATTR_ADDRESS])
-                    for nameserver in ip4_data.get(DBUS_ATTR_NAMESERVER_DATA, [])
-                ],
-                [
-                    ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
-                    for address in ip4_data.get(DBUS_ATTR_ADDRESS_DATA, [])
-                ],
-            )
+        if not changed or DBUS_ATTR_IP4CONFIG in changed:
+            if (
+                self._ipv4
+                and self._ipv4.is_connected
+                and self._ipv4.object_path == self.properties[DBUS_ATTR_IP4CONFIG]
+            ):
+                await self._ipv4.update()
+            elif self.properties[DBUS_ATTR_IP4CONFIG] != DBUS_OBJECT_BASE:
+                self._ipv4 = IpConfiguration(self.properties[DBUS_ATTR_IP4CONFIG])
+                await self._ipv4.connect(self.dbus.bus)
+            else:
+                self._ipv4 = None
 
         # IPv6
-        if self.properties[DBUS_ATTR_IP6CONFIG] != DBUS_OBJECT_BASE:
-            ip6 = await DBus.connect(
-                self.dbus.bus, DBUS_NAME_NM, self.properties[DBUS_ATTR_IP6CONFIG]
-            )
-            ip6_data = await ip6.get_properties(DBUS_IFACE_IP6CONFIG)
+        if not changed or DBUS_ATTR_IP6CONFIG in changed:
+            if (
+                self._ipv6
+                and self._ipv6.is_connected
+                and self._ipv6.object_path == self.properties[DBUS_ATTR_IP6CONFIG]
+            ):
+                await self._ipv6.update()
+            elif self.properties[DBUS_ATTR_IP6CONFIG] != DBUS_OBJECT_BASE:
+                self._ipv6 = IpConfiguration(
+                    self.properties[DBUS_ATTR_IP6CONFIG], False
+                )
+                await self._ipv6.connect(self.dbus.bus)
+            else:
+                self._ipv6 = None
 
-            self._ipv6 = IpConfiguration(
-                ip_address(ip6_data[DBUS_ATTR_GATEWAY])
-                if ip6_data.get(DBUS_ATTR_GATEWAY)
-                else None,
-                [
-                    ip_address(bytes(nameserver))
-                    for nameserver in ip6_data.get(DBUS_ATTR_NAMESERVERS)
-                ],
-                [
-                    ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
-                    for address in ip6_data.get(DBUS_ATTR_ADDRESS_DATA, [])
-                ],
-            )
+        # Settings
+        if not changed or DBUS_ATTR_CONNECTION in changed:
+            if (
+                self._settings
+                and self._settings.is_connected
+                and self._settings.object_path == self.properties[DBUS_ATTR_CONNECTION]
+            ):
+                await self._settings.reload()
+            elif self.properties[DBUS_ATTR_CONNECTION] != DBUS_OBJECT_BASE:
+                self._settings = NetworkSetting(self.properties[DBUS_ATTR_CONNECTION])
+                await self._settings.connect(self.dbus.bus)
+            else:
+                self._settings = None
+
+    def disconnect(self) -> None:
+        """Disconnect from D-Bus."""
+        if self.ipv4:
+            self.ipv4.disconnect()
+        if self.ipv6:
+            self.ipv6.disconnect()
+        if self.settings:
+            self.settings.disconnect()
+        super().disconnect()

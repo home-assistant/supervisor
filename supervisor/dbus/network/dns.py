@@ -1,6 +1,7 @@
 """Network Manager DNS Manager object."""
 from ipaddress import ip_address
 import logging
+from typing import Any
 
 from dbus_next.aio.message_bus import MessageBus
 
@@ -12,7 +13,6 @@ from ...const import (
     ATTR_VPN,
 )
 from ...exceptions import DBusError, DBusInterfaceError
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_MODE,
@@ -21,24 +21,29 @@ from ..const import (
     DBUS_NAME_NM,
     DBUS_OBJECT_DNS,
 )
-from ..interface import DBusInterface
+from ..interface import DBusInterfaceProxy
 from ..utils import dbus_connected
 from .configuration import DNSConfiguration
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class NetworkManagerDNS(DBusInterface):
+class NetworkManagerDNS(DBusInterfaceProxy):
     """Handle D-Bus interface for NM DnsManager.
 
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.DnsManager.html
     """
+
+    bus_name: str = DBUS_NAME_NM
+    object_path: str = DBUS_OBJECT_DNS
+    properties_interface: str = DBUS_IFACE_DNS
 
     def __init__(self) -> None:
         """Initialize Properties."""
         self._mode: str | None = None
         self._rc_manager: str | None = None
         self._configuration: list[DNSConfiguration] = []
+        self.properties: dict[str, Any] = {}
 
     @property
     def mode(self) -> str | None:
@@ -58,7 +63,7 @@ class NetworkManagerDNS(DBusInterface):
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
         try:
-            self.dbus = await DBus.connect(bus, DBUS_NAME_NM, DBUS_OBJECT_DNS)
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to DnsManager")
         except DBusInterfaceError:
@@ -67,24 +72,28 @@ class NetworkManagerDNS(DBusInterface):
             )
 
     @dbus_connected
-    async def update(self):
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
         """Update Properties."""
-        data = await self.dbus.get_properties(DBUS_IFACE_DNS)
-        if not data:
+        await super().update(changed)
+        if not self.properties:
             _LOGGER.warning("Can't get properties for DnsManager")
             return
 
-        self._mode = data.get(DBUS_ATTR_MODE)
-        self._rc_manager = data.get(DBUS_ATTR_RCMANAGER)
+        self._mode = self.properties.get(DBUS_ATTR_MODE)
+        self._rc_manager = self.properties.get(DBUS_ATTR_RCMANAGER)
 
         # Parse configuraton
-        self._configuration = [
-            DNSConfiguration(
-                [ip_address(nameserver) for nameserver in config.get(ATTR_NAMESERVERS)],
-                config.get(ATTR_DOMAINS),
-                config.get(ATTR_INTERFACE),
-                config.get(ATTR_PRIORITY),
-                config.get(ATTR_VPN),
-            )
-            for config in data.get(DBUS_ATTR_CONFIGURATION, [])
-        ]
+        if not changed or DBUS_ATTR_CONFIGURATION in changed:
+            self._configuration = [
+                DNSConfiguration(
+                    [
+                        ip_address(nameserver)
+                        for nameserver in config.get(ATTR_NAMESERVERS)
+                    ],
+                    config.get(ATTR_DOMAINS),
+                    config.get(ATTR_INTERFACE),
+                    config.get(ATTR_PRIORITY),
+                    config.get(ATTR_VPN),
+                )
+                for config in self.properties.get(DBUS_ATTR_CONFIGURATION, [])
+            ]
