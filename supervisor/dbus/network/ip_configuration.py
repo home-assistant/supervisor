@@ -39,9 +39,13 @@ class IpConfiguration(DBusInterfaceProxy):
 
     @property
     @dbus_property
-    def gateway(self) -> IPv4Address | IPv6Address:
+    def gateway(self) -> IPv4Address | IPv6Address | None:
         """Get gateway."""
-        return ip_address(self.properties[DBUS_ATTR_GATEWAY])
+        return (
+            ip_address(self.properties[DBUS_ATTR_GATEWAY])
+            if self.properties.get(DBUS_ATTR_GATEWAY)
+            else None
+        )
 
     @property
     @dbus_property
