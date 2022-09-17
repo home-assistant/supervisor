@@ -141,11 +141,15 @@ class PluginDns(PluginBase):
         """Load DNS setup."""
         # Initialize CoreDNS Template
         try:
-            self.resolv_template = jinja2.Template(RESOLV_TMPL.read_text())
+            self.resolv_template = jinja2.Template(
+                RESOLV_TMPL.read_text(encoding="utf-8")
+            )
         except OSError as err:
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
         try:
-            self.hosts_template = jinja2.Template(HOSTS_TMPL.read_text())
+            self.hosts_template = jinja2.Template(
+                HOSTS_TMPL.read_text(encoding="utf-8")
+            )
         except OSError as err:
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
