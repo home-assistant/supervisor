@@ -1,5 +1,5 @@
 """Test NetworkWireless AP object."""
-from dbus_next.aio.message_bus import MessageBus
+from dbus_fast.aio.message_bus import MessageBus
 
 from supervisor.dbus.network.accesspoint import NetworkWirelessAP
 

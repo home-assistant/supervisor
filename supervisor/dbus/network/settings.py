@@ -2,7 +2,7 @@
 import logging
 from typing import Any
 
-from dbus_next.aio.message_bus import MessageBus
+from dbus_fast.aio.message_bus import MessageBus
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ..const import DBUS_NAME_NM, DBUS_OBJECT_SETTINGS
