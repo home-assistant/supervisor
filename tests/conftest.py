@@ -8,8 +8,8 @@ from uuid import uuid4
 
 from aiohttp import web
 from awesomeversion import AwesomeVersion
-from dbus_fast.aio.message_bus import MessageBus
-from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
+from dbus_next.aio.message_bus import MessageBus
+from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
 import pytest
 from securetar import SecureTarFile
 

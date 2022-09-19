@@ -5,7 +5,7 @@ import socket
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from dbus_fast.signature import Variant
+from dbus_next.signature import Variant
 
 from . import (
     ATTR_ASSIGNED_MAC,

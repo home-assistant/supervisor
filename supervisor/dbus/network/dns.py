@@ -3,7 +3,7 @@ from ipaddress import ip_address
 import logging
 from typing import Any
 
-from dbus_fast.aio.message_bus import MessageBus
+from dbus_next.aio.message_bus import MessageBus
 
 from ...const import (
     ATTR_DOMAINS,

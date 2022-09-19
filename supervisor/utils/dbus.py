@@ -5,12 +5,12 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable, Coroutine
 
-from dbus_fast import ErrorType, InvalidIntrospectionError, Message, MessageType
-from dbus_fast.aio.message_bus import MessageBus
-from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
-from dbus_fast.errors import DBusError
-from dbus_fast.introspection import Node
-from dbus_fast.signature import Variant
+from dbus_next import ErrorType, InvalidIntrospectionError, Message, MessageType
+from dbus_next.aio.message_bus import MessageBus
+from dbus_next.aio.proxy_object import ProxyInterface, ProxyObject
+from dbus_next.errors import DBusError
+from dbus_next.introspection import Node
+from dbus_next.signature import Variant
 
 from ..exceptions import (
     DBusFatalError,
