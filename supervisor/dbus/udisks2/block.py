@@ -5,7 +5,6 @@ from typing import Any, TypedDict
 
 from typing_extensions import Required
 
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_DEVICE,
@@ -126,15 +125,8 @@ class UDisks2Block(DBusInterfaceProxy):
     http://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Block.html
     """
 
-    def __init__(self, object_path: str) -> None:
-        """Initialize NetworkConnection object."""
-        self.object_path = object_path
-        self.properties = {}
-
-    async def connect(self):
-        """Connect to D-Bus."""
-        self.dbus = await DBus.connect(DBUS_NAME_UDISKS2, self.object_path)
-        await self.update()
+    bus_name: str = DBUS_NAME_UDISKS2
+    properties_interface: str = DBUS_IFACE_BLOCK
 
     @property
     @dbus_property
@@ -175,7 +167,7 @@ class UDisks2Block(DBusInterfaceProxy):
     ) -> dict[str, list[FstabConfigDetails | CrypttabConfigDetails]]:
         """Return device configuration."""
         configuration = defaultdict(list)
-        for type_, details in self.properties[DBUS_ATTR_CONFIGURATION]:
+        for type_, details in self.properties[DBUS_ATTR_CONFIGURATION].items():
             configuration[type_].append(
                 FstabConfigDetails.from_dict(details)
                 if "dir" in details
@@ -199,8 +191,8 @@ class UDisks2Block(DBusInterfaceProxy):
         """Add new configuration item."""
         if not options:
             options = {}
-        await self.dbus.Block.AddConfigurationItem(
-            ("(sa{sv})", (type_, details.to_dict())), ("a{sv}", options)
+        await self.dbus.Block.call_add_configuration_item(
+            (type_, details.to_dict()), options
         )
         await self.update()
 
@@ -214,8 +206,8 @@ class UDisks2Block(DBusInterfaceProxy):
         """Remove existing configuration item."""
         if not options:
             options = {}
-        await self.dbus.Block.RemoveConfigurationItem(
-            ("(sa{sv})", (type_, details.to_dict())), ("a{sv}", options)
+        await self.dbus.Block.call_remove_configuration_item(
+            (type_, details.to_dict()), options
         )
         await self.update()
 
@@ -231,14 +223,9 @@ class UDisks2Block(DBusInterfaceProxy):
         """Add new configuration item."""
         if not options:
             options = {}
-        await self.dbus.Block.AddConfigurationItem(
-            ("(sa{sv})", (old_type, old_details.to_dict())),
-            ("(sa{sv})", (new_type, new_details.to_dict())),
-            ("a{sv}", options),
+        await self.dbus.Block.call_update_configuration_item(
+            (old_type, old_details.to_dict()),
+            (new_type, new_details.to_dict()),
+            options,
         )
         await self.update()
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_BLOCK)

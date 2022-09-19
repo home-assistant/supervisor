@@ -13,6 +13,8 @@ class UDisks2Filesystem(UDisks2Block):
     http://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Filesystem.html
     """
 
+    properties_interface: str = DBUS_IFACE_FILESYSTEM
+
     @property
     @dbus_property
     def mountpoints(self) -> str:
@@ -31,16 +33,9 @@ class UDisks2Filesystem(UDisks2Block):
     @dbus_connected
     async def mount(self, options: dict[str, Any]):
         """Mount filesystem."""
-        await self.dbus.Filesystem.Mount(("a{sv}", options))
+        await self.dbus.Filesystem.call_mount(options)
 
     @dbus_connected
     async def unmount(self, options: dict[str, Any]):
         """Unmount filesystem."""
-        await self.dbus.Filesystem.Unmount(("a{sv}", options))
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = {}
-        await super().update()
-        self.properties.update(await self.dbus.get_properties(DBUS_IFACE_FILESYSTEM))
+        await self.dbus.Filesystem.call_unmount(options)

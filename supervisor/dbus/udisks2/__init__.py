@@ -1,40 +1,38 @@
 """Interface to UDisks2 over D-Bus."""
 import logging
-from typing import Any
 
-from supervisor.dbus.udisks2.block import UDisks2Block
-from supervisor.dbus.udisks2.filesystem import UDisks2Filesystem
+from dbus_next.aio.message_bus import MessageBus
 
 from ...exceptions import DBusError, DBusInterfaceError
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_SUPPORTED_FILESYSTEMS,
     DBUS_IFACE_UDISKS2_MANAGER,
     DBUS_NAME_UDISKS2,
     DBUS_OBJECT_UDISKS2,
 )
-from ..interface import DBusInterface, dbus_property
+from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
+from .block import UDisks2Block
+from .filesystem import UDisks2Filesystem
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class UDisks2(DBusInterface):
+class UDisks2(DBusInterfaceProxy):
     """Handle D-Bus interface for UDisks2.
 
     http://storaged.org/doc/udisks2-api/latest/
     """
 
     name = DBUS_NAME_UDISKS2
+    bus_name: str = DBUS_NAME_UDISKS2
+    object_path: str = DBUS_OBJECT_UDISKS2
+    properties_interface: str = DBUS_IFACE_UDISKS2_MANAGER
 
-    def __init__(self) -> None:
-        """Initialize Properties."""
-        self.properties: dict[str, Any] = {}
-
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_UDISKS2, DBUS_OBJECT_UDISKS2)
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to udisks2")
         except DBusInterfaceError:
@@ -52,9 +50,9 @@ class UDisks2(DBusInterface):
     async def get_block_devices(self) -> list[UDisks2Block]:
         """Return list of all block devices."""
         devices: list[UDisks2Block] = []
-        for block_device in await self.dbus.Manager.GetBlockDevices():
+        for block_device in await self.dbus.Manager.call_get_block_devices():
             device = UDisks2Block(block_device)
-            await device.connect()
+            await device.connect(self.dbus.bus)
             devices.append(device)
         return devices
 
@@ -62,9 +60,9 @@ class UDisks2(DBusInterface):
     async def get_filesystems(self) -> list[UDisks2Filesystem]:
         """Return list of all block devices containing a mountable filesystem."""
         filesystem_devices: list[UDisks2Filesystem] = []
-        for block_device in await self.dbus.Manager.GetBlockDevices():
+        for block_device in await self.dbus.Manager.call_get_block_devices():
             filesystem_device = UDisks2Filesystem(block_device)
-            await filesystem_device.connect()
+            await filesystem_device.connect(self.dbus.bus)
             # If we get a key error, this block device is not a filesystem device
             try:
                 assert filesystem_device.mountpoints
@@ -72,8 +70,3 @@ class UDisks2(DBusInterface):
                 continue
             filesystem_devices.append(filesystem_device)
         return filesystem_devices
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_UDISKS2_MANAGER)
