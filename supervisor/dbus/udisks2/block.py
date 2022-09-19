@@ -167,7 +167,7 @@ class UDisks2Block(DBusInterfaceProxy):
     ) -> dict[str, list[FstabConfigDetails | CrypttabConfigDetails]]:
         """Return device configuration."""
         configuration = defaultdict(list)
-        for type_, details in self.properties[DBUS_ATTR_CONFIGURATION].items():
+        for type_, details in self.properties[DBUS_ATTR_CONFIGURATION]:
             configuration[type_].append(
                 FstabConfigDetails.from_dict(details)
                 if "dir" in details
