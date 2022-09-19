@@ -2,8 +2,8 @@
 import asyncio
 import logging
 
-from dbus_fast import BusType
-from dbus_fast.aio.message_bus import MessageBus
+from dbus_next import BusType
+from dbus_next.aio.message_bus import MessageBus
 
 from ..const import SOCKET_DBUS
 from ..coresys import CoreSys, CoreSysAttributes

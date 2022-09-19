@@ -3,7 +3,7 @@ import asyncio
 from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import Mock, PropertyMock, patch
 
-from dbus_fast.aio.proxy_object import ProxyInterface
+from dbus_next.aio.proxy_object import ProxyInterface
 import pytest
 
 from supervisor.const import CoreState

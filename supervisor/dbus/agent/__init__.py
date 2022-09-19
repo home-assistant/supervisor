@@ -4,7 +4,7 @@ import logging
 from typing import Any
 
 from awesomeversion import AwesomeVersion
-from dbus_fast.aio.message_bus import MessageBus
+from dbus_next.aio.message_bus import MessageBus
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ..const import (
