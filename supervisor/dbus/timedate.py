@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 from typing import Any
 
-from dbus_next.aio.message_bus import MessageBus
+from dbus_fast.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError
 from ..utils.dt import utc_from_timestamp

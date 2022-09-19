@@ -3,8 +3,8 @@ import asyncio
 from typing import Any
 from unittest.mock import patch
 
-from dbus_next.aio.proxy_object import ProxyInterface
-from dbus_next.signature import Variant
+from dbus_fast.aio.proxy_object import ProxyInterface
+from dbus_fast.signature import Variant
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network.setting.generate import get_connection_from_interface

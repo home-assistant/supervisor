@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from dbus_next.aio.message_bus import MessageBus
+from dbus_fast.aio.message_bus import MessageBus
 import sentry_sdk
 
 from ...exceptions import (

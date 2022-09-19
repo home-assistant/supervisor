@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass
 from unittest.mock import MagicMock
 
-from dbus_next.aio.message_bus import MessageBus
+from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
 from supervisor.dbus.interface import DBusInterface, DBusInterfaceProxy

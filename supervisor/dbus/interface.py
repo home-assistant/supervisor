@@ -3,7 +3,7 @@ from abc import ABC
 from functools import wraps
 from typing import Any
 
-from dbus_next.aio.message_bus import MessageBus
+from dbus_fast.aio.message_bus import MessageBus
 
 from ..utils.dbus import DBus
 from .utils import dbus_connected
