@@ -1,5 +1,5 @@
 """Check dbus-next implementation."""
-from dbus_next.signature import Variant
+from dbus_fast.signature import Variant
 
 from supervisor.utils.dbus import DBus
 
