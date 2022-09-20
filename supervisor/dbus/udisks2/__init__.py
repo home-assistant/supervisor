@@ -63,10 +63,8 @@ class UDisks2(DBusInterfaceProxy):
         for block_device in await self.dbus.Manager.call_get_block_devices():
             filesystem_device = UDisks2Filesystem(block_device)
             await filesystem_device.connect(self.dbus.bus)
-            # If we get a key error, this block device is not a filesystem device
-            try:
-                assert filesystem_device.mountpoints
-            except KeyError:
+            # If there are no mountpoints, this block device is not a filesystem device
+            if filesystem_device.mountpoints is None:
                 continue
             filesystem_devices.append(filesystem_device)
         return filesystem_devices
