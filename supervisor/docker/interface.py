@@ -35,7 +35,7 @@ from ..exceptions import (
 )
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
-from .const import ContainerState
+from .const import ContainerState, RestartPolicy
 from .manager import CommandReturn
 from .monitor import DockerContainerStateEvent
 from .stats import DockerStats
@@ -133,6 +133,13 @@ class DockerInterface(CoreSysAttributes):
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
         return self.lock.locked()
+
+    @property
+    def restart_policy(self) -> RestartPolicy | None:
+        """Return restart policy of container."""
+        policy = self.meta_host.get("RestartPolicy", {}).get("Name")
+        # Empty string also means the default which is "no"
+        return policy if policy else RestartPolicy.NO
 
     @property
     def security_opt(self) -> list[str]:

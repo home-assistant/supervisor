@@ -3,7 +3,7 @@ import logging
 
 from ..const import DOCKER_NETWORK_MASK
 from ..coresys import CoreSysAttributes
-from .const import ENV_TIME, ENV_TOKEN
+from .const import ENV_TIME, ENV_TOKEN, RestartPolicy
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
             hostname=self.name.replace("_", "-"),
             detach=True,
             security_opt=self.security_opt,
-            restart_policy={"Name": "always"},
+            restart_policy={"Name": RestartPolicy.ALWAYS.value},
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={
                 ENV_TIME: self.sys_timezone,
