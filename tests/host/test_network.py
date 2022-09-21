@@ -140,7 +140,7 @@ async def test_scan_wifi_with_failures(coresys: CoreSys, caplog):
         proxy_interface: ProxyInterface,
         method: str,
         *args,
-        remove_signature: bool = True,
+        unpack_variants: bool = True,
     ):
         if method == "call_get_all_access_points":
             return [
@@ -150,7 +150,7 @@ async def test_scan_wifi_with_failures(coresys: CoreSys, caplog):
             ]
 
         return await call_dbus(
-            proxy_interface, method, *args, remove_signature=remove_signature
+            proxy_interface, method, *args, unpack_variants=unpack_variants
         )
 
     with patch("supervisor.host.network.asyncio.sleep"), patch(

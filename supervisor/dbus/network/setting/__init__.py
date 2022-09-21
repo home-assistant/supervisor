@@ -130,7 +130,7 @@ class NetworkSetting(DBusInterface):
     async def update(self, settings: Any) -> None:
         """Update connection settings."""
         new_settings = await self.dbus.Settings.Connection.call_get_settings(
-            remove_signature=False
+            unpack_variants=False
         )
 
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_CONNECTION)
@@ -165,9 +165,7 @@ class NetworkSetting(DBusInterface):
         await super().connect(bus)
         await self.reload()
 
-        # pylint: disable=unnecessary-lambda
-        # wrapper created by annotation fails the signature test, varargs not supported
-        self.dbus.Settings.Connection.on_updated(lambda: self.reload())
+        self.dbus.Settings.Connection.on_updated(self.reload)
 
     def disconnect(self) -> None:
         """Disconnect from D-Bus."""

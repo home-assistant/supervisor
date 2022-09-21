@@ -36,7 +36,6 @@ from ..exceptions import (
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
-from ..utils.dbus import DBus
 from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -148,7 +147,6 @@ class NetworkManager(CoreSysAttributes):
         if interface != DBUS_IFACE_NM:
             return
 
-        changed = DBus.remove_dbus_signature(changed)
         connectivity_check: bool | None = changed.get(DBUS_ATTR_CONNECTION_ENABLED)
         connectivity: bool | None = changed.get(DBUS_ATTR_CONNECTIVITY)
 

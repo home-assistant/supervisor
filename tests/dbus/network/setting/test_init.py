@@ -72,10 +72,10 @@ SETTINGS_WITH_SIGNATURE = {
 
 
 async def mock_call_dbus_get_settings_signature(
-    _: ProxyInterface, method: str, *args, remove_signature: bool = True
+    _: ProxyInterface, method: str, *args, unpack_variants: bool = True
 ) -> list[dict[str, Any]]:
     """Call dbus method mock for get settings that keeps signature."""
-    if method == "call_get_settings" and not remove_signature:
+    if method == "call_get_settings" and not unpack_variants:
         return SETTINGS_WITH_SIGNATURE
     else:
         assert method == "call_update"
