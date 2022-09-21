@@ -80,7 +80,7 @@ async def test_signal_listener_disconnect(
         device = dev
 
     proxy.obj.dbus.on_device_added(callback)
-    proxy.on_device_added.assert_called_once_with(callback)
+    proxy.on_device_added.assert_called_once_with(callback, unpack_variants=True)
 
     fire_watched_signal(
         proxy.obj, "org.freedesktop.NetworkManager.DeviceAdded", ["/test/obj/1"]
@@ -89,4 +89,4 @@ async def test_signal_listener_disconnect(
     assert device == "/test/obj/1"
 
     proxy.obj.disconnect()
-    proxy.off_device_added.assert_called_once_with(callback)
+    proxy.off_device_added.assert_called_once_with(callback, unpack_variants=True)

@@ -55,17 +55,6 @@ class DBus:
         return self
 
     @staticmethod
-    def remove_dbus_signature(data: Any) -> Any:
-        """Remove signature info."""
-        if isinstance(data, Variant):
-            return DBus.remove_dbus_signature(data.value)
-        if isinstance(data, dict):
-            return {k: DBus.remove_dbus_signature(v) for k, v in data.items()}
-        if isinstance(data, list):
-            return [DBus.remove_dbus_signature(item) for item in data]
-        return data
-
-    @staticmethod
     def from_dbus_error(err: DBusError) -> HassioNotSupportedError | DBusError:
         """Return correct dbus error based on type."""
         if err.type in {ErrorType.SERVICE_UNKNOWN, ErrorType.UNKNOWN_INTERFACE}:
@@ -91,7 +80,7 @@ class DBus:
         proxy_interface: ProxyInterface,
         method: str,
         *args,
-        remove_signature: bool = True,
+        unpack_variants: bool = True,
     ) -> Any:
         """Call a dbus method and handle the signature and errors."""
         _LOGGER.debug(
@@ -101,8 +90,9 @@ class DBus:
             proxy_interface.path,
         )
         try:
-            body = await getattr(proxy_interface, method)(*args)
-            return DBus.remove_dbus_signature(body) if remove_signature else body
+            return await getattr(proxy_interface, method)(
+                *args, unpack_variants=unpack_variants
+            )
         except DBusError as err:
             raise DBus.from_dbus_error(err)
 
@@ -178,10 +168,18 @@ class DBus:
             if interface != prop_interface:
                 return
 
+            _LOGGER.debug(
+                "Property change for %s-%s: %s changed & %s invalidated",
+                self.bus_name,
+                self.object_path,
+                ", ".join(changed.keys()),
+                ", ".join(invalidated),
+            )
+
             if invalidated:
                 await update()
             else:
-                await update(DBus.remove_dbus_signature(changed))
+                await update(changed)
 
         self.properties.on_properties_changed(sync_property_change)
         return sync_property_change
@@ -195,7 +193,9 @@ class DBus:
         for intr, signals in self._signal_monitors.items():
             for name, callbacks in signals.items():
                 for callback in callbacks:
-                    getattr(self._proxies[intr], f"off_{name}")(callback)
+                    getattr(self._proxies[intr], f"off_{name}")(
+                        callback, unpack_variants=True
+                    )
 
         self._signal_monitors = {}
 
@@ -254,7 +254,7 @@ class DBusCallWrapper:
             if dbus_type == "on":
 
                 def _on_signal(callback: Callable):
-                    getattr(self._proxy, name)(callback)
+                    getattr(self._proxy, name)(callback, unpack_variants=True)
 
                     # pylint: disable=protected-access
                     if self.interface not in self.dbus._signal_monitors:
@@ -272,7 +272,7 @@ class DBusCallWrapper:
                 return _on_signal
 
             def _off_signal(callback: Callable):
-                getattr(self._proxy, name)(callback)
+                getattr(self._proxy, name)(callback, unpack_variants=True)
 
                 # pylint: disable=protected-access
                 if (
@@ -298,9 +298,9 @@ class DBusCallWrapper:
 
         if dbus_type in ["call", "get", "set"]:
 
-            def _method_wrapper(*args, remove_signature: bool = True) -> Awaitable:
+            def _method_wrapper(*args, unpack_variants: bool = True) -> Awaitable:
                 return DBus.call_dbus(
-                    self._proxy, name, *args, remove_signature=remove_signature
+                    self._proxy, name, *args, unpack_variants=unpack_variants
                 )
 
             return _method_wrapper

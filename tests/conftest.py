@@ -171,7 +171,7 @@ def dbus(dbus_bus: MessageBus) -> DBus:
         proxy_interface: ProxyInterface,
         method: str,
         *args,
-        remove_signature: bool = True,
+        unpack_variants: bool = True,
     ):
         if (
             proxy_interface.introspection.name == DBUS_INTERFACE_PROPERTIES
