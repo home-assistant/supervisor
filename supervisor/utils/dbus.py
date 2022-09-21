@@ -172,8 +172,8 @@ class DBus:
                 "Property change for %s-%s: %s changed & %s invalidated",
                 self.bus_name,
                 self.object_path,
-                ", ".join(changed.keys()),
-                ", ".join(invalidated),
+                changed.keys(),
+                invalidated,
             )
 
             if invalidated:
