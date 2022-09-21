@@ -61,11 +61,12 @@ class EvaluateRestartPolicy(EvaluateBase):
         self._containers = {
             instance.name
             for instance in self.no_restart_expected
-            if instance.restart_policy != RestartPolicy.NO
+            if instance.restart_policy and instance.restart_policy != RestartPolicy.NO
         } | {
             instance.name
             for instance in self.always_restart_expected
-            if instance.restart_policy != RestartPolicy.ALWAYS
+            if instance.restart_policy
+            and instance.restart_policy != RestartPolicy.ALWAYS
         }
 
         return len(self._containers) > 0

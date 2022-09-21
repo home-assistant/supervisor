@@ -137,8 +137,10 @@ class DockerInterface(CoreSysAttributes):
     @property
     def restart_policy(self) -> RestartPolicy | None:
         """Return restart policy of container."""
-        policy = self.meta_host.get("RestartPolicy", {}).get("Name")
-        # Empty string also means the default which is "no"
+        if "RestartPolicy" not in self.meta_host:
+            return None
+
+        policy = self.meta_host["RestartPolicy"].get("Name")
         return policy if policy else RestartPolicy.NO
 
     @property

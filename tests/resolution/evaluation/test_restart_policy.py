@@ -18,6 +18,8 @@ async def test_evaluation(coresys: CoreSys, install_addon_ssh: Addon):
     """Test evaluation."""
     restart_policy = EvaluateRestartPolicy(coresys)
     coresys.core.state = CoreState.RUNNING
+
+    await restart_policy()
     assert restart_policy.reason not in coresys.resolution.unsupported
 
     no_restart_attrs = load_json_fixture("container_attrs.json")
