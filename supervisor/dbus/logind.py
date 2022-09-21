@@ -1,7 +1,7 @@
 """Interface to Logind over D-Bus."""
 import logging
 
-from dbus_next.aio.message_bus import MessageBus
+from dbus_fast.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError
 from .const import DBUS_NAME_LOGIND, DBUS_OBJECT_LOGIND

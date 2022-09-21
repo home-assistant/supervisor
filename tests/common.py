@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from dbus_next.introspection import Method, Property, Signal
+from dbus_fast.introspection import Method, Property, Signal
 
 from supervisor.dbus.interface import DBusInterface, DBusInterfaceProxy
 from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES
