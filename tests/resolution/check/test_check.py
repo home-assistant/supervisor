@@ -7,7 +7,8 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionNotFound
-from supervisor.resolution.const import IssueType
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 from supervisor.resolution.validate import get_valid_modules
 
 
@@ -54,7 +55,7 @@ async def test_if_check_make_issue(coresys: CoreSys):
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         await coresys.resolution.check.check_system()
 
-    assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
+    assert Issue(IssueType.FREE_SPACE, ContextType.SYSTEM) in coresys.resolution.issues
 
 
 async def test_if_check_cleanup_issue(coresys: CoreSys, mock_full_backup):
