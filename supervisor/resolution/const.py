@@ -45,6 +45,7 @@ class UnsupportedReason(str, Enum):
     OS = "os"
     OS_AGENT = "os_agent"
     PRIVILEGED = "privileged"
+    RESTART_POLICY = "restart_policy"
     SOFTWARE = "software"
     SOURCE_MODS = "source_mods"
     SUPERVISOR_VERSION = "supervisor_version"

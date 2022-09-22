@@ -28,6 +28,15 @@ class ContainerState(str, Enum):
     UNKNOWN = "unknown"
 
 
+class RestartPolicy(str, Enum):
+    """Restart policy of container."""
+
+    NO = "no"
+    ON_FAILURE = "on-failure"
+    UNLESS_STOPPED = "unless-stopped"
+    ALWAYS = "always"
+
+
 DBUS_PATH = "/run/dbus"
 DBUS_VOLUME = {"bind": DBUS_PATH, "mode": "ro"}
 
