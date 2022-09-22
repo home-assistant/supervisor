@@ -1,5 +1,6 @@
 """NetworkInterface object for Network Manager."""
 
+import asyncio
 from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
@@ -51,7 +52,7 @@ class NetworkInterface(DBusInterfaceProxy):
 
     @property
     @dbus_property
-    def type(self) -> int:
+    def type(self) -> DeviceType:
         """Return interface type."""
         return self.properties[DBUS_ATTR_DEVICE_TYPE]
 
@@ -72,6 +73,14 @@ class NetworkInterface(DBusInterfaceProxy):
         """Return the connection used for this interface."""
         return self._connection
 
+    @connection.setter
+    def connection(self, connection: NetworkConnection | None) -> None:
+        """Set connection for interface."""
+        if self._connection and self._connection is not connection:
+            asyncio.get_event_loop().run_in_executor(None, self._connection.disconnect)
+
+        self._connection = connection
+
     @property
     def settings(self) -> NetworkSetting | None:
         """Return the connection settings used for this interface."""
@@ -81,6 +90,14 @@ class NetworkInterface(DBusInterfaceProxy):
     def wireless(self) -> NetworkWireless | None:
         """Return the wireless data for this interface."""
         return self._wireless
+
+    @wireless.setter
+    def wireless(self, wireless: NetworkWireless | None) -> None:
+        """Set wireless for interface."""
+        if self._wireless and self._wireless is not wireless:
+            asyncio.get_event_loop().run_in_executor(None, self._wireless.disconnect)
+
+        self._wireless = wireless
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
@@ -98,29 +115,29 @@ class NetworkInterface(DBusInterfaceProxy):
         # If active connection exists
         if not changed or DBUS_ATTR_ACTIVE_CONNECTION in changed:
             if (
-                self._connection
-                and self._connection.is_connected
-                and self._connection.object_path
+                self.connection
+                and self.connection.is_connected
+                and self.connection.object_path
                 == self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
             ):
                 await self.connection.update()
             elif self.properties[DBUS_ATTR_ACTIVE_CONNECTION] != DBUS_OBJECT_BASE:
-                self._connection = NetworkConnection(
+                self.connection = NetworkConnection(
                     self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
                 )
-                await self._connection.connect(self.dbus.bus)
+                await self.connection.connect(self.dbus.bus)
             else:
-                self._connection = None
+                self.connection = None
 
         # Wireless
         if not changed or DBUS_ATTR_DEVICE_TYPE in changed:
             if self.type != DeviceType.WIRELESS:
-                self._wireless = None
+                self.wireless = None
             elif self.wireless and self.wireless.is_connected:
-                await self._wireless.update()
+                await self.wireless.update()
             else:
-                self._wireless = NetworkWireless(self.object_path)
-                await self._wireless.connect(self.dbus.bus)
+                self.wireless = NetworkWireless(self.object_path)
+                await self.wireless.connect(self.dbus.bus)
 
     def disconnect(self) -> None:
         """Disconnect from D-Bus."""
