@@ -354,6 +354,7 @@ class AddonManager(CoreSysAttributes):
         if slug not in self.local:
             _LOGGER.debug("Add-on %s is not local available for restore", slug)
             addon = Addon(self.coresys, slug)
+            await addon.load()
         else:
             _LOGGER.debug("Add-on %s is local available for restore", slug)
             addon = self.local[slug]
