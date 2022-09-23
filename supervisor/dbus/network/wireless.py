@@ -37,6 +37,14 @@ class NetworkWireless(DBusInterfaceProxy):
         """Return details about active connection."""
         return self._active
 
+    @active.setter
+    def active(self, active: NetworkWirelessAP | None) -> None:
+        """Set active wireless AP."""
+        if self._active and self._active is not active:
+            asyncio.get_event_loop().run_in_executor(None, self._active.disconnect)
+
+        self._active = active
+
     @dbus_connected
     async def request_scan(self) -> None:
         """Request a new AP scan."""
@@ -63,16 +71,16 @@ class NetworkWireless(DBusInterfaceProxy):
         # Get details from current active
         if not changed or DBUS_ATTR_ACTIVE_ACCESSPOINT in changed:
             if (
-                self._active
-                and self._active.is_connected
-                and self._active.object_path
+                self.active
+                and self.active.is_connected
+                and self.active.object_path
                 == self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
             ):
-                await self._active.update()
+                await self.active.update()
             elif self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT] != DBUS_OBJECT_BASE:
-                self._active = NetworkWirelessAP(
+                self.active = NetworkWirelessAP(
                     self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
                 )
-                await self._active.connect(self.dbus.bus)
+                await self.active.connect(self.dbus.bus)
             else:
-                self._active = None
+                self.active = None

@@ -35,10 +35,6 @@ class DBusInterface(ABC):
         """Return True, if they is connected to D-Bus."""
         return self.dbus is not None
 
-    def __del__(self) -> None:
-        """Disconnect on delete."""
-        self.disconnect()
-
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
         self.dbus = await DBus.connect(bus, self.bus_name, self.object_path)

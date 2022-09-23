@@ -1,4 +1,5 @@
 """Network Manager implementation for DBUS."""
+import asyncio
 import logging
 from typing import Any
 
@@ -209,6 +210,14 @@ class NetworkManager(DBusInterfaceProxy):
                 interface.primary = True
 
             interfaces[interface.name] = interface
+
+        # Disconnect removed devices
+        for device in set(curr_devices.keys()) - set(
+            self.properties[DBUS_ATTR_DEVICES]
+        ):
+            asyncio.get_event_loop().run_in_executor(
+                None, curr_devices[device].disconnect
+            )
 
         self._interfaces = interfaces
 
