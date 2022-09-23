@@ -203,7 +203,7 @@ class AddonManager(CoreSysAttributes):
         else:
             addon.state = AddonState.UNKNOWN
 
-        await addon.remove_data()
+        await addon.unload()
 
         # Cleanup audio settings
         if addon.path_pulse.exists():

@@ -279,3 +279,28 @@ async def test_install_update_fails_if_out_of_date(
             await coresys.addons.install(TEST_ADDON_SLUG)
         with pytest.raises(AddonsJobError):
             await install_addon_ssh.update()
+
+
+async def test_listeners_removed_on_uninstall(
+    coresys: CoreSys, install_addon_ssh: Addon
+) -> None:
+    """Test addon listeners are removed on uninstall."""
+    with patch.object(DockerAddon, "attach"):
+        await install_addon_ssh.load()
+
+    assert install_addon_ssh.loaded is True
+    # pylint: disable=protected-access
+    listeners = install_addon_ssh._listeners
+    for listener in listeners:
+        assert (
+            listener in coresys.bus._listeners[BusEvent.DOCKER_CONTAINER_STATE_CHANGE]
+        )
+
+    with patch.object(Addon, "persist", new=PropertyMock(return_value=MagicMock())):
+        await coresys.addons.uninstall(TEST_ADDON_SLUG)
+
+    for listener in listeners:
+        assert (
+            listener
+            not in coresys.bus._listeners[BusEvent.DOCKER_CONTAINER_STATE_CHANGE]
+        )
