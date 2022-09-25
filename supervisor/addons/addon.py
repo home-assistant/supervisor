@@ -18,6 +18,7 @@ from securetar import atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from ..bus import EventListener
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -115,6 +116,7 @@ class Addon(AddonModel):
         self._manual_stop: bool = (
             self.sys_hardware.helper.last_boot == self.sys_config.last_boot
         )
+        self._listeners: list[EventListener] = []
 
         @Job(
             name=f"addon_{slug}_restart_after_problem",
@@ -197,11 +199,15 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
-        self.sys_bus.register_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
+        self._listeners.append(
+            self.sys_bus.register_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
+            )
         )
-        self.sys_bus.register_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+        self._listeners.append(
+            self.sys_bus.register_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+            )
         )
 
         with suppress(DockerError):
@@ -504,6 +510,11 @@ class Addon(AddonModel):
 
         return options_schema.pwned
 
+    @property
+    def loaded(self) -> bool:
+        """Is add-on loaded."""
+        return bool(self._listeners)
+
     def save_persist(self) -> None:
         """Save data of add-on."""
         self.sys_addons.data.save_data()
@@ -572,8 +583,11 @@ class Addon(AddonModel):
 
         raise AddonConfigurationError()
 
-    async def remove_data(self) -> None:
-        """Remove add-on data."""
+    async def unload(self) -> None:
+        """Unload add-on and remove data."""
+        for listener in self._listeners:
+            self.sys_bus.remove_listener(listener)
+
         if not self.path_data.is_dir():
             return
 
@@ -930,6 +944,10 @@ class Addon(AddonModel):
                         "Can't restore AppArmor profile for add-on %s", self.slug
                     )
                     raise AddonsError() from err
+
+            # Is add-on loaded
+            if not self.loaded:
+                await self.load()
 
             # Run add-on
             if data[ATTR_STATE] == AddonState.STARTED:

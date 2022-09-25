@@ -57,3 +57,29 @@ async def test_network_interface_wlan(network_manager: NetworkManager):
     interface = network_manager.interfaces[TEST_INTERFACE_WLAN]
     assert interface.name == TEST_INTERFACE_WLAN
     assert interface.type == DeviceType.WIRELESS
+
+
+async def test_old_connection_disconnect(network_manager: NetworkManager):
+    """Test old connection disconnects on connection change."""
+    interface = network_manager.interfaces[TEST_INTERFACE]
+    connection = interface.connection
+    assert connection.is_connected is True
+
+    fire_property_change_signal(interface, {"ActiveConnection": "/"})
+    await asyncio.sleep(0)
+
+    assert interface.connection is None
+    assert connection.is_connected is False
+
+
+async def test_old_wireless_disconnect(network_manager: NetworkManager):
+    """Test old wireless disconnects on type change."""
+    interface = network_manager.interfaces[TEST_INTERFACE_WLAN]
+    wireless = interface.wireless
+    assert wireless.is_connected is True
+
+    fire_property_change_signal(interface, {"DeviceType": DeviceType.ETHERNET})
+    await asyncio.sleep(0)
+
+    assert interface.wireless is None
+    assert wireless.is_connected is False

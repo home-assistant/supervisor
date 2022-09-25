@@ -87,7 +87,7 @@ jobs:
         uses: actions/checkout@v3.0.2
         with:
           fetch-depth: 0
-      
+
       - name: Write env-file
         if: needs.init.outputs.requirements == 'true'
         run: |
@@ -297,6 +297,12 @@ jobs:
             exit 1
           fi
 
+          # Make sure its state is started
+          test="$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.state')"
+          if [ "$test" != "started" ]; then
+            exit 1
+          fi
+
       - name: Check the Supervisor code sign
         if: needs.init.outputs.publish == 'true'
         run: |
@@ -366,6 +372,12 @@ jobs:
           # Make sure it actually installed
           test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
           if [[ "$test" == "null" ]]; then
+            exit 1
+          fi
+
+          # Make sure its state is started
+          test="$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.state')"
+          if [ "$test" != "started" ]; then
             exit 1
           fi
 

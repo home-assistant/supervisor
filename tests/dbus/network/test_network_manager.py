@@ -11,7 +11,7 @@ from supervisor.exceptions import HostNotSupportedError
 from .setting.test_init import SETTINGS_WITH_SIGNATURE
 
 from tests.common import fire_property_change_signal
-from tests.const import TEST_INTERFACE
+from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
 
 # pylint: disable=protected-access
 
@@ -93,3 +93,17 @@ async def test_add_and_activate_connection(
         "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.AddAndActivateConnection",
         "/org/freedesktop/NetworkManager/Settings/1-org.freedesktop.NetworkManager.Settings.Connection.GetSettings",
     ]
+
+
+async def test_removed_devices_disconnect(network_manager: NetworkManager):
+    """Test removed devices are disconnected."""
+    wlan = network_manager.interfaces[TEST_INTERFACE_WLAN]
+    assert wlan.is_connected is True
+
+    fire_property_change_signal(
+        network_manager, {"Devices": ["/org/freedesktop/NetworkManager/Devices/1"]}
+    )
+    await asyncio.sleep(0)
+
+    assert TEST_INTERFACE_WLAN not in network_manager.interfaces
+    assert wlan.is_connected is False
