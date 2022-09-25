@@ -382,21 +382,12 @@ class DockerAddon(DockerInterface):
 
         # USBIP support
         if self.addon.with_usbip:
-            volumes.update(
-                {
-                    "/sys/devices/platform": {
-                        "bind": "/sys/devices/platform",
-                        "mode": "rw",
-                    }
-                },
-                {
-                    "/sys/bus/platform/drivers": {
-                        "bind": "/sys/bus/platform/drivers",
-                        "mode": "rw",
-                    }
-                },
-                {"/sys/module": {"bind": "/sys/module", "mode": "rw"}},
-            )
+            for usbip_path in (
+                "/sys/bus/platform/drivers",
+                "/sys/devices/platform",
+                "/sys/module",
+            ):
+                volumes.update({usbip_path: {"bind": usbip_path, "mode": "rw"}})
 
         # GPIO support
         if self.addon.with_gpio and self.sys_hardware.helper.support_gpio:
