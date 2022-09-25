@@ -64,6 +64,7 @@ from ..const import (
     ATTR_UDEV,
     ATTR_URL,
     ATTR_USB,
+    ATTR_USBIP,
     ATTR_VERSION,
     ATTR_VIDEO,
     ATTR_WATCHDOG,
@@ -410,6 +411,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def with_usb(self) -> bool:
         """Return True if the add-on need USB access."""
         return self.data[ATTR_USB]
+
+    @property
+    def with_usbip(self) -> bool:
+        """Return True if the add-on needs access to usbip sys bus"""
+        return self.data[ATTR_USBIP]
 
     @property
     def with_uart(self) -> bool:

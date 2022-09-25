@@ -123,3 +123,34 @@ def test_not_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]
     volumes = docker_addon.volumes
 
     assert str(SYSTEMD_JOURNAL_PERSISTENT) not in volumes
+
+
+def test_usbip_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
+    """Validate volume for usbip option."""
+    docker_addon = get_docker_addon(
+        coresys, addonsdata_system, "usbip-addon-config.json"
+    )
+    volumes = docker_addon.volumes
+
+    for usbip_path in (
+        "/sys/devices/platform",
+        "/sys/bus/platform/drivers",
+        "/sys/module",
+    ):
+        assert volumes.get(str(usbip_path)).get("bind") == str(usbip_path)
+        assert volumes.get(str(usbip_path)).get("mode") == "rw"
+
+
+def test_not_usbip_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
+    """Validate usbip options default off."""
+    docker_addon = get_docker_addon(
+        coresys, addonsdata_system, "basic-addon-config.json"
+    )
+    volumes = docker_addon.volumes
+
+    for usbip_path in (
+        "/sys/devices/platform",
+        "/sys/bus/platform/drivers",
+        "/sys/module",
+    ):
+        assert str(usbip_path) not in volumes

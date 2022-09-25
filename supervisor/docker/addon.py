@@ -380,12 +380,41 @@ class DockerAddon(DockerInterface):
 
         # Init other hardware mappings
 
+        # USBIP support
+        if self.addon.with_usbip:
+            volumes.update(
+                {
+                    "/sys/devices/platform": {
+                        "bind": "/sys/devices/platform",
+                        "mode": "rw",
+                    }
+                },
+                {
+                    "/sys/bus/platform/drivers": {
+                        "bind": "/sys/bus/platform/drivers",
+                        "mode": "rw",
+                    }
+                },
+                {"/sys/module": {"bind": "/sys/module", "mode": "rw"}},
+            )
+
         # GPIO support
         if self.addon.with_gpio and self.sys_hardware.helper.support_gpio:
-            for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
-                if not Path(gpio_path).exists():
-                    continue
-                volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
+            if not self.addon.with_usbip:
+                for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
+                    if not Path(gpio_path).exists():
+                        continue
+                    volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
+            else:
+                if Path("/sys/devices/platform/soc").exists():
+                    volumes.update(
+                        {
+                            "/sys/devices/platform/soc": {
+                                "bind": "/sys/devices/platform/soc",
+                                "mode": "rw",
+                            }
+                        }
+                    )
 
         # DeviceTree support
         if self.addon.with_devicetree:
