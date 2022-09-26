@@ -76,7 +76,7 @@ class NetworkInterface(DBusInterfaceProxy):
     def connection(self, connection: NetworkConnection | None) -> None:
         """Set connection for interface."""
         if self._connection and self._connection is not connection:
-            self._connection.disconnect()
+            self._connection.shutdown()
 
         self._connection = connection
 
@@ -94,7 +94,7 @@ class NetworkInterface(DBusInterfaceProxy):
     def wireless(self, wireless: NetworkWireless | None) -> None:
         """Set wireless for interface."""
         if self._wireless and self._wireless is not wireless:
-            self._wireless.disconnect()
+            self._wireless.shutdown()
 
         self._wireless = wireless
 
@@ -138,10 +138,13 @@ class NetworkInterface(DBusInterfaceProxy):
                 self.wireless = NetworkWireless(self.object_path)
                 await self.wireless.connect(self.dbus.bus)
 
-    def disconnect(self) -> None:
-        """Disconnect from D-Bus."""
+    def shutdown(self) -> None:
+        """Shutdown the object and disconnect from D-Bus.
+
+        This method is irreversible.
+        """
         if self.connection:
-            self.connection.disconnect()
+            self.connection.shutdown()
         if self.wireless:
-            self.wireless.disconnect()
-        super().disconnect()
+            self.wireless.shutdown()
+        super().shutdown()

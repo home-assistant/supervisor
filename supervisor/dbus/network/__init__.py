@@ -1,5 +1,4 @@
 """Network Manager implementation for DBUS."""
-import asyncio
 import logging
 from typing import Any
 
@@ -215,18 +214,22 @@ class NetworkManager(DBusInterfaceProxy):
         for device in set(curr_devices.keys()) - set(
             self.properties[DBUS_ATTR_DEVICES]
         ):
-            asyncio.get_event_loop().run_in_executor(
-                None, curr_devices[device].disconnect
-            )
+            curr_devices[device].shutdown()
 
         self._interfaces = interfaces
 
+    def shutdown(self) -> None:
+        """Shutdown the object and disconnect from D-Bus.
+
+        This method is irreversible.
+        """
+        self.dns.shutdown()
+        self.settings.shutdown()
+        super().shutdown()
+
     def disconnect(self) -> None:
         """Disconnect from D-Bus."""
-        self.dns.disconnect()
-        self.settings.disconnect()
-
         for intr in self.interfaces.values():
-            intr.disconnect()
+            intr.shutdown()
 
         super().disconnect()

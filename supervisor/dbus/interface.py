@@ -29,11 +29,17 @@ class DBusInterface(ABC):
     name: str | None = None
     bus_name: str | None = None
     object_path: str | None = None
+    _shutdown: bool = False
 
     @property
     def is_connected(self) -> bool:
         """Return True, if they is connected to D-Bus."""
         return self.dbus is not None
+
+    @property
+    def is_shutdown(self) -> bool:
+        """Return True, if the object has been shutdown."""
+        return self._shutdown
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
@@ -44,6 +50,14 @@ class DBusInterface(ABC):
         if self.is_connected:
             self.dbus.disconnect()
             self.dbus = None
+
+    def shutdown(self) -> None:
+        """Shutdown the object and disconnect from D-Bus.
+
+        This method is irreversible.
+        """
+        self._shutdown = True
+        self.disconnect()
 
 
 class DBusInterfaceProxy(DBusInterface):
