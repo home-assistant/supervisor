@@ -114,7 +114,7 @@ class Addon(AddonModel):
         self.instance: DockerAddon = DockerAddon(coresys, self)
         self._state: AddonState = AddonState.UNKNOWN
         self._manual_stop: bool = (
-            self.sys_hardware.helper.last_boot == self.sys_config.last_boot
+            self.sys_hardware.helper.last_boot != self.sys_config.last_boot
         )
         self._listeners: list[EventListener] = []
 
