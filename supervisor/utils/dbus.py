@@ -147,8 +147,8 @@ class DBus:
 
     async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""
-        return await DBus.call_dbus(
-            self._proxies[DBUS_INTERFACE_PROPERTIES], "call_get_all", interface
+        return await DBusCallWrapper(self, DBUS_INTERFACE_PROPERTIES).call_get_all(
+            interface
         )
 
     def sync_property_changes(
