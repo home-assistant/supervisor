@@ -1,6 +1,5 @@
 """NetworkInterface object for Network Manager."""
 
-import asyncio
 from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
@@ -77,7 +76,7 @@ class NetworkInterface(DBusInterfaceProxy):
     def connection(self, connection: NetworkConnection | None) -> None:
         """Set connection for interface."""
         if self._connection and self._connection is not connection:
-            asyncio.get_event_loop().run_in_executor(None, self._connection.disconnect)
+            self._connection.disconnect()
 
         self._connection = connection
 
@@ -95,7 +94,7 @@ class NetworkInterface(DBusInterfaceProxy):
     def wireless(self, wireless: NetworkWireless | None) -> None:
         """Set wireless for interface."""
         if self._wireless and self._wireless is not wireless:
-            asyncio.get_event_loop().run_in_executor(None, self._wireless.disconnect)
+            self._wireless.disconnect()
 
         self._wireless = wireless
 
