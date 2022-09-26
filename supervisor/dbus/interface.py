@@ -58,7 +58,7 @@ class DBusInterfaceProxy(DBusInterface):
         await super().connect(bus)
         await self.update()
 
-        if self.sync_properties:
+        if self.sync_properties and self.is_connected:
             self.dbus.sync_property_changes(self.properties_interface, self.update)
 
     @dbus_connected
