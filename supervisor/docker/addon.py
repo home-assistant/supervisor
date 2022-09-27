@@ -99,9 +99,7 @@ class DockerAddon(DockerInterface):
     @property
     def version(self) -> AwesomeVersion:
         """Return version of Docker image."""
-        if self.addon.legacy:
-            return self.addon.version
-        return super().version
+        return self.addon.version
 
     @property
     def arch(self) -> str:
