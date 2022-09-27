@@ -48,3 +48,11 @@ class HostFeature(str, Enum):
     OS_AGENT = "os_agent"
     TIMEDATE = "timedate"
     JOURNAL = "journal"
+
+
+class LogFormat(str, Enum):
+    """Log format."""
+
+    JOURNAL = "application/vnd.fdo.journal"
+    JSON = "application/json"
+    TEXT = "text/plain"

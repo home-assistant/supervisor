@@ -1,13 +1,13 @@
 """Init file for Supervisor host RESTful API."""
 import asyncio
+from contextlib import suppress
 import logging
 from typing import Awaitable
 
 from aiohttp import web
 from aiohttp.hdrs import ACCEPT, RANGE
 import voluptuous as vol
-
-from supervisor.exceptions import APIError
+from voluptuous.error import CoerceInvalid
 
 from ..const import (
     ATTR_CHASSIS,
@@ -28,9 +28,12 @@ from ..const import (
     ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
+from ..docker.addon import DockerAddon
+from ..exceptions import APIError, HostLogError
 from .const import (
     ATTR_AGENT_VERSION,
     ATTR_APPARMOR_VERSION,
+    ATTR_BOOT_IDS,
     ATTR_BOOT_TIMESTAMP,
     ATTR_BROADCAST_LLMNR,
     ATTR_BROADCAST_MDNS,
@@ -82,6 +85,10 @@ class APIHost(CoreSysAttributes):
             ATTR_BOOT_TIMESTAMP: self.sys_host.info.boot_timestamp,
             ATTR_BROADCAST_LLMNR: self.sys_host.info.broadcast_llmnr,
             ATTR_BROADCAST_MDNS: self.sys_host.info.broadcast_mdns,
+            ATTR_BOOT_IDS: {
+                str(1 + i - len(self.sys_host.logs.boot_ids)): boot_id
+                for i, boot_id in enumerate(self.sys_host.logs.boot_ids)
+            },
         }
 
     @api_process
@@ -154,6 +161,32 @@ class APIHost(CoreSysAttributes):
         """Return host kernel logs."""
         return self.sys_host.info.get_dmesg()
 
+    def _get_identifier(self, possible_slug: str) -> str:
+        """Convert slug into docker identifier if required."""
+        if possible_slug == "supervisor":
+            return self.sys_supervisor.instance.name
+        if 0 < len(
+            plugins := [
+                plugin
+                for plugin in self.sys_plugins.all_plugins
+                if plugin.slug == possible_slug
+            ]
+        ):
+            return plugins[0].instance.name
+        if self.sys_addons.get(possible_slug):
+            return DockerAddon.slug_to_name(possible_slug)
+        return possible_slug
+
+    def _get_boot_id(self, possible_offset: str) -> str:
+        """Convert offset into boot ID if required."""
+        with suppress(CoerceInvalid):
+            offset = vol.Coerce(int)(possible_offset)
+            try:
+                return self.sys_host.logs.get_boot_id(offset)
+            except (ValueError, HostLogError) as err:
+                raise APIError() from err
+        return possible_offset
+
     @api_process
     async def advanced_logs(
         self, request: web.Request, follow=False
@@ -161,9 +194,11 @@ class APIHost(CoreSysAttributes):
         """Return systemd-journald logs."""
         params = {}
         if IDENTIFIER in request.match_info:
-            params["SYSLOG_IDENTIFIER"] = request.match_info.get(IDENTIFIER)
+            params["SYSLOG_IDENTIFIER"] = self._get_identifier(
+                request.match_info.get(IDENTIFIER)
+            )
         if BOOTID in request.match_info:
-            params["_BOOT_ID"] = request.match_info.get(BOOTID)
+            params["_BOOT_ID"] = self._get_boot_id(request.match_info.get(BOOTID))
         if follow:
             params["follow"] = ""
 

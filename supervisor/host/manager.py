@@ -7,7 +7,7 @@ from supervisor.host.logs import LogsControl
 
 from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, PulseAudioError
+from ..exceptions import HassioError, HostLogError, PulseAudioError
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from .apparmor import AppArmorControl
@@ -104,7 +104,7 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.resolved.is_connected:
             features.append(HostFeature.RESOLVED)
 
-        if self._logs.available:
+        if self.logs.available:
             features.append(HostFeature.JOURNAL)
 
         return features
@@ -125,6 +125,9 @@ class HostManager(CoreSysAttributes):
         with suppress(PulseAudioError):
             await self.sound.update()
 
+        with suppress(HostLogError):
+            await self.logs.update()
+
         _LOGGER.info("Host information reload completed")
         self.supported_features.cache_clear()  # pylint: disable=no-member
 
@@ -136,6 +139,9 @@ class HostManager(CoreSysAttributes):
 
             with suppress(PulseAudioError):
                 await self.sound.update()
+
+            with suppress(HostLogError):
+                await self.logs.update()
 
             await self.network.load()
 
