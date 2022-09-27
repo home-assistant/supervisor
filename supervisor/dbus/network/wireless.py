@@ -41,7 +41,7 @@ class NetworkWireless(DBusInterfaceProxy):
     def active(self, active: NetworkWirelessAP | None) -> None:
         """Set active wireless AP."""
         if self._active and self._active is not active:
-            asyncio.get_event_loop().run_in_executor(None, self._active.disconnect)
+            self._active.shutdown()
 
         self._active = active
 

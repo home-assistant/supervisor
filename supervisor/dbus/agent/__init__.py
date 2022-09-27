@@ -106,10 +106,13 @@ class OSAgent(DBusInterfaceProxy):
         if not changed and self.datadisk.is_connected:
             await self.datadisk.update()
 
-    def disconnect(self) -> None:
-        """Disconnect from D-Bus."""
-        self.cgroup.disconnect()
-        self.apparmor.disconnect()
-        self.system.disconnect()
-        self.datadisk.disconnect()
-        super().disconnect()
+    def shutdown(self) -> None:
+        """Shutdown the object and disconnect from D-Bus.
+
+        This method is irreversible.
+        """
+        self.cgroup.shutdown()
+        self.apparmor.shutdown()
+        self.system.shutdown()
+        self.datadisk.shutdown()
+        super().shutdown()

@@ -167,13 +167,6 @@ class NetworkSetting(DBusInterface):
 
         self.dbus.Settings.Connection.on_updated(self.reload)
 
-    def disconnect(self) -> None:
-        """Disconnect from D-Bus."""
-        if self.is_connected:
-            self.dbus.Settings.Connection.off_updated(self.reload)
-
-        super().disconnect()
-
     @dbus_connected
     async def reload(self):
         """Get current settings for connection."""

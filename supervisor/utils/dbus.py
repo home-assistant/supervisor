@@ -193,9 +193,12 @@ class DBus:
         for intr, signals in self._signal_monitors.items():
             for name, callbacks in signals.items():
                 for callback in callbacks:
-                    getattr(self._proxies[intr], f"off_{name}")(
-                        callback, unpack_variants=True
-                    )
+                    try:
+                        getattr(self._proxies[intr], f"off_{name}")(
+                            callback, unpack_variants=True
+                        )
+                    except Exception:  # pylint: disable=broad-except
+                        _LOGGER.exception("Can't remove signal listener")
 
         self._signal_monitors = {}
 

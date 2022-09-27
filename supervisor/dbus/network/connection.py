@@ -1,6 +1,5 @@
 """Connection object for Network Manager."""
 
-import asyncio
 from typing import Any
 
 from supervisor.dbus.network.setting import NetworkSetting
@@ -82,7 +81,7 @@ class NetworkConnection(DBusInterfaceProxy):
     def settings(self, settings: NetworkSetting | None) -> None:
         """Set settings."""
         if self._settings and self._settings is not settings:
-            asyncio.get_event_loop().run_in_executor(None, self._settings.disconnect)
+            self._settings.shutdown()
 
         self._settings = settings
 
@@ -95,7 +94,7 @@ class NetworkConnection(DBusInterfaceProxy):
     def ipv4(self, ipv4: IpConfiguration | None) -> None:
         """Set ipv4 configuration."""
         if self._ipv4 and self._ipv4 is not ipv4:
-            asyncio.get_event_loop().run_in_executor(None, self._ipv4.disconnect)
+            self._ipv4.shutdown()
 
         self._ipv4 = ipv4
 
@@ -108,7 +107,7 @@ class NetworkConnection(DBusInterfaceProxy):
     def ipv6(self, ipv6: IpConfiguration | None) -> None:
         """Set ipv6 configuration."""
         if self._ipv6 and self._ipv6 is not ipv6:
-            asyncio.get_event_loop().run_in_executor(None, self._ipv6.disconnect)
+            self._ipv6.shutdown()
 
         self._ipv6 = ipv6
 
@@ -166,12 +165,15 @@ class NetworkConnection(DBusInterfaceProxy):
             else:
                 self.settings = None
 
-    def disconnect(self) -> None:
-        """Disconnect from D-Bus."""
+    def shutdown(self) -> None:
+        """Shutdown the object and disconnect from D-Bus.
+
+        This method is irreversible.
+        """
         if self.ipv4:
-            self.ipv4.disconnect()
+            self.ipv4.shutdown()
         if self.ipv6:
-            self.ipv6.disconnect()
+            self.ipv6.shutdown()
         if self.settings:
-            self.settings.disconnect()
-        super().disconnect()
+            self.settings.shutdown()
+        super().shutdown()

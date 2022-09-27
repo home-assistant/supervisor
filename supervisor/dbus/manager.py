@@ -135,7 +135,7 @@ class DBusManager(CoreSysAttributes):
             return
 
         for dbus in self.all:
-            dbus.disconnect()
+            dbus.shutdown()
 
         self.bus.disconnect()
         _LOGGER.info("Closed conection to system D-Bus.")
