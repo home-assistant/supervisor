@@ -1,27 +1,5 @@
 [
-  "/org/freedesktop/UDisks2/block_devices/loop3",
   "/org/freedesktop/UDisks2/block_devices/loop0",
-  "/org/freedesktop/UDisks2/block_devices/zram0",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p4",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p7",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1boot0",
-  "/org/freedesktop/UDisks2/block_devices/loop5",
-  "/org/freedesktop/UDisks2/block_devices/zram2",
-  "/org/freedesktop/UDisks2/block_devices/loop2",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p9",
   "/org/freedesktop/UDisks2/block_devices/sda1",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p6",
-  "/org/freedesktop/UDisks2/block_devices/loop7",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
-  "/org/freedesktop/UDisks2/block_devices/loop4",
-  "/org/freedesktop/UDisks2/block_devices/zram1",
-  "/org/freedesktop/UDisks2/block_devices/loop1",
-  "/org/freedesktop/UDisks2/block_devices/sda",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p8",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1boot1",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1p5",
-  "/org/freedesktop/UDisks2/block_devices/loop6",
-  "/org/freedesktop/UDisks2/block_devices/mmcblk1"
+  "/org/freedesktop/UDisks2/block_devices/sda"
 ]
