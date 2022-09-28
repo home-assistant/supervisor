@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from dbus_next.signature import Variant
+from dbus_fast.signature import Variant
 
 from . import UDisks2StandardOptions, UDisks2StandardOptionsDataType
 from ..const import DBUS_ATTR_MOUNTPOINTS, DBUS_ATTR_SIZE, DBUS_IFACE_FILESYSTEM

@@ -3,8 +3,8 @@ from dataclasses import dataclass
 import logging
 from typing import Dict, TypedDict
 
-from dbus_next.aio.message_bus import MessageBus
-from dbus_next.signature import Variant
+from dbus_fast.aio.message_bus import MessageBus
+from dbus_fast.signature import Variant
 from typing_extensions import NotRequired
 
 from ...exceptions import DBusError, DBusInterfaceError

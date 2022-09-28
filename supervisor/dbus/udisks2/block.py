@@ -3,7 +3,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, Optional, TypedDict
 
-from dbus_next.signature import Variant
+from dbus_fast.signature import Variant
 from typing_extensions import Required
 
 from . import UDisks2StandardOptions
