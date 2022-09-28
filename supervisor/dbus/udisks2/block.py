@@ -1,8 +1,9 @@
 """Interface to UDisks2 Block Device over D-Bus."""
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, TypedDict
+from typing import Any, Dict, TypedDict
 
+from dbus_next.signature import Variant
 from typing_extensions import Required
 
 from ..const import (
@@ -54,15 +55,15 @@ class FstabConfigDetails:
             passno=data["passno"],
         )
 
-    def to_dict(self) -> FstabConfigDetailsDataType:
+    def to_dict(self) -> Dict[str, Variant]:
         """Return dict representation."""
         data = {
-            "fsname": bytearray(self.fsname) if self.fsname else None,
-            "dir": bytearray(self.dir),
-            "type": bytearray(self.type),
-            "opts": bytearray(self.opts),
-            "freq": self.freq,
-            "passno": self.passno,
+            "fsname": Variant("ay", bytearray(self.fsname)) if self.fsname else None,
+            "dir": Variant("ay", bytearray(self.dir)),
+            "type": Variant("ay", bytearray(self.type)),
+            "opts": Variant("ay", bytearray(self.opts)),
+            "freq": Variant("i", self.freq),
+            "passno": Variant("i", self.passno),
         }
         if not data["fsname"]:
             data.pop("fsname")
@@ -102,16 +103,16 @@ class CrypttabConfigDetails:
             options=bytes(data["options"]).decode(),
         )
 
-    def to_dict(self) -> CrypttabConfigDetailsDataType:
+    def to_dict(self) -> Dict[str, Variant]:
         """Return dict representation."""
         data = {
-            "name": bytearray(self.name) if self.name else None,
-            "device": bytearray(self.device),
-            "passphrase-path": bytearray(self.passphrase_path)
+            "name": Variant("ay", bytearray(self.name)) if self.name else None,
+            "device": Variant("ay", bytearray(self.device)),
+            "passphrase-path": Variant("ay", bytearray(self.passphrase_path))
             if self.passphrase_path
             else None,
-            "passphrase-contents": bytearray(self.passphrase_contents),
-            "options": bytearray(self.options),
+            "passphrase-contents": Variant("ay", bytearray(self.passphrase_contents)),
+            "options": Variant("ay", bytearray(self.options)),
         }
         for key in ("name", "passphrase-path"):
             if not data[key]:
