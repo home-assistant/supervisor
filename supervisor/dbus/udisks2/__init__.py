@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import logging
 from typing import Dict, TypedDict
 
-from dbus_fast.aio.message_bus import MessageBus
+from dbus_fast.aio import MessageBus
 from dbus_fast.signature import Variant
 from typing_extensions import NotRequired
 
