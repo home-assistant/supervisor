@@ -1,8 +1,10 @@
 """Interface to UDisks2 Block Device over D-Bus."""
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Dict, Optional, TypedDict
+from typing import TypedDict
 
+from dbus_fast.aio import MessageBus
 from dbus_fast.signature import Variant
 from typing_extensions import Required
 
@@ -16,10 +18,16 @@ from ..const import (
     DBUS_ATTR_SIZE,
     DBUS_ATTR_SYMLINKS,
     DBUS_IFACE_BLOCK,
+    DBUS_IFACE_FILESYSTEM,
     DBUS_NAME_UDISKS2,
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
+from .filesystem import UDisks2Filesystem
+
+ADDITIONAL_INTERFACES: dict[str, Callable[[str], DBusInterfaceProxy]] = {
+    DBUS_IFACE_FILESYSTEM: UDisks2Filesystem
+}
 
 
 class FstabConfigDetailsDataType(TypedDict):
@@ -56,7 +64,7 @@ class FstabConfigDetails:
             passno=data["passno"],
         )
 
-    def to_dict(self) -> Dict[str, Variant]:
+    def to_dict(self) -> dict[str, Variant]:
         """Return dict representation."""
         data = {
             "fsname": Variant("ay", bytearray(self.fsname)) if self.fsname else None,
@@ -104,7 +112,7 @@ class CrypttabConfigDetails:
             options=bytes(data["options"]).decode(),
         )
 
-    def to_dict(self) -> Dict[str, Variant]:
+    def to_dict(self) -> dict[str, Variant]:
         """Return dict representation."""
         data = {
             "name": Variant("ay", bytearray(self.name)) if self.name else None,
@@ -127,8 +135,29 @@ class UDisks2Block(DBusInterfaceProxy):
     http://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Block.html
     """
 
+    name: str = DBUS_IFACE_BLOCK
     bus_name: str = DBUS_NAME_UDISKS2
     properties_interface: str = DBUS_IFACE_BLOCK
+
+    def __init__(self, object_path: str) -> None:
+        """Initialize object."""
+        self.object_path = object_path
+        self._additional_interfaces: dict[str, DBusInterfaceProxy] = {}
+        super().__init__()
+
+    async def connect(self, bus: MessageBus) -> None:
+        """Connect to bus."""
+        await super().connect(bus)
+        for key in list(set(self.dbus.proxies) - set(ADDITIONAL_INTERFACES)):
+            iface = self.additional_interfaces[key] = ADDITIONAL_INTERFACES[key](
+                self.object_path
+            )
+            await iface.connect(bus)
+
+    @property
+    def additional_interfaces(self) -> dict[str, DBusInterfaceProxy]:
+        """Return additional interfaces."""
+        return self._additional_interfaces
 
     @property
     @dbus_property
@@ -188,7 +217,7 @@ class UDisks2Block(DBusInterfaceProxy):
         self,
         type_: str,
         details: FstabConfigDetails | CrypttabConfigDetails,
-        options: Optional[UDisks2StandardOptions] = None,
+        options: UDisks2StandardOptions | None = None,
     ):
         """Add new configuration item."""
         if not options:
@@ -203,7 +232,7 @@ class UDisks2Block(DBusInterfaceProxy):
         self,
         type_: str,
         details: FstabConfigDetails | CrypttabConfigDetails,
-        options: Optional[UDisks2StandardOptions] = None,
+        options: UDisks2StandardOptions | None = None,
     ):
         """Remove existing configuration item."""
         if not options:
@@ -220,7 +249,7 @@ class UDisks2Block(DBusInterfaceProxy):
         old_details: FstabConfigDetails | CrypttabConfigDetails,
         new_type: str,
         new_details: FstabConfigDetails | CrypttabConfigDetails,
-        options: Optional[UDisks2StandardOptions] = None,
+        options: UDisks2StandardOptions | None = None,
     ):
         """Add new configuration item."""
         if not options:

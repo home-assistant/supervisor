@@ -1,7 +1,7 @@
 """Interface to UDisks2 over D-Bus."""
 from dataclasses import dataclass
 import logging
-from typing import Dict, TypedDict
+from typing import TypedDict
 
 from dbus_fast.aio import MessageBus
 from dbus_fast.signature import Variant
@@ -10,6 +10,7 @@ from typing_extensions import NotRequired
 from ...exceptions import DBusError, DBusInterfaceError
 from ..const import (
     DBUS_ATTR_SUPPORTED_FILESYSTEMS,
+    DBUS_IFACE_FILESYSTEM,
     DBUS_IFACE_UDISKS2_MANAGER,
     DBUS_NAME_UDISKS2,
     DBUS_OBJECT_UDISKS2,
@@ -40,7 +41,7 @@ class UDisks2StandardOptions:
             auth_no_user_interaction=data.get("auth.no_user_interaction"),
         )
 
-    def to_dict(self) -> Dict[str, Variant]:
+    def to_dict(self) -> dict[str, Variant]:
         """Return dict representation."""
         data = {"auth.no_user_interaction": Variant("b", self.auth_no_user_interaction)}
         return {k: v for k, v in data.items() if v.value is not None}
@@ -52,7 +53,7 @@ class UDisks2(DBusInterfaceProxy):
     http://storaged.org/doc/udisks2-api/latest/
     """
 
-    name = DBUS_NAME_UDISKS2
+    name: str = DBUS_NAME_UDISKS2
     bus_name: str = DBUS_NAME_UDISKS2
     object_path: str = DBUS_OBJECT_UDISKS2
     properties_interface: str = DBUS_IFACE_UDISKS2_MANAGER
@@ -85,14 +86,14 @@ class UDisks2(DBusInterfaceProxy):
         return devices
 
     @dbus_connected
-    async def get_filesystems(self) -> list[UDisks2Filesystem]:
+    async def get_filesystems(self) -> list[UDisks2Block]:
         """Return list of all block devices containing a mountable filesystem."""
         filesystem_devices: list[UDisks2Filesystem] = []
         for block_device in await self.dbus.Manager.call_get_block_devices():
-            filesystem_device = UDisks2Filesystem(block_device)
-            await filesystem_device.connect(self.dbus.bus)
-            # If there are no mountpoints, this block device is not a filesystem device
-            if filesystem_device.mountpoints is None:
+            block_device = UDisks2Block(block_device)
+            await block_device.connect(self.dbus.bus)
+            # If the object doesn't contain a filesystem interface, skip it
+            if DBUS_IFACE_FILESYSTEM not in block_device.additional_interfaces:
                 continue
-            filesystem_devices.append(filesystem_device)
+            filesystem_devices.append(block_device)
         return filesystem_devices

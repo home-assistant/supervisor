@@ -148,6 +148,11 @@ class DBus:
         self._add_interfaces()
 
     @property
+    def proxies(self) -> dict[str, ProxyInterface]:
+        """Return all proxies."""
+        return self._proxies
+
+    @property
     def bus(self) -> MessageBus:
         """Get message bus."""
         return self._bus
