@@ -1,5 +1,5 @@
 """Test host manager."""
-from unittest.mock import PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -47,6 +47,11 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
         assert coresys.dbus.resolved.multicast_dns == MulticastProtocolEnabled.RESOLVE
         assert coresys.dbus.agent.apparmor.version == "2.13.2"
 
+        assert coresys.host.logs.boot_ids == [
+            "b2aca10d5ca54fb1b6fb35c85a0efca9",
+            "b1c386a144fd44db8f855d7e907256f8",
+        ]
+
         sound_update.assert_called_once()
 
     assert (
@@ -54,7 +59,9 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
     )
 
 
-async def test_reload(coresys_dbus: CoreSys, dbus: list[str]):
+async def test_reload(
+    coresys_dbus: CoreSys, journald_gateway: MagicMock, dbus: list[str]
+):
     """Test manager reload and ensure it does not unnecessarily recreate dbus objects."""
     coresys = coresys_dbus
     await coresys.host.load()

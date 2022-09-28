@@ -359,6 +359,18 @@ async def coresys(
 
 
 @pytest.fixture
+async def journald_gateway() -> MagicMock:
+    """Mock logs control."""
+    with patch("supervisor.host.logs.Path.is_socket", return_value=True), patch(
+        "supervisor.host.logs.ClientSession.get"
+    ) as get:
+        get.return_value.__aenter__.return_value.text = AsyncMock(
+            side_effect=[load_fixture("boot_ids_logs.txt")]
+        )
+        yield get
+
+
+@pytest.fixture
 def sys_machine():
     """Mock sys_machine."""
     with patch("supervisor.coresys.CoreSys.machine", new_callable=PropertyMock) as mock:
