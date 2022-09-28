@@ -1,5 +1,4 @@
 [
   "/org/freedesktop/UDisks2/block_devices/loop0",
-  "/org/freedesktop/UDisks2/block_devices/sda1",
-  "/org/freedesktop/UDisks2/block_devices/sda"
+  "/org/freedesktop/UDisks2/block_devices/sda1"
 ]

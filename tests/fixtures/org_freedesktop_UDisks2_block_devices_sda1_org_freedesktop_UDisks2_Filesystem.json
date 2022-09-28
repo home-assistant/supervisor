@@ -1,0 +1,4 @@
+{
+  "MountPoints": ["/mnt/data", "/var/lib/docker", "/var/log/journal"],
+  "Size": 320071864320
+}
