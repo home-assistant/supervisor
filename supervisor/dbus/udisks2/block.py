@@ -6,6 +6,7 @@ from typing import Dict, Optional, TypedDict
 from dbus_next.signature import Variant
 from typing_extensions import Required
 
+from . import UDisks2StandardOptions
 from ..const import (
     DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_DEVICE,
@@ -19,7 +20,6 @@ from ..const import (
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
-from . import UDisks2StandardOptions
 
 
 class FstabConfigDetailsDataType(TypedDict):

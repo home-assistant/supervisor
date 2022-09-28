@@ -4,10 +4,10 @@ from typing import Dict, Optional
 
 from dbus_next.signature import Variant
 
+from . import UDisks2StandardOptions, UDisks2StandardOptionsDataType
 from ..const import DBUS_ATTR_MOUNTPOINTS, DBUS_ATTR_SIZE, DBUS_IFACE_FILESYSTEM
 from ..interface import dbus_property
 from ..utils import dbus_connected
-from . import UDisks2StandardOptions, UDisks2StandardOptionsDataType
 from .block import UDisks2Block
 
 
