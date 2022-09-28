@@ -1,7 +1,11 @@
 """Interface to UDisks2 over D-Bus."""
+from dataclasses import dataclass
 import logging
+from typing import Dict, TypedDict
 
 from dbus_next.aio.message_bus import MessageBus
+from dbus_next.signature import Variant
+from typing_extensions import NotRequired
 
 from ...exceptions import DBusError, DBusInterfaceError
 from ..const import (
@@ -16,6 +20,30 @@ from .block import UDisks2Block
 from .filesystem import UDisks2Filesystem
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+UDisks2StandardOptionsDataType = TypedDict(
+    "UDisks2StandardOptionsDataType",
+    {"auth.no_user_interaction": NotRequired[bool]},
+)
+
+
+@dataclass
+class UDisks2StandardOptions:
+    """UDisks2 standard options."""
+
+    auth_no_user_interaction: bool | None
+
+    @staticmethod
+    def from_dict(data: UDisks2StandardOptionsDataType) -> "UDisks2StandardOptions":
+        """Create UDisks2StandardOptions from dict."""
+        return UDisks2StandardOptions(
+            auth_no_user_interaction=data.get("auth.no_user_interaction"),
+        )
+
+    def to_dict(self) -> Dict[str, Variant]:
+        """Return dict representation."""
+        data = {"auth.no_user_interaction": Variant("b", self.auth_no_user_interaction)}
+        return {k: v for k, v in data.items() if v.value is not None}
 
 
 class UDisks2(DBusInterfaceProxy):
