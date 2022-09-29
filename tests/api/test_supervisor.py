@@ -1,5 +1,6 @@
 """Test Supervisor API."""
 # pylint: disable=protected-access
+import asyncio
 from unittest.mock import patch
 
 from aiohttp.test_utils import TestClient
@@ -114,3 +115,17 @@ async def test_api_supervisor_options_auto_update(
     assert response.status == 200
 
     assert coresys.updater.auto_update is False
+
+
+async def test_api_supervisor_options_diagnostics(
+    api_client: TestClient, coresys: CoreSys, dbus: list[str]
+):
+    """Test changing diagnostics."""
+    await coresys.dbus.agent.connect(coresys.dbus.bus)
+    dbus.clear()
+
+    response = await api_client.post("/supervisor/options", json={"diagnostics": True})
+    await asyncio.sleep(0)
+
+    assert response.status == 200
+    assert dbus == ["/io/hass/os-io.hass.os.Diagnostics"]

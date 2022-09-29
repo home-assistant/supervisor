@@ -90,9 +90,11 @@ class DBus:
             proxy_interface.path,
         )
         try:
-            return await getattr(proxy_interface, method)(
-                *args, unpack_variants=unpack_variants
-            )
+            if unpack_variants:
+                return await getattr(proxy_interface, method)(
+                    *args, unpack_variants=True
+                )
+            return await getattr(proxy_interface, method)(*args)
         except DBusError as err:
             raise DBus.from_dbus_error(err)
 
@@ -299,7 +301,7 @@ class DBusCallWrapper:
 
             return _off_signal
 
-        if dbus_type in ["call", "get", "set"]:
+        if dbus_type in ["call", "get"]:
 
             def _method_wrapper(*args, unpack_variants: bool = True) -> Awaitable:
                 return DBus.call_dbus(
@@ -307,6 +309,13 @@ class DBusCallWrapper:
                 )
 
             return _method_wrapper
+
+        elif dbus_type == "set":
+
+            def _set_wrapper(*args) -> Awaitable:
+                return DBus.call_dbus(self._proxy, name, *args, unpack_variants=False)
+
+            return _set_wrapper
 
         # Didn't reach the dbus call yet, just happened to hit another interface. Return a wrapper
         return DBusCallWrapper(self.dbus, f"{self.interface}.{name}")
