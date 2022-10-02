@@ -65,5 +65,5 @@ If API endpoints of add-on configuration are added/changed:
   Below, some useful links you could explore:
 -->
 
-[dev-checklist]: https://developers.home-assistant.io/docs/en/development_checklist.html
+[dev-checklist]: https://developers.home-assistant.io/docs/development_checklist/
 [docs-repository]: https://github.com/home-assistant/developers.home-assistant
