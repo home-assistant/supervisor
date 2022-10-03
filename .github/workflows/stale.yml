@@ -12,7 +12,7 @@ jobs:
       - uses: actions/stale@v6.0.0
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          days-before-stale: 60
+          days-before-stale: 30
           days-before-close: 7
           stale-issue-label: "stale"
           exempt-issue-labels: "no-stale,Help%20wanted,help-wanted,pinned,rfc,security"
