@@ -4,7 +4,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from supervisor.api.host import DEFAULT_LOG_IDENTIFIERS
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HostLogError
 
@@ -32,13 +31,11 @@ async def test_update(coresys: CoreSys, journald_gateway: MagicMock):
     await coresys.host.logs.update()
     assert coresys.host.logs.boot_ids == TEST_BOOT_IDS
 
-    for identifier in DEFAULT_LOG_IDENTIFIERS + [
+    for identifier in [
         "addon_local_ssh",
-        "hassio_cli",
         "hassio_dns",
-        "hassio_multicast",
-        "hassio_observer",
         "hassio_supervisor",
+        "os-agent",
     ]:
         assert identifier in coresys.host.logs.identifiers
 

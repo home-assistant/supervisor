@@ -69,11 +69,12 @@ async def test_reload(
 
     with patch("supervisor.utils.dbus.DBus.connect") as connect, patch.object(
         coresys.host.sound, "update"
-    ) as sound_update:
+    ) as sound_update, patch.object(type(coresys.host.logs), "update") as logs_update:
         await coresys.host.reload()
 
         connect.assert_not_called()
         sound_update.assert_called_once()
+        logs_update.assert_called_once()
 
     assert (
         "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.ListUnits" in dbus
