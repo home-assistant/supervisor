@@ -10,7 +10,7 @@ from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitError, StoreNotFound
 from supervisor.store.repository import Repository
 
-from tests.api.test_host import DEFAULT_RANGE
+from .test_host import DEFAULT_RANGE
 
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 

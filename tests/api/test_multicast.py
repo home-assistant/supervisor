@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 from aiohttp.test_utils import TestClient
 
-from tests.api.test_host import DEFAULT_RANGE
+from .test_host import DEFAULT_RANGE
 
 
 async def test_api_multicast_logs(api_client: TestClient, journald_logs: MagicMock):

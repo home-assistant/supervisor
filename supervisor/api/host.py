@@ -52,7 +52,12 @@ DEFAULT_RANGE = 100
 DEFAULT_LOG_IDENTIFIERS = [
     "NetworkManager",
     "dropbear",
+    "hassos-apparmor",
     "hassos-config",
+    "hassos-expand",
+    "hassos-overlay",
+    "hassos-persists",
+    "hassos-zram",
     "kernel",
     "os-agent",
     "rauc",

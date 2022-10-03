@@ -10,8 +10,7 @@ from supervisor.coresys import CoreSys
 from supervisor.store.repository import Repository
 
 from ..const import TEST_ADDON_SLUG
-
-from tests.api.test_host import DEFAULT_RANGE
+from .test_host import DEFAULT_RANGE
 
 
 async def test_addons_info(

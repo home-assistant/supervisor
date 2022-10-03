@@ -6,7 +6,7 @@ from aiohttp.test_utils import TestClient
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import MulticastProtocolEnabled
 
-from tests.api.test_host import DEFAULT_RANGE
+from .test_host import DEFAULT_RANGE
 
 
 async def test_llmnr_mdns_info(
