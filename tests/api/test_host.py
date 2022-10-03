@@ -5,14 +5,18 @@ from unittest.mock import MagicMock, PropertyMock, patch
 from aiohttp.test_utils import TestClient
 import pytest
 
-from supervisor.addons.addon import Addon
 from supervisor.coresys import CoreSys
 from supervisor.host.logs import LogsControl
 
 DEFAULT_IDENTIFIERS = [
     "NetworkManager",
     "dropbear",
+    "hassos-apparmor",
     "hassos-config",
+    "hassos-expand",
+    "hassos-overlay",
+    "hassos-persists",
+    "hassos-zram",
     "kernel",
     "os-agent",
     "rauc",
@@ -216,30 +220,6 @@ async def test_advanced_logs_boot_id_offset(
     journald_logs.assert_called_once_with(
         params={"_BOOT_ID": "bbb", "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
         range_header=DEFAULT_RANGE,
-    )
-
-    journald_logs.reset_mock()
-
-
-async def test_advanced_logs_slug_as_identifier(
-    api_client, journald_logs: MagicMock, install_addon_ssh: Addon
-):
-    """Test advanced logging API when using known slug as syslog identifier."""
-    await api_client.get("/host/logs/supervisor/entries")
-    journald_logs.assert_called_once_with(
-        {"SYSLOG_IDENTIFIER": "hassio_supervisor"}, None
-    )
-
-    journald_logs.reset_mock()
-
-    await api_client.get("/host/logs/dns/entries")
-    journald_logs.assert_called_once_with({"SYSLOG_IDENTIFIER": "hassio_dns"}, None)
-
-    journald_logs.reset_mock()
-
-    await api_client.get("/host/logs/local_ssh/entries")
-    journald_logs.assert_called_once_with(
-        {"SYSLOG_IDENTIFIER": "addon_local_ssh"}, None
     )
 
     journald_logs.reset_mock()
