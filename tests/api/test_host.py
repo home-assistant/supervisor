@@ -2,12 +2,23 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.coresys import CoreSys
 from supervisor.host.logs import LogsControl
 
+DEFAULT_IDENTIFIERS = [
+    "NetworkManager",
+    "dropbear",
+    "hassos-config",
+    "kernel",
+    "os-agent",
+    "rauc",
+    "systemd",
+]
+DEFAULT_RANGE = "entries=:-100:"
 # pylint: disable=protected-access
 
 
@@ -22,23 +33,8 @@ async def fixture_coresys_disk_info(coresys: CoreSys) -> CoreSys:
     yield coresys
 
 
-@pytest.fixture(name="journald_logs")
-async def fixture_journald_logs() -> MagicMock:
-    """Mock journald logs and make it available."""
-    with patch.object(
-        LogsControl, "available", new=PropertyMock(return_value=True)
-    ), patch.object(
-        LogsControl,
-        "boot_ids",
-        new=PropertyMock(return_value=["aaa", "bbb", "ccc"]),
-    ), patch.object(
-        LogsControl, "journald_logs", new=MagicMock()
-    ) as logs:
-        yield logs
-
-
 @pytest.mark.asyncio
-async def test_api_host_info(api_client, coresys_disk_info: CoreSys):
+async def test_api_host_info(api_client: TestClient, coresys_disk_info: CoreSys):
     """Test host info api."""
     coresys = coresys_disk_info
 
@@ -52,7 +48,7 @@ async def test_api_host_info(api_client, coresys_disk_info: CoreSys):
 
 
 async def test_api_host_features(
-    api_client, coresys_disk_info: CoreSys, dbus_is_connected
+    api_client: TestClient, coresys_disk_info: CoreSys, dbus_is_connected
 ):
     """Test host info features."""
     coresys = coresys_disk_info
@@ -115,7 +111,7 @@ async def test_api_host_features(
 
 
 async def test_api_llmnr_mdns_info(
-    api_client, coresys_disk_info: CoreSys, dbus_is_connected
+    api_client: TestClient, coresys_disk_info: CoreSys, dbus_is_connected
 ):
     """Test llmnr and mdns details in info."""
     coresys = coresys_disk_info
@@ -139,65 +135,88 @@ async def test_api_llmnr_mdns_info(
     assert result["data"]["llmnr_hostname"] == "homeassistant"
 
 
-async def test_api_boot_ids_info(
-    api_client, coresys_disk_info: CoreSys, journald_logs: MagicMock
-):
+async def test_api_boot_ids_info(api_client: TestClient, journald_logs: MagicMock):
     """Test boot IDs in host info."""
-    resp = await api_client.get("/host/info")
+    resp = await api_client.get("/host/logs/boots")
     result = await resp.json()
-    assert result["data"]["boot_ids"] == {"0": "ccc", "-1": "bbb", "-2": "aaa"}
+    assert result["data"] == {"0": "ccc", "-1": "bbb", "-2": "aaa"}
 
 
-async def test_advanced_logs(api_client, journald_logs: MagicMock):
+async def test_advanced_logs(api_client: TestClient, journald_logs: MagicMock):
     """Test advanced logging API entries with identifier and custom boot."""
-    await api_client.get("/host/logs/entries")
-    journald_logs.assert_called_once_with({}, None)
+    await api_client.get("/host/logs")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        range_header=DEFAULT_RANGE,
+    )
 
     journald_logs.reset_mock()
 
     identifier = "dropbear"
-    await api_client.get(f"/host/logs/{identifier}/entries")
-    journald_logs.assert_called_once_with({"SYSLOG_IDENTIFIER": identifier}, None)
+    await api_client.get(f"/host/logs/identifiers/{identifier}")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": identifier}, range_header=DEFAULT_RANGE
+    )
 
     journald_logs.reset_mock()
 
     bootid = "798cc03bcd77465482b6a1c43dc6a5fc"
-    await api_client.get(f"/host/logs/boot/{bootid}/entries")
-    journald_logs.assert_called_once_with({"_BOOT_ID": bootid}, None)
+    await api_client.get(f"/host/logs/boots/{bootid}")
+    journald_logs.assert_called_once_with(
+        params={"_BOOT_ID": bootid, "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        range_header=DEFAULT_RANGE,
+    )
 
     journald_logs.reset_mock()
 
-    await api_client.get(f"/host/logs/boot/{bootid}/{identifier}/entries")
+    await api_client.get(f"/host/logs/boots/{bootid}/identifiers/{identifier}")
     journald_logs.assert_called_once_with(
-        {"_BOOT_ID": bootid, "SYSLOG_IDENTIFIER": identifier}, None
+        params={"_BOOT_ID": bootid, "SYSLOG_IDENTIFIER": identifier},
+        range_header=DEFAULT_RANGE,
     )
 
     journald_logs.reset_mock()
 
     headers = {"Range": "entries=:-19:10"}
-    await api_client.get("/host/logs/entries", headers=headers)
-    journald_logs.assert_called_once_with({}, headers["Range"])
+    await api_client.get("/host/logs", headers=headers)
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS}, range_header=headers["Range"]
+    )
 
     journald_logs.reset_mock()
 
-    await api_client.get("/host/logs/entries/follow")
-    journald_logs.assert_called_once_with({"follow": ""}, None)
+    await api_client.get("/host/logs/follow")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS, "follow": ""},
+        range_header=DEFAULT_RANGE,
+    )
 
 
-async def test_advanced_logs_boot_id_offset(api_client, journald_logs: MagicMock):
+async def test_advanced_logs_boot_id_offset(
+    api_client: TestClient, journald_logs: MagicMock
+):
     """Test advanced logging API when using an offset as boot ID."""
-    await api_client.get("/host/logs/boot/0/entries")
-    journald_logs.assert_called_once_with({"_BOOT_ID": "ccc"}, None)
+    await api_client.get("/host/logs/boots/0")
+    journald_logs.assert_called_once_with(
+        params={"_BOOT_ID": "ccc", "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        range_header=DEFAULT_RANGE,
+    )
 
     journald_logs.reset_mock()
 
-    await api_client.get("/host/logs/boot/-2/entries")
-    journald_logs.assert_called_once_with({"_BOOT_ID": "aaa"}, None)
+    await api_client.get("/host/logs/boots/-2")
+    journald_logs.assert_called_once_with(
+        params={"_BOOT_ID": "aaa", "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        range_header=DEFAULT_RANGE,
+    )
 
     journald_logs.reset_mock()
 
-    await api_client.get("/host/logs/boot/2/entries")
-    journald_logs.assert_called_once_with({"_BOOT_ID": "bbb"}, None)
+    await api_client.get("/host/logs/boots/2")
+    journald_logs.assert_called_once_with(
+        params={"_BOOT_ID": "bbb", "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        range_header=DEFAULT_RANGE,
+    )
 
     journald_logs.reset_mock()
 
@@ -206,13 +225,10 @@ async def test_advanced_logs_slug_as_identifier(
     api_client, journald_logs: MagicMock, install_addon_ssh: Addon
 ):
     """Test advanced logging API when using known slug as syslog identifier."""
-    with patch("supervisor.docker.supervisor.os") as os:
-        os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
-
-        await api_client.get("/host/logs/supervisor/entries")
-        journald_logs.assert_called_once_with(
-            {"SYSLOG_IDENTIFIER": "hassio_supervisor"}, None
-        )
+    await api_client.get("/host/logs/supervisor/entries")
+    journald_logs.assert_called_once_with(
+        {"SYSLOG_IDENTIFIER": "hassio_supervisor"}, None
+    )
 
     journald_logs.reset_mock()
 
@@ -229,16 +245,16 @@ async def test_advanced_logs_slug_as_identifier(
     journald_logs.reset_mock()
 
 
-async def test_advanced_logs_errors(api_client):
+async def test_advanced_logs_errors(api_client: TestClient):
     """Test advanced logging API errors."""
     # coresys = coresys_logs_control
-    resp = await api_client.get("/host/logs/entries")
+    resp = await api_client.get("/host/logs")
     result = await resp.json()
     assert result["result"] == "error"
     assert result["message"] == "No systemd-journal-gatewayd Unix socket available"
 
     headers = {"Accept": "application/json"}
-    resp = await api_client.get("/host/logs/entries", headers=headers)
+    resp = await api_client.get("/host/logs", headers=headers)
     result = await resp.json()
     assert result["result"] == "error"
     assert (
@@ -246,7 +262,7 @@ async def test_advanced_logs_errors(api_client):
         == "Invalid content type requested. Only text/plain supported for now."
     )
 
-    resp = await api_client.get("/host/logs/boot/-1/entries")
+    resp = await api_client.get("/host/logs/boots/-1")
     result = await resp.json()
     assert result["result"] == "error"
     assert (
@@ -257,12 +273,12 @@ async def test_advanced_logs_errors(api_client):
     with patch.object(
         LogsControl, "boot_ids", new=PropertyMock(return_value=["aaa", "bbb", "ccc"])
     ):
-        resp = await api_client.get("/host/logs/boot/4/entries")
+        resp = await api_client.get("/host/logs/boots/4")
         result = await resp.json()
         assert result["result"] == "error"
         assert result["message"] == "Logs only contain 3 boots"
 
-        resp = await api_client.get("/host/logs/boot/-3/entries")
+        resp = await api_client.get("/host/logs/boots/-3")
         result = await resp.json()
         assert result["result"] == "error"
         assert result["message"] == "Logs only contain 3 boots"

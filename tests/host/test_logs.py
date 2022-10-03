@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from supervisor.api.host import DEFAULT_LOG_IDENTIFIERS
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HostLogError
 
@@ -23,14 +24,25 @@ async def test_available(coresys: CoreSys, journald_gateway: MagicMock):
     assert coresys.host.logs.available is True
 
 
-async def test_get_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
-    """Test getting boot IDs."""
+async def test_update(coresys: CoreSys, journald_gateway: MagicMock):
+    """Test update."""
     assert coresys.host.logs.boot_ids == []
+    assert coresys.host.logs.identifiers == []
 
     await coresys.host.logs.update()
     assert coresys.host.logs.boot_ids == TEST_BOOT_IDS
 
-    # Calls would fail at this point but update should not try to query again
-    journald_gateway.side_effect = TimeoutError()
+    for identifier in DEFAULT_LOG_IDENTIFIERS + [
+        "addon_local_ssh",
+        "hassio_cli",
+        "hassio_dns",
+        "hassio_multicast",
+        "hassio_observer",
+        "hassio_supervisor",
+    ]:
+        assert identifier in coresys.host.logs.identifiers
+
+    # Boot ID query should not be run again, mock a failure for it to ensure
+    journald_gateway.side_effect = [MagicMock(), TimeoutError()]
     await coresys.host.logs.update()
     assert coresys.host.logs.boot_ids == TEST_BOOT_IDS

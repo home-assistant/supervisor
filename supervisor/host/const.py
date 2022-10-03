@@ -1,6 +1,10 @@
 """Const for host."""
 from enum import Enum
 
+PARAM_BOOT_ID = "_BOOT_ID"
+PARAM_FOLLOW = "follow"
+PARAM_SYSLOG_IDENTIFIER = "SYSLOG_IDENTIFIER"
+
 
 class InterfaceMethod(str, Enum):
     """Configuration of an interface."""

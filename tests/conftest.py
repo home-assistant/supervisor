@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp import web
+from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
@@ -50,6 +51,7 @@ from supervisor.dbus.systemd import Systemd
 from supervisor.dbus.timedate import TimeDate
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
+from supervisor.host.logs import LogsControl
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES, DBus
@@ -365,7 +367,10 @@ async def journald_gateway() -> MagicMock:
         "supervisor.host.logs.ClientSession.get"
     ) as get:
         get.return_value.__aenter__.return_value.text = AsyncMock(
-            side_effect=[load_fixture("boot_ids_logs.txt")]
+            side_effect=[
+                load_fixture("logs_identifiers.txt"),
+                load_fixture("logs_boot_ids.txt"),
+            ]
         )
         yield get
 
@@ -388,7 +393,7 @@ def sys_supervisor():
 
 
 @pytest.fixture
-async def api_client(aiohttp_client, coresys: CoreSys):
+async def api_client(aiohttp_client, coresys: CoreSys) -> TestClient:
     """Fixture for RestAPI client."""
 
     @web.middleware
@@ -400,7 +405,9 @@ async def api_client(aiohttp_client, coresys: CoreSys):
     api = RestAPI(coresys)
     api.webapp = web.Application(middlewares=[_security_middleware])
     api.start = AsyncMock()
-    await api.load()
+    with patch("supervisor.docker.supervisor.os") as os:
+        os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
+        await api.load()
     yield await aiohttp_client(api.webapp)
 
 
@@ -540,3 +547,18 @@ async def backups(
         coresys.backups._backups[backup.slug] = backup
 
     yield coresys.backups.list_backups
+
+
+@pytest.fixture
+async def journald_logs() -> MagicMock:
+    """Mock journald logs and make it available."""
+    with patch.object(
+        LogsControl, "available", new=PropertyMock(return_value=True)
+    ), patch.object(
+        LogsControl,
+        "boot_ids",
+        new=PropertyMock(return_value=["aaa", "bbb", "ccc"]),
+    ), patch.object(
+        LogsControl, "journald_logs", new=MagicMock()
+    ) as logs:
+        yield logs

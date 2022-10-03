@@ -1,7 +1,7 @@
 """Test Supervisor API."""
 # pylint: disable=protected-access
 import asyncio
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -9,6 +9,8 @@ import pytest
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitError, StoreNotFound
 from supervisor.store.repository import Repository
+
+from tests.api.test_host import DEFAULT_RANGE
 
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 
@@ -129,3 +131,20 @@ async def test_api_supervisor_options_diagnostics(
 
     assert response.status == 200
     assert dbus == ["/io/hass/os-io.hass.os.Diagnostics"]
+
+
+async def test_api_supervisor_logs(api_client: TestClient, journald_logs: MagicMock):
+    """Test supervisor logs."""
+    await api_client.get("/supervisor/logs")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": "hassio_supervisor"},
+        range_header=DEFAULT_RANGE,
+    )
+
+    journald_logs.reset_mock()
+
+    await api_client.get("/supervisor/logs/follow")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": "hassio_supervisor", "follow": ""},
+        range_header=DEFAULT_RANGE,
+    )

@@ -104,8 +104,9 @@ from ..exceptions import (
     PwnedSecret,
 )
 from ..validate import docker_ports
-from .const import ATTR_SIGNED, CONTENT_TYPE_BINARY
-from .utils import api_process, api_process_raw, api_validate, json_loads
+from .const import ATTR_SIGNED
+from .host import APIHost
+from .utils import api_process, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -411,11 +412,17 @@ class APIAddons(CoreSysAttributes):
         addon = self._extract_addon(request)
         return asyncio.shield(addon.rebuild())
 
-    @api_process_raw(CONTENT_TYPE_BINARY)
-    def logs(self, request: web.Request) -> Awaitable[bytes]:
+    @api_process
+    def logs(
+        self, request: web.Request, follow: bool = False
+    ) -> Awaitable[web.StreamResponse]:
         """Return logs from add-on."""
         addon = self._extract_addon(request)
-        return addon.logs()
+        api_host = APIHost()
+        api_host.coresys = self.coresys
+        return api_host.advanced_logs(
+            request, identifier=addon.instance.name, follow=follow
+        )
 
     @api_process
     async def stdin(self, request: web.Request) -> None:
