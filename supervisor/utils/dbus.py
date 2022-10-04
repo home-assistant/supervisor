@@ -174,7 +174,7 @@ class DBus:
                 "Property change for %s-%s: %s changed & %s invalidated",
                 self.bus_name,
                 self.object_path,
-                changed.keys(),
+                list(changed.keys()),
                 invalidated,
             )
 
