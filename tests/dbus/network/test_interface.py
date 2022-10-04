@@ -6,6 +6,7 @@ import pytest
 
 from supervisor.dbus.const import DeviceType, InterfaceMethod
 from supervisor.dbus.network import NetworkManager
+from supervisor.dbus.network.interface import NetworkInterface
 
 from tests.common import fire_property_change_signal
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
@@ -15,6 +16,7 @@ from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
 async def test_network_interface_ethernet(network_manager: NetworkManager):
     """Test network interface."""
     interface = network_manager.interfaces[TEST_INTERFACE]
+    assert interface.sync_properties is True
     assert interface.name == TEST_INTERFACE
     assert interface.type == DeviceType.ETHERNET
     assert interface.connection.state == 2
@@ -55,6 +57,7 @@ async def test_network_interface_ethernet(network_manager: NetworkManager):
 async def test_network_interface_wlan(network_manager: NetworkManager):
     """Test network interface."""
     interface = network_manager.interfaces[TEST_INTERFACE_WLAN]
+    assert interface.sync_properties is True
     assert interface.name == TEST_INTERFACE_WLAN
     assert interface.type == DeviceType.WIRELESS
 
@@ -83,3 +86,19 @@ async def test_old_wireless_disconnect(network_manager: NetworkManager):
 
     assert interface.wireless is None
     assert wireless.is_connected is False
+
+
+async def test_unmanaged_interface(network_manager: NetworkManager):
+    """Test unmanaged interfaces don't sync properties."""
+    interface = NetworkInterface(
+        network_manager.dbus, "/org/freedesktop/NetworkManager/Devices/35"
+    )
+    await interface.connect(network_manager.dbus.bus)
+
+    assert interface.managed is False
+    assert interface.connection is None
+    assert interface.driver == "veth"
+    assert interface.sync_properties is False
+
+    with pytest.raises(AssertionError):
+        fire_property_change_signal(interface, {"Driver": "test"})
