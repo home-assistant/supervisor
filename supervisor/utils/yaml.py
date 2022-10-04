@@ -18,7 +18,7 @@ def read_yaml_file(path: Path) -> dict:
     try:
         return _YAML.load(path) or {}
 
-    except (YAMLError, AttributeError) as err:
+    except (YAMLError, AttributeError, OSError) as err:
         raise YamlFileError(
             f"Can't read YAML file {path!s} - {err!s}", _LOGGER.error
         ) from err
