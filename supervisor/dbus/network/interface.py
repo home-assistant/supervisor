@@ -31,6 +31,7 @@ class NetworkInterface(DBusInterfaceProxy):
 
     bus_name: str = DBUS_NAME_NM
     properties_interface: str = DBUS_IFACE_DEVICE
+    sync_properties: bool = False
 
     def __init__(self, nm_dbus: DBus, object_path: str) -> None:
         """Initialize NetworkConnection object."""
@@ -100,7 +101,11 @@ class NetworkInterface(DBusInterfaceProxy):
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
-        return await super().connect(bus)
+        await super().connect(bus)
+
+        self.sync_properties = self.managed
+        if self.sync_properties and self.is_connected:
+            self.dbus.sync_property_changes(self.properties_interface, self.update)
 
     @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:
