@@ -23,18 +23,25 @@ async def test_available(coresys: CoreSys, journald_gateway: MagicMock):
     assert coresys.host.logs.available is True
 
 
-async def test_update(coresys: CoreSys, journald_gateway: MagicMock):
-    """Test update."""
+async def test_load(coresys: CoreSys, journald_gateway: MagicMock):
+    """Test load."""
     assert coresys.host.logs.boot_ids == []
     assert coresys.host.logs.identifiers == []
+    assert coresys.host.logs.default_identifiers == []
 
-    await coresys.host.logs.update()
+    await coresys.host.logs.load()
     assert coresys.host.logs.boot_ids == TEST_BOOT_IDS
 
+    # File is quite large so just check it loaded
+    for identifier in ["kernel", "os-agent", "systemd"]:
+        assert identifier in coresys.host.logs.default_identifiers
+
+    # Mock is large so just look for a few different types of identifiers
     for identifier in [
         "addon_local_ssh",
         "hassio_dns",
         "hassio_supervisor",
+        "kernel",
         "os-agent",
     ]:
         assert identifier in coresys.host.logs.identifiers

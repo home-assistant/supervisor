@@ -550,7 +550,7 @@ async def backups(
 
 
 @pytest.fixture
-async def journald_logs() -> MagicMock:
+async def journald_logs(coresys: CoreSys) -> MagicMock:
     """Mock journald logs and make it available."""
     with patch.object(
         LogsControl, "available", new=PropertyMock(return_value=True)
@@ -559,6 +559,12 @@ async def journald_logs() -> MagicMock:
         "boot_ids",
         new=PropertyMock(return_value=["aaa", "bbb", "ccc"]),
     ), patch.object(
+        LogsControl,
+        "identifiers",
+        new=PropertyMock(return_value=["hassio_supervisor", "hassos-config", "kernel"]),
+    ), patch.object(
         LogsControl, "journald_logs", new=MagicMock()
     ) as logs:
+        await coresys.host.logs.load()
+        logs.reset_mock()
         yield logs

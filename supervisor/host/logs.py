@@ -12,10 +12,17 @@ from aiohttp.connector import UnixConnector
 from aiohttp.hdrs import ACCEPT, RANGE
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HostLogError, HostNotSupportedError
+from ..exceptions import ConfigurationFileError, HostLogError, HostNotSupportedError
+from ..utils.json import read_json_file
 from .const import PARAM_BOOT_ID, PARAM_SYSLOG_IDENTIFIER, LogFormat
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# pylint: disable=no-member
+SYSLOG_IDENTIFIERS_JSON: Path = (
+    Path(__file__).parents[1].joinpath("data/syslog-identifiers.json")
+)
+# pylint: enable=no-member
 
 SYSTEMD_JOURNAL_GATEWAYD_SOCKET: Path = Path("/run/systemd-journal-gatewayd.sock")
 
@@ -35,6 +42,7 @@ class LogsControl(CoreSysAttributes):
         self._profiles: set[str] = set()
         self._boot_ids: list[str] = []
         self._identifiers: list[str] = []
+        self._default_identifiers: list[str] = []
 
     @property
     def available(self) -> bool:
@@ -50,6 +58,11 @@ class LogsControl(CoreSysAttributes):
     def identifiers(self) -> list[str]:
         """Get syslog identifiers."""
         return self._identifiers
+
+    @property
+    def default_identifiers(self) -> list[str]:
+        """Get default syslog identifiers."""
+        return self._default_identifiers
 
     def get_boot_id(self, offset: int = 0):
         """
@@ -68,6 +81,18 @@ class LogsControl(CoreSysAttributes):
             raise ValueError(f"Logs only contain {len(self.boot_ids)} boots")
 
         return self.boot_ids[offset]
+
+    async def load(self) -> None:
+        """Load log control."""
+        try:
+            self._default_identifiers = read_json_file(SYSLOG_IDENTIFIERS_JSON)
+        except ConfigurationFileError:
+            _LOGGER.warning(
+                "Can't read syslog identifiers json file from %s",
+                SYSLOG_IDENTIFIERS_JSON,
+            )
+
+        await self.update()
 
     async def update(self) -> None:
         """Cache boot and identifier information."""

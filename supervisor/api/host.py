@@ -49,20 +49,6 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 IDENTIFIER = "identifier"
 BOOTID = "bootid"
 DEFAULT_RANGE = 100
-DEFAULT_LOG_IDENTIFIERS = [
-    "NetworkManager",
-    "dropbear",
-    "hassos-apparmor",
-    "hassos-config",
-    "hassos-expand",
-    "hassos-overlay",
-    "hassos-persists",
-    "hassos-zram",
-    "kernel",
-    "os-agent",
-    "rauc",
-    "systemd",
-]
 
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
@@ -173,7 +159,7 @@ class APIHost(CoreSysAttributes):
         elif IDENTIFIER in request.match_info:
             params[PARAM_SYSLOG_IDENTIFIER] = request.match_info.get(IDENTIFIER)
         else:
-            params[PARAM_SYSLOG_IDENTIFIER] = DEFAULT_LOG_IDENTIFIERS
+            params[PARAM_SYSLOG_IDENTIFIER] = self.sys_host.logs.default_identifiers
 
         if BOOTID in request.match_info:
             params[PARAM_BOOT_ID] = self._get_boot_id(request.match_info.get(BOOTID))

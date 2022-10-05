@@ -8,20 +8,6 @@ import pytest
 from supervisor.coresys import CoreSys
 from supervisor.host.logs import LogsControl
 
-DEFAULT_IDENTIFIERS = [
-    "NetworkManager",
-    "dropbear",
-    "hassos-apparmor",
-    "hassos-config",
-    "hassos-expand",
-    "hassos-overlay",
-    "hassos-persists",
-    "hassos-zram",
-    "kernel",
-    "os-agent",
-    "rauc",
-    "systemd",
-]
 DEFAULT_RANGE = "entries=:-100:"
 # pylint: disable=protected-access
 
@@ -140,17 +126,26 @@ async def test_api_llmnr_mdns_info(
 
 
 async def test_api_boot_ids_info(api_client: TestClient, journald_logs: MagicMock):
-    """Test boot IDs in host info."""
+    """Test getting boot IDs."""
     resp = await api_client.get("/host/logs/boots")
     result = await resp.json()
     assert result["data"] == {"0": "ccc", "-1": "bbb", "-2": "aaa"}
 
 
-async def test_advanced_logs(api_client: TestClient, journald_logs: MagicMock):
+async def test_api_identifiers_info(api_client: TestClient, journald_logs: MagicMock):
+    """Test getting syslog identifiers."""
+    resp = await api_client.get("/host/logs/identifiers")
+    result = await resp.json()
+    assert result["data"] == ["hassio_supervisor", "hassos-config", "kernel"]
+
+
+async def test_advanced_logs(
+    api_client: TestClient, coresys: CoreSys, journald_logs: MagicMock
+):
     """Test advanced logging API entries with identifier and custom boot."""
     await api_client.get("/host/logs")
     journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
         range_header=DEFAULT_RANGE,
     )
 
@@ -167,7 +162,10 @@ async def test_advanced_logs(api_client: TestClient, journald_logs: MagicMock):
     bootid = "798cc03bcd77465482b6a1c43dc6a5fc"
     await api_client.get(f"/host/logs/boots/{bootid}")
     journald_logs.assert_called_once_with(
-        params={"_BOOT_ID": bootid, "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        params={
+            "_BOOT_ID": bootid,
+            "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
+        },
         range_header=DEFAULT_RANGE,
     )
 
@@ -184,25 +182,32 @@ async def test_advanced_logs(api_client: TestClient, journald_logs: MagicMock):
     headers = {"Range": "entries=:-19:10"}
     await api_client.get("/host/logs", headers=headers)
     journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS}, range_header=headers["Range"]
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
+        range_header=headers["Range"],
     )
 
     journald_logs.reset_mock()
 
     await api_client.get("/host/logs/follow")
     journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS, "follow": ""},
+        params={
+            "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
+            "follow": "",
+        },
         range_header=DEFAULT_RANGE,
     )
 
 
 async def test_advanced_logs_boot_id_offset(
-    api_client: TestClient, journald_logs: MagicMock
+    api_client: TestClient, coresys: CoreSys, journald_logs: MagicMock
 ):
     """Test advanced logging API when using an offset as boot ID."""
     await api_client.get("/host/logs/boots/0")
     journald_logs.assert_called_once_with(
-        params={"_BOOT_ID": "ccc", "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        params={
+            "_BOOT_ID": "ccc",
+            "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
+        },
         range_header=DEFAULT_RANGE,
     )
 
@@ -210,7 +215,10 @@ async def test_advanced_logs_boot_id_offset(
 
     await api_client.get("/host/logs/boots/-2")
     journald_logs.assert_called_once_with(
-        params={"_BOOT_ID": "aaa", "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        params={
+            "_BOOT_ID": "aaa",
+            "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
+        },
         range_header=DEFAULT_RANGE,
     )
 
@@ -218,7 +226,10 @@ async def test_advanced_logs_boot_id_offset(
 
     await api_client.get("/host/logs/boots/2")
     journald_logs.assert_called_once_with(
-        params={"_BOOT_ID": "bbb", "SYSLOG_IDENTIFIER": DEFAULT_IDENTIFIERS},
+        params={
+            "_BOOT_ID": "bbb",
+            "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
+        },
         range_header=DEFAULT_RANGE,
     )
 

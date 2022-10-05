@@ -141,7 +141,7 @@ class HostManager(CoreSysAttributes):
                 await self.sound.update()
 
             with suppress(HostLogError):
-                await self.logs.update()
+                await self.logs.load()
 
             await self.network.load()
 
