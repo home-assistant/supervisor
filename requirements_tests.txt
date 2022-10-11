@@ -5,7 +5,7 @@ flake8-docstrings==1.6.0
 flake8==5.0.4
 pre-commit==2.20.0
 pydocstyle==6.1.1
-pylint==2.15.3
+pylint==2.15.4
 pytest-aiohttp==1.0.4
 pytest-asyncio==0.18.3
 pytest-cov==4.0.0
