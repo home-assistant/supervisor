@@ -20,7 +20,6 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 UNHEALTHY_IMAGES = [
     "watchtower",
     "ouroboros",
-    "portainer",
 ]
 IGNORE_IMAGES = ["sha256"]
 
