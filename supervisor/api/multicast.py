@@ -6,8 +6,6 @@ from typing import Any, Awaitable
 from aiohttp import web
 import voluptuous as vol
 
-from supervisor.api.const import CONTENT_TYPE_BINARY
-
 from ..const import (
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
@@ -24,6 +22,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import version_tag
+from .const import CONTENT_TYPE_BINARY
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
