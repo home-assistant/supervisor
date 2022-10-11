@@ -6,8 +6,6 @@ from aiohttp.test_utils import TestClient
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import MulticastProtocolEnabled
 
-from .test_host import DEFAULT_RANGE
-
 
 async def test_llmnr_mdns_info(
     api_client: TestClient, coresys: CoreSys, dbus_is_connected: PropertyMock
@@ -66,18 +64,13 @@ async def test_options(api_client: TestClient, coresys: CoreSys):
         restart.assert_called_once()
 
 
-async def test_api_dns_logs(api_client: TestClient, journald_logs: MagicMock):
+async def test_api_dns_logs(api_client: TestClient, docker_logs: MagicMock):
     """Test dns logs."""
-    await api_client.get("/dns/logs")
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_dns"},
-        range_header=DEFAULT_RANGE,
-    )
-
-    journald_logs.reset_mock()
-
-    await api_client.get("/dns/logs/follow")
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_dns", "follow": ""},
-        range_header=DEFAULT_RANGE,
-    )
+    resp = await api_client.get("/dns/logs")
+    assert resp.status == 200
+    assert resp.content_type == "application/octet-stream"
+    content = await resp.text()
+    assert content.split("\n")[0:2] == [
+        "\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os\x1b[0m",
+        "\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor\x1b[0m",
+    ]

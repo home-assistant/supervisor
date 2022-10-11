@@ -57,7 +57,13 @@ from supervisor.store.repository import Repository
 from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES, DBus
 from supervisor.utils.dt import utcnow
 
-from .common import exists_fixture, get_dbus_name, load_fixture, load_json_fixture
+from .common import (
+    exists_fixture,
+    get_dbus_name,
+    load_binary_fixture,
+    load_fixture,
+    load_json_fixture,
+)
 from .const import TEST_ADDON_SLUG
 
 # pylint: disable=redefined-outer-name, protected-access
@@ -568,3 +574,16 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
         await coresys.host.logs.load()
         logs.reset_mock()
         yield logs
+
+
+@pytest.fixture
+async def docker_logs(docker: DockerAPI) -> MagicMock:
+    """Mock log output for a container from docker."""
+    container_mock = MagicMock()
+    container_mock.logs.return_value = load_binary_fixture("logs_docker_container.txt")
+    docker.containers.get.return_value = container_mock
+
+    with patch("supervisor.docker.supervisor.os") as os:
+        os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
+
+        yield container_mock.logs

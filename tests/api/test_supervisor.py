@@ -10,8 +10,6 @@ from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitError, StoreNotFound
 from supervisor.store.repository import Repository
 
-from .test_host import DEFAULT_RANGE
-
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 
 
@@ -133,18 +131,13 @@ async def test_api_supervisor_options_diagnostics(
     assert dbus == ["/io/hass/os-io.hass.os.Diagnostics"]
 
 
-async def test_api_supervisor_logs(api_client: TestClient, journald_logs: MagicMock):
+async def test_api_supervisor_logs(api_client: TestClient, docker_logs: MagicMock):
     """Test supervisor logs."""
-    await api_client.get("/supervisor/logs")
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_supervisor"},
-        range_header=DEFAULT_RANGE,
-    )
-
-    journald_logs.reset_mock()
-
-    await api_client.get("/supervisor/logs/follow")
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_supervisor", "follow": ""},
-        range_header=DEFAULT_RANGE,
-    )
+    resp = await api_client.get("/supervisor/logs")
+    assert resp.status == 200
+    assert resp.content_type == "application/octet-stream"
+    content = await resp.text()
+    assert content.split("\n")[0:2] == [
+        "\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os\x1b[0m",
+        "\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor\x1b[0m",
+    ]

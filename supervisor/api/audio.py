@@ -34,7 +34,8 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..host.sound import StreamType
 from ..validate import version_tag
-from .utils import api_process, api_validate
+from .const import CONTENT_TYPE_BINARY
+from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -112,6 +113,11 @@ class APIAudio(CoreSysAttributes):
         if version == self.sys_plugins.audio.version:
             raise APIError(f"Version {version} is already in use")
         await asyncio.shield(self.sys_plugins.audio.update(version))
+
+    @api_process_raw(CONTENT_TYPE_BINARY)
+    def logs(self, request: web.Request) -> Awaitable[bytes]:
+        """Return Audio Docker logs."""
+        return self.sys_plugins.audio.logs()
 
     @api_process
     def restart(self, request: web.Request) -> Awaitable[None]:
