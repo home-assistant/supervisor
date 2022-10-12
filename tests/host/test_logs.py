@@ -1,12 +1,14 @@
 """Test host logs control."""
 
-import asyncio
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HostLogError
+from supervisor.exceptions import HostNotSupportedError
+from supervisor.host.logs import LogsControl
+
+from tests.common import load_fixture
 
 TEST_BOOT_IDS = [
     "b2aca10d5ca54fb1b6fb35c85a0efca9",
@@ -14,30 +16,56 @@ TEST_BOOT_IDS = [
 ]
 
 
-async def test_available(coresys: CoreSys, journald_gateway: MagicMock):
-    """Test available as long as socket is regardless of boot IDs."""
-    journald_gateway.side_effect = TimeoutError()
-    with pytest.raises(HostLogError):
-        await coresys.host.logs.update()
-
-    assert coresys.host.logs.boot_ids == []
-    assert coresys.host.logs.available is True
-
-
-async def test_load(coresys: CoreSys, journald_gateway: MagicMock):
+async def test_load(coresys: CoreSys):
     """Test load."""
-    assert coresys.host.logs.boot_ids == []
-    assert coresys.host.logs.identifiers == []
     assert coresys.host.logs.default_identifiers == []
 
     await coresys.host.logs.load()
-    await asyncio.sleep(0)
-    await asyncio.sleep(0)
-    assert coresys.host.logs.boot_ids == TEST_BOOT_IDS
+    assert coresys.host.logs.boot_ids == []
+    assert coresys.host.logs.identifiers == []
 
     # File is quite large so just check it loaded
     for identifier in ["kernel", "os-agent", "systemd"]:
         assert identifier in coresys.host.logs.default_identifiers
+
+
+async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
+    """Test getting logs and errors."""
+    assert coresys.host.logs.available is True
+
+    async with coresys.host.logs.journald_logs() as resp:
+        body = await resp.text()
+        assert (
+            "Oct 11 20:46:22 odroid-dev systemd[1]: Started Hostname Service." in body
+        )
+
+    with patch.object(
+        LogsControl, "available", new=PropertyMock(return_value=False)
+    ), pytest.raises(HostNotSupportedError):
+        async with coresys.host.logs.journald_logs():
+            pass
+
+
+async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
+    """Test getting boot ids."""
+    journald_gateway.return_value.__aenter__.return_value.text = AsyncMock(
+        return_value=load_fixture("logs_boot_ids.txt")
+    )
+
+    assert TEST_BOOT_IDS == await coresys.host.logs.get_boot_ids()
+
+    # Boot ID query should not be run again, mock a failure for it to ensure
+    journald_gateway.side_effect = TimeoutError()
+    assert TEST_BOOT_IDS == await coresys.host.logs.get_boot_ids()
+    assert "b2aca10d5ca54fb1b6fb35c85a0efca9" == await coresys.host.logs.get_boot_id(-1)
+    assert "b1c386a144fd44db8f855d7e907256f8" == await coresys.host.logs.get_boot_id(0)
+
+
+async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
+    """Test getting identifiers."""
+    journald_gateway.return_value.__aenter__.return_value.text = AsyncMock(
+        return_value=load_fixture("logs_identifiers.txt")
+    )
 
     # Mock is large so just look for a few different types of identifiers
     for identifier in [
@@ -47,9 +75,4 @@ async def test_load(coresys: CoreSys, journald_gateway: MagicMock):
         "kernel",
         "os-agent",
     ]:
-        assert identifier in coresys.host.logs.identifiers
-
-    # Boot ID query should not be run again, mock a failure for it to ensure
-    journald_gateway.side_effect = [MagicMock(), TimeoutError()]
-    await coresys.host.logs.update()
-    assert coresys.host.logs.boot_ids == TEST_BOOT_IDS
+        assert identifier in await coresys.host.logs.get_identifiers()

@@ -1,5 +1,4 @@
 """Common test functions."""
-import asyncio
 from functools import partial
 from inspect import unwrap
 from pathlib import Path
@@ -374,10 +373,7 @@ async def journald_gateway() -> MagicMock:
         "supervisor.host.logs.ClientSession.get"
     ) as get:
         get.return_value.__aenter__.return_value.text = AsyncMock(
-            side_effect=[
-                load_fixture("logs_identifiers.txt"),
-                load_fixture("logs_boot_ids.txt"),
-            ]
+            return_value=load_fixture("logs_host.txt")
         )
         yield get
 
@@ -562,19 +558,15 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
     with patch.object(
         LogsControl, "available", new=PropertyMock(return_value=True)
     ), patch.object(
-        LogsControl,
-        "boot_ids",
-        new=PropertyMock(return_value=["aaa", "bbb", "ccc"]),
+        LogsControl, "get_boot_ids", return_value=["aaa", "bbb", "ccc"]
     ), patch.object(
         LogsControl,
-        "identifiers",
-        new=PropertyMock(return_value=["hassio_supervisor", "hassos-config", "kernel"]),
+        "get_identifiers",
+        return_value=["hassio_supervisor", "hassos-config", "kernel"],
     ), patch.object(
         LogsControl, "journald_logs", new=MagicMock()
     ) as logs:
         await coresys.host.logs.load()
-        await asyncio.sleep(0)
-        logs.reset_mock()
         yield logs
 
 

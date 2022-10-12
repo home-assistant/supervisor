@@ -125,9 +125,6 @@ class HostManager(CoreSysAttributes):
         with suppress(PulseAudioError):
             await self.sound.update()
 
-        with suppress(HostLogError):
-            await self.logs.update()
-
         _LOGGER.info("Host information reload completed")
         self.supported_features.cache_clear()  # pylint: disable=no-member
 

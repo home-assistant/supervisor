@@ -128,22 +128,22 @@ class APIHost(CoreSysAttributes):
     @api_process
     async def list_boots(self, _: web.Request):
         """Return a list of boot IDs."""
+        boot_ids = await self.sys_host.logs.get_boot_ids()
         return {
-            str(1 + i - len(self.sys_host.logs.boot_ids)): boot_id
-            for i, boot_id in enumerate(self.sys_host.logs.boot_ids)
+            str(1 + i - len(boot_ids)): boot_id for i, boot_id in enumerate(boot_ids)
         }
 
     @api_process
     async def list_identifiers(self, _: web.Request):
         """Return a list of syslog identifiers."""
-        return self.sys_host.logs.identifiers
+        return await self.sys_host.logs.get_identifiers()
 
-    def _get_boot_id(self, possible_offset: str) -> str:
+    async def _get_boot_id(self, possible_offset: str) -> str:
         """Convert offset into boot ID if required."""
         with suppress(CoerceInvalid):
             offset = vol.Coerce(int)(possible_offset)
             try:
-                return self.sys_host.logs.get_boot_id(offset)
+                return await self.sys_host.logs.get_boot_id(offset)
             except (ValueError, HostLogError) as err:
                 raise APIError() from err
         return possible_offset
@@ -162,7 +162,9 @@ class APIHost(CoreSysAttributes):
             params[PARAM_SYSLOG_IDENTIFIER] = self.sys_host.logs.default_identifiers
 
         if BOOTID in request.match_info:
-            params[PARAM_BOOT_ID] = self._get_boot_id(request.match_info.get(BOOTID))
+            params[PARAM_BOOT_ID] = await self._get_boot_id(
+                request.match_info.get(BOOTID)
+            )
         if follow:
             params[PARAM_FOLLOW] = ""
 

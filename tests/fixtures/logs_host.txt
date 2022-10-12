@@ -1,0 +1,7 @@
+Oct 11 20:46:22 odroid-dev systemd[1]: Started Hostname Service.
+Oct 11 20:46:22 odroid-dev kernel: audit: type=1334 audit(1665521182.350:257): prog-id=77 op=LOAD
+Oct 11 20:46:22 odroid-dev systemd[1]: Started Journal Gateway Service.
+Oct 11 20:46:22 odroid-dev systemd-timesyncd[1126]: Network configuration changed, trying to establish connection.
+Oct 11 20:46:22 odroid-dev systemd-timesyncd[1126]: Network configuration changed, trying to establish connection.
+Oct 11 20:46:22 odroid-dev systemd-timesyncd[1126]: Initial synchronization to time server 192.168.12.5:123 (192.168.12.5).
+Oct 11 20:46:22 odroid-dev systemd-journal-gatewayd[4054]: microhttpd: MHD_OPTION_EXTERNAL_LOGGER is not the first option specified for the daemon. Some messages may be printed by the standard MHD logger.

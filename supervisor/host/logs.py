@@ -64,24 +64,6 @@ class LogsControl(CoreSysAttributes):
         """Get default syslog identifiers."""
         return self._default_identifiers
 
-    def get_boot_id(self, offset: int = 0):
-        """
-        Get ID of a boot by offset.
-
-        Current boot is offset = 0, negative numbers go that many in the past.
-        Positive numbers count up from the oldest boot.
-        """
-        if not self.boot_ids:
-            raise HostLogError(
-                "Unable to obtain boot IDs from host, check logs for errors"
-            )
-
-        offset -= 1
-        if offset >= len(self.boot_ids) or abs(offset) > len(self.boot_ids):
-            raise ValueError(f"Logs only contain {len(self.boot_ids)} boots")
-
-        return self.boot_ids[offset]
-
     async def load(self) -> None:
         """Load log control."""
         try:
@@ -92,26 +74,25 @@ class LogsControl(CoreSysAttributes):
                 SYSLOG_IDENTIFIERS_JSON,
             )
 
-        # Build log caches asynchronously
-        self.sys_create_task(self.update())
+    async def get_boot_id(self, offset: int = 0) -> str:
+        """
+        Get ID of a boot by offset.
 
-    async def update(self) -> None:
-        """Cache boot and identifier information."""
-        try:
-            async with self.journald_logs(
-                path=f"/fields/{PARAM_SYSLOG_IDENTIFIER}",
-                timeout=ClientTimeout(total=20),
-            ) as resp:
-                self._identifiers = (await resp.text()).split("\n")
-        except (ClientError, TimeoutError) as err:
-            raise HostLogError(
-                "Could not get a list of syslog identifiers from systemd-journal-gatewayd",
-                _LOGGER.error,
-            ) from err
+        Current boot is offset = 0, negative numbers go that many in the past.
+        Positive numbers count up from the oldest boot.
+        """
+        boot_ids = await self.get_boot_ids()
+        offset -= 1
+        if offset >= len(boot_ids) or abs(offset) > len(boot_ids):
+            raise ValueError(f"Logs only contain {len(boot_ids)} boots")
 
-        if self.boot_ids:
+        return boot_ids[offset]
+
+    async def get_boot_ids(self) -> list[str]:
+        """Get boot IDs from oldest to newest."""
+        if self._boot_ids:
             # Doesn't change without a reboot, no reason to query again once cached
-            return
+            return self._boot_ids
 
         try:
             async with self.journald_logs(
@@ -125,13 +106,26 @@ class LogsControl(CoreSysAttributes):
                     for entry in text.split("\n")
                     if entry
                 ]
+                return self._boot_ids
         except (ClientError, TimeoutError) as err:
             raise HostLogError(
                 "Could not get a list of boot IDs from systemd-journal-gatewayd",
                 _LOGGER.error,
             ) from err
 
-        return
+    async def get_identifiers(self) -> list[str]:
+        """Get syslog identifiers."""
+        try:
+            async with self.journald_logs(
+                path=f"/fields/{PARAM_SYSLOG_IDENTIFIER}",
+                timeout=ClientTimeout(total=20),
+            ) as resp:
+                return (await resp.text()).split("\n")
+        except (ClientError, TimeoutError) as err:
+            raise HostLogError(
+                "Could not get a list of syslog identifiers from systemd-journal-gatewayd",
+                _LOGGER.error,
+            ) from err
 
     @asynccontextmanager
     async def journald_logs(

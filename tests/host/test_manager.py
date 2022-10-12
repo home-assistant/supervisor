@@ -1,6 +1,5 @@
 """Test host manager."""
-import asyncio
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 import pytest
 
@@ -39,7 +38,6 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
 
     with patch.object(coresys.host.sound, "update") as sound_update:
         await coresys.host.load()
-        await asyncio.sleep(0)
 
         assert coresys.dbus.hostname.hostname == "homeassistant-n2"
         assert coresys.dbus.systemd.boot_timestamp == 1646197962613554
@@ -48,22 +46,16 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
         assert coresys.dbus.network.connectivity_enabled is True
         assert coresys.dbus.resolved.multicast_dns == MulticastProtocolEnabled.RESOLVE
         assert coresys.dbus.agent.apparmor.version == "2.13.2"
+        assert len(coresys.host.logs.default_identifiers) > 0
 
         sound_update.assert_called_once()
-
-        assert coresys.host.logs.boot_ids == [
-            "b2aca10d5ca54fb1b6fb35c85a0efca9",
-            "b1c386a144fd44db8f855d7e907256f8",
-        ]
 
     assert (
         "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.ListUnits" in dbus
     )
 
 
-async def test_reload(
-    coresys_dbus: CoreSys, journald_gateway: MagicMock, dbus: list[str]
-):
+async def test_reload(coresys_dbus: CoreSys, dbus: list[str]):
     """Test manager reload and ensure it does not unnecessarily recreate dbus objects."""
     coresys = coresys_dbus
     await coresys.host.load()
@@ -71,12 +63,11 @@ async def test_reload(
 
     with patch("supervisor.utils.dbus.DBus.connect") as connect, patch.object(
         coresys.host.sound, "update"
-    ) as sound_update, patch.object(type(coresys.host.logs), "update") as logs_update:
+    ) as sound_update:
         await coresys.host.reload()
 
         connect.assert_not_called()
         sound_update.assert_called_once()
-        logs_update.assert_called_once()
 
     assert (
         "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.ListUnits" in dbus
