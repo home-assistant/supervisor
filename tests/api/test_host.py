@@ -1,12 +1,11 @@
 """Test Host API."""
 
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock
 
 from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.host.logs import LogsControl
 
 DEFAULT_RANGE = "entries=:-100:"
 # pylint: disable=protected-access
@@ -252,24 +251,3 @@ async def test_advanced_logs_errors(api_client: TestClient):
         result["message"]
         == "Invalid content type requested. Only text/plain supported for now."
     )
-
-    resp = await api_client.get("/host/logs/boots/-1")
-    result = await resp.json()
-    assert result["result"] == "error"
-    assert (
-        result["message"]
-        == "Unable to obtain boot IDs from host, check logs for errors"
-    )
-
-    with patch.object(
-        LogsControl, "boot_ids", new=PropertyMock(return_value=["aaa", "bbb", "ccc"])
-    ):
-        resp = await api_client.get("/host/logs/boots/4")
-        result = await resp.json()
-        assert result["result"] == "error"
-        assert result["message"] == "Logs only contain 3 boots"
-
-        resp = await api_client.get("/host/logs/boots/-3")
-        result = await resp.json()
-        assert result["result"] == "error"
-        assert result["message"] == "Logs only contain 3 boots"
