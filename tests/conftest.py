@@ -1,4 +1,5 @@
 """Common test functions."""
+import asyncio
 from functools import partial
 from inspect import unwrap
 from pathlib import Path
@@ -572,6 +573,7 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
         LogsControl, "journald_logs", new=MagicMock()
     ) as logs:
         await coresys.host.logs.load()
+        await asyncio.sleep(0)
         logs.reset_mock()
         yield logs
 
