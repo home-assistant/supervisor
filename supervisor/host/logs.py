@@ -92,7 +92,8 @@ class LogsControl(CoreSysAttributes):
                 SYSLOG_IDENTIFIERS_JSON,
             )
 
-        await self.update()
+        # Build log caches asynchronously
+        self.sys_create_task(self.update())
 
     async def update(self) -> None:
         """Cache boot and identifier information."""
@@ -129,6 +130,8 @@ class LogsControl(CoreSysAttributes):
                 "Could not get a list of boot IDs from systemd-journal-gatewayd",
                 _LOGGER.error,
             ) from err
+
+        return
 
     @asynccontextmanager
     async def journald_logs(

@@ -1,4 +1,5 @@
 """Test host manager."""
+import asyncio
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -38,6 +39,7 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
 
     with patch.object(coresys.host.sound, "update") as sound_update:
         await coresys.host.load()
+        await asyncio.sleep(0)
 
         assert coresys.dbus.hostname.hostname == "homeassistant-n2"
         assert coresys.dbus.systemd.boot_timestamp == 1646197962613554
@@ -47,12 +49,12 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
         assert coresys.dbus.resolved.multicast_dns == MulticastProtocolEnabled.RESOLVE
         assert coresys.dbus.agent.apparmor.version == "2.13.2"
 
+        sound_update.assert_called_once()
+
         assert coresys.host.logs.boot_ids == [
             "b2aca10d5ca54fb1b6fb35c85a0efca9",
             "b1c386a144fd44db8f855d7e907256f8",
         ]
-
-        sound_update.assert_called_once()
 
     assert (
         "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.ListUnits" in dbus

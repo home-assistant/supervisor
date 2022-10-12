@@ -1,5 +1,6 @@
 """Test host logs control."""
 
+import asyncio
 from unittest.mock import MagicMock
 
 import pytest
@@ -30,6 +31,8 @@ async def test_load(coresys: CoreSys, journald_gateway: MagicMock):
     assert coresys.host.logs.default_identifiers == []
 
     await coresys.host.logs.load()
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
     assert coresys.host.logs.boot_ids == TEST_BOOT_IDS
 
     # File is quite large so just check it loaded
