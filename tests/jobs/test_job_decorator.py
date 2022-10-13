@@ -488,3 +488,27 @@ async def test_auto_update(coresys: CoreSys):
 
     coresys.updater.auto_update = False
     assert not await test.execute()
+
+
+async def test_unhealthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
+    """Test the healthy decorator when unhealthy."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.HEALTHY])
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    coresys.resolution.unhealthy = UnhealthyReason.SETUP
+    assert not await test.execute()
+    assert "blocked from execution, system is not healthy - setup" in caplog.text
+
+    coresys.jobs.ignore_conditions = [JobCondition.HEALTHY]
+    assert await test.execute()
