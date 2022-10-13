@@ -261,3 +261,106 @@ async def test_resolution_apply_suggestion_multiple_copies(coresys: CoreSys):
     assert remove_store_1 in coresys.resolution.suggestions
     assert remove_store_2 not in coresys.resolution.suggestions
     assert remove_store_3 in coresys.resolution.suggestions
+
+
+async def test_events_on_unsupported_changed(coresys: CoreSys):
+    """Test events fired when unsupported changes."""
+    with patch.object(
+        type(coresys.homeassistant.websocket), "async_send_message"
+    ) as send_message:
+        # Marking system as unsupported tells HA
+        assert coresys.resolution.unsupported == []
+        coresys.resolution.unsupported = UnsupportedReason.CONNECTIVITY_CHECK
+        await asyncio.sleep(0)
+        assert coresys.resolution.unsupported == [UnsupportedReason.CONNECTIVITY_CHECK]
+        send_message.assert_called_once_with(
+            _supervisor_event_message(
+                "supported_changed",
+                {"supported": False, "unsupported_reasons": ["connectivity_check"]},
+            )
+        )
+
+        # Adding the same reason again does nothing
+        send_message.reset_mock()
+        coresys.resolution.unsupported = UnsupportedReason.CONNECTIVITY_CHECK
+        await asyncio.sleep(0)
+        assert coresys.resolution.unsupported == [UnsupportedReason.CONNECTIVITY_CHECK]
+        send_message.assert_not_called()
+
+        # Adding and removing additional reasons tells HA unsupported reasons changed
+        coresys.resolution.unsupported = UnsupportedReason.JOB_CONDITIONS
+        await asyncio.sleep(0)
+        assert coresys.resolution.unsupported == [
+            UnsupportedReason.CONNECTIVITY_CHECK,
+            UnsupportedReason.JOB_CONDITIONS,
+        ]
+        send_message.assert_called_once_with(
+            _supervisor_event_message(
+                "supported_changed",
+                {
+                    "supported": False,
+                    "unsupported_reasons": ["connectivity_check", "job_conditions"],
+                },
+            )
+        )
+
+        send_message.reset_mock()
+        coresys.resolution.dismiss_unsupported(UnsupportedReason.CONNECTIVITY_CHECK)
+        await asyncio.sleep(0)
+        assert coresys.resolution.unsupported == [UnsupportedReason.JOB_CONDITIONS]
+        send_message.assert_called_once_with(
+            _supervisor_event_message(
+                "supported_changed",
+                {"supported": False, "unsupported_reasons": ["job_conditions"]},
+            )
+        )
+
+        # Dismissing all unsupported reasons tells HA its supported again
+        send_message.reset_mock()
+        coresys.resolution.dismiss_unsupported(UnsupportedReason.JOB_CONDITIONS)
+        await asyncio.sleep(0)
+        assert coresys.resolution.unsupported == []
+        send_message.assert_called_once_with(
+            _supervisor_event_message(
+                "supported_changed", {"supported": True, "unsupported_reasons": None}
+            )
+        )
+
+
+async def test_events_on_unhealthy_changed(coresys: CoreSys):
+    """Test events fired when unhealthy changes."""
+    with patch.object(
+        type(coresys.homeassistant.websocket), "async_send_message"
+    ) as send_message:
+        # Marking system as unhealthy tells HA
+        assert coresys.resolution.unhealthy == []
+        coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+        await asyncio.sleep(0)
+        assert coresys.resolution.unhealthy == [UnhealthyReason.DOCKER]
+        send_message.assert_called_once_with(
+            _supervisor_event_message(
+                "health_changed",
+                {"healthy": False, "unhealthy_reasons": ["docker"]},
+            )
+        )
+
+        # Adding the same reason again does nothing
+        send_message.reset_mock()
+        coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+        await asyncio.sleep(0)
+        assert coresys.resolution.unhealthy == [UnhealthyReason.DOCKER]
+        send_message.assert_not_called()
+
+        # Adding an additional reason tells HA unhealthy reasons changed
+        coresys.resolution.unhealthy = UnhealthyReason.UNTRUSTED
+        await asyncio.sleep(0)
+        assert coresys.resolution.unhealthy == [
+            UnhealthyReason.DOCKER,
+            UnhealthyReason.UNTRUSTED,
+        ]
+        send_message.assert_called_once_with(
+            _supervisor_event_message(
+                "health_changed",
+                {"healthy": False, "unhealthy_reasons": ["docker", "untrusted"]},
+            )
+        )
