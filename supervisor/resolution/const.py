@@ -50,6 +50,7 @@ class UnsupportedReason(str, Enum):
     SOURCE_MODS = "source_mods"
     SUPERVISOR_VERSION = "supervisor_version"
     SYSTEMD = "systemd"
+    SYSTEMD_JOURNAL = "systemd_journal"
     SYSTEMD_RESOLVED = "systemd_resolved"
 
 
