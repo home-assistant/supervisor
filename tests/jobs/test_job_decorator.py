@@ -422,7 +422,7 @@ async def test_supervisor_updated(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(conditions=JobCondition.SUPERVISOR_UPDATED)
+        @Job(conditions=[JobCondition.SUPERVISOR_UPDATED])
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
@@ -447,7 +447,7 @@ async def test_plugins_updated(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(conditions=JobCondition.PLUGINS_UPDATED)
+        @Job(conditions=[JobCondition.PLUGINS_UPDATED])
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
@@ -477,7 +477,7 @@ async def test_auto_update(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(conditions=JobCondition.AUTO_UPDATE)
+        @Job(conditions=[JobCondition.AUTO_UPDATE])
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
