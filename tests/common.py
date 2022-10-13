@@ -77,6 +77,12 @@ def load_fixture(filename: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def load_binary_fixture(filename: str) -> bytes:
+    """Load a fixture without decoding."""
+    path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
+    return path.read_bytes()
+
+
 def exists_fixture(filename: str) -> bool:
     """Check if a fixture exists."""
     path = Path(Path(__file__).parent.joinpath("fixtures"), filename)

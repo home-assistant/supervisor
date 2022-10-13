@@ -72,6 +72,11 @@ class DockerAddon(DockerInterface):
 
         self._hw_listener: EventListener | None = None
 
+    @staticmethod
+    def slug_to_name(slug: str) -> str:
+        """Convert slug to container name."""
+        return f"addon_{slug}"
+
     @property
     def image(self) -> str | None:
         """Return name of Docker image."""
@@ -111,7 +116,7 @@ class DockerAddon(DockerInterface):
     @property
     def name(self) -> str:
         """Return name of Docker container."""
-        return f"addon_{self.addon.slug}"
+        return DockerAddon.slug_to_name(self.addon.slug)
 
     @property
     def environment(self) -> dict[str, str | None]:

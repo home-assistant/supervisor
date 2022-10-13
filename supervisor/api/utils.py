@@ -65,6 +65,8 @@ def api_process(method):
             return api_return_ok(data=answer)
         if isinstance(answer, web.Response):
             return answer
+        if isinstance(answer, web.StreamResponse):
+            return answer
         elif isinstance(answer, bool) and not answer:
             return api_return_error()
         return api_return_ok()

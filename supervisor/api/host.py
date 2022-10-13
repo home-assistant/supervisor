@@ -1,9 +1,12 @@
 """Init file for Supervisor host RESTful API."""
 import asyncio
-from typing import Awaitable
+from contextlib import suppress
+import logging
 
 from aiohttp import web
+from aiohttp.hdrs import ACCEPT, RANGE
 import voluptuous as vol
+from voluptuous.error import CoerceInvalid
 
 from ..const import (
     ATTR_CHASSIS,
@@ -24,6 +27,8 @@ from ..const import (
     ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
+from ..exceptions import APIError, HostLogError
+from ..host.const import PARAM_BOOT_ID, PARAM_FOLLOW, PARAM_SYSLOG_IDENTIFIER
 from .const import (
     ATTR_AGENT_VERSION,
     ATTR_APPARMOR_VERSION,
@@ -35,11 +40,15 @@ from .const import (
     ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
-    CONTENT_TYPE_BINARY,
+    CONTENT_TYPE_TEXT,
 )
-from .utils import api_process, api_process_raw, api_validate
+from .utils import api_process, api_validate
 
-SERVICE = "service"
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
+IDENTIFIER = "identifier"
+BOOTID = "bootid"
+DEFAULT_RANGE = 100
 
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
@@ -117,30 +126,72 @@ class APIHost(CoreSysAttributes):
         return {ATTR_SERVICES: services}
 
     @api_process
-    def service_start(self, request):
-        """Start a service."""
-        unit = request.match_info.get(SERVICE)
-        return [asyncio.shield(self.sys_host.services.start(unit))]
+    async def list_boots(self, _: web.Request):
+        """Return a list of boot IDs."""
+        boot_ids = await self.sys_host.logs.get_boot_ids()
+        return {
+            str(1 + i - len(boot_ids)): boot_id for i, boot_id in enumerate(boot_ids)
+        }
 
     @api_process
-    def service_stop(self, request):
-        """Stop a service."""
-        unit = request.match_info.get(SERVICE)
-        return [asyncio.shield(self.sys_host.services.stop(unit))]
+    async def list_identifiers(self, _: web.Request):
+        """Return a list of syslog identifiers."""
+        return await self.sys_host.logs.get_identifiers()
+
+    async def _get_boot_id(self, possible_offset: str) -> str:
+        """Convert offset into boot ID if required."""
+        with suppress(CoerceInvalid):
+            offset = vol.Coerce(int)(possible_offset)
+            try:
+                return await self.sys_host.logs.get_boot_id(offset)
+            except (ValueError, HostLogError) as err:
+                raise APIError() from err
+        return possible_offset
 
     @api_process
-    def service_reload(self, request):
-        """Reload a service."""
-        unit = request.match_info.get(SERVICE)
-        return [asyncio.shield(self.sys_host.services.reload(unit))]
+    async def advanced_logs(
+        self, request: web.Request, identifier: str | None = None, follow: bool = False
+    ) -> web.StreamResponse:
+        """Return systemd-journald logs."""
+        params = {}
+        if identifier:
+            params[PARAM_SYSLOG_IDENTIFIER] = identifier
+        elif IDENTIFIER in request.match_info:
+            params[PARAM_SYSLOG_IDENTIFIER] = request.match_info.get(IDENTIFIER)
+        else:
+            params[PARAM_SYSLOG_IDENTIFIER] = self.sys_host.logs.default_identifiers
 
-    @api_process
-    def service_restart(self, request):
-        """Restart a service."""
-        unit = request.match_info.get(SERVICE)
-        return [asyncio.shield(self.sys_host.services.restart(unit))]
+        if BOOTID in request.match_info:
+            params[PARAM_BOOT_ID] = await self._get_boot_id(
+                request.match_info.get(BOOTID)
+            )
+        if follow:
+            params[PARAM_FOLLOW] = ""
 
-    @api_process_raw(CONTENT_TYPE_BINARY)
-    def logs(self, request: web.Request) -> Awaitable[bytes]:
-        """Return host kernel logs."""
-        return self.sys_host.info.get_dmesg()
+        if ACCEPT in request.headers and request.headers[ACCEPT] not in [
+            CONTENT_TYPE_TEXT,
+            "*/*",
+        ]:
+            raise APIError(
+                "Invalid content type requested. Only text/plain supported for now."
+            )
+
+        if RANGE in request.headers:
+            range_header = request.headers.get(RANGE)
+        else:
+            range_header = f"entries=:-{DEFAULT_RANGE}:"
+
+        async with self.sys_host.logs.journald_logs(
+            params=params, range_header=range_header
+        ) as resp:
+            try:
+                response = web.StreamResponse()
+                response.content_type = CONTENT_TYPE_TEXT
+                await response.prepare(request)
+                async for data in resp.content:
+                    await response.write(data)
+            except ConnectionResetError as ex:
+                raise APIError(
+                    "Connection reset when trying to fetch data from systemd-journald."
+                ) from ex
+            return response

@@ -46,6 +46,7 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
         assert coresys.dbus.network.connectivity_enabled is True
         assert coresys.dbus.resolved.multicast_dns == MulticastProtocolEnabled.RESOLVE
         assert coresys.dbus.agent.apparmor.version == "2.13.2"
+        assert len(coresys.host.logs.default_identifiers) > 0
 
         sound_update.assert_called_once()
 

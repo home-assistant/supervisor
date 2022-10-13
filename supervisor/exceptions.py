@@ -274,6 +274,10 @@ class HostNetworkNotFound(HostError):
     """Return if host interface is not found."""
 
 
+class HostLogError(HostError):
+    """Internal error with host log."""
+
+
 # API
 
 

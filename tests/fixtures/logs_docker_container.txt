@@ -1,0 +1,19 @@
+[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os[0m
+[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor[0m
+[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/DataDisk[0m
+[32m22-10-11 14:04:23 INFO (MainThread) [supervisor.host.sound] Updating PulseAudio information[0m
+[32m22-10-11 14:04:23 INFO (MainThread) [supervisor.host.manager] Host information reload completed[0m
+[36m22-10-11 14:06:59 DEBUG (MainThread) [supervisor.api.middleware.security] Passthrough /supervisor/ping[0m
+[36m22-10-11 14:07:19 DEBUG (MainThread) [supervisor.api.middleware.security] /info access from Home Assistant[0m
+[36m22-10-11 14:07:19 DEBUG (MainThread) [supervisor.api.middleware.security] /host/info access from Home Assistant[0m
+[36m22-10-11 14:07:19 DEBUG (MainThread) [supervisor.api.middleware.security] /store access from Home Assistant[0m
+[36m22-10-11 14:07:19 DEBUG (MainThread) [supervisor.api.middleware.security] /core/info access from Home Assistant[0m
+[36m22-10-11 14:07:19 DEBUG (MainThread) [supervisor.api.middleware.security] /supervisor/info access from Home Assistant[0m
+[36m22-10-11 14:07:19 DEBUG (MainThread) [supervisor.api.middleware.security] /os/info access from Home Assistant[0m
+[36m22-10-11 14:07:45 DEBUG (MainThread) [supervisor.api.middleware.security] /info access from Home Assistant[0m
+[36m22-10-11 14:07:45 DEBUG (MainThread) [supervisor.api.middleware.security] /core/info access from Home Assistant[0m
+[36m22-10-11 14:07:45 DEBUG (MainThread) [supervisor.api.middleware.security] /supervisor/info access from Home Assistant[0m
+[36m22-10-11 14:07:45 DEBUG (MainThread) [supervisor.api.middleware.security] /os/info access from Home Assistant[0m
+[36m22-10-11 14:07:45 DEBUG (MainThread) [supervisor.api.middleware.security] /addons/a0d7b954_vscode/stats access from Home Assistant[0m
+[36m22-10-11 14:07:46 DEBUG (MainThread) [supervisor.api.middleware.security] /addons/a0d7b954_vscode/changelog access from Home Assistant[0m
+[36m22-10-11 14:07:46 DEBUG (MainThread) [supervisor.api.middleware.security] /addons/a0d7b954_vscode/info access from Home Assistant[0m

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp import web
+from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
@@ -50,12 +51,19 @@ from supervisor.dbus.systemd import Systemd
 from supervisor.dbus.timedate import TimeDate
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
+from supervisor.host.logs import LogsControl
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES, DBus
 from supervisor.utils.dt import utcnow
 
-from .common import exists_fixture, get_dbus_name, load_fixture, load_json_fixture
+from .common import (
+    exists_fixture,
+    get_dbus_name,
+    load_binary_fixture,
+    load_fixture,
+    load_json_fixture,
+)
 from .const import TEST_ADDON_SLUG
 
 # pylint: disable=redefined-outer-name, protected-access
@@ -359,6 +367,18 @@ async def coresys(
 
 
 @pytest.fixture
+async def journald_gateway() -> MagicMock:
+    """Mock logs control."""
+    with patch("supervisor.host.logs.Path.is_socket", return_value=True), patch(
+        "supervisor.host.logs.ClientSession.get"
+    ) as get:
+        get.return_value.__aenter__.return_value.text = AsyncMock(
+            return_value=load_fixture("logs_host.txt")
+        )
+        yield get
+
+
+@pytest.fixture
 def sys_machine():
     """Mock sys_machine."""
     with patch("supervisor.coresys.CoreSys.machine", new_callable=PropertyMock) as mock:
@@ -376,7 +396,7 @@ def sys_supervisor():
 
 
 @pytest.fixture
-async def api_client(aiohttp_client, coresys: CoreSys):
+async def api_client(aiohttp_client, coresys: CoreSys) -> TestClient:
     """Fixture for RestAPI client."""
 
     @web.middleware
@@ -388,7 +408,9 @@ async def api_client(aiohttp_client, coresys: CoreSys):
     api = RestAPI(coresys)
     api.webapp = web.Application(middlewares=[_security_middleware])
     api.start = AsyncMock()
-    await api.load()
+    with patch("supervisor.docker.supervisor.os") as os:
+        os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
+        await api.load()
     yield await aiohttp_client(api.webapp)
 
 
@@ -528,3 +550,34 @@ async def backups(
         coresys.backups._backups[backup.slug] = backup
 
     yield coresys.backups.list_backups
+
+
+@pytest.fixture
+async def journald_logs(coresys: CoreSys) -> MagicMock:
+    """Mock journald logs and make it available."""
+    with patch.object(
+        LogsControl, "available", new=PropertyMock(return_value=True)
+    ), patch.object(
+        LogsControl, "get_boot_ids", return_value=["aaa", "bbb", "ccc"]
+    ), patch.object(
+        LogsControl,
+        "get_identifiers",
+        return_value=["hassio_supervisor", "hassos-config", "kernel"],
+    ), patch.object(
+        LogsControl, "journald_logs", new=MagicMock()
+    ) as logs:
+        await coresys.host.logs.load()
+        yield logs
+
+
+@pytest.fixture
+async def docker_logs(docker: DockerAPI) -> MagicMock:
+    """Mock log output for a container from docker."""
+    container_mock = MagicMock()
+    container_mock.logs.return_value = load_binary_fixture("logs_docker_container.txt")
+    docker.containers.get.return_value = container_mock
+
+    with patch("supervisor.docker.supervisor.os") as os:
+        os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
+
+        yield container_mock.logs
