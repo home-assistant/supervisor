@@ -240,7 +240,7 @@ async def test_host_connectivity_disabled(coresys: CoreSys):
     await asyncio.sleep(0)
     assert coresys.host.network.connectivity is True
     await asyncio.sleep(0)
-    client.async_send_command.assert_called_once_with(
+    client.async_send_command.assert_called_with(
         {
             "type": WSType.SUPERVISOR_EVENT,
             "data": {
