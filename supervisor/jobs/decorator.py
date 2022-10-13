@@ -179,7 +179,7 @@ class Job(CoreSysAttributes):
 
         if JobCondition.HEALTHY in used_conditions and not self.sys_core.healthy:
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, system is not healthy"
+                f"'{self._method.__qualname__}' blocked from execution, system is not healthy - {', '.join(self.sys_resolution.unhealthy)}"
             )
 
         if (
