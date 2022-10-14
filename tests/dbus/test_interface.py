@@ -7,7 +7,9 @@ from unittest.mock import MagicMock
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
+from supervisor.dbus.const import DBUS_OBJECT_BASE
 from supervisor.dbus.interface import DBusInterfaceProxy
+from supervisor.exceptions import DBusInterfaceError
 
 from tests.common import fire_property_change_signal, fire_watched_signal
 
@@ -106,3 +108,15 @@ async def test_dbus_proxy_shutdown_pending_task(proxy: DBusInterfaceProxyMock):
     proxy.obj.shutdown()
     await asyncio.sleep(0)
     assert device == "/test/obj/1"
+
+
+async def test_proxy_missing_properties_interface(dbus_bus: MessageBus):
+    """Test proxy instance disconnects and errors when missing properties interface."""
+    proxy = DBusInterfaceProxy()
+    proxy.bus_name = "test.no.properties.interface"
+    proxy.object_path = DBUS_OBJECT_BASE
+    proxy.properties_interface = "test.no.properties.interface"
+
+    with pytest.raises(DBusInterfaceError):
+        await proxy.connect(dbus_bus)
+        assert proxy.is_connected is False
