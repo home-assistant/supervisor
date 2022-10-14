@@ -3,10 +3,12 @@ import asyncio
 import logging
 from unittest.mock import AsyncMock, PropertyMock, patch
 
+from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
 from supervisor.dbus.const import ConnectionStateType
 from supervisor.dbus.network import NetworkManager
+from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.exceptions import DBusFatalError, DBusParseError, HostNotSupportedError
 from supervisor.utils.dbus import DBus
 
@@ -124,6 +126,7 @@ async def test_handling_bad_devices(
         )
         assert not caplog.text
 
+    await network_manager.update()
     with patch.object(DBus, "properties", new=PropertyMock(return_value=None)):
         await network_manager.update(
             {"Devices": ["/org/freedesktop/NetworkManager/Devices/101"]}
@@ -131,6 +134,7 @@ async def test_handling_bad_devices(
         assert not caplog.text
 
     # Unparseable introspections shouldn't happen, this one is logged and captured
+    await network_manager.update()
     with patch.object(
         DBus, "_init_proxy", side_effect=(err := DBusParseError())
     ), patch("supervisor.dbus.network.sentry_sdk.capture_exception") as capture:
@@ -142,14 +146,42 @@ async def test_handling_bad_devices(
 
     # We should be able to debug these situations if necessary
     caplog.set_level(logging.DEBUG, "supervisor.dbus.network")
+    await network_manager.update()
     with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/103"]}
         )
         assert f"Can't process {device}" in caplog.text
 
+    await network_manager.update()
     with patch.object(DBus, "properties", new=PropertyMock(return_value=None)):
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/104"]}
         )
         assert f"Can't process {device}" in caplog.text
+
+
+async def test_ignore_veth_only_changes(
+    network_manager: NetworkManager, dbus_bus: MessageBus
+):
+    """Changes to list of devices is ignored unless it changes managed devices."""
+    assert network_manager.properties["Devices"] == [
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/org/freedesktop/NetworkManager/Devices/3",
+    ]
+    with patch.object(NetworkInterface, "update") as update:
+        await network_manager.update(
+            {
+                "Devices": [
+                    "/org/freedesktop/NetworkManager/Devices/1",
+                    "/org/freedesktop/NetworkManager/Devices/3",
+                    "/org/freedesktop/NetworkManager/Devices/35",
+                ]
+            }
+        )
+        update.assert_not_called()
+
+        await network_manager.update(
+            {"Devices": ["/org/freedesktop/NetworkManager/Devices/35"]}
+        )
+        update.assert_called_once()

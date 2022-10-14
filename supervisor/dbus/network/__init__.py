@@ -162,7 +162,16 @@ class NetworkManager(DBusInterfaceProxy):
         if not changed and self.dns.is_connected:
             await self.dns.update()
 
-        if changed and DBUS_ATTR_DEVICES not in changed:
+        if changed and (
+            DBUS_ATTR_DEVICES not in changed
+            or {
+                intr.object_path for intr in self.interfaces.values() if intr.managed
+            }.issubset(set(changed[DBUS_ATTR_DEVICES]))
+        ):
+            # If none of our managed devices were removed then most likely this is just veths changing.
+            # We don't care about veths and reprocessing all their changes can swamp a system when
+            # docker is having issues. This does mean we may miss activation of a new managed device
+            # in rare occaisions but we'll catch it on the next host update scheduled task.
             return
 
         interfaces = {}
