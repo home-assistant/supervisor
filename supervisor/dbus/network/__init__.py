@@ -10,7 +10,6 @@ from ...exceptions import (
     DBusError,
     DBusFatalError,
     DBusInterfaceError,
-    DBusInterfaceMethodError,
     HostNotSupportedError,
 )
 from ..const import (
@@ -178,14 +177,14 @@ class NetworkManager(DBusInterfaceProxy):
                 # Connect to interface
                 try:
                     await interface.connect(self.dbus.bus)
-                except (DBusFatalError, DBusInterfaceMethodError) as err:
+                except (DBusFatalError, DBusInterfaceError) as err:
                     # Docker creates and deletes interfaces quite often, sometimes
                     # this causes a race condition: A device disappears while we
                     # try to query it. Ignore those cases.
-                    _LOGGER.warning("Can't process %s: %s", device, err)
+                    _LOGGER.debug("Can't process %s: %s", device, err)
                     continue
                 except Exception as err:  # pylint: disable=broad-except
-                    _LOGGER.exception("Error while processing interface: %s", err)
+                    _LOGGER.exception("Error while processing %s: %s", device, err)
                     sentry_sdk.capture_exception(err)
                     continue
 

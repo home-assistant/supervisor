@@ -1,12 +1,14 @@
 """Test NetworkInterface."""
 import asyncio
-from unittest.mock import AsyncMock
+import logging
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 
 from supervisor.dbus.const import ConnectionStateType
 from supervisor.dbus.network import NetworkManager
-from supervisor.exceptions import HostNotSupportedError
+from supervisor.exceptions import DBusFatalError, DBusParseError, HostNotSupportedError
+from supervisor.utils.dbus import DBus
 
 from .setting.test_init import SETTINGS_WITH_SIGNATURE
 
@@ -107,3 +109,47 @@ async def test_removed_devices_disconnect(network_manager: NetworkManager):
 
     assert TEST_INTERFACE_WLAN not in network_manager.interfaces
     assert wlan.is_connected is False
+
+
+async def test_handling_bad_devices(
+    network_manager: NetworkManager, caplog: pytest.LogCaptureFixture
+):
+    """Test handling of bad and disappearing devices."""
+    caplog.clear()
+    caplog.set_level(logging.INFO, "supervisor.dbus.network")
+
+    with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
+        await network_manager.update(
+            {"Devices": ["/org/freedesktop/NetworkManager/Devices/100"]}
+        )
+        assert not caplog.text
+
+    with patch.object(DBus, "properties", new=PropertyMock(return_value=None)):
+        await network_manager.update(
+            {"Devices": ["/org/freedesktop/NetworkManager/Devices/101"]}
+        )
+        assert not caplog.text
+
+    # Unparseable introspections shouldn't happen, this one is logged and captured
+    with patch.object(
+        DBus, "_init_proxy", side_effect=(err := DBusParseError())
+    ), patch("supervisor.dbus.network.sentry_sdk.capture_exception") as capture:
+        await network_manager.update(
+            {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/102"]}
+        )
+        assert f"Error while processing {device}" in caplog.text
+        capture.assert_called_once_with(err)
+
+    # We should be able to debug these situations if necessary
+    caplog.set_level(logging.DEBUG, "supervisor.dbus.network")
+    with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
+        await network_manager.update(
+            {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/103"]}
+        )
+        assert f"Can't process {device}" in caplog.text
+
+    with patch.object(DBus, "properties", new=PropertyMock(return_value=None)):
+        await network_manager.update(
+            {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/104"]}
+        )
+        assert f"Can't process {device}" in caplog.text
