@@ -10,7 +10,6 @@ from ...exceptions import (
     DBusError,
     DBusFatalError,
     DBusInterfaceError,
-    DBusInterfaceMethodError,
     HostNotSupportedError,
 )
 from ..const import (
@@ -163,7 +162,16 @@ class NetworkManager(DBusInterfaceProxy):
         if not changed and self.dns.is_connected:
             await self.dns.update()
 
-        if changed and DBUS_ATTR_DEVICES not in changed:
+        if changed and (
+            DBUS_ATTR_DEVICES not in changed
+            or {
+                intr.object_path for intr in self.interfaces.values() if intr.managed
+            }.issubset(set(changed[DBUS_ATTR_DEVICES]))
+        ):
+            # If none of our managed devices were removed then most likely this is just veths changing.
+            # We don't care about veths and reprocessing all their changes can swamp a system when
+            # docker is having issues. This does mean we may miss activation of a new managed device
+            # in rare occaisions but we'll catch it on the next host update scheduled task.
             return
 
         interfaces = {}
@@ -178,14 +186,14 @@ class NetworkManager(DBusInterfaceProxy):
                 # Connect to interface
                 try:
                     await interface.connect(self.dbus.bus)
-                except (DBusFatalError, DBusInterfaceMethodError) as err:
+                except (DBusFatalError, DBusInterfaceError) as err:
                     # Docker creates and deletes interfaces quite often, sometimes
                     # this causes a race condition: A device disappears while we
                     # try to query it. Ignore those cases.
-                    _LOGGER.warning("Can't process %s: %s", device, err)
+                    _LOGGER.debug("Can't process %s: %s", device, err)
                     continue
                 except Exception as err:  # pylint: disable=broad-except
-                    _LOGGER.exception("Error while processing interface: %s", err)
+                    _LOGGER.exception("Error while processing %s: %s", device, err)
                     sentry_sdk.capture_exception(err)
                     continue
 

@@ -253,7 +253,6 @@ async def network_manager(dbus, dbus_bus: MessageBus) -> NetworkManager:
 
     # Init
     await nm_obj.connect(dbus_bus)
-    await nm_obj.update()
 
     yield nm_obj
 

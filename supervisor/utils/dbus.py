@@ -5,12 +5,17 @@ import asyncio
 import logging
 from typing import Any, Awaitable, Callable, Coroutine
 
-from dbus_fast import ErrorType, InvalidIntrospectionError, Message, MessageType
+from dbus_fast import (
+    ErrorType,
+    InvalidIntrospectionError,
+    Message,
+    MessageType,
+    Variant,
+)
 from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
 from dbus_fast.errors import DBusError
 from dbus_fast.introspection import Node
-from dbus_fast.signature import Variant
 
 from ..exceptions import (
     DBusFatalError,
@@ -143,15 +148,19 @@ class DBus:
         return self._bus
 
     @property
-    def properties(self) -> ProxyInterface:
+    def properties(self) -> DBusCallWrapper | None:
         """Get properties proxy interface."""
+        if DBUS_INTERFACE_PROPERTIES not in self._proxies:
+            return None
         return DBusCallWrapper(self, DBUS_INTERFACE_PROPERTIES)
 
     async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""
-        return await DBusCallWrapper(self, DBUS_INTERFACE_PROPERTIES).call_get_all(
-            interface
-        )
+        if not self.properties:
+            raise DBusInterfaceError(
+                f"DBus Object does not have interface {DBUS_INTERFACE_PROPERTIES}"
+            )
+        return await self.properties.call_get_all(interface)
 
     def sync_property_changes(
         self,

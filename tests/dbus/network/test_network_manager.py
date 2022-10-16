@@ -1,12 +1,16 @@
 """Test NetworkInterface."""
 import asyncio
-from unittest.mock import AsyncMock
+import logging
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
 from supervisor.dbus.const import ConnectionStateType
 from supervisor.dbus.network import NetworkManager
-from supervisor.exceptions import HostNotSupportedError
+from supervisor.dbus.network.interface import NetworkInterface
+from supervisor.exceptions import DBusFatalError, DBusParseError, HostNotSupportedError
+from supervisor.utils.dbus import DBus
 
 from .setting.test_init import SETTINGS_WITH_SIGNATURE
 
@@ -107,3 +111,77 @@ async def test_removed_devices_disconnect(network_manager: NetworkManager):
 
     assert TEST_INTERFACE_WLAN not in network_manager.interfaces
     assert wlan.is_connected is False
+
+
+async def test_handling_bad_devices(
+    network_manager: NetworkManager, caplog: pytest.LogCaptureFixture
+):
+    """Test handling of bad and disappearing devices."""
+    caplog.clear()
+    caplog.set_level(logging.INFO, "supervisor.dbus.network")
+
+    with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
+        await network_manager.update(
+            {"Devices": ["/org/freedesktop/NetworkManager/Devices/100"]}
+        )
+        assert not caplog.text
+
+    await network_manager.update()
+    with patch.object(DBus, "properties", new=PropertyMock(return_value=None)):
+        await network_manager.update(
+            {"Devices": ["/org/freedesktop/NetworkManager/Devices/101"]}
+        )
+        assert not caplog.text
+
+    # Unparseable introspections shouldn't happen, this one is logged and captured
+    await network_manager.update()
+    with patch.object(
+        DBus, "_init_proxy", side_effect=(err := DBusParseError())
+    ), patch("supervisor.dbus.network.sentry_sdk.capture_exception") as capture:
+        await network_manager.update(
+            {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/102"]}
+        )
+        assert f"Error while processing {device}" in caplog.text
+        capture.assert_called_once_with(err)
+
+    # We should be able to debug these situations if necessary
+    caplog.set_level(logging.DEBUG, "supervisor.dbus.network")
+    await network_manager.update()
+    with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
+        await network_manager.update(
+            {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/103"]}
+        )
+        assert f"Can't process {device}" in caplog.text
+
+    await network_manager.update()
+    with patch.object(DBus, "properties", new=PropertyMock(return_value=None)):
+        await network_manager.update(
+            {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/104"]}
+        )
+        assert f"Can't process {device}" in caplog.text
+
+
+async def test_ignore_veth_only_changes(
+    network_manager: NetworkManager, dbus_bus: MessageBus
+):
+    """Changes to list of devices is ignored unless it changes managed devices."""
+    assert network_manager.properties["Devices"] == [
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/org/freedesktop/NetworkManager/Devices/3",
+    ]
+    with patch.object(NetworkInterface, "update") as update:
+        await network_manager.update(
+            {
+                "Devices": [
+                    "/org/freedesktop/NetworkManager/Devices/1",
+                    "/org/freedesktop/NetworkManager/Devices/3",
+                    "/org/freedesktop/NetworkManager/Devices/35",
+                ]
+            }
+        )
+        update.assert_not_called()
+
+        await network_manager.update(
+            {"Devices": ["/org/freedesktop/NetworkManager/Devices/35"]}
+        )
+        update.assert_called_once()

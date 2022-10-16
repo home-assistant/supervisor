@@ -5,6 +5,8 @@ from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
+from supervisor.exceptions import DBusInterfaceError
+
 from ..utils.dbus import DBus
 from .utils import dbus_connected
 
@@ -70,8 +72,14 @@ class DBusInterfaceProxy(DBusInterface):
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
         await super().connect(bus)
-        await self.update()
 
+        if not self.dbus.properties:
+            self.disconnect()
+            raise DBusInterfaceError(
+                f"D-Bus object {self.object_path} is not usable, introspection is missing required properties interface"
+            )
+
+        await self.update()
         if self.sync_properties and self.is_connected:
             self.dbus.sync_property_changes(self.properties_interface, self.update)
 
