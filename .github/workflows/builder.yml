@@ -37,6 +37,10 @@ env:
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
 
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
+
 jobs:
   init:
     name: Initialize build
