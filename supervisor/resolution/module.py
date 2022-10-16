@@ -18,7 +18,7 @@ from .const import (
     UnhealthyReason,
     UnsupportedReason,
 )
-from .data import Issue, Suggestion
+from .data import HealthChanged, Issue, Suggestion, SupportedChanged
 from .evaluate import ResolutionEvaluation
 from .fixup import ResolutionFixup
 from .notify import ResolutionNotify
@@ -125,6 +125,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         """Add a reason for unsupported."""
         if reason not in self._unsupported:
             self._unsupported.append(reason)
+            self.sys_homeassistant.websocket.supervisor_event(
+                WSEvent.SUPPORTED_CHANGED,
+                attr.asdict(SupportedChanged(False, self.unsupported)),
+            )
 
     @property
     def unhealthy(self) -> list[UnhealthyReason]:
@@ -136,6 +140,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         """Add a reason for unsupported."""
         if reason not in self._unhealthy:
             self._unhealthy.append(reason)
+            self.sys_homeassistant.websocket.supervisor_event(
+                WSEvent.HEALTH_CHANGED,
+                attr.asdict(HealthChanged(False, self.unhealthy)),
+            )
 
     def get_suggestion(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid."""
@@ -228,6 +236,12 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         if reason not in self._unsupported:
             raise ResolutionError(f"The reason {reason} is not active", _LOGGER.warning)
         self._unsupported.remove(reason)
+        self.sys_homeassistant.websocket.supervisor_event(
+            WSEvent.SUPPORTED_CHANGED,
+            attr.asdict(
+                SupportedChanged(self.sys_core.supported, self.unsupported or None)
+            ),
+        )
 
     def suggestions_for_issue(self, issue: Issue) -> set[Suggestion]:
         """Get suggestions that fix an issue."""
