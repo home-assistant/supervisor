@@ -18,7 +18,7 @@
     {
       "label": "Run Supervisor CLI",
       "type": "shell",
-      "command": "docker exec -ti hassio_cli /usr/bin/cli.sh",
+      "command": "sudo docker exec -ti hassio_cli /usr/bin/cli.sh",
       "group": {
         "kind": "test",
         "isDefault": true
