@@ -2,7 +2,7 @@
   "name": "Supervisor dev",
   "image": "ghcr.io/home-assistant/devcontainer:supervisor",
   "appPort": ["9123:8123", "7357:4357"],
-  "postCreateCommand": "bash devcontainer_bootstrap",
+  "postCreateCommand": "sudo bash devcontainer_bootstrap",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
   "extensions": [
     "ms-python.python",
