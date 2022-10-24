@@ -4,6 +4,7 @@
   "appPort": ["9123:8123", "7357:4357"],
   "postCreateCommand": "bash devcontainer_bootstrap",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
+  "remoteUser":"root",
   "extensions": [
     "ms-python.python",
     "ms-python.vscode-pylance",
