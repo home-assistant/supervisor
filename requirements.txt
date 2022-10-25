@@ -11,7 +11,7 @@ colorlog==6.7.0
 cpe==1.2.1
 cryptography==38.0.1
 debugpy==1.6.3
-deepmerge==1.0.1
+deepmerge==1.1.0
 dirhash==0.2.1
 docker==6.0.0
 gitpython==3.1.29
