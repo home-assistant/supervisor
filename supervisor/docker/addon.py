@@ -523,18 +523,42 @@ class DockerAddon(DockerInterface):
                 BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events
             )
 
+    def _update(
+        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
+    ) -> None:
+        """Update a docker image.
+
+        Need run inside executor.
+        """
+        image = image or self.image
+
+        _LOGGER.info(
+            "Updating image %s:%s to %s:%s", self.image, self.version, image, version
+        )
+
+        # Update docker image
+        self._install(
+            version, image=image, latest=latest, need_build=self.addon.latest_need_build
+        )
+
+        # Stop container & cleanup
+        with suppress(DockerError):
+            self._stop()
+
     def _install(
         self,
         version: AwesomeVersion,
         image: str | None = None,
         latest: bool = False,
         arch: CpuArch | None = None,
+        *,
+        need_build: bool | None = None,
     ) -> None:
         """Pull Docker image or build it.
 
         Need run inside executor.
         """
-        if self.addon.need_build:
+        if need_build is None and self.addon.need_build or need_build:
             self._build(version)
         else:
             super()._install(version, image, latest, arch)
