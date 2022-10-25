@@ -79,7 +79,7 @@ class UDisks2(DBusInterfaceProxy):
     async def get_block_devices(self) -> list[UDisks2Block]:
         """Return list of all block devices."""
         devices: list[UDisks2Block] = []
-        for block_device in await self.dbus.Manager.call_get_block_devices():
+        for block_device in await self.dbus.Manager.call_get_block_devices({}):
             device = UDisks2Block(block_device)
             await device.connect(self.dbus.bus)
             devices.append(device)
@@ -88,9 +88,9 @@ class UDisks2(DBusInterfaceProxy):
     @dbus_connected
     async def get_filesystems(self) -> list[UDisks2Block]:
         """Return list of all block devices containing a mountable filesystem."""
+        block_devices: list[UDisks2Block] = await self.get_block_devices()
         filesystem_devices: list[UDisks2Filesystem] = []
-        for block_device in await self.dbus.Manager.call_get_block_devices():
-            block_device = UDisks2Block(block_device)
+        for block_device in block_devices:
             await block_device.connect(self.dbus.bus)
             # If the object doesn't contain a filesystem interface, skip it
             if DBUS_IFACE_FILESYSTEM not in block_device.additional_interfaces:
