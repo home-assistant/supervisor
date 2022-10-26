@@ -41,7 +41,6 @@ class LogsControl(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._profiles: set[str] = set()
         self._boot_ids: list[str] = []
-        self._identifiers: list[str] = []
         self._default_identifiers: list[str] = []
 
     @property
@@ -53,11 +52,6 @@ class LogsControl(CoreSysAttributes):
     def boot_ids(self) -> list[str]:
         """Get boot IDs from oldest to newest."""
         return self._boot_ids
-
-    @property
-    def identifiers(self) -> list[str]:
-        """Get syslog identifiers."""
-        return self._identifiers
 
     @property
     def default_identifiers(self) -> list[str]:
@@ -120,7 +114,7 @@ class LogsControl(CoreSysAttributes):
                 path=f"/fields/{PARAM_SYSLOG_IDENTIFIER}",
                 timeout=ClientTimeout(total=20),
             ) as resp:
-                return (await resp.text()).split("\n")
+                return [i for i in (await resp.text()).split("\n") if i]
         except (ClientError, TimeoutError) as err:
             raise HostLogError(
                 "Could not get a list of syslog identifiers from systemd-journal-gatewayd",
