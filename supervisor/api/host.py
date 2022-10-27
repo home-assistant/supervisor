@@ -33,10 +33,12 @@ from .const import (
     ATTR_AGENT_VERSION,
     ATTR_APPARMOR_VERSION,
     ATTR_BOOT_TIMESTAMP,
+    ATTR_BOOTS,
     ATTR_BROADCAST_LLMNR,
     ATTR_BROADCAST_MDNS,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
+    ATTR_IDENTIFIERS,
     ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
@@ -130,13 +132,16 @@ class APIHost(CoreSysAttributes):
         """Return a list of boot IDs."""
         boot_ids = await self.sys_host.logs.get_boot_ids()
         return {
-            str(1 + i - len(boot_ids)): boot_id for i, boot_id in enumerate(boot_ids)
+            ATTR_BOOTS: {
+                str(1 + i - len(boot_ids)): boot_id
+                for i, boot_id in enumerate(boot_ids)
+            }
         }
 
     @api_process
     async def list_identifiers(self, _: web.Request):
         """Return a list of syslog identifiers."""
-        return await self.sys_host.logs.get_identifiers()
+        return {ATTR_IDENTIFIERS: await self.sys_host.logs.get_identifiers()}
 
     async def _get_boot_id(self, possible_offset: str) -> str:
         """Convert offset into boot ID if required."""

@@ -128,14 +128,16 @@ async def test_api_boot_ids_info(api_client: TestClient, journald_logs: MagicMoc
     """Test getting boot IDs."""
     resp = await api_client.get("/host/logs/boots")
     result = await resp.json()
-    assert result["data"] == {"0": "ccc", "-1": "bbb", "-2": "aaa"}
+    assert result["data"] == {"boots": {"0": "ccc", "-1": "bbb", "-2": "aaa"}}
 
 
 async def test_api_identifiers_info(api_client: TestClient, journald_logs: MagicMock):
     """Test getting syslog identifiers."""
     resp = await api_client.get("/host/logs/identifiers")
     result = await resp.json()
-    assert result["data"] == ["hassio_supervisor", "hassos-config", "kernel"]
+    assert result["data"] == {
+        "identifiers": ["hassio_supervisor", "hassos-config", "kernel"]
+    }
 
 
 async def test_advanced_logs(

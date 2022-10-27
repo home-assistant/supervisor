@@ -22,7 +22,6 @@ async def test_load(coresys: CoreSys):
 
     await coresys.host.logs.load()
     assert coresys.host.logs.boot_ids == []
-    assert coresys.host.logs.identifiers == []
 
     # File is quite large so just check it loaded
     for identifier in ["kernel", "os-agent", "systemd"]:
@@ -79,6 +78,7 @@ async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
     )
 
     # Mock is large so just look for a few different types of identifiers
+    identifiers = await coresys.host.logs.get_identifiers()
     for identifier in [
         "addon_local_ssh",
         "hassio_dns",
@@ -86,4 +86,6 @@ async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
         "kernel",
         "os-agent",
     ]:
-        assert identifier in await coresys.host.logs.get_identifiers()
+        assert identifier in identifiers
+
+    assert "" not in identifiers
