@@ -22,4 +22,4 @@ ruamel.yaml==0.17.21
 securetar==2022.2.0
 sentry-sdk==1.10.1
 voluptuous==0.13.1
-dbus-fast==1.49.0
+dbus-fast==1.51.0
