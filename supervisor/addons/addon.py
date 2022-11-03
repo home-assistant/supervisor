@@ -468,6 +468,11 @@ class Addon(AddonModel):
         return ATTR_IMAGE not in self.data
 
     @property
+    def latest_need_build(self) -> bool:
+        """Return True if the latest version of the addon needs a local build."""
+        return ATTR_IMAGE not in self.data_store
+
+    @property
     def path_data(self) -> Path:
         """Return add-on data path inside Supervisor."""
         return Path(self.sys_config.path_addons_data, self.slug)
