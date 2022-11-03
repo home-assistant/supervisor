@@ -101,7 +101,7 @@ async def test_api_board_yellow_info(
     api_client: TestClient, coresys: CoreSys, name: str
 ):
     """Test yellow board info."""
-    await coresys.dbus.board.connect(coresys.dbus.bus)
+    await coresys.dbus.agent.board.connect(coresys.dbus.bus)
 
     resp = await api_client.get(f"/os/boards/{name}")
     assert resp.status == 200
@@ -120,7 +120,7 @@ async def test_api_board_yellow_options(
     api_client: TestClient, coresys: CoreSys, dbus: list[str], name: str
 ):
     """Test yellow board options."""
-    await coresys.dbus.board.connect(coresys.dbus.bus)
+    await coresys.dbus.agent.board.connect(coresys.dbus.bus)
 
     assert len(coresys.resolution.issues) == 0
     dbus.clear()
@@ -155,7 +155,7 @@ async def test_api_board_supervised_info(
     with patch.object(
         BoardManager, "board", new=PropertyMock(return_value="Supervised")
     ):
-        await coresys.dbus.board.connect(coresys.dbus.bus)
+        await coresys.dbus.agent.board.connect(coresys.dbus.bus)
 
         assert (await api_client.get(f"/os/boards/{name}")).status == 200
         assert (await api_client.post(f"/os/boards/{name}", json={})).status == 405
@@ -166,7 +166,7 @@ async def test_api_board_supervised_info(
 async def test_api_board_other_info(api_client: TestClient, coresys: CoreSys):
     """Test info for other board without dbus object."""
     with patch.object(BoardManager, "board", new=PropertyMock(return_value="NotReal")):
-        await coresys.dbus.board.connect(coresys.dbus.bus)
+        await coresys.dbus.agent.board.connect(coresys.dbus.bus)
 
         assert (await api_client.get("/os/boards/NotReal")).status == 200
         assert (await api_client.post("/os/boards/NotReal", json={})).status == 405

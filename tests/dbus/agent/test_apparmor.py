@@ -23,7 +23,7 @@ async def test_dbus_osagent_apparmor(coresys: CoreSys):
     await asyncio.sleep(0)
     assert coresys.dbus.agent.apparmor.version == "1.0.0"
 
-    fire_property_change_signal(coresys.dbus.agent, {}, ["ParserVersion"])
+    fire_property_change_signal(coresys.dbus.agent.apparmor, {}, ["ParserVersion"])
     await asyncio.sleep(0)
     assert coresys.dbus.agent.apparmor.version == "2.13.2"
 

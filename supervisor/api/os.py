@@ -54,7 +54,7 @@ class APIOS(CoreSysAttributes):
             ATTR_VERSION: self.sys_os.version,
             ATTR_VERSION_LATEST: self.sys_os.latest_version,
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
-            ATTR_BOARD: self.sys_dbus.board.board,
+            ATTR_BOARD: self.sys_dbus.agent.board.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
             ATTR_DATA_DISK: self.sys_os.datadisk.disk_used,
             ATTR_CPE_BOARD: self.sys_os.board,
@@ -91,9 +91,9 @@ class APIOS(CoreSysAttributes):
     async def boards_yellow_info(self, request: web.Request) -> dict[str, Any]:
         """Get yellow board settings."""
         return {
-            ATTR_DISK_LED: self.sys_dbus.board.yellow.disk_led,
-            ATTR_HEARTBEAT_LED: self.sys_dbus.board.yellow.heartbeat_led,
-            ATTR_POWER_LED: self.sys_dbus.board.yellow.power_led,
+            ATTR_DISK_LED: self.sys_dbus.agent.board.yellow.disk_led,
+            ATTR_HEARTBEAT_LED: self.sys_dbus.agent.board.yellow.heartbeat_led,
+            ATTR_POWER_LED: self.sys_dbus.agent.board.yellow.power_led,
         }
 
     @api_process
@@ -102,13 +102,13 @@ class APIOS(CoreSysAttributes):
         body = await api_validate(SCHEMA_YELLOW_OPTIONS, request)
 
         if ATTR_DISK_LED in body:
-            self.sys_dbus.board.yellow.disk_led = body[ATTR_DISK_LED]
+            self.sys_dbus.agent.board.yellow.disk_led = body[ATTR_DISK_LED]
 
         if ATTR_HEARTBEAT_LED in body:
-            self.sys_dbus.board.yellow.heartbeat_led = body[ATTR_HEARTBEAT_LED]
+            self.sys_dbus.agent.board.yellow.heartbeat_led = body[ATTR_HEARTBEAT_LED]
 
         if ATTR_POWER_LED in body:
-            self.sys_dbus.board.yellow.power_led = body[ATTR_POWER_LED]
+            self.sys_dbus.agent.board.yellow.power_led = body[ATTR_POWER_LED]
 
         self.sys_resolution.create_issue(
             IssueType.REBOOT_REQUIRED,
@@ -120,13 +120,13 @@ class APIOS(CoreSysAttributes):
     async def boards_supervised_info(self, request: web.Request) -> dict[str, Any]:
         """Get supervised board settings."""
         # There are none currently, this rasises an error if a different board is in use
-        if self.sys_dbus.board.supervised:
+        if self.sys_dbus.agent.board.supervised:
             return {}
 
     @api_process
     async def boards_other_info(self, request: web.Request) -> dict[str, Any]:
         """Empty success return if board is in use, error otherwise."""
-        if request.match_info["board"] != self.sys_dbus.board.board:
+        if request.match_info["board"] != self.sys_dbus.agent.board.board:
             raise BoardInvalidError(
                 f"{request.match_info['board']} board is not in use", _LOGGER.error
             )

@@ -14,9 +14,10 @@ from ..const import (
     DBUS_NAME_HAOS,
     DBUS_OBJECT_HAOS,
 )
-from ..interface import DBusInterfaceProxy, dbus_property
+from ..interface import DBusInterface, DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .apparmor import AppArmor
+from .boards import BoardManager
 from .cgroup import CGroup
 from .datadisk import DataDisk
 from .system import System
@@ -36,10 +37,11 @@ class OSAgent(DBusInterfaceProxy):
         """Initialize Properties."""
         self.properties: dict[str, Any] = {}
 
-        self._cgroup: CGroup = CGroup()
         self._apparmor: AppArmor = AppArmor()
-        self._system: System = System()
+        self._board: BoardManager = BoardManager()
+        self._cgroup: CGroup = CGroup()
         self._datadisk: DataDisk = DataDisk()
+        self._system: System = System()
 
     @property
     def cgroup(self) -> CGroup:
@@ -62,6 +64,11 @@ class OSAgent(DBusInterfaceProxy):
         return self._datadisk
 
     @property
+    def board(self) -> BoardManager:
+        """Return board manager."""
+        return self._board
+
+    @property
     @dbus_property
     def version(self) -> AwesomeVersion:
         """Return version of OS-Agent."""
@@ -79,15 +86,17 @@ class OSAgent(DBusInterfaceProxy):
         """Enable or disable OS-Agent diagnostics."""
         asyncio.create_task(self.dbus.set_diagnostics(value))
 
+    @property
+    def all(self) -> list[DBusInterface]:
+        """Return all managed dbus interfaces."""
+        return [self.apparmor, self.board, self.cgroup, self.datadisk, self.system]
+
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
         _LOGGER.info("Load dbus interface %s", self.name)
         try:
             await super().connect(bus)
-            await self.cgroup.connect(bus)
-            await self.apparmor.connect(bus)
-            await self.system.connect(bus)
-            await self.datadisk.connect(bus)
+            await asyncio.gather(*[dbus.connect(bus) for dbus in self.all])
         except DBusError:
             _LOGGER.warning("Can't connect to OS-Agent")
         except DBusInterfaceError:
@@ -100,19 +109,21 @@ class OSAgent(DBusInterfaceProxy):
         """Update Properties."""
         await super().update(changed)
 
-        if not changed and self.apparmor.is_connected:
-            await self.apparmor.update()
-
-        if not changed and self.datadisk.is_connected:
-            await self.datadisk.update()
+        if not changed:
+            await asyncio.gather(
+                *[
+                    dbus.update()
+                    for dbus in [self.apparmor, self.board, self.datadisk]
+                    if dbus.is_connected
+                ]
+            )
 
     def shutdown(self) -> None:
         """Shutdown the object and disconnect from D-Bus.
 
         This method is irreversible.
         """
-        self.cgroup.shutdown()
-        self.apparmor.shutdown()
-        self.system.shutdown()
-        self.datadisk.shutdown()
+        for dbus in self.all:
+            dbus.shutdown()
+
         super().shutdown()
