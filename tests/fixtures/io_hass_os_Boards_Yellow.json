@@ -1,0 +1,5 @@
+{
+  "HeartbeatLED": true,
+  "PowerLED": true,
+  "DiskLED": true
+}

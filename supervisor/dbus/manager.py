@@ -5,6 +5,8 @@ import logging
 from dbus_fast import BusType
 from dbus_fast.aio.message_bus import MessageBus
 
+from supervisor.dbus.agent.boards import BoardManager
+
 from ..const import SOCKET_DBUS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DBusFatalError
@@ -36,6 +38,7 @@ class DBusManager(CoreSysAttributes):
         self._agent: OSAgent = OSAgent()
         self._timedate: TimeDate = TimeDate()
         self._resolved: Resolved = Resolved()
+        self._board: BoardManager = BoardManager()
         self._bus: MessageBus | None = None
 
     @property
@@ -79,6 +82,11 @@ class DBusManager(CoreSysAttributes):
         return self._resolved
 
     @property
+    def board(self) -> BoardManager:
+        """Return board manager."""
+        return self._board
+
+    @property
     def bus(self) -> MessageBus | None:
         """Return the message bus."""
         return self._bus
@@ -88,13 +96,14 @@ class DBusManager(CoreSysAttributes):
         """Return all managed dbus interfaces."""
         return [
             self.agent,
-            self.systemd,
-            self.logind,
+            self.board,
             self.hostname,
-            self.timedate,
+            self.logind,
             self.network,
             self.rauc,
             self.resolved,
+            self.systemd,
+            self.timedate,
         ]
 
     async def load(self) -> None:
