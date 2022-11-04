@@ -362,6 +362,13 @@ class AppArmorInvalidError(AppArmorError):
     """AppArmor profile validate error."""
 
 
+# util/boards
+
+
+class BoardInvalidError(DBusObjectError):
+    """System does not use the board specified."""
+
+
 # util/common
 
 

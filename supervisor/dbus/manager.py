@@ -88,13 +88,13 @@ class DBusManager(CoreSysAttributes):
         """Return all managed dbus interfaces."""
         return [
             self.agent,
-            self.systemd,
-            self.logind,
             self.hostname,
-            self.timedate,
+            self.logind,
             self.network,
             self.rauc,
             self.resolved,
+            self.systemd,
+            self.timedate,
         ]
 
     async def load(self) -> None:
