@@ -10,7 +10,6 @@ import voluptuous as vol
 from ..const import (
     ATTR_BOARD,
     ATTR_BOOT,
-    ATTR_CPE_BOARD,
     ATTR_DEVICES,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
@@ -54,10 +53,9 @@ class APIOS(CoreSysAttributes):
             ATTR_VERSION: self.sys_os.version,
             ATTR_VERSION_LATEST: self.sys_os.latest_version,
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
-            ATTR_BOARD: self.sys_dbus.agent.board.board,
+            ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
             ATTR_DATA_DISK: self.sys_os.datadisk.disk_used,
-            ATTR_CPE_BOARD: self.sys_os.board,
         }
 
     @api_process
@@ -117,16 +115,9 @@ class APIOS(CoreSysAttributes):
         )
 
     @api_process
-    async def boards_supervised_info(self, request: web.Request) -> dict[str, Any]:
-        """Get supervised board settings."""
-        # There are none currently, this rasises an error if a different board is in use
-        if self.sys_dbus.agent.board.supervised:
-            return {}
-
-    @api_process
     async def boards_other_info(self, request: web.Request) -> dict[str, Any]:
         """Empty success return if board is in use, error otherwise."""
-        if request.match_info["board"] != self.sys_dbus.agent.board.board:
+        if request.match_info["board"] != self.sys_os.board:
             raise BoardInvalidError(
                 f"{request.match_info['board']} board is not in use", _LOGGER.error
             )

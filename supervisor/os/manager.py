@@ -9,6 +9,7 @@ from awesomeversion import AwesomeVersion, AwesomeVersionException
 from cpe import CPE
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..dbus.agent.boards.const import BOARD_NAME_SUPERVISED
 from ..dbus.rauc import RaucState
 from ..exceptions import DBusError, HassOSJobError, HassOSUpdateError
 from ..jobs.const import JobCondition, JobExecutionLimit
@@ -133,6 +134,7 @@ class OSManager(CoreSysAttributes):
             cpe = CPE(self.sys_host.info.cpe)
             os_name = cpe.get_product()[0]
             if os_name not in ("hassos", "haos"):
+                self._board = BOARD_NAME_SUPERVISED.lower()
                 raise NotImplementedError()
         except NotImplementedError:
             _LOGGER.info("No Home Assistant Operating System found")

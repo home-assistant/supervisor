@@ -8,7 +8,6 @@ from aiohttp import web
 
 from ..const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
-from ..dbus.agent.boards.const import BOARD_NAME_SUPERVISED, BOARD_NAME_YELLOW
 from ..exceptions import APIAddonNotInstalled
 from .addons import APIAddons
 from .audio import APIAudio
@@ -181,29 +180,10 @@ class RestAPI(CoreSysAttributes):
         )
 
         # Boards endpoints
-        def get_board_routes(
-            board: str,
-            info_handler,
-            options_handler=None,
-        ) -> list[web.RouteDef]:
-            routes = [
-                web.get(f"/os/boards/{board}", info_handler),
-                web.get(f"/os/boards/{board.lower()}", info_handler),
-            ]
-            if options_handler:
-                routes.insert(1, web.post(f"/os/boards/{board}", options_handler))
-                routes.append(web.post(f"/os/boards/{board.lower()}", options_handler))
-
-            return routes
-
         self.webapp.add_routes(
             [
-                *get_board_routes(
-                    BOARD_NAME_YELLOW,
-                    api_os.boards_yellow_info,
-                    api_os.boards_yellow_options,
-                ),
-                *get_board_routes(BOARD_NAME_SUPERVISED, api_os.boards_supervised_info),
+                web.get("/os/boards/yellow", api_os.boards_yellow_info),
+                web.post("/os/boards/yellow", api_os.boards_yellow_options),
                 web.get("/os/boards/{board}", api_os.boards_other_info),
             ]
         )

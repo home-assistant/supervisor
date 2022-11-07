@@ -29,7 +29,6 @@ async def test_ota_url_generic_x86_64_rename(coresys: CoreSys) -> None:
 
 def test_ota_url_os_name(coresys: CoreSys) -> None:
     """Test download URL generated with os_name."""
-
     board = "generic-x86-64"
     os_name = "haos"
     versionstr = "6.0"
@@ -47,7 +46,6 @@ def test_ota_url_os_name(coresys: CoreSys) -> None:
 
 def test_ota_url_os_name_rel_5_downgrade(coresys: CoreSys) -> None:
     """Test download URL generated with os_name."""
-
     board = "generic-x86-64"
     versionstr = "5.9"
 
@@ -74,3 +72,16 @@ async def test_update_fails_if_out_of_date(coresys: CoreSys) -> None:
         HassOSJobError
     ):
         await coresys.os.update()
+
+
+async def test_board_name_supervised(coresys: CoreSys) -> None:
+    """Test board name is supervised when not on haos."""
+    with patch("supervisor.os.manager.CPE.get_product", return_value=["not-hassos"]):
+        # Board should be none if hostname gave us no info
+        await coresys.os.load()
+        assert coresys.os.board is None
+
+        # If hostname gave us CPE and we're not on HAOS then its supervised
+        await coresys.dbus.hostname.connect(coresys.dbus.bus)
+        await coresys.os.load()
+        assert coresys.os.board == "supervised"
