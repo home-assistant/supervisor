@@ -77,11 +77,6 @@ async def test_update_fails_if_out_of_date(coresys: CoreSys) -> None:
 async def test_board_name_supervised(coresys: CoreSys) -> None:
     """Test board name is supervised when not on haos."""
     with patch("supervisor.os.manager.CPE.get_product", return_value=["not-hassos"]):
-        # Board should be none if hostname gave us no info
-        await coresys.os.load()
-        assert coresys.os.board is None
-
-        # If hostname gave us CPE and we're not on HAOS then its supervised
         await coresys.dbus.hostname.connect(coresys.dbus.bus)
         await coresys.os.load()
         assert coresys.os.board == "supervised"
