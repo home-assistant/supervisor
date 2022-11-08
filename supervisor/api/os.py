@@ -1,8 +1,9 @@
 """Init file for Supervisor HassOS RESTful API."""
 import asyncio
+from collections.abc import Awaitable
 import logging
 from pathlib import Path
-from typing import Any, Awaitable
+from typing import Any
 
 from aiohttp import web
 import voluptuous as vol

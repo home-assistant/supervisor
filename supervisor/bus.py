@@ -1,8 +1,9 @@
 """Bus event system."""
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 import logging
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import attr
 

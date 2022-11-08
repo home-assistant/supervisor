@@ -1,9 +1,10 @@
 """Job decorator."""
 import asyncio
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import wraps
 import logging
-from typing import Any, Callable
+from typing import Any
 
 import sentry_sdk
 

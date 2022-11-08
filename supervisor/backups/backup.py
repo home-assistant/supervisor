@@ -1,12 +1,13 @@
 """Representation of a backup file."""
 from base64 import b64decode, b64encode
+from collections.abc import Awaitable
 from datetime import timedelta
 import json
 import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable
+from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend

@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable, Coroutine
 import logging
-from typing import Any, Awaitable, Callable, Coroutine
+from typing import Any
 
 from dbus_fast import (
     ErrorType,
