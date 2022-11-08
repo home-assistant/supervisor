@@ -1,7 +1,8 @@
 """REST API for network."""
 import asyncio
+from collections.abc import Awaitable
 from ipaddress import ip_address, ip_interface
-from typing import Any, Awaitable
+from typing import Any
 
 from aiohttp import web
 import attr

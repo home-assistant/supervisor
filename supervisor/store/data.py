@@ -1,7 +1,8 @@
 """Init file for Supervisor add-on data."""
+from collections.abc import Awaitable
 import logging
 from pathlib import Path
-from typing import Any, Awaitable
+from typing import Any
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error

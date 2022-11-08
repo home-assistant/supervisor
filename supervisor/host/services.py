@@ -1,6 +1,6 @@
 """Service control for host."""
+from collections.abc import Awaitable
 import logging
-from typing import Awaitable
 
 import attr
 

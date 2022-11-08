@@ -1,6 +1,7 @@
 """Handle REST API for resoulution."""
 import asyncio
-from typing import Any, Awaitable
+from collections.abc import Awaitable
+from typing import Any
 
 from aiohttp import web
 import attr

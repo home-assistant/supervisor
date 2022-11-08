@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Coroutine
 from datetime import datetime
 import logging
 import os
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import aiohttp
 import sentry_sdk

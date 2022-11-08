@@ -1,8 +1,8 @@
 """Schedule for Supervisor."""
 import asyncio
+from collections.abc import Awaitable, Callable
 from datetime import date, datetime, time, timedelta
 import logging
-from typing import Awaitable, Callable
 from uuid import UUID, uuid4
 
 import async_timeout

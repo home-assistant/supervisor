@@ -1,7 +1,8 @@
 """Init file for Supervisor add-ons."""
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 from pathlib import Path
-from typing import Any, Awaitable
+from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 

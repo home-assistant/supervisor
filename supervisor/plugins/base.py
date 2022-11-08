@@ -1,9 +1,9 @@
 """Supervisor plugins base class."""
 from abc import ABC, abstractmethod
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 import logging
-from typing import Awaitable
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
