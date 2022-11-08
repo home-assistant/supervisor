@@ -10,6 +10,7 @@ import pytest
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent.boards import BoardManager
 from supervisor.hardware.data import Device
+from supervisor.os.manager import OSManager
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
@@ -29,7 +30,6 @@ async def test_api_os_info(api_client: TestClient):
         "board",
         "boot",
         "data_disk",
-        "cpe_board",
     ):
         assert attr in result["data"]
 
@@ -96,14 +96,11 @@ async def test_api_os_datadisk_list(api_client: TestClient, coresys: CoreSys):
     assert result["data"]["devices"] == ["/dev/sda"]
 
 
-@pytest.mark.parametrize("name", ["Yellow", "yellow"])
-async def test_api_board_yellow_info(
-    api_client: TestClient, coresys: CoreSys, name: str
-):
+async def test_api_board_yellow_info(api_client: TestClient, coresys: CoreSys):
     """Test yellow board info."""
     await coresys.dbus.agent.board.connect(coresys.dbus.bus)
 
-    resp = await api_client.get(f"/os/boards/{name}")
+    resp = await api_client.get("/os/boards/yellow")
     assert resp.status == 200
 
     result = await resp.json()
@@ -112,12 +109,11 @@ async def test_api_board_yellow_info(
     assert result["data"]["power_led"] is True
 
     assert (await api_client.get("/os/boards/supervised")).status == 400
-    assert (await api_client.get("/os/boards/NotReal")).status == 400
+    assert (await api_client.get("/os/boards/not-real")).status == 400
 
 
-@pytest.mark.parametrize("name", ["Yellow", "yellow"])
 async def test_api_board_yellow_options(
-    api_client: TestClient, coresys: CoreSys, dbus: list[str], name: str
+    api_client: TestClient, coresys: CoreSys, dbus: list[str]
 ):
     """Test yellow board options."""
     await coresys.dbus.agent.board.connect(coresys.dbus.bus)
@@ -125,7 +121,7 @@ async def test_api_board_yellow_options(
     assert len(coresys.resolution.issues) == 0
     dbus.clear()
     resp = await api_client.post(
-        f"/os/boards/{name}",
+        "/os/boards/yellow",
         json={"disk_led": False, "heartbeat_led": False, "power_led": False},
     )
     assert resp.status == 200
@@ -147,28 +143,29 @@ async def test_api_board_yellow_options(
     )
 
 
-@pytest.mark.parametrize("name", ["Supervised", "supervised"])
-async def test_api_board_supervised_info(
-    api_client: TestClient, coresys: CoreSys, name: str
-):
+async def test_api_board_supervised_info(api_client: TestClient, coresys: CoreSys):
     """Test supervised board info."""
-    with patch.object(
-        BoardManager, "board", new=PropertyMock(return_value="Supervised")
-    ):
+    with patch(
+        "supervisor.os.manager.CPE.get_product", return_value=["not-hassos"]
+    ), patch.object(BoardManager, "board", new=PropertyMock(return_value="Supervised")):
         await coresys.dbus.agent.board.connect(coresys.dbus.bus)
+        await coresys.dbus.hostname.connect(coresys.dbus.bus)
+        await coresys.os.load()
 
-        assert (await api_client.get(f"/os/boards/{name}")).status == 200
-        assert (await api_client.post(f"/os/boards/{name}", json={})).status == 405
+        assert (await api_client.get("/os/boards/supervised")).status == 200
+        assert (await api_client.post("/os/boards/supervised", json={})).status == 405
         assert (await api_client.get("/os/boards/yellow")).status == 400
-        assert (await api_client.get("/os/boards/NotReal")).status == 400
+        assert (await api_client.get("/os/boards/not-real")).status == 400
 
 
 async def test_api_board_other_info(api_client: TestClient, coresys: CoreSys):
     """Test info for other board without dbus object."""
-    with patch.object(BoardManager, "board", new=PropertyMock(return_value="NotReal")):
+    with patch.object(
+        BoardManager, "board", new=PropertyMock(return_value="not-real")
+    ), patch.object(OSManager, "board", new=PropertyMock(return_value="not-real")):
         await coresys.dbus.agent.board.connect(coresys.dbus.bus)
 
-        assert (await api_client.get("/os/boards/NotReal")).status == 200
-        assert (await api_client.post("/os/boards/NotReal", json={})).status == 405
+        assert (await api_client.get("/os/boards/not-real")).status == 200
+        assert (await api_client.post("/os/boards/not-real", json={})).status == 405
         assert (await api_client.get("/os/boards/yellow")).status == 400
         assert (await api_client.get("/os/boards/supervised")).status == 400
