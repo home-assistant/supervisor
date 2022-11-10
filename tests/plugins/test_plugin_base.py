@@ -1,19 +1,21 @@
 """Test base plugin functionality."""
 import asyncio
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import BusEvent
+from supervisor.const import BusEvent, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
+from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AudioError,
     AudioJobError,
     CliError,
     CliJobError,
+    CodeNotaryUntrusted,
     CoreDNSError,
     CoreDNSJobError,
     DockerError,
@@ -30,6 +32,7 @@ from supervisor.plugins.cli import PluginCli
 from supervisor.plugins.dns import PluginDns
 from supervisor.plugins.multicast import PluginMulticast
 from supervisor.plugins.observer import PluginObserver
+from supervisor.utils import check_exception_chain
 
 
 @pytest.fixture(name="plugin")
@@ -159,16 +162,16 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
 @pytest.mark.parametrize(
     "plugin,error",
     [
-        (PluginAudio, AudioError),
-        (PluginCli, CliError),
-        (PluginDns, CoreDNSError),
-        (PluginMulticast, MulticastError),
-        (PluginObserver, ObserverError),
+        (PluginAudio, AudioError()),
+        (PluginCli, CliError()),
+        (PluginDns, CoreDNSError()),
+        (PluginMulticast, MulticastError()),
+        (PluginObserver, ObserverError()),
     ],
     indirect=["plugin"],
 )
 async def test_plugin_watchdog_rebuild_on_failure(
-    coresys: CoreSys, plugin: PluginBase, error: PluginError
+    coresys: CoreSys, capture_exception: Mock, plugin: PluginBase, error: PluginError
 ) -> None:
     """Test plugin watchdog rebuilds if start fails."""
     with patch.object(type(plugin.instance), "attach"), patch.object(
@@ -200,6 +203,8 @@ async def test_plugin_watchdog_rebuild_on_failure(
         await asyncio.sleep(0.1)
         start.assert_called_once()
         rebuild.assert_called_once()
+
+    capture_exception.assert_called_once_with(error)
 
 
 @pytest.mark.parametrize(
@@ -331,3 +336,25 @@ async def test_update_fails_if_out_of_date(
         type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
     ), pytest.raises(error):
         await plugin.update()
+
+
+@pytest.mark.parametrize(
+    "plugin",
+    [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
+    indirect=True,
+)
+async def test_repair_failed(
+    coresys: CoreSys, capture_exception: Mock, plugin: PluginBase
+):
+    """Test repair failed."""
+    with patch.object(
+        DockerInterface, "exists", return_value=mock_is_running(False)
+    ), patch.object(
+        DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
+    ), patch(
+        "supervisor.security.module.cas_validate", side_effect=CodeNotaryUntrusted
+    ):
+        await plugin.repair()
+
+    capture_exception.assert_called_once()
+    assert check_exception_chain(capture_exception.call_args[0][0], CodeNotaryUntrusted)

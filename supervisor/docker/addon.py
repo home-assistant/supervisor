@@ -44,6 +44,7 @@ from ..hardware.data import Device
 from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
+from ..utils.sentry import capture_exception
 from .const import (
     DBUS_PATH,
     DBUS_VOLUME,
@@ -516,7 +517,7 @@ class DockerAddon(DockerInterface):
             )
         except CoreDNSError as err:
             _LOGGER.warning("Can't update DNS for %s", self.name)
-            self.sys_capture_exception(err)
+            capture_exception(err)
 
         # Hardware Access
         if self.addon.static_devices:
@@ -699,7 +700,7 @@ class DockerAddon(DockerInterface):
                 self.sys_plugins.dns.delete_host(self.addon.hostname)
             except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         # Hardware
         if self._hw_listener:

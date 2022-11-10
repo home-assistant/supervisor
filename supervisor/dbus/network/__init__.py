@@ -4,7 +4,6 @@ from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 from dbus_fast.aio.message_bus import MessageBus
-import sentry_sdk
 
 from ...exceptions import (
     DBusError,
@@ -12,6 +11,7 @@ from ...exceptions import (
     DBusInterfaceError,
     HostNotSupportedError,
 )
+from ...utils.sentry import capture_exception
 from ..const import (
     DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_DEVICES,
@@ -194,7 +194,7 @@ class NetworkManager(DBusInterfaceProxy):
                     continue
                 except Exception as err:  # pylint: disable=broad-except
                     _LOGGER.exception("Error while processing %s: %s", device, err)
-                    sentry_sdk.capture_exception(err)
+                    capture_exception(err)
                     continue
 
             # Skeep interface

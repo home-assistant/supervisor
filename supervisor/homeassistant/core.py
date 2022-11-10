@@ -27,6 +27,7 @@ from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
+from ..utils.sentry import capture_exception
 from .const import (
     LANDINGPAGE,
     WATCHDOG_MAX_ATTEMPTS,
@@ -125,16 +126,18 @@ class HomeAssistantCore(CoreSysAttributes):
                 await self.instance.install(
                     LANDINGPAGE, image=self.sys_updater.image_homeassistant
                 )
-            except DockerError:
-                _LOGGER.warning("Fails install landingpage, retry after 30sec")
-                await asyncio.sleep(30)
-            except Exception as err:  # pylint: disable=broad-except
-                self.sys_capture_exception(err)
-            else:
-                self.sys_homeassistant.version = LANDINGPAGE
-                self.sys_homeassistant.image = self.sys_updater.image_homeassistant
-                self.sys_homeassistant.save_data()
                 break
+            except DockerError:
+                pass
+            except Exception as err:  # pylint: disable=broad-except
+                capture_exception(err)
+
+            _LOGGER.warning("Fails install landingpage, retry after 30sec")
+            await asyncio.sleep(30)
+
+        self.sys_homeassistant.version = LANDINGPAGE
+        self.sys_homeassistant.image = self.sys_updater.image_homeassistant
+        self.sys_homeassistant.save_data()
 
     @process_lock
     async def install(self) -> None:
@@ -155,7 +158,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 except DockerError:
                     pass
                 except Exception as err:  # pylint: disable=broad-except
-                    self.sys_capture_exception(err)
+                    capture_exception(err)
 
             _LOGGER.warning("Error on Home Assistant installation. Retry in 30sec")
             await asyncio.sleep(30)
@@ -473,7 +476,7 @@ class HomeAssistantCore(CoreSysAttributes):
                     try:
                         await self.start()
                     except HomeAssistantError as err:
-                        self.sys_capture_exception(err)
+                        capture_exception(err)
                     else:
                         break
 
@@ -485,7 +488,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 except HomeAssistantError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of Home Assistant failed!")
-                    self.sys_capture_exception(err)
+                    capture_exception(err)
                 else:
                     break
 

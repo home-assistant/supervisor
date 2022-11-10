@@ -2,7 +2,7 @@
 import logging
 import re
 
-import sentry_sdk
+from .sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -19,6 +19,6 @@ def format_message(message: str) -> str:
             return f"Port '{match.group(1)}' is already in use by something else on the host."
     except TypeError as err:
         _LOGGER.error("The type of message is not a string - %s", err)
-        sentry_sdk.capture_exception(err)
+        capture_exception(err)
 
     return message

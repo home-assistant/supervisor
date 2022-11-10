@@ -6,13 +6,12 @@ from functools import wraps
 import logging
 from typing import Any
 
-import sentry_sdk
-
 from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, JobConditionException, JobException
 from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
+from ..utils.sentry import capture_exception
 from .const import JobCondition, JobExecutionLimit
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -157,7 +156,7 @@ class Job(CoreSysAttributes):
                 raise err
             except Exception as err:
                 _LOGGER.exception("Unhandled exception: %s", err)
-                sentry_sdk.capture_exception(err)
+                capture_exception(err)
                 raise JobException() from err
             finally:
                 if self.cleanup:

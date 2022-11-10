@@ -5,8 +5,7 @@ import re
 from aiohttp import hdrs
 import attr
 
-from ..api.const import HEADER_TOKEN, HEADER_TOKEN_OLD
-from ..const import CoreState
+from ..const import HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
 from ..exceptions import AddonConfigurationError
 

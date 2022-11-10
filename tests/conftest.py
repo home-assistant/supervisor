@@ -3,7 +3,7 @@ from functools import partial
 from inspect import unwrap
 from pathlib import Path
 import re
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp import web
@@ -302,7 +302,7 @@ async def coresys(
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system"), patch(
-        "supervisor.bootstrap.setup_diagnostics"
+        "supervisor.utils.sentry.sentry_sdk.init"
     ):
         coresys_obj = await initialize_coresys()
 
@@ -580,3 +580,12 @@ async def docker_logs(docker: DockerAPI) -> MagicMock:
         os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
 
         yield container_mock.logs
+
+
+@pytest.fixture
+async def capture_exception() -> Mock:
+    """Mock capture exception method for testing."""
+    with patch("supervisor.utils.sentry.sentry_connected", return_value=True), patch(
+        "supervisor.utils.sentry.sentry_sdk.capture_exception"
+    ) as capture_exception:
+        yield capture_exception

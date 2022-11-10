@@ -7,6 +7,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError, HomeAssistantError, ObserverError
 from ..jobs.decorator import Job, JobCondition
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
+from ..utils.sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ class Tasks(CoreSysAttributes):
             await self.sys_homeassistant.core.restart()
         except HomeAssistantError as err:
             _LOGGER.error("Home Assistant watchdog reanimation failed!")
-            self.sys_capture_exception(err)
+            capture_exception(err)
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
@@ -265,7 +266,7 @@ class Tasks(CoreSysAttributes):
                 await addon.restart()
             except AddonsError as err:
                 _LOGGER.error("%s watchdog reanimation failed with %s", addon.slug, err)
-                self.sys_capture_exception(err)
+                capture_exception(err)
             finally:
                 self._cache[addon.slug] = 0
 
