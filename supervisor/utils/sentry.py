@@ -56,4 +56,5 @@ def close_sentry() -> None:
     This method is irreversible. A new client will have to be initialized to re-open connetion.
     """
     if sentry_connected():
+        _LOGGER.info("Closing connection to Supervisor Sentry")
         sentry_sdk.Hub.current.client.close()
