@@ -1,7 +1,7 @@
 """Test NetworkInterface."""
 import asyncio
 import logging
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
@@ -114,7 +114,9 @@ async def test_removed_devices_disconnect(network_manager: NetworkManager):
 
 
 async def test_handling_bad_devices(
-    network_manager: NetworkManager, caplog: pytest.LogCaptureFixture
+    network_manager: NetworkManager,
+    caplog: pytest.LogCaptureFixture,
+    capture_exception: Mock,
 ):
     """Test handling of bad and disappearing devices."""
     caplog.clear()
@@ -135,14 +137,12 @@ async def test_handling_bad_devices(
 
     # Unparseable introspections shouldn't happen, this one is logged and captured
     await network_manager.update()
-    with patch.object(
-        DBus, "_init_proxy", side_effect=(err := DBusParseError())
-    ), patch("supervisor.dbus.network.sentry_sdk.capture_exception") as capture:
+    with patch.object(DBus, "_init_proxy", side_effect=(err := DBusParseError())):
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/102"]}
         )
         assert f"Error while processing {device}" in caplog.text
-        capture.assert_called_once_with(err)
+        capture_exception.assert_called_once_with(err)
 
     # We should be able to debug these situations if necessary
     caplog.set_level(logging.DEBUG, "supervisor.dbus.network")

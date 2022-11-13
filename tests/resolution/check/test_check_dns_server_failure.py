@@ -1,5 +1,5 @@
 """Test check DNS Servers for failures."""
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, Mock, call, patch
 
 from aiodns.error import DNSError
 import pytest
@@ -27,7 +27,7 @@ async def test_base(coresys: CoreSys):
     assert dns_server.enabled
 
 
-async def test_check(coresys: CoreSys, dns_query: AsyncMock):
+async def test_check(coresys: CoreSys, dns_query: AsyncMock, capture_exception: Mock):
     """Test check for DNS server failures."""
     dns_server = CheckDNSServer(coresys)
     coresys.core.state = CoreState.RUNNING
@@ -50,7 +50,7 @@ async def test_check(coresys: CoreSys, dns_query: AsyncMock):
     coresys.plugins.dns.servers = []
     assert dns_server.dns_servers == ["dns://192.168.30.1"]
 
-    dns_query.side_effect = DNSError()
+    dns_query.side_effect = (err := DNSError())
     await dns_server.run_check.__wrapped__(dns_server)
     dns_query.assert_called_once_with("_checkdns.home-assistant.io", "A")
 
@@ -58,6 +58,7 @@ async def test_check(coresys: CoreSys, dns_query: AsyncMock):
     assert coresys.resolution.issues[0].type is IssueType.DNS_SERVER_FAILED
     assert coresys.resolution.issues[0].context is ContextType.DNS_SERVER
     assert coresys.resolution.issues[0].reference == "dns://192.168.30.1"
+    capture_exception.assert_called_once_with(err)
 
 
 async def test_approve(coresys: CoreSys, dns_query: AsyncMock):

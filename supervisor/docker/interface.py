@@ -36,6 +36,7 @@ from ..exceptions import (
 )
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
+from ..utils.sentry import capture_exception
 from .const import ContainerState, RestartPolicy
 from .manager import CommandReturn
 from .monitor import DockerContainerStateEvent
@@ -259,7 +260,7 @@ class DockerInterface(CoreSysAttributes):
                 f"Can't install {image}:{version!s}: {err}", _LOGGER.error
             ) from err
         except (docker.errors.DockerException, requests.RequestException) as err:
-            self.sys_capture_exception(err)
+            capture_exception(err)
             raise DockerError(
                 f"Unknown error with {image}:{version!s} -> {err!s}", _LOGGER.error
             ) from err

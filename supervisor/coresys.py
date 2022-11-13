@@ -10,7 +10,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import aiohttp
-import sentry_sdk
 
 from .config import CoreConfig
 from .const import ENV_SUPERVISOR_DEV, SERVER_SOFTWARE
@@ -514,10 +513,6 @@ class CoreSys:
         """Create an async task."""
         return self.loop.create_task(coroutine)
 
-    def capture_exception(self, err: Exception) -> None:
-        """Capture a exception."""
-        sentry_sdk.capture_exception(err)
-
 
 class CoreSysAttributes:
     """Inherit basic CoreSysAttributes."""
@@ -692,7 +687,3 @@ class CoreSysAttributes:
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""
         return self.coresys.create_task(coroutine)
-
-    def sys_capture_exception(self, err: Exception) -> None:
-        """Capture a exception."""
-        self.coresys.capture_exception(err)

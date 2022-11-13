@@ -20,6 +20,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
+from ..utils.sentry import capture_exception
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_MULTICAST,
@@ -142,7 +143,7 @@ class PluginMulticast(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of Multicast failed")
-            self.sys_capture_exception(err)
+            capture_exception(err)
 
     @Job(
         limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,

@@ -20,6 +20,7 @@ from .exceptions import (
 from .homeassistant.core import LANDINGPAGE
 from .resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from .utils.dt import utcnow
+from .utils.sentry import capture_exception
 from .utils.whoami import retrieve_whoami
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -153,7 +154,7 @@ class Core(CoreSysAttributes):
                     "Fatal error happening on load Task %s: %s", setup_task, err
                 )
                 self.sys_resolution.unhealthy = UnhealthyReason.SETUP
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         # Set OS Agent diagnostics if needed
         if (
@@ -196,7 +197,7 @@ class Core(CoreSysAttributes):
                     "future versions of Home Assistant!"
                 )
                 self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         # Start addon mark as initialize
         await self.sys_addons.boot(AddonStartup.INITIALIZE)
@@ -226,12 +227,12 @@ class Core(CoreSysAttributes):
                     await self.sys_homeassistant.core.start()
                 except HomeAssistantCrashError as err:
                     _LOGGER.error("Can't start Home Assistant Core - rebuiling")
-                    self.sys_capture_exception(err)
+                    capture_exception(err)
 
                     with suppress(HomeAssistantError):
                         await self.sys_homeassistant.core.rebuild()
                 except HomeAssistantError as err:
-                    self.sys_capture_exception(err)
+                    capture_exception(err)
             else:
                 _LOGGER.info("Skiping start of Home Assistant")
 

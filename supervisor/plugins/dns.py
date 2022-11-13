@@ -31,6 +31,7 @@ from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
+from ..utils.sentry import capture_exception
 from ..validate import dns_url
 from .base import PluginBase
 from .const import (
@@ -421,7 +422,7 @@ class PluginDns(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of CoreDNS failed")
-            self.sys_capture_exception(err)
+            capture_exception(err)
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""

@@ -1,5 +1,5 @@
 """Test check DNS Servers for IPv6 errors."""
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, Mock, call, patch
 
 from aiodns.error import DNSError
 import pytest
@@ -27,7 +27,7 @@ async def test_base(coresys: CoreSys):
     assert dns_server_ipv6.enabled
 
 
-async def test_check(coresys: CoreSys, dns_query: AsyncMock):
+async def test_check(coresys: CoreSys, dns_query: AsyncMock, capture_exception: Mock):
     """Test check for DNS server IPv6 errors."""
     dns_server_ipv6 = CheckDNSServerIPv6(coresys)
     coresys.core.state = CoreState.RUNNING
@@ -56,7 +56,7 @@ async def test_check(coresys: CoreSys, dns_query: AsyncMock):
     assert len(coresys.resolution.issues) == 0
 
     dns_query.reset_mock()
-    dns_query.side_effect = DNSError(4, "Domain name not found")
+    dns_query.side_effect = (err := DNSError(4, "Domain name not found"))
     await dns_server_ipv6.run_check.__wrapped__(dns_server_ipv6)
     dns_query.assert_called_once_with("_checkdns.home-assistant.io", "AAAA")
 
@@ -64,6 +64,7 @@ async def test_check(coresys: CoreSys, dns_query: AsyncMock):
     assert coresys.resolution.issues[0].type is IssueType.DNS_SERVER_IPV6_ERROR
     assert coresys.resolution.issues[0].context is ContextType.DNS_SERVER
     assert coresys.resolution.issues[0].reference == "dns://192.168.30.1"
+    capture_exception.assert_called_once_with(err)
 
 
 async def test_approve(coresys: CoreSys, dns_query: AsyncMock):

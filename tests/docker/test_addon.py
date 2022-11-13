@@ -1,14 +1,21 @@
 """Test docker addon setup."""
-from unittest.mock import MagicMock, PropertyMock, patch
+from ipaddress import IPv4Address
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
+from docker.errors import NotFound
 import pytest
 
 from supervisor.addons import validate as vd
 from supervisor.addons.addon import Addon
 from supervisor.addons.model import Data
+from supervisor.addons.options import AddonOptions
 from supervisor.const import SYSTEMD_JOURNAL_PERSISTENT, SYSTEMD_JOURNAL_VOLATILE
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
+from supervisor.exceptions import CoreDNSError, DockerNotFound
+from supervisor.plugins.dns import PluginDns
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 from ..common import load_json_fixture
 
@@ -32,7 +39,7 @@ def fixture_addonsdata_user() -> dict[str, Data]:
         yield mock
 
 
-@pytest.fixture(name="os_environ", autouse=True)
+@pytest.fixture(name="os_environ")
 def fixture_os_environ():
     """Mock os.environ."""
     with patch("supervisor.config.os.environ") as mock:
@@ -52,7 +59,9 @@ def get_docker_addon(
     return docker_addon
 
 
-def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Data]):
+def test_base_volumes_included(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], os_environ
+):
     """Dev and data volumes always included."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
@@ -72,7 +81,7 @@ def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Da
 
 
 def test_addon_map_folder_defaults(
-    coresys: CoreSys, addonsdata_system: dict[str, Data]
+    coresys: CoreSys, addonsdata_system: dict[str, Data], os_environ
 ):
     """Validate defaults for mapped folders in addons."""
     docker_addon = get_docker_addon(
@@ -96,7 +105,9 @@ def test_addon_map_folder_defaults(
     assert str(docker_addon.sys_config.path_extern_share) not in volumes
 
 
-def test_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
+def test_journald_addon(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], os_environ
+):
     """Validate volume for journald option."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "journald-addon-config.json"
@@ -115,7 +126,9 @@ def test_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     assert volumes.get(str(SYSTEMD_JOURNAL_VOLATILE)).get("mode") == "ro"
 
 
-def test_not_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
+def test_not_journald_addon(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], os_environ
+):
     """Validate journald option defaults off."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
@@ -123,3 +136,68 @@ def test_not_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]
     volumes = docker_addon.volumes
 
     assert str(SYSTEMD_JOURNAL_PERSISTENT) not in volumes
+
+
+async def test_addon_run_docker_error(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    capture_exception: Mock,
+    os_environ,
+):
+    """Test docker error when addon is run."""
+    await coresys.dbus.timedate.connect(coresys.dbus.bus)
+    coresys.docker.docker.containers.create.side_effect = NotFound("Missing")
+    docker_addon = get_docker_addon(
+        coresys, addonsdata_system, "basic-addon-config.json"
+    )
+
+    with patch.object(DockerAddon, "_stop"), patch.object(
+        AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
+    ), pytest.raises(DockerNotFound):
+        await docker_addon.run()
+
+    assert (
+        Issue(IssueType.MISSING_IMAGE, ContextType.ADDON, reference="test_addon")
+        in coresys.resolution.issues
+    )
+    capture_exception.assert_not_called()
+
+
+async def test_addon_run_add_host_error(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    capture_exception: Mock,
+    os_environ,
+):
+    """Test error adding host when addon is run."""
+    await coresys.dbus.timedate.connect(coresys.dbus.bus)
+    docker_addon = get_docker_addon(
+        coresys, addonsdata_system, "basic-addon-config.json"
+    )
+
+    with patch.object(DockerAddon, "_stop"), patch.object(
+        AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
+    ), patch.object(PluginDns, "add_host", side_effect=(err := CoreDNSError())):
+        await docker_addon.run()
+
+        capture_exception.assert_called_once_with(err)
+
+
+async def test_addon_stop_delete_host_error(
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    capture_exception: Mock,
+):
+    """Test error deleting host when addon is stopped."""
+    docker_addon = get_docker_addon(
+        coresys, addonsdata_system, "basic-addon-config.json"
+    )
+
+    with patch.object(
+        DockerAddon,
+        "ip_address",
+        new=PropertyMock(return_value=IPv4Address("172.30.33.1")),
+    ), patch.object(PluginDns, "delete_host", side_effect=(err := CoreDNSError())):
+        await docker_addon.stop()
+
+        capture_exception.assert_called_once_with(err)

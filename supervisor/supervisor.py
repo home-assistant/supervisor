@@ -30,6 +30,7 @@ from .jobs.const import JobCondition, JobExecutionLimit
 from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType
 from .utils.codenotary import calc_checksum
+from .utils.sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -199,7 +200,7 @@ class Supervisor(CoreSysAttributes):
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
             )
-            self.sys_capture_exception(err)
+            capture_exception(err)
             raise SupervisorUpdateError(
                 f"Update of Supervisor failed: {err!s}", _LOGGER.error
             ) from err

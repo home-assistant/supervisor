@@ -46,6 +46,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..store.validate import repositories
+from ..utils.sentry import close_sentry, init_sentry
 from ..utils.validate import validate_timezone
 from ..validate import version_tag, wait_boot
 from .const import CONTENT_TYPE_BINARY
@@ -143,6 +144,11 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_DIAGNOSTICS in body:
             self.sys_config.diagnostics = body[ATTR_DIAGNOSTICS]
             self.sys_dbus.agent.diagnostics = body[ATTR_DIAGNOSTICS]
+
+            if body[ATTR_DIAGNOSTICS]:
+                init_sentry(self.coresys)
+            else:
+                close_sentry()
 
         if ATTR_LOGGING in body:
             self.sys_config.logging = body[ATTR_LOGGING]

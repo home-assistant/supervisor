@@ -124,10 +124,25 @@ async def test_api_supervisor_options_diagnostics(
     await coresys.dbus.agent.connect(coresys.dbus.bus)
     dbus.clear()
 
-    response = await api_client.post("/supervisor/options", json={"diagnostics": True})
-    await asyncio.sleep(0)
+    with patch("supervisor.utils.sentry.sentry_sdk.init") as sentry_init:
+        response = await api_client.post(
+            "/supervisor/options", json={"diagnostics": True}
+        )
+        assert response.status == 200
+        sentry_init.assert_called_once()
 
-    assert response.status == 200
+    await asyncio.sleep(0)
+    assert dbus == ["/io/hass/os-io.hass.os.Diagnostics"]
+
+    dbus.clear()
+    with patch("supervisor.api.supervisor.close_sentry") as close_sentry:
+        response = await api_client.post(
+            "/supervisor/options", json={"diagnostics": False}
+        )
+        assert response.status == 200
+        close_sentry.assert_called_once()
+
+    await asyncio.sleep(0)
     assert dbus == ["/io/hass/os-io.hass.os.Diagnostics"]
 
 

@@ -5,13 +5,6 @@ from pathlib import Path
 import signal
 
 from colorlog import ColoredFormatter
-import sentry_sdk
-from sentry_sdk.integrations.aiohttp import AioHttpIntegration
-from sentry_sdk.integrations.atexit import AtexitIntegration
-from sentry_sdk.integrations.dedupe import DedupeIntegration
-from sentry_sdk.integrations.excepthook import ExcepthookIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-from sentry_sdk.integrations.threading import ThreadingIntegration
 
 from .addons import AddonManager
 from .api import RestAPI
@@ -28,7 +21,6 @@ from .const import (
     ENV_SUPERVISOR_SHARE,
     MACHINE_ID,
     SOCKET_DOCKER,
-    SUPERVISOR_VERSION,
     LogLevel,
     UpdateChannel,
 )
@@ -42,7 +34,6 @@ from .homeassistant.module import HomeAssistant
 from .host.manager import HostManager
 from .ingress import Ingress
 from .jobs import JobManager
-from .misc.filter import filter_data
 from .misc.scheduler import Scheduler
 from .misc.tasks import Tasks
 from .os.manager import OSManager
@@ -54,6 +45,7 @@ from .store import StoreManager
 from .store.validate import ensure_builtin_repositories
 from .supervisor import Supervisor
 from .updater import Updater
+from .utils.sentry import init_sentry
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -90,7 +82,8 @@ async def initialize_coresys() -> CoreSys:
     coresys.bus = Bus(coresys)
 
     # diagnostics
-    setup_diagnostics(coresys)
+    if coresys.config.diagnostics:
+        init_sentry(coresys)
 
     # bootstrap config
     initialize_system(coresys)
@@ -316,25 +309,3 @@ def supervisor_debugger(coresys: CoreSys) -> None:
     if coresys.config.debug_block:
         _LOGGER.info("Wait until debugger is attached")
         debugpy.wait_for_client()
-
-
-def setup_diagnostics(coresys: CoreSys) -> None:
-    """Sentry diagnostic backend."""
-    _LOGGER.info("Initializing Supervisor Sentry")
-    # pylint: disable=abstract-class-instantiated
-    sentry_sdk.init(
-        dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
-        before_send=lambda event, hint: filter_data(coresys, event, hint),
-        auto_enabling_integrations=False,
-        default_integrations=False,
-        integrations=[
-            AioHttpIntegration(),
-            ExcepthookIntegration(),
-            DedupeIntegration(),
-            AtexitIntegration(),
-            ThreadingIntegration(),
-            LoggingIntegration(level=logging.WARNING, event_level=logging.CRITICAL),
-        ],
-        release=SUPERVISOR_VERSION,
-        max_breadcrumbs=30,
-    )

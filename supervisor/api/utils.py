@@ -10,6 +10,8 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..const import (
+    HEADER_TOKEN,
+    HEADER_TOKEN_OLD,
     JSON_DATA,
     JSON_MESSAGE,
     JSON_RESULT,
@@ -22,7 +24,7 @@ from ..exceptions import APIError, APIForbidden, DockerAPIError, HassioError
 from ..utils import check_exception_chain, get_message_from_exception_chain
 from ..utils.json import JSONEncoder
 from ..utils.log_format import format_message
-from .const import CONTENT_TYPE_BINARY, HEADER_TOKEN, HEADER_TOKEN_OLD
+from .const import CONTENT_TYPE_BINARY
 
 
 def excract_supervisor_token(request: web.Request) -> str | None:

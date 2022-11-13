@@ -2,7 +2,7 @@
 # pylint: disable=protected-access,import-error
 import asyncio
 from datetime import timedelta
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from aiohttp.client_exceptions import ClientError
 import pytest
@@ -512,3 +512,26 @@ async def test_unhealthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
 
     coresys.jobs.ignore_conditions = [JobCondition.HEALTHY]
     assert await test.execute()
+
+
+async def test_unhandled_exception(coresys: CoreSys, capture_exception: Mock):
+    """Test an unhandled exception from job."""
+    err = OSError()
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.HEALTHY])
+        async def execute(self) -> None:
+            """Execute the class method."""
+            raise err
+
+    test = TestClass(coresys)
+    with pytest.raises(JobException):
+        await test.execute()
+
+    capture_exception.assert_called_once_with(err)

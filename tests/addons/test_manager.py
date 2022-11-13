@@ -1,15 +1,23 @@
 """Test addon manager."""
 
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.arch import CpuArch
+from supervisor.const import AddonBoot, AddonStartup, AddonState
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.interface import DockerInterface
+from supervisor.exceptions import (
+    AddonConfigurationError,
+    AddonsError,
+    DockerAPIError,
+    DockerNotFound,
+)
+from supervisor.utils import check_exception_chain
 
 from tests.common import load_json_fixture
 from tests.const import TEST_ADDON_SLUG
@@ -65,3 +73,60 @@ async def test_image_added_removed_on_update(
         await install_addon_ssh.update()
         build.assert_called_once_with(AwesomeVersion("11.0.0"))
         install.assert_not_called()
+
+
+@pytest.mark.parametrize("err", [DockerAPIError, DockerNotFound])
+async def test_addon_boot_system_error(
+    coresys: CoreSys, install_addon_ssh: Addon, capture_exception: Mock, err
+):
+    """Test system errors during addon boot."""
+    install_addon_ssh.boot = AddonBoot.AUTO
+    with patch.object(Addon, "write_options"), patch.object(
+        DockerAddon, "run", side_effect=err
+    ):
+        await coresys.addons.boot(AddonStartup.APPLICATION)
+
+    assert install_addon_ssh.boot == AddonBoot.MANUAL
+    capture_exception.assert_not_called()
+
+
+async def test_addon_boot_user_error(
+    coresys: CoreSys, install_addon_ssh: Addon, capture_exception: Mock
+):
+    """Test user error during addon boot."""
+    install_addon_ssh.boot = AddonBoot.AUTO
+    with patch.object(Addon, "write_options", side_effect=AddonConfigurationError):
+        await coresys.addons.boot(AddonStartup.APPLICATION)
+
+    assert install_addon_ssh.boot == AddonBoot.MANUAL
+    capture_exception.assert_not_called()
+
+
+async def test_addon_boot_other_error(
+    coresys: CoreSys, install_addon_ssh: Addon, capture_exception: Mock
+):
+    """Test other errors captured during addon boot."""
+    install_addon_ssh.boot = AddonBoot.AUTO
+    err = OSError()
+    with patch.object(Addon, "write_options"), patch.object(
+        DockerAddon, "run", side_effect=err
+    ):
+        await coresys.addons.boot(AddonStartup.APPLICATION)
+
+    assert install_addon_ssh.boot == AddonBoot.AUTO
+    capture_exception.assert_called_once_with(err)
+
+
+async def test_addon_shutdown_error(
+    coresys: CoreSys, install_addon_ssh: Addon, capture_exception: Mock
+):
+    """Test errors captured during addon shutdown."""
+    install_addon_ssh.state = AddonState.STARTED
+    with patch.object(DockerAddon, "stop", side_effect=DockerNotFound()):
+        await coresys.addons.shutdown(AddonStartup.APPLICATION)
+
+    assert install_addon_ssh.state == AddonState.ERROR
+    capture_exception.assert_called_once()
+    assert check_exception_chain(
+        capture_exception.call_args[0][0], (AddonsError, DockerNotFound)
+    )

@@ -5,6 +5,7 @@ import logging
 from ..coresys import CoreSys, CoreSysAttributes
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
+from ..utils.sentry import capture_exception
 from .data import Issue, Suggestion
 from .fixups.base import FixupBase
 from .validate import get_valid_modules
@@ -47,7 +48,7 @@ class ResolutionFixup(CoreSysAttributes):
                 await fix()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         _LOGGER.info("System autofix complete")
 

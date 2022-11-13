@@ -17,6 +17,7 @@ from ..exceptions import AddonsError
 from ..jobs.decorator import Job, JobCondition
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
+from ..utils.sentry import capture_exception
 from .backup import Backup
 from .const import BackupType
 from .utils import create_slug
@@ -172,7 +173,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Backup %s error", backup.slug)
-            self.sys_capture_exception(err)
+            capture_exception(err)
             return None
         else:
             self._backups[backup.slug] = backup
@@ -296,7 +297,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", backup.slug)
-            self.sys_capture_exception(err)
+            capture_exception(err)
             return False
         else:
             return True

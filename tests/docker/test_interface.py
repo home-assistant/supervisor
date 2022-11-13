@@ -206,3 +206,17 @@ async def test_attach_total_failure(coresys: CoreSys):
         DockerError
     ):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
+
+
+@pytest.mark.parametrize("err", [DockerException(), RequestException()])
+async def test_image_pull_fail(
+    coresys: CoreSys, capture_exception: Mock, err: Exception
+):
+    """Test failure to pull image."""
+    coresys.docker.images.pull.side_effect = err
+    with pytest.raises(DockerError):
+        await coresys.homeassistant.core.instance.install(
+            AwesomeVersion("2022.7.3"), arch=CpuArch.AMD64
+        )
+
+    capture_exception.assert_called_once_with(err)

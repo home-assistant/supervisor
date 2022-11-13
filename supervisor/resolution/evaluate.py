@@ -4,6 +4,7 @@ import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionNotFound
+from ..utils.sentry import capture_exception
 from .const import UnhealthyReason, UnsupportedReason
 from .evaluations.base import EvaluateBase
 from .validate import get_valid_modules
@@ -59,7 +60,7 @@ class ResolutionEvaluation(CoreSysAttributes):
                 _LOGGER.warning(
                     "Error during processing %s: %s", evaluation.reason, err
                 )
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         if any(reason in self.sys_resolution.unsupported for reason in UNHEALTHY):
             self.sys_resolution.unhealthy = UnhealthyReason.DOCKER

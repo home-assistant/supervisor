@@ -1,12 +1,17 @@
 """Test supervisor object."""
 
 from datetime import timedelta
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from aiohttp.client_exceptions import ClientError
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.docker.supervisor import DockerSupervisor
+from supervisor.exceptions import DockerError, SupervisorUpdateError
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 from supervisor.supervisor import Supervisor
 
 
@@ -63,3 +68,18 @@ async def test_connectivity_check_throttling(
         await coresys.supervisor.check_connectivity()
 
     assert websession.head.call_count == call_count
+
+
+async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
+    """Test update failure."""
+    err = DockerError()
+    with patch.object(DockerSupervisor, "install", side_effect=err), patch.object(
+        type(coresys.supervisor), "update_apparmor"
+    ), pytest.raises(SupervisorUpdateError):
+        await coresys.supervisor.update(AwesomeVersion("1.0"))
+
+    capture_exception.assert_called_once_with(err)
+    assert (
+        Issue(IssueType.UPDATE_FAILED, ContextType.SUPERVISOR)
+        in coresys.resolution.issues
+    )
