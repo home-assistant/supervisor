@@ -103,6 +103,8 @@ class DBus:
             return await getattr(proxy_interface, method)(*args)
         except DBusError as err:
             raise DBus.from_dbus_error(err)
+        except (EOFError, OSError) as err:
+            raise DBusFatalError(str(err))
 
     def _add_interfaces(self):
         """Make proxy interfaces out of introspection data."""
