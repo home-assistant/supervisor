@@ -45,8 +45,10 @@ async def test_api_jobs_reset(api_client, coresys):
     assert coresys.jobs.save_data.called
     assert coresys.jobs.ignore_conditions == [JobCondition.HEALTHY]
 
+    coresys.jobs.save_data.reset_mock()
     resp = await api_client.post("/jobs/reset")
     result = await resp.json()
     assert result["result"] == "ok"
 
     assert coresys.jobs.ignore_conditions == []
+    coresys.jobs.save_data.assert_called_once()
