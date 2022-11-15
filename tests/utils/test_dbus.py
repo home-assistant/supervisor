@@ -21,13 +21,12 @@ async def test_missing_properties_interface(dbus_bus: MessageBus, dbus: list[str
 
 @pytest.mark.parametrize("err", [BrokenPipeError(), EOFError(), OSError()])
 async def test_internal_dbus_errors(
-    dbus_bus: MessageBus,
-    dbus_minimal: list[str],
+    dbus_minimal: MessageBus,
     capture_exception: Mock,
     err: Exception,
 ):
     """Test internal dbus library errors become dbus error."""
-    rauc = await DBus.connect(dbus_bus, "de.pengutronix.rauc", DBUS_OBJECT_BASE)
+    rauc = await DBus.connect(dbus_minimal, "de.pengutronix.rauc", DBUS_OBJECT_BASE)
     setattr(
         # pylint: disable=protected-access
         rauc._proxies["de.pengutronix.rauc.Installer"],

@@ -244,14 +244,12 @@ def dbus(dbus_bus: MessageBus) -> list[str]:
 
 
 @pytest.fixture
-async def dbus_minimal(dbus_bus: MessageBus) -> list[str]:
+async def dbus_minimal(dbus_bus: MessageBus) -> MessageBus:
     """Mock DBus without mocking call_dbus or signals but handle properties fixture."""
-    dbus_commands = []
-
     with patch("supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy), patch(
         "supervisor.dbus.manager.MessageBus.connect", return_value=dbus_bus
     ):
-        yield dbus_commands
+        yield dbus_bus
 
 
 @pytest.fixture
