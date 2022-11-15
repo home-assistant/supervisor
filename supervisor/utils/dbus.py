@@ -30,6 +30,7 @@ from ..exceptions import (
     DBusTimeoutError,
     HassioNotSupportedError,
 )
+from .sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -103,8 +104,9 @@ class DBus:
             return await getattr(proxy_interface, method)(*args)
         except DBusError as err:
             raise DBus.from_dbus_error(err)
-        except (EOFError, OSError) as err:
-            raise DBusFatalError(str(err))
+        except Exception as err:  # pylint: disable=broad-except
+            capture_exception(err)
+            raise DBusFatalError(str(err)) from err
 
     def _add_interfaces(self):
         """Make proxy interfaces out of introspection data."""

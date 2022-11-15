@@ -129,8 +129,41 @@ def mock_get_properties(object_path: str, interface: str) -> str:
     return load_json_fixture(f"{fixture}.json")
 
 
+async def mock_init_proxy(self):
+    """Mock init dbus proxy."""
+    filetype = "xml"
+    fixture = (
+        self.object_path.replace("/", "_")[1:]
+        if self.object_path != DBUS_OBJECT_BASE
+        else self.bus_name.replace(".", "_")
+    )
+
+    if not exists_fixture(f"{fixture}.{filetype}"):
+        fixture = re.sub(r"_[0-9]+$", "", fixture)
+
+        # special case
+        if exists_fixture(f"{fixture}_~.{filetype}"):
+            fixture = f"{fixture}_~"
+
+    # Use dbus-next infrastructure to parse introspection xml
+    self._proxy_obj = ProxyObject(
+        self.bus_name,
+        self.object_path,
+        load_fixture(f"{fixture}.{filetype}"),
+        self._bus,
+    )
+    self._add_interfaces()
+
+    if DBUS_INTERFACE_PROPERTIES in self._proxies:
+        setattr(
+            self._proxies[DBUS_INTERFACE_PROPERTIES],
+            "call_get_all",
+            lambda interface: mock_get_properties(self.object_path, interface),
+        )
+
+
 @pytest.fixture
-def dbus(dbus_bus: MessageBus) -> DBus:
+def dbus(dbus_bus: MessageBus) -> list[str]:
     """Mock DBUS."""
     dbus_commands = []
 
@@ -149,31 +182,6 @@ def dbus(dbus_bus: MessageBus) -> DBus:
 
     async def mock_signal___aexit__(self, exc_t, exc_v, exc_tb):
         pass
-
-    async def mock_init_proxy(self):
-
-        filetype = "xml"
-        fixture = (
-            self.object_path.replace("/", "_")[1:]
-            if self.object_path != DBUS_OBJECT_BASE
-            else self.bus_name.replace(".", "_")
-        )
-
-        if not exists_fixture(f"{fixture}.{filetype}"):
-            fixture = re.sub(r"_[0-9]+$", "", fixture)
-
-            # special case
-            if exists_fixture(f"{fixture}_~.{filetype}"):
-                fixture = f"{fixture}_~"
-
-        # Use dbus-next infrastructure to parse introspection xml
-        self._proxy_obj = ProxyObject(
-            self.bus_name,
-            self.object_path,
-            load_fixture(f"{fixture}.{filetype}"),
-            dbus_bus,
-        )
-        self._add_interfaces()
 
     async def mock_call_dbus(
         proxy_interface: ProxyInterface,
@@ -230,6 +238,17 @@ def dbus(dbus_bus: MessageBus) -> DBus:
         "supervisor.utils.dbus.DBusSignalWrapper.wait_for_signal",
         new=mock_wait_for_signal,
     ), patch(
+        "supervisor.dbus.manager.MessageBus.connect", return_value=dbus_bus
+    ):
+        yield dbus_commands
+
+
+@pytest.fixture
+async def dbus_minimal(dbus_bus: MessageBus) -> list[str]:
+    """Mock DBus without mocking call_dbus or signals but handle properties fixture."""
+    dbus_commands = []
+
+    with patch("supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy), patch(
         "supervisor.dbus.manager.MessageBus.connect", return_value=dbus_bus
     ):
         yield dbus_commands
