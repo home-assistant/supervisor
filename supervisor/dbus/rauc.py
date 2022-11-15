@@ -95,7 +95,7 @@ class Rauc(DBusInterfaceProxy):
     @dbus_connected
     async def mark(self, state: RaucState, slot_identifier: str) -> tuple[str, str]:
         """Get slot status."""
-        return await self.dbus.Installer.call_mark(state, slot_identifier)
+        return await self.dbus.Installer.call_mark(state.value, slot_identifier)
 
     @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:
