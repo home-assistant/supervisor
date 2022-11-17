@@ -4,7 +4,7 @@
     {
       "label": "Run Supervisor",
       "type": "shell",
-      "command": "sudo supervisor_run",
+      "command": "supervisor_run",
       "group": {
         "kind": "test",
         "isDefault": true
@@ -18,7 +18,7 @@
     {
       "label": "Run Supervisor CLI",
       "type": "shell",
-      "command": "sudo docker exec -ti hassio_cli /usr/bin/cli.sh",
+      "command": "docker exec -ti hassio_cli /usr/bin/cli.sh",
       "group": {
         "kind": "test",
         "isDefault": true
