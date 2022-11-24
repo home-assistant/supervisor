@@ -17,7 +17,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.interface import MAP_ARCH
-from ..exceptions import ConfigurationFileError
+from ..exceptions import ConfigurationFileError, HassioArchNotFound
 from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
 
@@ -61,6 +61,10 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             return self._data[ATTR_BUILD_FROM]
 
         # Evaluate correct base image
+        if self.arch not in self._data[ATTR_BUILD_FROM]:
+            raise HassioArchNotFound(
+                f"Add-on {self.addon.slug} is not supported on {self.arch}"
+            )
         return self._data[ATTR_BUILD_FROM][self.arch]
 
     @property
@@ -88,12 +92,15 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
     @property
     def is_valid(self) -> bool:
         """Return true if the build env is valid."""
-        return all(
-            [
-                self.addon.path_location.is_dir(),
-                Path(self.addon.path_location, "Dockerfile").is_file(),
-            ]
-        )
+        try:
+            return all(
+                [
+                    self.addon.path_location.is_dir(),
+                    self.dockerfile.is_file(),
+                ]
+            )
+        except HassioArchNotFound:
+            return False
 
     def get_docker_args(self, version: AwesomeVersion):
         """Create a dict with Docker build arguments."""
