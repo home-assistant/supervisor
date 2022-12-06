@@ -182,6 +182,7 @@ class APIIngress(CoreSysAttributes):
             allow_redirects=False,
             data=data,
             timeout=ClientTimeout(total=None),
+            skip_auto_headers={"Content-Type"},
         ) as result:
             headers = _response_header(result)
 
