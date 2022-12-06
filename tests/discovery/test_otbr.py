@@ -19,4 +19,4 @@ def test_bad_config():
     """Test bad OTBR config."""
 
     with pytest.raises(vol.Invalid):
-        valid_discovery_config("otbrr", {"host": "test"})
+        valid_discovery_config("otbr", {"host": "test"})
