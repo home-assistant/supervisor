@@ -215,6 +215,8 @@ class NetworkManager(DBusInterfaceProxy):
                 == self.properties[DBUS_ATTR_PRIMARY_CONNECTION]
             ):
                 interface.primary = True
+            else:
+                interface.primary = False
 
             interfaces[interface.name] = interface
 
