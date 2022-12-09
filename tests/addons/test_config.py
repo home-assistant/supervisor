@@ -147,6 +147,13 @@ def test_valid_basic_build():
     vd.SCHEMA_BUILD_CONFIG(config)
 
 
+async def test_valid_manifest_build():
+    """Validate build config with manifest build from."""
+    config = load_json_fixture("build-config-manifest.json")
+
+    vd.SCHEMA_BUILD_CONFIG(config)
+
+
 def test_valid_machine():
     """Validate valid machine config."""
     config = load_json_fixture("basic-addon-config.json")

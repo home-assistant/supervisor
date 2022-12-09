@@ -7,23 +7,41 @@ from contextlib import suppress
 import logging
 from pathlib import Path, PurePath
 import shutil
-from typing import Optional
 
 from awesomeversion import AwesomeVersion
 import jinja2
 
+from ..const import LogLevel
 from ..coresys import CoreSys
 from ..docker.audio import DockerAudio
+from ..docker.const import ContainerState
 from ..docker.stats import DockerStats
-from ..exceptions import AudioError, AudioUpdateError, DockerError
+from ..exceptions import (
+    AudioError,
+    AudioJobError,
+    AudioUpdateError,
+    ConfigurationFileError,
+    DockerError,
+)
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
+from ..utils.json import write_json_file
+from ..utils.sentry import capture_exception
 from .base import PluginBase
-from .const import FILE_HASSIO_AUDIO
+from .const import (
+    FILE_HASSIO_AUDIO,
+    PLUGIN_UPDATE_CONDITIONS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_AUDIO_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# pylint: disable=no-member
 PULSE_CLIENT_TMPL: Path = Path(__file__).parents[1].joinpath("data/pulse-client.tmpl")
 ASOUND_TMPL: Path = Path(__file__).parents[1].joinpath("data/asound.tmpl")
+# pylint: enable=no-member
 
 
 class PluginAudio(PluginBase):
@@ -35,7 +53,7 @@ class PluginAudio(PluginBase):
         self.slug = "audio"
         self.coresys: CoreSys = coresys
         self.instance: DockerAudio = DockerAudio(coresys)
-        self.client_template: Optional[jinja2.Template] = None
+        self.client_template: jinja2.Template | None = None
 
     @property
     def path_extern_pulse(self) -> PurePath:
@@ -48,7 +66,12 @@ class PluginAudio(PluginBase):
         return self.sys_config.path_extern_audio.joinpath("asound")
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def pulse_audio_config(self) -> Path:
+        """Return Path to pulse audio config file."""
+        return Path(self.sys_config.path_audio, "pulse_audio.json")
+
+    @property
+    def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of Audio."""
         return self.sys_updater.version_audio
 
@@ -56,32 +79,13 @@ class PluginAudio(PluginBase):
         """Load Audio setup."""
         # Initialize Client Template
         try:
-            self.client_template = jinja2.Template(PULSE_CLIENT_TMPL.read_text())
+            self.client_template = jinja2.Template(
+                PULSE_CLIENT_TMPL.read_text(encoding="utf-8")
+            )
         except OSError as err:
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
 
-        # Check Audio state
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info("No Audio plugin Docker image %s found.", self.instance.image)
-
-            # Install PulseAudio
-            with suppress(AudioError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run PulseAudio
-        with suppress(AudioError):
-            if not await self.instance.is_running():
-                await self.start()
+        await super().load()
 
         # Setup default asound config
         asound = self.sys_config.path_audio.joinpath("asound")
@@ -113,7 +117,11 @@ class PluginAudio(PluginBase):
         self.image = self.sys_updater.image_audio
         self.save_data()
 
-    async def update(self, version: Optional[str] = None) -> None:
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=AudioJobError,
+    )
+    async def update(self, version: str | None = None) -> None:
         """Update Audio plugin."""
         version = version or self.latest_version
         old_image = self.image
@@ -141,21 +149,23 @@ class PluginAudio(PluginBase):
     async def restart(self) -> None:
         """Restart Audio plugin."""
         _LOGGER.info("Restarting Audio plugin")
+        self._write_config()
         try:
             await self.instance.restart()
         except DockerError as err:
             raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
 
     async def start(self) -> None:
-        """Run CoreDNS."""
+        """Run Audio plugin."""
         _LOGGER.info("Starting Audio plugin")
+        self._write_config()
         try:
             await self.instance.run()
         except DockerError as err:
             raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
 
     async def stop(self) -> None:
-        """Stop CoreDNS."""
+        """Stop Audio plugin."""
         _LOGGER.info("Stopping Audio plugin")
         try:
             await self.instance.stop()
@@ -163,14 +173,14 @@ class PluginAudio(PluginBase):
             raise AudioError("Can't stop Audio plugin", _LOGGER.error) from err
 
     async def stats(self) -> DockerStats:
-        """Return stats of CoreDNS."""
+        """Return stats of Audio plugin."""
         try:
             return await self.instance.stats()
         except DockerError as err:
             raise AudioError() from err
 
     async def repair(self) -> None:
-        """Repair CoreDNS plugin."""
+        """Repair Audio plugin."""
         if await self.instance.exists():
             return
 
@@ -179,7 +189,7 @@ class PluginAudio(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of Audio failed")
-            self.sys_capture_exception(err)
+            capture_exception(err)
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:
         """Generate an /etc/pulse/client.conf data."""
@@ -192,3 +202,27 @@ class PluginAudio(PluginBase):
             default_source=input_profile,
             default_sink=output_profile,
         )
+
+    def _write_config(self):
+        """Write pulse audio config."""
+        try:
+            write_json_file(
+                self.pulse_audio_config,
+                {
+                    "debug": self.sys_config.logging == LogLevel.DEBUG,
+                },
+            )
+        except ConfigurationFileError as err:
+            raise AudioError(
+                f"Can't update pulse audio config: {err}", _LOGGER.error
+            ) from err
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=AudioJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)

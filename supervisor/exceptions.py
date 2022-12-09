@@ -1,7 +1,5 @@
 """Core Exceptions."""
-
-
-from typing import Callable, Optional
+from collections.abc import Callable
 
 
 class HassioError(Exception):
@@ -9,8 +7,8 @@ class HassioError(Exception):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        logger: Optional[Callable[..., None]] = None,
+        message: str | None = None,
+        logger: Callable[..., None] | None = None,
     ) -> None:
         """Raise & log."""
         if logger is not None and message is not None:
@@ -115,10 +113,21 @@ class HassOSDataDiskError(HassOSError):
     """Issues with the DataDisk feature from HAOS."""
 
 
+# All Plugins
+
+
+class PluginError(HassioError):
+    """Plugin error."""
+
+
+class PluginJobError(PluginError, JobException):
+    """Raise on job error with plugin."""
+
+
 # HaCli
 
 
-class CliError(HassioError):
+class CliError(PluginError):
     """HA cli exception."""
 
 
@@ -126,10 +135,14 @@ class CliUpdateError(CliError):
     """Error on update of a HA cli."""
 
 
+class CliJobError(CliError, PluginJobError):
+    """Raise on job error with cli plugin."""
+
+
 # Observer
 
 
-class ObserverError(HassioError):
+class ObserverError(PluginError):
     """General Observer exception."""
 
 
@@ -137,10 +150,14 @@ class ObserverUpdateError(ObserverError):
     """Error on update of a Observer."""
 
 
+class ObserverJobError(ObserverError, PluginJobError):
+    """Raise on job error with observer plugin."""
+
+
 # Multicast
 
 
-class MulticastError(HassioError):
+class MulticastError(PluginError):
     """Multicast exception."""
 
 
@@ -148,10 +165,14 @@ class MulticastUpdateError(MulticastError):
     """Error on update of a multicast."""
 
 
+class MulticastJobError(MulticastError, PluginJobError):
+    """Raise on job error with multicast plugin."""
+
+
 # DNS
 
 
-class CoreDNSError(HassioError):
+class CoreDNSError(PluginError):
     """CoreDNS exception."""
 
 
@@ -159,15 +180,23 @@ class CoreDNSUpdateError(CoreDNSError):
     """Error on update of a CoreDNS."""
 
 
-# DNS
+class CoreDNSJobError(CoreDNSError, PluginJobError):
+    """Raise on job error with dns plugin."""
 
 
-class AudioError(HassioError):
+# Audio
+
+
+class AudioError(PluginError):
     """PulseAudio exception."""
 
 
 class AudioUpdateError(AudioError):
     """Error on update of a Audio."""
+
+
+class AudioJobError(AudioError, PluginJobError):
+    """Raise on job error with audio plugin."""
 
 
 # Addons
@@ -245,6 +274,10 @@ class HostNetworkNotFound(HostError):
     """Return if host interface is not found."""
 
 
+class HostLogError(HostError):
+    """Internal error with host log."""
+
+
 # API
 
 
@@ -254,6 +287,10 @@ class APIError(HassioError, RuntimeError):
 
 class APIForbidden(APIError):
     """API forbidden error."""
+
+
+class APIAddonNotInstalled(APIError):
+    """Not installed addon requested at addons API."""
 
 
 # Service / Discovery
@@ -282,16 +319,32 @@ class DBusInterfaceError(HassioNotSupportedError):
     """D-Bus interface not connected."""
 
 
+class DBusObjectError(HassioNotSupportedError):
+    """D-Bus object not defined."""
+
+
+class DBusInterfaceMethodError(DBusInterfaceError):
+    """D-Bus method not defined or input does not match signature."""
+
+
+class DBusInterfacePropertyError(DBusInterfaceError):
+    """D-Bus property not defined or is read-only."""
+
+
+class DBusInterfaceSignalError(DBusInterfaceError):
+    """D-Bus signal not defined."""
+
+
 class DBusFatalError(DBusError):
     """D-Bus call going wrong."""
 
 
-class DBusInterfaceMethodError(DBusInterfaceError):
-    """D-Bus method was not defined."""
-
-
 class DBusParseError(DBusError):
     """D-Bus parse error."""
+
+
+class DBusTimeoutError(DBusError):
+    """D-Bus call timed out."""
 
 
 # util/apparmor
@@ -307,6 +360,13 @@ class AppArmorFileError(AppArmorError):
 
 class AppArmorInvalidError(AppArmorError):
     """AppArmor profile validate error."""
+
+
+# util/boards
+
+
+class BoardInvalidError(DBusObjectError):
+    """System does not use the board specified."""
 
 
 # util/common
@@ -454,12 +514,20 @@ class StoreGitError(StoreError):
     """Raise if something on git is happening."""
 
 
+class StoreGitCloneError(StoreGitError):
+    """Raise if error occurred while cloning repository."""
+
+
 class StoreNotFound(StoreError):
     """Raise if slug is not known."""
 
 
 class StoreJobError(StoreError, JobException):
     """Raise on job error with git."""
+
+
+class StoreInvalidAddonRepo(StoreError):
+    """Raise on invalid addon repo."""
 
 
 # Backup
@@ -471,3 +539,14 @@ class BackupError(HassioError):
 
 class HomeAssistantBackupError(BackupError, HomeAssistantError):
     """Raise if an error during Home Assistant Core backup is happening."""
+
+
+# Security
+
+
+class SecurityError(HassioError):
+    """Raise if an error during security checks are happening."""
+
+
+class SecurityJobError(SecurityError, JobException):
+    """Raise on Security job error."""

@@ -3,7 +3,6 @@ from datetime import timedelta
 import logging
 import random
 import secrets
-from typing import Optional
 
 from .addons.addon import Addon
 from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
@@ -25,7 +24,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.tokens: dict[str, str] = {}
 
-    def get(self, token: str) -> Optional[Addon]:
+    def get(self, token: str) -> Addon | None:
         """Return addon they have this ingress token."""
         if token not in self.tokens:
             return None

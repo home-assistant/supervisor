@@ -1,16 +1,17 @@
 """Init file for Supervisor Docker object."""
+from collections.abc import Awaitable
 from ipaddress import IPv4Address
 import logging
-from typing import Awaitable, Optional
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 import docker
 import requests
 
-from ..const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_HASSIO, LABEL_MACHINE, MACHINE_ID
+from ..const import LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
+from .const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class DockerHomeAssistant(DockerInterface):
     """Docker Supervisor wrapper for Home Assistant."""
 
     @property
-    def machine(self) -> Optional[str]:
+    def machine(self) -> str | None:
         """Return machine of Home Assistant Docker image."""
         if self._meta and LABEL_MACHINE in self._meta["Config"]["Labels"]:
             return self._meta["Config"]["Labels"][LABEL_MACHINE]
@@ -41,9 +42,9 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def timeout(self) -> int:
         """Return timeout for Docker actions."""
-        # Synchronized homeassistant/core.py:async_stop
-        # to avoid killing Home Assistant Core.
-        return 120 + 60 + 30 + 10
+        # Synchronized homeassistant's S6_SERVICES_GRACETIME
+        # to avoid killing Home Assistant Core
+        return 220 + 20
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -141,13 +142,14 @@ class DockerHomeAssistant(DockerInterface):
                 "observer": self.sys_docker.network.observer,
             },
             environment={
-                "HASSIO": self.sys_docker.network.supervisor,
                 "SUPERVISOR": self.sys_docker.network.supervisor,
+                "HASSIO": self.sys_docker.network.supervisor,
                 ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_homeassistant.supervisor_token,
-                ENV_TOKEN_HASSIO: self.sys_homeassistant.supervisor_token,
+                ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
             },
             tmpfs={"/tmp": ""},
+            oom_score_adj=-300,
         )
 
         self._meta = docker_container.attrs

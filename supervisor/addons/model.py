@@ -1,11 +1,10 @@
 """Init file for Supervisor add-ons."""
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 from pathlib import Path
-from typing import Any, Awaitable, Optional
+from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-
-from supervisor.addons.const import AddonBackupMode
 
 from ..const import (
     ATTR_ADVANCED,
@@ -80,7 +79,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import Capabilities
-from .const import ATTR_BACKUP, ATTR_CODENOTARY
+from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE, RE_VOLUME
 
@@ -126,7 +125,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_BOOT]
 
     @property
-    def auto_update(self) -> Optional[bool]:
+    def auto_update(self) -> bool | None:
         """Return if auto update is enable."""
         return None
 
@@ -151,22 +150,22 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_TIMEOUT]
 
     @property
-    def uuid(self) -> Optional[str]:
+    def uuid(self) -> str | None:
         """Return an API token for this add-on."""
         return None
 
     @property
-    def supervisor_token(self) -> Optional[str]:
+    def supervisor_token(self) -> str | None:
         """Return access token for Supervisor API."""
         return None
 
     @property
-    def ingress_token(self) -> Optional[str]:
+    def ingress_token(self) -> str | None:
         """Return access token for Supervisor API."""
         return None
 
     @property
-    def ingress_entry(self) -> Optional[str]:
+    def ingress_entry(self) -> str | None:
         """Return ingress external URL."""
         return None
 
@@ -176,7 +175,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_DESCRIPTON]
 
     @property
-    def long_description(self) -> Optional[str]:
+    def long_description(self) -> str | None:
         """Return README.md as long_description."""
         readme = Path(self.path_location, "README.md")
 
@@ -246,32 +245,32 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_DISCOVERY, [])
 
     @property
-    def ports_description(self) -> Optional[dict[str, str]]:
+    def ports_description(self) -> dict[str, str] | None:
         """Return descriptions of ports."""
         return self.data.get(ATTR_PORTS_DESCRIPTION)
 
     @property
-    def ports(self) -> Optional[dict[str, Optional[int]]]:
+    def ports(self) -> dict[str, int | None] | None:
         """Return ports of add-on."""
         return self.data.get(ATTR_PORTS)
 
     @property
-    def ingress_url(self) -> Optional[str]:
+    def ingress_url(self) -> str | None:
         """Return URL to ingress url."""
         return None
 
     @property
-    def webui(self) -> Optional[str]:
+    def webui(self) -> str | None:
         """Return URL to webui or None."""
         return self.data.get(ATTR_WEBUI)
 
     @property
-    def watchdog(self) -> Optional[str]:
+    def watchdog(self) -> str | None:
         """Return URL to for watchdog or None."""
         return self.data.get(ATTR_WATCHDOG)
 
     @property
-    def ingress_port(self) -> Optional[int]:
+    def ingress_port(self) -> int | None:
         """Return Ingress port."""
         return None
 
@@ -321,7 +320,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return [Path(node) for node in self.data.get(ATTR_DEVICES, [])]
 
     @property
-    def environment(self) -> Optional[dict[str, str]]:
+    def environment(self) -> dict[str, str] | None:
         """Return environment of add-on."""
         return self.data.get(ATTR_ENVIRONMENT)
 
@@ -370,12 +369,12 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_BACKUP_EXCLUDE, [])
 
     @property
-    def backup_pre(self) -> Optional[str]:
+    def backup_pre(self) -> str | None:
         """Return pre-backup command."""
         return self.data.get(ATTR_BACKUP_PRE)
 
     @property
-    def backup_post(self) -> Optional[str]:
+    def backup_post(self) -> str | None:
         """Return post-backup command."""
         return self.data.get(ATTR_BACKUP_POST)
 
@@ -400,7 +399,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_INGRESS]
 
     @property
-    def ingress_panel(self) -> Optional[bool]:
+    def ingress_panel(self) -> bool | None:
         """Return True if the add-on access support ingress."""
         return None
 
@@ -450,7 +449,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_DEVICETREE]
 
     @property
-    def with_tmpfs(self) -> Optional[str]:
+    def with_tmpfs(self) -> str | None:
         """Return if tmp is in memory of add-on."""
         return self.data[ATTR_TMPFS]
 
@@ -470,12 +469,12 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data[ATTR_VIDEO]
 
     @property
-    def homeassistant_version(self) -> Optional[str]:
+    def homeassistant_version(self) -> str | None:
         """Return min Home Assistant version they needed by Add-on."""
         return self.data.get(ATTR_HOMEASSISTANT)
 
     @property
-    def url(self) -> Optional[str]:
+    def url(self) -> str | None:
         """Return URL of add-on."""
         return self.data.get(ATTR_URL)
 
@@ -518,7 +517,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.sys_arch.default
 
     @property
-    def image(self) -> Optional[str]:
+    def image(self) -> str | None:
         """Generate image name from data."""
         return self._image(self.data)
 
@@ -579,7 +578,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return AddonOptions(self.coresys, raw_schema, self.name, self.slug)
 
     @property
-    def schema_ui(self) -> Optional[list[dict[any, any]]]:
+    def schema_ui(self) -> list[dict[any, any]] | None:
         """Create a UI schema for add-on options."""
         raw_schema = self.data[ATTR_SCHEMA]
 
@@ -598,7 +597,7 @@ class AddonModel(CoreSysAttributes, ABC):
         return ATTR_CODENOTARY in self.data
 
     @property
-    def codenotary(self) -> Optional[str]:
+    def codenotary(self) -> str | None:
         """Return Signer email address for CAS."""
         return self.data.get(ATTR_CODENOTARY)
 
@@ -622,7 +621,7 @@ class AddonModel(CoreSysAttributes, ABC):
             return False
 
         # Home Assistant
-        version: Optional[AwesomeVersion] = config.get(ATTR_HOMEASSISTANT)
+        version: AwesomeVersion | None = config.get(ATTR_HOMEASSISTANT)
         try:
             return self.sys_homeassistant.version >= version
         except (AwesomeVersionException, TypeError):
@@ -646,7 +645,7 @@ class AddonModel(CoreSysAttributes, ABC):
         """Uninstall this add-on."""
         return self.sys_addons.uninstall(self.slug)
 
-    def update(self, backup: Optional[bool] = False) -> Awaitable[None]:
+    def update(self, backup: bool | None = False) -> Awaitable[None]:
         """Update this add-on."""
         return self.sys_addons.update(self.slug, backup=backup)
 

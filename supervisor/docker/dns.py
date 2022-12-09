@@ -1,9 +1,8 @@
 """DNS docker object."""
 import logging
 
-from ..const import ENV_TIME
 from ..coresys import CoreSysAttributes
-from .const import DBUS_PATH, DBUS_VOLUME
+from .const import DBUS_PATH, DBUS_VOLUME, ENV_TIME
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -51,6 +50,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
                 str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "rw"},
                 DBUS_PATH: DBUS_VOLUME,
             },
+            oom_score_adj=-300,
         )
 
         self._meta = docker_container.attrs

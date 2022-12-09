@@ -1,25 +1,43 @@
 """Init file for Supervisor Home Assistant RESTful API."""
 import asyncio
-from typing import Any, Awaitable
+from collections.abc import Awaitable
+from typing import Any
 
 from aiohttp import web
 import voluptuous as vol
 
 from ..addons import AnyAddon
-from ..api.utils import api_process, api_validate
+from ..addons.utils import rating_security
+from ..api.const import ATTR_SIGNED
+from ..api.utils import api_process, api_process_raw, api_validate
 from ..const import (
     ATTR_ADDONS,
     ATTR_ADVANCED,
+    ATTR_APPARMOR,
+    ATTR_ARCH,
+    ATTR_AUTH_API,
     ATTR_AVAILABLE,
     ATTR_BACKUP,
     ATTR_BUILD,
     ATTR_DESCRIPTON,
+    ATTR_DETACHED,
+    ATTR_DOCKER_API,
+    ATTR_DOCUMENTATION,
+    ATTR_FULL_ACCESS,
+    ATTR_HASSIO_API,
+    ATTR_HASSIO_ROLE,
     ATTR_HOMEASSISTANT,
+    ATTR_HOMEASSISTANT_API,
+    ATTR_HOST_NETWORK,
+    ATTR_HOST_PID,
     ATTR_ICON,
+    ATTR_INGRESS,
     ATTR_INSTALLED,
     ATTR_LOGO,
+    ATTR_LONG_DESCRIPTION,
     ATTR_MAINTAINER,
     ATTR_NAME,
+    ATTR_RATING,
     ATTR_REPOSITORIES,
     ATTR_REPOSITORY,
     ATTR_SLUG,
@@ -35,11 +53,17 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
 from ..store.addon import AddonStore
 from ..store.repository import Repository
+from ..store.validate import validate_repository
+from .const import CONTENT_TYPE_PNG, CONTENT_TYPE_TEXT
 
 SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_BACKUP): bool,
     }
+)
+
+SCHEMA_ADD_REPOSITORY = vol.Schema(
+    {vol.Required(ATTR_REPOSITORY): vol.All(str, validate_repository)}
 )
 
 
@@ -75,13 +99,24 @@ class APIStore(CoreSysAttributes):
 
         return repository
 
-    def _generate_addon_information(self, addon: AddonStore) -> dict[str, Any]:
+    def _generate_addon_information(
+        self, addon: AddonStore, extended: bool = False
+    ) -> dict[str, Any]:
         """Generate addon information."""
-        return {
+
+        installed = (
+            self.sys_addons.get(addon.slug, local_only=True)
+            if addon.is_installed
+            else None
+        )
+
+        data = {
             ATTR_ADVANCED: addon.advanced,
+            ATTR_ARCH: addon.supported_arch,
             ATTR_AVAILABLE: addon.available,
             ATTR_BUILD: addon.need_build,
             ATTR_DESCRIPTON: addon.description,
+            ATTR_DOCUMENTATION: addon.with_documentation,
             ATTR_HOMEASSISTANT: addon.homeassistant_version,
             ATTR_ICON: addon.with_icon,
             ATTR_INSTALLED: addon.is_installed,
@@ -90,11 +125,34 @@ class APIStore(CoreSysAttributes):
             ATTR_REPOSITORY: addon.repository,
             ATTR_SLUG: addon.slug,
             ATTR_STAGE: addon.stage,
-            ATTR_UPDATE_AVAILABLE: addon.need_update if addon.is_installed else False,
+            ATTR_UPDATE_AVAILABLE: installed.need_update
+            if addon.is_installed
+            else False,
             ATTR_URL: addon.url,
             ATTR_VERSION_LATEST: addon.latest_version,
-            ATTR_VERSION: addon.version if addon.is_installed else None,
+            ATTR_VERSION: installed.version if addon.is_installed else None,
         }
+        if extended:
+            data.update(
+                {
+                    ATTR_APPARMOR: addon.apparmor,
+                    ATTR_AUTH_API: addon.access_auth_api,
+                    ATTR_DETACHED: addon.is_detached,
+                    ATTR_DOCKER_API: addon.access_docker_api,
+                    ATTR_FULL_ACCESS: addon.with_full_access,
+                    ATTR_HASSIO_API: addon.access_hassio_api,
+                    ATTR_HASSIO_ROLE: addon.hassio_role,
+                    ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
+                    ATTR_HOST_NETWORK: addon.host_network,
+                    ATTR_HOST_PID: addon.host_pid,
+                    ATTR_INGRESS: addon.with_ingress,
+                    ATTR_LONG_DESCRIPTION: addon.long_description,
+                    ATTR_RATING: rating_security(addon),
+                    ATTR_SIGNED: addon.signed,
+                }
+            )
+
+        return data
 
     def _generate_repository_information(
         self, repository: Repository
@@ -155,8 +213,53 @@ class APIStore(CoreSysAttributes):
     @api_process
     async def addons_addon_info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
+        return await self.addons_addon_info_wrapped(request)
+
+    # Used by legacy routing for addons/{addon}/info, can be refactored out when that is removed (1/2023)
+    async def addons_addon_info_wrapped(self, request: web.Request) -> dict[str, Any]:
+        """Return add-on information directly (not api)."""
         addon: AddonStore = self._extract_addon(request)
-        return self._generate_addon_information(addon)
+        return self._generate_addon_information(addon, True)
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def addons_addon_icon(self, request: web.Request) -> bytes:
+        """Return icon from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_icon:
+            raise APIError(f"No icon found for add-on {addon.slug}!")
+
+        with addon.path_icon.open("rb") as png:
+            return png.read()
+
+    @api_process_raw(CONTENT_TYPE_PNG)
+    async def addons_addon_logo(self, request: web.Request) -> bytes:
+        """Return logo from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_logo:
+            raise APIError(f"No logo found for add-on {addon.slug}!")
+
+        with addon.path_logo.open("rb") as png:
+            return png.read()
+
+    @api_process_raw(CONTENT_TYPE_TEXT)
+    async def addons_addon_changelog(self, request: web.Request) -> str:
+        """Return changelog from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_changelog:
+            raise APIError(f"No changelog found for add-on {addon.slug}!")
+
+        with addon.path_changelog.open("r") as changelog:
+            return changelog.read()
+
+    @api_process_raw(CONTENT_TYPE_TEXT)
+    async def addons_addon_documentation(self, request: web.Request) -> str:
+        """Return documentation from add-on."""
+        addon = self._extract_addon(request)
+        if not addon.with_documentation:
+            raise APIError(f"No documentation found for add-on {addon.slug}!")
+
+        with addon.path_documentation.open("r") as documentation:
+            return documentation.read()
 
     @api_process
     async def repositories_list(self, request: web.Request) -> list[dict[str, Any]]:
@@ -173,3 +276,15 @@ class APIStore(CoreSysAttributes):
         """Return repository information."""
         repository: Repository = self._extract_repository(request)
         return self._generate_repository_information(repository)
+
+    @api_process
+    async def add_repository(self, request: web.Request):
+        """Add repository to the store."""
+        body = await api_validate(SCHEMA_ADD_REPOSITORY, request)
+        await asyncio.shield(self.sys_store.add_repository(body[ATTR_REPOSITORY]))
+
+    @api_process
+    async def remove_repository(self, request: web.Request):
+        """Remove repository from the store."""
+        repository: Repository = self._extract_repository(request)
+        await asyncio.shield(self.sys_store.remove_repository(repository))

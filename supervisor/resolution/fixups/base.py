@@ -1,7 +1,6 @@
 """Baseclass for system fixup."""
 from abc import ABC, abstractmethod
 import logging
-from typing import Optional
 
 from ...coresys import CoreSys, CoreSysAttributes
 from ...exceptions import ResolutionFixupError
@@ -18,15 +17,13 @@ class FixupBase(ABC, CoreSysAttributes):
         """Initialize the fixup class."""
         self.coresys = coresys
 
-    async def __call__(self) -> None:
+    async def __call__(self, fixing_suggestion: Suggestion | None = None) -> None:
         """Execute the evaluation."""
-        # Get suggestion to fix
-        fixing_suggestion: Optional[Suggestion] = None
-        for suggestion in self.sys_resolution.suggestions:
-            if suggestion.type != self.suggestion or suggestion.context != self.context:
-                continue
-            fixing_suggestion = suggestion
-            break
+        if not fixing_suggestion:
+            # Get suggestion to fix
+            fixing_suggestion: Suggestion | None = next(
+                iter(self.all_suggestions), None
+            )
 
         # No suggestion
         if fixing_suggestion is None:
@@ -39,17 +36,14 @@ class FixupBase(ABC, CoreSysAttributes):
         except ResolutionFixupError:
             return
 
-        self.sys_resolution.dismiss_suggestion(fixing_suggestion)
-
         # Cleanup issue
-        for issue_type in self.issues:
-            issue = Issue(issue_type, self.context, fixing_suggestion.reference)
-            if issue not in self.sys_resolution.issues:
-                continue
+        for issue in self.sys_resolution.issues_for_suggestion(fixing_suggestion):
             self.sys_resolution.dismiss_issue(issue)
 
+        self.sys_resolution.dismiss_suggestion(fixing_suggestion)
+
     @abstractmethod
-    async def process_fixup(self, reference: Optional[str] = None) -> None:
+    async def process_fixup(self, reference: str | None = None) -> None:
         """Run processing of fixup."""
 
     @property
@@ -71,3 +65,26 @@ class FixupBase(ABC, CoreSysAttributes):
     def auto(self) -> bool:
         """Return if a fixup can be apply as auto fix."""
         return False
+
+    @property
+    def all_suggestions(self) -> list[Suggestion]:
+        """List of all suggestions which when applied run this fixup."""
+        return [
+            suggestion
+            for suggestion in self.sys_resolution.suggestions
+            if suggestion.type == self.suggestion and suggestion.context == self.context
+        ]
+
+    @property
+    def all_issues(self) -> list[Issue]:
+        """List of all issues which could be fixed by this fixup."""
+        return [
+            issue
+            for issue in self.sys_resolution.issues
+            if issue.type in self.issues and issue.context == self.context
+        ]
+
+    @property
+    def slug(self) -> str:
+        """Return the check slug."""
+        return self.__class__.__module__.rsplit(".", maxsplit=1)[-1]

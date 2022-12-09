@@ -1,5 +1,6 @@
 """Init file for Supervisor add-ons."""
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 from copy import deepcopy
 from ipaddress import IPv4Address
@@ -10,7 +11,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Final, Optional
+from typing import Any, Final
 
 import aiohttp
 from deepmerge import Merger
@@ -18,6 +19,7 @@ from securetar import atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from ..bus import EventListener
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -48,25 +50,36 @@ from ..const import (
     AddonBoot,
     AddonStartup,
     AddonState,
+    BusEvent,
 )
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
+from ..docker.const import ContainerState
+from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
     AddonConfigurationError,
     AddonsError,
+    AddonsJobError,
     AddonsNotSupportedError,
     ConfigurationFileError,
     DockerError,
-    DockerRequestError,
     HostAppArmorError,
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
-from .const import AddonBackupMode
+from .const import (
+    WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_RETRY_SECONDS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+    AddonBackupMode,
+)
 from .model import AddonModel, Data
 from .options import AddonOptions
 from .utils import remove_data
@@ -83,8 +96,6 @@ RE_WATCHDOG = re.compile(
     r"^(?:(?P<s_prefix>https?|tcp)|\[PROTO:(?P<t_proto>\w+)\])"
     r":\/\/\[HOST\]:(?:\[PORT:)?(?P<t_port>\d+)\]?(?P<s_suffix>.*)$"
 )
-
-RE_OLD_AUDIO = re.compile(r"\d+,\d+")
 
 WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
 
@@ -103,6 +114,58 @@ class Addon(AddonModel):
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
         self._state: AddonState = AddonState.UNKNOWN
+        self._manual_stop: bool = (
+            self.sys_hardware.helper.last_boot != self.sys_config.last_boot
+        )
+        self._listeners: list[EventListener] = []
+
+        @Job(
+            name=f"addon_{slug}_restart_after_problem",
+            limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+            throttle_period=WATCHDOG_THROTTLE_PERIOD,
+            throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+            on_condition=AddonsJobError,
+        )
+        async def restart_after_problem(addon: Addon, state: ContainerState):
+            """Restart unhealthy or failed addon."""
+            attempts = 0
+            while await addon.instance.current_state() == state:
+                if not addon.in_progress:
+                    _LOGGER.warning(
+                        "Watchdog found addon %s is %s, restarting...",
+                        addon.name,
+                        state.value,
+                    )
+                    try:
+                        if state == ContainerState.FAILED:
+                            # Ensure failed container is removed before attempting reanimation
+                            if attempts == 0:
+                                with suppress(DockerError):
+                                    await addon.instance.stop(remove_container=True)
+
+                            await addon.start()
+                        else:
+                            await addon.restart()
+                    except AddonsError as err:
+                        attempts = attempts + 1
+                        _LOGGER.error(
+                            "Watchdog restart of addon %s failed!", addon.name
+                        )
+                        addon.sys_capture_exception(err)
+                    else:
+                        break
+
+                if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                    _LOGGER.critical(
+                        "Watchdog cannot restart addon %s, failed all %s attempts",
+                        addon.name,
+                        attempts,
+                    )
+                    break
+
+                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+
+        self._restart_after_problem = restart_after_problem
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -137,14 +200,19 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
+        self._listeners.append(
+            self.sys_bus.register_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
+            )
+        )
+        self._listeners.append(
+            self.sys_bus.register_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+            )
+        )
+
         with suppress(DockerError):
             await self.instance.attach(version=self.version)
-
-            # Evaluate state
-            if await self.instance.is_running():
-                self.state = AddonState.STARTED
-            else:
-                self.state = AddonState.STOPPED
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -182,7 +250,7 @@ class Addon(AddonModel):
         return self._available(self.data_store)
 
     @property
-    def version(self) -> Optional[str]:
+    def version(self) -> str | None:
         """Return installed version."""
         return self.persist[ATTR_VERSION]
 
@@ -206,7 +274,7 @@ class Addon(AddonModel):
         )
 
     @options.setter
-    def options(self, value: Optional[dict[str, Any]]) -> None:
+    def options(self, value: dict[str, Any] | None) -> None:
         """Store user add-on options."""
         self.persist[ATTR_OPTIONS] = {} if value is None else deepcopy(value)
 
@@ -251,17 +319,17 @@ class Addon(AddonModel):
         return self.persist[ATTR_UUID]
 
     @property
-    def supervisor_token(self) -> Optional[str]:
+    def supervisor_token(self) -> str | None:
         """Return access token for Supervisor API."""
         return self.persist.get(ATTR_ACCESS_TOKEN)
 
     @property
-    def ingress_token(self) -> Optional[str]:
+    def ingress_token(self) -> str | None:
         """Return access token for Supervisor API."""
         return self.persist.get(ATTR_INGRESS_TOKEN)
 
     @property
-    def ingress_entry(self) -> Optional[str]:
+    def ingress_entry(self) -> str | None:
         """Return ingress external URL."""
         if self.with_ingress:
             return f"/api/hassio_ingress/{self.ingress_token}"
@@ -283,12 +351,12 @@ class Addon(AddonModel):
         self.persist[ATTR_PROTECTED] = value
 
     @property
-    def ports(self) -> Optional[dict[str, Optional[int]]]:
+    def ports(self) -> dict[str, int | None] | None:
         """Return ports of add-on."""
         return self.persist.get(ATTR_NETWORK, super().ports)
 
     @ports.setter
-    def ports(self, value: Optional[dict[str, Optional[int]]]) -> None:
+    def ports(self, value: dict[str, int | None] | None) -> None:
         """Set custom ports of add-on."""
         if value is None:
             self.persist.pop(ATTR_NETWORK, None)
@@ -303,7 +371,7 @@ class Addon(AddonModel):
         self.persist[ATTR_NETWORK] = new_ports
 
     @property
-    def ingress_url(self) -> Optional[str]:
+    def ingress_url(self) -> str | None:
         """Return URL to ingress url."""
         if not self.with_ingress:
             return None
@@ -314,7 +382,7 @@ class Addon(AddonModel):
         return url
 
     @property
-    def webui(self) -> Optional[str]:
+    def webui(self) -> str | None:
         """Return URL to webui or None."""
         url = super().webui
         if not url:
@@ -342,7 +410,7 @@ class Addon(AddonModel):
         return f"{proto}://[HOST]:{port}{s_suffix}"
 
     @property
-    def ingress_port(self) -> Optional[int]:
+    def ingress_port(self) -> int | None:
         """Return Ingress port."""
         if not self.with_ingress:
             return None
@@ -353,8 +421,11 @@ class Addon(AddonModel):
         return port
 
     @property
-    def ingress_panel(self) -> Optional[bool]:
+    def ingress_panel(self) -> bool | None:
         """Return True if the add-on access support ingress."""
+        if not self.with_ingress:
+            return None
+
         return self.persist[ATTR_INGRESS_PANEL]
 
     @ingress_panel.setter
@@ -363,43 +434,32 @@ class Addon(AddonModel):
         self.persist[ATTR_INGRESS_PANEL] = value
 
     @property
-    def audio_output(self) -> Optional[str]:
+    def audio_output(self) -> str | None:
         """Return a pulse profile for output or None."""
         if not self.with_audio:
             return None
-
-        # Fallback with old audio settings
-        # Remove after 210
-        output_data = self.persist.get(ATTR_AUDIO_OUTPUT)
-        if output_data and RE_OLD_AUDIO.fullmatch(output_data):
-            return None
-        return output_data
+        return self.persist.get(ATTR_AUDIO_OUTPUT)
 
     @audio_output.setter
-    def audio_output(self, value: Optional[str]):
+    def audio_output(self, value: str | None):
         """Set audio output profile settings."""
         self.persist[ATTR_AUDIO_OUTPUT] = value
 
     @property
-    def audio_input(self) -> Optional[str]:
+    def audio_input(self) -> str | None:
         """Return pulse profile for input or None."""
         if not self.with_audio:
             return None
 
-        # Fallback with old audio settings
-        # Remove after 210
-        input_data = self.persist.get(ATTR_AUDIO_INPUT)
-        if input_data and RE_OLD_AUDIO.fullmatch(input_data):
-            return None
-        return input_data
+        return self.persist.get(ATTR_AUDIO_INPUT)
 
     @audio_input.setter
-    def audio_input(self, value: Optional[str]) -> None:
+    def audio_input(self, value: str | None) -> None:
         """Set audio input settings."""
         self.persist[ATTR_AUDIO_INPUT] = value
 
     @property
-    def image(self) -> Optional[str]:
+    def image(self) -> str | None:
         """Return image name of add-on."""
         return self.persist.get(ATTR_IMAGE)
 
@@ -407,6 +467,11 @@ class Addon(AddonModel):
     def need_build(self) -> bool:
         """Return True if this  add-on need a local build."""
         return ATTR_IMAGE not in self.data
+
+    @property
+    def latest_need_build(self) -> bool:
+        """Return True if the latest version of the addon needs a local build."""
+        return ATTR_IMAGE not in self.data_store
 
     @property
     def path_data(self) -> Path:
@@ -450,6 +515,11 @@ class Addon(AddonModel):
             options_schema.validate(self.options)
 
         return options_schema.pwned
+
+    @property
+    def loaded(self) -> bool:
+        """Is add-on loaded."""
+        return bool(self._listeners)
 
     def save_persist(self) -> None:
         """Save data of add-on."""
@@ -519,8 +589,11 @@ class Addon(AddonModel):
 
         raise AddonConfigurationError()
 
-    async def remove_data(self) -> None:
-        """Remove add-on data."""
+    async def unload(self) -> None:
+        """Unload add-on and remove data."""
+        for listener in self._listeners:
+            self.sys_bus.remove_listener(listener)
+
         if not self.path_data.is_dir():
             return
 
@@ -626,27 +699,18 @@ class Addon(AddonModel):
         # Start Add-on
         try:
             await self.instance.run()
-        except DockerRequestError as err:
-            self.state = AddonState.ERROR
-            raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError() from err
-        else:
-            self.state = AddonState.STARTED
 
     async def stop(self) -> None:
         """Stop add-on."""
+        self._manual_stop = True
         try:
             await self.instance.stop()
-        except DockerRequestError as err:
-            self.state = AddonState.ERROR
-            raise AddonsError() from err
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError() from err
-        else:
-            self.state = AddonState.STOPPED
 
     async def restart(self) -> None:
         """Restart add-on."""
@@ -694,16 +758,18 @@ class Addon(AddonModel):
         try:
             command_return = await self.instance.run_inside(command)
             if command_return.exit_code != 0:
-                _LOGGER.error(
-                    "Pre-/Post backup command returned error code: %s",
-                    command_return.exit_code,
+                _LOGGER.debug(
+                    "Pre-/Post backup command failed with: %s", command_return.output
                 )
-                raise AddonsError()
+                raise AddonsError(
+                    f"Pre-/Post backup command returned error code: {command_return.exit_code}",
+                    _LOGGER.error,
+                )
         except DockerError as err:
-            _LOGGER.error(
-                "Failed running pre-/post backup command %s: %s", command, err
-            )
-            raise AddonsError() from err
+            raise AddonsError(
+                f"Failed running pre-/post backup command {command}: {str(err)}",
+                _LOGGER.error,
+            ) from err
 
     async def backup(self, tar_file: tarfile.TarFile) -> None:
         """Backup state of an add-on."""
@@ -885,8 +951,52 @@ class Addon(AddonModel):
                     )
                     raise AddonsError() from err
 
+            # Is add-on loaded
+            if not self.loaded:
+                await self.load()
+
             # Run add-on
             if data[ATTR_STATE] == AddonState.STARTED:
                 return await self.start()
 
         _LOGGER.info("Finished restore for add-on %s", self.slug)
+
+    def check_trust(self) -> Awaitable[None]:
+        """Calculate Addon docker content trust.
+
+        Return Coroutine.
+        """
+        return self.instance.check_trust()
+
+    async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
+        """Set addon state from container state."""
+        if event.name != self.instance.name:
+            return
+
+        if event.state in [
+            ContainerState.RUNNING,
+            ContainerState.HEALTHY,
+            ContainerState.UNHEALTHY,
+        ]:
+            self._manual_stop = False
+            self.state = AddonState.STARTED
+        elif event.state == ContainerState.STOPPED:
+            self.state = AddonState.STOPPED
+        elif event.state == ContainerState.FAILED:
+            self.state = AddonState.ERROR
+
+    async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
+        """Process state changes in addon container and restart if necessary."""
+        if event.name != self.instance.name:
+            return
+
+        # Skip watchdog if not enabled or manual stopped
+        if not self.watchdog or self._manual_stop:
+            return
+
+        if event.state in [
+            ContainerState.FAILED,
+            ContainerState.STOPPED,
+            ContainerState.UNHEALTHY,
+        ]:
+            await self._restart_after_problem(self, event.state)

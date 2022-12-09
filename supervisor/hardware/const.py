@@ -1,12 +1,6 @@
 """Constants for hardware."""
 from enum import Enum
 
-ATTR_BY_ID = "by_id"
-ATTR_SUBSYSTEM = "subsystem"
-ATTR_SYSFS = "sysfs"
-ATTR_DEV_PATH = "dev_path"
-ATTR_ATTRIBUTES = "attributes"
-
 
 class UdevSubsystem(str, Enum):
     """Udev subsystem class."""

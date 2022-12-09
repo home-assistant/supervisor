@@ -1,7 +1,8 @@
 """REST API for network."""
 import asyncio
+from collections.abc import Awaitable
 from ipaddress import ip_address, ip_interface
-from typing import Any, Awaitable
+from typing import Any
 
 from aiohttp import web
 import attr
@@ -30,6 +31,7 @@ from ..const import (
     ATTR_PARENT,
     ATTR_PRIMARY,
     ATTR_PSK,
+    ATTR_READY,
     ATTR_SIGNAL,
     ATTR_SSID,
     ATTR_SUPERVISOR_INTERNET,
@@ -89,6 +91,7 @@ def ipconfig_struct(config: IpConfig) -> dict[str, Any]:
         ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway) if config.gateway else None,
+        ATTR_READY: config.ready,
     }
 
 
@@ -141,9 +144,7 @@ class APINetwork(CoreSysAttributes):
 
     def _get_interface(self, name: str) -> Interface:
         """Get Interface by name or default."""
-        name = name.lower()
-
-        if name == "default":
+        if name.lower() == "default":
             for interface in self.sys_host.network.interfaces:
                 if not interface.primary:
                     continue
@@ -196,12 +197,14 @@ class APINetwork(CoreSysAttributes):
         for key, config in body.items():
             if key == ATTR_IPV4:
                 interface.ipv4 = attr.evolve(
-                    interface.ipv4 or IpConfig(InterfaceMethod.STATIC, [], None, []),
+                    interface.ipv4
+                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
                     **config,
                 )
             elif key == ATTR_IPV6:
                 interface.ipv6 = attr.evolve(
-                    interface.ipv6 or IpConfig(InterfaceMethod.STATIC, [], None, []),
+                    interface.ipv6
+                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
                     **config,
                 )
             elif key == ATTR_WIFI:
@@ -220,7 +223,9 @@ class APINetwork(CoreSysAttributes):
     @api_process
     def reload(self, request: web.Request) -> Awaitable[None]:
         """Reload network data."""
-        return asyncio.shield(self.sys_host.network.update())
+        return asyncio.shield(
+            self.sys_host.network.update(force_connectivity_check=True)
+        )
 
     @api_process
     async def scan_accesspoints(self, request: web.Request) -> dict[str, Any]:
@@ -257,6 +262,7 @@ class APINetwork(CoreSysAttributes):
                 body[ATTR_IPV4].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV4].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV4].get(ATTR_NAMESERVERS, []),
+                None,
             )
 
         ipv6_config = None
@@ -266,6 +272,7 @@ class APINetwork(CoreSysAttributes):
                 body[ATTR_IPV6].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV6].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV6].get(ATTR_NAMESERVERS, []),
+                None,
             )
 
         vlan_interface = Interface(

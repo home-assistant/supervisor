@@ -34,8 +34,8 @@ class EvaluateBase(ABC, CoreSysAttributes):
                 self.sys_resolution.dismiss_unsupported(self.reason)
 
     @abstractmethod
-    async def evaluate(self):
-        """Run evaluation."""
+    async def evaluate(self) -> bool:
+        """Run evaluation, return true if system fails."""
 
     @property
     @abstractmethod
@@ -50,7 +50,7 @@ class EvaluateBase(ABC, CoreSysAttributes):
     @property
     @abstractmethod
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
+        """Return a string that is printed when system fails this evaluation."""
 
     @property
     def states(self) -> list[CoreState]:

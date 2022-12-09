@@ -2,19 +2,22 @@
 from pathlib import Path
 from typing import Any
 
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_CURRENT_DEVICE,
     DBUS_IFACE_HAOS_DATADISK,
     DBUS_NAME_HAOS,
     DBUS_OBJECT_HAOS_DATADISK,
 )
-from ..interface import DBusInterface, dbus_property
+from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 
 
-class DataDisk(DBusInterface):
+class DataDisk(DBusInterfaceProxy):
     """DataDisk object for OS Agent."""
+
+    bus_name: str = DBUS_NAME_HAOS
+    object_path: str = DBUS_OBJECT_HAOS_DATADISK
+    properties_interface: str = DBUS_IFACE_HAOS_DATADISK
 
     def __init__(self) -> None:
         """Initialize Properties."""
@@ -26,21 +29,12 @@ class DataDisk(DBusInterface):
         """Return current device used for data."""
         return Path(self.properties[DBUS_ATTR_CURRENT_DEVICE])
 
-    async def connect(self) -> None:
-        """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_HAOS, DBUS_OBJECT_HAOS_DATADISK)
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_HAOS_DATADISK)
-
     @dbus_connected
     async def change_device(self, device: Path) -> None:
         """Migrate data disk to a new device."""
-        await self.dbus.DataDisk.ChangeDevice(device.as_posix())
+        await self.dbus.DataDisk.call_change_device(device.as_posix())
 
     @dbus_connected
     async def reload_device(self) -> None:
         """Reload device data."""
-        await self.dbus.DataDisk.ReloadDevice()
+        await self.dbus.DataDisk.call_reload_device()

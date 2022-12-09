@@ -4,12 +4,13 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from supervisor.const import DOCKER_NETWORK, DOCKER_NETWORK_MASK
+from supervisor.coresys import CoreSys
 
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
 
 
 @pytest.mark.asyncio
-async def test_api_network_info(api_client, coresys):
+async def test_api_network_info(api_client, coresys: CoreSys):
     """Test network manager api."""
     resp = await api_client.get("/network/info")
     result = await resp.json()
@@ -31,12 +32,14 @@ async def test_api_network_info(api_client, coresys):
                 "gateway": None,
                 "method": "disabled",
                 "nameservers": [],
+                "ready": False,
             }
             assert interface["ipv6"] == {
                 "address": [],
                 "gateway": None,
                 "method": "disabled",
                 "nameservers": [],
+                "ready": False,
             }
 
     assert result["data"]["docker"]["interface"] == DOCKER_NETWORK
@@ -53,6 +56,7 @@ async def test_api_network_interface_info(api_client):
     assert result["data"]["ipv4"]["address"][-1] == "192.168.2.148/24"
     assert result["data"]["ipv4"]["gateway"] == "192.168.2.1"
     assert result["data"]["ipv4"]["nameservers"] == ["192.168.2.2"]
+    assert result["data"]["ipv4"]["ready"] is True
     assert (
         result["data"]["ipv6"]["address"][0] == "2a03:169:3df5:0:6be9:2588:b26a:a679/64"
     )
@@ -65,6 +69,7 @@ async def test_api_network_interface_info(api_client):
         "2001:1620:2777:1::10",
         "2001:1620:2777:2::20",
     ]
+    assert result["data"]["ipv6"]["ready"] is True
     assert result["data"]["interface"] == TEST_INTERFACE
 
 
@@ -76,6 +81,7 @@ async def test_api_network_interface_info_default(api_client):
     assert result["data"]["ipv4"]["address"][-1] == "192.168.2.148/24"
     assert result["data"]["ipv4"]["gateway"] == "192.168.2.1"
     assert result["data"]["ipv4"]["nameservers"] == ["192.168.2.2"]
+    assert result["data"]["ipv4"]["ready"] is True
     assert (
         result["data"]["ipv6"]["address"][0] == "2a03:169:3df5:0:6be9:2588:b26a:a679/64"
     )
@@ -88,12 +94,16 @@ async def test_api_network_interface_info_default(api_client):
         "2001:1620:2777:1::10",
         "2001:1620:2777:2::20",
     ]
+    assert result["data"]["ipv6"]["ready"] is True
     assert result["data"]["interface"] == TEST_INTERFACE
 
 
 @pytest.mark.asyncio
-async def test_api_network_interface_update(api_client):
+async def test_api_network_interface_update(
+    api_client, coresys: CoreSys, dbus: list[str]
+):
     """Test network manager api."""
+    dbus.clear()
     resp = await api_client.post(
         f"/network/interface/{TEST_INTERFACE}/update",
         json={
@@ -107,6 +117,10 @@ async def test_api_network_interface_update(api_client):
     )
     result = await resp.json()
     assert result["result"] == "ok"
+    assert (
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
+        in dbus
+    )
 
 
 @pytest.mark.asyncio
@@ -188,9 +202,29 @@ async def test_api_network_wireless_scan(api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_network_reload(api_client, coresys):
+async def test_api_network_reload(api_client, coresys, dbus: list[str]):
     """Test network manager reload api."""
+    dbus.clear()
     resp = await api_client.post("/network/reload")
     result = await resp.json()
 
     assert result["result"] == "ok"
+    # Check that we forced NM to do an immediate connectivity check
+    assert (
+        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
+        in dbus
+    )
+
+
+async def test_api_network_vlan(api_client, coresys: CoreSys, dbus: list[str]):
+    """Test creating a vlan."""
+    dbus.clear()
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE}/vlan/1", json={"ipv4": {"method": "auto"}}
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert (
+        "/org/freedesktop/NetworkManager/Settings-org.freedesktop.NetworkManager.Settings.AddConnection"
+        in dbus
+    )

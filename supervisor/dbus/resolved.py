@@ -4,8 +4,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from dbus_fast.aio.message_bus import MessageBus
+
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus import DBus
 from .const import (
     DBUS_ATTR_CACHE_STATISTICS,
     DBUS_ATTR_CURRENT_DNS_SERVER,
@@ -36,25 +37,31 @@ from .const import (
     MulticastProtocolEnabled,
     ResolvConfMode,
 )
-from .interface import DBusInterface, dbus_property
-from .utils import dbus_connected
+from .interface import DBusInterfaceProxy, dbus_property
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Resolved(DBusInterface):
-    """Handle D-Bus interface for systemd-resolved."""
+class Resolved(DBusInterfaceProxy):
+    """Handle D-Bus interface for systemd-resolved.
 
-    name = DBUS_NAME_RESOLVED
+    https://www.freedesktop.org/software/systemd/man/org.freedesktop.resolve1.html
+    """
+
+    name: str = DBUS_NAME_RESOLVED
+    bus_name: str = DBUS_NAME_RESOLVED
+    object_path: str = DBUS_OBJECT_RESOLVED
+    properties_interface: str = DBUS_IFACE_RESOLVED_MANAGER
 
     def __init__(self):
         """Initialize Properties."""
         self.properties: dict[str, Any] = {}
 
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
+        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_RESOLVED, DBUS_OBJECT_RESOLVED)
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-resolved.")
         except DBusInterfaceError:
@@ -181,8 +188,3 @@ class Resolved(DBusInterface):
     def transaction_statistics(self) -> tuple[int, int] | None:
         """Return transactions processing and processed since last reset."""
         return self.properties[DBUS_ATTR_TRANSACTION_STATISTICS]
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_RESOLVED_MANAGER)

@@ -7,7 +7,8 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import ResolutionNotFound
-from supervisor.resolution.const import IssueType
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 from supervisor.resolution.validate import get_valid_modules
 
 
@@ -15,10 +16,10 @@ from supervisor.resolution.validate import get_valid_modules
 def fixture_mock_dns_query():
     """Mock aiodns query."""
     with patch(
-        "supervisor.resolution.checks.dns_server_failure.DNSResolver.query",
+        "supervisor.resolution.checks.dns_server.DNSResolver.query",
         new_callable=AsyncMock,
     ), patch(
-        "supervisor.resolution.checks.dns_server_ipv6_error.DNSResolver.query",
+        "supervisor.resolution.checks.dns_server_ipv6.DNSResolver.query",
         new_callable=AsyncMock,
     ):
         yield
@@ -48,29 +49,31 @@ async def test_check_running(coresys: CoreSys):
 
 async def test_if_check_make_issue(coresys: CoreSys):
     """Test check for setup."""
+    free_space = Issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
     coresys.core.state = CoreState.RUNNING
     coresys.security.content_trust = False
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         await coresys.resolution.check.check_system()
 
-    assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
+    assert free_space in coresys.resolution.issues
 
 
 async def test_if_check_cleanup_issue(coresys: CoreSys):
     """Test check for setup."""
+    free_space = Issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
     coresys.core.state = CoreState.RUNNING
     coresys.security.content_trust = False
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         await coresys.resolution.check.check_system()
 
-    assert coresys.resolution.issues[-1].type == IssueType.FREE_SPACE
+    assert free_space in coresys.resolution.issues
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         await coresys.resolution.check.check_system()
 
-    assert len(coresys.resolution.issues) == 0
+    assert free_space not in coresys.resolution.issues
 
 
 async def test_enable_disable_checks(coresys: CoreSys):

@@ -1,11 +1,13 @@
 """Test BackupManager class."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
+from supervisor.addons.addon import Addon
 from supervisor.backups.const import BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import AddonsError, DockerError
 
 from tests.const import TEST_ADDON_SLUG
 
@@ -271,3 +273,84 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
     backup_instance.restore_homeassistant.assert_called_once()
 
     assert coresys.core.state == CoreState.RUNNING
+
+
+async def test_fail_invalid_full_backup(coresys: CoreSys, full_backup_mock: MagicMock):
+    """Test restore fails with invalid backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    manager = BackupManager(coresys)
+
+    backup_instance = full_backup_mock.return_value
+    backup_instance.protected = True
+    backup_instance.set_password.return_value = False
+
+    assert await manager.do_restore_full(backup_instance) is False
+
+    backup_instance.protected = False
+    backup_instance.supervisor_version = "2022.08.4"
+    with patch.object(
+        type(coresys.supervisor), "version", new=PropertyMock(return_value="2022.08.3")
+    ):
+        assert await manager.do_restore_full(backup_instance) is False
+
+
+async def test_fail_invalid_partial_backup(
+    coresys: CoreSys, partial_backup_mock: MagicMock
+):
+    """Test restore fails with invalid backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    manager = BackupManager(coresys)
+
+    backup_instance = partial_backup_mock.return_value
+    backup_instance.protected = True
+    backup_instance.set_password.return_value = False
+
+    assert await manager.do_restore_partial(backup_instance) is False
+
+    backup_instance.protected = False
+    backup_instance.homeassistant = None
+
+    assert (
+        await manager.do_restore_partial(backup_instance, homeassistant=True) is False
+    )
+
+    backup_instance.supervisor_version = "2022.08.4"
+    with patch.object(
+        type(coresys.supervisor), "version", new=PropertyMock(return_value="2022.08.3")
+    ):
+        assert await manager.do_restore_partial(backup_instance) is False
+
+
+async def test_backup_error(
+    coresys: CoreSys,
+    backup_mock: MagicMock,
+    install_addon_ssh: Addon,
+    capture_exception: Mock,
+):
+    """Test error captured when backup fails."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup_mock.return_value.store_addons.side_effect = (err := AddonsError())
+    await coresys.backups.do_backup_full()
+
+    capture_exception.assert_called_once_with(err)
+
+
+async def test_restore_error(
+    coresys: CoreSys, full_backup_mock: MagicMock, capture_exception: Mock
+):
+    """Test restoring full Backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.core.start = AsyncMock(return_value=None)
+
+    backup_instance = full_backup_mock.return_value
+    backup_instance.restore_dockerconfig.side_effect = (err := DockerError())
+    await coresys.backups.do_restore_full(backup_instance)
+
+    capture_exception.assert_called_once_with(err)

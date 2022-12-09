@@ -1,9 +1,14 @@
 """Interface class for D-Bus wrappers."""
-from abc import ABC, abstractmethod
+from abc import ABC
 from functools import wraps
-from typing import Any, Optional
+from typing import Any
+
+from dbus_fast.aio.message_bus import MessageBus
+
+from supervisor.exceptions import DBusInterfaceError
 
 from ..utils.dbus import DBus
+from .utils import dbus_connected
 
 
 def dbus_property(func):
@@ -22,30 +27,66 @@ def dbus_property(func):
 class DBusInterface(ABC):
     """Handle D-Bus interface for hostname/system."""
 
-    dbus: Optional[DBus] = None
-    name: Optional[str] = None
+    dbus: DBus | None = None
+    name: str | None = None
+    bus_name: str | None = None
+    object_path: str | None = None
+    _shutdown: bool = False
 
     @property
-    def is_connected(self):
+    def is_connected(self) -> bool:
         """Return True, if they is connected to D-Bus."""
         return self.dbus is not None
 
-    @abstractmethod
-    async def connect(self):
+    @property
+    def is_shutdown(self) -> bool:
+        """Return True, if the object has been shutdown."""
+        return self._shutdown
+
+    async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
+        self.dbus = await DBus.connect(bus, self.bus_name, self.object_path)
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Disconnect from D-Bus."""
-        self.dbus = None
+        if self.is_connected:
+            self.dbus.disconnect()
+            self.dbus = None
+
+    def shutdown(self) -> None:
+        """Shutdown the object and disconnect from D-Bus.
+
+        This method is irreversible.
+        """
+        self._shutdown = True
+        self.disconnect()
 
 
-class DBusInterfaceProxy(ABC):
+class DBusInterfaceProxy(DBusInterface):
     """Handle D-Bus interface proxy."""
 
-    dbus: Optional[DBus] = None
-    object_path: Optional[str] = None
-    properties: Optional[dict[str, Any]] = None
+    properties_interface: str | None = None
+    properties: dict[str, Any] | None = None
+    sync_properties: bool = True
 
-    @abstractmethod
-    async def connect(self):
+    async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
+        await super().connect(bus)
+
+        if not self.dbus.properties:
+            self.disconnect()
+            raise DBusInterfaceError(
+                f"D-Bus object {self.object_path} is not usable, introspection is missing required properties interface"
+            )
+
+        await self.update()
+        if self.sync_properties and self.is_connected:
+            self.dbus.sync_property_changes(self.properties_interface, self.update)
+
+    @dbus_connected
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus."""
+        if changed and self.properties:
+            self.properties.update(changed)
+        else:
+            self.properties = await self.dbus.get_properties(self.properties_interface)

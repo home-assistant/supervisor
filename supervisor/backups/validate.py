@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from ..backups.const import BackupType
@@ -11,6 +12,7 @@ from ..const import (
     ATTR_COMPRESSED,
     ATTR_CRYPTO,
     ATTR_DATE,
+    ATTR_DAYS_UNTIL_STALE,
     ATTR_DOCKER,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
@@ -19,6 +21,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
     CRYPTO_AES128,
@@ -28,7 +31,8 @@ from ..const import (
     FOLDER_SHARE,
     FOLDER_SSL,
 )
-from ..validate import SCHEMA_DOCKER_CONFIG, repositories, version_tag
+from ..store.validate import repositories
+from ..validate import SCHEMA_DOCKER_CONFIG, version_tag
 
 ALL_FOLDERS = [
     FOLDER_SHARE,
@@ -75,9 +79,14 @@ def v1_protected(protected: bool | str) -> bool:
 
 
 # pylint: disable=no-value-for-parameter
+days_until_stale = vol.All(vol.Coerce(int), vol.Range(min=1))
+
 SCHEMA_BACKUP = vol.Schema(
     {
         vol.Optional(ATTR_VERSION, default=1): vol.All(vol.Coerce(int), vol.In((1, 2))),
+        vol.Optional(
+            ATTR_SUPERVISOR_VERSION, default=AwesomeVersion("2022.08.3")
+        ): version_tag,
         vol.Required(ATTR_SLUG): str,
         vol.Required(ATTR_TYPE): vol.Coerce(BackupType),
         vol.Required(ATTR_NAME): str,
@@ -120,4 +129,11 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Optional(ATTR_REPOSITORIES, default=list): repositories,
     },
     extra=vol.ALLOW_EXTRA,
+)
+
+SCHEMA_BACKUPS_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_DAYS_UNTIL_STALE, default=30): days_until_stale,
+    },
+    extra=vol.REMOVE_EXTRA,
 )

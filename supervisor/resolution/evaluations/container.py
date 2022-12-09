@@ -20,6 +20,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 UNHEALTHY_IMAGES = [
     "watchtower",
     "ouroboros",
+    "portainer",
 ]
 IGNORE_IMAGES = ["sha256"]
 
@@ -45,7 +46,7 @@ class EvaluateContainer(EvaluateBase):
 
     @property
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
+        """Return a string that is printed when self.evaluate is True."""
         return f"Found unsupported images: {self._images}"
 
     @property

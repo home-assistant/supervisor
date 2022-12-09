@@ -1,14 +1,15 @@
 """OS support on supervisor."""
 import asyncio
+from collections.abc import Awaitable
 import logging
 from pathlib import Path
-from typing import Awaitable, Optional
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 from cpe import CPE
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..dbus.agent.boards.const import BOARD_NAME_SUPERVISED
 from ..dbus.rauc import RaucState
 from ..exceptions import DBusError, HassOSJobError, HassOSUpdateError
 from ..jobs.const import JobCondition, JobExecutionLimit
@@ -26,9 +27,9 @@ class OSManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._datadisk: DataDisk = DataDisk(coresys)
         self._available: bool = False
-        self._version: Optional[AwesomeVersion] = None
-        self._board: Optional[str] = None
-        self._os_name: Optional[str] = None
+        self._version: AwesomeVersion | None = None
+        self._board: str | None = None
+        self._os_name: str | None = None
 
     @property
     def available(self) -> bool:
@@ -36,12 +37,12 @@ class OSManager(CoreSysAttributes):
         return self._available
 
     @property
-    def version(self) -> Optional[AwesomeVersion]:
+    def version(self) -> AwesomeVersion | None:
         """Return version of HassOS."""
         return self._version
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return version of HassOS."""
         return self.sys_updater.version_hassos
 
@@ -54,12 +55,12 @@ class OSManager(CoreSysAttributes):
             return False
 
     @property
-    def board(self) -> Optional[str]:
+    def board(self) -> str | None:
         """Return board name."""
         return self._board
 
     @property
-    def os_name(self) -> Optional[str]:
+    def os_name(self) -> str | None:
         """Return OS name."""
         return self._os_name
 
@@ -133,6 +134,7 @@ class OSManager(CoreSysAttributes):
             cpe = CPE(self.sys_host.info.cpe)
             os_name = cpe.get_product()[0]
             if os_name not in ("hassos", "haos"):
+                self._board = BOARD_NAME_SUPERVISED.lower()
                 raise NotImplementedError()
         except NotImplementedError:
             _LOGGER.info("No Home Assistant Operating System found")
@@ -145,7 +147,6 @@ class OSManager(CoreSysAttributes):
         self._board = cpe.get_target_hardware()[0]
         self._os_name = cpe.get_product()[0]
 
-        await self.sys_dbus.rauc.update()
         await self.datadisk.load()
 
         _LOGGER.info(
@@ -173,11 +174,12 @@ class OSManager(CoreSysAttributes):
             JobCondition.HAOS,
             JobCondition.INTERNET_SYSTEM,
             JobCondition.RUNNING,
+            JobCondition.SUPERVISOR_UPDATED,
         ],
         limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,
     )
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update HassOS system."""
         version = version or self.latest_version
 
@@ -194,8 +196,12 @@ class OSManager(CoreSysAttributes):
         ext_ota = Path(self.sys_config.path_extern_tmp, int_ota.name)
 
         try:
-            await self.sys_dbus.rauc.install(ext_ota)
-            completed = await self.sys_dbus.rauc.signal_completed()
+            async with self.sys_dbus.rauc.signal_completed() as signal:
+                # Start listening for signals before triggering install
+                # This prevents a race condition with install complete signal
+
+                await self.sys_dbus.rauc.install(ext_ota)
+                completed = await signal.wait_for_signal()
 
         except DBusError as err:
             raise HassOSUpdateError("Rauc communication error", _LOGGER.error) from err

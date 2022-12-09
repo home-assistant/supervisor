@@ -77,7 +77,6 @@ ADDONS_ROLE_ACCESS = {
         r"^(?:"
         r"|/.+/info"
         r"|/backups.*"
-        r"|/snapshots.*"
         r")$"
     ),
     ROLE_MANAGER: re.compile(

@@ -3,9 +3,11 @@ from contextlib import suppress
 from functools import lru_cache
 import logging
 
+from supervisor.host.logs import LogsControl
+
 from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, PulseAudioError
+from ..exceptions import HassioError, HostLogError, PulseAudioError
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from .apparmor import AppArmorControl
@@ -32,6 +34,7 @@ class HostManager(CoreSysAttributes):
         self._services: ServiceManager = ServiceManager(coresys)
         self._network: NetworkManager = NetworkManager(coresys)
         self._sound: SoundControl = SoundControl(coresys)
+        self._logs: LogsControl = LogsControl(coresys)
 
     @property
     def apparmor(self) -> AppArmorControl:
@@ -62,6 +65,11 @@ class HostManager(CoreSysAttributes):
     def sound(self) -> SoundControl:
         """Return host PulseAudio control."""
         return self._sound
+
+    @property
+    def logs(self) -> LogsControl:
+        """Return host logs handler."""
+        return self._logs
 
     @property
     def features(self) -> list[HostFeature]:
@@ -96,31 +104,26 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.resolved.is_connected:
             features.append(HostFeature.RESOLVED)
 
+        if self.logs.available:
+            features.append(HostFeature.JOURNAL)
+
         return features
 
-    async def reload(
-        self,
-        *,
-        services: bool = True,
-        network: bool = True,
-        agent: bool = True,
-        audio: bool = True,
-    ):
+    async def reload(self):
         """Reload host functions."""
         await self.info.update()
 
-        if services and self.sys_dbus.systemd.is_connected:
+        if self.sys_dbus.systemd.is_connected:
             await self.services.update()
 
-        if network and self.sys_dbus.network.is_connected:
+        if self.sys_dbus.network.is_connected:
             await self.network.update()
 
-        if agent and self.sys_dbus.agent.is_connected:
+        if self.sys_dbus.agent.is_connected:
             await self.sys_dbus.agent.update()
 
-        if audio:
-            with suppress(PulseAudioError):
-                await self.sound.update()
+        with suppress(PulseAudioError):
+            await self.sound.update()
 
         _LOGGER.info("Host information reload completed")
         self.supported_features.cache_clear()  # pylint: disable=no-member
@@ -128,7 +131,15 @@ class HostManager(CoreSysAttributes):
     async def load(self):
         """Load host information."""
         with suppress(HassioError):
-            await self.reload(network=False)
+            if self.sys_dbus.systemd.is_connected:
+                await self.services.update()
+
+            with suppress(PulseAudioError):
+                await self.sound.update()
+
+            with suppress(HostLogError):
+                await self.logs.load()
+
             await self.network.load()
 
         # Register for events

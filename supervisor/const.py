@@ -17,6 +17,7 @@ SUPERVISOR_DATA = Path("/data")
 
 FILE_HASSIO_ADDONS = Path(SUPERVISOR_DATA, "addons.json")
 FILE_HASSIO_AUTH = Path(SUPERVISOR_DATA, "auth.json")
+FILE_HASSIO_BACKUPS = Path(SUPERVISOR_DATA, "backups.json")
 FILE_HASSIO_CONFIG = Path(SUPERVISOR_DATA, "config.json")
 FILE_HASSIO_DISCOVERY = Path(SUPERVISOR_DATA, "discovery.json")
 FILE_HASSIO_DOCKER = Path(SUPERVISOR_DATA, "docker.json")
@@ -68,20 +69,8 @@ JSON_RESULT = "result"
 RESULT_ERROR = "error"
 RESULT_OK = "ok"
 
-CONTENT_TYPE_BINARY = "application/octet-stream"
-CONTENT_TYPE_JSON = "application/json"
-CONTENT_TYPE_PNG = "image/png"
-CONTENT_TYPE_TAR = "application/tar"
-CONTENT_TYPE_TEXT = "text/plain"
-CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
-COOKIE_INGRESS = "ingress_session"
-
-HEADER_TOKEN = "X-Supervisor-Token"
 HEADER_TOKEN_OLD = "X-Hassio-Key"
-
-ENV_TIME = "TZ"
-ENV_TOKEN = "SUPERVISOR_TOKEN"
-ENV_TOKEN_HASSIO = "HASSIO_TOKEN"
+HEADER_TOKEN = "X-Supervisor-Token"
 
 ENV_HOMEASSISTANT_REPOSITORY = "HOMEASSISTANT_REPOSITORY"
 ENV_SUPERVISOR_DEV = "SUPERVISOR_DEV"
@@ -112,6 +101,7 @@ ATTR_AUDIO_INPUT = "audio_input"
 ATTR_AUDIO_OUTPUT = "audio_output"
 ATTR_AUTH = "auth"
 ATTR_AUTH_API = "auth_api"
+ATTR_AUTO = "auto"
 ATTR_AUTO_UPDATE = "auto_update"
 ATTR_AVAILABLE = "available"
 ATTR_BACKUP = "backup"
@@ -145,6 +135,7 @@ ATTR_CPU_PERCENT = "cpu_percent"
 ATTR_CRYPTO = "crypto"
 ATTR_DATA = "data"
 ATTR_DATE = "date"
+ATTR_DAYS_UNTIL_STALE = "days_until_stale"
 ATTR_DEBUG = "debug"
 ATTR_DEBUG_BLOCK = "debug_block"
 ATTR_DEFAULT = "default"
@@ -253,6 +244,7 @@ ATTR_PANEL_TITLE = "panel_title"
 ATTR_PANELS = "panels"
 ATTR_PARENT = "parent"
 ATTR_PASSWORD = "password"
+ATTR_PLUGINS = "plugins"
 ATTR_PORT = "port"
 ATTR_PORTS = "ports"
 ATTR_PORTS_DESCRIPTION = "ports_description"
@@ -265,6 +257,7 @@ ATTR_PROVIDERS = "providers"
 ATTR_PSK = "psk"
 ATTR_PWNED = "pwned"
 ATTR_RATING = "rating"
+ATTR_READY = "ready"
 ATTR_REALTIME = "realtime"
 ATTR_REFRESH_TOKEN = "refresh_token"
 ATTR_REGISTRIES = "registries"
@@ -294,6 +287,7 @@ ATTR_STORAGE = "storage"
 ATTR_SUGGESTIONS = "suggestions"
 ATTR_SUPERVISOR = "supervisor"
 ATTR_SUPERVISOR_INTERNET = "supervisor_internet"
+ATTR_SUPERVISOR_VERSION = "supervisor_version"
 ATTR_SUPPORTED = "supported"
 ATTR_SUPPORTED_ARCH = "supported_arch"
 ATTR_SYSTEM = "system"
@@ -455,6 +449,7 @@ class BusEvent(str, Enum):
 
     HARDWARE_NEW_DEVICE = "hardware_new_device"
     HARDWARE_REMOVE_DEVICE = "hardware_remove_device"
+    DOCKER_CONTAINER_STATE_CHANGE = "docker_container_state_change"
 
 
 class CpuArch(str, Enum):

@@ -1,19 +1,13 @@
 """A collection of tasks."""
 import logging
 
+from ..addons.const import ADDON_UPDATE_CONDITIONS
 from ..const import AddonState
 from ..coresys import CoreSysAttributes
-from ..exceptions import (
-    AddonsError,
-    AudioError,
-    CliError,
-    CoreDNSError,
-    HomeAssistantError,
-    MulticastError,
-    ObserverError,
-)
-from ..host.const import HostFeature
+from ..exceptions import AddonsError, HomeAssistantError, ObserverError
 from ..jobs.decorator import Job, JobCondition
+from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
+from ..utils.sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -33,22 +27,14 @@ RUN_RELOAD_HOST = 7600
 RUN_RELOAD_UPDATER = 7200
 RUN_RELOAD_INGRESS = 930
 
-RUN_WATCHDOG_HOMEASSISTANT_DOCKER = 15
 RUN_WATCHDOG_HOMEASSISTANT_API = 120
 
-RUN_WATCHDOG_DNS_DOCKER = 30
-RUN_WATCHDOG_AUDIO_DOCKER = 60
-RUN_WATCHDOG_CLI_DOCKER = 60
-RUN_WATCHDOG_OBSERVER_DOCKER = 60
-RUN_WATCHDOG_MULTICAST_DOCKER = 60
-
-RUN_WATCHDOG_ADDON_DOCKER = 30
 RUN_WATCHDOG_ADDON_APPLICATON = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
 RUN_REFRESH_ADDON = 15
 
-RUN_CHECK_CONNECTIVITY = 30
+PLUGIN_AUTO_UPDATE_CONDITIONS = PLUGIN_UPDATE_CONDITIONS + [JobCondition.RUNNING]
 
 
 class Tasks(CoreSysAttributes):
@@ -71,7 +57,7 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(self._update_observer, RUN_UPDATE_OBSERVER)
 
         # Reload
-        self.sys_scheduler.register_task(self.sys_store.reload, RUN_RELOAD_ADDONS)
+        self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_ADDONS)
         self.sys_scheduler.register_task(self.sys_updater.reload, RUN_RELOAD_UPDATER)
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
@@ -79,31 +65,10 @@ class Tasks(CoreSysAttributes):
 
         # Watchdog
         self.sys_scheduler.register_task(
-            self._watchdog_homeassistant_docker, RUN_WATCHDOG_HOMEASSISTANT_DOCKER
-        )
-        self.sys_scheduler.register_task(
             self._watchdog_homeassistant_api, RUN_WATCHDOG_HOMEASSISTANT_API
         )
         self.sys_scheduler.register_task(
-            self._watchdog_dns_docker, RUN_WATCHDOG_DNS_DOCKER
-        )
-        self.sys_scheduler.register_task(
-            self._watchdog_audio_docker, RUN_WATCHDOG_AUDIO_DOCKER
-        )
-        self.sys_scheduler.register_task(
-            self._watchdog_cli_docker, RUN_WATCHDOG_CLI_DOCKER
-        )
-        self.sys_scheduler.register_task(
-            self._watchdog_observer_docker, RUN_WATCHDOG_OBSERVER_DOCKER
-        )
-        self.sys_scheduler.register_task(
             self._watchdog_observer_application, RUN_WATCHDOG_OBSERVER_APPLICATION
-        )
-        self.sys_scheduler.register_task(
-            self._watchdog_multicast_docker, RUN_WATCHDOG_MULTICAST_DOCKER
-        )
-        self.sys_scheduler.register_task(
-            self._watchdog_addon_docker, RUN_WATCHDOG_ADDON_DOCKER
         )
         self.sys_scheduler.register_task(
             self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
@@ -112,21 +77,9 @@ class Tasks(CoreSysAttributes):
         # Refresh
         self.sys_scheduler.register_task(self._refresh_addon, RUN_REFRESH_ADDON)
 
-        # Connectivity
-        self.sys_scheduler.register_task(
-            self._check_connectivity, RUN_CHECK_CONNECTIVITY
-        )
-
         _LOGGER.info("All core tasks are scheduled")
 
-    @Job(
-        conditions=[
-            JobCondition.HEALTHY,
-            JobCondition.FREE_SPACE,
-            JobCondition.INTERNET_HOST,
-            JobCondition.RUNNING,
-        ]
-    )
+    @Job(conditions=ADDON_UPDATE_CONDITIONS + [JobCondition.RUNNING])
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
         for addon in self.sys_addons.all:
@@ -152,7 +105,9 @@ class Tasks(CoreSysAttributes):
 
     @Job(
         conditions=[
+            JobCondition.AUTO_UPDATE,
             JobCondition.FREE_SPACE,
+            JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
             JobCondition.RUNNING,
         ]
@@ -167,36 +122,6 @@ class Tasks(CoreSysAttributes):
             self.sys_supervisor.latest_version,
         )
         await self.sys_supervisor.update()
-
-    async def _watchdog_homeassistant_docker(self):
-        """Check running state of Docker and start if they is close."""
-        if not self.sys_homeassistant.watchdog:
-            # Watchdog is not enabled for Home Assistant
-            return
-        if self.sys_homeassistant.error_state:
-            # Home Assistant is in an error state, this is handled by the rollback feature
-            return
-        if not await self.sys_homeassistant.core.is_failed():
-            # The home assistant container is not in a failed state
-            return
-        if self.sys_homeassistant.core.in_progress:
-            # Home Assistant has a task in progress
-            return
-        if await self.sys_homeassistant.core.is_running():
-            # Home Assistant is running
-            return
-
-        _LOGGER.warning("Watchdog found a problem with Home Assistant Docker!")
-        try:
-            await self.sys_homeassistant.core.start()
-        except HomeAssistantError as err:
-            _LOGGER.error("Home Assistant watchdog reanimation failed!")
-            self.sys_capture_exception(err)
-        else:
-            return
-
-        _LOGGER.info("Rebuilding the Home Assistant Container")
-        await self.sys_homeassistant.core.rebuild()
 
     async def _watchdog_homeassistant_api(self):
         """Create scheduler task for monitoring running state of API.
@@ -235,11 +160,11 @@ class Tasks(CoreSysAttributes):
             await self.sys_homeassistant.core.restart()
         except HomeAssistantError as err:
             _LOGGER.error("Home Assistant watchdog reanimation failed!")
-            self.sys_capture_exception(err)
+            capture_exception(err)
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
-    @Job(conditions=JobCondition.RUNNING)
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_cli(self):
         """Check and run update of cli."""
         if not self.sys_plugins.cli.need_update:
@@ -250,7 +175,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.cli.update()
 
-    @Job(conditions=JobCondition.RUNNING)
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_dns(self):
         """Check and run update of CoreDNS plugin."""
         if not self.sys_plugins.dns.need_update:
@@ -262,7 +187,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.dns.update()
 
-    @Job(conditions=JobCondition.RUNNING)
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_audio(self):
         """Check and run update of PulseAudio plugin."""
         if not self.sys_plugins.audio.need_update:
@@ -274,7 +199,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.audio.update()
 
-    @Job(conditions=JobCondition.RUNNING)
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_observer(self):
         """Check and run update of Observer plugin."""
         if not self.sys_plugins.observer.need_update:
@@ -286,7 +211,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.observer.update()
 
-    @Job(conditions=JobCondition.RUNNING)
+    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_multicast(self):
         """Check and run update of multicast."""
         if not self.sys_plugins.multicast.need_update:
@@ -297,63 +222,6 @@ class Tasks(CoreSysAttributes):
             self.sys_plugins.multicast.latest_version,
         )
         await self.sys_plugins.multicast.update()
-
-    async def _watchdog_dns_docker(self):
-        """Check running state of Docker and start if they is close."""
-        # if CoreDNS is active
-        if await self.sys_plugins.dns.is_running() or self.sys_plugins.dns.in_progress:
-            return
-        _LOGGER.warning("Watchdog found a problem with CoreDNS plugin!")
-
-        # Detect loop
-        await self.sys_plugins.dns.loop_detection()
-
-        try:
-            await self.sys_plugins.dns.start()
-        except CoreDNSError:
-            _LOGGER.error("CoreDNS watchdog reanimation failed!")
-
-    async def _watchdog_audio_docker(self):
-        """Check running state of Docker and start if they is close."""
-        # if PulseAudio plugin is active
-        if (
-            await self.sys_plugins.audio.is_running()
-            or self.sys_plugins.audio.in_progress
-        ):
-            return
-        _LOGGER.warning("Watchdog found a problem with PulseAudio plugin!")
-
-        try:
-            await self.sys_plugins.audio.start()
-        except AudioError:
-            _LOGGER.error("PulseAudio watchdog reanimation failed!")
-
-    async def _watchdog_cli_docker(self):
-        """Check running state of Docker and start if they is close."""
-        # if cli plugin is active
-        if await self.sys_plugins.cli.is_running() or self.sys_plugins.cli.in_progress:
-            return
-        _LOGGER.warning("Watchdog found a problem with cli plugin!")
-
-        try:
-            await self.sys_plugins.cli.start()
-        except CliError:
-            _LOGGER.error("CLI watchdog reanimation failed!")
-
-    async def _watchdog_observer_docker(self):
-        """Check running state of Docker and start if they is close."""
-        # if observer plugin is active
-        if (
-            await self.sys_plugins.observer.is_running()
-            or self.sys_plugins.observer.in_progress
-        ):
-            return
-        _LOGGER.warning("Watchdog/Docker found a problem with observer plugin!")
-
-        try:
-            await self.sys_plugins.observer.start()
-        except ObserverError:
-            _LOGGER.error("Observer watchdog reanimation failed!")
 
     async def _watchdog_observer_application(self):
         """Check running state of application and rebuild if they is not response."""
@@ -369,39 +237,6 @@ class Tasks(CoreSysAttributes):
             await self.sys_plugins.observer.rebuild()
         except ObserverError:
             _LOGGER.error("Observer watchdog reanimation failed!")
-
-    async def _watchdog_multicast_docker(self):
-        """Check running state of Docker and start if they is close."""
-        # if multicast plugin is active
-        if (
-            await self.sys_plugins.multicast.is_running()
-            or self.sys_plugins.multicast.in_progress
-        ):
-            return
-        _LOGGER.warning("Watchdog found a problem with Multicast plugin!")
-
-        try:
-            await self.sys_plugins.multicast.start()
-        except MulticastError:
-            _LOGGER.error("Multicast watchdog reanimation failed!")
-
-    async def _watchdog_addon_docker(self):
-        """Check running state  of Docker and start if they is close."""
-        for addon in self.sys_addons.installed:
-            # if watchdog need looking for
-            if not addon.watchdog or await addon.is_running():
-                continue
-
-            # if Addon have running actions
-            if addon.in_progress or addon.state != AddonState.STARTED:
-                continue
-
-            _LOGGER.warning("Watchdog found a problem with %s!", addon.slug)
-            try:
-                await addon.start()
-            except AddonsError as err:
-                _LOGGER.error("%s watchdog reanimation failed with %s", addon.slug, err)
-                self.sys_capture_exception(err)
 
     async def _watchdog_addon_application(self):
         """Check running state of the application and start if they is hangs."""
@@ -431,7 +266,7 @@ class Tasks(CoreSysAttributes):
                 await addon.restart()
             except AddonsError as err:
                 _LOGGER.error("%s watchdog reanimation failed with %s", addon.slug, err)
-                self.sys_capture_exception(err)
+                capture_exception(err)
             finally:
                 self._cache[addon.slug] = 0
 
@@ -449,28 +284,7 @@ class Tasks(CoreSysAttributes):
             # Adjust state
             addon.state = AddonState.STOPPED
 
-    async def _check_connectivity(self) -> None:
-        """Check system connectivity."""
-        value = self._cache.get("connectivity", 0)
-
-        # Need only full check if not connected or each 10min
-        if value >= 600:
-            pass
-        elif (
-            self.sys_supervisor.connectivity
-            and self.sys_host.network.connectivity is None
-        ) or (
-            self.sys_supervisor.connectivity
-            and self.sys_host.network.connectivity is not None
-            and self.sys_host.network.connectivity
-        ):
-            self._cache["connectivity"] = value + RUN_CHECK_CONNECTIVITY
-            return
-
-        # Check connectivity
-        try:
-            await self.sys_supervisor.check_connectivity()
-            if HostFeature.NETWORK in self.sys_host.features:
-                await self.sys_host.network.check_connectivity()
-        finally:
-            self._cache["connectivity"] = 0
+    @Job(conditions=[JobCondition.SUPERVISOR_UPDATED])
+    async def _reload_store(self) -> None:
+        """Reload store and check for addon updates."""
+        await self.sys_store.reload()

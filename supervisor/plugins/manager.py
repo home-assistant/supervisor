@@ -5,6 +5,7 @@ import logging
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError
 from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..utils.sentry import capture_exception
 from .audio import PluginAudio
 from .base import PluginBase
 from .cli import PluginCli
@@ -72,7 +73,7 @@ class PluginManager(CoreSysAttributes):
                     reference=plugin.slug,
                     suggestions=[SuggestionType.EXECUTE_REPAIR],
                 )
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         # Check requirements
         await self.sys_updater.reload()
@@ -102,7 +103,7 @@ class PluginManager(CoreSysAttributes):
                 )
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't update plugin %s: %s", plugin.slug, err)
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
     async def repair(self) -> None:
         """Repair Supervisor plugins."""
@@ -118,4 +119,4 @@ class PluginManager(CoreSysAttributes):
                 await plugin.stop()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't stop plugin %s: %s", plugin.slug, err)
-                self.sys_capture_exception(err)
+                capture_exception(err)

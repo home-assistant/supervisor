@@ -1,19 +1,23 @@
 """Helpers to check and fix issues with free space."""
 import logging
-from typing import Optional
 
-from supervisor.exceptions import ResolutionFixupError, StoreError, StoreNotFound
-
+from ...coresys import CoreSys
+from ...exceptions import ResolutionFixupError, StoreError, StoreNotFound
 from ..const import ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+def setup(coresys: CoreSys) -> FixupBase:
+    """Check setup function."""
+    return FixupStoreExecuteRemove(coresys)
+
+
 class FixupStoreExecuteRemove(FixupBase):
     """Storage class for fixup."""
 
-    async def process_fixup(self, reference: Optional[str] = None) -> None:
+    async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Remove invalid Store: %s", reference)
         try:
@@ -24,14 +28,9 @@ class FixupStoreExecuteRemove(FixupBase):
 
         # Remove repository
         try:
-            await repository.remove()
+            await self.sys_store.remove_repository(repository)
         except StoreError:
             raise ResolutionFixupError() from None
-        else:
-            self.sys_store.repositories.pop(repository.slug, None)
-
-        self.sys_config.drop_addon_repository(repository.source)
-        self.sys_config.save_data()
 
     @property
     def suggestion(self) -> SuggestionType:
@@ -51,4 +50,4 @@ class FixupStoreExecuteRemove(FixupBase):
     @property
     def auto(self) -> bool:
         """Return if a fixup can be apply as auto fix."""
-        return True
+        return False

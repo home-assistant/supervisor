@@ -6,24 +6,32 @@ import logging
 from pathlib import Path
 
 from ..addons.addon import Addon
-from ..const import FOLDER_HOMEASSISTANT, CoreState
+from ..const import (
+    ATTR_DAYS_UNTIL_STALE,
+    FILE_HASSIO_BACKUPS,
+    FOLDER_HOMEASSISTANT,
+    CoreState,
+)
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError
 from ..jobs.decorator import Job, JobCondition
+from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
+from ..utils.sentry import capture_exception
 from .backup import Backup
 from .const import BackupType
 from .utils import create_slug
-from .validate import ALL_FOLDERS
+from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class BackupManager(CoreSysAttributes):
+class BackupManager(FileConfiguration, CoreSysAttributes):
     """Manage backups."""
 
     def __init__(self, coresys):
         """Initialize a backup manager."""
+        super().__init__(FILE_HASSIO_BACKUPS, SCHEMA_BACKUPS_CONFIG)
         self.coresys = coresys
         self._backups = {}
         self.lock = asyncio.Lock()
@@ -32,6 +40,16 @@ class BackupManager(CoreSysAttributes):
     def list_backups(self) -> set[Backup]:
         """Return a list of all backup objects."""
         return set(self._backups.values())
+
+    @property
+    def days_until_stale(self) -> int:
+        """Get days until backup is considered stale."""
+        return self._data[ATTR_DAYS_UNTIL_STALE]
+
+    @days_until_stale.setter
+    def days_until_stale(self, value: int) -> None:
+        """Set days until backup is considered stale."""
+        self._data[ATTR_DAYS_UNTIL_STALE] = value
 
     def get(self, slug):
         """Return backup object."""
@@ -155,7 +173,7 @@ class BackupManager(CoreSysAttributes):
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Backup %s error", backup.slug)
-            self.sys_capture_exception(err)
+            capture_exception(err)
             return None
         else:
             self._backups[backup.slug] = backup
@@ -279,7 +297,7 @@ class BackupManager(CoreSysAttributes):
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", backup.slug)
-            self.sys_capture_exception(err)
+            capture_exception(err)
             return False
         else:
             return True
@@ -314,6 +332,14 @@ class BackupManager(CoreSysAttributes):
 
         if backup.protected and not backup.set_password(password):
             _LOGGER.error("Invalid password for backup %s", backup.slug)
+            return False
+
+        if backup.supervisor_version > self.sys_supervisor.version:
+            _LOGGER.error(
+                "Backup was made on supervisor version %s, can't restore on %s. Must update supervisor first.",
+                backup.supervisor_version,
+                self.sys_supervisor.version,
+            )
             return False
 
         _LOGGER.info("Full-Restore %s start", backup.slug)
@@ -368,6 +394,14 @@ class BackupManager(CoreSysAttributes):
 
         if backup.homeassistant is None and homeassistant:
             _LOGGER.error("No Home Assistant Core data inside the backup")
+            return False
+
+        if backup.supervisor_version > self.sys_supervisor.version:
+            _LOGGER.error(
+                "Backup was made on supervisor version %s, can't restore on %s. Must update supervisor first.",
+                backup.supervisor_version,
+                self.sys_supervisor.version,
+            )
             return False
 
         _LOGGER.info("Partial-Restore %s start", backup.slug)

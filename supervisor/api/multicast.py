@@ -1,7 +1,8 @@
 """Init file for Supervisor Multicast RESTful API."""
 import asyncio
+from collections.abc import Awaitable
 import logging
-from typing import Any, Awaitable
+from typing import Any
 
 from aiohttp import web
 import voluptuous as vol
@@ -18,11 +19,11 @@ from ..const import (
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
-    CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import version_tag
+from .const import CONTENT_TYPE_BINARY
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

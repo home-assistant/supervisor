@@ -1,11 +1,14 @@
 """Init file for Supervisor RESTful API."""
+from functools import partial
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 from aiohttp import web
 
+from ..const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import APIAddonNotInstalled
 from .addons import APIAddons
 from .audio import APIAudio
 from .auth import APIAuth
@@ -31,11 +34,13 @@ from .security import APISecurity
 from .services import APIServices
 from .store import APIStore
 from .supervisor import APISupervisor
+from .utils import api_process
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 MAX_CLIENT_SIZE: int = 1024**2 * 16
+MAX_LINE_SIZE: int = 24570
 
 
 class RestAPI(CoreSysAttributes):
@@ -51,11 +56,15 @@ class RestAPI(CoreSysAttributes):
                 self.security.system_validation,
                 self.security.token_validation,
             ],
+            handler_args={
+                "max_line_size": MAX_LINE_SIZE,
+                "max_field_size": MAX_LINE_SIZE,
+            },
         )
 
         # service stuff
         self._runner: web.AppRunner = web.AppRunner(self.webapp)
-        self._site: Optional[web.TCPSite] = None
+        self._site: web.TCPSite | None = None
 
     async def load(self) -> None:
         """Register REST API Calls."""
@@ -95,16 +104,36 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/host/info", api_host.info),
-                web.get("/host/logs", api_host.logs),
+                web.get("/host/logs", api_host.advanced_logs),
+                web.get(
+                    "/host/logs/follow",
+                    partial(api_host.advanced_logs, follow=True),
+                ),
+                web.get("/host/logs/identifiers", api_host.list_identifiers),
+                web.get("/host/logs/identifiers/{identifier}", api_host.advanced_logs),
+                web.get(
+                    "/host/logs/identifiers/{identifier}/follow",
+                    partial(api_host.advanced_logs, follow=True),
+                ),
+                web.get("/host/logs/boots", api_host.list_boots),
+                web.get("/host/logs/boots/{bootid}", api_host.advanced_logs),
+                web.get(
+                    "/host/logs/boots/{bootid}/follow",
+                    partial(api_host.advanced_logs, follow=True),
+                ),
+                web.get(
+                    "/host/logs/boots/{bootid}/identifiers/{identifier}",
+                    api_host.advanced_logs,
+                ),
+                web.get(
+                    "/host/logs/boots/{bootid}/identifiers/{identifier}/follow",
+                    partial(api_host.advanced_logs, follow=True),
+                ),
                 web.post("/host/reboot", api_host.reboot),
                 web.post("/host/shutdown", api_host.shutdown),
                 web.post("/host/reload", api_host.reload),
                 web.post("/host/options", api_host.options),
                 web.get("/host/services", api_host.services),
-                web.post("/host/services/{service}/stop", api_host.service_stop),
-                web.post("/host/services/{service}/start", api_host.service_start),
-                web.post("/host/services/{service}/restart", api_host.service_restart),
-                web.post("/host/services/{service}/reload", api_host.service_reload),
             ]
         )
 
@@ -150,6 +179,15 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
+        # Boards endpoints
+        self.webapp.add_routes(
+            [
+                web.get("/os/boards/yellow", api_os.boards_yellow_info),
+                web.post("/os/boards/yellow", api_os.boards_yellow_options),
+                web.get("/os/boards/{board}", api_os.boards_other_info),
+            ]
+        )
+
     def _register_security(self) -> None:
         """Register Security functions."""
         api_security = APISecurity()
@@ -159,6 +197,7 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/security/info", api_security.info),
                 web.post("/security/options", api_security.options),
+                web.post("/security/integrity", api_security.integrity_check),
             ]
         )
 
@@ -239,7 +278,7 @@ class RestAPI(CoreSysAttributes):
             [web.get("/available_updates", api_root.available_updates)]
         )
 
-        # Remove 2023
+        # Remove: 2023
         self.webapp.add_routes(
             [web.get("/supervisor/available_updates", api_root.available_updates)]
         )
@@ -267,6 +306,10 @@ class RestAPI(CoreSysAttributes):
                 web.delete(
                     "/resolution/issue/{issue}",
                     api_resolution.dismiss_issue,
+                ),
+                web.get(
+                    "/resolution/issue/{issue}/suggestions",
+                    api_resolution.suggestions_for_issue,
                 ),
                 web.post("/resolution/healthcheck", api_resolution.healthcheck),
             ]
@@ -322,17 +365,22 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/start", api_hass.start),
                 web.post("/core/check", api_hass.check),
                 web.post("/core/rebuild", api_hass.rebuild),
-                # Remove with old Supervisor fallback
+            ]
+        )
+
+        # Reroute from legacy
+        self.webapp.add_routes(
+            [
                 web.get("/homeassistant/info", api_hass.info),
                 web.get("/homeassistant/logs", api_hass.logs),
                 web.get("/homeassistant/stats", api_hass.stats),
                 web.post("/homeassistant/options", api_hass.options),
-                web.post("/homeassistant/update", api_hass.update),
                 web.post("/homeassistant/restart", api_hass.restart),
                 web.post("/homeassistant/stop", api_hass.stop),
                 web.post("/homeassistant/start", api_hass.start),
-                web.post("/homeassistant/check", api_hass.check),
+                web.post("/homeassistant/update", api_hass.update),
                 web.post("/homeassistant/rebuild", api_hass.rebuild),
+                web.post("/homeassistant/check", api_hass.check),
             ]
         )
 
@@ -349,7 +397,12 @@ class RestAPI(CoreSysAttributes):
                 web.post("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/", api_proxy.api),
-                # Remove with old Supervisor fallback
+            ]
+        )
+
+        # Reroute from legacy
+        self.webapp.add_routes(
+            [
                 web.get("/homeassistant/api/websocket", api_proxy.websocket),
                 web.get("/homeassistant/websocket", api_proxy.websocket),
                 web.get("/homeassistant/api/stream", api_proxy.stream),
@@ -367,8 +420,6 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/addons", api_addons.list),
-                web.post("/addons/reload", api_addons.reload),
-                web.get("/addons/{addon}/info", api_addons.info),
                 web.post("/addons/{addon}/uninstall", api_addons.uninstall),
                 web.post("/addons/{addon}/start", api_addons.start),
                 web.post("/addons/{addon}/stop", api_addons.stop),
@@ -380,15 +431,30 @@ class RestAPI(CoreSysAttributes):
                 web.get("/addons/{addon}/options/config", api_addons.options_config),
                 web.post("/addons/{addon}/rebuild", api_addons.rebuild),
                 web.get("/addons/{addon}/logs", api_addons.logs),
-                web.get("/addons/{addon}/icon", api_addons.icon),
-                web.get("/addons/{addon}/logo", api_addons.logo),
-                web.get("/addons/{addon}/changelog", api_addons.changelog),
-                web.get("/addons/{addon}/documentation", api_addons.documentation),
                 web.post("/addons/{addon}/stdin", api_addons.stdin),
                 web.post("/addons/{addon}/security", api_addons.security),
                 web.get("/addons/{addon}/stats", api_addons.stats),
             ]
         )
+
+        # Legacy routing to support requests for not installed addons
+        api_store = APIStore()
+        api_store.coresys = self.coresys
+
+        @api_process
+        async def addons_addon_info(request: web.Request) -> dict[str, Any]:
+            """Route to store if info requested for not installed addon."""
+            try:
+                return await api_addons.info(request)
+            except APIAddonNotInstalled:
+                # Route to store/{addon}/info but add missing fields
+                return dict(
+                    await api_store.addons_addon_info_wrapped(request),
+                    state=AddonState.UNKNOWN,
+                    options=self.sys_addons.store[request.match_info["addon"]].options,
+                )
+
+        self.webapp.add_routes([web.get("/addons/{addon}/info", addons_addon_info)])
 
     def _register_ingress(self) -> None:
         """Register Ingress functions."""
@@ -411,27 +477,14 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get("/snapshots", api_backups.list),
-                web.post("/snapshots/reload", api_backups.reload),
-                web.post("/snapshots/new/full", api_backups.backup_full),
-                web.post("/snapshots/new/partial", api_backups.backup_partial),
-                web.post("/snapshots/new/upload", api_backups.upload),
-                web.get("/snapshots/{slug}/info", api_backups.info),
-                web.delete("/snapshots/{slug}", api_backups.remove),
-                web.post("/snapshots/{slug}/restore/full", api_backups.restore_full),
-                web.post(
-                    "/snapshots/{slug}/restore/partial",
-                    api_backups.restore_partial,
-                ),
-                web.get("/snapshots/{slug}/download", api_backups.download),
-                web.post("/snapshots/{slug}/remove", api_backups.remove),
-                # June 2021: /snapshots was renamed to /backups
                 web.get("/backups", api_backups.list),
+                web.get("/backups/info", api_backups.info),
+                web.post("/backups/options", api_backups.options),
                 web.post("/backups/reload", api_backups.reload),
                 web.post("/backups/new/full", api_backups.backup_full),
                 web.post("/backups/new/partial", api_backups.backup_partial),
                 web.post("/backups/new/upload", api_backups.upload),
-                web.get("/backups/{slug}/info", api_backups.info),
+                web.get("/backups/{slug}/info", api_backups.backup_info),
                 web.delete("/backups/{slug}", api_backups.remove),
                 web.post("/backups/{slug}/restore/full", api_backups.restore_full),
                 web.post(
@@ -491,6 +544,8 @@ class RestAPI(CoreSysAttributes):
         """Register Audio functions."""
         api_audio = APIAudio()
         api_audio.coresys = self.coresys
+        api_host = APIHost()
+        api_host.coresys = self.coresys
 
         self.webapp.add_routes(
             [
@@ -520,6 +575,15 @@ class RestAPI(CoreSysAttributes):
                 web.get("/store/addons", api_store.addons_list),
                 web.get("/store/addons/{addon}", api_store.addons_addon_info),
                 web.get("/store/addons/{addon}/{version}", api_store.addons_addon_info),
+                web.get("/store/addons/{addon}/icon", api_store.addons_addon_icon),
+                web.get("/store/addons/{addon}/logo", api_store.addons_addon_logo),
+                web.get(
+                    "/store/addons/{addon}/changelog", api_store.addons_addon_changelog
+                ),
+                web.get(
+                    "/store/addons/{addon}/documentation",
+                    api_store.addons_addon_documentation,
+                ),
                 web.post(
                     "/store/addons/{addon}/install", api_store.addons_addon_install
                 ),
@@ -538,14 +602,26 @@ class RestAPI(CoreSysAttributes):
                     "/store/repositories/{repository}",
                     api_store.repositories_repository_info,
                 ),
+                web.post("/store/repositories", api_store.add_repository),
+                web.delete(
+                    "/store/repositories/{repository}", api_store.remove_repository
+                ),
             ]
         )
 
         # Reroute from legacy
         self.webapp.add_routes(
             [
+                web.post("/addons/reload", api_store.reload),
                 web.post("/addons/{addon}/install", api_store.addons_addon_install),
                 web.post("/addons/{addon}/update", api_store.addons_addon_update),
+                web.get("/addons/{addon}/icon", api_store.addons_addon_icon),
+                web.get("/addons/{addon}/logo", api_store.addons_addon_logo),
+                web.get("/addons/{addon}/changelog", api_store.addons_addon_changelog),
+                web.get(
+                    "/addons/{addon}/documentation",
+                    api_store.addons_addon_documentation,
+                ),
             ]
         )
 

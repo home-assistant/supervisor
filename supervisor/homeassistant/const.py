@@ -1,4 +1,5 @@
 """Constants for homeassistant."""
+from datetime import timedelta
 from enum import Enum
 
 from awesomeversion import AwesomeVersion
@@ -6,6 +7,10 @@ from awesomeversion import AwesomeVersion
 from ..const import CoreState
 
 LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
+WATCHDOG_RETRY_SECONDS = 10
+WATCHDOG_MAX_ATTEMPTS = 5
+WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)
+WATCHDOG_THROTTLE_MAX_CALLS = 10
 
 CLOSING_STATES = [
     CoreState.SHUTDOWN,
@@ -27,4 +32,8 @@ class WSEvent(str, Enum):
     """Websocket events."""
 
     ADDON = "addon"
+    HEALTH_CHANGED = "health_changed"
+    ISSUE_CHANGED = "issue_changed"
+    ISSUE_REMOVED = "issue_removed"
     SUPERVISOR_UPDATE = "supervisor_update"
+    SUPPORTED_CHANGED = "supported_changed"

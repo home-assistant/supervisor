@@ -1,4 +1,5 @@
 """Service control for host."""
+from collections.abc import Awaitable
 import logging
 
 import attr
@@ -33,35 +34,47 @@ class ServiceManager(CoreSysAttributes):
         if unit and not self.exists(unit):
             raise HostServiceError(f"Unit '{unit}' not found", _LOGGER.error)
 
-    def start(self, unit):
-        """Start a service on host."""
+    def start(self, unit) -> Awaitable[str]:
+        """Start a service on host.
+
+        Returns a coroutine.
+        """
         self._check_dbus(unit)
 
         _LOGGER.info("Starting local service %s", unit)
         return self.sys_dbus.systemd.start_unit(unit, MOD_REPLACE)
 
-    def stop(self, unit):
-        """Stop a service on host."""
+    def stop(self, unit) -> Awaitable[str]:
+        """Stop a service on host.
+
+        Returns a coroutine.
+        """
         self._check_dbus(unit)
 
         _LOGGER.info("Stopping local service %s", unit)
         return self.sys_dbus.systemd.stop_unit(unit, MOD_REPLACE)
 
-    def reload(self, unit):
-        """Reload a service on host."""
+    def reload(self, unit) -> Awaitable[str]:
+        """Reload a service on host.
+
+        Returns a coroutine.
+        """
         self._check_dbus(unit)
 
         _LOGGER.info("Reloading local service %s", unit)
         return self.sys_dbus.systemd.reload_unit(unit, MOD_REPLACE)
 
-    def restart(self, unit):
-        """Restart a service on host."""
+    def restart(self, unit) -> Awaitable[str]:
+        """Restart a service on host.
+
+        Returns a coroutine.
+        """
         self._check_dbus(unit)
 
         _LOGGER.info("Restarting local service %s", unit)
         return self.sys_dbus.systemd.restart_unit(unit, MOD_REPLACE)
 
-    def exists(self, unit):
+    def exists(self, unit) -> bool:
         """Check if a unit exists and return True."""
         for service in self._services:
             if unit == service.name:
@@ -76,7 +89,7 @@ class ServiceManager(CoreSysAttributes):
         self._services.clear()
         try:
             systemd_units = await self.sys_dbus.systemd.list_units()
-            for service_data in systemd_units[0]:
+            for service_data in systemd_units:
                 if (
                     not service_data[0].endswith(".service")
                     or service_data[2] != "loaded"

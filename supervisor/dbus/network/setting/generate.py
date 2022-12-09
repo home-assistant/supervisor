@@ -5,7 +5,7 @@ import socket
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from dbus_next.signature import Variant
+from dbus_fast import Variant
 
 from . import (
     ATTR_ASSIGNED_MAC,
@@ -51,6 +51,7 @@ def get_connection_from_interface(
         "uuid": Variant("s", uuid),
         "llmnr": Variant("i", 2),
         "mdns": Variant("i", 2),
+        "autoconnect": Variant("b", True),
     }
 
     if interface.type != InterfaceType.VLAN:
@@ -92,7 +93,7 @@ def get_connection_from_interface(
     if not interface.ipv6 or interface.ipv6.method == InterfaceMethod.AUTO:
         ipv6["method"] = Variant("s", "auto")
     elif interface.ipv6.method == InterfaceMethod.DISABLED:
-        ipv6["method"] = Variant("s", "disabled")
+        ipv6["method"] = Variant("s", "link-local")
     else:
         ipv6["method"] = Variant("s", "manual")
         ipv6["dns"] = Variant(

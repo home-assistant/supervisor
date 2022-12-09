@@ -2,65 +2,58 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable, Coroutine
 import logging
 from typing import Any
 
-from dbus_next import BusType, InvalidIntrospectionError, Message, MessageType
-from dbus_next.aio import MessageBus
-from dbus_next.introspection import Node
-from dbus_next.signature import Variant
+from dbus_fast import (
+    ErrorType,
+    InvalidIntrospectionError,
+    Message,
+    MessageType,
+    Variant,
+)
+from dbus_fast.aio.message_bus import MessageBus
+from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
+from dbus_fast.errors import DBusError
+from dbus_fast.introspection import Node
 
 from ..exceptions import (
     DBusFatalError,
     DBusInterfaceError,
     DBusInterfaceMethodError,
+    DBusInterfacePropertyError,
+    DBusInterfaceSignalError,
     DBusNotConnectedError,
+    DBusObjectError,
     DBusParseError,
+    DBusTimeoutError,
+    HassioNotSupportedError,
 )
-
-
-def _remove_dbus_signature(data: Any) -> Any:
-    if isinstance(data, Variant):
-        return _remove_dbus_signature(data.value)
-    elif isinstance(data, dict):
-        for k in data:
-            data[k] = _remove_dbus_signature(data[k])
-        return data
-    elif isinstance(data, list):
-        new_list = []
-        for item in data:
-            new_list.append(_remove_dbus_signature(item))
-        return new_list
-    else:
-        return data
-
+from .sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+DBUS_INTERFACE_PROPERTIES: str = "org.freedesktop.DBus.Properties"
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
-DBUS_METHOD_SET: str = "org.freedesktop.DBus.Properties.Set"
 
 
 class DBus:
     """DBus handler."""
 
-    def __init__(self, bus_name: str, object_path: str) -> None:
+    def __init__(self, bus: MessageBus, bus_name: str, object_path: str) -> None:
         """Initialize dbus object."""
         self.bus_name: str = bus_name
         self.object_path: str = object_path
-        self.methods: set[str] = set()
-        self.signals: set[str] = set()
-        self._bus: MessageBus | None = None
-
-    def __del__(self):
-        """Delete dbus object."""
-        if self._bus:
-            self._bus.disconnect()
+        self._proxy_obj: ProxyObject | None = None
+        self._proxies: dict[str, ProxyInterface] = {}
+        self._bus: MessageBus = bus
+        self._signal_monitors: dict[str, dict[str, list[Callable]]] = {}
 
     @staticmethod
-    async def connect(bus_name: str, object_path: str) -> DBus:
+    async def connect(bus: MessageBus, bus_name: str, object_path: str) -> DBus:
         """Read object data."""
-        self = DBus(bus_name, object_path)
+        self = DBus(bus, bus_name, object_path)
 
         # pylint: disable=protected-access
         await self._init_proxy()
@@ -68,29 +61,63 @@ class DBus:
         _LOGGER.debug("Connect to D-Bus: %s - %s", bus_name, object_path)
         return self
 
-    def _add_interfaces(self, introspection: Any):
-        # Read available methods
-        for interface in introspection.interfaces:
-            interface_name = interface.name
+    @staticmethod
+    def from_dbus_error(err: DBusError) -> HassioNotSupportedError | DBusError:
+        """Return correct dbus error based on type."""
+        if err.type in {ErrorType.SERVICE_UNKNOWN, ErrorType.UNKNOWN_INTERFACE}:
+            return DBusInterfaceError(err.text)
+        if err.type in {
+            ErrorType.UNKNOWN_METHOD,
+            ErrorType.INVALID_SIGNATURE,
+            ErrorType.INVALID_ARGS,
+        }:
+            return DBusInterfaceMethodError(err.text)
+        if err.type == ErrorType.UNKNOWN_OBJECT:
+            return DBusObjectError(err.text)
+        if err.type in {ErrorType.UNKNOWN_PROPERTY, ErrorType.PROPERTY_READ_ONLY}:
+            return DBusInterfacePropertyError(err.text)
+        if err.type == ErrorType.DISCONNECTED:
+            return DBusNotConnectedError(err.text)
+        if err.type == ErrorType.TIMEOUT:
+            return DBusTimeoutError(err.text)
+        return DBusFatalError(err.text)
 
-            # Methods
-            for method in interface.methods:
-                method_name = method.name
-                self.methods.add(f"{interface_name}.{method_name}")
+    @staticmethod
+    async def call_dbus(
+        proxy_interface: ProxyInterface,
+        method: str,
+        *args,
+        unpack_variants: bool = True,
+    ) -> Any:
+        """Call a dbus method and handle the signature and errors."""
+        _LOGGER.debug(
+            "D-Bus call - %s.%s on %s",
+            proxy_interface.introspection.name,
+            method,
+            proxy_interface.path,
+        )
+        try:
+            if unpack_variants:
+                return await getattr(proxy_interface, method)(
+                    *args, unpack_variants=True
+                )
+            return await getattr(proxy_interface, method)(*args)
+        except DBusError as err:
+            raise DBus.from_dbus_error(err)
+        except Exception as err:  # pylint: disable=broad-except
+            capture_exception(err)
+            raise DBusFatalError(str(err)) from err
 
-            # Signals
-            for signal in interface.signals:
-                signal_name = signal.name
-                self.signals.add(f"{interface_name}.{signal_name}")
+    def _add_interfaces(self):
+        """Make proxy interfaces out of introspection data."""
+        self._proxies = {
+            interface.name: self._proxy_obj.get_interface(interface.name)
+            for interface in self._proxy_obj.introspection.interfaces
+        }
 
     async def _init_proxy(self) -> None:
         """Read interface data."""
-        # Wait for dbus object to be available after restart
         introspection: Node | None = None
-        try:
-            self._bus = await MessageBus(bus_type=BusType.SYSTEM).connect()
-        except Exception as err:
-            raise DBusFatalError() from err
 
         for _ in range(3):
             try:
@@ -115,94 +142,85 @@ class DBus:
                 "Could not get introspection data after 3 attempts", _LOGGER.error
             )
 
-        self._add_interfaces(introspection)
-
-    def _prepare_args(self, *args: list[Any]) -> tuple[str, list[Any]]:
-        signature = ""
-        arg_list = []
-
-        for arg in args:
-            _LOGGER.debug("...arg %s (type %s)", str(arg), type(arg))
-            if isinstance(arg, bool):
-                signature += "b"
-                arg_list.append(arg)
-            elif isinstance(arg, int):
-                signature += "i"
-                arg_list.append(arg)
-            elif isinstance(arg, float):
-                signature += "d"
-                arg_list.append(arg)
-            elif isinstance(arg, str):
-                signature += "s"
-                arg_list.append(arg)
-            elif isinstance(arg, tuple):
-                signature += arg[0]
-                arg_list.append(arg[1])
-            else:
-                raise DBusFatalError(f"Type {type(arg)} not supported")
-
-        return signature, arg_list
-
-    async def call_dbus(
-        self, method: str, *args: list[Any], remove_signature: bool = True
-    ) -> str:
-        """Call a dbus method."""
-        method_parts = method.split(".")
-
-        signature, arg_list = self._prepare_args(*args)
-
-        _LOGGER.debug("Call %s on %s", method, self.object_path)
-        reply = await self._bus.call(
-            Message(
-                destination=self.bus_name,
-                path=self.object_path,
-                interface=".".join(method_parts[:-1]),
-                member=method_parts[-1],
-                signature=signature,
-                body=arg_list,
-            )
+        self._proxy_obj = self.bus.get_proxy_object(
+            self.bus_name, self.object_path, introspection
         )
+        self._add_interfaces()
 
-        if reply.message_type == MessageType.ERROR:
-            if reply.error_name == "org.freedesktop.DBus.Error.ServiceUnknown":
-                raise DBusInterfaceError(reply.body[0])
-            if reply.error_name == "org.freedesktop.DBus.Error.UnknownMethod":
-                raise DBusInterfaceMethodError(reply.body[0])
-            if reply.error_name == "org.freedesktop.DBus.Error.Disconnected":
-                raise DBusNotConnectedError()
-            if reply.body and len(reply.body) > 0:
-                raise DBusFatalError(reply.body[0])
-            raise DBusFatalError()
+    @property
+    def bus(self) -> MessageBus:
+        """Get message bus."""
+        return self._bus
 
-        if remove_signature:
-            return _remove_dbus_signature(reply.body)
-        return reply.body
+    @property
+    def properties(self) -> DBusCallWrapper | None:
+        """Get properties proxy interface."""
+        if DBUS_INTERFACE_PROPERTIES not in self._proxies:
+            return None
+        return DBusCallWrapper(self, DBUS_INTERFACE_PROPERTIES)
 
     async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""
-        try:
-            return (await self.call_dbus(DBUS_METHOD_GETALL, interface))[0]
-        except IndexError as err:
-            _LOGGER.error("No attributes returned for %s", interface)
-            raise DBusFatalError() from err
+        if not self.properties:
+            raise DBusInterfaceError(
+                f"DBus Object does not have interface {DBUS_INTERFACE_PROPERTIES}"
+            )
+        return await self.properties.call_get_all(interface)
 
-    async def set_property(
+    def sync_property_changes(
         self,
         interface: str,
-        name: str,
-        value: Any,
-    ) -> list[Any] | dict[str, Any] | None:
-        """Set a property from interface."""
-        return await self.call_dbus(DBUS_METHOD_SET, interface, name, value)
+        update: Callable[[dict[str, Any]], Coroutine[None]],
+    ) -> Callable:
+        """Sync property changes for interface with cache.
 
-    def signal(self, signal_member) -> DBusSignalWrapper:
+        Pass return value to `stop_sync_property_changes` to stop.
+        """
+
+        async def sync_property_change(
+            prop_interface: str, changed: dict[str, Variant], invalidated: list[str]
+        ):
+            """Sync property changes to cache."""
+            if interface != prop_interface:
+                return
+
+            _LOGGER.debug(
+                "Property change for %s-%s: %s changed & %s invalidated",
+                self.bus_name,
+                self.object_path,
+                list(changed.keys()),
+                invalidated,
+            )
+
+            if invalidated:
+                await update()
+            else:
+                await update(changed)
+
+        self.properties.on_properties_changed(sync_property_change)
+        return sync_property_change
+
+    def stop_sync_property_changes(self, sync_property_change: Callable):
+        """Stop syncing property changes with cache."""
+        self.properties.off_properties_changed(sync_property_change)
+
+    def disconnect(self):
+        """Remove all active signal listeners."""
+        for intr, signals in self._signal_monitors.items():
+            for name, callbacks in signals.items():
+                for callback in callbacks:
+                    try:
+                        getattr(self._proxies[intr], f"off_{name}")(
+                            callback, unpack_variants=True
+                        )
+                    except Exception:  # pylint: disable=broad-except
+                        _LOGGER.exception("Can't remove signal listener")
+
+        self._signal_monitors = {}
+
+    def signal(self, signal_member: str) -> DBusSignalWrapper:
         """Get signal context manager for this object."""
         return DBusSignalWrapper(self, signal_member)
-
-    async def wait_signal(self, signal_member) -> Any:
-        """Wait for signal on this object."""
-        async with self.signal(signal_member) as signal:
-            return await signal.wait_for_signal()
 
     def __getattr__(self, name: str) -> DBusCallWrapper:
         """Map to dbus method."""
@@ -216,29 +234,105 @@ class DBusCallWrapper:
         """Initialize wrapper."""
         self.dbus: DBus = dbus
         self.interface: str = interface
+        self._proxy: ProxyInterface | None = self.dbus._proxies.get(self.interface)
 
-    def __call__(self) -> None:
+    def __call__(self, *args, **kwargs) -> None:
         """Catch this method from being called."""
         _LOGGER.error("D-Bus method %s not exists!", self.interface)
         raise DBusInterfaceMethodError()
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Awaitable | Callable:
         """Map to dbus method."""
-        interface = f"{self.interface}.{name}"
+        if not self._proxy:
+            return DBusCallWrapper(self.dbus, f"{self.interface}.{name}")
 
-        if interface not in self.dbus.methods:
-            return DBusCallWrapper(self.dbus, interface)
+        dbus_parts = name.split("_", 1)
+        dbus_type = dbus_parts[0]
 
-        def _method_wrapper(*args, remove_signature: bool = True):
-            """Wrap method.
+        if not hasattr(self._proxy, name):
+            message = f"{name} does not exist in D-Bus interface {self.interface}!"
+            if dbus_type == "call":
+                raise DBusInterfaceMethodError(message, _LOGGER.error)
+            if dbus_type == "get":
+                raise DBusInterfacePropertyError(message, _LOGGER.error)
+            if dbus_type == "set":
+                raise DBusInterfacePropertyError(message, _LOGGER.error)
+            if dbus_type in ["on", "off"]:
+                raise DBusInterfaceSignalError(message, _LOGGER.error)
 
-            Return a coroutine
-            """
-            return self.dbus.call_dbus(
-                interface, *args, remove_signature=remove_signature
+        # Can't wrap these since *args callbacks aren't supported. But can track them for automatic disconnect later
+        if dbus_type in ["on", "off"]:
+            _LOGGER.debug(
+                "D-Bus signal monitor - %s.%s on %s",
+                self.interface,
+                name,
+                self.dbus.object_path,
             )
+            dbus_name = dbus_parts[1]
 
-        return _method_wrapper
+            if dbus_type == "on":
+
+                def _on_signal(callback: Callable):
+                    getattr(self._proxy, name)(callback, unpack_variants=True)
+
+                    # pylint: disable=protected-access
+                    if self.interface not in self.dbus._signal_monitors:
+                        self.dbus._signal_monitors[self.interface] = {}
+
+                    if dbus_name not in self.dbus._signal_monitors[self.interface]:
+                        self.dbus._signal_monitors[self.interface][dbus_name] = [
+                            callback
+                        ]
+                    else:
+                        self.dbus._signal_monitors[self.interface][dbus_name].append(
+                            callback
+                        )
+
+                return _on_signal
+
+            def _off_signal(callback: Callable):
+                getattr(self._proxy, name)(callback, unpack_variants=True)
+
+                # pylint: disable=protected-access
+                if (
+                    self.interface not in self.dbus._signal_monitors
+                    or dbus_name not in self.dbus._signal_monitors[self.interface]
+                    or callback
+                    not in self.dbus._signal_monitors[self.interface][dbus_name]
+                ):
+                    _LOGGER.warning(
+                        "Signal listener not found for %s.%s", self.interface, dbus_name
+                    )
+                else:
+                    self.dbus._signal_monitors[self.interface][dbus_name].remove(
+                        callback
+                    )
+
+                    if not self.dbus._signal_monitors[self.interface][dbus_name]:
+                        del self.dbus._signal_monitors[self.interface][dbus_name]
+                        if not self.dbus._signal_monitors[self.interface]:
+                            del self.dbus._signal_monitors[self.interface]
+
+            return _off_signal
+
+        if dbus_type in ["call", "get"]:
+
+            def _method_wrapper(*args, unpack_variants: bool = True) -> Awaitable:
+                return DBus.call_dbus(
+                    self._proxy, name, *args, unpack_variants=unpack_variants
+                )
+
+            return _method_wrapper
+
+        elif dbus_type == "set":
+
+            def _set_wrapper(*args) -> Awaitable:
+                return DBus.call_dbus(self._proxy, name, *args, unpack_variants=False)
+
+            return _set_wrapper
+
+        # Didn't reach the dbus call yet, just happened to hit another interface. Return a wrapper
+        return DBusCallWrapper(self.dbus, f"{self.interface}.{name}")
 
 
 class DBusSignalWrapper:
@@ -275,7 +369,6 @@ class DBusSignalWrapper:
 
     async def __aenter__(self):
         """Install match for signals and start collecting signal messages."""
-
         _LOGGER.debug("Install match for signal %s.%s", self._interface, self._member)
         await self._dbus._bus.call(
             Message(
@@ -291,14 +384,13 @@ class DBusSignalWrapper:
         self._dbus._bus.add_message_handler(self._message_handler)
         return self
 
-    async def wait_for_signal(self) -> Message:
+    async def wait_for_signal(self) -> Any:
         """Wait for signal and returns signal payload."""
         msg = await self._messages.get()
         return msg.body
 
     async def __aexit__(self, exc_t, exc_v, exc_tb):
         """Stop collecting signal messages and remove match for signals."""
-
         self._dbus._bus.remove_message_handler(self._message_handler)
 
         await self._dbus._bus.call(

@@ -1,10 +1,15 @@
 """Data objects."""
-from typing import Optional
 from uuid import UUID, uuid4
 
 import attr
 
-from .const import ContextType, IssueType, SuggestionType
+from .const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+    UnsupportedReason,
+)
 
 
 @attr.s(frozen=True, slots=True)
@@ -13,7 +18,7 @@ class Issue:
 
     type: IssueType = attr.ib()
     context: ContextType = attr.ib()
-    reference: Optional[str] = attr.ib(default=None)
+    reference: str | None = attr.ib(default=None)
     uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)
 
 
@@ -23,5 +28,21 @@ class Suggestion:
 
     type: SuggestionType = attr.ib()
     context: ContextType = attr.ib()
-    reference: Optional[str] = attr.ib(default=None)
+    reference: str | None = attr.ib(default=None)
     uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False, init=False)
+
+
+@attr.s(frozen=True, slots=True)
+class HealthChanged:
+    """Describe change in system health."""
+
+    healthy: bool = attr.ib()
+    unhealthy_reasons: list[UnhealthyReason] | None = attr.ib(default=None)
+
+
+@attr.s(frozen=True, slots=True)
+class SupportedChanged:
+    """Describe change in system supported."""
+
+    supported: bool = attr.ib()
+    unsupported_reasons: list[UnsupportedReason] | None = attr.ib(default=None)

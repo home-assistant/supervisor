@@ -22,7 +22,7 @@ class EvaluateSystemd(EvaluateBase):
 
     @property
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
+        """Return a string that is printed when self.evaluate is True."""
         return "Systemd is not correctly working"
 
     @property

@@ -1,6 +1,10 @@
 """Const for host."""
 from enum import Enum
 
+PARAM_BOOT_ID = "_BOOT_ID"
+PARAM_FOLLOW = "follow"
+PARAM_SYSLOG_IDENTIFIER = "SYSLOG_IDENTIFIER"
+
 
 class InterfaceMethod(str, Enum):
     """Configuration of an interface."""
@@ -47,3 +51,12 @@ class HostFeature(str, Enum):
     SHUTDOWN = "shutdown"
     OS_AGENT = "os_agent"
     TIMEDATE = "timedate"
+    JOURNAL = "journal"
+
+
+class LogFormat(str, Enum):
+    """Log format."""
+
+    JOURNAL = "application/vnd.fdo.journal"
+    JSON = "application/json"
+    TEXT = "text/plain"

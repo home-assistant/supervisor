@@ -1,6 +1,7 @@
 """Supervisor add-on build environment."""
 from __future__ import annotations
 
+from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,7 +16,8 @@ from ..const import (
     META_ADDON,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import ConfigurationFileError
+from ..docker.interface import MAP_ARCH
+from ..exceptions import ConfigurationFileError, HassioArchNotFound
 from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
 
@@ -44,15 +46,33 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         """Ignore save function."""
         raise RuntimeError()
 
+    @cached_property
+    def arch(self) -> str:
+        """Return arch of the add-on."""
+        return self.sys_arch.match(self.addon.arch)
+
     @property
     def base_image(self) -> str:
         """Return base image for this add-on."""
         if not self._data[ATTR_BUILD_FROM]:
             return f"ghcr.io/home-assistant/{self.sys_arch.default}-base:latest"
 
+        if isinstance(self._data[ATTR_BUILD_FROM], str):
+            return self._data[ATTR_BUILD_FROM]
+
         # Evaluate correct base image
-        arch = self.sys_arch.match(list(self._data[ATTR_BUILD_FROM].keys()))
-        return self._data[ATTR_BUILD_FROM][arch]
+        if self.arch not in self._data[ATTR_BUILD_FROM]:
+            raise HassioArchNotFound(
+                f"Add-on {self.addon.slug} is not supported on {self.arch}"
+            )
+        return self._data[ATTR_BUILD_FROM][self.arch]
+
+    @property
+    def dockerfile(self) -> Path:
+        """Return Dockerfile path."""
+        if self.addon.path_location.joinpath(f"Dockerfile.{self.arch}").exists():
+            return self.addon.path_location.joinpath(f"Dockerfile.{self.arch}")
+        return self.addon.path_location.joinpath("Dockerfile")
 
     @property
     def squash(self) -> bool:
@@ -72,24 +92,29 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
     @property
     def is_valid(self) -> bool:
         """Return true if the build env is valid."""
-        return all(
-            [
-                self.addon.path_location.is_dir(),
-                Path(self.addon.path_location, "Dockerfile").is_file(),
-            ]
-        )
+        try:
+            return all(
+                [
+                    self.addon.path_location.is_dir(),
+                    self.dockerfile.is_file(),
+                ]
+            )
+        except HassioArchNotFound:
+            return False
 
     def get_docker_args(self, version: AwesomeVersion):
         """Create a dict with Docker build arguments."""
         args = {
             "path": str(self.addon.path_location),
             "tag": f"{self.addon.image}:{version!s}",
+            "dockerfile": str(self.dockerfile),
             "pull": True,
             "forcerm": not self.sys_dev,
             "squash": self.squash,
+            "platform": MAP_ARCH[self.arch],
             "labels": {
                 "io.hass.version": version,
-                "io.hass.arch": self.sys_arch.default,
+                "io.hass.arch": self.arch,
                 "io.hass.type": META_ADDON,
                 "io.hass.name": self._fix_label("name"),
                 "io.hass.description": self._fix_label("description"),

@@ -1,9 +1,9 @@
 """Main file for Supervisor."""
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
 import logging
-from typing import Awaitable, Optional
 
 import async_timeout
 
@@ -20,6 +20,7 @@ from .exceptions import (
 from .homeassistant.core import LANDINGPAGE
 from .resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from .utils.dt import utcnow
+from .utils.sentry import capture_exception
 from .utils.whoami import retrieve_whoami
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self._state: Optional[CoreState] = None
+        self._state: CoreState | None = None
         self.exit_code: int = 0
 
     @property
@@ -116,6 +117,8 @@ class Core(CoreSysAttributes):
             self.sys_host.load(),
             # Adjust timezone / time settings
             self._adjust_system_datetime(),
+            # Start docker monitoring
+            self.sys_docker.load(),
             # Load Plugins container
             self.sys_plugins.load(),
             # load last available data
@@ -151,7 +154,7 @@ class Core(CoreSysAttributes):
                     "Fatal error happening on load Task %s: %s", setup_task, err
                 )
                 self.sys_resolution.unhealthy = UnhealthyReason.SETUP
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         # Set OS Agent diagnostics if needed
         if (
@@ -180,8 +183,8 @@ class Core(CoreSysAttributes):
         # Mark booted partition as healthy
         await self.sys_os.mark_healthy()
 
-        # On release channel, try update itself
-        if self.sys_supervisor.need_update:
+        # On release channel, try update itself if auto update enabled
+        if self.sys_supervisor.need_update and self.sys_updater.auto_update:
             try:
                 if not self.healthy:
                     _LOGGER.warning("Ignoring Supervisor updates!")
@@ -194,7 +197,7 @@ class Core(CoreSysAttributes):
                     "future versions of Home Assistant!"
                 )
                 self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         # Start addon mark as initialize
         await self.sys_addons.boot(AddonStartup.INITIALIZE)
@@ -224,12 +227,12 @@ class Core(CoreSysAttributes):
                     await self.sys_homeassistant.core.start()
                 except HomeAssistantCrashError as err:
                     _LOGGER.error("Can't start Home Assistant Core - rebuiling")
-                    self.sys_capture_exception(err)
+                    capture_exception(err)
 
                     with suppress(HomeAssistantError):
                         await self.sys_homeassistant.core.rebuild()
                 except HomeAssistantError as err:
-                    self.sys_capture_exception(err)
+                    capture_exception(err)
             else:
                 _LOGGER.info("Skiping start of Home Assistant")
 
@@ -278,7 +281,13 @@ class Core(CoreSysAttributes):
         # Stage 1
         try:
             async with async_timeout.timeout(10):
-                await asyncio.wait([self.sys_api.stop(), self.sys_scheduler.shutdown()])
+                await asyncio.wait(
+                    [
+                        self.sys_api.stop(),
+                        self.sys_scheduler.shutdown(),
+                        self.sys_docker.unload(),
+                    ]
+                )
         except asyncio.TimeoutError:
             _LOGGER.warning("Stage 1: Force Shutdown!")
 
@@ -290,6 +299,7 @@ class Core(CoreSysAttributes):
                         self.sys_websession.close(),
                         self.sys_ingress.unload(),
                         self.sys_hardware.unload(),
+                        self.sys_dbus.unload(),
                     ]
                 )
         except asyncio.TimeoutError:
@@ -304,6 +314,9 @@ class Core(CoreSysAttributes):
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
             self.state = CoreState.SHUTDOWN
+
+        # Stop docker monitoring
+        await self.sys_docker.unload()
 
         # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(AddonStartup.APPLICATION)
@@ -333,7 +346,7 @@ class Core(CoreSysAttributes):
         if (
             self.sys_config.timezone
             or self.sys_host.info.timezone not in ("Etc/UTC", None)
-        ) and (self.sys_host.info.dt_synchronized or self.sys_supervisor.connectivity):
+        ) and self.sys_host.info.dt_synchronized:
             return
 
         # Get Timezone data
@@ -344,27 +357,23 @@ class Core(CoreSysAttributes):
         except WhoamiError as err:
             _LOGGER.warning("Can't adjust Time/Date settings: %s", err)
             return
-        else:
-            if not self.sys_config.timezone:
-                self.sys_config.timezone = data.timezone
-            return
 
-        # Adjust timesettings in case SSL fails
-        try:
-            data = await retrieve_whoami(self.sys_websession, with_ssl=False)
-        except WhoamiError as err:
-            _LOGGER.error("Can't adjust Time/Date settings: %s", err)
-            return
-        else:
-            if not self.sys_config.timezone:
-                self.sys_config.timezone = data.timezone
+        # SSL Date Issue & possible time drift
+        if not data:
+            try:
+                data = await retrieve_whoami(self.sys_websession, with_ssl=False)
+            except WhoamiError as err:
+                _LOGGER.error("Can't adjust Time/Date settings: %s", err)
+                return
+
+        self.sys_config.timezone = self.sys_config.timezone or data.timezone
 
         # Calculate if system time is out of sync
         delta = data.dt_utc - utcnow()
-        if delta < timedelta(days=7) or self.sys_host.info.dt_synchronized:
+        if delta <= timedelta(days=3) or self.sys_host.info.dt_synchronized:
             return
 
-        _LOGGER.warning("System time/date shift over more as 7days found!")
+        _LOGGER.warning("System time/date shift over more than 3 days found!")
         await self.sys_host.control.set_datetime(data.dt_utc)
         await self.sys_supervisor.check_connectivity()
 

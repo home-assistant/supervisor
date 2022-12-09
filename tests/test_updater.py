@@ -1,5 +1,7 @@
 """Test updater files."""
+from unittest.mock import patch
 
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -48,3 +50,23 @@ async def test_fetch_versions(coresys: CoreSys) -> None:
     assert coresys.updater.image_multicast == data["images"]["multicast"].format(
         arch=coresys.arch.supervisor
     )
+
+
+@pytest.mark.parametrize(
+    "version, expected",
+    [
+        ("3.1", "3.13"),
+        ("4.5", "4.20"),
+        ("5.0", "5.13"),
+        ("6.4", "6.6"),
+        ("4.20", "5.13"),
+    ],
+)
+async def test_os_update_path(coresys: CoreSys, version: str, expected: str):
+    """Test OS upgrade path across major versions."""
+    coresys.os._board = "rpi4"  # pylint: disable=protected-access
+    coresys.os._version = AwesomeVersion(version)  # pylint: disable=protected-access
+    with patch.object(type(coresys.security), "verify_own_content"):
+        await coresys.updater.fetch_data()
+
+        assert coresys.updater.version_hassos == AwesomeVersion(expected)

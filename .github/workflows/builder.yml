@@ -33,10 +33,13 @@ on:
       - setup.py
 
 env:
-  DEFAULT_PYTHON: 3.9
+  DEFAULT_PYTHON: "3.10"
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
-  WHEELS_TAG: 3.9-alpine3.14
+
+concurrency:
+  group: '${{ github.workflow }}-${{ github.ref }}'
+  cancel-in-progress: true
 
 jobs:
   init:
@@ -50,7 +53,7 @@ jobs:
       requirements: ${{ steps.requirements.outputs.changed }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.1.0
         with:
           fetch-depth: 0
 
@@ -85,21 +88,29 @@ jobs:
         arch: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.1.0
         with:
           fetch-depth: 0
 
+      - name: Write env-file
+        if: needs.init.outputs.requirements == 'true'
+        run: |
+          (
+            # Fix out of memory issues with rust
+            echo "CARGO_NET_GIT_FETCH_WITH_CLI=true"
+          ) > .env_file
+
       - name: Build wheels
         if: needs.init.outputs.requirements == 'true'
-        uses: home-assistant/wheels@master
+        uses: home-assistant/wheels@2022.10.1
         with:
-          tag: ${{ env.WHEELS_TAG }}
+          abi: cp310
+          tag: musllinux_1_2
           arch: ${{ matrix.arch }}
-          wheels-host: wheels.hass.io
           wheels-key: ${{ secrets.WHEELS_KEY }}
-          wheels-user: wheels
-          apk: "build-base;libffi-dev;openssl-dev;cargo"
+          apk: "libffi-dev;openssl-dev"
           skip-binary: aiohttp
+          env-file: true
           requirements: "requirements.txt"
 
       - name: Set version
@@ -110,14 +121,14 @@ jobs:
 
       - name: Login to DockerHub
         if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@v1.14.1
+        uses: docker/login-action@v2.1.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
         if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@v1.14.1
+        uses: docker/login-action@v2.1.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -128,7 +139,7 @@ jobs:
         run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
 
       - name: Build supervisor
-        uses: home-assistant/builder@2022.03.1
+        uses: home-assistant/builder@2022.11.0
         with:
           args: |
             $BUILD_ARGS \
@@ -145,13 +156,13 @@ jobs:
     steps:
       - name: Checkout the repository
         if: needs.init.outputs.publish == 'true'
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.1.0
         with:
           fetch-depth: 0
 
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         if: needs.init.outputs.publish == 'true'
-        uses: actions/setup-python@v3.1.2
+        uses: actions/setup-python@v4.3.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
@@ -184,7 +195,7 @@ jobs:
     steps:
       - name: Checkout the repository
         if: needs.init.outputs.publish == 'true'
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.1.0
 
       - name: Initialize git
         if: needs.init.outputs.publish == 'true'
@@ -209,11 +220,11 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.1.0
 
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2022.03.1
+        uses: home-assistant/builder@2022.11.0
         with:
           args: |
             --test \
@@ -290,6 +301,12 @@ jobs:
             exit 1
           fi
 
+          # Make sure its state is started
+          test="$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.state')"
+          if [ "$test" != "started" ]; then
+            exit 1
+          fi
+
       - name: Check the Supervisor code sign
         if: needs.init.outputs.publish == 'true'
         run: |
@@ -359,6 +376,12 @@ jobs:
           # Make sure it actually installed
           test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
           if [[ "$test" == "null" ]]; then
+            exit 1
+          fi
+
+          # Make sure its state is started
+          test="$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.state')"
+          if [ "$test" != "started" ]; then
             exit 1
           fi
 

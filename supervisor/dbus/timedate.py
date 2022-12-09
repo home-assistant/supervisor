@@ -3,11 +3,11 @@ from datetime import datetime
 import logging
 from typing import Any
 
+from dbus_fast.aio.message_bus import MessageBus
+
 from ..exceptions import DBusError, DBusInterfaceError
-from ..utils.dbus import DBus
 from ..utils.dt import utc_from_timestamp
 from .const import (
-    DBUS_ATTR_LOCALRTC,
     DBUS_ATTR_NTP,
     DBUS_ATTR_NTPSYNCHRONIZED,
     DBUS_ATTR_TIMEUSEC,
@@ -16,16 +16,22 @@ from .const import (
     DBUS_NAME_TIMEDATE,
     DBUS_OBJECT_TIMEDATE,
 )
-from .interface import DBusInterface, dbus_property
+from .interface import DBusInterfaceProxy, dbus_property
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class TimeDate(DBusInterface):
-    """Timedate function handler."""
+class TimeDate(DBusInterfaceProxy):
+    """Timedate function handler.
 
-    name = DBUS_NAME_TIMEDATE
+    https://www.freedesktop.org/software/systemd/man/org.freedesktop.timedate1.html
+    """
+
+    name: str = DBUS_NAME_TIMEDATE
+    bus_name: str = DBUS_NAME_TIMEDATE
+    object_path: str = DBUS_OBJECT_TIMEDATE
+    properties_interface: str = DBUS_IFACE_TIMEDATE
 
     def __init__(self) -> None:
         """Initialize Properties."""
@@ -36,12 +42,6 @@ class TimeDate(DBusInterface):
     def timezone(self) -> str:
         """Return host timezone."""
         return self.properties[DBUS_ATTR_TIMEZONE]
-
-    @property
-    @dbus_property
-    def local_rtc(self) -> bool:
-        """Return if a local RTC exists."""
-        return self.properties[DBUS_ATTR_LOCALRTC]
 
     @property
     @dbus_property
@@ -61,10 +61,11 @@ class TimeDate(DBusInterface):
         """Return the system UTC time."""
         return utc_from_timestamp(self.properties[DBUS_ATTR_TIMEUSEC] / 1000000)
 
-    async def connect(self):
+    async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
+        _LOGGER.info("Load dbus interface %s", self.name)
         try:
-            self.dbus = await DBus.connect(DBUS_NAME_TIMEDATE, DBUS_OBJECT_TIMEDATE)
+            await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-timedate")
         except DBusInterfaceError:
@@ -73,22 +74,11 @@ class TimeDate(DBusInterface):
             )
 
     @dbus_connected
-    def set_time(self, utc: datetime):
-        """Set time & date on host as UTC.
-
-        Return a coroutine.
-        """
-        return self.dbus.SetTime(int(utc.timestamp() * 1000000), False, False)
+    async def set_time(self, utc: datetime) -> None:
+        """Set time & date on host as UTC."""
+        await self.dbus.call_set_time(int(utc.timestamp() * 1000000), False, False)
 
     @dbus_connected
-    def set_ntp(self, use_ntp: bool):
-        """Turn NTP on or off.
-
-        Return a coroutine.
-        """
-        return self.dbus.SetNTP(use_ntp)
-
-    @dbus_connected
-    async def update(self):
-        """Update Properties."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_TIMEDATE)
+    async def set_ntp(self, use_ntp: bool) -> None:
+        """Turn NTP on or off."""
+        await self.dbus.call_set_ntp(use_ntp, False)

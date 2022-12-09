@@ -6,14 +6,15 @@ from aiohttp import web
 
 from ..const import ATTR_AUDIO, ATTR_DEVICES, ATTR_INPUT, ATTR_NAME, ATTR_OUTPUT
 from ..coresys import CoreSysAttributes
-from ..hardware.const import (
+from ..hardware.data import Device
+from .const import (
     ATTR_ATTRIBUTES,
     ATTR_BY_ID,
+    ATTR_CHILDREN,
     ATTR_DEV_PATH,
     ATTR_SUBSYSTEM,
     ATTR_SYSFS,
 )
-from ..hardware.data import Device
 from .utils import api_process
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ def device_struct(device: Device) -> dict[str, Any]:
         ATTR_SUBSYSTEM: device.subsystem,
         ATTR_BY_ID: device.by_id,
         ATTR_ATTRIBUTES: device.attributes,
+        ATTR_CHILDREN: device.children,
     }
 
 

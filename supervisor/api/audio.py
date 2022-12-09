@@ -1,7 +1,8 @@
 """Init file for Supervisor Audio RESTful API."""
 import asyncio
+from collections.abc import Awaitable
 import logging
-from typing import Any, Awaitable
+from typing import Any
 
 from aiohttp import web
 import attr
@@ -29,12 +30,12 @@ from ..const import (
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_VOLUME,
-    CONTENT_TYPE_BINARY,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..host.sound import StreamType
 from ..validate import version_tag
+from .const import CONTENT_TYPE_BINARY
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

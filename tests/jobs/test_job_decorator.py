@@ -2,16 +2,24 @@
 # pylint: disable=protected-access,import-error
 import asyncio
 from datetime import timedelta
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
+from aiohttp.client_exceptions import ClientError
 import pytest
+import time_machine
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HassioError, JobException
+from supervisor.exceptions import (
+    AudioUpdateError,
+    HassioError,
+    JobException,
+    PluginJobError,
+)
 from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.resolution.const import UnhealthyReason
+from supervisor.utils.dt import utcnow
 
 
 async def test_healthy(coresys: CoreSys):
@@ -36,7 +44,22 @@ async def test_healthy(coresys: CoreSys):
     assert not await test.execute()
 
 
-async def test_internet(coresys: CoreSys):
+@pytest.mark.parametrize(
+    "connectivity,head_side_effect,host_result,system_result",
+    [
+        (4, None, True, True),
+        (4, ClientError(), True, None),
+        (0, None, None, True),
+        (0, ClientError(), None, None),
+    ],
+)
+async def test_internet(
+    coresys: CoreSys,
+    connectivity: int,
+    head_side_effect: Exception | None,
+    host_result: bool | None,
+    system_result: bool | None,
+):
     """Test the internet decorator."""
     coresys.core.state = CoreState.RUNNING
 
@@ -59,25 +82,16 @@ async def test_internet(coresys: CoreSys):
 
     test = TestClass(coresys)
 
-    coresys.host.network._connectivity = True
-    coresys.supervisor._connectivity = True
-    assert await test.execute_host()
-    assert await test.execute_system()
-
-    coresys.host.network._connectivity = True
-    coresys.supervisor._connectivity = False
-    assert await test.execute_host()
-    assert not await test.execute_system()
-
-    coresys.host.network._connectivity = None
-    coresys.supervisor._connectivity = True
-    assert await test.execute_host()
-    assert await test.execute_system()
-
-    coresys.host.network._connectivity = False
-    coresys.supervisor._connectivity = True
-    assert not await test.execute_host()
-    assert await test.execute_system()
+    mock_websession = AsyncMock()
+    mock_websession.head.side_effect = head_side_effect
+    coresys.supervisor.connectivity = None
+    with patch(
+        "supervisor.utils.dbus.DBus.call_dbus", return_value=connectivity
+    ), patch.object(
+        CoreSys, "websession", new=PropertyMock(return_value=mock_websession)
+    ):
+        assert await test.execute_host() is host_result
+        assert await test.execute_system() is system_result
 
 
 async def test_free_space(coresys: CoreSys):
@@ -220,7 +234,7 @@ async def test_ignore_conditions(coresys: CoreSys):
 
 
 async def test_exception_conditions(coresys: CoreSys):
-    """Test the ignore conditions decorator."""
+    """Test the on condition decorator."""
 
     class TestClass:
         """Test class."""
@@ -247,7 +261,7 @@ async def test_exception_conditions(coresys: CoreSys):
 async def test_exectution_limit_single_wait(
     coresys: CoreSys, loop: asyncio.BaseEventLoop
 ):
-    """Test the ignore conditions decorator."""
+    """Test the single wait job execution limit."""
 
     class TestClass:
         """Test class."""
@@ -269,10 +283,10 @@ async def test_exectution_limit_single_wait(
     await asyncio.gather(*[test.execute(0.1), test.execute(0.1), test.execute(0.1)])
 
 
-async def test_exectution_limit_throttle_wait(
+async def test_execution_limit_throttle_wait(
     coresys: CoreSys, loop: asyncio.BaseEventLoop
 ):
-    """Test the ignore conditions decorator."""
+    """Test the throttle wait job execution limit."""
 
     class TestClass:
         """Test class."""
@@ -298,6 +312,47 @@ async def test_exectution_limit_throttle_wait(
 
     await asyncio.gather(*[test.execute(0.1)])
     assert test.call == 1
+
+
+@pytest.mark.parametrize("error", [None, PluginJobError])
+async def test_execution_limit_throttle_rate_limit(
+    coresys: CoreSys, loop: asyncio.BaseEventLoop, error: JobException | None
+):
+    """Test the throttle wait job execution limit."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.run = asyncio.Lock()
+            self.call = 0
+
+        @Job(
+            limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+            throttle_period=timedelta(hours=1),
+            throttle_max_calls=2,
+            on_condition=error,
+        )
+        async def execute(self):
+            """Execute the class method."""
+            self.call += 1
+
+    test = TestClass(coresys)
+
+    await asyncio.gather(*[test.execute(), test.execute()])
+    assert test.call == 2
+
+    with pytest.raises(JobException if error is None else error):
+        await test.execute()
+
+    assert test.call == 2
+
+    with time_machine.travel(utcnow() + timedelta(hours=1)):
+        await test.execute()
+
+    assert test.call == 3
 
 
 async def test_exectution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEventLoop):
@@ -355,3 +410,128 @@ async def test_exectution_limit_once(coresys: CoreSys, loop: asyncio.BaseEventLo
         await test.execute(0.1)
 
     await run_task
+
+
+async def test_supervisor_updated(coresys: CoreSys):
+    """Test the supervisor updated decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.SUPERVISOR_UPDATED])
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    assert not coresys.supervisor.need_update
+    assert await test.execute()
+
+    with patch.object(
+        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+    ):
+        assert not await test.execute()
+
+
+async def test_plugins_updated(coresys: CoreSys):
+    """Test the plugins updated decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.PLUGINS_UPDATED])
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    assert 0 == len(
+        [plugin.slug for plugin in coresys.plugins.all_plugins if plugin.need_update]
+    )
+    assert await test.execute()
+
+    with patch.object(
+        type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
+    ), patch.object(
+        type(coresys.plugins.audio), "update", side_effect=[AudioUpdateError, None]
+    ):
+        assert not await test.execute()
+        assert await test.execute()
+
+
+async def test_auto_update(coresys: CoreSys):
+    """Test the auto update decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.AUTO_UPDATE])
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    assert coresys.updater.auto_update is True
+    assert await test.execute()
+
+    coresys.updater.auto_update = False
+    assert not await test.execute()
+
+
+async def test_unhealthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
+    """Test the healthy decorator when unhealthy."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.HEALTHY])
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    coresys.resolution.unhealthy = UnhealthyReason.SETUP
+    assert not await test.execute()
+    assert "blocked from execution, system is not healthy - setup" in caplog.text
+
+    coresys.jobs.ignore_conditions = [JobCondition.HEALTHY]
+    assert await test.execute()
+
+
+async def test_unhandled_exception(coresys: CoreSys, capture_exception: Mock):
+    """Test an unhandled exception from job."""
+    err = OSError()
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(conditions=[JobCondition.HEALTHY])
+        async def execute(self) -> None:
+            """Execute the class method."""
+            raise err
+
+    test = TestClass(coresys)
+    with pytest.raises(JobException):
+        await test.execute()
+
+    capture_exception.assert_called_once_with(err)

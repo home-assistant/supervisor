@@ -1,9 +1,13 @@
 """Test Home Assistant OS functionality."""
 
+from unittest.mock import PropertyMock, patch
+
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import HassOSJobError
 
 # pylint: disable=protected-access
 
@@ -25,7 +29,6 @@ async def test_ota_url_generic_x86_64_rename(coresys: CoreSys) -> None:
 
 def test_ota_url_os_name(coresys: CoreSys) -> None:
     """Test download URL generated with os_name."""
-
     board = "generic-x86-64"
     os_name = "haos"
     versionstr = "6.0"
@@ -43,7 +46,6 @@ def test_ota_url_os_name(coresys: CoreSys) -> None:
 
 def test_ota_url_os_name_rel_5_downgrade(coresys: CoreSys) -> None:
     """Test download URL generated with os_name."""
-
     board = "generic-x86-64"
     versionstr = "5.9"
 
@@ -57,3 +59,24 @@ def test_ota_url_os_name_rel_5_downgrade(coresys: CoreSys) -> None:
 
     url = coresys.os._get_download_url(AwesomeVersion(versionstr))
     assert url == url_formatted
+
+
+async def test_update_fails_if_out_of_date(coresys: CoreSys) -> None:
+    """Test update of OS fails if Supervisor is out of date."""
+    coresys.core.state = CoreState.RUNNING
+    with patch.object(
+        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+    ), patch.object(
+        type(coresys.os), "available", new=PropertyMock(return_value=True)
+    ), pytest.raises(
+        HassOSJobError
+    ):
+        await coresys.os.update()
+
+
+async def test_board_name_supervised(coresys: CoreSys) -> None:
+    """Test board name is supervised when not on haos."""
+    with patch("supervisor.os.manager.CPE.get_product", return_value=["not-hassos"]):
+        await coresys.dbus.hostname.connect(coresys.dbus.bus)
+        await coresys.os.load()
+        assert coresys.os.board == "supervised"

@@ -14,9 +14,19 @@ class DockerStats:
         self._blk_write = 0
 
         try:
-            self._memory_usage = (
-                stats["memory_stats"]["usage"] - stats["memory_stats"]["stats"]["cache"]
-            )
+            # cgroupv1 & Docker > 19.03
+            if "total_inactive_file" in stats["memory_stats"]["stats"]:
+                cache = stats["memory_stats"]["stats"]["total_inactive_file"]
+
+            # Docker <= 19.03
+            elif "cache" in stats["memory_stats"]["stats"]:
+                cache = stats["memory_stats"]["stats"]["cache"]
+
+            # cgroupv2
+            else:
+                cache = stats["memory_stats"]["stats"]["inactive_file"]
+
+            self._memory_usage = stats["memory_stats"]["usage"] - cache
             self._memory_limit = stats["memory_stats"]["limit"]
         except KeyError:
             self._memory_usage = 0

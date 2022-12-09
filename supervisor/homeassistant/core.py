@@ -1,21 +1,20 @@
 """Home Assistant control object."""
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 import logging
-from pathlib import Path
 import re
 import secrets
 import shutil
-import time
-from typing import Awaitable, Optional
 
 import attr
-from awesomeversion import AwesomeVersion, AwesomeVersionException
+from awesomeversion import AwesomeVersion
 
-from supervisor.const import ATTR_HOMEASSISTANT
-
+from ..const import ATTR_HOMEASSISTANT, BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.const import ContainerState
 from ..docker.homeassistant import DockerHomeAssistant
+from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
     DockerError,
@@ -24,10 +23,18 @@ from ..exceptions import (
     HomeAssistantJobError,
     HomeAssistantUpdateError,
 )
+from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii, process_lock
-from .const import LANDINGPAGE
+from ..utils.sentry import capture_exception
+from .const import (
+    LANDINGPAGE,
+    WATCHDOG_MAX_ATTEMPTS,
+    WATCHDOG_RETRY_SECONDS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -59,6 +66,10 @@ class HomeAssistantCore(CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
+        self.sys_bus.register_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+        )
+
         try:
             # Evaluate Version if we lost this information
             if not self.sys_homeassistant.version:
@@ -115,16 +126,18 @@ class HomeAssistantCore(CoreSysAttributes):
                 await self.instance.install(
                     LANDINGPAGE, image=self.sys_updater.image_homeassistant
                 )
-            except DockerError:
-                _LOGGER.warning("Fails install landingpage, retry after 30sec")
-                await asyncio.sleep(30)
-            except Exception as err:  # pylint: disable=broad-except
-                self.sys_capture_exception(err)
-            else:
-                self.sys_homeassistant.version = LANDINGPAGE
-                self.sys_homeassistant.image = self.sys_updater.image_homeassistant
-                self.sys_homeassistant.save_data()
                 break
+            except DockerError:
+                pass
+            except Exception as err:  # pylint: disable=broad-except
+                capture_exception(err)
+
+            _LOGGER.warning("Fails install landingpage, retry after 30sec")
+            await asyncio.sleep(30)
+
+        self.sys_homeassistant.version = LANDINGPAGE
+        self.sys_homeassistant.image = self.sys_updater.image_homeassistant
+        self.sys_homeassistant.save_data()
 
     @process_lock
     async def install(self) -> None:
@@ -145,7 +158,7 @@ class HomeAssistantCore(CoreSysAttributes):
                 except DockerError:
                     pass
                 except Exception as err:  # pylint: disable=broad-except
-                    self.sys_capture_exception(err)
+                    capture_exception(err)
 
             _LOGGER.warning("Error on Home Assistant installation. Retry in 30sec")
             await asyncio.sleep(30)
@@ -172,13 +185,15 @@ class HomeAssistantCore(CoreSysAttributes):
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
+            JobCondition.PLUGINS_UPDATED,
+            JobCondition.SUPERVISOR_UPDATED,
         ],
         on_condition=HomeAssistantJobError,
     )
     async def update(
         self,
-        version: Optional[AwesomeVersion] = None,
-        backup: Optional[bool] = False,
+        version: AwesomeVersion | None = None,
+        backup: bool | None = False,
     ) -> None:
         """Update HomeAssistant version."""
         version = version or self.sys_homeassistant.latest_version
@@ -401,23 +416,6 @@ class HomeAssistantCore(CoreSysAttributes):
             return
         _LOGGER.info("Wait until Home Assistant is ready")
 
-        # Manage timeouts
-        timeout: bool = True
-        start_time = time.monotonic()
-        with suppress(AwesomeVersionException):
-            # Version provide early stage UI
-            if version >= AwesomeVersion("0.112.0"):
-                _LOGGER.debug("Disable startup timeouts - early UI")
-                timeout = False
-
-        # Database migration
-        migration_progress = False
-        migration_file = Path(self.sys_config.path_homeassistant, ".migration_progress")
-
-        # PIP installation
-        pip_progress = False
-        pip_file = Path(self.sys_config.path_homeassistant, ".pip_progress")
-
         while True:
             await asyncio.sleep(5)
 
@@ -431,36 +429,6 @@ class HomeAssistantCore(CoreSysAttributes):
                 _LOGGER.info("Detect a running Home Assistant instance")
                 self._error_state = False
                 return
-
-            # 3: Running DB Migration
-            if migration_file.exists():
-                if not migration_progress:
-                    migration_progress = True
-                    _LOGGER.info("Home Assistant record migration in progress")
-                continue
-            if migration_progress:
-                migration_progress = False  # Reset start time
-                start_time = time.monotonic()
-                _LOGGER.info("Home Assistant record migration done")
-
-            # 4: Running PIP installation
-            if pip_file.exists():
-                if not pip_progress:
-                    pip_progress = True
-                    _LOGGER.info("Home Assistant pip installation in progress")
-                continue
-            if pip_progress:
-                pip_progress = False  # Reset start time
-                start_time = time.monotonic()
-                _LOGGER.info("Home Assistant pip installation done")
-
-            # 5: Timeout
-            if (
-                timeout
-                and time.monotonic() - start_time > self.sys_homeassistant.wait_boot
-            ):
-                _LOGGER.warning("Don't wait anymore on Home Assistant startup!")
-                break
 
         self._error_state = True
         raise HomeAssistantCrashError()
@@ -481,3 +449,54 @@ class HomeAssistantCore(CoreSysAttributes):
             await self.instance.install(self.sys_homeassistant.version)
         except DockerError:
             _LOGGER.error("Repairing of Home Assistant failed")
+
+    async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
+        """Process state changes in Home Assistant container and restart if necessary."""
+        if not (event.name == self.instance.name and self.sys_homeassistant.watchdog):
+            return
+
+        if event.state in [ContainerState.FAILED, ContainerState.UNHEALTHY]:
+            await self._restart_after_problem(event.state)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed Home Assistant."""
+        attempts = 0
+        while await self.instance.current_state() == state:
+            # Don't interrupt a task in progress or if rollback is handling it
+            if not (self.in_progress or self.error_state):
+                _LOGGER.warning(
+                    "Watchdog found Home Assistant %s, restarting...", state.value
+                )
+                if state == ContainerState.FAILED and attempts == 0:
+                    try:
+                        await self.start()
+                    except HomeAssistantError as err:
+                        capture_exception(err)
+                    else:
+                        break
+
+                try:
+                    if state == ContainerState.FAILED:
+                        await self.rebuild()
+                    else:
+                        await self.restart()
+                except HomeAssistantError as err:
+                    attempts = attempts + 1
+                    _LOGGER.error("Watchdog restart of Home Assistant failed!")
+                    capture_exception(err)
+                else:
+                    break
+
+            if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                _LOGGER.critical(
+                    "Watchdog cannot restart Home Assistant, failed all %s attempts",
+                    attempts,
+                )
+                break
+
+            await asyncio.sleep(WATCHDOG_RETRY_SECONDS)

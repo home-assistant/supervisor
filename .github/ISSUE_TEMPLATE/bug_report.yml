@@ -20,22 +20,14 @@ body:
     attributes:
       value: |
         ## Environment
-  - type: input
-    validations:
-      required: true
-    attributes:
-      label: What is the used version of the Supervisor?
-      placeholder: supervisor-
-      description: >
-        Can be found in the Supervisor panel -> System tab. Starts with
-        `supervisor-....`.
   - type: dropdown
     validations:
       required: true
     attributes:
       label: What type of installation are you running?
       description: >
-        If you don't know, you can find it in: Configuration panel -> Info.
+        If you don't know, can be found in [Settings -> System -> Repairs -> System Information](https://my.home-assistant.io/redirect/system_health/).
+        It is listed as the `Installation Type` value.
       options:
         - Home Assistant OS
         - Home Assistant Supervised
@@ -48,22 +40,6 @@ body:
         - Home Assistant Operating System
         - Debian
         - Other (e.g., Raspbian/Raspberry Pi OS/Fedora)
-  - type: input
-    validations:
-      required: true
-    attributes:
-      label: What is the version of your installed operating system?
-      placeholder: "5.11"
-      description: Can be found in the Supervisor panel -> System tab.
-  - type: input
-    validations:
-      required: true
-    attributes:
-      label: What version of Home Assistant Core is installed?
-      placeholder: core-
-      description: >
-        Can be found in the Supervisor panel -> System tab. Starts with
-        `core-....`.
   - type: markdown
     attributes:
       value: |
@@ -87,8 +63,30 @@ body:
     attributes:
       label: Anything in the Supervisor logs that might be useful for us?
       description: >
-        The Supervisor logs can be found in the Supervisor panel -> System tab.
+        Supervisor Logs can be found in [Settings -> System -> Logs](https://my.home-assistant.io/redirect/logs/)
+        then choose `Supervisor` in the top right.
+
+        [![Open your Home Assistant instance and show your Supervisor system logs.](https://my.home-assistant.io/badges/supervisor_logs.svg)](https://my.home-assistant.io/redirect/supervisor_logs/)
       render: txt
+  - type: textarea
+    validations:
+      required: true
+    attributes:
+      label: System Health information
+      description: >
+        System Health information can be found in the top right menu in [Settings -> System -> Repairs](https://my.home-assistant.io/redirect/repairs/).
+        Click the copy button at the bottom of the pop-up and paste it here.
+        
+        [![Open your Home Assistant instance and show health information about your system.](https://my.home-assistant.io/badges/system_health.svg)](https://my.home-assistant.io/redirect/system_health/)
+  - type: textarea
+    attributes:
+      label: Supervisor diagnostics
+      placeholder: "drag-and-drop the diagnostics data file here (do not copy-and-paste the content)"
+      description: >-
+        Supervisor diagnostics can be found in [Settings -> Integrations](https://my.home-assistant.io/redirect/integrations/).
+        Find the card that says `Home Assistant Supervisor`, open its menu and select 'Download diagnostics'.
+        
+        **Please drag-and-drop the downloaded file into the textbox below. Do not copy and paste its contents.**
   - type: textarea
     attributes:
       label: Additional information

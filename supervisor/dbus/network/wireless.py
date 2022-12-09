@@ -1,7 +1,8 @@
-"""Connection object for Network Manager."""
-from typing import Any, Awaitable, Optional
+"""Wireless object for Network Manager."""
+import asyncio
+import logging
+from typing import Any
 
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_ACCESSPOINT,
     DBUS_IFACE_DEVICE_WIRELESS,
@@ -12,6 +13,8 @@ from ..interface import DBusInterfaceProxy
 from ..utils import dbus_connected
 from .accesspoint import NetworkWirelessAP
 
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
 
 class NetworkWireless(DBusInterfaceProxy):
     """Wireless object for Network Manager.
@@ -19,36 +22,65 @@ class NetworkWireless(DBusInterfaceProxy):
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Device.Wireless.html
     """
 
+    bus_name: str = DBUS_NAME_NM
+    properties_interface: str = DBUS_IFACE_DEVICE_WIRELESS
+
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        self.object_path = object_path
-        self.properties = {}
+        self.object_path: str = object_path
+        self.properties: dict[str, Any] = {}
 
-        self._active: Optional[NetworkWirelessAP] = None
+        self._active: NetworkWirelessAP | None = None
 
     @property
-    def active(self) -> Optional[NetworkWirelessAP]:
+    def active(self) -> NetworkWirelessAP | None:
         """Return details about active connection."""
         return self._active
 
+    @active.setter
+    def active(self, active: NetworkWirelessAP | None) -> None:
+        """Set active wireless AP."""
+        if self._active and self._active is not active:
+            self._active.shutdown()
+
+        self._active = active
+
     @dbus_connected
-    def request_scan(self) -> Awaitable[None]:
+    async def request_scan(self) -> None:
         """Request a new AP scan."""
-        return self.dbus.Device.Wireless.RequestScan(("a{sv}", {}))
+        await self.dbus.Device.Wireless.call_request_scan({})
 
     @dbus_connected
-    def get_all_accesspoints(self) -> Awaitable[Any]:
+    async def get_all_accesspoints(self) -> list[NetworkWirelessAP]:
         """Return a list of all access points path."""
-        return self.dbus.Device.Wireless.GetAllAccessPoints()
+        accesspoints_data = await self.dbus.Device.Wireless.call_get_all_access_points()
+        accesspoints = [NetworkWirelessAP(ap_obj) for ap_obj in accesspoints_data]
 
-    async def connect(self) -> None:
-        """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_DEVICE_WIRELESS)
+        for err in await asyncio.gather(
+            *[ap.connect(self.dbus.bus) for ap in accesspoints], return_exceptions=True
+        ):
+            if err:
+                _LOGGER.warning("Can't process an AP: %s", err)
+
+        return accesspoints
+
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus."""
+        await super().update(changed)
 
         # Get details from current active
-        if self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT] != DBUS_OBJECT_BASE:
-            self._active = NetworkWirelessAP(
-                self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
-            )
-            await self._active.connect()
+        if not changed or DBUS_ATTR_ACTIVE_ACCESSPOINT in changed:
+            if (
+                self.active
+                and self.active.is_connected
+                and self.active.object_path
+                == self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
+            ):
+                await self.active.update()
+            elif self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT] != DBUS_OBJECT_BASE:
+                self.active = NetworkWirelessAP(
+                    self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
+                )
+                await self.active.connect(self.dbus.bus)
+            else:
+                self.active = None

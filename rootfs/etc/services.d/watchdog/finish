@@ -1,8 +1,11 @@
-#!/usr/bin/execlineb -S1
+#!/usr/bin/env bashio
 # ==============================================================================
 # Take down the S6 supervision tree when Watchdog fails
 # ==============================================================================
-if { s6-test ${1} -ne 0 }
-if { s6-test ${1} -ne 256 }
 
-s6-svscanctl -t /var/run/s6/services
+if [[ "$1" -ne 0 ]] && [[ "$1" -ne 256 ]]; then
+  bashio::log.warning "Halt Supervisor (Wuff)"
+  /run/s6/basedir/bin/halt
+fi
+
+bashio::log.info "Watchdog restart after closing"

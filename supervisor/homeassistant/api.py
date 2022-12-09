@@ -3,7 +3,7 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 import logging
-from typing import Any, AsyncContextManager, Optional
+from typing import Any, AsyncContextManager
 
 import aiohttp
 from aiohttp import hdrs
@@ -26,8 +26,8 @@ class HomeAssistantAPI(CoreSysAttributes):
         self.coresys: CoreSys = coresys
 
         # We don't persist access tokens. Instead we fetch new ones when needed
-        self.access_token: Optional[str] = None
-        self._access_token_expires: Optional[datetime] = None
+        self.access_token: str | None = None
+        self._access_token_expires: datetime | None = None
 
     @Job(limit=JobExecutionLimit.SINGLE_WAIT)
     async def ensure_access_token(self) -> None:
@@ -65,12 +65,12 @@ class HomeAssistantAPI(CoreSysAttributes):
         self,
         method: str,
         path: str,
-        json: Optional[dict[str, Any]] = None,
-        content_type: Optional[str] = None,
+        json: dict[str, Any] | None = None,
+        content_type: str | None = None,
         data: Any = None,
         timeout: int = 30,
-        params: Optional[dict[str, str]] = None,
-        headers: Optional[dict[str, str]] = None,
+        params: dict[str, str] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> AsyncContextManager[aiohttp.ClientResponse]:
         """Async context manager to make a request with right auth."""
         url = f"{self.sys_homeassistant.api_url}/{path}"

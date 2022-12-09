@@ -4,15 +4,13 @@ from contextlib import suppress
 from datetime import timedelta
 import json
 import logging
-from typing import Optional
 
 import aiohttp
 from awesomeversion import AwesomeVersion
 
-from supervisor.jobs.const import JobExecutionLimit
-
 from .const import (
     ATTR_AUDIO,
+    ATTR_AUTO_UPDATE,
     ATTR_CHANNEL,
     ATTR_CLI,
     ATTR_DNS,
@@ -34,7 +32,7 @@ from .exceptions import (
     UpdaterError,
     UpdaterJobError,
 )
-from .jobs.decorator import Job, JobCondition
+from .jobs.decorator import Job, JobCondition, JobExecutionLimit
 from .utils.codenotary import calc_checksum
 from .utils.common import FileConfiguration
 from .validate import SCHEMA_UPDATER_CONFIG
@@ -61,47 +59,47 @@ class Updater(FileConfiguration, CoreSysAttributes):
             await self.fetch_data()
 
     @property
-    def version_homeassistant(self) -> Optional[AwesomeVersion]:
+    def version_homeassistant(self) -> AwesomeVersion | None:
         """Return latest version of Home Assistant."""
         return self._data.get(ATTR_HOMEASSISTANT)
 
     @property
-    def version_supervisor(self) -> Optional[AwesomeVersion]:
+    def version_supervisor(self) -> AwesomeVersion | None:
         """Return latest version of Supervisor."""
         return self._data.get(ATTR_SUPERVISOR)
 
     @property
-    def version_hassos(self) -> Optional[AwesomeVersion]:
+    def version_hassos(self) -> AwesomeVersion | None:
         """Return latest version of HassOS."""
         return self._data.get(ATTR_HASSOS)
 
     @property
-    def version_cli(self) -> Optional[AwesomeVersion]:
+    def version_cli(self) -> AwesomeVersion | None:
         """Return latest version of CLI."""
         return self._data.get(ATTR_CLI)
 
     @property
-    def version_dns(self) -> Optional[AwesomeVersion]:
+    def version_dns(self) -> AwesomeVersion | None:
         """Return latest version of DNS."""
         return self._data.get(ATTR_DNS)
 
     @property
-    def version_audio(self) -> Optional[AwesomeVersion]:
+    def version_audio(self) -> AwesomeVersion | None:
         """Return latest version of Audio."""
         return self._data.get(ATTR_AUDIO)
 
     @property
-    def version_observer(self) -> Optional[AwesomeVersion]:
+    def version_observer(self) -> AwesomeVersion | None:
         """Return latest version of Observer."""
         return self._data.get(ATTR_OBSERVER)
 
     @property
-    def version_multicast(self) -> Optional[AwesomeVersion]:
+    def version_multicast(self) -> AwesomeVersion | None:
         """Return latest version of Multicast."""
         return self._data.get(ATTR_MULTICAST)
 
     @property
-    def image_homeassistant(self) -> Optional[str]:
+    def image_homeassistant(self) -> str | None:
         """Return image of Home Assistant docker."""
         if ATTR_HOMEASSISTANT not in self._data[ATTR_IMAGE]:
             return None
@@ -110,7 +108,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         )
 
     @property
-    def image_supervisor(self) -> Optional[str]:
+    def image_supervisor(self) -> str | None:
         """Return image of Supervisor docker."""
         if ATTR_SUPERVISOR not in self._data[ATTR_IMAGE]:
             return None
@@ -119,28 +117,28 @@ class Updater(FileConfiguration, CoreSysAttributes):
         )
 
     @property
-    def image_cli(self) -> Optional[str]:
+    def image_cli(self) -> str | None:
         """Return image of CLI docker."""
         if ATTR_CLI not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_CLI].format(arch=self.sys_arch.supervisor)
 
     @property
-    def image_dns(self) -> Optional[str]:
+    def image_dns(self) -> str | None:
         """Return image of DNS docker."""
         if ATTR_DNS not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_DNS].format(arch=self.sys_arch.supervisor)
 
     @property
-    def image_audio(self) -> Optional[str]:
+    def image_audio(self) -> str | None:
         """Return image of Audio docker."""
         if ATTR_AUDIO not in self._data[ATTR_IMAGE]:
             return None
         return self._data[ATTR_IMAGE][ATTR_AUDIO].format(arch=self.sys_arch.supervisor)
 
     @property
-    def image_observer(self) -> Optional[str]:
+    def image_observer(self) -> str | None:
         """Return image of Observer docker."""
         if ATTR_OBSERVER not in self._data[ATTR_IMAGE]:
             return None
@@ -149,7 +147,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         )
 
     @property
-    def image_multicast(self) -> Optional[str]:
+    def image_multicast(self) -> str | None:
         """Return image of Multicast docker."""
         if ATTR_MULTICAST not in self._data[ATTR_IMAGE]:
             return None
@@ -158,7 +156,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         )
 
     @property
-    def ota_url(self) -> Optional[str]:
+    def ota_url(self) -> str | None:
         """Return OTA url for OS."""
         return self._data.get(ATTR_OTA)
 
@@ -171,6 +169,16 @@ class Updater(FileConfiguration, CoreSysAttributes):
     def channel(self, value: UpdateChannel):
         """Set upstream mode."""
         self._data[ATTR_CHANNEL] = value
+
+    @property
+    def auto_update(self) -> bool:
+        """Return if Supervisor auto updates enabled."""
+        return self._data[ATTR_AUTO_UPDATE]
+
+    @auto_update.setter
+    def auto_update(self, value: bool) -> None:
+        """Set Supervisor auto updates enabled."""
+        self._data[ATTR_AUTO_UPDATE] = value
 
     @Job(
         conditions=[JobCondition.INTERNET_SYSTEM],
@@ -245,6 +253,15 @@ class Updater(FileConfiguration, CoreSysAttributes):
                 self._data[ATTR_OTA] = data["ota"]
                 if version := data["hassos"].get(self.sys_os.board):
                     events.append("os")
+                    upgrade_map = data.get("hassos-upgrade", {})
+                    if last_in_major := upgrade_map.get(str(self.sys_os.version.major)):
+                        if self.sys_os.version != AwesomeVersion(last_in_major):
+                            version = last_in_major
+                        elif last_in_next_major := upgrade_map.get(
+                            str(int(self.sys_os.version.major) + 1)
+                        ):
+                            version = last_in_next_major
+
                     self._data[ATTR_HASSOS] = AwesomeVersion(version)
                 else:
                     _LOGGER.warning(

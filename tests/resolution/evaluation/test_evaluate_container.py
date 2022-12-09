@@ -21,7 +21,9 @@ def test_get_images(coresys: CoreSys):
         images = container._get_images()
         assert images[0].tags[0] == "test"
 
-    with patch("supervisor.docker.DockerAPI.images.list", side_effect=DockerException):
+    with patch(
+        "supervisor.docker.manager.DockerAPI.images.list", side_effect=DockerException
+    ):
         images = container._get_images()
         assert not images
 

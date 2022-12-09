@@ -1,16 +1,14 @@
 """Helpers to fixup the system."""
+from importlib import import_module
 import logging
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
-from .data import Suggestion
+from ..utils.sentry import capture_exception
+from .data import Issue, Suggestion
 from .fixups.base import FixupBase
-from .fixups.clear_full_backup import FixupClearFullBackup
-from .fixups.create_full_backup import FixupCreateFullBackup
-from .fixups.store_execute_reload import FixupStoreExecuteReload
-from .fixups.store_execute_remove import FixupStoreExecuteRemove
-from .fixups.store_execute_reset import FixupStoreExecuteReset
+from .validate import get_valid_modules
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -21,26 +19,22 @@ class ResolutionFixup(CoreSysAttributes):
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the suggestion class."""
         self.coresys = coresys
+        self._fixups: dict[str, FixupBase] = {}
 
-        self._create_full_backup = FixupCreateFullBackup(coresys)
-        self._clear_full_backup = FixupClearFullBackup(coresys)
-        self._store_execute_reset = FixupStoreExecuteReset(coresys)
-        self._store_execute_reload = FixupStoreExecuteReload(coresys)
-        self._store_execute_remove = FixupStoreExecuteRemove(coresys)
+        self._load()
+
+    def _load(self):
+        """Load all checks."""
+        package = f"{__package__}.fixups"
+        for module in get_valid_modules("fixups"):
+            fixup_module = import_module(f"{package}.{module}")
+            fixup = fixup_module.setup(self.coresys)
+            self._fixups[fixup.slug] = fixup
 
     @property
     def all_fixes(self) -> list[FixupBase]:
-        """Return a list of all fixups.
-
-        Order can be important!
-        """
-        return [
-            self._create_full_backup,
-            self._clear_full_backup,
-            self._store_execute_reload,
-            self._store_execute_reset,
-            self._store_execute_remove,
-        ]
+        """Return a list of all fixups."""
+        return list(self._fixups.values())
 
     @Job(conditions=[JobCondition.HEALTHY, JobCondition.RUNNING])
     async def run_autofix(self) -> None:
@@ -54,13 +48,27 @@ class ResolutionFixup(CoreSysAttributes):
                 await fix()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         _LOGGER.info("System autofix complete")
 
+    def fixes_for_suggestion(self, suggestion: Suggestion) -> list[FixupBase]:
+        """Get fixups to run if the suggestion is applied."""
+        return [
+            fix
+            for fix in self.all_fixes
+            if fix.suggestion == suggestion.type and fix.context == suggestion.context
+        ]
+
+    def fixes_for_issue(self, issue: Issue) -> list[FixupBase]:
+        """Get fixups that would fix the issue if run."""
+        return [
+            fix
+            for fix in self.all_fixes
+            if issue.type in fix.issues and issue.context == fix.context
+        ]
+
     async def apply_fixup(self, suggestion: Suggestion) -> None:
         """Apply a fixup for a suggestion."""
-        for fix in self.all_fixes:
-            if fix.suggestion != suggestion.type or fix.context != suggestion.context:
-                continue
-            await fix()
+        for fix in self.fixes_for_suggestion(suggestion):
+            await fix(suggestion)

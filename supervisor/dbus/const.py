@@ -18,6 +18,7 @@ DBUS_IFACE_DEVICE_WIRELESS = "org.freedesktop.NetworkManager.Device.Wireless"
 DBUS_IFACE_DNS = "org.freedesktop.NetworkManager.DnsManager"
 DBUS_IFACE_HAOS = "io.hass.os"
 DBUS_IFACE_HAOS_APPARMOR = "io.hass.os.AppArmor"
+DBUS_IFACE_HAOS_BOARDS = "io.hass.os.Boards"
 DBUS_IFACE_HAOS_CGROUP = "io.hass.os.CGroup"
 DBUS_IFACE_HAOS_DATADISK = "io.hass.os.DataDisk"
 DBUS_IFACE_HAOS_SYSTEM = "io.hass.os.System"
@@ -40,6 +41,7 @@ DBUS_OBJECT_BASE = "/"
 DBUS_OBJECT_DNS = "/org/freedesktop/NetworkManager/DnsManager"
 DBUS_OBJECT_HAOS = "/io/hass/os"
 DBUS_OBJECT_HAOS_APPARMOR = "/io/hass/os/AppArmor"
+DBUS_OBJECT_HAOS_BOARDS = "/io/hass/os/Boards"
 DBUS_OBJECT_HAOS_CGROUP = "/io/hass/os/CGroup"
 DBUS_OBJECT_HAOS_DATADISK = "/io/hass/os/DataDisk"
 DBUS_OBJECT_HAOS_SYSTEM = "/io/hass/os/System"
@@ -55,6 +57,7 @@ DBUS_ATTR_ACTIVE_ACCESSPOINT = "ActiveAccessPoint"
 DBUS_ATTR_ACTIVE_CONNECTION = "ActiveConnection"
 DBUS_ATTR_ACTIVE_CONNECTIONS = "ActiveConnections"
 DBUS_ATTR_ADDRESS_DATA = "AddressData"
+DBUS_ATTR_BOARD = "Board"
 DBUS_ATTR_BOOT_SLOT = "BootSlot"
 DBUS_ATTR_CACHE_STATISTICS = "CacheStatistics"
 DBUS_ATTR_CHASSIS = "Chassis"
@@ -62,6 +65,7 @@ DBUS_ATTR_COMPATIBLE = "Compatible"
 DBUS_ATTR_CONFIGURATION = "Configuration"
 DBUS_ATTR_CONNECTION = "Connection"
 DBUS_ATTR_CONNECTION_ENABLED = "ConnectivityCheckEnabled"
+DBUS_ATTR_CONNECTIVITY = "Connectivity"
 DBUS_ATTR_CURRENT_DEVICE = "CurrentDevice"
 DBUS_ATTR_CURRENT_DNS_SERVER = "CurrentDNSServer"
 DBUS_ATTR_CURRENT_DNS_SERVER_EX = "CurrentDNSServerEx"
@@ -71,6 +75,7 @@ DBUS_ATTR_DEVICE_INTERFACE = "Interface"
 DBUS_ATTR_DEVICE_TYPE = "DeviceType"
 DBUS_ATTR_DEVICES = "Devices"
 DBUS_ATTR_DIAGNOSTICS = "Diagnostics"
+DBUS_ATTR_DISK_LED = "DiskLED"
 DBUS_ATTR_DNS = "DNS"
 DBUS_ATTR_DNS_EX = "DNSEx"
 DBUS_ATTR_DNS_OVER_TLS = "DNSOverTLS"
@@ -87,6 +92,7 @@ DBUS_ATTR_FINISH_TIMESTAMP = "FinishTimestamp"
 DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC = "FirmwareTimestampMonotonic"
 DBUS_ATTR_FREQUENCY = "Frequency"
 DBUS_ATTR_GATEWAY = "Gateway"
+DBUS_ATTR_HEARTBEAT_LED = "HeartbeatLED"
 DBUS_ATTR_HWADDRESS = "HwAddress"
 DBUS_ATTR_ID = "Id"
 DBUS_ATTR_IP4CONFIG = "Ip4Config"
@@ -97,7 +103,6 @@ DBUS_ATTR_LAST_ERROR = "LastError"
 DBUS_ATTR_LLMNR = "LLMNR"
 DBUS_ATTR_LLMNR_HOSTNAME = "LLMNRHostname"
 DBUS_ATTR_LOADER_TIMESTAMP_MONOTONIC = "LoaderTimestampMonotonic"
-DBUS_ATTR_LOCALRTC = "LocalRTC"
 DBUS_ATTR_MANAGED = "Managed"
 DBUS_ATTR_MODE = "Mode"
 DBUS_ATTR_MULTICAST_DNS = "MulticastDNS"
@@ -108,11 +113,13 @@ DBUS_ATTR_NTPSYNCHRONIZED = "NTPSynchronized"
 DBUS_ATTR_OPERATING_SYSTEM_PRETTY_NAME = "OperatingSystemPrettyName"
 DBUS_ATTR_OPERATION = "Operation"
 DBUS_ATTR_PARSER_VERSION = "ParserVersion"
+DBUS_ATTR_POWER_LED = "PowerLED"
 DBUS_ATTR_PRIMARY_CONNECTION = "PrimaryConnection"
 DBUS_ATTR_RESOLV_CONF_MODE = "ResolvConfMode"
 DBUS_ATTR_RCMANAGER = "RcManager"
 DBUS_ATTR_SSID = "Ssid"
 DBUS_ATTR_STATE = "State"
+DBUS_ATTR_STATE_FLAGS = "StateFlags"
 DBUS_ATTR_STATIC_HOSTNAME = "StaticHostname"
 DBUS_ATTR_STATIC_OPERATING_SYSTEM_CPE_NAME = "OperatingSystemCPEName"
 DBUS_ATTR_STRENGTH = "Strength"
@@ -140,6 +147,7 @@ class InterfaceMethod(str, Enum):
     AUTO = "auto"
     MANUAL = "manual"
     DISABLED = "disabled"
+    LINK_LOCAL = "link-local"
 
 
 class ConnectionType(str, Enum):
@@ -160,6 +168,23 @@ class ConnectionStateType(int, Enum):
     ACTIVATED = 2
     DEACTIVATING = 3
     DEACTIVATED = 4
+
+
+class ConnectionStateFlags(int, Enum):
+    """Connection state flags.
+
+    https://developer-old.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActivationStateFlags
+    """
+
+    NONE = 0
+    IS_MASTER = 0x1
+    IS_SLAVE = 0x2
+    LAYER2_READY = 0x4
+    IP4_READY = 0x8
+    IP6_READY = 0x10
+    MASTER_HAS_SLAVES = 0x20
+    LIFETIME_BOUND_TO_PROFILE_VISIBILITY = 0x40
+    EXTERNAL = 0x80
 
 
 class ConnectivityState(int, Enum):

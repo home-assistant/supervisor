@@ -27,7 +27,7 @@ class EvaluateDockerConfiguration(EvaluateBase):
 
     @property
     def on_failure(self) -> str:
-        """Return a string that is printed when self.evaluate is False."""
+        """Return a string that is printed when self.evaluate is True."""
         return "The configuration of Docker is not supported"
 
     @property
@@ -37,13 +37,17 @@ class EvaluateDockerConfiguration(EvaluateBase):
 
     async def evaluate(self):
         """Run evaluation."""
-        _storage = self.sys_docker.info.storage
-        _logging = self.sys_docker.info.logging
+        storage_driver = self.sys_docker.info.storage
+        logging_driver = self.sys_docker.info.logging
 
-        if _storage != EXPECTED_STORAGE:
-            _LOGGER.warning("Docker storage driver %s is not supported!", _storage)
+        if storage_driver != EXPECTED_STORAGE:
+            _LOGGER.warning(
+                "Docker storage driver %s is not supported!", storage_driver
+            )
 
-        if _logging != EXPECTED_LOGGING:
-            _LOGGER.warning("Docker logging driver %s is not supported!", _logging)
+        if logging_driver != EXPECTED_LOGGING:
+            _LOGGER.warning(
+                "Docker logging driver %s is not supported!", logging_driver
+            )
 
-        return _storage != EXPECTED_STORAGE or _logging != EXPECTED_LOGGING
+        return storage_driver != EXPECTED_STORAGE or logging_driver != EXPECTED_LOGGING

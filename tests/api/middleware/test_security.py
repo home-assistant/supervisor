@@ -1,4 +1,5 @@
 """Test API security layer."""
+from unittest.mock import patch
 
 from aiohttp import web
 import pytest
@@ -15,7 +16,9 @@ async def api_system(aiohttp_client, run_dir, coresys: CoreSys):
     """Fixture for RestAPI client."""
     api = RestAPI(coresys)
     api.webapp = web.Application()
-    await api.load()
+    with patch("supervisor.docker.supervisor.os") as os:
+        os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
+        await api.load()
 
     api.webapp.middlewares.append(api.security.system_validation)
     yield await aiohttp_client(api.webapp)

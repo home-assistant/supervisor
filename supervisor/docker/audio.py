@@ -1,18 +1,12 @@
 """Audio docker object."""
 import logging
-from typing import Optional
 
 import docker
 
-from ..const import (
-    DOCKER_CPU_RUNTIME_ALLOCATION,
-    ENV_SUPERVISOR_MACHINE,
-    ENV_TIME,
-    MACHINE_ID,
-)
+from ..const import DOCKER_CPU_RUNTIME_ALLOCATION, MACHINE_ID
 from ..coresys import CoreSysAttributes
 from ..hardware.const import PolicyGroup
-from .const import Capabilities
+from .const import ENV_TIME, Capabilities
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -68,7 +62,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         return [docker.types.Ulimit(name="rtprio", soft=10, hard=10)]
 
     @property
-    def cpu_rt_runtime(self) -> Optional[int]:
+    def cpu_rt_runtime(self) -> int | None:
         """Limit CPU real-time runtime in microseconds."""
         if not self.sys_docker.info.support_cpu_realtime:
             return None
@@ -101,7 +95,6 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             device_cgroup_rules=self.cgroups_rules,
             environment={
                 ENV_TIME: self.sys_timezone,
-                ENV_SUPERVISOR_MACHINE: self.sys_machine,
             },
             volumes=self.volumes,
         )

@@ -2,23 +2,26 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 import logging
 import re
-from typing import Any, Awaitable
+from time import time
+from typing import Any
 
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
 import docker
+from docker.models.containers import Container
 import requests
 
-from . import CommandReturn
 from ..const import (
     ATTR_PASSWORD,
     ATTR_REGISTRY,
     ATTR_USERNAME,
     LABEL_ARCH,
     LABEL_VERSION,
+    BusEvent,
     CpuArch,
 )
 from ..coresys import CoreSys, CoreSysAttributes
@@ -33,6 +36,10 @@ from ..exceptions import (
 )
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
+from ..utils.sentry import capture_exception
+from .const import ContainerState, RestartPolicy
+from .manager import CommandReturn
+from .monitor import DockerContainerStateEvent
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -47,6 +54,23 @@ MAP_ARCH = {
     CpuArch.I386: "linux/386",
     CpuArch.AMD64: "linux/amd64",
 }
+
+
+def _container_state_from_model(docker_container: Container) -> ContainerState:
+    """Get container state from model."""
+    if docker_container.status == "running":
+        if "Health" in docker_container.attrs["State"]:
+            return (
+                ContainerState.HEALTHY
+                if docker_container.attrs["State"]["Health"]["Status"] == "healthy"
+                else ContainerState.UNHEALTHY
+            )
+        return ContainerState.RUNNING
+
+    if docker_container.attrs["State"]["ExitCode"] > 0:
+        return ContainerState.FAILED
+
+    return ContainerState.STOPPED
 
 
 class DockerInterface(CoreSysAttributes):
@@ -111,6 +135,15 @@ class DockerInterface(CoreSysAttributes):
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
         return self.lock.locked()
+
+    @property
+    def restart_policy(self) -> RestartPolicy | None:
+        """Return restart policy of container."""
+        if "RestartPolicy" not in self.meta_host:
+            return None
+
+        policy = self.meta_host["RestartPolicy"].get("Name")
+        return policy if policy else RestartPolicy.NO
 
     @property
     def security_opt(self) -> list[str]:
@@ -227,7 +260,7 @@ class DockerInterface(CoreSysAttributes):
                 f"Can't install {image}:{version!s}: {err}", _LOGGER.error
             ) from err
         except (docker.errors.DockerException, requests.RequestException) as err:
-            self.sys_capture_exception(err)
+            capture_exception(err)
             raise DockerError(
                 f"Unknown error with {image}:{version!s} -> {err!s}", _LOGGER.error
             ) from err
@@ -281,18 +314,61 @@ class DockerInterface(CoreSysAttributes):
 
         return docker_container.status == "running"
 
-    @process_lock
-    def attach(self, version: AwesomeVersion):
-        """Attach to running Docker container."""
-        return self.sys_run_in_executor(self._attach, version)
+    def current_state(self) -> Awaitable[ContainerState]:
+        """Return current state of container.
 
-    def _attach(self, version: AwesomeVersion) -> None:
+        Return a Future.
+        """
+        return self.sys_run_in_executor(self._current_state)
+
+    def _current_state(self) -> ContainerState:
+        """Return current state of container.
+
+        Need run inside executor.
+        """
+        try:
+            docker_container = self.sys_docker.containers.get(self.name)
+        except docker.errors.NotFound:
+            return ContainerState.UNKNOWN
+        except docker.errors.DockerException as err:
+            raise DockerAPIError() from err
+        except requests.RequestException as err:
+            raise DockerRequestError() from err
+
+        return _container_state_from_model(docker_container)
+
+    @process_lock
+    def attach(
+        self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
+    ) -> Awaitable[None]:
+        """Attach to running Docker container."""
+        return self.sys_run_in_executor(self._attach, version, skip_state_event_if_down)
+
+    def _attach(
+        self, version: AwesomeVersion, skip_state_event_if_down: bool = False
+    ) -> None:
         """Attach to running docker container.
 
         Need run inside executor.
         """
         with suppress(docker.errors.DockerException, requests.RequestException):
-            self._meta = self.sys_docker.containers.get(self.name).attrs
+            docker_container = self.sys_docker.containers.get(self.name)
+            self._meta = docker_container.attrs
+            self.sys_docker.monitor.watch_container(docker_container)
+
+            state = _container_state_from_model(docker_container)
+            if not (
+                skip_state_event_if_down
+                and state in [ContainerState.STOPPED, ContainerState.FAILED]
+            ):
+                # Fire event with current state of container
+                self.sys_loop.call_soon_threadsafe(
+                    self.sys_bus.fire_event,
+                    BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                    DockerContainerStateEvent(
+                        self.name, state, docker_container.id, int(time())
+                    ),
+                )
 
         with suppress(docker.errors.DockerException, requests.RequestException):
             if not self._meta and self.image:
@@ -300,7 +376,7 @@ class DockerInterface(CoreSysAttributes):
                     f"{self.image}:{version!s}"
                 ).attrs
 
-        # Successfull?
+        # Successful?
         if not self._meta:
             raise DockerError()
         _LOGGER.info("Attaching to %s with version %s", self.image, self.version)

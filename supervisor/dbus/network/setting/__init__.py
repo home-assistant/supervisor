@@ -1,11 +1,12 @@
 """Connection object for Network Manager."""
 import logging
-from typing import Any, Awaitable, Optional
+from typing import Any
+
+from dbus_fast.aio.message_bus import MessageBus
 
 from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
-from ....utils.dbus import DBus
 from ...const import DBUS_NAME_NM
-from ...interface import DBusInterfaceProxy
+from ...interface import DBusInterface
 from ...utils import dbus_connected
 from ..configuration import (
     ConnectionProperties,
@@ -34,85 +35,103 @@ ATTR_AUTH_ALG = "auth-alg"
 ATTR_KEY_MGMT = "key-mgmt"
 ATTR_INTERFACE_NAME = "interface-name"
 
+IPV4_6_IGNORE_FIELDS = [
+    "addresses",
+    "address-data",
+    "dns",
+    "gateway",
+    "method",
+]
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def _merge_settings_attribute(
-    base_settings: Any, new_settings: Any, attribute: str
+    base_settings: Any,
+    new_settings: Any,
+    attribute: str,
+    *,
+    ignore_current_value: list[str] = None,
 ) -> None:
     """Merge settings attribute if present."""
     if attribute in new_settings:
         if attribute in base_settings:
+            if ignore_current_value:
+                for field in ignore_current_value:
+                    if field in base_settings[attribute]:
+                        del base_settings[attribute][field]
+
             base_settings[attribute].update(new_settings[attribute])
         else:
             base_settings[attribute] = new_settings[attribute]
 
 
-class NetworkSetting(DBusInterfaceProxy):
+class NetworkSetting(DBusInterface):
     """Network connection setting object for Network Manager.
 
     https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Settings.Connection.html
     """
 
+    bus_name: str = DBUS_NAME_NM
+
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        self.object_path = object_path
-        self.properties = {}
+        self.object_path: str = object_path
 
-        self._connection: Optional[ConnectionProperties] = None
-        self._wireless: Optional[WirelessProperties] = None
-        self._wireless_security: Optional[WirelessSecurityProperties] = None
-        self._ethernet: Optional[EthernetProperties] = None
-        self._vlan: Optional[VlanProperties] = None
-        self._ipv4: Optional[IpProperties] = None
-        self._ipv6: Optional[IpProperties] = None
+        self._connection: ConnectionProperties | None = None
+        self._wireless: WirelessProperties | None = None
+        self._wireless_security: WirelessSecurityProperties | None = None
+        self._ethernet: EthernetProperties | None = None
+        self._vlan: VlanProperties | None = None
+        self._ipv4: IpProperties | None = None
+        self._ipv6: IpProperties | None = None
 
     @property
-    def connection(self) -> Optional[ConnectionProperties]:
+    def connection(self) -> ConnectionProperties | None:
         """Return connection properties if any."""
         return self._connection
 
     @property
-    def wireless(self) -> Optional[WirelessProperties]:
+    def wireless(self) -> WirelessProperties | None:
         """Return wireless properties if any."""
         return self._wireless
 
     @property
-    def wireless_security(self) -> Optional[WirelessSecurityProperties]:
+    def wireless_security(self) -> WirelessSecurityProperties | None:
         """Return wireless security properties if any."""
         return self._wireless_security
 
     @property
-    def ethernet(self) -> Optional[EthernetProperties]:
+    def ethernet(self) -> EthernetProperties | None:
         """Return Ethernet properties if any."""
         return self._ethernet
 
     @property
-    def vlan(self) -> Optional[VlanProperties]:
+    def vlan(self) -> VlanProperties | None:
         """Return Vlan properties if any."""
         return self._vlan
 
     @property
-    def ipv4(self) -> Optional[IpProperties]:
+    def ipv4(self) -> IpProperties | None:
         """Return ipv4 properties if any."""
         return self._ipv4
 
     @property
-    def ipv6(self) -> Optional[IpProperties]:
+    def ipv6(self) -> IpProperties | None:
         """Return ipv6 properties if any."""
         return self._ipv6
 
     @dbus_connected
-    def get_settings(self) -> Awaitable[Any]:
+    async def get_settings(self) -> dict[str, Any]:
         """Return connection settings."""
-        return self.dbus.Settings.Connection.GetSettings()
+        return await self.dbus.Settings.Connection.call_get_settings()
 
     @dbus_connected
     async def update(self, settings: Any) -> None:
         """Update connection settings."""
-        new_settings = (
-            await self.dbus.Settings.Connection.GetSettings(remove_signature=False)
-        )[0]
+        new_settings = await self.dbus.Settings.Connection.call_get_settings(
+            unpack_variants=False
+        )
 
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_CONNECTION)
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_802_ETHERNET)
@@ -121,20 +140,37 @@ class NetworkSetting(DBusInterfaceProxy):
             new_settings, settings, CONF_ATTR_802_WIRELESS_SECURITY
         )
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_VLAN)
-        _merge_settings_attribute(new_settings, settings, CONF_ATTR_IPV4)
-        _merge_settings_attribute(new_settings, settings, CONF_ATTR_IPV6)
+        _merge_settings_attribute(
+            new_settings,
+            settings,
+            CONF_ATTR_IPV4,
+            ignore_current_value=IPV4_6_IGNORE_FIELDS,
+        )
+        _merge_settings_attribute(
+            new_settings,
+            settings,
+            CONF_ATTR_IPV6,
+            ignore_current_value=IPV4_6_IGNORE_FIELDS,
+        )
 
-        return await self.dbus.Settings.Connection.Update(("a{sa{sv}}", new_settings))
+        await self.dbus.Settings.Connection.call_update(new_settings)
 
     @dbus_connected
-    def delete(self) -> Awaitable[None]:
+    async def delete(self) -> None:
         """Delete connection settings."""
-        return self.dbus.Settings.Connection.Delete()
+        await self.dbus.Settings.Connection.call_delete()
 
-    async def connect(self) -> None:
+    async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
-        self.dbus = await DBus.connect(DBUS_NAME_NM, self.object_path)
-        data = (await self.get_settings())[0]
+        await super().connect(bus)
+        await self.reload()
+
+        self.dbus.Settings.Connection.on_updated(self.reload)
+
+    @dbus_connected
+    async def reload(self):
+        """Get current settings for connection."""
+        data = await self.get_settings()
 
         # Get configuration settings we care about
         # See: https://developer-old.gnome.org/NetworkManager/stable/ch01.html

@@ -36,6 +36,7 @@ def partial_backup_mock(backup_mock):
     backup_instance.sys_type = BackupType.PARTIAL
     backup_instance.folders = []
     backup_instance.addon_list = [TEST_ADDON_SLUG]
+    backup_instance.supervisor_version = "DEV"
     yield backup_mock
 
 
@@ -46,4 +47,5 @@ def full_backup_mock(backup_mock):
     backup_instance.sys_type = BackupType.FULL
     backup_instance.folders = ALL_FOLDERS
     backup_instance.addon_list = [TEST_ADDON_SLUG]
+    backup_instance.supervisor_version = "DEV"
     yield backup_mock

@@ -5,23 +5,24 @@ import asyncio
 from contextlib import suppress
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 import logging
+from typing import Any
 
 import attr
-
-from supervisor.jobs.const import JobCondition
-from supervisor.jobs.decorator import Job
 
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
+    DBUS_ATTR_CONNECTION_ENABLED,
+    DBUS_ATTR_CONNECTIVITY,
+    DBUS_IFACE_NM,
     DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
+    ConnectionStateFlags,
     ConnectionStateType,
     ConnectivityState,
     DeviceType,
     InterfaceMethod as NMInterfaceMethod,
     WirelessMethodType,
 )
-from ..dbus.network.accesspoint import NetworkWirelessAP
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.setting.generate import get_connection_from_interface
@@ -32,6 +33,9 @@ from ..exceptions import (
     HostNetworkNotFound,
     HostNotSupportedError,
 )
+from ..jobs.const import JobCondition
+from ..jobs.decorator import Job
+from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
 from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -51,10 +55,16 @@ class NetworkManager(CoreSysAttributes):
         return self._connectivity
 
     @connectivity.setter
-    def connectivity(self, state: bool) -> None:
+    def connectivity(self, state: bool | None) -> None:
         """Set host connectivity state."""
         if self._connectivity == state:
             return
+
+        if state is None or self._connectivity is None:
+            self.sys_create_task(
+                self.sys_resolution.evaluate.get("connectivity_check")()
+            )
+
         self._connectivity = state
         self.sys_homeassistant.websocket.supervisor_update_event(
             "network", {ATTR_HOST_INTERNET: state}
@@ -81,15 +91,16 @@ class NetworkManager(CoreSysAttributes):
 
         return list(dict.fromkeys(servers))
 
-    async def check_connectivity(self):
+    async def check_connectivity(self, *, force: bool = False):
         """Check the internet connection."""
         if not self.sys_dbus.network.connectivity_enabled:
+            self.connectivity = None
             return
 
         # Check connectivity
         try:
-            state = await self.sys_dbus.network.check_connectivity()
-            self.connectivity = state[0] == ConnectivityState.CONNECTIVITY_FULL
+            state = await self.sys_dbus.network.check_connectivity(force=force)
+            self.connectivity = state == ConnectivityState.CONNECTIVITY_FULL
         except DBusError as err:
             _LOGGER.warning("Can't update connectivity information: %s", err)
             self.connectivity = False
@@ -103,15 +114,14 @@ class NetworkManager(CoreSysAttributes):
             self.sys_dbus.network.interfaces[inet_name]
         )
 
-    @Job(conditions=JobCondition.HOST_NETWORK)
+    @Job(conditions=[JobCondition.HOST_NETWORK])
     async def load(self):
         """Load network information and reapply defaults over dbus."""
-        await self.update()
-
         # Apply current settings on each interface so OS can update any out of date defaults
         interfaces = [
-            Interface.from_dbus_interface(self.sys_dbus.network.interfaces[i])
-            for i in self.sys_dbus.network.interfaces
+            Interface.from_dbus_interface(interface)
+            for interface in self.sys_dbus.network.interfaces.values()
+            if not CheckNetworkInterfaceIPV4.check_interface(interface)
         ]
         with suppress(HostNetworkNotFound):
             await asyncio.gather(
@@ -119,10 +129,41 @@ class NetworkManager(CoreSysAttributes):
                     self.apply_changes(interface, update_only=True)
                     for interface in interfaces
                     if interface.enabled
+                    and (
+                        interface.ipv4.method != InterfaceMethod.DISABLED
+                        or interface.ipv6.method != InterfaceMethod.DISABLED
+                    )
                 ]
             )
 
-    async def update(self):
+        self.sys_dbus.network.dbus.properties.on_properties_changed(
+            self._check_connectivity_changed
+        )
+
+    async def _check_connectivity_changed(
+        self, interface: str, changed: dict[str, Any], invalidated: list[str]
+    ):
+        """Check if connectivity property has changed."""
+        if interface != DBUS_IFACE_NM:
+            return
+
+        connectivity_check: bool | None = changed.get(DBUS_ATTR_CONNECTION_ENABLED)
+        connectivity: bool | None = changed.get(DBUS_ATTR_CONNECTIVITY)
+
+        if (
+            connectivity_check is True
+            or DBUS_ATTR_CONNECTION_ENABLED in invalidated
+            or DBUS_ATTR_CONNECTIVITY in invalidated
+        ):
+            self.sys_create_task(self.check_connectivity())
+
+        elif connectivity_check is False:
+            self.connectivity = None
+
+        elif connectivity is not None:
+            self.connectivity = connectivity == ConnectivityState.CONNECTIVITY_FULL
+
+    async def update(self, *, force_connectivity_check: bool = False):
         """Update properties over dbus."""
         _LOGGER.info("Updating local network information")
         try:
@@ -134,7 +175,7 @@ class NetworkManager(CoreSysAttributes):
                 "No network D-Bus connection available", _LOGGER.error
             ) from err
 
-        await self.check_connectivity()
+        await self.check_connectivity(force=force_connectivity_check)
 
     async def apply_changes(
         self, interface: Interface, *, update_only: bool = False
@@ -241,7 +282,8 @@ class NetworkManager(CoreSysAttributes):
                     state = msg[0]
                     _LOGGER.debug("Active connection state changed to %s", state)
 
-        await self.update()
+        # update_only means not done by user so don't force a check afterwards
+        await self.update(force_connectivity_check=not update_only)
 
     async def scan_wifi(self, interface: Interface) -> list[AccessPoint]:
         """Scan on Interface for AccessPoint."""
@@ -262,27 +304,17 @@ class NetworkManager(CoreSysAttributes):
             await asyncio.sleep(5)
 
         # Process AP
-        accesspoints: list[AccessPoint] = []
-        for ap_object in (await inet.wireless.get_all_accesspoints())[0]:
-            accesspoint = NetworkWirelessAP(ap_object)
-
-            try:
-                await accesspoint.connect()
-            except DBusError as err:
-                _LOGGER.warning("Can't process an AP: %s", err)
-                continue
-            else:
-                accesspoints.append(
-                    AccessPoint(
-                        WifiMode[WirelessMethodType(accesspoint.mode).name],
-                        accesspoint.ssid,
-                        accesspoint.mac,
-                        accesspoint.frequency,
-                        accesspoint.strength,
-                    )
-                )
-
-        return accesspoints
+        return [
+            AccessPoint(
+                WifiMode[WirelessMethodType(accesspoint.mode).name],
+                accesspoint.ssid,
+                accesspoint.mac,
+                accesspoint.frequency,
+                accesspoint.strength,
+            )
+            for accesspoint in await inet.wireless.get_all_accesspoints()
+            if accesspoint.dbus
+        ]
 
 
 @attr.s(slots=True)
@@ -304,6 +336,7 @@ class IpConfig:
     address: list[IPv4Interface | IPv6Interface] = attr.ib()
     gateway: IPv4Address | IPv6Address | None = attr.ib()
     nameservers: list[IPv4Address | IPv6Address] = attr.ib()
+    ready: bool | None = attr.ib()
 
 
 @attr.s(slots=True)
@@ -342,6 +375,24 @@ class Interface:
     @staticmethod
     def from_dbus_interface(inet: NetworkInterface) -> Interface:
         """Concert a dbus interface into normal Interface."""
+        ipv4_method = (
+            Interface._map_nm_method(inet.settings.ipv4.method)
+            if inet.settings and inet.settings.ipv4
+            else InterfaceMethod.DISABLED
+        )
+        ipv6_method = (
+            Interface._map_nm_method(inet.settings.ipv6.method)
+            if inet.settings and inet.settings.ipv6
+            else InterfaceMethod.DISABLED
+        )
+        ipv4_ready = (
+            bool(inet.connection)
+            and ConnectionStateFlags.IP4_READY in inet.connection.state_flags
+        )
+        ipv6_ready = (
+            bool(inet.connection)
+            and ConnectionStateFlags.IP6_READY in inet.connection.state_flags
+        )
         return Interface(
             inet.name,
             inet.settings is not None,
@@ -349,21 +400,27 @@ class Interface:
             inet.primary,
             Interface._map_nm_type(inet.type),
             IpConfig(
-                Interface._map_nm_method(inet.settings.ipv4.method),
-                inet.connection.ipv4.address,
+                ipv4_method,
+                inet.connection.ipv4.address if inet.connection.ipv4.address else [],
                 inet.connection.ipv4.gateway,
-                inet.connection.ipv4.nameservers,
+                inet.connection.ipv4.nameservers
+                if inet.connection.ipv4.nameservers
+                else [],
+                ipv4_ready,
             )
             if inet.connection and inet.connection.ipv4
-            else IpConfig(InterfaceMethod.DISABLED, [], None, []),
+            else IpConfig(ipv4_method, [], None, [], ipv4_ready),
             IpConfig(
-                Interface._map_nm_method(inet.settings.ipv6.method),
-                inet.connection.ipv6.address,
+                ipv6_method,
+                inet.connection.ipv6.address if inet.connection.ipv6.address else [],
                 inet.connection.ipv6.gateway,
-                inet.connection.ipv6.nameservers,
+                inet.connection.ipv6.nameservers
+                if inet.connection.ipv6.nameservers
+                else [],
+                ipv6_ready,
             )
             if inet.connection and inet.connection.ipv6
-            else IpConfig(InterfaceMethod.DISABLED, [], None, []),
+            else IpConfig(ipv6_method, [], None, [], ipv6_ready),
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
         )
@@ -375,6 +432,7 @@ class Interface:
             NMInterfaceMethod.AUTO: InterfaceMethod.AUTO,
             NMInterfaceMethod.DISABLED: InterfaceMethod.DISABLED,
             NMInterfaceMethod.MANUAL: InterfaceMethod.STATIC,
+            NMInterfaceMethod.LINK_LOCAL: InterfaceMethod.DISABLED,
         }
 
         return mapping.get(method, InterfaceMethod.DISABLED)

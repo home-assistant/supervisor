@@ -5,16 +5,29 @@ Code: https://github.com/home-assistant/plugin-multicast
 import asyncio
 from contextlib import suppress
 import logging
-from typing import Optional
 
 from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys
+from ..docker.const import ContainerState
 from ..docker.multicast import DockerMulticast
 from ..docker.stats import DockerStats
-from ..exceptions import DockerError, MulticastError, MulticastUpdateError
+from ..exceptions import (
+    DockerError,
+    MulticastError,
+    MulticastJobError,
+    MulticastUpdateError,
+)
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
+from ..utils.sentry import capture_exception
 from .base import PluginBase
-from .const import FILE_HASSIO_MULTICAST
+from .const import (
+    FILE_HASSIO_MULTICAST,
+    PLUGIN_UPDATE_CONDITIONS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_MULTICAST_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -31,42 +44,15 @@ class PluginMulticast(PluginBase):
         self.instance: DockerMulticast = DockerMulticast(coresys)
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of Multicast."""
         return self.sys_updater.version_multicast
-
-    async def load(self) -> None:
-        """Load multicast setup."""
-        # Check Multicast state
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info(
-                "No Multicast plugin Docker image %s found.", self.instance.image
-            )
-
-            # Install Multicast plugin
-            with suppress(MulticastError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run Multicast plugin
-        with suppress(MulticastError):
-            if not await self.instance.is_running():
-                await self.start()
 
     async def install(self) -> None:
         """Install Multicast."""
         _LOGGER.info("Running setup for Multicast plugin")
         while True:
-            # read homeassistant tag and install it
+            # read multicast tag and install it
             if not self.latest_version:
                 await self.sys_updater.reload()
 
@@ -84,7 +70,11 @@ class PluginMulticast(PluginBase):
         self.image = self.sys_updater.image_multicast
         self.save_data()
 
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=MulticastJobError,
+    )
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Multicast plugin."""
         version = version or self.latest_version
         old_image = self.image
@@ -153,4 +143,14 @@ class PluginMulticast(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of Multicast failed")
-            self.sys_capture_exception(err)
+            capture_exception(err)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=MulticastJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)

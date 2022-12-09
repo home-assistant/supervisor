@@ -1,13 +1,15 @@
 """Representation of a backup file."""
 from base64 import b64decode, b64encode
+from collections.abc import Awaitable
+from datetime import timedelta
 import json
 import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Optional
+from typing import Any
 
-from awesomeversion import AwesomeVersionCompareException
+from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -31,6 +33,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_USERNAME,
     ATTR_VERSION,
@@ -39,6 +42,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import AddonsError, BackupError
 from ..utils import remove_folder
+from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import write_json_file
 from .const import BackupType
 from .utils import key_to_iv, password_to_key
@@ -56,8 +60,8 @@ class Backup(CoreSysAttributes):
         self._tarfile: Path = tar_file
         self._data: dict[str, Any] = {}
         self._tmp = None
-        self._key: Optional[bytes] = None
-        self._aes: Optional[Cipher] = None
+        self._key: bytes | None = None
+        self._aes: Cipher | None = None
 
     @property
     def version(self) -> int:
@@ -121,7 +125,7 @@ class Backup(CoreSysAttributes):
 
     @property
     def homeassistant_version(self):
-        """Return backupbackup Home Assistant version."""
+        """Return backup Home Assistant version."""
         if self.homeassistant is None:
             return None
         return self._data[ATTR_HOMEASSISTANT][ATTR_VERSION]
@@ -130,6 +134,11 @@ class Backup(CoreSysAttributes):
     def homeassistant(self):
         """Return backup Home Assistant data."""
         return self._data[ATTR_HOMEASSISTANT]
+
+    @property
+    def supervisor_version(self) -> AwesomeVersion:
+        """Return backup Supervisor version."""
+        return self._data[ATTR_SUPERVISOR_VERSION]
 
     @property
     def docker(self):
@@ -158,6 +167,13 @@ class Backup(CoreSysAttributes):
         """Return path to backup tarfile."""
         return self._tarfile
 
+    @property
+    def is_current(self):
+        """Return true if backup is current, false if stale."""
+        return parse_datetime(self.date) >= utcnow() - timedelta(
+            days=self.sys_backups.days_until_stale
+        )
+
     def new(self, slug, name, date, sys_type, password=None, compressed=True):
         """Initialize a new backup."""
         # Init metadata
@@ -166,6 +182,7 @@ class Backup(CoreSysAttributes):
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date
         self._data[ATTR_TYPE] = sys_type
+        self._data[ATTR_SUPERVISOR_VERSION] = self.sys_supervisor.version
 
         # Add defaults
         self._data = SCHEMA_BACKUP(self._data)
@@ -458,8 +475,11 @@ class Backup(CoreSysAttributes):
         self._data[ATTR_HOMEASSISTANT] = {ATTR_VERSION: self.sys_homeassistant.version}
 
         # Backup Home Assistant Core config directory
+        tar_name = Path(
+            self._tmp.name, f"homeassistant.tar{'.gz' if self.compressed else ''}"
+        )
         homeassistant_file = SecureTarFile(
-            Path(self._tmp.name, "homeassistant.tar.gz"), "w", key=self._key
+            tar_name, "w", key=self._key, gzip=self.compressed
         )
 
         await self.sys_homeassistant.backup(homeassistant_file)
@@ -472,8 +492,11 @@ class Backup(CoreSysAttributes):
         await self.sys_homeassistant.core.stop()
 
         # Restore Home Assistant Core config directory
+        tar_name = Path(
+            self._tmp.name, f"homeassistant.tar{'.gz' if self.compressed else ''}"
+        )
         homeassistant_file = SecureTarFile(
-            Path(self._tmp.name, "homeassistant.tar.gz"), "r", key=self._key
+            tar_name, "r", key=self._key, gzip=self.compressed
         )
 
         await self.sys_homeassistant.restore(homeassistant_file)
@@ -497,18 +520,16 @@ class Backup(CoreSysAttributes):
 
     def store_repositories(self):
         """Store repository list into backup."""
-        self.repositories = self.sys_config.addons_repositories
+        self.repositories = self.sys_store.repository_urls
 
     async def restore_repositories(self, replace: bool = False):
         """Restore repositories from backup.
 
         Return a coroutine.
         """
-        new_list: set[str] = set(self.repositories)
-        if not replace:
-            new_list.update(self.sys_config.addons_repositories)
-
-        await self.sys_store.update_repositories(list(new_list))
+        await self.sys_store.update_repositories(
+            self.repositories, add_with_errors=True, replace=replace
+        )
 
     def store_dockerconfig(self):
         """Store the configuration for Docker."""

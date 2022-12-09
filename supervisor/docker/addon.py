@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 from ipaddress import IPv4Address, ip_address
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable
+from typing import TYPE_CHECKING
 
 from awesomeversion import AwesomeVersion
 import docker
@@ -17,9 +18,6 @@ from ..addons.build import AddonBuild
 from ..bus import EventListener
 from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
-    ENV_TIME,
-    ENV_TOKEN,
-    ENV_TOKEN_HASSIO,
     MAP_ADDONS,
     MAP_BACKUP,
     MAP_CONFIG,
@@ -43,10 +41,18 @@ from ..exceptions import (
 )
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
-from ..jobs.decorator import Job, JobCondition
+from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
-from .const import DBUS_PATH, DBUS_VOLUME, Capabilities
+from ..utils.sentry import capture_exception
+from .const import (
+    DBUS_PATH,
+    DBUS_VOLUME,
+    ENV_TIME,
+    ENV_TOKEN,
+    ENV_TOKEN_OLD,
+    Capabilities,
+)
 from .interface import DockerInterface
 
 if TYPE_CHECKING:
@@ -67,6 +73,11 @@ class DockerAddon(DockerInterface):
         self.addon: Addon = addon
 
         self._hw_listener: EventListener | None = None
+
+    @staticmethod
+    def slug_to_name(slug: str) -> str:
+        """Convert slug to container name."""
+        return f"addon_{slug}"
 
     @property
     def image(self) -> str | None:
@@ -95,9 +106,7 @@ class DockerAddon(DockerInterface):
     @property
     def version(self) -> AwesomeVersion:
         """Return version of Docker image."""
-        if self.addon.legacy:
-            return self.addon.version
-        return super().version
+        return self.addon.version
 
     @property
     def arch(self) -> str:
@@ -109,7 +118,7 @@ class DockerAddon(DockerInterface):
     @property
     def name(self) -> str:
         """Return name of Docker container."""
-        return f"addon_{self.addon.slug}"
+        return DockerAddon.slug_to_name(self.addon.slug)
 
     @property
     def environment(self) -> dict[str, str | None]:
@@ -128,7 +137,7 @@ class DockerAddon(DockerInterface):
             **addon_env,
             ENV_TIME: self.sys_timezone,
             ENV_TOKEN: self.addon.supervisor_token,
-            ENV_TOKEN_HASSIO: self.addon.supervisor_token,
+            ENV_TOKEN_OLD: self.addon.supervisor_token,
         }
 
     @property
@@ -496,6 +505,7 @@ class DockerAddon(DockerInterface):
                 environment=self.environment,
                 volumes=self.volumes,
                 tmpfs=self.tmpfs,
+                oom_score_adj=200,
             )
         except DockerNotFound:
             self.sys_resolution.create_issue(
@@ -512,14 +522,14 @@ class DockerAddon(DockerInterface):
         )
 
         if hostname:
-            # Add the add-ons hostname to DNS server
+            # Write data to DNS server
             try:
                 self.sys_plugins.dns.add_host(
                     ipv4=self.ip_address, names=[self.addon.hostname]
                 )
             except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         # Hardware Access
         if self.addon.static_devices:
@@ -527,18 +537,42 @@ class DockerAddon(DockerInterface):
                 BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events
             )
 
+    def _update(
+        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
+    ) -> None:
+        """Update a docker image.
+
+        Need run inside executor.
+        """
+        image = image or self.image
+
+        _LOGGER.info(
+            "Updating image %s:%s to %s:%s", self.image, self.version, image, version
+        )
+
+        # Update docker image
+        self._install(
+            version, image=image, latest=latest, need_build=self.addon.latest_need_build
+        )
+
+        # Stop container & cleanup
+        with suppress(DockerError):
+            self._stop()
+
     def _install(
         self,
         version: AwesomeVersion,
         image: str | None = None,
         latest: bool = False,
         arch: CpuArch | None = None,
+        *,
+        need_build: bool | None = None,
     ) -> None:
         """Pull Docker image or build it.
 
         Need run inside executor.
         """
-        if self.addon.need_build:
+        if need_build is None and self.addon.need_build or need_build:
             self._build(version)
         else:
             super()._install(version, image, latest, arch)
@@ -678,7 +712,7 @@ class DockerAddon(DockerInterface):
                 self.sys_plugins.dns.delete_host(self.addon.hostname)
             except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
-                self.sys_capture_exception(err)
+                capture_exception(err)
 
         # Hardware
         if self._hw_listener:
@@ -701,7 +735,7 @@ class DockerAddon(DockerInterface):
         )
         job.result()
 
-    @Job(conditions=[JobCondition.OS_AGENT])
+    @Job(conditions=[JobCondition.OS_AGENT], limit=JobExecutionLimit.SINGLE_WAIT)
     async def _hardware_events(self, device: Device) -> None:
         """Process Hardware events for adjust device access."""
         if not any(
@@ -723,15 +757,19 @@ class DockerAddon(DockerInterface):
                 f"Can't process Hardware Event on {self.name}: {err!s}", _LOGGER.error
             ) from err
 
+        permission = self.sys_hardware.policy.get_cgroups_rule(device)
         try:
             await self.sys_dbus.agent.cgroup.add_devices_allowed(
-                docker_container.id, self.sys_hardware.policy.get_cgroups_rule(device)
+                docker_container.id, permission
             )
             _LOGGER.info(
-                "Added cgroup permissions for device %s to %s", device.path, self.name
+                "Added cgroup permissions '%s' for device %s to %s",
+                permission,
+                device.path,
+                self.name,
             )
         except DBusError as err:
             raise DockerError(
-                f"Can't set cgroup permission on the host for {self.name}",
+                f"Can't set cgroup permission '{permission}' on the host for {self.name}",
                 _LOGGER.error,
             ) from err

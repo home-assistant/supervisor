@@ -130,3 +130,37 @@ async def test_api_resolution_check_run(coresys: CoreSys, api_client):
     await api_client.post(f"/resolution/check/{free_space.slug}/run")
 
     assert free_space.run_check.called
+
+
+async def test_api_resolution_suggestions_for_issue(coresys: CoreSys, api_client):
+    """Test getting suggestions that fix an issue."""
+    coresys.resolution.issues = corrupt_repo = Issue(
+        IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "repo_1"
+    )
+
+    resp = await api_client.get(f"/resolution/issue/{corrupt_repo.uuid}/suggestions")
+    result = await resp.json()
+
+    assert result["data"]["suggestions"] == []
+
+    coresys.resolution.suggestions = execute_reset = Suggestion(
+        SuggestionType.EXECUTE_RESET, ContextType.STORE, "repo_1"
+    )
+    coresys.resolution.suggestions = execute_remove = Suggestion(
+        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_1"
+    )
+
+    resp = await api_client.get(f"/resolution/issue/{corrupt_repo.uuid}/suggestions")
+    result = await resp.json()
+
+    suggestion = [
+        su for su in result["data"]["suggestions"] if su["uuid"] == execute_reset.uuid
+    ]
+    assert len(suggestion) == 1
+    assert suggestion[0]["auto"] is True
+
+    suggestion = [
+        su for su in result["data"]["suggestions"] if su["uuid"] == execute_remove.uuid
+    ]
+    assert len(suggestion) == 1
+    assert suggestion[0]["auto"] is False

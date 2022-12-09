@@ -2,7 +2,7 @@
 # pylint: disable=protected-access
 
 
-def test_supported_features(coresys):
+def test_supported_features(coresys, dbus_is_connected):
     """Test host features."""
     assert "network" in coresys.host.features
 

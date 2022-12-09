@@ -5,7 +5,7 @@ import re
 from aiohttp import hdrs
 import attr
 
-from ..const import HEADER_TOKEN_OLD, CoreState
+from ..const import HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
 from ..exceptions import AddonConfigurationError
 
@@ -52,7 +52,6 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             "supervisor": {
                 "channel": coresys.updater.channel,
                 "installed_addons": installed_addons,
-                "repositories": coresys.config.addons_repositories,
             },
             "host": {
                 "arch": coresys.arch.default,
@@ -78,6 +77,9 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                     for suggestion in coresys.resolution.suggestions
                 ],
                 "unhealthy": coresys.resolution.unhealthy,
+            },
+            "store": {
+                "repositories": coresys.store.repository_urls,
             },
             "misc": {
                 "fallback_dns": coresys.plugins.dns.fallback,
@@ -110,6 +112,9 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
             key, value = header
             if key == hdrs.REFERER:
                 event["request"]["headers"][i] = [key, sanitize_url(value)]
+
+            if key == HEADER_TOKEN:
+                event["request"]["headers"][i] = [key, "XXXXXXXXXXXXXXXXXXX"]
 
             if key == HEADER_TOKEN_OLD:
                 event["request"]["headers"][i] = [key, "XXXXXXXXXXXXXXXXXXX"]

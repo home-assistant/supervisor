@@ -7,36 +7,48 @@ from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
-from typing import Optional
 
 import attr
 from awesomeversion import AwesomeVersion
 import jinja2
 import voluptuous as vol
 
-from supervisor.dbus.const import MulticastProtocolEnabled
-
 from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys
+from ..dbus.const import MulticastProtocolEnabled
+from ..docker.const import ContainerState
 from ..docker.dns import DockerDNS
+from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
     ConfigurationFileError,
     CoreDNSError,
+    CoreDNSJobError,
     CoreDNSUpdateError,
     DockerError,
 )
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
+from ..utils.sentry import capture_exception
 from ..validate import dns_url
 from .base import PluginBase
-from .const import ATTR_FALLBACK, FILE_HASSIO_DNS
+from .const import (
+    ATTR_FALLBACK,
+    FILE_HASSIO_DNS,
+    PLUGIN_UPDATE_CONDITIONS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_DNS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# pylint: disable=no-member
 HOSTS_TMPL: Path = Path(__file__).parents[1].joinpath("data/hosts.tmpl")
 RESOLV_TMPL: Path = Path(__file__).parents[1].joinpath("data/resolv.tmpl")
+# pylint: enable=no-member
 HOST_RESOLV: Path = Path("/etc/resolv.conf")
 
 
@@ -57,8 +69,8 @@ class PluginDns(PluginBase):
         self.slug = "dns"
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
-        self.resolv_template: Optional[jinja2.Template] = None
-        self.hosts_template: Optional[jinja2.Template] = None
+        self.resolv_template: jinja2.Template | None = None
+        self.hosts_template: jinja2.Template | None = None
 
         self._hosts: list[HostEntry] = []
         self._loop: bool = False
@@ -96,7 +108,7 @@ class PluginDns(PluginBase):
         self._data[ATTR_SERVERS] = value
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
 
@@ -130,39 +142,20 @@ class PluginDns(PluginBase):
         """Load DNS setup."""
         # Initialize CoreDNS Template
         try:
-            self.resolv_template = jinja2.Template(RESOLV_TMPL.read_text())
+            self.resolv_template = jinja2.Template(
+                RESOLV_TMPL.read_text(encoding="utf-8")
+            )
         except OSError as err:
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
         try:
-            self.hosts_template = jinja2.Template(HOSTS_TMPL.read_text())
+            self.hosts_template = jinja2.Template(
+                HOSTS_TMPL.read_text(encoding="utf-8")
+            )
         except OSError as err:
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
-        # Check CoreDNS state
         self._init_hosts()
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info(
-                "No CoreDNS plugin Docker image %s found.", self.instance.image
-            )
-
-            # Install CoreDNS
-            with suppress(CoreDNSError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run CoreDNS
-        with suppress(CoreDNSError):
-            if not await self.instance.is_running():
-                await self.start()
+        await super().load()
 
         # Update supervisor
         self._write_resolv(HOST_RESOLV)
@@ -193,7 +186,11 @@ class PluginDns(PluginBase):
         # Init Hosts
         self.write_hosts()
 
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=CoreDNSJobError,
+    )
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update CoreDNS plugin."""
         version = version or self.latest_version
         old_image = self.image
@@ -263,6 +260,23 @@ class PluginDns(PluginBase):
         self._loop = False
 
         await self.sys_addons.sync_dns()
+
+    async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
+        """Check for loop on failure before processing state change event."""
+        if event.name == self.instance.name and event.state == ContainerState.FAILED:
+            await self.loop_detection()
+
+        return await super().watchdog_container(event)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=CoreDNSJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)
 
     async def loop_detection(self) -> None:
         """Check if there was a loop found."""
@@ -382,7 +396,7 @@ class PluginDns(PluginBase):
         if write:
             self.write_hosts()
 
-    def _search_host(self, names: list[str]) -> Optional[HostEntry]:
+    def _search_host(self, names: list[str]) -> HostEntry | None:
         """Search a host entry."""
         for entry in self._hosts:
             for name in names:
@@ -408,7 +422,7 @@ class PluginDns(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of CoreDNS failed")
-            self.sys_capture_exception(err)
+            capture_exception(err)
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""

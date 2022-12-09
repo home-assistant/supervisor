@@ -1,7 +1,7 @@
 """Helpers to check and fix issues with free space."""
 import logging
-from typing import Optional
 
+from ...coresys import CoreSys
 from ...exceptions import (
     ResolutionFixupError,
     ResolutionFixupJobError,
@@ -16,6 +16,11 @@ from .base import FixupBase
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+def setup(coresys: CoreSys) -> FixupBase:
+    """Check setup function."""
+    return FixupStoreExecuteReload(coresys)
+
+
 class FixupStoreExecuteReload(FixupBase):
     """Storage class for fixup."""
 
@@ -23,7 +28,7 @@ class FixupStoreExecuteReload(FixupBase):
         conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.FREE_SPACE],
         on_condition=ResolutionFixupJobError,
     )
-    async def process_fixup(self, reference: Optional[str] = None) -> None:
+    async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
         _LOGGER.info("Reload Store: %s", reference)
         try:

@@ -6,18 +6,31 @@ import asyncio
 from contextlib import suppress
 import logging
 import secrets
-from typing import Optional
 
 import aiohttp
 from awesomeversion import AwesomeVersion
 
 from ..const import ATTR_ACCESS_TOKEN
 from ..coresys import CoreSys
+from ..docker.const import ContainerState
 from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
-from ..exceptions import DockerError, ObserverError, ObserverUpdateError
+from ..exceptions import (
+    DockerError,
+    ObserverError,
+    ObserverJobError,
+    ObserverUpdateError,
+)
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
+from ..utils.sentry import capture_exception
 from .base import PluginBase
-from .const import FILE_HASSIO_OBSERVER
+from .const import (
+    FILE_HASSIO_OBSERVER,
+    PLUGIN_UPDATE_CONDITIONS,
+    WATCHDOG_THROTTLE_MAX_CALLS,
+    WATCHDOG_THROTTLE_PERIOD,
+)
 from .validate import SCHEMA_OBSERVER_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -34,7 +47,7 @@ class PluginObserver(PluginBase):
         self.instance: DockerObserver = DockerObserver(coresys)
 
     @property
-    def latest_version(self) -> Optional[AwesomeVersion]:
+    def latest_version(self) -> AwesomeVersion | None:
         """Return version of latest observer."""
         return self.sys_updater.version_observer
 
@@ -42,33 +55,6 @@ class PluginObserver(PluginBase):
     def supervisor_token(self) -> str:
         """Return an access token for the Observer API."""
         return self._data.get(ATTR_ACCESS_TOKEN)
-
-    async def load(self) -> None:
-        """Load observer setup."""
-        # Check observer state
-        try:
-            # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
-
-            await self.instance.attach(version=self.version)
-        except DockerError:
-            _LOGGER.info(
-                "No observer plugin Docker image %s found.", self.instance.image
-            )
-
-            # Install observer
-            with suppress(ObserverError):
-                await self.install()
-        else:
-            self.version = self.instance.version
-            self.image = self.instance.image
-            self.save_data()
-
-        # Run Observer
-        with suppress(ObserverError):
-            if not await self.instance.is_running():
-                await self.start()
 
     async def install(self) -> None:
         """Install observer."""
@@ -92,7 +78,11 @@ class PluginObserver(PluginBase):
         self.image = self.sys_updater.image_observer
         self.save_data()
 
-    async def update(self, version: Optional[AwesomeVersion] = None) -> None:
+    @Job(
+        conditions=PLUGIN_UPDATE_CONDITIONS,
+        on_condition=ObserverJobError,
+    )
+    async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update local HA observer."""
         version = version or self.latest_version
         old_image = self.image
@@ -139,12 +129,6 @@ class PluginObserver(PluginBase):
         except DockerError as err:
             raise ObserverError() from err
 
-    async def rebuild(self) -> None:
-        """Rebuild Observer Docker container."""
-        with suppress(DockerError):
-            await self.instance.stop()
-        await self.start()
-
     async def check_system_runtime(self) -> bool:
         """Check if the observer is running."""
         try:
@@ -169,4 +153,14 @@ class PluginObserver(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of HA observer failed")
-            self.sys_capture_exception(err)
+            capture_exception(err)
+
+    @Job(
+        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=ObserverJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed plugin."""
+        return await super()._restart_after_problem(state)

@@ -2,7 +2,7 @@
 import asyncio
 from ipaddress import ip_address
 import logging
-from typing import Any, Union
+from typing import Any
 
 import aiohttp
 from aiohttp import ClientTimeout, hdrs, web
@@ -22,11 +22,11 @@ from ..const import (
     ATTR_PANELS,
     ATTR_SESSION,
     ATTR_TITLE,
-    COOKIE_INGRESS,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
 )
 from ..coresys import CoreSysAttributes
+from .const import COOKIE_INGRESS
 from .utils import api_process, api_validate, require_home_assistant
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ class APIIngress(CoreSysAttributes):
     @require_home_assistant
     async def handler(
         self, request: web.Request
-    ) -> Union[web.Response, web.StreamResponse, web.WebSocketResponse]:
+    ) -> web.Response | web.StreamResponse | web.WebSocketResponse:
         """Route data to Supervisor ingress service."""
 
         # Check Ingress Session
@@ -159,7 +159,7 @@ class APIIngress(CoreSysAttributes):
 
     async def _handle_request(
         self, request: web.Request, addon: Addon, path: str
-    ) -> Union[web.Response, web.StreamResponse]:
+    ) -> web.Response | web.StreamResponse:
         """Ingress route for request."""
         url = self._create_url(addon, path)
         source_header = _init_header(request, addon)
@@ -218,9 +218,7 @@ class APIIngress(CoreSysAttributes):
             return response
 
 
-def _init_header(
-    request: web.Request, addon: str
-) -> Union[CIMultiDict, dict[str, str]]:
+def _init_header(request: web.Request, addon: str) -> CIMultiDict | dict[str, str]:
     """Create initial header."""
     headers = {}
 

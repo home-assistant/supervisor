@@ -3,18 +3,17 @@ import asyncio
 import functools as ft
 import logging
 from pathlib import Path
-from typing import Optional
 
 import git
 
 from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import StoreGitError, StoreJobError
+from ..exceptions import StoreGitCloneError, StoreGitError, StoreJobError
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import remove_folder
-from ..validate import RE_REPOSITORY
 from .utils import get_hash_from_repository
+from .validate import RE_REPOSITORY
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class GitRepo(CoreSysAttributes):
     def __init__(self, coresys: CoreSys, path: Path, url: str):
         """Initialize Git base wrapper."""
         self.coresys: CoreSys = coresys
-        self.repo: Optional[git.Repo] = None
+        self.repo: git.Repo | None = None
         self.path: Path = path
         self.lock: asyncio.Lock = asyncio.Lock()
 
@@ -65,12 +64,6 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't load %s", self.path)
-                self.sys_resolution.create_issue(
-                    IssueType.FATAL_ERROR,
-                    ContextType.STORE,
-                    reference=self.path.stem,
-                    suggestions=[SuggestionType.EXECUTE_RESET],
-                )
                 raise StoreGitError() from err
 
         # Fix possible corruption
@@ -80,12 +73,6 @@ class GitRepo(CoreSysAttributes):
                 await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
             except git.GitCommandError as err:
                 _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
-                self.sys_resolution.create_issue(
-                    IssueType.CORRUPT_REPOSITORY,
-                    ContextType.STORE,
-                    reference=self.path.stem,
-                    suggestions=[SuggestionType.EXECUTE_RESET],
-                )
                 raise StoreGitError() from err
 
     @Job(
@@ -120,17 +107,7 @@ class GitRepo(CoreSysAttributes):
                 git.GitCommandError,
             ) as err:
                 _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
-                self.sys_resolution.create_issue(
-                    IssueType.FATAL_ERROR,
-                    ContextType.STORE,
-                    reference=self.path.stem,
-                    suggestions=[
-                        SuggestionType.EXECUTE_RELOAD
-                        if self.builtin
-                        else SuggestionType.EXECUTE_REMOVE
-                    ],
-                )
-                raise StoreGitError() from err
+                raise StoreGitCloneError() from err
 
     @Job(
         conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
@@ -184,6 +161,7 @@ class GitRepo(CoreSysAttributes):
                 git.NoSuchPathError,
                 git.GitCommandError,
                 ValueError,
+                AssertionError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
                 self.sys_resolution.create_issue(
