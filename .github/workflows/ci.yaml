@@ -26,10 +26,10 @@ jobs:
     name: Prepare Python dependencies
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
@@ -67,9 +67,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -96,7 +96,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Register hadolint problem matcher
         run: |
           echo "::add-matcher::.github/workflows/matchers/hadolint.json"
@@ -111,9 +111,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -155,9 +155,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -187,9 +187,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -228,9 +228,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -272,9 +272,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -304,9 +304,9 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -345,9 +345,9 @@ jobs:
     name: Run tests Python ${{ needs.prepare.outputs.python-version }}
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -403,9 +403,9 @@ jobs:
     needs: ["pytest", "prepare"]
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.2.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.3.1
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
