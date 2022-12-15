@@ -11,7 +11,7 @@ def test_good_config():
 
     valid_discovery_config(
         "otbr",
-        {"host": "test", "rest_port": 3812, "web_service_port": 3813},
+        {"host": "test", "rest_port": 3812},
     )
 
 
