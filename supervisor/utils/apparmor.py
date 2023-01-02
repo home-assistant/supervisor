@@ -25,9 +25,15 @@ def get_profile_name(profile_file):
             f"Can't read AppArmor profile: {err}", _LOGGER.error
         ) from err
 
+    if len(profiles) == 0:
+        raise AppArmorInvalidError(
+            f"Missing AppArmor profile inside file: {profile_file.name}", _LOGGER.error
+        )
+
     if len(profiles) != 1:
         raise AppArmorInvalidError(
-            f"To many profiles inside file: {profiles}", _LOGGER.error
+            f"Too many AppArmor profiles inside file: {profile_file.name}",
+            _LOGGER.error,
         )
 
     return profiles.pop()
