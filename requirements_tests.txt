@@ -4,7 +4,7 @@ coverage==7.0.3
 flake8-docstrings==1.6.0
 flake8==6.0.0
 pre-commit==2.21.0
-pydocstyle==6.2.0
+pydocstyle==6.2.2
 pylint==2.15.9
 pytest-aiohttp==1.0.4
 pytest-asyncio==0.18.3
