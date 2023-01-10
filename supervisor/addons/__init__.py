@@ -158,10 +158,7 @@ class AddonManager(CoreSysAttributes):
         if not store:
             raise AddonsError(f"Add-on {slug} does not exist", _LOGGER.error)
 
-        if not store.available:
-            raise AddonsNotSupportedError(
-                f"Add-on {slug} not supported on this platform", _LOGGER.error
-            )
+        store.validate_availability()
 
         self.data.install(store)
         addon = Addon(self.coresys, slug)
@@ -263,10 +260,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError(f"No update available for add-on {slug}", _LOGGER.warning)
 
         # Check if available, Maybe something have changed
-        if not store.available:
-            raise AddonsNotSupportedError(
-                f"Add-on {slug} not supported on that platform", _LOGGER.error
-            )
+        store.validate_availability()
 
         if backup:
             await self.sys_backups.do_backup_partial(

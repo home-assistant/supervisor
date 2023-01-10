@@ -8,6 +8,7 @@ from dbus_fast.introspection import Method, Property, Signal
 
 from supervisor.dbus.interface import DBusInterface, DBusInterfaceProxy
 from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES
+from supervisor.utils.yaml import read_yaml_file
 
 
 def get_dbus_name(intr_list: list[Method | Property | Signal], snake_case: str) -> str:
@@ -69,6 +70,12 @@ def load_json_fixture(filename: str) -> Any:
     """Load a json fixture."""
     path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_yaml_fixture(filename: str) -> Any:
+    """Load a YAML fixture."""
+    path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
+    return read_yaml_file(path)
 
 
 def load_fixture(filename: str) -> str:

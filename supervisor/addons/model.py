@@ -1,6 +1,8 @@
 """Init file for Supervisor add-ons."""
 from abc import ABC, abstractmethod
 from collections.abc import Awaitable
+from contextlib import suppress
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -78,9 +80,12 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import Capabilities
+from ..exceptions import AddonsNotSupportedError
 from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE, RE_VOLUME
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 Data = dict[str, Any]
 
@@ -595,31 +600,52 @@ class AddonModel(CoreSysAttributes, ABC):
         """Return Signer email address for CAS."""
         return self.data.get(ATTR_CODENOTARY)
 
+    def validate_availability(self) -> None:
+        """Validate if addon is available for current system."""
+        return self._validate_availability(self.data)
+
     def __eq__(self, other):
         """Compaired add-on objects."""
         if not isinstance(other, AddonModel):
             return False
         return self.slug == other.slug
 
-    def _available(self, config) -> bool:
-        """Return True if this add-on is available on this platform."""
+    def _validate_availability(self, config) -> None:
+        """Validate if addon is available for current system."""
         # Architecture
         if not self.sys_arch.is_supported(config[ATTR_ARCH]):
-            return False
+            raise AddonsNotSupportedError(
+                f"Add-on {self.slug} not supported on this platform, supported architectures: {', '.join(config[ATTR_ARCH])}",
+                _LOGGER.error,
+            )
 
         # Machine / Hardware
         machine = config.get(ATTR_MACHINE)
-        if machine and f"!{self.sys_machine}" in machine:
-            return False
-        elif machine and self.sys_machine not in machine:
-            return False
+        if machine and (
+            f"!{self.sys_machine}" in machine or self.sys_machine not in machine
+        ):
+            raise AddonsNotSupportedError(
+                f"Add-on {self.slug} not supported on this machine, supported machine types: {', '.join(machine)}",
+                _LOGGER.error,
+            )
 
         # Home Assistant
         version: AwesomeVersion | None = config.get(ATTR_HOMEASSISTANT)
+        with suppress(AwesomeVersionException, TypeError):
+            if self.sys_homeassistant.version < version:
+                raise AddonsNotSupportedError(
+                    f"Add-on {self.slug} not supported on this system, requires Home Assistant version {version} or greater",
+                    _LOGGER.error,
+                )
+
+    def _available(self, config) -> bool:
+        """Return True if this add-on is available on this platform."""
         try:
-            return self.sys_homeassistant.version >= version
-        except (AwesomeVersionException, TypeError):
-            return True
+            self._validate_availability(config)
+        except AddonsNotSupportedError:
+            return False
+
+        return True
 
     def _image(self, config) -> str:
         """Generate image name from data."""
