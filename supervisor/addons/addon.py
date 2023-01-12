@@ -73,6 +73,7 @@ from ..jobs.decorator import Job
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
+from ..utils.sentry import capture_exception
 from .const import (
     WATCHDOG_MAX_ATTEMPTS,
     WATCHDOG_RETRY_SECONDS,
@@ -151,7 +152,7 @@ class Addon(AddonModel):
                         _LOGGER.error(
                             "Watchdog restart of addon %s failed!", addon.name
                         )
-                        addon.sys_capture_exception(err)
+                        capture_exception(err)
                     else:
                         break
 
