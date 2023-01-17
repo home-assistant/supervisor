@@ -199,14 +199,14 @@ class Job(CoreSysAttributes):
                 f"'{self._method.__qualname__}' blocked from execution, not enough free space ({self.sys_host.info.free_space}GB) left on the device"
             )
 
-        if JobCondition.INTERNET_SYSTEM in self.conditions:
+        if JobCondition.INTERNET_SYSTEM in used_conditions:
             await self.sys_supervisor.check_connectivity()
             if not self.sys_supervisor.connectivity:
                 raise JobConditionException(
                     f"'{self._method.__qualname__}' blocked from execution, no supervisor internet connection"
                 )
 
-        if JobCondition.INTERNET_HOST in self.conditions:
+        if JobCondition.INTERNET_HOST in used_conditions:
             await self.sys_host.network.check_connectivity()
             if (
                 self.sys_host.network.connectivity is not None
@@ -216,13 +216,13 @@ class Job(CoreSysAttributes):
                     f"'{self._method.__qualname__}' blocked from execution, no host internet connection"
                 )
 
-        if JobCondition.HAOS in self.conditions and not self.sys_os.available:
+        if JobCondition.HAOS in used_conditions and not self.sys_os.available:
             raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, no Home Assistant OS available"
             )
 
         if (
-            JobCondition.OS_AGENT in self.conditions
+            JobCondition.OS_AGENT in used_conditions
             and HostFeature.OS_AGENT not in self.sys_host.features
         ):
             raise JobConditionException(
@@ -230,7 +230,7 @@ class Job(CoreSysAttributes):
             )
 
         if (
-            JobCondition.HOST_NETWORK in self.conditions
+            JobCondition.HOST_NETWORK in used_conditions
             and not self.sys_dbus.network.is_connected
         ):
             raise JobConditionException(
@@ -238,7 +238,7 @@ class Job(CoreSysAttributes):
             )
 
         if (
-            JobCondition.AUTO_UPDATE in self.conditions
+            JobCondition.AUTO_UPDATE in used_conditions
             and not self.sys_updater.auto_update
         ):
             raise JobConditionException(
@@ -246,14 +246,14 @@ class Job(CoreSysAttributes):
             )
 
         if (
-            JobCondition.SUPERVISOR_UPDATED in self.conditions
+            JobCondition.SUPERVISOR_UPDATED in used_conditions
             and self.sys_supervisor.need_update
         ):
             raise JobConditionException(
                 f"'{self._method.__qualname__}' blocked from execution, supervisor needs to be updated first"
             )
 
-        if JobCondition.PLUGINS_UPDATED in self.conditions and (
+        if JobCondition.PLUGINS_UPDATED in used_conditions and (
             out_of_date := [
                 plugin for plugin in self.sys_plugins.all_plugins if plugin.need_update
             ]
