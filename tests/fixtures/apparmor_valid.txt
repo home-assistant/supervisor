@@ -1,0 +1,16 @@
+#include <tunables/global>
+
+profile example flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # Capabilities
+  file,
+  signal (send) set=(kill,term,int,hup,cont),
+
+  # Start new profile for service
+  /usr/bin/my_program cx -> my_program,
+
+  profile my_program flags=(attach_disconnected,mediate_deleted) {
+    #include <abstractions/base>
+  }
+}

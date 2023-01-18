@@ -66,31 +66,36 @@ def fire_property_change_signal(
     )
 
 
+def get_fixture_path(filename: str) -> Path:
+    """Get path for fixture."""
+    return Path(Path(__file__).parent.joinpath("fixtures"), filename)
+
+
 def load_json_fixture(filename: str) -> Any:
     """Load a json fixture."""
-    path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
+    path = get_fixture_path(filename)
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def load_yaml_fixture(filename: str) -> Any:
     """Load a YAML fixture."""
-    path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
+    path = get_fixture_path(filename)
     return read_yaml_file(path)
 
 
 def load_fixture(filename: str) -> str:
     """Load a fixture."""
-    path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
+    path = get_fixture_path(filename)
     return path.read_text(encoding="utf-8")
 
 
 def load_binary_fixture(filename: str) -> bytes:
     """Load a fixture without decoding."""
-    path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
+    path = get_fixture_path(filename)
     return path.read_bytes()
 
 
 def exists_fixture(filename: str) -> bool:
     """Check if a fixture exists."""
-    path = Path(Path(__file__).parent.joinpath("fixtures"), filename)
+    path = get_fixture_path(filename)
     return path.exists()
