@@ -521,6 +521,7 @@ async def test_os_agent(coresys: CoreSys):
     ):
         assert await test.execute()
 
+    coresys.host.supported_features.cache_clear()
     assert not await test.execute()
 
     coresys.jobs.ignore_conditions = [JobCondition.OS_AGENT]
