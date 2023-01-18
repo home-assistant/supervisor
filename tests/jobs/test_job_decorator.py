@@ -522,10 +522,11 @@ async def test_os_agent(coresys: CoreSys):
         assert await test.execute()
 
     coresys.host.supported_features.cache_clear()
-    assert not await test.execute()
+    with patch.object(HostManager, "supported_features", return_value=[]):
+        assert not await test.execute()
 
-    coresys.jobs.ignore_conditions = [JobCondition.OS_AGENT]
-    assert await test.execute()
+        coresys.jobs.ignore_conditions = [JobCondition.OS_AGENT]
+        assert await test.execute()
 
 
 async def test_host_network(coresys: CoreSys):
