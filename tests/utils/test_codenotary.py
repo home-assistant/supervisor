@@ -31,11 +31,7 @@ def fixture_subprocess_exec(request):
     if response.exception:
         communicate_return = AsyncMock(side_effect=response.exception)
     else:
-        err_return = None
-        if response.error:
-            err_return = Mock(decode=Mock(return_value=response.error))
-
-        communicate_return = AsyncMock(return_value=(response.data, err_return))
+        communicate_return = AsyncMock(return_value=(response.data, response.error))
 
     exec_return = Mock(returncode=response.returncode, communicate=communicate_return)
 
@@ -74,9 +70,23 @@ async def test_invalid_checksum():
 
 @pytest.mark.parametrize(
     "subprocess_exec",
+    [SubprocessResponse(returncode=1, error=b"x is not notarized")],
+)
+async def test_not_notarized_error(subprocess_exec):
+    """Test received a not notarized error response from command."""
+    with pytest.raises(CodeNotaryUntrusted):
+        await cas_validate(
+            "notary@home-assistant.io",
+            "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        )
+
+
+@pytest.mark.parametrize(
+    "subprocess_exec",
     [
-        SubprocessResponse(returncode=1, error="test"),
+        SubprocessResponse(returncode=1, error=b"test"),
         SubprocessResponse(returncode=0, data='{"error":"asn1: structure error"}'),
+        SubprocessResponse(returncode=1, error="test".encode("utf-16")),
     ],
     indirect=True,
 )

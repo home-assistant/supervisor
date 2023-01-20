@@ -61,7 +61,8 @@ class GitRepo(CoreSysAttributes):
             except (
                 git.InvalidGitRepositoryError,
                 git.NoSuchPathError,
-                git.GitCommandError,
+                git.CommandError,
+                UnicodeDecodeError,
             ) as err:
                 _LOGGER.error("Can't load %s", self.path)
                 raise StoreGitError() from err
@@ -71,7 +72,7 @@ class GitRepo(CoreSysAttributes):
             try:
                 _LOGGER.debug("Integrity check add-on %s repository", self.path)
                 await self.sys_run_in_executor(self.repo.git.execute, ["git", "fsck"])
-            except git.GitCommandError as err:
+            except git.CommandError as err:
                 _LOGGER.error("Integrity check on %s failed: %s.", self.path, err)
                 raise StoreGitError() from err
 
@@ -104,7 +105,8 @@ class GitRepo(CoreSysAttributes):
             except (
                 git.InvalidGitRepositoryError,
                 git.NoSuchPathError,
-                git.GitCommandError,
+                git.CommandError,
+                UnicodeDecodeError,
             ) as err:
                 _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
                 raise StoreGitCloneError() from err
@@ -159,9 +161,10 @@ class GitRepo(CoreSysAttributes):
             except (
                 git.InvalidGitRepositoryError,
                 git.NoSuchPathError,
-                git.GitCommandError,
+                git.CommandError,
                 ValueError,
                 AssertionError,
+                UnicodeDecodeError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
                 self.sys_resolution.create_issue(
