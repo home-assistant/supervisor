@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from git import GitCommandError, GitError, InvalidGitRepositoryError, NoSuchPathError
+from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -44,10 +44,15 @@ async def test_git_clone(
 
 @pytest.mark.parametrize(
     "git_error",
-    [InvalidGitRepositoryError(), NoSuchPathError(), GitCommandError("clone")],
+    [
+        InvalidGitRepositoryError(),
+        NoSuchPathError(),
+        GitCommandError("clone"),
+        UnicodeDecodeError("decode", b"", 0, 0, ""),
+    ],
 )
 async def test_git_clone_error(
-    coresys: CoreSys, tmp_path: Path, clone_from: AsyncMock, git_error: GitError
+    coresys: CoreSys, tmp_path: Path, clone_from: AsyncMock, git_error: Exception
 ):
     """Test git clone error."""
     repo = GitRepo(coresys, tmp_path, REPO_URL)
@@ -77,12 +82,11 @@ async def test_git_load(coresys: CoreSys, tmp_path: Path):
         InvalidGitRepositoryError(),
         NoSuchPathError(),
         GitCommandError("init"),
+        UnicodeDecodeError("decode", b"", 0, 0, ""),
         [AsyncMock(), GitCommandError("fsck")],
     ],
 )
-async def test_git_load_error(
-    coresys: CoreSys, tmp_path: Path, git_errors: GitError | list[GitError | None]
-):
+async def test_git_load_error(coresys: CoreSys, tmp_path: Path, git_errors: Exception):
     """Test git load error."""
     repo = GitRepo(coresys, tmp_path, REPO_URL)
 
