@@ -1,6 +1,6 @@
 """Init file for Supervisor add-ons."""
 from abc import ABC, abstractmethod
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 import logging
 from pathlib import Path
@@ -602,7 +602,7 @@ class AddonModel(CoreSysAttributes, ABC):
 
     def validate_availability(self) -> None:
         """Validate if addon is available for current system."""
-        return self._validate_availability(self.data)
+        return self._validate_availability(self.data, logger=_LOGGER.error)
 
     def __eq__(self, other):
         """Compaired add-on objects."""
@@ -610,13 +610,15 @@ class AddonModel(CoreSysAttributes, ABC):
             return False
         return self.slug == other.slug
 
-    def _validate_availability(self, config) -> None:
+    def _validate_availability(
+        self, config, *, logger: Callable[..., None] | None = None
+    ) -> None:
         """Validate if addon is available for current system."""
         # Architecture
         if not self.sys_arch.is_supported(config[ATTR_ARCH]):
             raise AddonsNotSupportedError(
                 f"Add-on {self.slug} not supported on this platform, supported architectures: {', '.join(config[ATTR_ARCH])}",
-                _LOGGER.error,
+                logger,
             )
 
         # Machine / Hardware
@@ -626,7 +628,7 @@ class AddonModel(CoreSysAttributes, ABC):
         ):
             raise AddonsNotSupportedError(
                 f"Add-on {self.slug} not supported on this machine, supported machine types: {', '.join(machine)}",
-                _LOGGER.error,
+                logger,
             )
 
         # Home Assistant
@@ -635,7 +637,7 @@ class AddonModel(CoreSysAttributes, ABC):
             if self.sys_homeassistant.version < version:
                 raise AddonsNotSupportedError(
                     f"Add-on {self.slug} not supported on this system, requires Home Assistant version {version} or greater",
-                    _LOGGER.error,
+                    logger,
                 )
 
     def _available(self, config) -> bool:

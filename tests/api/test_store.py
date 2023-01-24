@@ -13,7 +13,10 @@ REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 
 @pytest.mark.asyncio
 async def test_api_store(
-    api_client: TestClient, store_addon: AddonStore, repository: Repository
+    api_client: TestClient,
+    store_addon: AddonStore,
+    repository: Repository,
+    caplog: pytest.LogCaptureFixture,
 ):
     """Test /store REST API."""
     resp = await api_client.get("/store")
@@ -21,6 +24,10 @@ async def test_api_store(
 
     assert result["data"]["addons"][-1]["slug"] == store_addon.slug
     assert result["data"]["repositories"][-1]["slug"] == repository.slug
+
+    assert (
+        f"Add-on {store_addon.slug} not supported on this platform" not in caplog.text
+    )
 
 
 @pytest.mark.asyncio
