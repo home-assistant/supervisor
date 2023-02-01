@@ -20,7 +20,6 @@ async def test_validate_session(api_client, coresys):
         "aiohttp.web_request.BaseRequest.__getitem__",
         return_value=coresys.homeassistant,
     ):
-
         resp = await api_client.post("/ingress/session")
         result = await resp.json()
 

@@ -99,7 +99,6 @@ class Auth(FileConfiguration, CoreSysAttributes):
                     ATTR_ADDON: addon.slug,
                 },
             ) as req:
-
                 if req.status == 200:
                     _LOGGER.info("Successful login for '%s'", username)
                     self._update_cache(username, password)
