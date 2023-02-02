@@ -4,7 +4,9 @@ from enum import Enum
 
 class Capabilities(str, Enum):
     """Linux Capabilities."""
-
+    
+    CAP_BPF = "CAP_BPF"
+    CAP_PERFMON = "CAP_PERFMON"
     DAC_READ_SEARCH = "DAC_READ_SEARCH"
     IPC_LOCK = "IPC_LOCK"
     NET_ADMIN = "NET_ADMIN"
