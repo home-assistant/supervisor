@@ -454,6 +454,7 @@ class Interface:
             DeviceType.ETHERNET: InterfaceType.ETHERNET,
             DeviceType.WIRELESS: InterfaceType.WIRELESS,
             DeviceType.VLAN: InterfaceType.VLAN,
+            DeviceType.BRIDGE: InterfaceType.BRIDGE,
         }
         return mapping[device_type]
 
