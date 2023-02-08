@@ -26,15 +26,15 @@ jobs:
     name: Prepare Python dependencies
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -48,7 +48,7 @@ jobs:
           pip install -r requirements.txt -r requirements_tests.txt
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -67,15 +67,15 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -96,7 +96,7 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Register hadolint problem matcher
         run: |
           echo "::add-matcher::.github/workflows/matchers/hadolint.json"
@@ -111,15 +111,15 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -131,7 +131,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -155,15 +155,15 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -187,15 +187,15 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -207,7 +207,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -228,15 +228,15 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -248,7 +248,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -272,15 +272,15 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -304,15 +304,15 @@ jobs:
     needs: prepare
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -324,7 +324,7 @@ jobs:
           exit 1
       - name: Restore pre-commit environment from cache
         id: cache-precommit
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: ${{ env.PRE_COMMIT_HOME }}
           key: |
@@ -345,9 +345,9 @@ jobs:
     name: Run tests Python ${{ needs.prepare.outputs.python-version }}
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -357,7 +357,7 @@ jobs:
           version: ${{ env.DEFAULT_CAS }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |
@@ -392,7 +392,7 @@ jobs:
             -o console_output_style=count \
             tests
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v3.1.1
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: coverage-${{ matrix.python-version }}
           path: .coverage
@@ -403,15 +403,15 @@ jobs:
     needs: ["pytest", "prepare"]
     steps:
       - name: Check out code from GitHub
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v3.3.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.3.0
+        uses: actions/setup-python@v4.5.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Restore Python virtual environment
         id: cache-venv
-        uses: actions/cache@v3.0.11
+        uses: actions/cache@v3.2.4
         with:
           path: venv
           key: |

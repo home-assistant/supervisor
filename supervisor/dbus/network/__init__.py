@@ -100,7 +100,10 @@ class NetworkManager(DBusInterfaceProxy):
         self, settings: Any, device_object: str
     ) -> tuple[NetworkSetting, NetworkConnection]:
         """Activate a connction on a device."""
-        (_, obj_active_con,) = await self.dbus.call_add_and_activate_connection(
+        (
+            _,
+            obj_active_con,
+        ) = await self.dbus.call_add_and_activate_connection(
             settings, device_object, DBUS_OBJECT_BASE
         )
 
@@ -215,6 +218,8 @@ class NetworkManager(DBusInterfaceProxy):
                 == self.properties[DBUS_ATTR_PRIMARY_CONNECTION]
             ):
                 interface.primary = True
+            else:
+                interface.primary = False
 
             interfaces[interface.name] = interface
 

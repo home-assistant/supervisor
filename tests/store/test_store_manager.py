@@ -1,14 +1,23 @@
 """Test store manager."""
+from typing import Any
 from unittest.mock import PropertyMock, patch
 
+from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.addons.addon import Addon
+from supervisor.arch import CpuArch
+from supervisor.backups.manager import BackupManager
 from supervisor.bootstrap import migrate_system_env
 from supervisor.const import ATTR_ADDONS_CUSTOM_LIST
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import StoreJobError
+from supervisor.exceptions import AddonsNotSupportedError, StoreJobError
+from supervisor.homeassistant.module import HomeAssistant
 from supervisor.store import StoreManager
+from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
+
+from tests.common import load_yaml_fixture
 
 
 async def test_default_load(coresys: CoreSys):
@@ -111,3 +120,114 @@ async def test_reload_fails_if_out_of_date(coresys: CoreSys):
         type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
     ), pytest.raises(StoreJobError):
         await coresys.store.reload()
+
+
+@pytest.mark.parametrize(
+    "config,log",
+    [
+        (
+            {"arch": ["i386"]},
+            "Add-on local_ssh not supported on this platform, supported architectures: i386",
+        ),
+        (
+            {"machine": ["odroid-n2"]},
+            "Add-on local_ssh not supported on this machine, supported machine types: odroid-n2",
+        ),
+        (
+            {"machine": ["!qemux86-64"]},
+            "Add-on local_ssh not supported on this machine, supported machine types: !qemux86-64",
+        ),
+        (
+            {"homeassistant": AwesomeVersion("2023.1.1")},
+            "Add-on local_ssh not supported on this system, requires Home Assistant version 2023.1.1 or greater",
+        ),
+    ],
+)
+async def test_update_unavailable_addon(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    caplog: pytest.LogCaptureFixture,
+    config: dict[str, Any],
+    log: str,
+):
+    """Test updating addon when new version not available for system."""
+    addon_config = dict(
+        load_yaml_fixture("addons/local/ssh/config.yaml"),
+        version=AwesomeVersion("10.0.0"),
+        **config,
+    )
+
+    with patch.object(BackupManager, "do_backup_partial") as backup, patch.object(
+        AddonStore, "data", new=PropertyMock(return_value=addon_config)
+    ), patch.object(
+        CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
+    ), patch.object(
+        CoreSys, "machine", new=PropertyMock(return_value="qemux86-64")
+    ), patch.object(
+        HomeAssistant,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
+    ), patch(
+        "shutil.disk_usage", return_value=(42, 42, (1024.0**3))
+    ):
+        with pytest.raises(AddonsNotSupportedError):
+            await coresys.addons.update("local_ssh", backup=True)
+
+        backup.assert_not_called()
+
+    assert log in caplog.text
+
+
+@pytest.mark.parametrize(
+    "config,log",
+    [
+        (
+            {"arch": ["i386"]},
+            "Add-on local_ssh not supported on this platform, supported architectures: i386",
+        ),
+        (
+            {"machine": ["odroid-n2"]},
+            "Add-on local_ssh not supported on this machine, supported machine types: odroid-n2",
+        ),
+        (
+            {"machine": ["!qemux86-64"]},
+            "Add-on local_ssh not supported on this machine, supported machine types: !qemux86-64",
+        ),
+        (
+            {"homeassistant": AwesomeVersion("2023.1.1")},
+            "Add-on local_ssh not supported on this system, requires Home Assistant version 2023.1.1 or greater",
+        ),
+    ],
+)
+async def test_install_unavailable_addon(
+    coresys: CoreSys,
+    repository: Repository,
+    caplog: pytest.LogCaptureFixture,
+    config: dict[str, Any],
+    log: str,
+):
+    """Test updating addon when new version not available for system."""
+    addon_config = dict(
+        load_yaml_fixture("addons/local/ssh/config.yaml"),
+        version=AwesomeVersion("10.0.0"),
+        **config,
+    )
+
+    with patch.object(
+        AddonStore, "data", new=PropertyMock(return_value=addon_config)
+    ), patch.object(
+        CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
+    ), patch.object(
+        CoreSys, "machine", new=PropertyMock(return_value="qemux86-64")
+    ), patch.object(
+        HomeAssistant,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
+    ), patch(
+        "shutil.disk_usage", return_value=(42, 42, (1024.0**3))
+    ), pytest.raises(
+        AddonsNotSupportedError
+    ):
+        await coresys.addons.install("local_ssh")
+
+    assert log in caplog.text

@@ -25,6 +25,7 @@ _CACHE: set[tuple[str, str]] = set()
 
 _ATTR_ERROR: Final = "error"
 _ATTR_STATUS: Final = "status"
+_FALLBACK_ERROR: Final = "Unknown CodeNotary backend issue"
 
 
 def calc_checksum(data: str | bytes) -> str:
@@ -75,11 +76,14 @@ async def cas_validate(
     # Check if Notarized
     if proc.returncode != 0 and not data:
         if error:
-            error = error.decode("utf-8")
+            try:
+                error = error.decode("utf-8")
+            except UnicodeDecodeError as err:
+                raise CodeNotaryBackendError(_FALLBACK_ERROR, _LOGGER.warning) from err
             if "not notarized" in error:
                 raise CodeNotaryUntrusted()
         else:
-            error = "Unknown CodeNotary backend issue"
+            error = _FALLBACK_ERROR
         raise CodeNotaryBackendError(error, _LOGGER.warning)
 
     # Parse data

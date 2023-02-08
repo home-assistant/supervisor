@@ -16,13 +16,16 @@ from supervisor.exceptions import (
     JobException,
     PluginJobError,
 )
+from supervisor.host.const import HostFeature
+from supervisor.host.manager import HostManager
 from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
+from supervisor.plugins.audio import PluginAudio
 from supervisor.resolution.const import UnhealthyReason
 from supervisor.utils.dt import utcnow
 
 
-async def test_healthy(coresys: CoreSys):
+async def test_healthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test the healty decorator."""
 
     class TestClass:
@@ -42,6 +45,10 @@ async def test_healthy(coresys: CoreSys):
 
     coresys.resolution.unhealthy = UnhealthyReason.DOCKER
     assert not await test.execute()
+    assert "blocked from execution, system is not healthy - docker" in caplog.text
+
+    coresys.jobs.ignore_conditions = [JobCondition.HEALTHY]
+    assert await test.execute()
 
 
 @pytest.mark.parametrize(
@@ -93,6 +100,13 @@ async def test_internet(
         assert await test.execute_host() is host_result
         assert await test.execute_system() is system_result
 
+        coresys.jobs.ignore_conditions = [
+            JobCondition.INTERNET_HOST,
+            JobCondition.INTERNET_SYSTEM,
+        ]
+        assert await test.execute_host()
+        assert await test.execute_system()
+
 
 async def test_free_space(coresys: CoreSys):
     """Test the free_space decorator."""
@@ -115,6 +129,9 @@ async def test_free_space(coresys: CoreSys):
 
     with patch("shutil.disk_usage", return_value=(42, 42, (512.0**3))):
         assert not await test.execute()
+
+        coresys.jobs.ignore_conditions = [JobCondition.FREE_SPACE]
+        assert await test.execute()
 
 
 async def test_haos(coresys: CoreSys):
@@ -139,9 +156,12 @@ async def test_haos(coresys: CoreSys):
     coresys.os._available = False
     assert not await test.execute()
 
+    coresys.jobs.ignore_conditions = [JobCondition.HAOS]
+    assert await test.execute()
 
-async def test_exception(coresys: CoreSys):
-    """Test the healty decorator."""
+
+async def test_exception(coresys: CoreSys, capture_exception: Mock):
+    """Test handled exception."""
 
     class TestClass:
         """Test class."""
@@ -160,9 +180,12 @@ async def test_exception(coresys: CoreSys):
     with pytest.raises(HassioError):
         assert await test.execute()
 
+    capture_exception.assert_not_called()
 
-async def test_exception_not_handle(coresys: CoreSys):
-    """Test the healty decorator."""
+
+async def test_exception_not_handle(coresys: CoreSys, capture_exception: Mock):
+    """Test unhandled exception."""
+    err = Exception()
 
     class TestClass:
         """Test class."""
@@ -174,40 +197,18 @@ async def test_exception_not_handle(coresys: CoreSys):
         @Job(conditions=[JobCondition.HEALTHY])
         async def execute(self):
             """Execute the class method."""
-            raise Exception()
+            raise err
 
     test = TestClass(coresys)
 
     with pytest.raises(JobException):
         assert await test.execute()
 
+    capture_exception.assert_called_once_with(err)
+
 
 async def test_running(coresys: CoreSys):
     """Test the running decorator."""
-
-    class TestClass:
-        """Test class."""
-
-        def __init__(self, coresys: CoreSys):
-            """Initialize the test class."""
-            self.coresys = coresys
-
-        @Job(conditions=[JobCondition.RUNNING])
-        async def execute(self):
-            """Execute the class method."""
-            return True
-
-    test = TestClass(coresys)
-
-    coresys.core.state = CoreState.RUNNING
-    assert await test.execute()
-
-    coresys.core.state = CoreState.FREEZE
-    assert not await test.execute()
-
-
-async def test_ignore_conditions(coresys: CoreSys):
-    """Test the ignore conditions decorator."""
 
     class TestClass:
         """Test class."""
@@ -258,7 +259,7 @@ async def test_exception_conditions(coresys: CoreSys):
         await test.execute()
 
 
-async def test_exectution_limit_single_wait(
+async def test_execution_limit_single_wait(
     coresys: CoreSys, loop: asyncio.BaseEventLoop
 ):
     """Test the single wait job execution limit."""
@@ -355,7 +356,7 @@ async def test_execution_limit_throttle_rate_limit(
     assert test.call == 3
 
 
-async def test_exectution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+async def test_execution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEventLoop):
     """Test the ignore conditions decorator."""
 
     class TestClass:
@@ -384,7 +385,7 @@ async def test_exectution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEve
     assert test.call == 1
 
 
-async def test_exectution_limit_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+async def test_execution_limit_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
     """Test the ignore conditions decorator."""
 
     class TestClass:
@@ -436,6 +437,9 @@ async def test_supervisor_updated(coresys: CoreSys):
     ):
         assert not await test.execute()
 
+        coresys.jobs.ignore_conditions = [JobCondition.SUPERVISOR_UPDATED]
+        assert await test.execute()
+
 
 async def test_plugins_updated(coresys: CoreSys):
     """Test the plugins updated decorator."""
@@ -459,11 +463,14 @@ async def test_plugins_updated(coresys: CoreSys):
     assert await test.execute()
 
     with patch.object(
-        type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
+        PluginAudio, "need_update", new=PropertyMock(return_value=True)
     ), patch.object(
-        type(coresys.plugins.audio), "update", side_effect=[AudioUpdateError, None]
+        PluginAudio, "update", side_effect=[AudioUpdateError, None, AudioUpdateError]
     ):
         assert not await test.execute()
+        assert await test.execute()
+
+        coresys.jobs.ignore_conditions = [JobCondition.PLUGINS_UPDATED]
         assert await test.execute()
 
 
@@ -489,9 +496,12 @@ async def test_auto_update(coresys: CoreSys):
     coresys.updater.auto_update = False
     assert not await test.execute()
 
+    coresys.jobs.ignore_conditions = [JobCondition.AUTO_UPDATE]
+    assert await test.execute()
 
-async def test_unhealthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
-    """Test the healthy decorator when unhealthy."""
+
+async def test_os_agent(coresys: CoreSys):
+    """Test the os agent decorator."""
 
     class TestClass:
         """Test class."""
@@ -500,23 +510,27 @@ async def test_unhealthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(conditions=[JobCondition.HEALTHY])
+        @Job(conditions=[JobCondition.OS_AGENT])
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
 
     test = TestClass(coresys)
-    coresys.resolution.unhealthy = UnhealthyReason.SETUP
-    assert not await test.execute()
-    assert "blocked from execution, system is not healthy - setup" in caplog.text
+    with patch.object(
+        HostManager, "supported_features", return_value=[HostFeature.OS_AGENT]
+    ):
+        assert await test.execute()
 
-    coresys.jobs.ignore_conditions = [JobCondition.HEALTHY]
-    assert await test.execute()
+    coresys.host.supported_features.cache_clear()
+    with patch.object(HostManager, "supported_features", return_value=[]):
+        assert not await test.execute()
+
+        coresys.jobs.ignore_conditions = [JobCondition.OS_AGENT]
+        assert await test.execute()
 
 
-async def test_unhandled_exception(coresys: CoreSys, capture_exception: Mock):
-    """Test an unhandled exception from job."""
-    err = OSError()
+async def test_host_network(coresys: CoreSys):
+    """Test the host network decorator."""
 
     class TestClass:
         """Test class."""
@@ -525,13 +539,16 @@ async def test_unhandled_exception(coresys: CoreSys, capture_exception: Mock):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(conditions=[JobCondition.HEALTHY])
-        async def execute(self) -> None:
+        @Job(conditions=[JobCondition.HOST_NETWORK])
+        async def execute(self) -> bool:
             """Execute the class method."""
-            raise err
+            return True
 
     test = TestClass(coresys)
-    with pytest.raises(JobException):
-        await test.execute()
+    assert await test.execute()
 
-    capture_exception.assert_called_once_with(err)
+    coresys.dbus.network.disconnect()
+    assert not await test.execute()
+
+    coresys.jobs.ignore_conditions = [JobCondition.HOST_NETWORK]
+    assert await test.execute()

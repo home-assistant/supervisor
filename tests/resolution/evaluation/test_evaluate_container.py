@@ -17,7 +17,6 @@ def test_get_images(coresys: CoreSys):
         "supervisor.resolution.evaluations.container.EvaluateContainer._get_images",
         return_value=[MagicMock(tags=["test"])],
     ):
-
         images = container._get_images()
         assert images[0].tags[0] == "test"
 

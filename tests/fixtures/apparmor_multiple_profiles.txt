@@ -1,0 +1,10 @@
+
+#include <tunables/global>
+
+profile example flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+}
+
+profile example_2 flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+}
