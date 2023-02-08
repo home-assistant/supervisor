@@ -521,15 +521,14 @@ class DockerAddon(DockerInterface):
             "Starting Docker add-on %s with version %s", self.image, self.version
         )
 
-        if hostname:
-            # Write data to DNS server
-            try:
-                self.sys_plugins.dns.add_host(
-                    ipv4=self.ip_address, names=[self.addon.hostname]
-                )
-            except CoreDNSError as err:
-                _LOGGER.warning("Can't update DNS for %s", self.name)
-                capture_exception(err)
+        # Write data to DNS server
+        try:
+            self.sys_plugins.dns.add_host(
+                ipv4=self.ip_address, names=[self.addon.hostname]
+            )
+        except CoreDNSError as err:
+            _LOGGER.warning("Can't update DNS for %s", self.name)
+            capture_exception(err)
 
         # Hardware Access
         if self.addon.static_devices:
