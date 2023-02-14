@@ -35,8 +35,9 @@ class NetworkConnection(DBusInterfaceProxy):
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
+        super().__init__()
+
         self.object_path: str = object_path
-        self.properties: dict[str, Any] = {}
 
         self._ipv4: IpConfiguration | None = None
         self._ipv6: IpConfiguration | None = None

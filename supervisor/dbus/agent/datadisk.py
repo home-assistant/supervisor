@@ -1,6 +1,5 @@
 """DataDisk object for OS-Agent."""
 from pathlib import Path
-from typing import Any
 
 from ..const import (
     DBUS_ATTR_CURRENT_DEVICE,
@@ -18,10 +17,6 @@ class DataDisk(DBusInterfaceProxy):
     bus_name: str = DBUS_NAME_HAOS
     object_path: str = DBUS_OBJECT_HAOS_DATADISK
     properties_interface: str = DBUS_IFACE_HAOS_DATADISK
-
-    def __init__(self) -> None:
-        """Initialize Properties."""
-        self.properties: dict[str, Any] = {}
 
     @property
     @dbus_property

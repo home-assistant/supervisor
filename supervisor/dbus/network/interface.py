@@ -35,8 +35,9 @@ class NetworkInterface(DBusInterfaceProxy):
 
     def __init__(self, nm_dbus: DBus, object_path: str) -> None:
         """Initialize NetworkConnection object."""
+        super().__init__()
+
         self.object_path: str = object_path
-        self.properties: dict[str, Any] = {}
 
         self.primary: bool = False
 
