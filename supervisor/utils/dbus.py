@@ -158,6 +158,11 @@ class DBus:
         return self._bus
 
     @property
+    def connected(self) -> bool:
+        """Is connected."""
+        return self._proxy_obj is not None
+
+    @property
     def properties(self) -> DBusCallWrapper | None:
         """Get properties proxy interface."""
         if DBUS_INTERFACE_PROPERTIES not in self._proxies:

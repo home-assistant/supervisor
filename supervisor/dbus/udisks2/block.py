@@ -1,132 +1,42 @@
 """Interface to UDisks2 Block Device over D-Bus."""
-from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass
-from typing import TypedDict
+from pathlib import Path
 
+from awesomeversion import AwesomeVersion
 from dbus_fast.aio import MessageBus
-from dbus_fast.signature import Variant
-from typing_extensions import Required
 
-from . import UDisks2StandardOptions
 from ..const import (
-    DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_DEVICE,
     DBUS_ATTR_DEVICE_NUMBER,
+    DBUS_ATTR_DRIVE,
+    DBUS_ATTR_HINT_AUTO,
+    DBUS_ATTR_HINT_IGNORE,
+    DBUS_ATTR_HINT_NAME,
+    DBUS_ATTR_HINT_SYSTEM,
     DBUS_ATTR_ID,
+    DBUS_ATTR_ID_ID_TYPE,
+    DBUS_ATTR_ID_LABEL,
+    DBUS_ATTR_ID_USAGE,
+    DBUS_ATTR_ID_UUID,
+    DBUS_ATTR_ID_VERSION,
     DBUS_ATTR_READ_ONLY,
     DBUS_ATTR_SIZE,
     DBUS_ATTR_SYMLINKS,
     DBUS_IFACE_BLOCK,
     DBUS_IFACE_FILESYSTEM,
+    DBUS_IFACE_PARTITION_TABLE,
     DBUS_NAME_UDISKS2,
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
+from .const import UDISKS2_DEFAULT_OPTIONS, FormatType
+from .data import FormatOptions
 from .filesystem import UDisks2Filesystem
+from .partition_table import UDisks2PartitionTable
 
 ADDITIONAL_INTERFACES: dict[str, Callable[[str], DBusInterfaceProxy]] = {
     DBUS_IFACE_FILESYSTEM: UDisks2Filesystem
 }
-
-
-class FstabConfigDetailsDataType(TypedDict):
-    """fstab configuration details data type."""
-
-    fsname: bytearray
-    dir: bytearray
-    type: bytearray
-    opts: bytearray
-    freq: int
-    passno: int
-
-
-@dataclass
-class FstabConfigDetails:
-    """fstab configuration details."""
-
-    dir: str
-    type: str
-    opts: str
-    freq: int
-    passno: int
-    fsname: str | None = None
-
-    @staticmethod
-    def from_dict(data: FstabConfigDetailsDataType) -> "FstabConfigDetails":
-        """Create FstabConfigDetails from dict."""
-        return FstabConfigDetails(
-            fsname=bytes(data["fsname"]).decode(),
-            dir=bytes(data["dir"]).decode(),
-            type=bytes(data["type"]).decode(),
-            opts=bytes(data["opts"]).decode(),
-            freq=data["freq"],
-            passno=data["passno"],
-        )
-
-    def to_dict(self) -> dict[str, Variant]:
-        """Return dict representation."""
-        data = {
-            "fsname": Variant("ay", bytearray(self.fsname)) if self.fsname else None,
-            "dir": Variant("ay", bytearray(self.dir)),
-            "type": Variant("ay", bytearray(self.type)),
-            "opts": Variant("ay", bytearray(self.opts)),
-            "freq": Variant("i", self.freq),
-            "passno": Variant("i", self.passno),
-        }
-        if not data["fsname"]:
-            data.pop("fsname")
-        return data
-
-
-CrypttabConfigDetailsDataType = TypedDict(
-    "CrypttabConfigurationDetailsDataType",
-    {
-        "name": Required[bytearray],
-        "device": Required[bytearray],
-        "passphrase-path": Required[bytearray],
-        "passphrase-contents": Required[bytearray],
-        "options": Required[bytearray],
-    },
-)
-
-
-@dataclass
-class CrypttabConfigDetails:
-    """crypttab configuration details."""
-
-    device: str
-    passphrase_contents: str
-    options: str
-    name: str | None = None
-    passphrase_path: str | None = None
-
-    @staticmethod
-    def from_dict(data: CrypttabConfigDetailsDataType) -> "CrypttabConfigDetails":
-        """Create CrypttabConfigDetails from dict."""
-        return CrypttabConfigDetails(
-            name=bytes(data["name"]).decode(),
-            device=bytes(data["device"]).decode(),
-            passphrase_path=bytes(data["passphrase-path"]).decode(),
-            passphrase_contents=bytes(data["passphrase-contents"]).decode(),
-            options=bytes(data["options"]).decode(),
-        )
-
-    def to_dict(self) -> dict[str, Variant]:
-        """Return dict representation."""
-        data = {
-            "name": Variant("ay", bytearray(self.name)) if self.name else None,
-            "device": Variant("ay", bytearray(self.device)),
-            "passphrase-path": Variant("ay", bytearray(self.passphrase_path))
-            if self.passphrase_path
-            else None,
-            "passphrase-contents": Variant("ay", bytearray(self.passphrase_contents)),
-            "options": Variant("ay", bytearray(self.options)),
-        }
-        for key in ("name", "passphrase-path"):
-            if not data[key]:
-                data.pop(key)
-        return data
 
 
 class UDisks2Block(DBusInterfaceProxy):
@@ -139,31 +49,55 @@ class UDisks2Block(DBusInterfaceProxy):
     bus_name: str = DBUS_NAME_UDISKS2
     properties_interface: str = DBUS_IFACE_BLOCK
 
-    def __init__(self, object_path: str) -> None:
+    _filesystem: UDisks2Filesystem | None = None
+    _partition_table: UDisks2PartitionTable | None = None
+
+    def __init__(self, object_path: str, *, sync_properties: bool = True) -> None:
         """Initialize object."""
         self.object_path = object_path
-        self._additional_interfaces: dict[str, DBusInterfaceProxy] = {}
+        self.sync_properties = sync_properties
         super().__init__()
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to bus."""
         await super().connect(bus)
-        for key in list(set(self.dbus.proxies) - set(ADDITIONAL_INTERFACES)):
-            iface = self.additional_interfaces[key] = ADDITIONAL_INTERFACES[key](
-                self.object_path
+
+        if DBUS_IFACE_FILESYSTEM in self.dbus.proxies:
+            self._filesystem = UDisks2Filesystem(
+                self.object_path, sync_properties=self.sync_properties
             )
-            await iface.connect(bus)
+            await self._filesystem.initialize(self.dbus)
+
+        if DBUS_IFACE_PARTITION_TABLE in self.dbus.proxies:
+            self._partition_table = UDisks2PartitionTable(
+                self.object_path, sync_properties=self.sync_properties
+            )
+            await self._partition_table.initialize(self.dbus)
+
+    @staticmethod
+    async def new(
+        object_path: str, bus: MessageBus, *, sync_properties: bool = True
+    ) -> "UDisks2Block":
+        """Create and connect object."""
+        obj = UDisks2Block(object_path, sync_properties=sync_properties)
+        await obj.connect(bus)
+        return obj
 
     @property
-    def additional_interfaces(self) -> dict[str, DBusInterfaceProxy]:
-        """Return additional interfaces."""
-        return self._additional_interfaces
+    def filesystem(self) -> UDisks2Filesystem | None:
+        """Filesystem interface if block device is one."""
+        return self._filesystem
+
+    @property
+    def partition_table(self) -> UDisks2PartitionTable | None:
+        """Partition table interface if block device is one."""
+        return self._partition_table
 
     @property
     @dbus_property
-    def device(self) -> str:
+    def device(self) -> Path:
         """Return device file."""
-        return bytes(self.properties[DBUS_ATTR_DEVICE]).decode()
+        return Path(bytes(self.properties[DBUS_ATTR_DEVICE]).decode())
 
     @property
     @dbus_property
@@ -173,16 +107,23 @@ class UDisks2Block(DBusInterfaceProxy):
 
     @property
     @dbus_property
+    def size(self) -> int:
+        """Return size."""
+        return self.properties[DBUS_ATTR_SIZE]
+
+    @property
+    @dbus_property
     def read_only(self) -> bool:
         """Return whether device is read only."""
         return self.properties[DBUS_ATTR_READ_ONLY]
 
     @property
     @dbus_property
-    def symlinks(self) -> list[str]:
+    def symlinks(self) -> list[Path]:
         """Return list of symlinks."""
         return [
-            bytes(symlink).decode() for symlink in self.properties[DBUS_ATTR_SYMLINKS]
+            Path(bytes(symlink).decode(encoding="utf-8"))
+            for symlink in self.properties[DBUS_ATTR_SYMLINKS]
         ]
 
     @property
@@ -193,70 +134,73 @@ class UDisks2Block(DBusInterfaceProxy):
 
     @property
     @dbus_property
-    def configuration(
-        self,
-    ) -> dict[str, list[FstabConfigDetails | CrypttabConfigDetails]]:
-        """Return device configuration."""
-        configuration = defaultdict(list)
-        for type_, details in self.properties[DBUS_ATTR_CONFIGURATION]:
-            configuration[type_].append(
-                FstabConfigDetails.from_dict(details)
-                if "dir" in details
-                else CrypttabConfigDetails.from_dict(details)
-            )
-        return dict(configuration)
+    def id_usage(self) -> str:
+        """Return expected usage of structured data by probing signatures (if known)."""
+        return self.properties[DBUS_ATTR_ID_USAGE]
 
     @property
     @dbus_property
-    def size(self) -> int:
-        """Return size."""
-        return self.properties[DBUS_ATTR_SIZE]
+    def id_type(self) -> str:
+        """Return more specific usage information on structured data (if known)."""
+        return self.properties[DBUS_ATTR_ID_ID_TYPE]
+
+    @property
+    @dbus_property
+    def id_version(self) -> AwesomeVersion:
+        """Return version of filesystem or other structured data."""
+        return AwesomeVersion(self.properties[DBUS_ATTR_ID_VERSION])
+
+    @property
+    @dbus_property
+    def id_label(self) -> str:
+        """Return label of filesystem or other structured data."""
+        return self.properties[DBUS_ATTR_ID_LABEL]
+
+    @property
+    @dbus_property
+    def id_uuid(self) -> str:
+        """Return uuid of filesystem or other structured data."""
+        return self.properties[DBUS_ATTR_ID_UUID]
+
+    @property
+    @dbus_property
+    def hint_auto(self) -> bool:
+        """Return true if device should be automatically started (mounted, unlocked, etc)."""
+        return self.properties[DBUS_ATTR_HINT_AUTO]
+
+    @property
+    @dbus_property
+    def hint_ignore(self) -> bool:
+        """Return true if device should be hidden from users."""
+        return self.properties[DBUS_ATTR_HINT_IGNORE]
+
+    @property
+    @dbus_property
+    def hint_name(self) -> str:
+        """Return name that should be presented to users."""
+        return self.properties[DBUS_ATTR_HINT_NAME]
+
+    @property
+    @dbus_property
+    def hint_system(self) -> bool:
+        """Return true if device is considered a system device.."""
+        return self.properties[DBUS_ATTR_HINT_SYSTEM]
+
+    @property
+    @dbus_property
+    def drive(self) -> str:
+        """Return object path for drive.
+
+        Provide to UDisks2.get_drive for UDisks2Drive object.
+        """
+        return self.properties[DBUS_ATTR_DRIVE]
 
     @dbus_connected
-    async def add_configuration_item(
-        self,
-        type_: str,
-        details: FstabConfigDetails | CrypttabConfigDetails,
-        options: UDisks2StandardOptions | None = None,
-    ):
-        """Add new configuration item."""
-        if not options:
-            options = {}
-        await self.dbus.Block.call_add_configuration_item(
-            (type_, details.to_dict()), options.to_dict() if options else {}
+    async def format(
+        self, type_: FormatType = FormatType.GPT, options: FormatOptions | None = None
+    ) -> None:
+        """Format block device."""
+        options = options.to_dict() if options else {}
+        await self.dbus.Block.call_format(
+            type_.value, options | UDISKS2_DEFAULT_OPTIONS
         )
-        await self.update()
-
-    @dbus_connected
-    async def remove_configuration_item(
-        self,
-        type_: str,
-        details: FstabConfigDetails | CrypttabConfigDetails,
-        options: UDisks2StandardOptions | None = None,
-    ):
-        """Remove existing configuration item."""
-        if not options:
-            options = {}
-        await self.dbus.Block.call_remove_configuration_item(
-            (type_, details.to_dict()), options.to_dict() if options else {}
-        )
-        await self.update()
-
-    @dbus_connected
-    async def update_configuration_item(
-        self,
-        old_type: str,
-        old_details: FstabConfigDetails | CrypttabConfigDetails,
-        new_type: str,
-        new_details: FstabConfigDetails | CrypttabConfigDetails,
-        options: UDisks2StandardOptions | None = None,
-    ):
-        """Add new configuration item."""
-        if not options:
-            options = {}
-        await self.dbus.Block.call_update_configuration_item(
-            (old_type, old_details.to_dict()),
-            (new_type, new_details.to_dict()),
-            options.to_dict() if options else {},
-        )
-        await self.update()

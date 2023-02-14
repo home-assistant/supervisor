@@ -42,16 +42,17 @@ class WifiMode(str, Enum):
 class HostFeature(str, Enum):
     """Host feature."""
 
+    DISK = "disk"
     HAOS = "haos"
     HOSTNAME = "hostname"
+    JOURNAL = "journal"
     NETWORK = "network"
+    OS_AGENT = "os_agent"
     REBOOT = "reboot"
     RESOLVED = "resolved"
     SERVICES = "services"
     SHUTDOWN = "shutdown"
-    OS_AGENT = "os_agent"
     TIMEDATE = "timedate"
-    JOURNAL = "journal"
 
 
 class LogFormat(str, Enum):

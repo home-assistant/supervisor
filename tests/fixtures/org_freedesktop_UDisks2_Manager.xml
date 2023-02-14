@@ -86,4 +86,4 @@
     <property type="as" name="SupportedEncryptionTypes" access="read"/>
     <property type="s" name="DefaultEncryptionType" access="read"/>
   </interface>
-</node
+</node>

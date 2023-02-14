@@ -1,50 +1,27 @@
 """Interface to UDisks2 over D-Bus."""
-from dataclasses import dataclass
 import logging
-from typing import TypedDict
+from typing import Any
 
+from awesomeversion import AwesomeVersion
 from dbus_fast.aio import MessageBus
-from dbus_fast.signature import Variant
-from typing_extensions import NotRequired
 
-from ...exceptions import DBusError, DBusInterfaceError
+from ...exceptions import DBusError, DBusInterfaceError, DBusObjectError
 from ..const import (
     DBUS_ATTR_SUPPORTED_FILESYSTEMS,
-    DBUS_IFACE_FILESYSTEM,
+    DBUS_ATTR_VERSION,
     DBUS_IFACE_UDISKS2_MANAGER,
     DBUS_NAME_UDISKS2,
+    DBUS_OBJECT_BASE,
     DBUS_OBJECT_UDISKS2,
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .block import UDisks2Block
-from .filesystem import UDisks2Filesystem
+from .const import UDISKS2_DEFAULT_OPTIONS
+from .data import DeviceSpecification
+from .drive import UDisks2Drive
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-UDisks2StandardOptionsDataType = TypedDict(
-    "UDisks2StandardOptionsDataType",
-    {"auth.no_user_interaction": NotRequired[bool]},
-)
-
-
-@dataclass
-class UDisks2StandardOptions:
-    """UDisks2 standard options."""
-
-    auth_no_user_interaction: bool | None
-
-    @staticmethod
-    def from_dict(data: UDisks2StandardOptionsDataType) -> "UDisks2StandardOptions":
-        """Create UDisks2StandardOptions from dict."""
-        return UDisks2StandardOptions(
-            auth_no_user_interaction=data.get("auth.no_user_interaction"),
-        )
-
-    def to_dict(self) -> dict[str, Variant]:
-        """Return dict representation."""
-        data = {"auth.no_user_interaction": Variant("b", self.auth_no_user_interaction)}
-        return {k: v for k, v in data.items() if v.value is not None}
 
 
 class UDisks2(DBusInterfaceProxy):
@@ -58,6 +35,9 @@ class UDisks2(DBusInterfaceProxy):
     object_path: str = DBUS_OBJECT_UDISKS2
     properties_interface: str = DBUS_IFACE_UDISKS2_MANAGER
 
+    _block_devices: dict[str, UDisks2Block] = {}
+    _drives: dict[str, UDisks2Drive] = {}
+
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
         try:
@@ -69,31 +49,98 @@ class UDisks2(DBusInterfaceProxy):
                 "No udisks2 support on the host. Host control has been disabled."
             )
 
+    @dbus_connected
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus.
+
+        Also rebuilds cache of available block devices and drives.
+        """
+        await super().update(changed)
+
+        if not changed:
+            # Cache block devices
+            block_devices = await self.dbus.Manager.call_get_block_devices(
+                UDISKS2_DEFAULT_OPTIONS
+            )
+
+            for removed in self._block_devices.keys() - set(block_devices):
+                self._block_devices[removed].shutdown()
+
+            await self._resolve_block_device_paths(block_devices)
+
+            # Cache drives
+            drives = {
+                device.drive
+                for device in self.block_devices
+                if device.drive != DBUS_OBJECT_BASE
+            }
+
+            for removed in self._drives.keys() - drives:
+                self._drives[removed].shutdown()
+
+            self._drives = {
+                drive: self._drives[drive]
+                if drive in self._drives
+                else await UDisks2Drive.new(drive, self.dbus.bus)
+                for drive in drives
+            }
+
+    @property
+    @dbus_property
+    def version(self) -> AwesomeVersion:
+        """UDisks2 version."""
+        return AwesomeVersion(self.properties[DBUS_ATTR_VERSION])
+
     @property
     @dbus_property
     def supported_filesystems(self) -> list[str]:
         """Return list of supported filesystems."""
         return self.properties[DBUS_ATTR_SUPPORTED_FILESYSTEMS]
 
-    @dbus_connected
-    async def get_block_devices(self) -> list[UDisks2Block]:
-        """Return list of all block devices."""
-        devices: list[UDisks2Block] = []
-        for block_device in await self.dbus.Manager.call_get_block_devices({}):
-            device = UDisks2Block(block_device)
-            await device.connect(self.dbus.bus)
-            devices.append(device)
-        return devices
+    @property
+    def block_devices(self) -> list[UDisks2Block]:
+        """List of available block devices."""
+        return list(self._block_devices.values())
+
+    @property
+    def drives(self) -> list[UDisks2Drive]:
+        """List of available drives."""
+        return list(self._drives.values())
 
     @dbus_connected
-    async def get_filesystems(self) -> list[UDisks2Block]:
-        """Return list of all block devices containing a mountable filesystem."""
-        block_devices: list[UDisks2Block] = await self.get_block_devices()
-        filesystem_devices: list[UDisks2Filesystem] = []
-        for block_device in block_devices:
-            await block_device.connect(self.dbus.bus)
-            # If the object doesn't contain a filesystem interface, skip it
-            if DBUS_IFACE_FILESYSTEM not in block_device.additional_interfaces:
-                continue
-            filesystem_devices.append(block_device)
-        return filesystem_devices
+    def get_drive(self, drive_path: str) -> UDisks2Drive:
+        """Get additional info on drive from object path."""
+        if drive_path not in self._drives:
+            raise DBusObjectError(f"Drive {drive_path} not found")
+
+        return self._drives[drive_path]
+
+    @dbus_connected
+    def get_block_device(self, device_path: str) -> UDisks2Block:
+        """Get additional info on block device from object path."""
+        if device_path not in self._block_devices:
+            raise DBusObjectError(f"Block device {device_path} not found")
+
+        return self._block_devices[device_path]
+
+    @dbus_connected
+    async def resolve_device(self, devspec: DeviceSpecification) -> list[UDisks2Block]:
+        """Return list of device object paths for specification."""
+        return await self._resolve_block_device_paths(
+            await self.dbus.Manager.call_resolve_device(
+                devspec.to_dict(), UDISKS2_DEFAULT_OPTIONS
+            )
+        )
+
+    async def _resolve_block_device_paths(
+        self, block_devices: list[str]
+    ) -> list[UDisks2Block]:
+        """Resolve block device object paths to objects. Cache new ones if necessary."""
+        resolved = {
+            device: self._block_devices[device]
+            if device in self._block_devices
+            else await UDisks2Block.new(device, self.dbus.bus)
+            for device in block_devices
+        }
+        self._block_devices.update(resolved)
+        return list(resolved.values())

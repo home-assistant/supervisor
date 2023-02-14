@@ -1,21 +1,6 @@
 {
   "Version": "2.9.2",
-  "SupportedFilesystems": [
-    "ext2",
-    "ext3",
-    "ext4",
-    "vfat",
-    "ntfs",
-    "exfat",
-    "xfs",
-    "reiserfs",
-    "nilfs2",
-    "btrfs",
-    "minix",
-    "udf",
-    "f2fs",
-    "swap"
-  ],
+  "SupportedFilesystems": ["ext4", "vfat", "ntfs", "exfat", "swap"],
   "SupportedEncryptionTypes": ["luks1", "luks2"],
   "DefaultEncryptionType": "luks1"
 }

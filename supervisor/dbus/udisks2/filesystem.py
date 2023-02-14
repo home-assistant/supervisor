@@ -1,50 +1,17 @@
 """Interface to UDisks2 Filesystem over D-Bus."""
-from dataclasses import dataclass
 
-from dbus_fast.signature import Variant
+from pathlib import Path
 
-from . import UDisks2StandardOptions, UDisks2StandardOptionsDataType
 from ..const import (
-    DBUS_ATTR_MOUNTPOINTS,
+    DBUS_ATTR_MOUNT_POINTS,
     DBUS_ATTR_SIZE,
     DBUS_IFACE_FILESYSTEM,
     DBUS_NAME_UDISKS2,
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
-
-
-class MountOptionsDataType(UDisks2StandardOptionsDataType, total=False):
-    """Filesystem mount/unmount options data type."""
-
-    fstype: str
-    options: str
-
-
-@dataclass
-class MountOptions(UDisks2StandardOptions):
-    """Filesystem mount/unmount options."""
-
-    fstype: str | None
-    options: str | None
-
-    @staticmethod
-    def from_dict(data: MountOptionsDataType) -> "MountOptions":
-        """Create MountOptions from dict."""
-        return MountOptions(
-            auth_no_user_interaction=data.get("auth.no_user_interaction"),
-            fstype=data.get("fstype"),
-            options=data.get("options"),
-        )
-
-    def to_dict(self) -> dict[str, Variant]:
-        """Return dict representation."""
-        data = {
-            "auth.no_user_interaction": Variant("b", self.auth_no_user_interaction),
-            "fstype": Variant("s", self.fstype),
-            "options": Variant("s", self.options),
-        }
-        return {k: v for k, v in data.items() if v.value is not None}
+from .const import UDISKS2_DEFAULT_OPTIONS
+from .data import MountOptions, UnmountOptions
 
 
 class UDisks2Filesystem(DBusInterfaceProxy):
@@ -57,18 +24,19 @@ class UDisks2Filesystem(DBusInterfaceProxy):
     bus_name: str = DBUS_NAME_UDISKS2
     properties_interface: str = DBUS_IFACE_FILESYSTEM
 
-    def __init__(self, object_path: str) -> None:
+    def __init__(self, object_path: str, *, sync_properties: bool = True) -> None:
         """Initialize object."""
         self.object_path = object_path
+        self.sync_properties = sync_properties
         super().__init__()
 
     @property
     @dbus_property
-    def mountpoints(self) -> str:
-        """Return mountpoints."""
+    def mount_points(self) -> list[Path]:
+        """Return mount points."""
         return [
-            bytes(mountpoint).decode()
-            for mountpoint in self.properties[DBUS_ATTR_MOUNTPOINTS]
+            Path(bytes(mount_point).decode())
+            for mount_point in self.properties[DBUS_ATTR_MOUNT_POINTS]
         ]
 
     @property
@@ -78,11 +46,33 @@ class UDisks2Filesystem(DBusInterfaceProxy):
         return self.properties[DBUS_ATTR_SIZE]
 
     @dbus_connected
-    async def mount(self, options: MountOptions | None = None) -> None:
-        """Mount filesystem."""
-        await self.dbus.Filesystem.call_mount(options.to_dict() if options else {})
+    async def mount(self, options: MountOptions | None = None) -> str:
+        """Mount filesystem.
+
+        Caller cannot provide mountpoint. UDisks selects a folder within /run/media/$USER
+        if not overridden in /etc/fstab. Therefore unclear if this can be useful to supervisor.
+        http://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Filesystem.html#gdbus-method-org-freedesktop-UDisks2-Filesystem.Mount
+        """
+        options = options.to_dict() if options else {}
+        return await self.dbus.Filesystem.call_mount(options | UDISKS2_DEFAULT_OPTIONS)
 
     @dbus_connected
-    async def unmount(self, options: MountOptions | None = None) -> None:
+    async def unmount(self, options: UnmountOptions | None = None) -> None:
         """Unmount filesystem."""
-        await self.dbus.Filesystem.call_unmount(options.to_dict() if options else {})
+        options = options.to_dict() if options else {}
+        await self.dbus.Filesystem.call_unmount(options | UDISKS2_DEFAULT_OPTIONS)
+
+    @dbus_connected
+    async def set_label(self) -> None:
+        """Set filesystem label."""
+        await self.dbus.Filesystem.call_set_label(UDISKS2_DEFAULT_OPTIONS)
+
+    @dbus_connected
+    async def check(self) -> bool:
+        """Check filesystem for consistency. Returns true if it passed."""
+        return await self.dbus.Filesystem.call_check(UDISKS2_DEFAULT_OPTIONS)
+
+    @dbus_connected
+    async def repair(self) -> bool:
+        """Attempt to repair filesystem. Returns true if repair was successful."""
+        return await self.dbus.Filesystem.call_repair(UDISKS2_DEFAULT_OPTIONS)
