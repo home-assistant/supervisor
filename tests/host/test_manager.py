@@ -1,15 +1,18 @@
 """Test host manager."""
 from unittest.mock import PropertyMock, patch
 
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.const import MulticastProtocolEnabled
 from supervisor.dbus.hostname import Hostname
+from supervisor.dbus.manager import DBusManager
 from supervisor.dbus.resolved import Resolved
 from supervisor.dbus.systemd import Systemd
 from supervisor.dbus.timedate import TimeDate
+from supervisor.dbus.udisks2 import UDisks2
 
 
 @pytest.fixture(name="coresys_dbus")
@@ -20,13 +23,15 @@ async def fixture_coresys_dbus(
     timedate: TimeDate,
     os_agent: OSAgent,
     resolved: Resolved,
+    udisks2: UDisks2,
 ) -> CoreSys:
     """Coresys with all dbus interfaces mock loaded."""
-    type(coresys.dbus).hostname = PropertyMock(return_value=hostname)
-    type(coresys.dbus).systemd = PropertyMock(return_value=systemd)
-    type(coresys.dbus).timedate = PropertyMock(return_value=timedate)
-    type(coresys.dbus).agent = PropertyMock(return_value=os_agent)
-    type(coresys.dbus).resolved = PropertyMock(return_value=resolved)
+    DBusManager.hostname = PropertyMock(return_value=hostname)
+    DBusManager.systemd = PropertyMock(return_value=systemd)
+    DBusManager.timedate = PropertyMock(return_value=timedate)
+    DBusManager.agent = PropertyMock(return_value=os_agent)
+    DBusManager.resolved = PropertyMock(return_value=resolved)
+    DBusManager.udisks2 = PropertyMock(return_value=udisks2)
 
     yield coresys
 
@@ -47,6 +52,7 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
         assert coresys.dbus.resolved.multicast_dns == MulticastProtocolEnabled.RESOLVE
         assert coresys.dbus.agent.apparmor.version == "2.13.2"
         assert len(coresys.host.logs.default_identifiers) > 0
+        assert coresys.dbus.udisks2.version == AwesomeVersion("2.9.2")
 
         sound_update.assert_called_once()
 

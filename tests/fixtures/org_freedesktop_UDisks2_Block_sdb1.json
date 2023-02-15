@@ -1,0 +1,34 @@
+{
+  "Device": { "_type": "ay", "_value": "/dev/sdb1" },
+  "PreferredDevice": { "_type": "ay", "_value": "/dev/sdb1" },
+  "Symlinks": {
+    "_type": "aay",
+    "_value": [
+      "/dev/disk/by-id/usb-Generic_Flash_Disk_61BCDDB6-0:0-part1",
+      "/dev/disk/by-path/platform-xhci-hcd.1.auto-usb-0:1.2:1.0-scsi-0:0:0:0-part1",
+      "/dev/disk/by-uuid/2802-1EDE"
+    ]
+  },
+  "DeviceNumber": 2065,
+  "Id": "by-uuid-2802-1EDE",
+  "Size": 67108864,
+  "ReadOnly": false,
+  "Drive": "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6",
+  "MDRaid": "/",
+  "MDRaidMember": "/",
+  "IdUsage": "filesystem",
+  "IdType": "vfat",
+  "IdVersion": "FAT16",
+  "IdLabel": "",
+  "IdUUID": "2802-1EDE",
+  "Configuration": [],
+  "CryptoBackingDevice": "/",
+  "HintPartitionable": true,
+  "HintSystem": false,
+  "HintIgnore": false,
+  "HintAuto": true,
+  "HintName": "",
+  "HintIconName": "",
+  "HintSymbolicIconName": "",
+  "UserspaceMountOptions": []
+}

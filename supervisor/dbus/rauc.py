@@ -34,13 +34,13 @@ class Rauc(DBusInterfaceProxy):
 
     def __init__(self):
         """Initialize Properties."""
+        super().__init__()
+
         self._operation: str | None = None
         self._last_error: str | None = None
         self._compatible: str | None = None
         self._variant: str | None = None
         self._boot_slot: str | None = None
-
-        self.properties: dict[str, Any] = {}
 
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""

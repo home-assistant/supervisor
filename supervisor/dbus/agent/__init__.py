@@ -35,7 +35,7 @@ class OSAgent(DBusInterfaceProxy):
 
     def __init__(self) -> None:
         """Initialize Properties."""
-        self.properties: dict[str, Any] = {}
+        super().__init__()
 
         self._apparmor: AppArmor = AppArmor()
         self._board: BoardManager = BoardManager()

@@ -1,0 +1,6 @@
+{
+  "Version": "2.9.2",
+  "SupportedFilesystems": ["ext4", "vfat", "ntfs", "exfat", "swap"],
+  "SupportedEncryptionTypes": ["luks1", "luks2"],
+  "DefaultEncryptionType": "luks1"
+}

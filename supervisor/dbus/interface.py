@@ -45,7 +45,22 @@ class DBusInterface(ABC):
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
-        self.dbus = await DBus.connect(bus, self.bus_name, self.object_path)
+        await self.initialize(await DBus.connect(bus, self.bus_name, self.object_path))
+
+    async def initialize(self, connected_dbus: DBus) -> None:
+        """Initialize object with already connected dbus object."""
+        if not connected_dbus.connected:
+            raise ValueError("must be a connected DBus object")
+
+        if (
+            connected_dbus.bus_name != self.bus_name
+            or connected_dbus.object_path != self.object_path
+        ):
+            raise ValueError(
+                f"must be a DBus object connected to bus {self.bus_name} and object {self.object_path}"
+            )
+
+        self.dbus = connected_dbus
 
     def disconnect(self) -> None:
         """Disconnect from D-Bus."""
@@ -69,9 +84,17 @@ class DBusInterfaceProxy(DBusInterface):
     properties: dict[str, Any] | None = None
     sync_properties: bool = True
 
+    def __init__(self):
+        """Initialize properties."""
+        self.properties = {}
+
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
         await super().connect(bus)
+
+    async def initialize(self, connected_dbus: DBus) -> None:
+        """Initialize object with already connected dbus object."""
+        await super().initialize(connected_dbus)
 
         if not self.dbus.properties:
             self.disconnect()

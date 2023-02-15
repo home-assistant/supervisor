@@ -1,0 +1,39 @@
+{
+  "Device": {
+    "_type": "ay",
+    "_value": "/dev/sda"
+  },
+  "PreferredDevice": {
+    "_type": "ay",
+    "_value": "/dev/sda"
+  },
+  "Symlinks": {
+    "_type": "aay",
+    "_value": [
+      "/dev/disk/by-id/usb-SSK_SSK_Storage_DF56419883D56-0:0",
+      "/dev/disk/by-path/platform-xhci-hcd.1.auto-usb-0:1.4:1.0-scsi-0:0:0:0"
+    ]
+  },
+  "DeviceNumber": 2048,
+  "Id": "by-id-usb-SSK_SSK_Storage_DF56419883D56-0:0",
+  "Size": 250059350016,
+  "ReadOnly": false,
+  "Drive": "/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56",
+  "MDRaid": "/",
+  "MDRaidMember": "/",
+  "IdUsage": "",
+  "IdType": "",
+  "IdVersion": "",
+  "IdLabel": "",
+  "IdUUID": "",
+  "Configuration": [],
+  "CryptoBackingDevice": "/",
+  "HintPartitionable": true,
+  "HintSystem": false,
+  "HintIgnore": false,
+  "HintAuto": true,
+  "HintName": "",
+  "HintIconName": "",
+  "HintSymbolicIconName": "",
+  "UserspaceMountOptions": []
+}

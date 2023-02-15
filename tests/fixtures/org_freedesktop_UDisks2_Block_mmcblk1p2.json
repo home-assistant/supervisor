@@ -1,0 +1,34 @@
+{
+  "Device": { "_type": "ay", "_value": "/dev/mmcblk1p2" },
+  "PreferredDevice": { "_type": "ay", "_value": "/dev/mmcblk1p2" },
+  "Symlinks": {
+    "_type": "aay",
+    "_value": [
+      "/dev/disk/by-id/mmc-BJTD4R_0x97cde291-part2",
+      "/dev/disk/by-partuuid/48617373-02",
+      "/dev/disk/by-path/platform-ffe07000.mmc-part2"
+    ]
+  },
+  "DeviceNumber": 45826,
+  "Id": "by-id-mmc-BJTD4R_0x97cde291-part2",
+  "Size": 1024,
+  "ReadOnly": false,
+  "Drive": "/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291",
+  "MDRaid": "/",
+  "MDRaidMember": "/",
+  "IdUsage": "",
+  "IdType": "",
+  "IdVersion": "",
+  "IdLabel": "",
+  "IdUUID": "",
+  "Configuration": [],
+  "CryptoBackingDevice": "/",
+  "HintPartitionable": true,
+  "HintSystem": true,
+  "HintIgnore": false,
+  "HintAuto": false,
+  "HintName": "",
+  "HintIconName": "",
+  "HintSymbolicIconName": "",
+  "UserspaceMountOptions": []
+}

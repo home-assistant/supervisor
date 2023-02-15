@@ -40,10 +40,11 @@ class NetworkManagerDNS(DBusInterfaceProxy):
 
     def __init__(self) -> None:
         """Initialize Properties."""
+        super().__init__()
+
         self._mode: str | None = None
         self._rc_manager: str | None = None
         self._configuration: list[DNSConfiguration] = []
-        self.properties: dict[str, Any] = {}
 
     @property
     def mode(self) -> str | None:

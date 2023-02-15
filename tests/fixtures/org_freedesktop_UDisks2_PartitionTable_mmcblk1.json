@@ -1,0 +1,8 @@
+{
+  "Partitions": [
+    "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
+    "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
+    "/org/freedesktop/UDisks2/block_devices/mmcblk1p3"
+  ],
+  "Type": "dos"
+}

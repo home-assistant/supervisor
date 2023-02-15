@@ -1,0 +1,12 @@
+[
+  "/org/freedesktop/UDisks2/block_devices/loop0",
+  "/org/freedesktop/UDisks2/block_devices/mmcblk1",
+  "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
+  "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
+  "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+  "/org/freedesktop/UDisks2/block_devices/sda",
+  "/org/freedesktop/UDisks2/block_devices/sda1",
+  "/org/freedesktop/UDisks2/block_devices/sdb",
+  "/org/freedesktop/UDisks2/block_devices/sdb1",
+  "/org/freedesktop/UDisks2/block_devices/zram1"
+]

@@ -1,6 +1,5 @@
 """Board management for OS Agent."""
 import logging
-from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
@@ -30,8 +29,9 @@ class BoardManager(DBusInterfaceProxy):
 
     def __init__(self) -> None:
         """Initialize properties."""
+        super().__init__()
+
         self._board_proxy: BoardProxy | None = None
-        self.properties: dict[str, Any] = {}
 
     @property
     @dbus_property

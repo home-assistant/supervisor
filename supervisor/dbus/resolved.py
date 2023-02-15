@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
@@ -52,10 +51,6 @@ class Resolved(DBusInterfaceProxy):
     bus_name: str = DBUS_NAME_RESOLVED
     object_path: str = DBUS_OBJECT_RESOLVED
     properties_interface: str = DBUS_IFACE_RESOLVED_MANAGER
-
-    def __init__(self):
-        """Initialize Properties."""
-        self.properties: dict[str, Any] = {}
 
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
