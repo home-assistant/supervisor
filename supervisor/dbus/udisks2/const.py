@@ -2,7 +2,9 @@
 
 from enum import Enum
 
-UDISKS2_DEFAULT_OPTIONS = {"auth.no_user_interaction": True}
+from dbus_fast import Variant
+
+UDISKS2_DEFAULT_OPTIONS = {"auth.no_user_interaction": Variant("b", True)}
 
 
 class EncryptType(str, Enum):
