@@ -222,6 +222,11 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v3.3.0
 
+      - name: Install Host applications
+        run: |
+          apt-get update
+          apt-get install udisk2
+
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
         uses: home-assistant/builder@2022.11.0
