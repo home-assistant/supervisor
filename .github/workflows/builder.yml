@@ -224,8 +224,8 @@ jobs:
 
       - name: Install Host applications
         run: |
-          apt-get update
-          apt-get install udisk2
+          sudo apt-get update
+          sudo apt-get install udisk2
 
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
