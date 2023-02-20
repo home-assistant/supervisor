@@ -54,9 +54,9 @@ from ..const import (
     ATTR_PORTS_DESCRIPTION,
     ATTR_PRIVILEGED,
     ATTR_REALTIME,
+    ATTR_REMOTE_USER,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
-    ATTR_SEND_REMOTE_USERNAME,
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_STAGE,
@@ -276,9 +276,9 @@ class AddonModel(CoreSysAttributes, ABC):
         return self.data.get(ATTR_WATCHDOG)
 
     @property
-    def send_remote_username(self) -> str | None:
-        """Return URL to for send_remote_username or None."""
-        return self.data.get(ATTR_SEND_REMOTE_USERNAME)
+    def remote_user(self) -> bool | None:
+        """Returns whether the addons wants to receive X-Remote-User header."""
+        return self.data.get(ATTR_REMOTE_USER, False)
 
     @property
     def ingress_port(self) -> int | None:

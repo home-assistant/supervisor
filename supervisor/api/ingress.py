@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 import aiohttp
-from aiohttp import ClientTimeout, ContentTypeError, hdrs, web
+from aiohttp import ClientTimeout, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
     HTTPServiceUnavailable,
@@ -27,6 +27,7 @@ from ..const import (
     HEADER_TOKEN_OLD,
 )
 from ..coresys import CoreSysAttributes
+from ..validate import SCHEMA_INGRESS_CONFIG_SESSION_DATA
 from .const import COOKIE_INGRESS
 from .utils import api_process, api_validate, require_home_assistant
 
@@ -72,10 +73,8 @@ class APIIngress(CoreSysAttributes):
     @require_home_assistant
     async def create_session(self, request: web.Request) -> dict[str, Any]:
         """Create a new session."""
-        try:
-            data = await request.json()
-        except ContentTypeError:
-            pass
+        data = await api_validate(SCHEMA_INGRESS_CONFIG_SESSION_DATA, request)
+
         session = self.sys_ingress.create_session(data)
         return {ATTR_SESSION: session}
 
@@ -231,7 +230,7 @@ def _init_header(
     """Create initial header."""
     headers = {}
 
-    if addon.send_remote_username and ATTR_SESSION_DATA_USERNAME in session_data:
+    if addon.remote_user and ATTR_SESSION_DATA_USERNAME in session_data:
         headers["X-Remote-User"] = session_data[ATTR_SESSION_DATA_USERNAME]
 
     # filter flags

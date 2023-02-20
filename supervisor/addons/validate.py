@@ -68,9 +68,9 @@ from ..const import (
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
     ATTR_REALTIME,
+    ATTR_REMOTE_USER,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
-    ATTR_SEND_REMOTE_USERNAME,
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_SQUASH,
@@ -266,7 +266,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_STAGE, default=AddonStage.STABLE): vol.Coerce(AddonStage),
         vol.Optional(ATTR_PORTS): docker_ports,
         vol.Optional(ATTR_PORTS_DESCRIPTION): docker_ports_description,
-        # vol.Optional(ATTR_SEND_REMOTE_USERNAME): vol.Boolean(),
+        vol.Optional(ATTR_REMOTE_USER, default=False): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Match(
             r"^(?:https?|\[PROTO:\w+\]|tcp):\/\/\[HOST\]:(\[PORT:\d+\]|\d+).*$"
         ),
@@ -400,7 +400,7 @@ SCHEMA_ADDON_USER = vol.Schema(
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),
         vol.Optional(ATTR_INGRESS_PANEL, default=False): vol.Boolean(),
-        vol.Optional(ATTR_SEND_REMOTE_USERNAME, default=False): vol.Boolean(),
+        vol.Optional(ATTR_REMOTE_USER, default=False): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,

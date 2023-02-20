@@ -4,15 +4,13 @@ import logging
 import random
 import secrets
 
-from voluptuous.error import AnyInvalid
-
 from .addons.addon import Addon
 from .const import ATTR_PORTS, ATTR_SESSION, ATTR_SESSION_DATA, FILE_HASSIO_INGRESS
 from .coresys import CoreSys, CoreSysAttributes
 from .utils import check_port
 from .utils.common import FileConfiguration
 from .utils.dt import utc_from_timestamp, utcnow
-from .validate import SCHEMA_INGRESS_CONFIG, SCHEMA_INGRESS_CONFIG_SESSION_DATA
+from .validate import SCHEMA_INGRESS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -108,17 +106,13 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         for addon in self.addons:
             self.tokens[addon.ingress_token] = addon.slug
 
-    def create_session(self, data) -> str:
+    def create_session(self, data: dict[str, any]) -> str:
         """Create new session."""
         session = secrets.token_hex(64)
         valid = utcnow() + timedelta(minutes=15)
 
         self.sessions[session] = valid.timestamp()
-
-        try:
-            self.sessions_data[session] = SCHEMA_INGRESS_CONFIG_SESSION_DATA(data)
-        except AnyInvalid:
-            pass
+        self.sessions_data[session] = data
 
         return session
 

@@ -73,9 +73,9 @@ from ..const import (
     ATTR_PROTECTED,
     ATTR_PWNED,
     ATTR_RATING,
+    ATTR_REMOTE_USER,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
-    ATTR_SEND_REMOTE_USERNAME,
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_STAGE,
@@ -124,7 +124,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
-        vol.Optional(ATTR_SEND_REMOTE_USERNAME): vol.Boolean(),
+        vol.Optional(ATTR_REMOTE_USER): vol.Boolean(),
     }
 )
 
@@ -260,7 +260,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_IP_ADDRESS: str(addon.ip_address),
             ATTR_VERSION: addon.version,
             ATTR_UPDATE_AVAILABLE: addon.need_update,
-            ATTR_SEND_REMOTE_USERNAME: addon.send_remote_username,
+            ATTR_REMOTE_USER: addon.remote_user,
             ATTR_WATCHDOG: addon.watchdog,
             ATTR_DEVICES: addon.static_devices
             + [device.path for device in addon.devices],
@@ -301,10 +301,9 @@ class APIAddons(CoreSysAttributes):
             await self.sys_ingress.update_hass_panel(addon)
         if ATTR_WATCHDOG in body:
             addon.watchdog = body[ATTR_WATCHDOG]
-        if ATTR_SEND_REMOTE_USERNAME in body:
-            addon.send_remote_username = body[ATTR_SEND_REMOTE_USERNAME]
+        if ATTR_REMOTE_USER in body:
+            addon.remote_user = body[ATTR_REMOTE_USER]
 
-        print(f"SET REMOTE USERNAME: {addon.send_remote_username}")
         addon.save_persist()
 
     @api_process

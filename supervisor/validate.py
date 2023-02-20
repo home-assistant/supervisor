@@ -185,7 +185,6 @@ SCHEMA_INGRESS_CONFIG_SESSION_DATA = vol.Schema(
     }
 )
 
-
 SCHEMA_INGRESS_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_SESSION, default=dict): vol.Schema(

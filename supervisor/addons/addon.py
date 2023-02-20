@@ -37,8 +37,8 @@ from ..const import (
     ATTR_OPTIONS,
     ATTR_PORTS,
     ATTR_PROTECTED,
+    ATTR_REMOTE_USER,
     ATTR_SCHEMA,
-    ATTR_SEND_REMOTE_USERNAME,
     ATTR_SLUG,
     ATTR_STATE,
     ATTR_SYSTEM,
@@ -316,14 +316,14 @@ class Addon(AddonModel):
             self.persist[ATTR_WATCHDOG] = value
 
     @property
-    def send_remote_username(self) -> bool:
-        """Return True if send_remote_username is enable."""
-        return self.persist.get(ATTR_SEND_REMOTE_USERNAME, False)
+    def remote_user(self) -> bool:
+        """Return whether to send X-Remote-User header to addon."""
+        return self.persist.get(ATTR_REMOTE_USER, False)
 
-    @send_remote_username.setter
-    def send_remote_username(self, value: bool) -> None:
-        """Set send_remote_username enable/disable."""
-        self.persist[ATTR_SEND_REMOTE_USERNAME] = value
+    @remote_user.setter
+    def remote_user(self, value: bool) -> None:
+        """Set whether to send X-Remote-User header to addon."""
+        self.persist[ATTR_REMOTE_USER] = value
 
     @property
     def uuid(self) -> str:
