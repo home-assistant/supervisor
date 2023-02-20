@@ -26,6 +26,7 @@ from ..const import (
     ATTR_NETWORK_TX,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
+    ATTR_SEND_REMOTE_USERNAME,
     ATTR_SSL,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
@@ -79,6 +80,7 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_BOOT: self.sys_homeassistant.boot,
             ATTR_PORT: self.sys_homeassistant.api_port,
             ATTR_SSL: self.sys_homeassistant.api_ssl,
+            ATTR_SEND_REMOTE_USERNAME: self.sys_homeassistant.send_remote_username,
             ATTR_WATCHDOG: self.sys_homeassistant.watchdog,
             ATTR_AUDIO_INPUT: self.sys_homeassistant.audio_input,
             ATTR_AUDIO_OUTPUT: self.sys_homeassistant.audio_output,
@@ -103,6 +105,11 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_WATCHDOG in body:
             self.sys_homeassistant.watchdog = body[ATTR_WATCHDOG]
+
+        if ATTR_SEND_REMOTE_USERNAME in body:
+            self.sys_homeassistant.send_remote_username = body[
+                ATTR_SEND_REMOTE_USERNAME
+            ]
 
         if ATTR_REFRESH_TOKEN in body:
             self.sys_homeassistant.refresh_token = body[ATTR_REFRESH_TOKEN]

@@ -21,6 +21,7 @@ from ..const import (
     ATTR_IMAGE,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
+    ATTR_SEND_REMOTE_USERNAME,
     ATTR_SSL,
     ATTR_TYPE,
     ATTR_UUID,
@@ -155,6 +156,16 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def watchdog(self, value: bool):
         """Return True if the watchdog should protect Home Assistant."""
         self._data[ATTR_WATCHDOG] = value
+
+    @property
+    def send_remote_username(self) -> bool:
+        """Return True if the send_remote_username should protect Home Assistant."""
+        return self._data[ATTR_SEND_REMOTE_USERNAME]
+
+    @send_remote_username.setter
+    def send_remote_username(self, value: bool):
+        """Return True if the send_remote_username should protect Home Assistant."""
+        self._data[ATTR_SEND_REMOTE_USERNAME] = value
 
     @property
     def latest_version(self) -> AwesomeVersion | None:
@@ -421,6 +432,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 ATTR_AUDIO_INPUT,
                 ATTR_AUDIO_OUTPUT,
                 ATTR_PORT,
+                ATTR_SEND_REMOTE_USERNAME,
                 ATTR_SSL,
                 ATTR_REFRESH_TOKEN,
                 ATTR_WATCHDOG,

@@ -56,6 +56,7 @@ from ..const import (
     ATTR_REALTIME,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
+    ATTR_SEND_REMOTE_USERNAME,
     ATTR_SERVICES,
     ATTR_SLUG,
     ATTR_STAGE,
@@ -273,6 +274,11 @@ class AddonModel(CoreSysAttributes, ABC):
     def watchdog(self) -> str | None:
         """Return URL to for watchdog or None."""
         return self.data.get(ATTR_WATCHDOG)
+
+    @property
+    def send_remote_username(self) -> str | None:
+        """Return URL to for send_remote_username or None."""
+        return self.data.get(ATTR_SEND_REMOTE_USERNAME)
 
     @property
     def ingress_port(self) -> int | None:

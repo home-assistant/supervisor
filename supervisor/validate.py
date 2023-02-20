@@ -30,6 +30,8 @@ from .const import (
     ATTR_PWNED,
     ATTR_REGISTRIES,
     ATTR_SESSION,
+    ATTR_SESSION_DATA,
+    ATTR_SESSION_DATA_USERNAME,
     ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
     ATTR_USERNAME,
@@ -177,16 +179,25 @@ SCHEMA_DOCKER_CONFIG = vol.Schema(
 SCHEMA_AUTH_CONFIG = vol.Schema({sha256: sha256})
 
 
+SCHEMA_INGRESS_CONFIG_SESSION_DATA = vol.Schema(
+    {
+        vol.Optional(ATTR_SESSION_DATA_USERNAME): str,
+    }
+)
+
+
 SCHEMA_INGRESS_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_SESSION, default=dict): vol.Schema(
             {token: vol.Coerce(float)}
         ),
+        vol.Required(ATTR_SESSION_DATA, default=dict): vol.Schema(
+            {token: SCHEMA_INGRESS_CONFIG_SESSION_DATA}
+        ),
         vol.Required(ATTR_PORTS, default=dict): vol.Schema({str: network_port}),
     },
     extra=vol.REMOVE_EXTRA,
 )
-
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_SECURITY_CONFIG = vol.Schema(

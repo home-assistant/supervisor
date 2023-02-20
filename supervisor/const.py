@@ -6,7 +6,7 @@ from sys import version_info as systemversion
 
 from aiohttp import __version__ as aiohttpversion
 
-SUPERVISOR_VERSION = "DEV"
+SUPERVISOR_VERSION = "0.0.0+DEV"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/addons"
@@ -270,7 +270,10 @@ ATTR_SERIAL = "serial"
 ATTR_SERVERS = "servers"
 ATTR_SERVICE = "service"
 ATTR_SERVICES = "services"
+ATTR_SEND_REMOTE_USERNAME = "send_remote_username"
 ATTR_SESSION = "session"
+ATTR_SESSION_DATA = "session_data"
+ATTR_SESSION_DATA_USERNAME = "username"
 ATTR_SIGNAL = "signal"
 ATTR_SIZE = "size"
 ATTR_SLUG = "slug"

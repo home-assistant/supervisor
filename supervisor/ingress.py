@@ -4,13 +4,15 @@ import logging
 import random
 import secrets
 
+from voluptuous.error import AnyInvalid
+
 from .addons.addon import Addon
-from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
+from .const import ATTR_PORTS, ATTR_SESSION, ATTR_SESSION_DATA, FILE_HASSIO_INGRESS
 from .coresys import CoreSys, CoreSysAttributes
 from .utils import check_port
 from .utils.common import FileConfiguration
 from .utils.dt import utc_from_timestamp, utcnow
-from .validate import SCHEMA_INGRESS_CONFIG
+from .validate import SCHEMA_INGRESS_CONFIG, SCHEMA_INGRESS_CONFIG_SESSION_DATA
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -34,6 +36,11 @@ class Ingress(FileConfiguration, CoreSysAttributes):
     def sessions(self) -> dict[str, float]:
         """Return sessions."""
         return self._data[ATTR_SESSION]
+
+    @property
+    def sessions_data(self) -> dict[str, float]:
+        """Return sessions_data."""
+        return self._data[ATTR_SESSION_DATA]
 
     @property
     def ports(self) -> dict[str, int]:
@@ -71,6 +78,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         now = utcnow()
 
         sessions = {}
+        sessions_data = {}
         for session, valid in self.sessions.items():
             # check if timestamp valid, to avoid crash on malformed timestamp
             try:
@@ -84,10 +92,13 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
             # Is valid
             sessions[session] = valid
+            sessions_data[session] = self.sessions_data[session]
 
         # Write back
         self.sessions.clear()
         self.sessions.update(sessions)
+        self.sessions_data.clear()
+        self.sessions_data.update(sessions_data)
 
     def _update_token_list(self) -> None:
         """Regenerate token <-> Add-on map."""
@@ -97,12 +108,18 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         for addon in self.addons:
             self.tokens[addon.ingress_token] = addon.slug
 
-    def create_session(self) -> str:
+    def create_session(self, data) -> str:
         """Create new session."""
         session = secrets.token_hex(64)
         valid = utcnow() + timedelta(minutes=15)
 
         self.sessions[session] = valid.timestamp()
+
+        try:
+            self.sessions_data[session] = SCHEMA_INGRESS_CONFIG_SESSION_DATA(data)
+        except AnyInvalid:
+            pass
+
         return session
 
     def validate_session(self, session: str) -> bool:

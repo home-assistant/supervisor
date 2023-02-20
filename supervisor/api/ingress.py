@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 import aiohttp
-from aiohttp import ClientTimeout, hdrs, web
+from aiohttp import ClientTimeout, ContentTypeError, hdrs, web
 from aiohttp.web_exceptions import (
     HTTPBadGateway,
     HTTPServiceUnavailable,
@@ -21,6 +21,7 @@ from ..const import (
     ATTR_ICON,
     ATTR_PANELS,
     ATTR_SESSION,
+    ATTR_SESSION_DATA_USERNAME,
     ATTR_TITLE,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
@@ -71,7 +72,11 @@ class APIIngress(CoreSysAttributes):
     @require_home_assistant
     async def create_session(self, request: web.Request) -> dict[str, Any]:
         """Create a new session."""
-        session = self.sys_ingress.create_session()
+        try:
+            data = await request.json()
+        except ContentTypeError:
+            pass
+        session = self.sys_ingress.create_session(data)
         return {ATTR_SESSION: session}
 
     @api_process
@@ -100,13 +105,14 @@ class APIIngress(CoreSysAttributes):
         # Process requests
         addon = self._extract_addon(request)
         path = request.match_info.get("path")
+        session_data = self.sys_ingress.sessions_data[session]
         try:
             # Websocket
             if _is_websocket(request):
-                return await self._handle_websocket(request, addon, path)
+                return await self._handle_websocket(request, addon, path, session_data)
 
             # Request
-            return await self._handle_request(request, addon, path)
+            return await self._handle_request(request, addon, path, session_data)
 
         except aiohttp.ClientError as err:
             _LOGGER.error("Ingress error: %s", err)
@@ -114,7 +120,7 @@ class APIIngress(CoreSysAttributes):
         raise HTTPBadGateway()
 
     async def _handle_websocket(
-        self, request: web.Request, addon: Addon, path: str
+        self, request: web.Request, addon: Addon, path: str, session_data: dict
     ) -> web.WebSocketResponse:
         """Ingress route for websocket."""
         if hdrs.SEC_WEBSOCKET_PROTOCOL in request.headers:
@@ -132,7 +138,7 @@ class APIIngress(CoreSysAttributes):
 
         # Preparing
         url = self._create_url(addon, path)
-        source_header = _init_header(request, addon)
+        source_header = _init_header(request, addon, session_data)
 
         # Support GET query
         if request.query_string:
@@ -158,11 +164,11 @@ class APIIngress(CoreSysAttributes):
         return ws_server
 
     async def _handle_request(
-        self, request: web.Request, addon: Addon, path: str
+        self, request: web.Request, addon: Addon, path: str, session_data: dict
     ) -> web.Response | web.StreamResponse:
         """Ingress route for request."""
         url = self._create_url(addon, path)
-        source_header = _init_header(request, addon)
+        source_header = _init_header(request, addon, session_data)
 
         # Passing the raw stream breaks requests for some webservers
         # since we just need it for POST requests really, for all other methods
@@ -219,9 +225,14 @@ class APIIngress(CoreSysAttributes):
             return response
 
 
-def _init_header(request: web.Request, addon: str) -> CIMultiDict | dict[str, str]:
+def _init_header(
+    request: web.Request, addon: Addon, session_data: dict
+) -> CIMultiDict | dict[str, str]:
     """Create initial header."""
     headers = {}
+
+    if addon.send_remote_username and ATTR_SESSION_DATA_USERNAME in session_data:
+        headers["X-Remote-User"] = session_data[ATTR_SESSION_DATA_USERNAME]
 
     # filter flags
     for name, value in request.headers.items():
