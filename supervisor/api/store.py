@@ -38,6 +38,7 @@ from ..const import (
     ATTR_MAINTAINER,
     ATTR_NAME,
     ATTR_RATING,
+    ATTR_REMOTE_USER_REQUESTED,
     ATTR_REPOSITORIES,
     ATTR_REPOSITORY,
     ATTR_SLUG,
@@ -149,6 +150,7 @@ class APIStore(CoreSysAttributes):
                     ATTR_LONG_DESCRIPTION: addon.long_description,
                     ATTR_RATING: rating_security(addon),
                     ATTR_SIGNED: addon.signed,
+                    ATTR_REMOTE_USER_REQUESTED: addon.remote_user_requested,
                 }
             )
 

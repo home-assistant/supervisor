@@ -74,6 +74,7 @@ from ..const import (
     ATTR_PWNED,
     ATTR_RATING,
     ATTR_REMOTE_USER,
+    ATTR_REMOTE_USER_REQUESTED,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
     ATTR_SERVICES,
@@ -124,7 +125,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
-        vol.Optional(ATTR_REMOTE_USER): vol.Boolean(),
+        vol.Optional(ATTR_REMOTE_USER_REQUESTED): vol.Boolean(),
     }
 )
 
@@ -261,6 +262,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_VERSION: addon.version,
             ATTR_UPDATE_AVAILABLE: addon.need_update,
             ATTR_REMOTE_USER: addon.remote_user,
+            ATTR_REMOTE_USER_REQUESTED: addon.remote_user_requested,
             ATTR_WATCHDOG: addon.watchdog,
             ATTR_DEVICES: addon.static_devices
             + [device.path for device in addon.devices],
