@@ -125,7 +125,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
-        vol.Optional(ATTR_REMOTE_USER_REQUESTED): vol.Boolean(),
+        vol.Optional(ATTR_REMOTE_USER): vol.Boolean(),
     }
 )
 
