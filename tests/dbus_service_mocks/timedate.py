@@ -66,14 +66,17 @@ class TimeDate(DBusServiceMock):
     @dbus_method()
     def SetTimezone(self, timezone: "s", interactive: "b") -> None:
         """Set timezone."""
+        self.emit_properties_changed({"Timezone": timezone})
 
     @dbus_method()
     def SetLocalRTC(self, local_rtc: "b", fix_system: "b", interactive: "b") -> None:
         """Set local RTC."""
+        self.emit_properties_changed({"LocalRTC": local_rtc})
 
     @dbus_method()
     def SetNTP(self, use_ntp: "b", interactive: "b") -> None:
         """Set NTP."""
+        self.emit_properties_changed({"NTP": use_ntp})
 
     @dbus_method()
     def ListTimezones(self) -> "as":

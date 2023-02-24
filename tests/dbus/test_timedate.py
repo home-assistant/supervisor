@@ -74,5 +74,8 @@ async def test_dbus_setntp(
 
     await timedate.connect(dbus_session_bus)
 
+    assert timedate.ntp is True
     assert await timedate.set_ntp(False) is None
     assert timedate_service.SetNTP.calls == [(False, False)]
+    await timedate_service.ping()
+    assert timedate.ntp is False

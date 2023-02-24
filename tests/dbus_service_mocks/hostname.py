@@ -94,30 +94,37 @@ class Hostname(DBusServiceMock):
     @dbus_method()
     def SetHostname(self, hostname: "s", interactive: "b") -> None:
         """Set hostname."""
+        self.emit_properties_changed({"Hostname": hostname})
 
     @dbus_method()
     def SetStaticHostname(self, hostname: "s", interactive: "b") -> None:
         """Set static hostname."""
+        self.emit_properties_changed({"StaticHostname": hostname})
 
     @dbus_method()
     def SetPrettyHostname(self, hostname: "s", interactive: "b") -> None:
         """Set pretty hostname."""
+        self.emit_properties_changed({"PrettyHostname": hostname})
 
     @dbus_method()
     def SetIconName(self, icon: "s", interactive: "b") -> None:
         """Set icon name."""
+        self.emit_properties_changed({"IconName": icon})
 
     @dbus_method()
     def SetChassis(self, chassis: "s", interactive: "b") -> None:
         """Set chassis."""
+        self.emit_properties_changed({"Chassis": chassis})
 
     @dbus_method()
     def SetDeployment(self, deployment: "s", interactive: "b") -> None:
         """Set deployment."""
+        self.emit_properties_changed({"Deployment": deployment})
 
     @dbus_method()
     def SetLocation(self, location: "s", interactive: "b") -> None:
         """Set location."""
+        self.emit_properties_changed({"Location": location})
 
     @dbus_method()
     def GetProductUUID(self, interactive: "b") -> "ay":

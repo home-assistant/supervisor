@@ -55,5 +55,8 @@ async def test_dbus_sethostname(
 
     await hostname.connect(dbus_session_bus)
 
+    assert hostname.hostname == "homeassistant-n2"
     await hostname.set_static_hostname("StarWars")
     assert hostname_service.SetStaticHostname.calls == [("StarWars", False)]
+    await hostname_service.ping()
+    assert hostname.hostname == "StarWars"
