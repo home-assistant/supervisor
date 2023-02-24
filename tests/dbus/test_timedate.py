@@ -1,62 +1,78 @@
 """Test TimeDate dbus interface."""
-import asyncio
+# pylint: disable=import-error
 from datetime import datetime, timezone
 
+from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.coresys import CoreSys
+from supervisor.dbus.timedate import TimeDate
 from supervisor.exceptions import DBusNotConnectedError
 
-from tests.common import fire_property_change_signal
+from tests.common import mock_dbus_services
+from tests.dbus_service_mocks.timedate import TimeDate as TimeDateService
 
 
-async def test_dbus_timezone(coresys: CoreSys):
-    """Test coresys dbus connection."""
-    assert coresys.dbus.timedate.dt_utc is None
-    assert coresys.dbus.timedate.ntp is None
+@pytest.fixture(name="timedate_service", autouse=True)
+async def fixture_timedate_service(dbus_session_bus: MessageBus) -> TimeDateService:
+    """Mock timedate dbus service."""
+    yield (await mock_dbus_services({"timedate": None}, dbus_session_bus))["timedate"]
 
-    await coresys.dbus.timedate.connect(coresys.dbus.bus)
-    await coresys.dbus.timedate.update()
 
-    assert coresys.dbus.timedate.dt_utc == datetime(
+async def test_timedate_info(
+    timedate_service: TimeDateService, dbus_session_bus: MessageBus
+):
+    """Test timedate properties."""
+    timedate = TimeDate()
+
+    assert timedate.dt_utc is None
+    assert timedate.ntp is None
+
+    await timedate.connect(dbus_session_bus)
+
+    assert timedate.dt_utc == datetime(
         2021, 5, 19, 8, 36, 54, 405718, tzinfo=timezone.utc
     )
-    assert coresys.dbus.timedate.ntp is True
+    assert timedate.ntp is True
 
-    assert (
-        coresys.dbus.timedate.dt_utc.isoformat() == "2021-05-19T08:36:54.405718+00:00"
-    )
+    assert timedate.dt_utc.isoformat() == "2021-05-19T08:36:54.405718+00:00"
 
-    fire_property_change_signal(coresys.dbus.timedate, {"NTP": False})
-    await asyncio.sleep(0)
-    assert coresys.dbus.timedate.ntp is False
+    timedate_service.emit_properties_changed({"NTP": False})
+    await timedate_service.ping()
+    assert timedate.ntp is False
 
-    fire_property_change_signal(coresys.dbus.timedate, {}, ["NTP"])
-    await asyncio.sleep(0)
-    assert coresys.dbus.timedate.ntp is True
+    timedate_service.emit_properties_changed({}, ["NTP"])
+    await timedate_service.ping()
+    await timedate_service.ping()  # To process the follow-up get all properties call
+    assert timedate.ntp is True
 
 
-async def test_dbus_settime(coresys: CoreSys, dbus: list[str]):
+async def test_dbus_settime(
+    timedate_service: TimeDateService, dbus_session_bus: MessageBus
+):
     """Set timestamp on backend."""
+    timedate = TimeDate()
+
     test_dt = datetime(2021, 5, 19, 8, 36, 54, 405718, tzinfo=timezone.utc)
 
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.timedate.set_time(test_dt)
+        await timedate.set_time(test_dt)
 
-    await coresys.dbus.timedate.connect(coresys.dbus.bus)
+    await timedate.connect(dbus_session_bus)
 
-    dbus.clear()
-    assert await coresys.dbus.timedate.set_time(test_dt) is None
-    assert dbus == ["/org/freedesktop/timedate1-org.freedesktop.timedate1.SetTime"]
+    assert await timedate.set_time(test_dt) is None
+    assert timedate_service.SetTime.calls == [(1621413414405718, False, False)]
 
 
-async def test_dbus_setntp(coresys: CoreSys, dbus: list[str]):
+async def test_dbus_setntp(
+    timedate_service: TimeDateService, dbus_session_bus: MessageBus
+):
     """Disable NTP on backend."""
+    timedate = TimeDate()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.timedate.set_ntp(False)
+        await timedate.set_ntp(False)
 
-    await coresys.dbus.timedate.connect(coresys.dbus.bus)
+    await timedate.connect(dbus_session_bus)
 
-    dbus.clear()
-    assert await coresys.dbus.timedate.set_ntp(False) is None
-    assert dbus == ["/org/freedesktop/timedate1-org.freedesktop.timedate1.SetNTP"]
+    assert await timedate.set_ntp(False) is None
+    assert timedate_service.SetNTP.calls == [(False, False)]

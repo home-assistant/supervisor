@@ -13,7 +13,7 @@ env:
   DEFAULT_CAS: v1.0.2
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
@@ -370,7 +370,7 @@ jobs:
       - name: Install additional system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libpulse0 libudev1
+          sudo apt-get install -y --no-install-recommends libpulse0 libudev1 dbus dbus-x11
       - name: Register Python problem matcher
         run: |
           echo "::add-matcher::.github/workflows/matchers/python.json"
