@@ -20,7 +20,7 @@ async def test_validate_session(api_client, coresys):
         "aiohttp.web_request.BaseRequest.__getitem__",
         return_value=coresys.homeassistant,
     ):
-        resp = await api_client.post("/ingress/session")
+        resp = await api_client.post("/ingress/session", json={"user-id": "some-id"})
         result = await resp.json()
 
         assert "session" in result["data"]
@@ -37,3 +37,4 @@ async def test_validate_session(api_client, coresys):
         assert await resp.json() == {"result": "ok", "data": {}}
 
         assert coresys.ingress.sessions[session] > valid_time
+        assert coresys.ingress.sessions_data[session]["user-id"] == "some-id"

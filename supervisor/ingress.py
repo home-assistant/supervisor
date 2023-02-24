@@ -106,7 +106,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         for addon in self.addons:
             self.tokens[addon.ingress_token] = addon.slug
 
-    def create_session(self, data: dict[str, any]) -> str:
+    def create_session(self, data: dict[str, any] = None) -> str:
         """Create new session."""
         session = secrets.token_hex(64)
         valid = utcnow() + timedelta(minutes=15)

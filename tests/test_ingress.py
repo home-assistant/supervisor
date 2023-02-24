@@ -1,6 +1,7 @@
 """Test ingress."""
 from datetime import timedelta
 
+from supervisor.const import ATTR_SESSION_DATA_USER_ID
 from supervisor.utils.dt import utc_from_timestamp
 
 
@@ -19,6 +20,21 @@ def test_session_handling(coresys):
     coresys.ingress.sessions[session] = not_valid.timestamp()
     assert not coresys.ingress.validate_session(session)
     assert not coresys.ingress.validate_session("invalid session")
+
+    session_data = coresys.ingress.sessions_data[session]
+    assert session_data is None
+
+
+def test_session_handling_with_session_data(coresys):
+    """Create and test session."""
+    session = coresys.ingress.create_session(
+        dict([(ATTR_SESSION_DATA_USER_ID, "some-id")])
+    )
+
+    assert session
+
+    session_data = coresys.ingress.sessions_data[session]
+    assert session_data[ATTR_SESSION_DATA_USER_ID] == "some-id"
 
 
 async def test_save_on_unload(coresys):
