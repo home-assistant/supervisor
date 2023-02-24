@@ -21,8 +21,9 @@ from ..const import (
     ATTR_ICON,
     ATTR_PANELS,
     ATTR_SESSION,
-    ATTR_SESSION_DATA_USERNAME,
+    ATTR_SESSION_DATA_USER_ID,
     ATTR_TITLE,
+    HEADER_REMOTE_USER_ID,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
 )
@@ -230,8 +231,8 @@ def _init_header(
     """Create initial header."""
     headers = {}
 
-    if addon.remote_user and ATTR_SESSION_DATA_USERNAME in session_data:
-        headers["X-Remote-User"] = session_data[ATTR_SESSION_DATA_USERNAME]
+    if addon.remote_user and ATTR_SESSION_DATA_USER_ID in session_data:
+        headers[HEADER_REMOTE_USER_ID] = session_data[ATTR_SESSION_DATA_USER_ID]
 
     # filter flags
     for name, value in request.headers.items():
