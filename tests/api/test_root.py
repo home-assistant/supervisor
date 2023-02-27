@@ -16,7 +16,7 @@ async def test_api_info(api_client):
     resp = await api_client.get("/info")
     result = await resp.json()
 
-    assert result["data"]["supervisor"] == "DEV"
+    assert result["data"]["supervisor"] == "99.9.9dev"
     assert result["data"]["docker"] == "1.0.0"
     assert result["data"]["supported"] is True
     assert result["data"]["channel"] == "stable"
