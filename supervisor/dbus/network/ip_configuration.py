@@ -8,7 +8,6 @@ from ipaddress import (
     ip_address,
     ip_interface,
 )
-from typing import Any
 
 from ...const import ATTR_ADDRESS, ATTR_PREFIX
 from ..const import (
@@ -30,12 +29,13 @@ class IpConfiguration(DBusInterfaceProxy):
 
     def __init__(self, object_path: str, ip4: bool = True) -> None:
         """Initialize properties."""
+        super().__init__()
+
         self._ip4: bool = ip4
         self.object_path: str = object_path
         self.properties_interface: str = (
             DBUS_IFACE_IP4CONFIG if ip4 else DBUS_IFACE_IP6CONFIG
         )
-        self.properties: dict[str, Any] = {}
 
     @property
     @dbus_property

@@ -1,7 +1,6 @@
 """Interface to systemd-timedate over D-Bus."""
 from datetime import datetime
 import logging
-from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
@@ -32,10 +31,6 @@ class TimeDate(DBusInterfaceProxy):
     bus_name: str = DBUS_NAME_TIMEDATE
     object_path: str = DBUS_OBJECT_TIMEDATE
     properties_interface: str = DBUS_IFACE_TIMEDATE
-
-    def __init__(self) -> None:
-        """Initialize Properties."""
-        self.properties: dict[str, Any] = {}
 
     @property
     @dbus_property

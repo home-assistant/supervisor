@@ -17,6 +17,7 @@ from .rauc import Rauc
 from .resolved import Resolved
 from .systemd import Systemd
 from .timedate import TimeDate
+from .udisks2 import UDisks2
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -36,6 +37,7 @@ class DBusManager(CoreSysAttributes):
         self._agent: OSAgent = OSAgent()
         self._timedate: TimeDate = TimeDate()
         self._resolved: Resolved = Resolved()
+        self._udisks2: UDisks2 = UDisks2()
         self._bus: MessageBus | None = None
 
     @property
@@ -79,6 +81,11 @@ class DBusManager(CoreSysAttributes):
         return self._resolved
 
     @property
+    def udisks2(self) -> UDisks2:
+        """Return the udisks2 interface."""
+        return self._udisks2
+
+    @property
     def bus(self) -> MessageBus | None:
         """Return the message bus."""
         return self._bus
@@ -95,6 +102,7 @@ class DBusManager(CoreSysAttributes):
             self.resolved,
             self.systemd,
             self.timedate,
+            self.udisks2,
         ]
 
     async def load(self) -> None:

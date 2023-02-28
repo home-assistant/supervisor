@@ -1,0 +1,4 @@
+{
+  "Partitions": ["/org/freedesktop/UDisks2/block_devices/sdb1"],
+  "Type": "gpt"
+}

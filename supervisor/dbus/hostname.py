@@ -1,6 +1,5 @@
 """D-Bus interface for hostname."""
 import logging
-from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
@@ -32,10 +31,6 @@ class Hostname(DBusInterfaceProxy):
     bus_name: str = DBUS_NAME_HOSTNAME
     object_path: str = DBUS_OBJECT_HOSTNAME
     properties_interface: str = DBUS_IFACE_HOSTNAME
-
-    def __init__(self):
-        """Initialize Properties."""
-        self.properties: dict[str, Any] = {}
 
     async def connect(self, bus: MessageBus):
         """Connect to system's D-Bus."""

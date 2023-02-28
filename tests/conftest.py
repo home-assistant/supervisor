@@ -3,6 +3,7 @@ from functools import partial
 from inspect import unwrap
 from pathlib import Path
 import re
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
@@ -49,6 +50,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.resolved import Resolved
 from supervisor.dbus.systemd import Systemd
 from supervisor.dbus.timedate import TimeDate
+from supervisor.dbus.udisks2 import UDisks2
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
 from supervisor.host.logs import LogsControl
@@ -118,15 +120,40 @@ async def dbus_bus() -> MessageBus:
     yield bus
 
 
+def _process_pseudo_variant(data: dict[str, Any]) -> Any:
+    """Process pseudo variant into value."""
+    if data["_type"] == "ay":
+        return bytearray(data["_value"], encoding="utf-8")
+    if data["_type"] == "aay":
+        return [bytearray(i, encoding="utf-8") for i in data["_value"]]
+
+    # Unknown type, return as is
+    return data
+
+
+def process_dbus_json(data: Any) -> Any:
+    """Replace pseudo-variants with values of unsupported json types as necessary."""
+    if not isinstance(data, dict):
+        return data
+
+    if len(data.keys()) == 2 and "_type" in data and "_value" in data:
+        return _process_pseudo_variant(data)
+
+    return {k: process_dbus_json(v) for k, v in data.items()}
+
+
 def mock_get_properties(object_path: str, interface: str) -> str:
     """Mock get dbus properties."""
-    latest = object_path.split("/")[-1]
+    base, _, latest = object_path.rpartition("/")
     fixture = interface.replace(".", "_")
 
-    if latest.isnumeric():
+    if latest.isnumeric() or base in [
+        "/org/freedesktop/UDisks2/block_devices",
+        "/org/freedesktop/UDisks2/drives",
+    ]:
         fixture = f"{fixture}_{latest}"
 
-    return load_json_fixture(f"{fixture}.json")
+    return process_dbus_json(load_json_fixture(f"{fixture}.json"))
 
 
 async def mock_init_proxy(self):
@@ -226,7 +253,7 @@ def dbus(dbus_bus: MessageBus) -> list[str]:
             )
 
         if exists_fixture(f"{fixture}.json"):
-            return load_json_fixture(f"{fixture}.json")
+            return process_dbus_json(load_json_fixture(f"{fixture}.json"))
 
     with patch("supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus), patch(
         "supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy
@@ -311,6 +338,12 @@ async def os_agent(dbus: DBus, dbus_bus: MessageBus) -> OSAgent:
 async def resolved(dbus: DBus, dbus_bus: MessageBus) -> Resolved:
     """Mock REsolved."""
     yield await mock_dbus_interface(dbus, dbus_bus, Resolved())
+
+
+@pytest.fixture
+async def udisks2(dbus: DBus, dbus_bus: MessageBus) -> UDisks2:
+    """Mock UDisks2."""
+    yield await mock_dbus_interface(dbus, dbus_bus, UDisks2())
 
 
 @pytest.fixture

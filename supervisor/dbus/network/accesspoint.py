@@ -1,7 +1,5 @@
 """Connection object for Network Manager."""
 
-from typing import Any
-
 from ..const import (
     DBUS_ATTR_FREQUENCY,
     DBUS_ATTR_HWADDRESS,
@@ -27,8 +25,9 @@ class NetworkWirelessAP(DBusInterfaceProxy):
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkWireless AP object."""
+        super().__init__()
+
         self.object_path: str = object_path
-        self.properties: dict[str, Any] = {}
 
     @property
     @dbus_property

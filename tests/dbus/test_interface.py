@@ -8,8 +8,9 @@ from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
 from supervisor.dbus.const import DBUS_OBJECT_BASE
-from supervisor.dbus.interface import DBusInterfaceProxy
+from supervisor.dbus.interface import DBusInterface, DBusInterfaceProxy
 from supervisor.exceptions import DBusInterfaceError
+from supervisor.utils.dbus import DBus
 
 from tests.common import fire_property_change_signal, fire_watched_signal
 
@@ -120,3 +121,40 @@ async def test_proxy_missing_properties_interface(dbus_bus: MessageBus):
     with pytest.raises(DBusInterfaceError):
         await proxy.connect(dbus_bus)
         assert proxy.is_connected is False
+
+
+async def test_initialize(dbus_bus: MessageBus):
+    """Test initialize for reusing connected dbus object."""
+    proxy = DBusInterface()
+    proxy.bus_name = "org.freedesktop.UDisks2"
+    proxy.object_path = "/org/freedesktop/UDisks2/block_devices/sda"
+
+    assert proxy.is_connected is False
+
+    with pytest.raises(ValueError, match="must be a connected DBus object"):
+        await proxy.initialize(
+            DBus(
+                dbus_bus,
+                "org.freedesktop.UDisks2",
+                "/org/freedesktop/UDisks2/block_devices/sda",
+            )
+        )
+
+    with pytest.raises(
+        ValueError,
+        match="must be a DBus object connected to bus org.freedesktop.UDisks2 and object /org/freedesktop/UDisks2/block_devices/sda",
+    ):
+        await proxy.initialize(
+            await DBus.connect(
+                dbus_bus, "org.freedesktop.hostname1", "/org/freedesktop/hostname1"
+            )
+        )
+
+    await proxy.initialize(
+        await DBus.connect(
+            dbus_bus,
+            "org.freedesktop.UDisks2",
+            "/org/freedesktop/UDisks2/block_devices/sda",
+        )
+    )
+    assert proxy.is_connected is True

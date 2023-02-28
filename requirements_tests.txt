@@ -3,7 +3,7 @@ codecov==2.1.12
 coverage==7.1.0
 flake8-docstrings==1.7.0
 flake8==6.0.0
-pre-commit==3.0.3
+pre-commit==3.0.4
 pydocstyle==6.3.0
 pylint==2.15.10
 pytest-aiohttp==1.0.4
@@ -13,3 +13,4 @@ pytest-timeout==2.1.0
 pytest==7.2.1
 pyupgrade==3.3.1
 time-machine==2.9.0
+typing_extensions==4.3.0

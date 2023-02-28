@@ -107,6 +107,9 @@ class HostManager(CoreSysAttributes):
         if self.logs.available:
             features.append(HostFeature.JOURNAL)
 
+        if self.sys_dbus.udisks2.is_connected:
+            features.append(HostFeature.DISK)
+
         return features
 
     async def reload(self):
@@ -121,6 +124,9 @@ class HostManager(CoreSysAttributes):
 
         if self.sys_dbus.agent.is_connected:
             await self.sys_dbus.agent.update()
+
+        if self.sys_dbus.udisks2.is_connected:
+            await self.sys_dbus.udisks2.update()
 
         with suppress(PulseAudioError):
             await self.sound.update()

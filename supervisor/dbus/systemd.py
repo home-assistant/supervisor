@@ -1,6 +1,5 @@
 """Interface to Systemd over D-Bus."""
 import logging
-from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
@@ -33,10 +32,6 @@ class Systemd(DBusInterfaceProxy):
     # NFailedUnits is the only property that emits a change signal and we don't use it
     sync_properties: bool = False
     properties_interface: str = DBUS_IFACE_SYSTEMD_MANAGER
-
-    def __init__(self) -> None:
-        """Initialize Properties."""
-        self.properties: dict[str, Any] = {}
 
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""

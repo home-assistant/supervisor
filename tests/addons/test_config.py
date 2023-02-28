@@ -23,6 +23,7 @@ def test_basic_config():
     assert not valid_config["host_ipc"]
     assert not valid_config["host_dbus"]
     assert not valid_config["host_pid"]
+    assert not valid_config["host_uts"]
 
     assert not valid_config["hassio_api"]
     assert not valid_config["homeassistant_api"]

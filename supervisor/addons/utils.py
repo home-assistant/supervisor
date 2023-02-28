@@ -70,6 +70,10 @@ def rating_security(addon: AddonModel) -> int:
     if addon.host_pid:
         rating += -2
 
+    # UTS host namespace allows to set hostname only with SYS_ADMIN
+    if addon.host_uts and Capabilities.SYS_ADMIN in addon.privileged:
+        rating += -1
+
     # Docker Access & full Access
     if addon.access_docker_api or addon.with_full_access:
         rating = 1

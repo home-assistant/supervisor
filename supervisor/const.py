@@ -6,7 +6,7 @@ from sys import version_info as systemversion
 
 from aiohttp import __version__ as aiohttpversion
 
-SUPERVISOR_VERSION = "DEV"
+SUPERVISOR_VERSION = "99.9.9dev"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/addons"
@@ -181,6 +181,7 @@ ATTR_HOST_INTERNET = "host_internet"
 ATTR_HOST_IPC = "host_ipc"
 ATTR_HOST_NETWORK = "host_network"
 ATTR_HOST_PID = "host_pid"
+ATTR_HOST_UTS = "host_uts"
 ATTR_HOSTNAME = "hostname"
 ATTR_ICON = "icon"
 ATTR_ID = "id"
