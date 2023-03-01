@@ -53,6 +53,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp: web.Application = web.Application(
             client_max_size=MAX_CLIENT_SIZE,
             middlewares=[
+                self.security.block_bad_requests,
                 self.security.system_validation,
                 self.security.token_validation,
             ],

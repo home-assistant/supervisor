@@ -1,9 +1,11 @@
 """Handle security part of this API."""
 import logging
 import re
+from typing import Final
+from urllib.parse import unquote
 
 from aiohttp.web import Request, RequestHandler, Response, middleware
-from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized
+from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPUnauthorized
 
 from ...const import (
     REQUEST_FROM,
@@ -22,7 +24,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # fmt: off
 
 # Block Anytime
-BLACKLIST = re.compile(
+BLACKLIST: Final = re.compile(
     r"^(?:"
     r"|/homeassistant/api/hassio/.*"
     r"|/core/api/hassio/.*"
@@ -30,7 +32,7 @@ BLACKLIST = re.compile(
 )
 
 # Free to call or have own security concepts
-NO_SECURITY_CHECK = re.compile(
+NO_SECURITY_CHECK: Final = re.compile(
     r"^(?:"
     r"|/homeassistant/api/.*"
     r"|/homeassistant/websocket"
@@ -41,14 +43,14 @@ NO_SECURITY_CHECK = re.compile(
 )
 
 # Observer allow API calls
-OBSERVER_CHECK = re.compile(
+OBSERVER_CHECK: Final = re.compile(
     r"^(?:"
     r"|/.+/info"
     r")$"
 )
 
 # Can called by every add-on
-ADDONS_API_BYPASS = re.compile(
+ADDONS_API_BYPASS: Final = re.compile(
     r"^(?:"
     r"|/addons/self/(?!security|update)[^/]+"
     r"|/addons/self/options/config"
@@ -60,7 +62,7 @@ ADDONS_API_BYPASS = re.compile(
 )
 
 # Policy role add-on API access
-ADDONS_ROLE_ACCESS = {
+ADDONS_ROLE_ACCESS: dict[str, re.Pattern] = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
         r"|/.+/info"
@@ -111,6 +113,26 @@ ADDONS_ROLE_ACCESS = {
     ),
 }
 
+FILTERS: Final = re.compile(
+    r"(?:"
+
+    # Common exploits
+    r"proc/self/environ"
+    r"|(<|%3C).*script.*(>|%3E)"
+
+    # File Injections
+    r"|(\.\.//?)+"  # ../../anywhere
+    r"|[a-zA-Z0-9_]=/([a-z0-9_.]//?)+"  # .html?v=/.//test
+
+    # SQL Injections
+    r"|union.*select.*\("
+    r"|union.*all.*select.*"
+    r"|concat.*\("
+
+    r")",
+    flags=re.IGNORECASE,
+)
+
 # fmt: on
 
 
@@ -120,6 +142,32 @@ class SecurityMiddleware(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize security middleware."""
         self.coresys: CoreSys = coresys
+
+    def _recursive_unquote(self, value: str) -> str:
+        """Handle values that are encoded multiple times."""
+        if (unquoted := unquote(value)) != value:
+            unquoted = self._recursive_unquote(unquoted)
+        return unquoted
+
+    @middleware
+    async def block_bad_requests(
+        self, request: Request, handler: RequestHandler
+    ) -> Response:
+        """Process request and tblock commonly known exploit attempts."""
+        if FILTERS.search(self._recursive_unquote(request.path)):
+            _LOGGER.warning(
+                "Filtered a potential harmful request to: %s", request.raw_path
+            )
+            raise HTTPBadRequest
+
+        if FILTERS.search(self._recursive_unquote(request.query_string)):
+            _LOGGER.warning(
+                "Filtered a request with a potential harmful query string: %s",
+                request.raw_path,
+            )
+            raise HTTPBadRequest
+
+        return await handler(request)
 
     @middleware
     async def system_validation(
