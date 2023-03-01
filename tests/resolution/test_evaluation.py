@@ -13,9 +13,9 @@ async def test_evaluate_system_error(coresys: CoreSys, capture_exception: Mock):
 
     with patch(
         "supervisor.resolution.evaluations.source_mods.calc_checksum_path_sourcecode",
-        side_effect=OSError,
+        side_effect=RuntimeError,
     ):
         await coresys.resolution.evaluate.evaluate_system()
 
     capture_exception.assert_called_once()
-    assert check_exception_chain(capture_exception.call_args[0][0], OSError)
+    assert check_exception_chain(capture_exception.call_args[0][0], RuntimeError)

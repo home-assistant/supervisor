@@ -36,7 +36,10 @@ def calc_checksum(data: str | bytes) -> str:
 
 
 def calc_checksum_path_sourcecode(folder: Path) -> str:
-    """Calculate checksum for a path source code."""
+    """Calculate checksum for a path source code.
+
+    Need catch OSError.
+    """
     return dirhash(folder.as_posix(), "sha256", match=["*.py"])
 
 
