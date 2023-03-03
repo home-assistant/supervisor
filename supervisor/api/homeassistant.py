@@ -26,7 +26,6 @@ from ..const import (
     ATTR_NETWORK_TX,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
-    ATTR_REMOTE_USER,
     ATTR_SSL,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
@@ -104,9 +103,6 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_WATCHDOG in body:
             self.sys_homeassistant.watchdog = body[ATTR_WATCHDOG]
-
-        if ATTR_REMOTE_USER in body:
-            self.sys_homeassistant.remote_user = body[ATTR_REMOTE_USER]
 
         if ATTR_REFRESH_TOKEN in body:
             self.sys_homeassistant.refresh_token = body[ATTR_REFRESH_TOKEN]

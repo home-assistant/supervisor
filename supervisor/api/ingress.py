@@ -231,7 +231,7 @@ def _init_header(
     """Create initial header."""
     headers = {}
 
-    if addon.remote_user and ATTR_SESSION_DATA_USER_ID in session_data:
+    if ATTR_SESSION_DATA_USER_ID in session_data:
         headers[HEADER_REMOTE_USER_ID] = session_data[ATTR_SESSION_DATA_USER_ID]
 
     # filter flags

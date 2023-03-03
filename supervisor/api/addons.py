@@ -73,8 +73,6 @@ from ..const import (
     ATTR_PROTECTED,
     ATTR_PWNED,
     ATTR_RATING,
-    ATTR_REMOTE_USER,
-    ATTR_REMOTE_USER_REQUESTED,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
     ATTR_SERVICES,
@@ -125,7 +123,6 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
-        vol.Optional(ATTR_REMOTE_USER): vol.Boolean(),
     }
 )
 
@@ -261,8 +258,6 @@ class APIAddons(CoreSysAttributes):
             ATTR_IP_ADDRESS: str(addon.ip_address),
             ATTR_VERSION: addon.version,
             ATTR_UPDATE_AVAILABLE: addon.need_update,
-            ATTR_REMOTE_USER: addon.remote_user,
-            ATTR_REMOTE_USER_REQUESTED: addon.remote_user_requested,
             ATTR_WATCHDOG: addon.watchdog,
             ATTR_DEVICES: addon.static_devices
             + [device.path for device in addon.devices],
@@ -273,7 +268,6 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def options(self, request: web.Request) -> None:
         """Store user options for add-on."""
-        print("UPDATE OPTIONS")
         addon = self._extract_addon(request)
 
         # Update secrets for validation
@@ -303,8 +297,6 @@ class APIAddons(CoreSysAttributes):
             await self.sys_ingress.update_hass_panel(addon)
         if ATTR_WATCHDOG in body:
             addon.watchdog = body[ATTR_WATCHDOG]
-        if ATTR_REMOTE_USER in body:
-            addon.remote_user = body[ATTR_REMOTE_USER]
 
         addon.save_persist()
 
