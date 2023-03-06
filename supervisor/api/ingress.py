@@ -22,8 +22,10 @@ from ..const import (
     ATTR_PANELS,
     ATTR_SESSION,
     ATTR_SESSION_DATA_USER_ID,
+    ATTR_SESSION_DATA_USER_NAME,
     ATTR_TITLE,
     HEADER_REMOTE_USER_ID,
+    HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
 )
@@ -75,6 +77,11 @@ class APIIngress(CoreSysAttributes):
     async def create_session(self, request: web.Request) -> dict[str, Any]:
         """Create a new session."""
         data = await api_validate(SCHEMA_INGRESS_CONFIG_SESSION_DATA, request)
+
+        if ATTR_SESSION_DATA_USER_ID in data:
+            user = await self._find_user_by_id(data[ATTR_SESSION_DATA_USER_ID])
+            if user:
+                data[ATTR_SESSION_DATA_USER_NAME] = user["username"]
 
         session = self.sys_ingress.create_session(data)
         return {ATTR_SESSION: session}
@@ -224,6 +231,17 @@ class APIIngress(CoreSysAttributes):
 
             return response
 
+    async def _find_user_by_id(self, user_id: str) -> dict[str, Any] | None:
+        """Find user object by the user's ID."""
+        list_of_users = await self.sys_homeassistant.get_users()
+        self._list_of_users = (
+            list_of_users
+            if list_of_users is not None
+            else getattr(self, "_list_of_users", [])
+        )
+
+        return next((x for x in self._list_of_users if x["id"] == user_id), None)
+
 
 def _init_header(
     request: web.Request, addon: Addon, session_data: dict
@@ -233,6 +251,9 @@ def _init_header(
 
     if ATTR_SESSION_DATA_USER_ID in session_data:
         headers[HEADER_REMOTE_USER_ID] = session_data[ATTR_SESSION_DATA_USER_ID]
+
+    if ATTR_SESSION_DATA_USER_NAME in session_data:
+        headers[HEADER_REMOTE_USER_NAME] = session_data[ATTR_SESSION_DATA_USER_NAME]
 
     # filter flags
     for name, value in request.headers.items():

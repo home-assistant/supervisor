@@ -32,6 +32,7 @@ from .const import (
     ATTR_SESSION,
     ATTR_SESSION_DATA,
     ATTR_SESSION_DATA_USER_ID,
+    ATTR_SESSION_DATA_USER_NAME,
     ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
     ATTR_USERNAME,
@@ -182,6 +183,7 @@ SCHEMA_AUTH_CONFIG = vol.Schema({sha256: sha256})
 SCHEMA_INGRESS_CONFIG_SESSION_DATA = vol.Schema(
     {
         vol.Optional(ATTR_SESSION_DATA_USER_ID): str,
+        vol.Optional(ATTR_SESSION_DATA_USER_NAME): str,
     }
 )
 
