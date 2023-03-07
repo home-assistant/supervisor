@@ -6,6 +6,7 @@ from urllib.parse import unquote
 
 from aiohttp.web import Request, RequestHandler, Response, middleware
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPUnauthorized
+from awesomeversion import AwesomeVersion
 
 from ...const import (
     REQUEST_FROM,
@@ -20,8 +21,19 @@ from ...coresys import CoreSys, CoreSysAttributes
 from ..utils import api_return_error, excract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+_CORE_VERSION: Final = AwesomeVersion("2023.3.0")
 
 # fmt: off
+
+_CORE_FRONTEND_PATHS: Final = (
+    r"|/app/.*\.(?:js|gz|json|map)"
+    r"|/(store/)?addons/[^/]+/(logo|icon)"
+)
+
+CORE_FRONTEND: Final = re.compile(
+    r"^(?:" + _CORE_FRONTEND_PATHS + r")$"
+)
+
 
 # Block Anytime
 BLACKLIST: Final = re.compile(
@@ -39,7 +51,9 @@ NO_SECURITY_CHECK: Final = re.compile(
     r"|/core/api/.*"
     r"|/core/websocket"
     r"|/supervisor/ping"
-    r")$"
+    r"|/ingress/[^/]+/.*"
+    + _CORE_FRONTEND_PATHS
+    + r")$"
 )
 
 # Observer allow API calls
@@ -201,6 +215,7 @@ class SecurityMiddleware(CoreSysAttributes):
         # Ignore security check
         if NO_SECURITY_CHECK.match(request.path):
             _LOGGER.debug("Passthrough %s", request.path)
+            request[REQUEST_FROM] = None
             return await handler(request)
 
         # Not token
@@ -253,3 +268,45 @@ class SecurityMiddleware(CoreSysAttributes):
 
         _LOGGER.error("Invalid token for access %s", request.path)
         raise HTTPForbidden()
+
+    @middleware
+    async def core_proxy(self, request: Request, handler: RequestHandler) -> Response:
+        """Validate user from Core API proxy."""
+        if (
+            request[REQUEST_FROM] != self.sys_homeassistant
+            or self.sys_homeassistant.version >= _CORE_VERSION
+        ):
+            return await handler(request)
+
+        authorization_index: int | None = None
+        content_type_index: int | None = None
+        user_request: bool = False
+        admin_request: bool = False
+        ingress_request: bool = False
+
+        for idx, (key, value) in enumerate(request.raw_headers):
+            if key in (b"Authorization", b"X-Hassio-Key"):
+                authorization_index = idx
+            elif key == b"Content-Type":
+                content_type_index = idx
+            elif key == b"X-Hass-User-ID":
+                user_request = True
+            elif key == b"X-Hass-Is-Admin":
+                admin_request = value == b"1"
+            elif key == b"X-Ingress-Path":
+                ingress_request = True
+
+        if user_request or admin_request:
+            return await handler(request)
+
+        is_proxy_request = (
+            authorization_index is not None
+            and content_type_index is not None
+            and content_type_index - authorization_index == 1
+        )
+
+        if (
+            not CORE_FRONTEND.match(request.path) and is_proxy_request
+        ) or ingress_request:
+            raise HTTPBadRequest()
+        return await handler(request)
