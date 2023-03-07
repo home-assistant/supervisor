@@ -56,6 +56,7 @@ class RestAPI(CoreSysAttributes):
                 self.security.block_bad_requests,
                 self.security.system_validation,
                 self.security.token_validation,
+                self.security.core_proxy,
             ],
             handler_args={
                 "max_line_size": MAX_LINE_SIZE,
