@@ -525,6 +525,8 @@ def install_addon_ssh(coresys: CoreSys, repository):
     """Install local_ssh add-on."""
     store = coresys.addons.store[TEST_ADDON_SLUG]
     coresys.addons.data.install(store)
+    coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
+
     addon = Addon(coresys, store.slug)
     coresys.addons.local[addon.slug] = addon
     yield addon
