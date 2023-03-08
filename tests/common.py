@@ -1,14 +1,19 @@
 """Common test functions."""
 import asyncio
+from importlib import import_module
 import json
 from pathlib import Path
 from typing import Any
 
+from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.introspection import Method, Property, Signal
 
 from supervisor.dbus.interface import DBusInterface, DBusInterfaceProxy
+from supervisor.resolution.validate import get_valid_modules
 from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES
 from supervisor.utils.yaml import read_yaml_file
+
+from .dbus_service_mocks.base import DBusServiceMock
 
 
 def get_dbus_name(intr_list: list[Method | Property | Signal], snake_case: str) -> str:
@@ -99,3 +104,34 @@ def exists_fixture(filename: str) -> bool:
     """Check if a fixture exists."""
     path = get_fixture_path(filename)
     return path.exists()
+
+
+async def mock_dbus_services(
+    to_mock: dict[str, list[str] | str | None], bus: MessageBus
+) -> dict[str, list[DBusServiceMock] | DBusServiceMock]:
+    """Mock specified dbus services on bus.
+
+    to_mock is dictionary where the key is a dbus service to mock (module must exist
+    in dbus_service_mocks). Value is the object path for the mocked service. Can also
+    be a list of object paths or None (if the mocked service defines the object path).
+    """
+    services: dict[str, list[DBusServiceMock] | DBusServiceMock] = {}
+    requested_names: set[str] = set()
+
+    for module in get_valid_modules("dbus_service_mocks", base=__file__):
+        if module in to_mock:
+            service_module = import_module(f"{__package__}.dbus_service_mocks.{module}")
+
+            if service_module.BUS_NAME not in requested_names:
+                await bus.request_name(service_module.BUS_NAME)
+                requested_names.add(service_module.BUS_NAME)
+
+            if isinstance(to_mock[module], list):
+                services[module] = [
+                    service_module.setup(obj_path).export(bus)
+                    for obj_path in to_mock[module]
+                ]
+            else:
+                services[module] = service_module.setup(to_mock[module]).export(bus)
+
+    return services

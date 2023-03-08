@@ -1,143 +1,142 @@
 """Test hostname dbus interface."""
-
-from unittest.mock import patch
-
+# pylint: disable=import-error
+from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.coresys import CoreSys
-from supervisor.dbus.const import DBUS_NAME_SYSTEMD
+from supervisor.dbus.systemd import Systemd
 from supervisor.exceptions import DBusNotConnectedError
 
-from tests.common import load_json_fixture
+from tests.common import mock_dbus_services
+from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 
-async def test_dbus_systemd_info(coresys: CoreSys):
-    """Test coresys dbus connection."""
-    assert coresys.dbus.systemd.boot_timestamp is None
-    assert coresys.dbus.systemd.startup_time is None
-
-    await coresys.dbus.systemd.connect(coresys.dbus.bus)
-
-    async def mock_get_properties(dbus_obj, interface):
-        return load_json_fixture(
-            f"{DBUS_NAME_SYSTEMD.replace('.', '_')}_properties.json"
-        )
-
-    with patch("supervisor.utils.dbus.DBus.get_properties", new=mock_get_properties):
-        await coresys.dbus.systemd.update()
-
-    assert coresys.dbus.systemd.boot_timestamp == 1632236713344227
-    assert coresys.dbus.systemd.startup_time == 45.304696
+@pytest.fixture(name="systemd_service", autouse=True)
+async def fixture_systemd_service(dbus_session_bus: MessageBus) -> SystemdService:
+    """Mock systemd dbus service."""
+    yield (await mock_dbus_services({"systemd": None}, dbus_session_bus))["systemd"]
 
 
-async def test_reboot(coresys: CoreSys, dbus: list[str]):
+async def test_dbus_systemd_info(dbus_session_bus: MessageBus):
+    """Test systemd properties."""
+    systemd = Systemd()
+
+    assert systemd.boot_timestamp is None
+    assert systemd.startup_time is None
+
+    await systemd.connect(dbus_session_bus)
+
+    assert systemd.boot_timestamp == 1632236713344227
+    assert systemd.startup_time == 45.304696
+
+
+async def test_reboot(systemd_service: SystemdService, dbus_session_bus: MessageBus):
     """Test reboot."""
+    systemd = Systemd()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.systemd.reboot()
+        await systemd.reboot()
 
-    await coresys.dbus.systemd.connect(coresys.dbus.bus)
+    await systemd.connect(dbus_session_bus)
 
-    dbus.clear()
-    assert await coresys.dbus.systemd.reboot() is None
-    assert dbus == ["/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.Reboot"]
+    assert await systemd.reboot() is None
+    assert systemd_service.Reboot.calls == [tuple()]
 
 
-async def test_power_off(coresys: CoreSys, dbus: list[str]):
+async def test_power_off(systemd_service: SystemdService, dbus_session_bus: MessageBus):
     """Test power off."""
+    systemd = Systemd()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.systemd.power_off()
+        await systemd.power_off()
 
-    await coresys.dbus.systemd.connect(coresys.dbus.bus)
+    await systemd.connect(dbus_session_bus)
 
-    dbus.clear()
-    assert await coresys.dbus.systemd.power_off() is None
-    assert dbus == [
-        "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.PowerOff"
-    ]
+    assert await systemd.power_off() is None
+    assert systemd_service.PowerOff.calls == [tuple()]
 
 
-async def test_start_unit(coresys: CoreSys, dbus: list[str]):
+async def test_start_unit(
+    systemd_service: SystemdService, dbus_session_bus: MessageBus
+):
     """Test start unit."""
+    systemd = Systemd()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.systemd.start_unit("test_unit", "replace")
+        await systemd.start_unit("test_unit", "replace")
 
-    await coresys.dbus.systemd.connect(coresys.dbus.bus)
+    await systemd.connect(dbus_session_bus)
 
-    dbus.clear()
     assert (
-        await coresys.dbus.systemd.start_unit("test_unit", "replace")
+        await systemd.start_unit("test_unit", "replace")
         == "/org/freedesktop/systemd1/job/7623"
     )
-    assert dbus == [
-        "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.StartUnit"
-    ]
+    assert systemd_service.StartUnit.calls == [("test_unit", "replace")]
 
 
-async def test_stop_unit(coresys: CoreSys, dbus: list[str]):
+async def test_stop_unit(systemd_service: SystemdService, dbus_session_bus: MessageBus):
     """Test stop unit."""
+    systemd = Systemd()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.systemd.stop_unit("test_unit", "replace")
+        await systemd.stop_unit("test_unit", "replace")
 
-    await coresys.dbus.systemd.connect(coresys.dbus.bus)
+    await systemd.connect(dbus_session_bus)
 
-    dbus.clear()
     assert (
-        await coresys.dbus.systemd.stop_unit("test_unit", "replace")
+        await systemd.stop_unit("test_unit", "replace")
         == "/org/freedesktop/systemd1/job/7623"
     )
-    assert dbus == [
-        "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.StopUnit"
-    ]
+    assert systemd_service.StopUnit.calls == [("test_unit", "replace")]
 
 
-async def test_restart_unit(coresys: CoreSys, dbus: list[str]):
+async def test_restart_unit(
+    systemd_service: SystemdService, dbus_session_bus: MessageBus
+):
     """Test restart unit."""
+    systemd = Systemd()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.systemd.restart_unit("test_unit", "replace")
+        await systemd.restart_unit("test_unit", "replace")
 
-    await coresys.dbus.systemd.connect(coresys.dbus.bus)
+    await systemd.connect(dbus_session_bus)
 
-    dbus.clear()
     assert (
-        await coresys.dbus.systemd.restart_unit("test_unit", "replace")
+        await systemd.restart_unit("test_unit", "replace")
         == "/org/freedesktop/systemd1/job/7623"
     )
-    assert dbus == [
-        "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.RestartUnit"
-    ]
+    assert systemd_service.RestartUnit.calls == [("test_unit", "replace")]
 
 
-async def test_reload_unit(coresys: CoreSys, dbus: list[str]):
+async def test_reload_unit(
+    systemd_service: SystemdService, dbus_session_bus: MessageBus
+):
     """Test reload unit."""
+    systemd = Systemd()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.systemd.reload_unit("test_unit", "replace")
+        await systemd.reload_unit("test_unit", "replace")
 
-    await coresys.dbus.systemd.connect(coresys.dbus.bus)
+    await systemd.connect(dbus_session_bus)
 
-    dbus.clear()
     assert (
-        await coresys.dbus.systemd.reload_unit("test_unit", "replace")
+        await systemd.reload_unit("test_unit", "replace")
         == "/org/freedesktop/systemd1/job/7623"
     )
-    assert dbus == [
-        "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.ReloadOrRestartUnit"
-    ]
+    assert systemd_service.ReloadOrRestartUnit.calls == [("test_unit", "replace")]
 
 
-async def test_list_units(coresys: CoreSys, dbus: list[str]):
+async def test_list_units(dbus_session_bus: MessageBus):
     """Test list units."""
+    systemd = Systemd()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.systemd.list_units()
+        await systemd.list_units()
 
-    await coresys.dbus.systemd.connect(coresys.dbus.bus)
+    await systemd.connect(dbus_session_bus)
 
-    dbus.clear()
-    units = await coresys.dbus.systemd.list_units()
+    units = await systemd.list_units()
     assert len(units) == 4
     assert units[1][0] == "firewalld.service"
     assert units[1][2] == "not-found"
     assert units[3][0] == "zram-swap.service"
     assert units[3][2] == "loaded"
-    assert dbus == [
-        "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.ListUnits"
-    ]

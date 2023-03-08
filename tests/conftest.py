@@ -1,8 +1,10 @@
 """Common test functions."""
 from functools import partial
 from inspect import unwrap
+import os
 from pathlib import Path
 import re
+import subprocess
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
@@ -10,6 +12,7 @@ from uuid import uuid4
 from aiohttp import web
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
+from dbus_fast import BusType
 from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
 import pytest
@@ -65,8 +68,10 @@ from .common import (
     load_binary_fixture,
     load_fixture,
     load_json_fixture,
+    mock_dbus_services,
 )
 from .const import TEST_ADDON_SLUG
+from .dbus_service_mocks.base import DBusServiceMock
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -118,6 +123,39 @@ async def dbus_bus() -> MessageBus:
     bus = AsyncMock(spec=MessageBus)
     setattr(bus, "_name_owners", {})
     yield bus
+
+
+@pytest.fixture(scope="session")
+def dbus_session() -> None:
+    """Start a dbus session."""
+    dbus_launch = subprocess.run(["dbus-launch"], stdout=subprocess.PIPE, check=False)
+    envs = dbus_launch.stdout.decode(encoding="utf-8").rstrip()
+
+    for env in envs.split("\n"):
+        name, value = env.split("=", 1)
+        os.environ[name] = value
+
+
+@pytest.fixture
+async def dbus_session_bus(dbus_session) -> MessageBus:
+    """Return message bus connected to session dbus."""
+    bus = await MessageBus(bus_type=BusType.SESSION).connect()
+    yield bus
+    bus.disconnect()
+
+
+@pytest.fixture
+async def dbus_services(
+    request: pytest.FixtureRequest, dbus_session: MessageBus
+) -> dict[str, DBusServiceMock | list[DBusServiceMock]]:
+    """Mock specified dbus services on session bus.
+
+    Should be used indirectly. Provide a dictionary where the key a dbus service to mock
+    (module must exist in dbus_service_mocks). Value is the object path for the mocked service.
+    Can also be a list of object paths or None (if the mocked service defines the object path).
+    """
+    with patch("supervisor.dbus.manager.MessageBus.connect", return_value=dbus_session):
+        yield await mock_dbus_services(request.param, dbus_session)
 
 
 def _process_pseudo_variant(data: dict[str, Any]) -> Any:
