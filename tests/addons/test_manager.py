@@ -1,6 +1,7 @@
 """Test addon manager."""
 
-from unittest.mock import Mock, PropertyMock, patch
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -130,3 +131,36 @@ async def test_addon_shutdown_error(
     assert check_exception_chain(
         capture_exception.call_args[0][0], (AddonsError, DockerNotFound)
     )
+
+
+async def test_addon_uninstall_removes_discovery(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test discovery messages removed when addon uninstalled."""
+    assert coresys.discovery.list_messages == []
+
+    message = coresys.discovery.send(
+        install_addon_ssh, "mqtt", {"host": "localhost", "port": 1883}
+    )
+    assert message.addon == TEST_ADDON_SLUG
+    assert message.service == "mqtt"
+    assert coresys.discovery.list_messages == [message]
+
+    coresys.homeassistant.api.ensure_access_token = AsyncMock()
+    coresys.websession.delete = MagicMock()
+
+    await coresys.addons.uninstall(TEST_ADDON_SLUG)
+    await asyncio.sleep(0)
+    coresys.websession.delete.assert_called_once()
+    assert (
+        coresys.websession.delete.call_args.args[0]
+        == f"http://172.30.32.1:8123/api/hassio_push/discovery/{message.uuid}"
+    )
+    assert coresys.websession.delete.call_args.kwargs["json"] == {
+        "addon": TEST_ADDON_SLUG,
+        "service": "mqtt",
+        "uuid": message.uuid,
+    }
+
+    assert coresys.addons.installed == []
+    assert coresys.discovery.list_messages == []

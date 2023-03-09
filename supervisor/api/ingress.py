@@ -102,7 +102,6 @@ class APIIngress(CoreSysAttributes):
             _LOGGER.warning("No valid ingress session %s", data[ATTR_SESSION])
             raise HTTPUnauthorized()
 
-    @require_home_assistant
     async def handler(
         self, request: web.Request
     ) -> web.Response | web.StreamResponse | web.WebSocketResponse:
