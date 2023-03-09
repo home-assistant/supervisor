@@ -1,27 +1,41 @@
 """Test OSAgent dbus interface."""
+# pylint: disable=import-error
+from dbus_fast.aio.message_bus import MessageBus
+import pytest
 
-import asyncio
+from supervisor.dbus.agent import OSAgent
 
-from supervisor.coresys import CoreSys
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.os_agent import OSAgent as OSAgentService
 
-from tests.common import fire_property_change_signal
+
+@pytest.fixture(name="os_agent_service", autouse=True)
+async def fixture_os_agent_service(
+    os_agent_services: dict[str, DBusServiceMock]
+) -> OSAgentService:
+    """Mock OS Agent dbus service."""
+    yield os_agent_services["os_agent"]
 
 
-async def test_dbus_osagent(coresys: CoreSys):
-    """Test coresys dbus connection."""
-    assert coresys.dbus.agent.version is None
-    assert coresys.dbus.agent.diagnostics is None
+async def test_dbus_osagent(
+    os_agent_service: OSAgentService, dbus_session_bus: MessageBus
+):
+    """Test OS Agent properties."""
+    os_agent = OSAgent()
 
-    await coresys.dbus.agent.connect(coresys.dbus.bus)
-    await coresys.dbus.agent.update()
+    assert os_agent.version is None
+    assert os_agent.diagnostics is None
 
-    assert coresys.dbus.agent.version == "1.1.0"
-    assert coresys.dbus.agent.diagnostics
+    await os_agent.connect(dbus_session_bus)
 
-    fire_property_change_signal(coresys.dbus.agent, {"Diagnostics": False})
-    await asyncio.sleep(0)
-    assert coresys.dbus.agent.diagnostics is False
+    assert os_agent.version == "1.1.0"
+    assert os_agent.diagnostics
 
-    fire_property_change_signal(coresys.dbus.agent, {}, ["Diagnostics"])
-    await asyncio.sleep(0)
-    assert coresys.dbus.agent.diagnostics is True
+    os_agent_service.emit_properties_changed({"Diagnostics": False})
+    await os_agent_service.ping()
+    assert os_agent.diagnostics is False
+
+    os_agent_service.emit_properties_changed({}, ["Diagnostics"])
+    await os_agent_service.ping()
+    await os_agent_service.ping()
+    assert os_agent.diagnostics is True
