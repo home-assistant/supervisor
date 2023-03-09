@@ -21,16 +21,16 @@ from ..const import (
     ATTR_ICON,
     ATTR_PANELS,
     ATTR_SESSION,
+    ATTR_SESSION_DATA_USER,
     ATTR_SESSION_DATA_USER_ID,
-    ATTR_SESSION_DATA_USER_NAME,
     ATTR_TITLE,
     HEADER_REMOTE_USER_ID,
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
 )
-from ..coresys import CoreSysAttributes
-from ..validate import SCHEMA_INGRESS_CONFIG_SESSION_DATA
+from ..coresys import CoreSys, CoreSysAttributes
+from ..validate import SCHEMA_INGRESS_CONFIG_SESSION_DATA, UserInfo
 from .const import COOKIE_INGRESS
 from .utils import api_process, api_validate, require_home_assistant
 
@@ -41,6 +41,11 @@ VALIDATE_SESSION_DATA = vol.Schema({ATTR_SESSION: str})
 
 class APIIngress(CoreSysAttributes):
     """Ingress view to handle add-on webui routing."""
+
+    def __init__(self, coresys: CoreSys) -> None:
+        """Initialize APIIngress."""
+        self.coresys = coresys
+        self._list_of_users: list(UserInfo) = []
 
     def _extract_addon(self, request: web.Request) -> Addon:
         """Return addon, throw an exception it it doesn't exist."""
@@ -81,7 +86,7 @@ class APIIngress(CoreSysAttributes):
         if ATTR_SESSION_DATA_USER_ID in data:
             user = await self._find_user_by_id(data[ATTR_SESSION_DATA_USER_ID])
             if user:
-                data[ATTR_SESSION_DATA_USER_NAME] = user["username"]
+                data[ATTR_SESSION_DATA_USER] = user
 
         session = self.sys_ingress.create_session(data)
         return {ATTR_SESSION: session}
@@ -233,14 +238,16 @@ class APIIngress(CoreSysAttributes):
 
     async def _find_user_by_id(self, user_id: str) -> dict[str, Any] | None:
         """Find user object by the user's ID."""
-        list_of_users = await self.sys_homeassistant.get_users()
-        self._list_of_users = (
-            list_of_users
-            if list_of_users is not None
-            else getattr(self, "_list_of_users", [])
-        )
+        try:
+            list_of_users = await self.sys_homeassistant.get_users()
+        except Exception as err:
+            _LOGGER.error("Error while requesting list of users", err)
+            return None
 
-        return next((x for x in self._list_of_users if x["id"] == user_id), None)
+        if list_of_users is not None:
+            self._list_of_users = list_of_users
+
+        return next((user for user in self._list_of_users if user.id == user_id), None)
 
 
 def _init_header(
@@ -249,11 +256,10 @@ def _init_header(
     """Create initial header."""
     headers = {}
 
-    if ATTR_SESSION_DATA_USER_ID in session_data:
-        headers[HEADER_REMOTE_USER_ID] = session_data[ATTR_SESSION_DATA_USER_ID]
-
-    if ATTR_SESSION_DATA_USER_NAME in session_data:
-        headers[HEADER_REMOTE_USER_NAME] = session_data[ATTR_SESSION_DATA_USER_NAME]
+    if session_data[ATTR_SESSION_DATA_USER] is not None:
+        user: UserInfo = session_data[ATTR_SESSION_DATA_USER]
+        headers[HEADER_REMOTE_USER_ID] = user.id
+        headers[HEADER_REMOTE_USER_NAME] = user.username
 
     # filter flags
     for name, value in request.headers.items():

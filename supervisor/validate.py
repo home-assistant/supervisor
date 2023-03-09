@@ -1,4 +1,5 @@
 """Validate functions."""
+from dataclasses import dataclass
 import ipaddress
 import re
 
@@ -31,8 +32,8 @@ from .const import (
     ATTR_REGISTRIES,
     ATTR_SESSION,
     ATTR_SESSION_DATA,
+    ATTR_SESSION_DATA_USER,
     ATTR_SESSION_DATA_USER_ID,
-    ATTR_SESSION_DATA_USER_NAME,
     ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
     ATTR_USERNAME,
@@ -180,10 +181,24 @@ SCHEMA_DOCKER_CONFIG = vol.Schema(
 SCHEMA_AUTH_CONFIG = vol.Schema({sha256: sha256})
 
 
+@dataclass
+class UserInfo:
+    """Format of a user info obejct."""
+
+    id: str
+    username: str
+    name: str
+    is_owner: bool
+    is_active: bool
+    local_only: bool
+    system_generated: bool
+    group_ids: list[str]
+    credentials: list[dict["type", str]]
+
+
 SCHEMA_INGRESS_CONFIG_SESSION_DATA = vol.Schema(
     {
         vol.Optional(ATTR_SESSION_DATA_USER_ID): str,
-        vol.Optional(ATTR_SESSION_DATA_USER_NAME): str,
     }
 )
 
@@ -193,7 +208,7 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
             {token: vol.Coerce(float)}
         ),
         vol.Required(ATTR_SESSION_DATA, default=dict): vol.Schema(
-            {token: SCHEMA_INGRESS_CONFIG_SESSION_DATA}
+            {token: vol.Schema({ATTR_SESSION_DATA_USER: vol.Any()})}
         ),
         vol.Required(ATTR_PORTS, default=dict): vol.Schema({str: network_port}),
     },
