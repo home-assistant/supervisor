@@ -9,6 +9,7 @@
   "tinker": ["armv7", "armhf"],
   "odroid-c2": ["aarch64", "armv7", "armhf"],
   "odroid-c4": ["aarch64", "armv7", "armhf"],
+  "odroid-m1": ["aarch64", "armv7", "armhf"],
   "odroid-n2": ["aarch64", "armv7", "armhf"],
   "odroid-xu": ["armv7", "armhf"],
   "khadas-vim3": ["aarch64", "armv7", "armhf"],
