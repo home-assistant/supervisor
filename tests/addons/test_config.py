@@ -249,3 +249,38 @@ def test_watchdog_url():
     ):
         config["watchdog"] = test_options
         assert vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_valid_slug():
+    """Test valid and invalid addon slugs."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    # All examples pulled from https://analytics.home-assistant.io/addons.json
+    config["slug"] = "uptime-kuma"
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    config["slug"] = "hassio_google_drive_backup"
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    config["slug"] = "paradox_alarm_interface_3.x"
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    config["slug"] = "Lupusec2Mqtt"
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    # No whitespace
+    config["slug"] = "my addon"
+    with pytest.raises(vol.Invalid):
+        assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    # No url control chars (or other non-word ascii characters)
+    config["slug"] = "a/b_&_c\\d_@ddon$:_test=#2?"
+    with pytest.raises(vol.Invalid):
+        assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    # No unicode
+    config["slug"] = "complemento telefónico"
+    with pytest.raises(vol.Invalid):
+        assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    #
