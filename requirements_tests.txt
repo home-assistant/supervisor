@@ -14,4 +14,4 @@ pytest==7.2.2
 pyupgrade==3.3.1
 time-machine==2.9.0
 typing_extensions==4.5.0
-urllib3==1.26.14
+urllib3==1.26.15
