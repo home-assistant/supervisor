@@ -1,18 +1,33 @@
 """Test System/Agent dbus interface."""
-
+# pylint: disable=import-error
+from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.coresys import CoreSys
+from supervisor.dbus.agent import OSAgent
 from supervisor.exceptions import DBusNotConnectedError
 
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.system import System as SystemService
 
-async def test_dbus_osagent_system_wipe(coresys: CoreSys, dbus: list[str]):
+
+@pytest.fixture(name="system_service", autouse=True)
+async def fixture_system_service(
+    os_agent_services: dict[str, DBusServiceMock]
+) -> SystemService:
+    """Mock System dbus service."""
+    yield os_agent_services["system"]
+
+
+async def test_dbus_osagent_system_wipe(
+    system_service: SystemService, dbus_session_bus: MessageBus
+):
     """Test wipe data partition on host."""
+    os_agent = OSAgent()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.agent.system.schedule_wipe_device()
+        await os_agent.system.schedule_wipe_device()
 
-    await coresys.dbus.agent.connect(coresys.dbus.bus)
+    await os_agent.connect(dbus_session_bus)
 
-    dbus.clear()
-    assert await coresys.dbus.agent.system.schedule_wipe_device() is None
-    assert dbus == ["/io/hass/os/System-io.hass.os.System.ScheduleWipeDevice"]
+    assert await os_agent.system.schedule_wipe_device() is None
+    assert system_service.ScheduleWipeDevice.calls == [tuple()]
