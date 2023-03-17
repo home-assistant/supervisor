@@ -1,25 +1,55 @@
 """Test Network Manager Connection Settings Profile Manager."""
-from supervisor.dbus.network import NetworkManager
 
-from tests.dbus.network.setting.test_init import SETTINGS_WITH_SIGNATURE
+from dbus_fast.aio.message_bus import MessageBus
+import pytest
+
+from supervisor.dbus.network.settings import NetworkManagerSettings
+from supervisor.exceptions import DBusNotConnectedError
+
+from tests.common import mock_dbus_services
+from tests.dbus_service_mocks.network_connection_settings import SETTINGS_FIXTURE
+from tests.dbus_service_mocks.network_settings import Settings as SettingsService
 
 
-async def test_add_connection(network_manager: NetworkManager, dbus: list[str]):
+@pytest.fixture(name="settings_service", autouse=True)
+async def fixture_settings_service(dbus_session_bus: MessageBus) -> SettingsService:
+    """Mock Settings service."""
+    yield (
+        await mock_dbus_services(
+            {"network_settings": None, "network_connection_settings": None},
+            dbus_session_bus,
+        )
+    )["network_settings"]
+
+
+async def test_add_connection(
+    settings_service: SettingsService, dbus_session_bus: MessageBus
+):
     """Test adding settings connection."""
-    dbus.clear()
-    settings = await network_manager.settings.add_connection(SETTINGS_WITH_SIGNATURE)
-    assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
-    assert settings.ipv4.method == "auto"
-    assert dbus == [
-        "/org/freedesktop/NetworkManager/Settings-org.freedesktop.NetworkManager.Settings.AddConnection",
-        "/org/freedesktop/NetworkManager/Settings/1-org.freedesktop.NetworkManager.Settings.Connection.GetSettings",
-    ]
+    settings = NetworkManagerSettings()
+
+    with pytest.raises(DBusNotConnectedError):
+        await settings.add_connection(SETTINGS_FIXTURE)
+
+    await settings.connect(dbus_session_bus)
+
+    connection_settings = await settings.add_connection(SETTINGS_FIXTURE)
+    assert connection_settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
+    assert connection_settings.ipv4.method == "auto"
+
+    assert settings_service.AddConnection.calls == [(SETTINGS_FIXTURE,)]
 
 
-async def test_reload_connections(network_manager: NetworkManager, dbus: list[str]):
+async def test_reload_connections(
+    settings_service: SettingsService, dbus_session_bus: MessageBus
+):
     """Test reload connections."""
-    dbus.clear()
-    assert await network_manager.settings.reload_connections() is True
-    assert dbus == [
-        "/org/freedesktop/NetworkManager/Settings-org.freedesktop.NetworkManager.Settings.ReloadConnections"
-    ]
+    settings = NetworkManagerSettings()
+
+    with pytest.raises(DBusNotConnectedError):
+        await settings.reload_connections()
+
+    await settings.connect(dbus_session_bus)
+
+    assert await settings.reload_connections() is True
+    assert settings_service.ReloadConnections.calls == [tuple()]
