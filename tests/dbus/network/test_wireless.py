@@ -1,50 +1,68 @@
 """Test Network Manager Wireless object."""
-import asyncio
+
+from dbus_fast.aio.message_bus import MessageBus
+import pytest
 
 from supervisor.dbus.network import NetworkManager
+from supervisor.dbus.network.wireless import NetworkWireless
 
-from tests.common import fire_property_change_signal
 from tests.const import TEST_INTERFACE_WLAN
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.network_device_wireless import (
+    DeviceWireless as DeviceWirelessService,
+)
 
 
-async def test_wireless(network_manager: NetworkManager):
+@pytest.fixture(name="device_wireless_service", autouse=True)
+async def fixture_device_wireless_service(
+    network_manager_services: dict[str, DBusServiceMock]
+) -> DeviceWirelessService:
+    """Mock Device Wireless service."""
+    yield network_manager_services["network_device_wireless"]
+
+
+async def test_wireless(
+    device_wireless_service: DeviceWirelessService, dbus_session_bus: MessageBus
+):
     """Test wireless properties."""
-    assert network_manager.interfaces[TEST_INTERFACE_WLAN].wireless.active is None
+    wireless = NetworkWireless("/org/freedesktop/NetworkManager/Devices/3")
 
-    fire_property_change_signal(
-        network_manager.interfaces[TEST_INTERFACE_WLAN].wireless,
-        {"ActiveAccessPoint": "/org/freedesktop/NetworkManager/AccessPoint/43099"},
+    assert wireless.bitrate is None
+
+    await wireless.connect(dbus_session_bus)
+
+    assert wireless.bitrate == 0
+    assert wireless.active is None
+
+    device_wireless_service.emit_properties_changed(
+        {"ActiveAccessPoint": "/org/freedesktop/NetworkManager/AccessPoint/43099"}
     )
-    await asyncio.sleep(0)
+    await device_wireless_service.ping()
+    assert wireless.active is not None
     assert (
-        network_manager.interfaces[TEST_INTERFACE_WLAN].wireless.active.mac
-        == "E4:57:40:A9:D7:DE"
+        wireless.active.object_path
+        == "/org/freedesktop/NetworkManager/AccessPoint/43099"
     )
 
-    fire_property_change_signal(
-        network_manager.interfaces[TEST_INTERFACE_WLAN].wireless,
-        {},
-        ["ActiveAccessPoint"],
-    )
-    await asyncio.sleep(0)
-    assert network_manager.interfaces[TEST_INTERFACE_WLAN].wireless.active is None
+    device_wireless_service.emit_properties_changed({}, ["ActiveAccessPoint"])
+    await device_wireless_service.ping()
+    await device_wireless_service.ping()
+    assert wireless.active is None
 
 
-async def test_request_scan(network_manager: NetworkManager, dbus: list[str]):
+async def test_request_scan(
+    network_manager: NetworkManager, device_wireless_service: DeviceWirelessService
+):
     """Test request scan."""
-    dbus.clear()
     assert (
         await network_manager.interfaces[TEST_INTERFACE_WLAN].wireless.request_scan()
         is None
     )
-    assert dbus == [
-        "/org/freedesktop/NetworkManager/Devices/3-org.freedesktop.NetworkManager.Device.Wireless.RequestScan"
-    ]
+    assert device_wireless_service.RequestScan.calls == [({},)]
 
 
-async def test_get_all_access_points(network_manager: NetworkManager, dbus: list[str]):
+async def test_get_all_access_points(network_manager: NetworkManager):
     """Test get all access points."""
-    dbus.clear()
     accesspoints = await network_manager.interfaces[
         TEST_INTERFACE_WLAN
     ].wireless.get_all_accesspoints()
@@ -53,25 +71,18 @@ async def test_get_all_access_points(network_manager: NetworkManager, dbus: list
     assert accesspoints[0].mode == 2
     assert accesspoints[1].mac == "18:4B:0D:23:A1:9C"
     assert accesspoints[1].mode == 2
-    assert dbus == [
-        "/org/freedesktop/NetworkManager/Devices/3-org.freedesktop.NetworkManager.Device.Wireless.GetAllAccessPoints"
-    ]
 
 
 async def test_old_active_ap_disconnects(network_manager: NetworkManager):
     """Test old access point disconnects on active ap change."""
     wireless = network_manager.interfaces[TEST_INTERFACE_WLAN].wireless
-    fire_property_change_signal(
-        wireless,
-        {"ActiveAccessPoint": "/org/freedesktop/NetworkManager/AccessPoint/43099"},
-    )
-    await asyncio.sleep(0)
 
+    await wireless.update(
+        {"ActiveAccessPoint": "/org/freedesktop/NetworkManager/AccessPoint/43099"}
+    )
     active = wireless.active
     assert active.is_connected is True
 
-    fire_property_change_signal(wireless, {"ActiveAccessPoint": "/"})
-    await asyncio.sleep(0)
-
+    await wireless.update({"ActiveAccessPoint": "/"})
     assert wireless.active is None
     assert active.is_connected is False

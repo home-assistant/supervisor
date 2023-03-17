@@ -129,7 +129,7 @@ class Hostname(DBusServiceMock):
     @dbus_method()
     def GetProductUUID(self, interactive: "b") -> "ay":
         """Get product UUID."""
-        return bytearray("d153e353-2a32-4763-b930-b27fbc980da5", encoding="utf-8")
+        return b"d153e353-2a32-4763-b930-b27fbc980da5"
 
     @dbus_method()
     def Describe(self) -> "s":

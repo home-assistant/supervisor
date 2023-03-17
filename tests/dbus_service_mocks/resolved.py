@@ -48,35 +48,125 @@ class Resolved(DBusServiceMock):
     def DNS(self) -> "a(iiay)":
         """Get DNS."""
         return [
-            [0, 2, bytearray([127, 0, 0, 1])],
-            [0, 10, bytearray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])],
+            [0, 2, bytes([127, 0, 0, 1])],
+            [
+                0,
+                10,
+                bytes(
+                    [
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x1,
+                    ]
+                ),
+            ],
         ]
 
     @dbus_property(access=PropertyAccess.READ)
     def DNSEx(self) -> "a(iiayqs)":
         """Get DNSEx."""
         return [
-            [0, 2, bytearray([127, 0, 0, 1]), 0, ""],
-            [0, 10, bytearray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]), 0, ""],
+            [0, 2, bytes([127, 0, 0, 1]), 0, ""],
+            [
+                0,
+                10,
+                bytes(
+                    [
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x1,
+                    ]
+                ),
+                0,
+                "",
+            ],
         ]
 
     @dbus_property(access=PropertyAccess.READ)
     def FallbackDNS(self) -> "a(iiay)":
         """Get FallbackDNS."""
         return [
-            [0, 2, bytearray([1, 1, 1, 1])],
-            [0, 10, bytearray([38, 6, 71, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 17])],
+            [0, 2, bytes([1, 1, 1, 1])],
+            [
+                0,
+                10,
+                bytes(
+                    [
+                        0x26,
+                        0x6,
+                        0x47,
+                        0x0,
+                        0x47,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x11,
+                        0x11,
+                    ]
+                ),
+            ],
         ]
 
     @dbus_property(access=PropertyAccess.READ)
     def FallbackDNSEx(self) -> "a(iiayqs)":
         """Get FallbackDNSEx."""
         return [
-            [0, 2, bytearray([1, 1, 1, 1]), 0, "cloudflare-dns.com"],
+            [0, 2, bytes([1, 1, 1, 1]), 0, "cloudflare-dns.com"],
             [
                 0,
                 10,
-                bytearray([38, 6, 71, 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 17]),
+                bytes(
+                    [
+                        0x26,
+                        0x6,
+                        0x47,
+                        0x0,
+                        0x47,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x0,
+                        0x11,
+                        0x11,
+                    ]
+                ),
                 0,
                 "cloudflare-dns.com",
             ],
@@ -85,12 +175,12 @@ class Resolved(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def CurrentDNSServer(self) -> "(iiay)":
         """Get CurrentDNSServer."""
-        return [0, 2, bytearray([127, 0, 0, 1])]
+        return [0, 2, bytes([127, 0, 0, 1])]
 
     @dbus_property(access=PropertyAccess.READ)
     def CurrentDNSServerEx(self) -> "(iiayqs)":
         """Get CurrentDNSServerEx."""
-        return [0, 2, bytearray([127, 0, 0, 1]), 0, ""]
+        return [0, 2, bytes([127, 0, 0, 1]), 0, ""]
 
     @dbus_property(access=PropertyAccess.READ)
     def Domains(self) -> "a(isb)":

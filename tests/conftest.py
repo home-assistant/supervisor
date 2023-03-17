@@ -327,15 +327,41 @@ async def dbus_is_connected():
         yield is_connected
 
 
+@pytest.fixture(name="network_manager_services")
+async def fixture_network_manager_services(
+    dbus_session_bus: MessageBus,
+) -> dict[str, DBusServiceMock]:
+    """Mock all services network manager connects to."""
+    yield await mock_dbus_services(
+        {
+            "network_access_point": [
+                "/org/freedesktop/NetworkManager/AccessPoint/43099",
+                "/org/freedesktop/NetworkManager/AccessPoint/43100",
+            ],
+            "network_active_connection": None,
+            "network_connection_settings": None,
+            "network_device_wireless": None,
+            "network_device": [
+                "/org/freedesktop/NetworkManager/Devices/1",
+                "/org/freedesktop/NetworkManager/Devices/3",
+            ],
+            "network_dns_manager": None,
+            "network_ip4config": None,
+            "network_ip6config": None,
+            "network_manager": None,
+            "network_settings": None,
+        },
+        dbus_session_bus,
+    )
+
+
 @pytest.fixture
-async def network_manager(dbus, dbus_bus: MessageBus) -> NetworkManager:
+async def network_manager(
+    network_manager_services: dict[str, DBusServiceMock], dbus_session_bus: MessageBus
+) -> NetworkManager:
     """Mock NetworkManager."""
     nm_obj = NetworkManager()
-    nm_obj.dbus = dbus
-
-    # Init
-    await nm_obj.connect(dbus_bus)
-
+    await nm_obj.connect(dbus_session_bus)
     yield nm_obj
 
 
