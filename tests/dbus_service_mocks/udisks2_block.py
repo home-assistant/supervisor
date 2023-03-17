@@ -521,7 +521,7 @@ class Block(DBusServiceMock):
         return []
 
     @dbus_method()
-    def Format(self, type: "s", options: "a{sv}") -> None:
+    def Format(self, type_: "s", options: "a{sv}") -> None:
         """Do Format method."""
 
     @dbus_method()

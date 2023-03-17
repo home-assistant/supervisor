@@ -45,22 +45,22 @@ class UDisks2Manager(DBusServiceMock):
         return "luks1"
 
     @dbus_method()
-    def CanFormat(self, type: "s") -> "(bs)":
+    def CanFormat(self, type_: "s") -> "(bs)":
         """Do CanFormat method."""
         return [False, "mkfs.ntfs"]
 
     @dbus_method()
-    def CanResize(self, type: "s") -> "(bts)":
+    def CanResize(self, type_: "s") -> "(bts)":
         """Do CanResize method."""
         return [False, 6, "ntfsresize"]
 
     @dbus_method()
-    def CanCheck(self, type: "s") -> "(bs)":
+    def CanCheck(self, type_: "s") -> "(bs)":
         """Do CanCheck method."""
         return [False, "ntfsfix"]
 
     @dbus_method()
-    def CanRepair(self, type: "s") -> "(bs)":
+    def CanRepair(self, type_: "s") -> "(bs)":
         """Do CanRepair method."""
         return [False, "ntfsfix"]
 

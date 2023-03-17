@@ -164,7 +164,7 @@ class Partition(DBusServiceMock):
         return self.fixture.IsContained
 
     @dbus_method()
-    def SetType(self, type: "s", options: "a{sv}") -> None:
+    def SetType(self, type_: "s", options: "a{sv}") -> None:
         """Do SetType method."""
 
     @dbus_method()

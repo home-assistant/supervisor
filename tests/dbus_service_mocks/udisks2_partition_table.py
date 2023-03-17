@@ -70,7 +70,7 @@ class PartitionTable(DBusServiceMock):
 
     @dbus_method()
     def CreatePartition(
-        self, offset: "t", size: "t", type: "s", name: "s", options: "a{sv}"
+        self, offset: "t", size: "t", type_: "s", name: "s", options: "a{sv}"
     ) -> "o":
         """Do CreatePartition method."""
         return "/org/freedesktop/UDisks2/block_devices/sda2"
@@ -80,10 +80,10 @@ class PartitionTable(DBusServiceMock):
         self,
         offset: "t",
         size: "t",
-        type: "s",
+        type_: "s",
         name: "s",
         options: "a{sv}",
-        format_type: "s",
+        format_type_: "s",
         format_options: "a{sv}",
     ) -> "o":
         """Do CreatePartitionAndFormat method."""
