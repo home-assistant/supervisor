@@ -147,12 +147,11 @@ async def dbus_session_bus(dbus_session) -> MessageBus:
 @pytest.fixture
 async def dbus_services(
     request: pytest.FixtureRequest, dbus_session: MessageBus
-) -> dict[str, DBusServiceMock | list[DBusServiceMock]]:
+) -> dict[str, dict[str, DBusServiceMock] | DBusServiceMock]:
     """Mock specified dbus services on session bus.
 
-    Should be used indirectly. Provide a dictionary where the key a dbus service to mock
-    (module must exist in dbus_service_mocks). Value is the object path for the mocked service.
-    Can also be a list of object paths or None (if the mocked service defines the object path).
+    Wrapper on mock_dbus_services intended to be used indirectly.
+    Request param passed to it as to_mock and output returned as fixture value.
     """
     with patch("supervisor.dbus.manager.MessageBus.connect", return_value=dbus_session):
         yield await mock_dbus_services(request.param, dbus_session)
@@ -330,7 +329,7 @@ async def dbus_is_connected():
 @pytest.fixture(name="network_manager_services")
 async def fixture_network_manager_services(
     dbus_session_bus: MessageBus,
-) -> dict[str, DBusServiceMock]:
+) -> dict[str, DBusServiceMock | dict[str, DBusServiceMock]]:
     """Mock all services network manager connects to."""
     yield await mock_dbus_services(
         {
@@ -357,12 +356,63 @@ async def fixture_network_manager_services(
 
 @pytest.fixture
 async def network_manager(
-    network_manager_services: dict[str, DBusServiceMock], dbus_session_bus: MessageBus
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    dbus_session_bus: MessageBus,
 ) -> NetworkManager:
-    """Mock NetworkManager."""
+    """Mock Network Manager."""
     nm_obj = NetworkManager()
     await nm_obj.connect(dbus_session_bus)
     yield nm_obj
+
+
+@pytest.fixture(name="udisks2_services")
+async def fixture_udisks2_services(
+    dbus_session_bus: MessageBus,
+) -> dict[str, DBusServiceMock | dict[str, DBusServiceMock]]:
+    """Mock all services UDisks2 connects to."""
+    yield await mock_dbus_services(
+        {
+            "udisks2_block": [
+                "/org/freedesktop/UDisks2/block_devices/loop0",
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1",
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+                "/org/freedesktop/UDisks2/block_devices/sda",
+                "/org/freedesktop/UDisks2/block_devices/sda1",
+                "/org/freedesktop/UDisks2/block_devices/sdb",
+                "/org/freedesktop/UDisks2/block_devices/sdb1",
+                "/org/freedesktop/UDisks2/block_devices/zram1",
+            ],
+            "udisks2_drive": [
+                "/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291",
+                "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6",
+                "/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56",
+            ],
+            "udisks2_filesystem": [
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+                "/org/freedesktop/UDisks2/block_devices/sda1",
+                "/org/freedesktop/UDisks2/block_devices/sdb1",
+                "/org/freedesktop/UDisks2/block_devices/zram1",
+            ],
+            "udisks2_loop": None,
+            "udisks2_manager": None,
+            "udisks2_partition_table": [
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1",
+                "/org/freedesktop/UDisks2/block_devices/sda",
+                "/org/freedesktop/UDisks2/block_devices/sdb",
+            ],
+            "udisks2_parition": [
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
+                "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+                "/org/freedesktop/UDisks2/block_devices/sda1",
+                "/org/freedesktop/UDisks2/block_devices/sdb1",
+            ],
+        },
+        dbus_session_bus,
+    )
 
 
 async def mock_dbus_interface(

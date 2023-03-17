@@ -22,7 +22,7 @@ from tests.dbus_service_mocks.network_manager import (
 
 @pytest.fixture(name="network_manager_service", autouse=True)
 async def fixture_network_manager_service(
-    network_manager_services: dict[str, DBusServiceMock],
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> NetworkManagerService:
     """Mock NetworkManager dbus service."""
     yield network_manager_services["network_manager"]

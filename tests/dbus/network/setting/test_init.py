@@ -18,7 +18,7 @@ from tests.dbus_service_mocks.network_connection_settings import (
 
 @pytest.fixture(name="connection_settings_service", autouse=True)
 async def fixture_connection_settings_service(
-    network_manager_services: dict[str, DBusServiceMock]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
 ) -> ConnectionSettingsService:
     """Mock Connection Settings service."""
     yield network_manager_services["network_connection_settings"]

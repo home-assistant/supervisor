@@ -108,12 +108,17 @@ def exists_fixture(filename: str) -> bool:
 
 async def mock_dbus_services(
     to_mock: dict[str, list[str] | str | None], bus: MessageBus
-) -> dict[str, list[DBusServiceMock] | DBusServiceMock]:
+) -> dict[str, dict[str, DBusServiceMock] | DBusServiceMock]:
     """Mock specified dbus services on bus.
 
     to_mock is dictionary where the key is a dbus service to mock (module must exist
     in dbus_service_mocks). Value is the object path for the mocked service. Can also
     be a list of object paths or None (if the mocked service defines the object path).
+
+    A dictionary is returned where the key is the dbus service to mock and the value
+    is the instance of the mocked service. If a list of object paths is provided,
+    the value is a dictionary where the key is the object path and value is the
+    mocked instance of the service for that object path.
     """
     services: dict[str, list[DBusServiceMock] | DBusServiceMock] = {}
     requested_names: set[str] = set()
@@ -127,10 +132,10 @@ async def mock_dbus_services(
                 requested_names.add(service_module.BUS_NAME)
 
             if isinstance(to_mock[module], list):
-                services[module] = [
-                    service_module.setup(obj_path).export(bus)
+                services[module] = {
+                    obj_path: service_module.setup(obj_path).export(bus)
                     for obj_path in to_mock[module]
-                ]
+                }
             else:
                 services[module] = service_module.setup(to_mock[module]).export(bus)
 
