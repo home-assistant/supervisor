@@ -412,7 +412,7 @@ async def udisks2(dbus: DBus, dbus_bus: MessageBus) -> UDisks2:
 
 @pytest.fixture
 async def coresys(
-    event_loop, docker, network_manager, dbus_bus, aiohttp_client, run_dir
+    event_loop, docker, dbus, dbus_bus, aiohttp_client, run_dir
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system"), patch(
@@ -437,6 +437,9 @@ async def coresys(
 
     # Mock host communication
     coresys_obj._dbus._bus = dbus_bus
+    network_manager = NetworkManager()
+    network_manager.dbus = dbus
+    await network_manager.connect(dbus_bus)
     coresys_obj._dbus._network = network_manager
 
     # Mock docker

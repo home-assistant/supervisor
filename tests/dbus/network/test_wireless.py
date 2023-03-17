@@ -54,6 +54,7 @@ async def test_request_scan(
     network_manager: NetworkManager, device_wireless_service: DeviceWirelessService
 ):
     """Test request scan."""
+    device_wireless_service.RequestScan.calls.clear()
     assert (
         await network_manager.interfaces[TEST_INTERFACE_WLAN].wireless.request_scan()
         is None

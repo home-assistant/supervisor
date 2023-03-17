@@ -68,6 +68,8 @@ async def test_check_connectivity(
     network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Test connectivity check."""
+    network_manager_service.CheckConnectivity.calls.clear()
+
     assert await network_manager.check_connectivity() == 4
     assert network_manager_service.CheckConnectivity.calls == []
 
@@ -100,6 +102,8 @@ async def test_add_and_activate_connection(
     network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Test add and activate connection."""
+    network_manager_service.AddAndActivateConnection.calls.clear()
+
     settings, connection = await network_manager.add_and_activate_connection(
         SETTINGS_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1"
     )
