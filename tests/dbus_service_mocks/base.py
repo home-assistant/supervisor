@@ -19,13 +19,13 @@ def dbus_method(name: str = None, disabled: bool = False):
     orig_decorator = method(name=name, disabled=disabled)
 
     @no_type_check_decorator
-    def decorator(fn):
+    def decorator(func):
         calls: list[list[Any]] = []
 
-        @wraps(fn)
+        @wraps(func)
         def track_calls(self, *args):
             calls.append(args)
-            return fn(self, *args)
+            return func(self, *args)
 
         wrapped = orig_decorator(track_calls)
         wrapped.__dict__["calls"] = calls
