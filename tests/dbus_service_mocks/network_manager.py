@@ -24,6 +24,7 @@ class NetworkManager(DBusServiceMock):
     interface = "org.freedesktop.NetworkManager"
     object_path = "/org/freedesktop/NetworkManager"
     version = "1.22.10"
+    connectivity = 4
 
     @dbus_property(access=PropertyAccess.READ)
     def Devices(self) -> "ao":
@@ -145,7 +146,7 @@ class NetworkManager(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def Connectivity(self) -> "u":
         """Get Connectivity."""
-        return 4
+        return self.connectivity
 
     @dbus_property(access=PropertyAccess.READ)
     def ConnectivityCheckAvailable(self) -> "b":
@@ -300,7 +301,7 @@ class NetworkManager(DBusServiceMock):
     @dbus_method()
     def CheckConnectivity(self) -> "u":
         """Do CheckConnectivity method."""
-        return 4
+        return self.Connectivity
 
     @dbus_method()
     def state(self) -> "u":

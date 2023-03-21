@@ -107,4 +107,4 @@ class ActiveConnection(DBusServiceMock):
     @signal()
     def StateChanged(self) -> "uu":
         """Signal StateChanged."""
-        return [0, 0]
+        return [2, 0]

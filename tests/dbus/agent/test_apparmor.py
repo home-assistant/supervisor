@@ -8,7 +8,7 @@ import pytest
 from supervisor.dbus.agent import OSAgent
 from supervisor.exceptions import DBusNotConnectedError
 
-from tests.dbus_service_mocks.apparmor import AppArmor as AppArmorService
+from tests.dbus_service_mocks.agent_apparmor import AppArmor as AppArmorService
 from tests.dbus_service_mocks.base import DBusServiceMock
 
 
@@ -17,7 +17,7 @@ async def fixture_apparmor_service(
     os_agent_services: dict[str, DBusServiceMock]
 ) -> AppArmorService:
     """Mock AppArmor dbus service."""
-    yield os_agent_services["apparmor"]
+    yield os_agent_services["agent_apparmor"]
 
 
 async def test_dbus_osagent_apparmor(
@@ -46,6 +46,7 @@ async def test_dbus_osagent_apparmor_load(
     apparmor_service: AppArmorService, dbus_session_bus: MessageBus
 ):
     """Load AppArmor Profile on host."""
+    apparmor_service.LoadProfile.calls.clear()
     os_agent = OSAgent()
 
     with pytest.raises(DBusNotConnectedError):
@@ -70,6 +71,7 @@ async def test_dbus_osagent_apparmor_unload(
     apparmor_service: AppArmorService, dbus_session_bus: MessageBus
 ):
     """Unload AppArmor Profile on host."""
+    apparmor_service.UnloadProfile.calls.clear()
     os_agent = OSAgent()
 
     with pytest.raises(DBusNotConnectedError):

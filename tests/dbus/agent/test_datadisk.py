@@ -8,8 +8,8 @@ import pytest
 from supervisor.dbus.agent import OSAgent
 from supervisor.exceptions import DBusNotConnectedError
 
+from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.base import DBusServiceMock
-from tests.dbus_service_mocks.datadisk import DataDisk as DataDiskService
 
 
 @pytest.fixture(name="datadisk_service", autouse=True)
@@ -17,7 +17,7 @@ async def fixture_datadisk_service(
     os_agent_services: dict[str, DBusServiceMock]
 ) -> DataDiskService:
     """Mock DataDisk dbus service."""
-    yield os_agent_services["datadisk"]
+    yield os_agent_services["agent_datadisk"]
 
 
 async def test_dbus_osagent_datadisk(
@@ -46,6 +46,7 @@ async def test_dbus_osagent_datadisk_change_device(
     datadisk_service: DataDiskService, dbus_session_bus: MessageBus
 ):
     """Change datadisk on device."""
+    datadisk_service.ChangeDevice.calls.clear()
     os_agent = OSAgent()
 
     with pytest.raises(DBusNotConnectedError):
@@ -61,6 +62,7 @@ async def test_dbus_osagent_datadisk_reload_device(
     datadisk_service: DataDiskService, dbus_session_bus: MessageBus
 ):
     """Change datadisk on device."""
+    datadisk_service.ReloadDevice.calls.clear()
     os_agent = OSAgent()
 
     with pytest.raises(DBusNotConnectedError):

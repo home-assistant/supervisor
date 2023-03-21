@@ -80,6 +80,7 @@ class ConnectionSettings(DBusServiceMock):
 
     interface = "org.freedesktop.NetworkManager.Settings.Connection"
     object_path = "/org/freedesktop/NetworkManager/Settings/1"
+    settings = SETTINGS_FIXTURE
 
     @dbus_property(access=PropertyAccess.READ)
     def Unsaved(self) -> "b":
@@ -107,6 +108,7 @@ class ConnectionSettings(DBusServiceMock):
     @dbus_method()
     def Update(self, properties: "a{sa{sv}}") -> None:
         """Do Update method."""
+        self.settings = properties
         self.Updated()
 
     @dbus_method()
@@ -121,7 +123,7 @@ class ConnectionSettings(DBusServiceMock):
     @dbus_method()
     def GetSettings(self) -> "a{sa{sv}}":
         """Do GetSettings method."""
-        return SETTINGS_FIXTURE
+        return self.settings
 
     @dbus_method()
     def GetSecrets(self, setting_name: "s") -> "a{sa{sv}}":
@@ -140,5 +142,5 @@ class ConnectionSettings(DBusServiceMock):
     @dbus_method()
     def Update2(self, settings: "a{sa{sv}}", flags: "u", args: "a{sv}") -> "a{sv}":
         """Do Update2 method."""
-        self.Updated()
+        self.Update(settings)
         return {}

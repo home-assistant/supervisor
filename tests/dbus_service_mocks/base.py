@@ -8,8 +8,6 @@ from dbus_fast import Message
 from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.service import ServiceInterface, method
 
-# pylint: disable=invalid-name
-
 
 def dbus_method(name: str = None, disabled: bool = False):
     """Make DBus method with call tracking.

@@ -7,18 +7,20 @@ from supervisor.dbus.agent.boards import BoardManager
 from supervisor.exceptions import BoardInvalidError
 
 from tests.common import mock_dbus_services
-from tests.dbus_service_mocks.boards import Boards as BoardsService
+from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
 
 
 @pytest.fixture(name="boards_service", autouse=True)
 async def fixture_boards_service(dbus_session_bus: MessageBus) -> BoardsService:
     """Mock Boards dbus service."""
-    yield (await mock_dbus_services({"boards": None}, dbus_session_bus))["boards"]
+    yield (await mock_dbus_services({"agent_boards": None}, dbus_session_bus))[
+        "agent_boards"
+    ]
 
 
 async def test_dbus_board(dbus_session_bus: MessageBus):
     """Test DBus Board load."""
-    await mock_dbus_services({"boards_yellow": None}, dbus_session_bus)
+    await mock_dbus_services({"agent_boards_yellow": None}, dbus_session_bus)
 
     board = BoardManager()
     await board.connect(dbus_session_bus)
@@ -34,7 +36,7 @@ async def test_dbus_board_supervised(
     boards_service: BoardsService, dbus_session_bus: MessageBus
 ):
     """Test DBus Board load with supervised board."""
-    await mock_dbus_services({"boards_supervised": None}, dbus_session_bus)
+    await mock_dbus_services({"agent_boards_supervised": None}, dbus_session_bus)
     boards_service.board = "Supervised"
 
     board = BoardManager()

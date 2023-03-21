@@ -5,17 +5,20 @@ from datetime import timedelta
 from aiohttp.hdrs import USER_AGENT
 
 from supervisor.coresys import CoreSys
+from supervisor.dbus.timedate import TimeDate
 from supervisor.utils.dt import utcnow
 
 
 async def test_timezone(run_dir, coresys: CoreSys):
     """Test write corestate to /run/supervisor."""
+    # pylint: disable=protected-access
+    coresys.host.sys_dbus._timedate = TimeDate()
+    # pylint: enable=protected-access
 
     assert coresys.timezone == "UTC"
     assert coresys.config.timezone is None
 
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
-    await coresys.dbus.timedate.update()
     assert coresys.timezone == "Etc/UTC"
 
     coresys.config.timezone = "Europe/Zurich"

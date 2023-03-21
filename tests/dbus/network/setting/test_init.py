@@ -37,6 +37,8 @@ async def test_update(
     connection_settings_service: ConnectionSettingsService,
 ):
     """Test network manager update."""
+    connection_settings_service.Update.calls.clear()
+
     interface = Interface.from_dbus_interface(dbus_interface)
     conn = get_connection_from_interface(
         interface,

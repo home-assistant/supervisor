@@ -23,6 +23,10 @@ class DeviceWireless(DBusServiceMock):
 
     interface = "org.freedesktop.NetworkManager.Device.Wireless"
     object_path = "/org/freedesktop/NetworkManager/Devices/3"
+    all_access_points = [
+        "/org/freedesktop/NetworkManager/AccessPoint/43099",
+        "/org/freedesktop/NetworkManager/AccessPoint/43100",
+    ]
 
     @dbus_property(access=PropertyAccess.READ)
     def HwAddress(self) -> "s":
@@ -92,10 +96,7 @@ class DeviceWireless(DBusServiceMock):
     @dbus_method()
     def GetAllAccessPoints(self) -> "ao":
         """Do GetAllAccessPoints method."""
-        return [
-            "/org/freedesktop/NetworkManager/AccessPoint/43099",
-            "/org/freedesktop/NetworkManager/AccessPoint/43100",
-        ]
+        return self.all_access_points
 
     @dbus_method()
     def RequestScan(self, options: "a{sv}") -> None:

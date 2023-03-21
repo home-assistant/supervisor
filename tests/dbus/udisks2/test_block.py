@@ -93,6 +93,7 @@ async def test_block_device_info(
 
 async def test_format(block_sda_service: BlockService, dbus_session_bus: MessageBus):
     """Test formatting block device."""
+    block_sda_service.Format.calls.clear()
     sda = UDisks2Block("/org/freedesktop/UDisks2/block_devices/sda")
     await sda.connect(dbus_session_bus)
 

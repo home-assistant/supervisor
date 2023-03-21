@@ -81,6 +81,7 @@ async def test_activate_connection(
     network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Test activate connection."""
+    network_manager_service.ActivateConnection.calls.clear()
     connection = await network_manager.activate_connection(
         "/org/freedesktop/NetworkManager/Settings/1",
         "/org/freedesktop/NetworkManager/Devices/1",
