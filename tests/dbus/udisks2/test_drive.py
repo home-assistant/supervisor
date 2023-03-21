@@ -76,6 +76,7 @@ async def test_eject(
     drive_flash_disk_service: DriveService, dbus_session_bus: MessageBus
 ):
     """Test eject."""
+    drive_flash_disk_service.Eject.calls.clear()
     flash = UDisks2Drive("/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6")
     await flash.connect(dbus_session_bus)
 

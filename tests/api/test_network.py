@@ -1,15 +1,22 @@
 """Test NetwrokInterface API."""
 from unittest.mock import AsyncMock, patch
 
-import pytest
+from dbus_fast import Variant
 
 from supervisor.const import DOCKER_NETWORK, DOCKER_NETWORK_MASK
 from supervisor.coresys import CoreSys
 
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.network_connection_settings import (
+    ConnectionSettings as ConnectionSettingsService,
+)
+from tests.dbus_service_mocks.network_manager import (
+    NetworkManager as NetworkManagerService,
+)
+from tests.dbus_service_mocks.network_settings import Settings as SettingsService
 
 
-@pytest.mark.asyncio
 async def test_api_network_info(api_client, coresys: CoreSys):
     """Test network manager api."""
     resp = await api_client.get("/network/info")
@@ -48,7 +55,6 @@ async def test_api_network_info(api_client, coresys: CoreSys):
     assert result["data"]["docker"]["gateway"] == str(coresys.docker.network.gateway)
 
 
-@pytest.mark.asyncio
 async def test_api_network_interface_info(api_client):
     """Test network manager api."""
     resp = await api_client.get(f"/network/interface/{TEST_INTERFACE}/info")
@@ -60,10 +66,7 @@ async def test_api_network_interface_info(api_client):
     assert (
         result["data"]["ipv6"]["address"][0] == "2a03:169:3df5:0:6be9:2588:b26a:a679/64"
     )
-    assert (
-        result["data"]["ipv6"]["address"][1]
-        == "fd14:949b:c9cc:0:522b:8108:8ff8:cca3/64"
-    )
+    assert result["data"]["ipv6"]["address"][1] == "2a03:169:3df5::2f1/128"
     assert result["data"]["ipv6"]["gateway"] == "fe80::da58:d7ff:fe00:9c69"
     assert result["data"]["ipv6"]["nameservers"] == [
         "2001:1620:2777:1::10",
@@ -73,7 +76,6 @@ async def test_api_network_interface_info(api_client):
     assert result["data"]["interface"] == TEST_INTERFACE
 
 
-@pytest.mark.asyncio
 async def test_api_network_interface_info_default(api_client):
     """Test network manager default api."""
     resp = await api_client.get("/network/interface/default/info")
@@ -85,10 +87,7 @@ async def test_api_network_interface_info_default(api_client):
     assert (
         result["data"]["ipv6"]["address"][0] == "2a03:169:3df5:0:6be9:2588:b26a:a679/64"
     )
-    assert (
-        result["data"]["ipv6"]["address"][1]
-        == "fd14:949b:c9cc:0:522b:8108:8ff8:cca3/64"
-    )
+    assert result["data"]["ipv6"]["address"][1] == "2a03:169:3df5::2f1/128"
     assert result["data"]["ipv6"]["gateway"] == "fe80::da58:d7ff:fe00:9c69"
     assert result["data"]["ipv6"]["nameservers"] == [
         "2001:1620:2777:1::10",
@@ -98,12 +97,19 @@ async def test_api_network_interface_info_default(api_client):
     assert result["data"]["interface"] == TEST_INTERFACE
 
 
-@pytest.mark.asyncio
 async def test_api_network_interface_update(
-    api_client, coresys: CoreSys, dbus: list[str]
+    api_client,
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
 ):
     """Test network manager api."""
-    dbus.clear()
+    network_manager_service.CheckConnectivity.calls.clear()
+    connection_settings_service.Update.calls.clear()
+    assert (
+        coresys.dbus.network.interfaces[TEST_INTERFACE].settings.ipv4.method == "auto"
+    )
+
     resp = await api_client.post(
         f"/network/interface/{TEST_INTERFACE}/update",
         json={
@@ -117,13 +123,16 @@ async def test_api_network_interface_update(
     )
     result = await resp.json()
     assert result["result"] == "ok"
+    assert network_manager_service.CheckConnectivity.calls == [tuple()]
+    assert len(connection_settings_service.Update.calls) == 1
+
+    await connection_settings_service.ping()
+    await connection_settings_service.ping()
     assert (
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
-        in dbus
+        coresys.dbus.network.interfaces[TEST_INTERFACE].settings.ipv4.method == "manual"
     )
 
 
-@pytest.mark.asyncio
 async def test_api_network_interface_update_wifi(api_client):
     """Test network manager api."""
     resp = await api_client.post(
@@ -143,7 +152,6 @@ async def test_api_network_interface_update_wifi(api_client):
     assert result["result"] == "ok"
 
 
-@pytest.mark.asyncio
 async def test_api_network_interface_update_remove(api_client):
     """Test network manager api."""
     resp = await api_client.post(
@@ -154,7 +162,6 @@ async def test_api_network_interface_update_remove(api_client):
     assert result["result"] == "ok"
 
 
-@pytest.mark.asyncio
 async def test_api_network_interface_info_invalid(api_client):
     """Test network manager api."""
     resp = await api_client.get("/network/interface/invalid/info")
@@ -164,7 +171,6 @@ async def test_api_network_interface_info_invalid(api_client):
     assert result["result"] == "error"
 
 
-@pytest.mark.asyncio
 async def test_api_network_interface_update_invalid(api_client):
     """Test network manager api."""
     resp = await api_client.post("/network/interface/invalid/update", json={})
@@ -186,7 +192,6 @@ async def test_api_network_interface_update_invalid(api_client):
     )
 
 
-@pytest.mark.asyncio
 async def test_api_network_wireless_scan(api_client):
     """Test network manager api."""
     with patch("asyncio.sleep", return_value=AsyncMock()):
@@ -201,30 +206,47 @@ async def test_api_network_wireless_scan(api_client):
     assert [47, 63] == [ap["signal"] for ap in result["data"]["accesspoints"]]
 
 
-@pytest.mark.asyncio
-async def test_api_network_reload(api_client, coresys, dbus: list[str]):
+async def test_api_network_reload(
+    api_client, coresys, network_manager_service: NetworkManagerService
+):
     """Test network manager reload api."""
-    dbus.clear()
+    network_manager_service.CheckConnectivity.calls.clear()
     resp = await api_client.post("/network/reload")
     result = await resp.json()
 
     assert result["result"] == "ok"
     # Check that we forced NM to do an immediate connectivity check
-    assert (
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
-        in dbus
-    )
+    assert network_manager_service.CheckConnectivity.calls == [tuple()]
 
 
-async def test_api_network_vlan(api_client, coresys: CoreSys, dbus: list[str]):
+async def test_api_network_vlan(
+    api_client,
+    coresys: CoreSys,
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
     """Test creating a vlan."""
-    dbus.clear()
+    settings_service: SettingsService = network_manager_services["network_settings"]
+    settings_service.AddConnection.calls.clear()
     resp = await api_client.post(
         f"/network/interface/{TEST_INTERFACE}/vlan/1", json={"ipv4": {"method": "auto"}}
     )
     result = await resp.json()
     assert result["result"] == "ok"
-    assert (
-        "/org/freedesktop/NetworkManager/Settings-org.freedesktop.NetworkManager.Settings.AddConnection"
-        in dbus
-    )
+    assert len(settings_service.AddConnection.calls) == 1
+
+    connection = settings_service.AddConnection.calls[0][0]
+    assert "uuid" in connection["connection"]
+    assert connection["connection"] == {
+        "id": Variant("s", "Supervisor .1"),
+        "type": Variant("s", "vlan"),
+        "llmnr": Variant("i", 2),
+        "mdns": Variant("i", 2),
+        "autoconnect": Variant("b", True),
+        "uuid": connection["connection"]["uuid"],
+    }
+    assert connection["ipv4"] == {"method": Variant("s", "auto")}
+    assert connection["ipv6"] == {"method": Variant("s", "auto")}
+    assert connection["vlan"] == {
+        "id": Variant("u", 1),
+        "parent": Variant("s", "eth0"),
+    }

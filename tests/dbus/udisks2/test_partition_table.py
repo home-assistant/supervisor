@@ -100,6 +100,7 @@ async def test_create_partition(
     partition_table_sda_service: PartitionTableService, dbus_session_bus: MessageBus
 ):
     """Test create partition."""
+    partition_table_sda_service.CreatePartition.calls.clear()
     sda = UDisks2PartitionTable("/org/freedesktop/UDisks2/block_devices/sda")
     await sda.connect(dbus_session_bus)
 

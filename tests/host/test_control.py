@@ -1,24 +1,22 @@
 """Test host control."""
 
-import asyncio
-
 from supervisor.coresys import CoreSys
 
-from tests.common import fire_property_change_signal
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.hostname import Hostname as HostnameService
 
 
-async def test_set_hostname(coresys: CoreSys, dbus: list[str]):
+async def test_set_hostname(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
     """Test set hostname."""
-    await coresys.dbus.hostname.connect(coresys.dbus.bus)
+    hostname_service: HostnameService = all_dbus_services["hostname"]
+    hostname_service.SetStaticHostname.calls.clear()
 
     assert coresys.dbus.hostname.hostname == "homeassistant-n2"
 
-    dbus.clear()
     await coresys.host.control.set_hostname("test")
-    assert dbus == [
-        "/org/freedesktop/hostname1-org.freedesktop.hostname1.SetStaticHostname"
-    ]
-
-    fire_property_change_signal(coresys.dbus.hostname, {"StaticHostname": "test"})
-    await asyncio.sleep(0)
+    assert hostname_service.SetStaticHostname.calls == [("test", False)]
+    await hostname_service.ping()
     assert coresys.dbus.hostname.hostname == "test"

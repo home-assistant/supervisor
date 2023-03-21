@@ -31,6 +31,7 @@ async def test_dbus_systemd_info(dbus_session_bus: MessageBus):
 
 async def test_reboot(systemd_service: SystemdService, dbus_session_bus: MessageBus):
     """Test reboot."""
+    systemd_service.Reboot.calls.clear()
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
@@ -44,6 +45,7 @@ async def test_reboot(systemd_service: SystemdService, dbus_session_bus: Message
 
 async def test_power_off(systemd_service: SystemdService, dbus_session_bus: MessageBus):
     """Test power off."""
+    systemd_service.PowerOff.calls.clear()
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
@@ -59,6 +61,7 @@ async def test_start_unit(
     systemd_service: SystemdService, dbus_session_bus: MessageBus
 ):
     """Test start unit."""
+    systemd_service.StartUnit.calls.clear()
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
@@ -75,6 +78,7 @@ async def test_start_unit(
 
 async def test_stop_unit(systemd_service: SystemdService, dbus_session_bus: MessageBus):
     """Test stop unit."""
+    systemd_service.StopUnit.calls.clear()
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
@@ -93,6 +97,7 @@ async def test_restart_unit(
     systemd_service: SystemdService, dbus_session_bus: MessageBus
 ):
     """Test restart unit."""
+    systemd_service.RestartUnit.calls.clear()
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
@@ -111,6 +116,7 @@ async def test_reload_unit(
     systemd_service: SystemdService, dbus_session_bus: MessageBus
 ):
     """Test reload unit."""
+    systemd_service.ReloadOrRestartUnit.calls.clear()
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):

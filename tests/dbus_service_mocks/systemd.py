@@ -23,6 +23,12 @@ class Systemd(DBusServiceMock):
 
     object_path = "/org/freedesktop/systemd1"
     interface = "org.freedesktop.systemd1.Manager"
+    log_level = "info"
+    log_target = "journal-or-kmsg"
+    runtime_watchdog_usec = 0
+    reboot_watchdog_usec = 600000000
+    kexec_watchdog_usec = 0
+    service_watchdogs = True
 
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> "s":
@@ -229,15 +235,25 @@ class Systemd(DBusServiceMock):
         """Get InitRDUnitsLoadFinishTimestampMonotonic."""
         return 0
 
-    @dbus_property(access=PropertyAccess.READ)
+    @dbus_property()
     def LogLevel(self) -> "s":
         """Get LogLevel."""
-        return "info"
+        return self.log_level
 
-    @dbus_property(access=PropertyAccess.READ)
+    @LogLevel.setter
+    def LogLevel(self, value: "s"):
+        """Set LogLevel. Does not emit prop change."""
+        self.log_level = value
+
+    @dbus_property()
     def LogTarget(self) -> "s":
         """Get LogTarget."""
-        return "journal-or-kmsg"
+        return self.log_target
+
+    @LogTarget.setter
+    def LogTarget(self, value: "s"):
+        """Set LogTarget. Does not emit prop change."""
+        self.log_target = value
 
     @dbus_property(access=PropertyAccess.READ)
     def NNames(self) -> "u":
@@ -325,25 +341,45 @@ class Systemd(DBusServiceMock):
         """Get DefaultStandardError."""
         return "journal"
 
-    @dbus_property(access=PropertyAccess.READ)
+    @dbus_property()
     def RuntimeWatchdogUSec(self) -> "t":
         """Get RuntimeWatchdogUSec."""
-        return 0
+        return self.runtime_watchdog_usec
 
-    @dbus_property(access=PropertyAccess.READ)
+    @RuntimeWatchdogUSec.setter
+    def RuntimeWatchdogUSec(self, value: "t"):
+        """Set RuntimeWatchdogUSec. Does not emit prop change."""
+        self.runtime_watchdog_usec = value
+
+    @dbus_property()
     def RebootWatchdogUSec(self) -> "t":
         """Get RebootWatchdogUSec."""
-        return 600000000
+        return self.reboot_watchdog_usec
 
-    @dbus_property(access=PropertyAccess.READ)
+    @RebootWatchdogUSec.setter
+    def RebootWatchdogUSec(self, value: "t"):
+        """Set RebootWatchdogUSec. Does not emit prop change."""
+        self.RebootWatchdogUSec = value
+
+    @dbus_property()
     def KExecWatchdogUSec(self) -> "t":
         """Get KExecWatchdogUSec."""
-        return 0
+        return self.kexec_watchdog_usec
 
-    @dbus_property(access=PropertyAccess.READ)
+    @KExecWatchdogUSec.setter
+    def KExecWatchdogUSec(self, value: "t"):
+        """Set KExecWatchdogUSec. Does not emit prop change."""
+        self.KExecWatchdogUSec = value
+
+    @dbus_property()
     def ServiceWatchdogs(self) -> "b":
         """Get ServiceWatchdogs."""
-        return True
+        return self.service_watchdogs
+
+    @ServiceWatchdogs.setter
+    def ServiceWatchdogs(self, value: "b"):
+        """Set ServiceWatchdogs. Does not emit prop change."""
+        self.service_watchdogs = value
 
     @dbus_property(access=PropertyAccess.READ)
     def ControlGroup(self) -> "s":
@@ -629,7 +665,7 @@ class Systemd(DBusServiceMock):
         return "/org/freedesktop/systemd1/job/7623"
 
     @dbus_method()
-    def list_units(
+    def ListUnits(
         self,
     ) -> "a(ssssssouso)":
         """Return a list of available services."""

@@ -29,7 +29,12 @@ class OSAgent(DBusServiceMock):
         """Get Version."""
         return "1.1.0"
 
-    @dbus_property(access=PropertyAccess.READ)
+    @dbus_property()
     def Diagnostics(self) -> "b":
         """Get Diagnostics."""
         return True
+
+    @Diagnostics.setter
+    def Diagnostics(self, value: "b"):
+        """Set Diagnostics."""
+        self.emit_properties_changed({"Diagnostics": value})

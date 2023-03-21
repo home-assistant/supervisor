@@ -1,45 +1,45 @@
 """Test DNS API."""
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 
 from supervisor.coresys import CoreSys
-from supervisor.dbus.const import MulticastProtocolEnabled
+from supervisor.dbus.resolved import Resolved
+
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.resolved import Resolved as ResolvedService
 
 
 async def test_llmnr_mdns_info(
-    api_client: TestClient, coresys: CoreSys, dbus_is_connected: PropertyMock
+    api_client: TestClient,
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ):
     """Test llmnr and mdns in info api."""
-    coresys.host.sys_dbus.resolved.is_connected = False
+    resolved_service: ResolvedService = all_dbus_services["resolved"]
+
+    # pylint: disable=protected-access
+    coresys.host.sys_dbus._resolved = Resolved()
+    # pylint: enable=protected-access
 
     resp = await api_client.get("/dns/info")
     result = await resp.json()
     assert result["data"]["llmnr"] is False
     assert result["data"]["mdns"] is False
 
-    coresys.host.sys_dbus.resolved.is_connected = True
-    with patch.object(
-        type(coresys.host.sys_dbus.resolved),
-        "llmnr",
-        PropertyMock(return_value=MulticastProtocolEnabled.NO),
-    ), patch.object(
-        type(coresys.host.sys_dbus.resolved),
-        "multicast_dns",
-        PropertyMock(return_value=MulticastProtocolEnabled.NO),
-    ):
-        resp = await api_client.get("/dns/info")
-        result = await resp.json()
-        assert result["data"]["llmnr"] is False
-        assert result["data"]["mdns"] is False
-
     await coresys.dbus.resolved.connect(coresys.dbus.bus)
-    await coresys.dbus.resolved.update()
-
     resp = await api_client.get("/dns/info")
     result = await resp.json()
     assert result["data"]["llmnr"] is True
     assert result["data"]["mdns"] is True
+
+    resolved_service.emit_properties_changed({"LLMNR": "no", "MulticastDNS": "no"})
+    await resolved_service.ping()
+
+    resp = await api_client.get("/dns/info")
+    result = await resp.json()
+    assert result["data"]["llmnr"] is False
+    assert result["data"]["mdns"] is False
 
 
 async def test_options(api_client: TestClient, coresys: CoreSys):

@@ -48,6 +48,7 @@ async def test_dbus_sethostname(
     hostname_service: HostnameService, dbus_session_bus: MessageBus
 ):
     """Set hostname on backend."""
+    hostname_service.SetStaticHostname.calls.clear()
     hostname = Hostname()
 
     with pytest.raises(DBusNotConnectedError):

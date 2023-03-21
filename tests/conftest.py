@@ -3,9 +3,7 @@ from functools import partial
 from inspect import unwrap
 import os
 from pathlib import Path
-import re
 import subprocess
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
@@ -14,7 +12,6 @@ from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from dbus_fast import BusType
 from dbus_fast.aio.message_bus import MessageBus
-from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
 import pytest
 from securetar import SecureTarFile
 
@@ -41,30 +38,15 @@ from supervisor.const import (
     REQUEST_FROM,
 )
 from supervisor.coresys import CoreSys
-from supervisor.dbus.agent import OSAgent
-from supervisor.dbus.const import (
-    DBUS_OBJECT_BASE,
-    DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
-    DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED,
-)
-from supervisor.dbus.hostname import Hostname
-from supervisor.dbus.interface import DBusInterface
 from supervisor.dbus.network import NetworkManager
-from supervisor.dbus.resolved import Resolved
-from supervisor.dbus.systemd import Systemd
-from supervisor.dbus.timedate import TimeDate
-from supervisor.dbus.udisks2 import UDisks2
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
 from supervisor.host.logs import LogsControl
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
-from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES, DBus
 from supervisor.utils.dt import utcnow
 
 from .common import (
-    exists_fixture,
-    get_dbus_name,
     load_binary_fixture,
     load_fixture,
     load_json_fixture,
@@ -72,6 +54,10 @@ from .common import (
 )
 from .const import TEST_ADDON_SLUG
 from .dbus_service_mocks.base import DBusServiceMock
+from .dbus_service_mocks.network_connection_settings import (
+    ConnectionSettings as ConnectionSettingsService,
+)
+from .dbus_service_mocks.network_manager import NetworkManager as NetworkManagerService
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -117,14 +103,6 @@ def docker() -> DockerAPI:
         yield docker_obj
 
 
-@pytest.fixture
-async def dbus_bus() -> MessageBus:
-    """Message bus mock."""
-    bus = AsyncMock(spec=MessageBus)
-    setattr(bus, "_name_owners", {})
-    yield bus
-
-
 @pytest.fixture(scope="session")
 def dbus_session() -> None:
     """Start a dbus session."""
@@ -142,178 +120,6 @@ async def dbus_session_bus(dbus_session) -> MessageBus:
     bus = await MessageBus(bus_type=BusType.SESSION).connect()
     yield bus
     bus.disconnect()
-
-
-@pytest.fixture
-async def dbus_services(
-    request: pytest.FixtureRequest, dbus_session: MessageBus
-) -> dict[str, dict[str, DBusServiceMock] | DBusServiceMock]:
-    """Mock specified dbus services on session bus.
-
-    Wrapper on mock_dbus_services intended to be used indirectly.
-    Request param passed to it as to_mock and output returned as fixture value.
-    """
-    with patch("supervisor.dbus.manager.MessageBus.connect", return_value=dbus_session):
-        yield await mock_dbus_services(request.param, dbus_session)
-
-
-def _process_pseudo_variant(data: dict[str, Any]) -> Any:
-    """Process pseudo variant into value."""
-    if data["_type"] == "ay":
-        return bytearray(data["_value"], encoding="utf-8")
-    if data["_type"] == "aay":
-        return [bytearray(i, encoding="utf-8") for i in data["_value"]]
-
-    # Unknown type, return as is
-    return data
-
-
-def process_dbus_json(data: Any) -> Any:
-    """Replace pseudo-variants with values of unsupported json types as necessary."""
-    if not isinstance(data, dict):
-        return data
-
-    if len(data.keys()) == 2 and "_type" in data and "_value" in data:
-        return _process_pseudo_variant(data)
-
-    return {k: process_dbus_json(v) for k, v in data.items()}
-
-
-def mock_get_properties(object_path: str, interface: str) -> str:
-    """Mock get dbus properties."""
-    base, _, latest = object_path.rpartition("/")
-    fixture = interface.replace(".", "_")
-
-    if latest.isnumeric() or base in [
-        "/org/freedesktop/UDisks2/block_devices",
-        "/org/freedesktop/UDisks2/drives",
-    ]:
-        fixture = f"{fixture}_{latest}"
-
-    return process_dbus_json(load_json_fixture(f"{fixture}.json"))
-
-
-async def mock_init_proxy(self):
-    """Mock init dbus proxy."""
-    filetype = "xml"
-    fixture = (
-        self.object_path.replace("/", "_")[1:]
-        if self.object_path != DBUS_OBJECT_BASE
-        else self.bus_name.replace(".", "_")
-    )
-
-    if not exists_fixture(f"{fixture}.{filetype}"):
-        fixture = re.sub(r"_[0-9]+$", "", fixture)
-
-        # special case
-        if exists_fixture(f"{fixture}_~.{filetype}"):
-            fixture = f"{fixture}_~"
-
-    # Use dbus-next infrastructure to parse introspection xml
-    self._proxy_obj = ProxyObject(
-        self.bus_name,
-        self.object_path,
-        load_fixture(f"{fixture}.{filetype}"),
-        self._bus,
-    )
-    self._add_interfaces()
-
-    if DBUS_INTERFACE_PROPERTIES in self._proxies:
-        setattr(
-            self._proxies[DBUS_INTERFACE_PROPERTIES],
-            "call_get_all",
-            lambda interface: mock_get_properties(self.object_path, interface),
-        )
-
-
-@pytest.fixture
-def dbus(dbus_bus: MessageBus) -> list[str]:
-    """Mock DBUS."""
-    dbus_commands = []
-
-    async def mock_wait_for_signal(self):
-        if (
-            self._interface + "." + self._member
-            == DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
-        ):
-            return [2, 0]
-
-        if self._interface + "." + self._member == DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED:
-            return [0]
-
-    async def mock_signal___aenter__(self):
-        return self
-
-    async def mock_signal___aexit__(self, exc_t, exc_v, exc_tb):
-        pass
-
-    async def mock_call_dbus(
-        proxy_interface: ProxyInterface,
-        method: str,
-        *args,
-        unpack_variants: bool = True,
-    ):
-        if (
-            proxy_interface.introspection.name == DBUS_INTERFACE_PROPERTIES
-            and method == "call_get_all"
-        ):
-            return mock_get_properties(proxy_interface.path, args[0])
-
-        [dbus_type, dbus_name] = method.split("_", 1)
-
-        if dbus_type in ["get", "set"]:
-            dbus_name = get_dbus_name(
-                proxy_interface.introspection.properties, dbus_name
-            )
-            dbus_commands.append(
-                f"{proxy_interface.path}-{proxy_interface.introspection.name}.{dbus_name}"
-            )
-
-            if dbus_type == "set":
-                return
-
-            return mock_get_properties(
-                proxy_interface.path, proxy_interface.introspection.name
-            )[dbus_name]
-
-        dbus_name = get_dbus_name(proxy_interface.introspection.methods, dbus_name)
-        dbus_commands.append(
-            f"{proxy_interface.path}-{proxy_interface.introspection.name}.{dbus_name}"
-        )
-
-        if proxy_interface.path != DBUS_OBJECT_BASE:
-            fixture = proxy_interface.path.replace("/", "_")[1:]
-            fixture = f"{fixture}-{dbus_name}"
-        else:
-            fixture = (
-                f'{proxy_interface.introspection.name.replace(".", "_")}_{dbus_name}'
-            )
-
-        if exists_fixture(f"{fixture}.json"):
-            return process_dbus_json(load_json_fixture(f"{fixture}.json"))
-
-    with patch("supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus), patch(
-        "supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy
-    ), patch(
-        "supervisor.utils.dbus.DBusSignalWrapper.__aenter__", new=mock_signal___aenter__
-    ), patch(
-        "supervisor.utils.dbus.DBusSignalWrapper.__aexit__", new=mock_signal___aexit__
-    ), patch(
-        "supervisor.utils.dbus.DBusSignalWrapper.wait_for_signal",
-        new=mock_wait_for_signal,
-    ), patch(
-        "supervisor.dbus.manager.MessageBus.connect", return_value=dbus_bus
-    ):
-        yield dbus_commands
-
-
-@pytest.fixture
-async def dbus_minimal(dbus_bus: MessageBus) -> MessageBus:
-    """Mock DBus without mocking call_dbus or signals but handle properties fixture."""
-    with patch("supervisor.utils.dbus.DBus._init_proxy", new=mock_init_proxy), patch(
-        "supervisor.dbus.manager.MessageBus.connect", return_value=dbus_bus
-    ):
-        yield dbus_bus
 
 
 @pytest.fixture
@@ -363,6 +169,22 @@ async def network_manager(
     nm_obj = NetworkManager()
     await nm_obj.connect(dbus_session_bus)
     yield nm_obj
+
+
+@pytest.fixture
+async def network_manager_service(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+) -> NetworkManagerService:
+    """Return Network Manager service mock."""
+    yield network_manager_services["network_manager"]
+
+
+@pytest.fixture(name="connection_settings_service")
+async def fixture_connection_settings_service(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+) -> ConnectionSettingsService:
+    """Return mock connection settings service."""
+    yield network_manager_services["network_connection_settings"]
 
 
 @pytest.fixture(name="udisks2_services")
@@ -415,54 +237,51 @@ async def fixture_udisks2_services(
     )
 
 
-async def mock_dbus_interface(
-    dbus: DBus, dbus_bus: MessageBus, instance: DBusInterface
-) -> DBusInterface:
-    """Mock dbus for a DBusInterface instance."""
-    instance.dbus = dbus
-    await instance.connect(dbus_bus)
-    return instance
+@pytest.fixture(name="os_agent_services")
+async def fixture_os_agent_services(
+    dbus_session_bus: MessageBus,
+) -> dict[str, DBusServiceMock]:
+    """Mock all services os agent connects to."""
+    yield await mock_dbus_services(
+        {
+            "os_agent": None,
+            "agent_apparmor": None,
+            "agent_cgroup": None,
+            "agent_datadisk": None,
+            "agent_system": None,
+            "agent_boards": None,
+            "agent_boards_yellow": None,
+        },
+        dbus_session_bus,
+    )
 
 
-@pytest.fixture
-async def hostname(dbus: DBus, dbus_bus: MessageBus) -> Hostname:
-    """Mock Hostname."""
-    yield await mock_dbus_interface(dbus, dbus_bus, Hostname())
-
-
-@pytest.fixture
-async def timedate(dbus: DBus, dbus_bus: MessageBus) -> TimeDate:
-    """Mock Timedate."""
-    yield await mock_dbus_interface(dbus, dbus_bus, TimeDate())
-
-
-@pytest.fixture
-async def systemd(dbus: DBus, dbus_bus: MessageBus) -> Systemd:
-    """Mock Systemd."""
-    yield await mock_dbus_interface(dbus, dbus_bus, Systemd())
-
-
-@pytest.fixture
-async def os_agent(dbus: DBus, dbus_bus: MessageBus) -> OSAgent:
-    """Mock OSAgent."""
-    yield await mock_dbus_interface(dbus, dbus_bus, OSAgent())
-
-
-@pytest.fixture
-async def resolved(dbus: DBus, dbus_bus: MessageBus) -> Resolved:
-    """Mock REsolved."""
-    yield await mock_dbus_interface(dbus, dbus_bus, Resolved())
-
-
-@pytest.fixture
-async def udisks2(dbus: DBus, dbus_bus: MessageBus) -> UDisks2:
-    """Mock UDisks2."""
-    yield await mock_dbus_interface(dbus, dbus_bus, UDisks2())
+@pytest.fixture(name="all_dbus_services")
+async def fixture_all_dbus_services(
+    dbus_session_bus: MessageBus,
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_agent_services: dict[str, DBusServiceMock],
+) -> dict[str, DBusServiceMock | dict[str, DBusServiceMock]]:
+    """Mock all dbus services supervisor uses."""
+    yield (
+        await mock_dbus_services(
+            {
+                "hostname": None,
+                "logind": None,
+                "rauc": None,
+                "resolved": None,
+                "systemd": None,
+                "timedate": None,
+            },
+            dbus_session_bus,
+        )
+    ) | network_manager_services | udisks2_services | os_agent_services
 
 
 @pytest.fixture
 async def coresys(
-    event_loop, docker, dbus, dbus_bus, aiohttp_client, run_dir
+    event_loop, docker, dbus_session_bus, all_dbus_services, aiohttp_client, run_dir
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system"), patch(
@@ -486,11 +305,13 @@ async def coresys(
     coresys_obj._machine_id = uuid4()
 
     # Mock host communication
-    coresys_obj._dbus._bus = dbus_bus
-    network_manager = NetworkManager()
-    network_manager.dbus = dbus
-    await network_manager.connect(dbus_bus)
-    coresys_obj._dbus._network = network_manager
+    with patch("supervisor.dbus.manager.MessageBus") as message_bus, patch(
+        "supervisor.dbus.manager.SOCKET_DBUS"
+    ):
+        message_bus.return_value.connect = AsyncMock(return_value=dbus_session_bus)
+        await coresys_obj._dbus.load()
+    # coresys_obj._dbus._bus = dbus_session_bus
+    # coresys_obj._dbus._network = network_manager
 
     # Mock docker
     coresys_obj._docker = docker

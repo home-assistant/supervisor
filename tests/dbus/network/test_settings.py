@@ -26,6 +26,7 @@ async def test_add_connection(
     settings_service: SettingsService, dbus_session_bus: MessageBus
 ):
     """Test adding settings connection."""
+    settings_service.AddConnection.calls.clear()
     settings = NetworkManagerSettings()
 
     with pytest.raises(DBusNotConnectedError):
@@ -44,6 +45,7 @@ async def test_reload_connections(
     settings_service: SettingsService, dbus_session_bus: MessageBus
 ):
     """Test reload connections."""
+    settings_service.ReloadConnections.calls.clear()
     settings = NetworkManagerSettings()
 
     with pytest.raises(DBusNotConnectedError):

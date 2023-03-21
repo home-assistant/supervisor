@@ -50,6 +50,7 @@ async def test_dbus_settime(
     timedate_service: TimeDateService, dbus_session_bus: MessageBus
 ):
     """Set timestamp on backend."""
+    timedate_service.SetTime.calls.clear()
     timedate = TimeDate()
 
     test_dt = datetime(2021, 5, 19, 8, 36, 54, 405718, tzinfo=timezone.utc)
@@ -67,6 +68,7 @@ async def test_dbus_setntp(
     timedate_service: TimeDateService, dbus_session_bus: MessageBus
 ):
     """Disable NTP on backend."""
+    timedate_service.SetNTP.calls.clear()
     timedate = TimeDate()
 
     with pytest.raises(DBusNotConnectedError):

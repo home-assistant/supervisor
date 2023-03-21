@@ -122,6 +122,7 @@ async def test_resolve_device(
     udisks2_manager_service: UDisks2ManagerService, dbus_session_bus: MessageBus
 ):
     """Test resolve device."""
+    udisks2_manager_service.ResolveDevice.calls.clear()
     udisks2 = UDisks2()
 
     with pytest.raises(DBusNotConnectedError):

@@ -92,6 +92,7 @@ async def test_mount(
     sda1: UDisks2Filesystem, filesystem_sda1_service: FilesystemService
 ):
     """Test mount."""
+    filesystem_sda1_service.Mount.calls.clear()
     assert await sda1.mount(MountOptions(fstype="gpt")) == "/run/media/dev/hassos_data"
     assert filesystem_sda1_service.Mount.calls == [
         (
@@ -107,6 +108,7 @@ async def test_unmount(
     sda1: UDisks2Filesystem, filesystem_sda1_service: FilesystemService
 ):
     """Test unmount."""
+    filesystem_sda1_service.Unmount.calls.clear()
     await sda1.unmount(UnmountOptions(force=True))
     assert filesystem_sda1_service.Unmount.calls == [
         ({"force": Variant("b", True), "auth.no_user_interaction": Variant("b", True)},)
@@ -117,6 +119,7 @@ async def test_check(
     sda1: UDisks2Filesystem, filesystem_sda1_service: FilesystemService
 ):
     """Test check."""
+    filesystem_sda1_service.Check.calls.clear()
     assert await sda1.check() is True
     assert filesystem_sda1_service.Check.calls == [
         ({"auth.no_user_interaction": Variant("b", True)},)
@@ -127,6 +130,7 @@ async def test_repair(
     sda1: UDisks2Filesystem, filesystem_sda1_service: FilesystemService
 ):
     """Test repair."""
+    filesystem_sda1_service.Repair.calls.clear()
     assert await sda1.repair() is True
     assert filesystem_sda1_service.Repair.calls == [
         ({"auth.no_user_interaction": Variant("b", True)},)

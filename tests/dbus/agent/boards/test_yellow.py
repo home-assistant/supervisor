@@ -8,14 +8,14 @@ import pytest
 from supervisor.dbus.agent.boards.yellow import Yellow
 
 from tests.common import mock_dbus_services
-from tests.dbus_service_mocks.boards_yellow import Yellow as YellowService
+from tests.dbus_service_mocks.agent_boards_yellow import Yellow as YellowService
 
 
 @pytest.fixture(name="yellow_service", autouse=True)
 async def fixture_yellow_service(dbus_session_bus: MessageBus) -> YellowService:
     """Mock Yellow Board dbus service."""
-    yield (await mock_dbus_services({"boards_yellow": None}, dbus_session_bus))[
-        "boards_yellow"
+    yield (await mock_dbus_services({"agent_boards_yellow": None}, dbus_session_bus))[
+        "agent_boards_yellow"
     ]
 
 
