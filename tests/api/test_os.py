@@ -108,7 +108,7 @@ async def test_api_os_datadisk_migrate(
         resp = await api_client.post("/os/datadisk/move", json={"device": new_disk})
         assert resp.status == 200
 
-        datadisk_service.ChangeDevice.calls == [("/dev/sda",)]
+        assert datadisk_service.ChangeDevice.calls == [("/dev/sda",)]
         reboot.assert_called_once()
 
 

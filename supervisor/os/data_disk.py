@@ -78,7 +78,7 @@ def _get_primary_block_device(devices: list[UDisks2Block]) -> UDisks2Block | Non
         return partition_tables[0]
 
     # Can't be determined if count of block devices or partition tables does not equal 1
-    return
+    return None
 
 
 class DataDisk(CoreSysAttributes):
@@ -92,7 +92,7 @@ class DataDisk(CoreSysAttributes):
     def disk_used(self) -> Disk | None:
         """Return current Disk for data."""
         if not self.sys_dbus.agent.datadisk.current_device:
-            return
+            return None
 
         block_device = next(
             (
@@ -130,11 +130,9 @@ class DataDisk(CoreSysAttributes):
             primary = _get_primary_block_device(block_devices)
 
             if primary and not any(
-                [
-                    block.filesystem.mount_points
-                    for block in block_devices
-                    if block.filesystem
-                ]
+                block.filesystem.mount_points
+                for block in block_devices
+                if block.filesystem
             ):
                 available.append(Disk.from_udisks2_drive(drive, primary))
 
