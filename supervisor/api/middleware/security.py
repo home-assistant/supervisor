@@ -297,7 +297,7 @@ class SecurityMiddleware(CoreSysAttributes):
             elif key == b"X-Ingress-Path":
                 ingress_request = True
 
-        if user_request or admin_request:
+        if (user_request or admin_request) and not ingress_request:
             return await handler(request)
 
         is_proxy_request = (
