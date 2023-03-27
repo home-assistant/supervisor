@@ -41,6 +41,12 @@ FIXTURES: dict[str, PartitionTableFixture] = {
     "/org/freedesktop/UDisks2/block_devices/sdb": PartitionTableFixture(
         Partitions=["/org/freedesktop/UDisks2/block_devices/sdb1"], Type="gpt"
     ),
+    "/org/freedesktop/UDisks2/block_devices/multi_part_table1": PartitionTableFixture(
+        Partitions=[], Type="gpt"
+    ),
+    "/org/freedesktop/UDisks2/block_devices/multi_part_table2": PartitionTableFixture(
+        Partitions=[], Type="gpt"
+    ),
 }
 
 

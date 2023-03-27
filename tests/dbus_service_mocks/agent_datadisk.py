@@ -27,7 +27,7 @@ class DataDisk(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def CurrentDevice(self) -> "s":
         """Get Current Device."""
-        return "/dev/sda"
+        return "/dev/mmcblk1"
 
     @dbus_method()
     def ChangeDevice(self, arg_0: "s") -> "b":

@@ -30,16 +30,16 @@ async def test_dbus_osagent_datadisk(
 
     await os_agent.connect(dbus_session_bus)
 
-    assert os_agent.datadisk.current_device.as_posix() == "/dev/sda"
+    assert os_agent.datadisk.current_device.as_posix() == "/dev/mmcblk1"
 
-    datadisk_service.emit_properties_changed({"CurrentDevice": "/dev/sda1"})
+    datadisk_service.emit_properties_changed({"CurrentDevice": "/dev/mmcblk1p1"})
     await datadisk_service.ping()
-    assert os_agent.datadisk.current_device.as_posix() == "/dev/sda1"
+    assert os_agent.datadisk.current_device.as_posix() == "/dev/mmcblk1p1"
 
     datadisk_service.emit_properties_changed({}, ["CurrentDevice"])
     await datadisk_service.ping()
     await datadisk_service.ping()
-    assert os_agent.datadisk.current_device.as_posix() == "/dev/sda"
+    assert os_agent.datadisk.current_device.as_posix() == "/dev/mmcblk1"
 
 
 async def test_dbus_osagent_datadisk_change_device(

@@ -1,13 +1,12 @@
 """Test OS API."""
 
-from pathlib import Path
 from unittest.mock import PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.hardware.data import Device
+from supervisor.host.control import SystemControl
 from supervisor.os.manager import OSManager
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
@@ -15,6 +14,7 @@ from supervisor.resolution.data import Issue, Suggestion
 from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
 from tests.dbus_service_mocks.agent_boards_yellow import Yellow as YellowService
+from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.base import DBusServiceMock
 
 # pylint: disable=protected-access
@@ -49,50 +49,67 @@ async def test_api_os_info_with_agent(api_client: TestClient, coresys: CoreSys):
     resp = await api_client.get("/os/info")
     result = await resp.json()
 
-    assert result["data"]["data_disk"] == "/dev/sda"
+    assert result["data"]["data_disk"] == "BJTD4R-0x97cde291"
 
 
-async def test_api_os_datadisk_move(api_client: TestClient, coresys: CoreSys):
-    """Test datadisk move without exists disk."""
+@pytest.mark.parametrize(
+    "new_disk",
+    ["/dev/sdaaaa", "/dev/mmcblk1", "Generic-Flash-Disk-61BCDDB6"],
+    ids=["non-existent", "unavailable drive by path", "unavailable drive by id"],
+)
+async def test_api_os_datadisk_move_fail(
+    api_client: TestClient, coresys: CoreSys, new_disk: str
+):
+    """Test datadisk move to non-existent or invalid devices."""
     coresys.os._available = True
 
-    resp = await api_client.post("/os/datadisk/move", json={"device": "/dev/sdaaaa"})
+    resp = await api_client.post("/os/datadisk/move", json={"device": new_disk})
     result = await resp.json()
 
-    assert result["message"] == "'/dev/sdaaaa' don't exists on the host!"
+    assert result["message"] == f"'{new_disk}' not a valid data disk target!"
 
 
 async def test_api_os_datadisk_list(api_client: TestClient, coresys: CoreSys):
     """Test datadisk list function."""
-    coresys.hardware.update_device(
-        Device(
-            "sda",
-            Path("/dev/sda"),
-            Path("/sys/bus/usb/000"),
-            "block",
-            None,
-            [Path("/dev/serial/by-id/test")],
-            {"ID_NAME": "xy", "MINOR": "0", "DEVTYPE": "disk"},
-            [],
-        )
-    )
-    coresys.hardware.update_device(
-        Device(
-            "sda1",
-            Path("/dev/sda1"),
-            Path("/sys/bus/usb/000/1"),
-            "block",
-            None,
-            [Path("/dev/serial/by-id/test1")],
-            {"ID_NAME": "xy", "MINOR": "1", "DEVTYPE": "partition"},
-            [],
-        )
-    )
-
     resp = await api_client.get("/os/datadisk/list")
     result = await resp.json()
 
-    assert result["data"]["devices"] == ["/dev/sda"]
+    assert result["data"]["devices"] == ["SSK-SSK-Storage-DF56419883D56"]
+    assert result["data"]["disks"] == [
+        {
+            "vendor": "SSK",
+            "model": "SSK Storage",
+            "serial": "DF56419883D56",
+            "id": "SSK-SSK-Storage-DF56419883D56",
+            "size": 250059350016,
+            "dev_path": "/dev/sda",
+            "name": "SSK SSK Storage (DF56419883D56)",
+        }
+    ]
+
+
+@pytest.mark.parametrize(
+    "new_disk",
+    ["SSK-SSK-Storage-DF56419883D56", "/dev/sda"],
+    ids=["by drive id", "by device path"],
+)
+async def test_api_os_datadisk_migrate(
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+    new_disk: str,
+):
+    """Test migrating datadisk."""
+    datadisk_service: DataDiskService = os_agent_services["agent_datadisk"]
+    datadisk_service.ChangeDevice.calls.clear()
+    coresys.os._available = True
+
+    with patch.object(SystemControl, "reboot") as reboot:
+        resp = await api_client.post("/os/datadisk/move", json={"device": new_disk})
+        assert resp.status == 200
+
+        assert datadisk_service.ChangeDevice.calls == [("/dev/sda",)]
+        reboot.assert_called_once()
 
 
 async def test_api_board_yellow_info(api_client: TestClient, coresys: CoreSys):

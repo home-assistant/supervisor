@@ -23,6 +23,18 @@ class UDisks2Manager(DBusServiceMock):
 
     interface = "org.freedesktop.UDisks2.Manager"
     object_path = "/org/freedesktop/UDisks2/Manager"
+    block_devices = [
+        "/org/freedesktop/UDisks2/block_devices/loop0",
+        "/org/freedesktop/UDisks2/block_devices/mmcblk1",
+        "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
+        "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
+        "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+        "/org/freedesktop/UDisks2/block_devices/sda",
+        "/org/freedesktop/UDisks2/block_devices/sda1",
+        "/org/freedesktop/UDisks2/block_devices/sdb",
+        "/org/freedesktop/UDisks2/block_devices/sdb1",
+        "/org/freedesktop/UDisks2/block_devices/zram1",
+    ]
 
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> "s":
@@ -83,18 +95,7 @@ class UDisks2Manager(DBusServiceMock):
     @dbus_method()
     def GetBlockDevices(self, options: "a{sv}") -> "ao":
         """Do GetBlockDevices method."""
-        return [
-            "/org/freedesktop/UDisks2/block_devices/loop0",
-            "/org/freedesktop/UDisks2/block_devices/mmcblk1",
-            "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
-            "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
-            "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
-            "/org/freedesktop/UDisks2/block_devices/sda",
-            "/org/freedesktop/UDisks2/block_devices/sda1",
-            "/org/freedesktop/UDisks2/block_devices/sdb",
-            "/org/freedesktop/UDisks2/block_devices/sdb1",
-            "/org/freedesktop/UDisks2/block_devices/zram1",
-        ]
+        return self.block_devices
 
     @dbus_method()
     def ResolveDevice(self, devspec: "a{sv}", options: "a{sv}") -> "ao":
