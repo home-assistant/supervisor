@@ -204,10 +204,10 @@ class Supervisor(CoreSysAttributes):
             raise SupervisorUpdateError(
                 f"Update of Supervisor failed: {err!s}", _LOGGER.error
             ) from err
-        else:
-            self.sys_config.version = version
-            self.sys_config.image = self.sys_updater.image_supervisor
-            self.sys_config.save_data()
+
+        self.sys_config.version = version
+        self.sys_config.image = self.sys_updater.image_supervisor
+        self.sys_config.save_data()
 
         self.sys_create_task(self.sys_core.stop())
 

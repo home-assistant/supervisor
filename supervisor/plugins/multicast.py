@@ -90,10 +90,10 @@ class PluginMulticast(PluginBase):
             raise MulticastUpdateError(
                 "Multicast update failed", _LOGGER.error
             ) from err
-        else:
-            self.version = version
-            self.image = self.sys_updater.image_multicast
-            self.save_data()
+
+        self.version = version
+        self.image = self.sys_updater.image_multicast
+        self.save_data()
 
         # Cleanup
         with suppress(DockerError):
