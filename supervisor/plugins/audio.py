@@ -134,10 +134,10 @@ class PluginAudio(PluginBase):
             await self.instance.update(version, image=self.sys_updater.image_audio)
         except DockerError as err:
             raise AudioUpdateError("Audio update failed", _LOGGER.error) from err
-        else:
-            self.version = version
-            self.image = self.sys_updater.image_audio
-            self.save_data()
+
+        self.version = version
+        self.image = self.sys_updater.image_audio
+        self.save_data()
 
         # Cleanup
         with suppress(DockerError):

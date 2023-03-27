@@ -300,8 +300,8 @@ class NetworkManager(CoreSysAttributes):
         except DBusError as err:
             _LOGGER.warning("Can't request a new scan: %s", err)
             raise HostNetworkError() from err
-        else:
-            await asyncio.sleep(5)
+
+        await asyncio.sleep(5)
 
         # Process AP
         return [

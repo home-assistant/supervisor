@@ -96,10 +96,10 @@ class PluginObserver(PluginBase):
         except DockerError as err:
             _LOGGER.error("HA observer update failed")
             raise ObserverUpdateError() from err
-        else:
-            self.version = version
-            self.image = self.sys_updater.image_observer
-            self.save_data()
+
+        self.version = version
+        self.image = self.sys_updater.image_observer
+        self.save_data()
 
         # Cleanup
         with suppress(DockerError):

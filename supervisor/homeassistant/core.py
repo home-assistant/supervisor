@@ -226,9 +226,9 @@ class HomeAssistantCore(CoreSysAttributes):
                 raise HomeAssistantUpdateError(
                     "Updating Home Assistant image failed", _LOGGER.warning
                 ) from err
-            else:
-                self.sys_homeassistant.version = self.instance.version
-                self.sys_homeassistant.image = self.sys_updater.image_homeassistant
+
+            self.sys_homeassistant.version = self.instance.version
+            self.sys_homeassistant.image = self.sys_updater.image_homeassistant
 
             if running:
                 await self._start()
