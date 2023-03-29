@@ -195,7 +195,12 @@ class DataDisk(CoreSysAttributes):
                 ) from err
         else:
             # Format disk then tell OS to migrate next reboot
-            await self._format_device_with_single_partition(target_disk[0])
+            partition = await self._format_device_with_single_partition(target_disk[0])
+
+            if self.disk_used and partition.size < self.disk_used.size:
+                raise HassOSDataDiskError(
+                    f"Cannot use {new_disk} as data disk as it is smaller then the current one (new: {partition.size}, current: {self.disk_used.size})"
+                )
 
             try:
                 await self.sys_dbus.agent.datadisk.mark_data_move()
@@ -214,7 +219,9 @@ class DataDisk(CoreSysAttributes):
                 _LOGGER.warning,
             ) from err
 
-    async def _format_device_with_single_partition(self, new_disk: Disk) -> None:
+    async def _format_device_with_single_partition(
+        self, new_disk: Disk
+    ) -> UDisks2Block:
         """Format device with a single partition to use as data disk."""
         block_device: UDisks2Block = self.sys_dbus.udisks2.get_block_device(
             new_disk.device_object_path
@@ -245,4 +252,16 @@ class DataDisk(CoreSysAttributes):
                 f"Could not create new data partition: {err!s}"
             ) from err
 
-        _LOGGER.info("New partition D-Bus object: %s", partition)
+        try:
+            partition_block = await UDisks2Block.new(
+                partition, self.sys_dbus.bus, sync_properties=False
+            )
+        except DBusError as err:
+            raise HassOSDataDiskError(
+                f"New data partition at {partition} is missing or unusable"
+            ) from err
+
+        _LOGGER.debug(
+            "New data partition prepared on device %s", partition_block.device
+        )
+        return partition_block

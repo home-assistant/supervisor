@@ -171,3 +171,33 @@ async def test_datadisk_migrate_mark_data_move(
         )
     ]
     assert logind_service.Reboot.calls == [(False,)]
+
+
+async def test_datadisk_migrate_too_small(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """Test migration stops and exits if new partition is too small."""
+    datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
+    datadisk_service.MarkDataMove.calls.clear()
+    logind_service: LogindService = all_dbus_services["logind"]
+    logind_service.Reboot.calls.clear()
+
+    partition_table_service: PartitionTableService = all_dbus_services[
+        "udisks2_partition_table"
+    ]["/org/freedesktop/UDisks2/block_devices/sda"]
+    partition_table_service.CreatePartition.calls.clear()
+    partition_table_service.new_partition = (
+        "/org/freedesktop/UDisks2/block_devices/mmcblk1p3"
+    )
+
+    all_dbus_services["os_agent"].emit_properties_changed({"Version": "1.5.0"})
+    await all_dbus_services["os_agent"].ping()
+    coresys.os._available = True
+
+    with pytest.raises(HassOSDataDiskError):
+        await coresys.os.datadisk.migrate_disk("SSK-SSK-Storage-DF56419883D56")
+
+    assert partition_table_service.CreatePartition.calls
+    assert datadisk_service.MarkDataMove.calls == []
+    assert logind_service.Reboot.calls == []

@@ -112,7 +112,7 @@ async def test_create_partition(
             name="hassos-data",
             options=CreatePartitionOptions(partition_type="primary"),
         )
-        == "/org/freedesktop/UDisks2/block_devices/sda2"
+        == "/org/freedesktop/UDisks2/block_devices/sda1"
     )
     assert partition_table_sda_service.CreatePartition.calls == [
         (

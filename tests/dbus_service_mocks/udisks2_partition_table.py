@@ -57,6 +57,7 @@ class PartitionTable(DBusServiceMock):
     """
 
     interface = "org.freedesktop.UDisks2.PartitionTable"
+    new_partition = "/org/freedesktop/UDisks2/block_devices/sda1"
 
     def __init__(self, object_path: str):
         """Initialize object."""
@@ -79,7 +80,7 @@ class PartitionTable(DBusServiceMock):
         self, offset: "t", size: "t", type_: "s", name: "s", options: "a{sv}"
     ) -> "o":
         """Do CreatePartition method."""
-        return "/org/freedesktop/UDisks2/block_devices/sda2"
+        return self.new_partition
 
     @dbus_method()
     def CreatePartitionAndFormat(
@@ -93,4 +94,4 @@ class PartitionTable(DBusServiceMock):
         format_options: "a{sv}",
     ) -> "o":
         """Do CreatePartitionAndFormat method."""
-        return "/org/freedesktop/UDisks2/block_devices/sda2"
+        return self.new_partition
