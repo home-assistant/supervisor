@@ -72,3 +72,19 @@ async def test_dbus_osagent_datadisk_reload_device(
 
     assert await os_agent.datadisk.reload_device() is None
     assert datadisk_service.ReloadDevice.calls == [tuple()]
+
+
+async def test_dbus_osagent_datadisk_mark_data_move(
+    datadisk_service: DataDiskService, dbus_session_bus: MessageBus
+):
+    """Create data disk migration marker for next reboot."""
+    datadisk_service.MarkDataMove.calls.clear()
+    os_agent = OSAgent()
+
+    with pytest.raises(DBusNotConnectedError):
+        await os_agent.datadisk.mark_data_move()
+
+    await os_agent.connect(dbus_session_bus)
+
+    assert await os_agent.datadisk.mark_data_move() is None
+    assert datadisk_service.MarkDataMove.calls == [tuple()]

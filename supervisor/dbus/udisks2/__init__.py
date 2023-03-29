@@ -144,3 +144,14 @@ class UDisks2(DBusInterfaceProxy):
         }
         self._block_devices.update(resolved)
         return list(resolved.values())
+
+    def shutdown(self) -> None:
+        """Shutdown the object and disconnect from D-Bus.
+
+        This method is irreversible.
+        """
+        for block_device in self.block_devices:
+            block_device.shutdown()
+        for drive in self.drives:
+            drive.shutdown()
+        super().shutdown()

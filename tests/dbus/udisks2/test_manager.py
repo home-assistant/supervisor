@@ -1,5 +1,7 @@
 """Test UDisks2 Manager interface."""
 
+from pathlib import Path
+
 from awesomeversion import AwesomeVersion
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
@@ -72,6 +74,7 @@ async def test_udisks2_manager_info(
     udisks2_manager_service.emit_properties_changed({}, ["SupportedFilesystems"])
     await udisks2_manager_service.ping()
     await udisks2_manager_service.ping()
+    await udisks2_manager_service.ping()  # Three pings: signal, get all properties and get block devices
     assert udisks2.supported_filesystems == [
         "ext4",
         "vfat",
@@ -126,11 +129,11 @@ async def test_resolve_device(
     udisks2 = UDisks2()
 
     with pytest.raises(DBusNotConnectedError):
-        await udisks2.resolve_device(DeviceSpecification(path="/dev/sda1"))
+        await udisks2.resolve_device(DeviceSpecification(path=Path("/dev/sda1")))
 
     await udisks2.connect(dbus_session_bus)
 
-    devices = await udisks2.resolve_device(DeviceSpecification(path="/dev/sda1"))
+    devices = await udisks2.resolve_device(DeviceSpecification(path=Path("/dev/sda1")))
     assert len(devices) == 1
     assert devices[0].id_label == "hassos-data"
     assert udisks2_manager_service.ResolveDevice.calls == [

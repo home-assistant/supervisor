@@ -1,6 +1,8 @@
 """Interface to UDisks2 Block Device over D-Bus."""
+import asyncio
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from awesomeversion import AwesomeVersion
 from dbus_fast.aio import MessageBus
@@ -61,18 +63,7 @@ class UDisks2Block(DBusInterfaceProxy):
     async def connect(self, bus: MessageBus) -> None:
         """Connect to bus."""
         await super().connect(bus)
-
-        if DBUS_IFACE_FILESYSTEM in self.dbus.proxies:
-            self._filesystem = UDisks2Filesystem(
-                self.object_path, sync_properties=self.sync_properties
-            )
-            await self._filesystem.initialize(self.dbus)
-
-        if DBUS_IFACE_PARTITION_TABLE in self.dbus.proxies:
-            self._partition_table = UDisks2PartitionTable(
-                self.object_path, sync_properties=self.sync_properties
-            )
-            await self._partition_table.initialize(self.dbus)
+        await self._reload_interfaces()
 
     @staticmethod
     async def new(
@@ -194,6 +185,58 @@ class UDisks2Block(DBusInterfaceProxy):
         Provide to UDisks2.get_drive for UDisks2Drive object.
         """
         return self.properties[DBUS_ATTR_DRIVE]
+
+    @dbus_connected
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus."""
+        await super().update(changed)
+
+        if not changed:
+            await asyncio.gather(
+                *[
+                    intr.update()
+                    for intr in (self.filesystem, self.partition_table)
+                    if intr
+                ]
+            )
+
+    @dbus_connected
+    async def check_type(self) -> None:
+        """Check if type of block device has changed and adjust interfaces if so."""
+        introspection = await self.dbus.introspect()
+        interfaces = {intr.name for intr in introspection.interfaces}
+
+        # If interfaces changed, update the proxy from introspection and reload interfaces
+        if interfaces != set(self.dbus.proxies.keys()):
+            await self.dbus.init_proxy(introspection=introspection)
+            await self._reload_interfaces()
+
+    @dbus_connected
+    async def _reload_interfaces(self) -> None:
+        """Reload interfaces from introspection as necessary."""
+        # Check if block device is a filesystem
+        if not self.filesystem and DBUS_IFACE_FILESYSTEM in self.dbus.proxies:
+            self._filesystem = UDisks2Filesystem(
+                self.object_path, sync_properties=self.sync_properties
+            )
+            await self._filesystem.initialize(self.dbus)
+
+        elif self.filesystem and DBUS_IFACE_FILESYSTEM not in self.dbus.proxies:
+            self.filesystem.stop_sync_property_changes()
+            self._filesystem = None
+
+        # Check if block device is a partition table
+        if not self.partition_table and DBUS_IFACE_PARTITION_TABLE in self.dbus.proxies:
+            self._partition_table = UDisks2PartitionTable(
+                self.object_path, sync_properties=self.sync_properties
+            )
+            await self._partition_table.initialize(self.dbus)
+
+        elif (
+            self.partition_table and DBUS_IFACE_PARTITION_TABLE not in self.dbus.proxies
+        ):
+            self.partition_table.stop_sync_property_changes()
+            self._partition_table = None
 
     @dbus_connected
     async def format(

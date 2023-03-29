@@ -56,13 +56,12 @@ async def fixture_proxy(
     proxy.bus_name = "service.test.TestInterface"
     proxy.object_path = "/service/test/TestInterface"
     proxy.properties_interface = "service.test.TestInterface"
-    proxy.sync_properties = request.param
+    proxy.sync_properties = getattr(request, "param", True)
 
     await proxy.connect(dbus_session_bus)
     yield proxy
 
 
-@pytest.mark.parametrize("proxy", [True], indirect=True)
 async def test_dbus_proxy_connect(
     proxy: DBusInterfaceProxy, test_service: TestInterface
 ):
@@ -213,3 +212,21 @@ async def test_initialize(test_service: TestInterface, dbus_session_bus: Message
         )
     )
     assert proxy.is_connected is True
+
+
+async def test_stop_sync_property_changes(
+    proxy: DBusInterfaceProxy, test_service: TestInterface
+):
+    """Test stop sync property changes disables the sync via signal."""
+    assert proxy.is_connected
+    assert proxy.properties["TestProp"] == 4
+
+    test_service.emit_properties_changed({"TestProp": 1})
+    await test_service.ping()
+    assert proxy.properties["TestProp"] == 1
+
+    proxy.stop_sync_property_changes()
+
+    test_service.emit_properties_changed({"TestProp": 4})
+    await test_service.ping()
+    assert proxy.properties["TestProp"] == 1

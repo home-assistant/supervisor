@@ -38,3 +38,7 @@ class DataDisk(DBusServiceMock):
     def ReloadDevice(self) -> "b":
         """Reload device."""
         return True
+
+    @dbus_method()
+    def MarkDataMove(self) -> None:
+        """Do MarkDataMove method."""

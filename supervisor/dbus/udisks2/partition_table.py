@@ -48,14 +48,15 @@ class UDisks2PartitionTable(DBusInterfaceProxy):
         self,
         offset: int = 0,
         size: int = 0,
-        type_: PartitionTableType = PartitionTableType.UNKNOWN,
+        type_: str = "",
         name: str = "",
         options: CreatePartitionOptions | None = None,
     ) -> str:
         """Create a new partition and return object path of new block device.
 
-        'UNKNOWN' for type here means UDisks2 selects default based on partition table and OS.
-        Use with UDisks2Block.new to get block object. Or UDisks2.get_block_device after UDisks2.update.
+        Type should be a GUID from https://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_type_GUIDs
+        or empty string and let UDisks2 choose a default based on partition table and OS.
+        Provide return value with UDisks2Block.new. Or UDisks2.get_block_device after UDisks2.update.
         """
         options = options.to_dict() if options else {}
         return await self.dbus.PartitionTable.call_create_partition(
