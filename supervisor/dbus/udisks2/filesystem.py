@@ -10,6 +10,7 @@ from ..const import (
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
+from .block import udisks2_bytes_to_path
 from .const import UDISKS2_DEFAULT_OPTIONS
 from .data import MountOptions, UnmountOptions
 
@@ -35,7 +36,7 @@ class UDisks2Filesystem(DBusInterfaceProxy):
     def mount_points(self) -> list[Path]:
         """Return mount points."""
         return [
-            Path(bytes(mount_point).decode())
+            udisks2_bytes_to_path(mount_point)
             for mount_point in self.properties[DBUS_ATTR_MOUNT_POINTS]
         ]
 

@@ -39,6 +39,14 @@ ADDITIONAL_INTERFACES: dict[str, Callable[[str], DBusInterfaceProxy]] = {
 }
 
 
+def udisks2_bytes_to_path(bytes: bytearray) -> Path:
+    """Convert bytes to path object without null character on end."""
+    if bytes and bytes[-1] == 0:
+        return Path(bytes[:-1].decode())
+
+    return Path(bytes.decode())
+
+
 class UDisks2Block(DBusInterfaceProxy):
     """Handle D-Bus interface for UDisks2 block device object.
 
@@ -97,7 +105,7 @@ class UDisks2Block(DBusInterfaceProxy):
     @dbus_property
     def device(self) -> Path:
         """Return device file."""
-        return Path(bytes(self.properties[DBUS_ATTR_DEVICE]).decode())
+        return udisks2_bytes_to_path(self.properties[DBUS_ATTR_DEVICE])
 
     @property
     @dbus_property
@@ -122,7 +130,7 @@ class UDisks2Block(DBusInterfaceProxy):
     def symlinks(self) -> list[Path]:
         """Return list of symlinks."""
         return [
-            Path(bytes(symlink).decode(encoding="utf-8"))
+            udisks2_bytes_to_path(symlink)
             for symlink in self.properties[DBUS_ATTR_SYMLINKS]
         ]
 
