@@ -124,6 +124,7 @@ class DataDisk(CoreSysAttributes):
             size=0,
             device_path=self.sys_dbus.agent.datadisk.current_device,
             object_path="",
+            device_object_path="",
         )
 
     @property

@@ -26,7 +26,7 @@ from tests.dbus_service_mocks.udisks2_partition_table import (
 async def add_unusable_drive(
     coresys: CoreSys,
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
+) -> None:
     """Add mock drive with multiple partition tables for negative tests."""
     await mock_dbus_services(
         {

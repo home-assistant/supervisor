@@ -139,6 +139,7 @@ class UDisks2(DBusInterfaceProxy):
         resolved = {
             device: self._block_devices[device]
             if device in self._block_devices
+            and self._block_devices[device].is_connected
             else await UDisks2Block.new(device, self.dbus.bus)
             for device in block_devices
         }

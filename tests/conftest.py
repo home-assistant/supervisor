@@ -310,8 +310,6 @@ async def coresys(
     ):
         message_bus.return_value.connect = AsyncMock(return_value=dbus_session_bus)
         await coresys_obj._dbus.load()
-    # coresys_obj._dbus._bus = dbus_session_bus
-    # coresys_obj._dbus._network = network_manager
 
     # Mock docker
     coresys_obj._docker = docker
@@ -350,6 +348,7 @@ async def coresys(
     with patch("supervisor.store.git.GitRepo._remove"):
         yield coresys_obj
 
+    await coresys_obj.dbus.unload()
     await coresys_obj.websession.close()
 
 
