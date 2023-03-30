@@ -56,7 +56,7 @@ class DBus:
         self = DBus(bus, bus_name, object_path)
 
         # pylint: disable=protected-access
-        await self._init_proxy()
+        await self.init_proxy()
 
         _LOGGER.debug("Connect to D-Bus: %s - %s", bus_name, object_path)
         return self
@@ -115,13 +115,11 @@ class DBus:
             for interface in self._proxy_obj.introspection.interfaces
         }
 
-    async def _init_proxy(self) -> None:
-        """Read interface data."""
-        introspection: Node | None = None
-
+    async def introspect(self) -> Node:
+        """Return introspection for dbus object."""
         for _ in range(3):
             try:
-                introspection = await self._bus.introspect(
+                return await self._bus.introspect(
                     self.bus_name, self.object_path, timeout=10
                 )
             except InvalidIntrospectionError as err:
@@ -132,20 +130,40 @@ class DBus:
                 _LOGGER.warning(
                     "Busy system at %s - %s", self.bus_name, self.object_path
                 )
-            else:
-                break
 
             await asyncio.sleep(3)
 
-        if introspection is None:
-            raise DBusFatalError(
-                "Could not get introspection data after 3 attempts", _LOGGER.error
-            )
+        raise DBusFatalError(
+            "Could not get introspection data after 3 attempts", _LOGGER.error
+        )
+
+    async def init_proxy(self, *, introspection: Node | None = None) -> None:
+        """Read interface data."""
+        if not introspection:
+            introspection = await self.introspect()
+
+        # If we have a proxy obj store signal monitors and disconnect first
+        signal_monitors = self._signal_monitors
+        if self._proxy_obj:
+            self.disconnect()
 
         self._proxy_obj = self.bus.get_proxy_object(
             self.bus_name, self.object_path, introspection
         )
         self._add_interfaces()
+
+        # Reconnect existing signal monitors on new proxy obj if possible (introspection may have changed)
+        for intr, signals in signal_monitors.items():
+            for name, callbacks in signals.items():
+                if intr in self._proxies and hasattr(self._proxies[intr], f"on_{name}"):
+                    for callback in callbacks:
+                        try:
+                            getattr(self._proxies[intr], f"on_{name}")(
+                                callback, unpack_variants=True
+                            )
+                            self._add_signal_monitor(intr, name, callback)
+                        except Exception:  # pylint: disable=broad-except
+                            _LOGGER.exception("Can't re-add signal listener")
 
     @property
     def proxies(self) -> dict[str, ProxyInterface]:
@@ -232,6 +250,19 @@ class DBus:
         """Get signal context manager for this object."""
         return DBusSignalWrapper(self, signal_member)
 
+    def _add_signal_monitor(
+        self, interface: str, dbus_name: str, callback: Callable
+    ) -> None:
+        """Add a callback to the tracked signal monitors."""
+        if interface not in self._signal_monitors:
+            self._signal_monitors[interface] = {}
+
+        if dbus_name not in self._signal_monitors[interface]:
+            self._signal_monitors[interface][dbus_name] = [callback]
+
+        else:
+            self._signal_monitors[interface][dbus_name].append(callback)
+
     def __getattr__(self, name: str) -> DBusCallWrapper:
         """Map to dbus method."""
         return getattr(DBusCallWrapper(self, self.bus_name), name)
@@ -286,17 +317,8 @@ class DBusCallWrapper:
                     getattr(self._proxy, name)(callback, unpack_variants=True)
 
                     # pylint: disable=protected-access
-                    if self.interface not in self.dbus._signal_monitors:
-                        self.dbus._signal_monitors[self.interface] = {}
-
-                    if dbus_name not in self.dbus._signal_monitors[self.interface]:
-                        self.dbus._signal_monitors[self.interface][dbus_name] = [
-                            callback
-                        ]
-                    else:
-                        self.dbus._signal_monitors[self.interface][dbus_name].append(
-                            callback
-                        )
+                    self.dbus._add_signal_monitor(self.interface, dbus_name, callback)
+                    # pylint: enable=protected-access
 
                 return _on_signal
 
@@ -322,6 +344,7 @@ class DBusCallWrapper:
                         del self.dbus._signal_monitors[self.interface][dbus_name]
                         if not self.dbus._signal_monitors[self.interface]:
                             del self.dbus._signal_monitors[self.interface]
+                # pylint: enable=protected-access
 
             return _off_signal
 

@@ -1,6 +1,7 @@
 """Test UDisks2 Block Device interface."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
@@ -9,7 +10,11 @@ import pytest
 from supervisor.dbus.udisks2.block import UDisks2Block
 from supervisor.dbus.udisks2.const import FormatType, PartitionTableType
 from supervisor.dbus.udisks2.data import FormatOptions
+from supervisor.dbus.udisks2.filesystem import UDisks2Filesystem
+from supervisor.dbus.udisks2.partition_table import UDisks2PartitionTable
+from supervisor.utils.dbus import DBus
 
+from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.udisks2_block import Block as BlockService
 
@@ -107,3 +112,92 @@ async def test_format(block_sda_service: BlockService, dbus_session_bus: Message
             },
         )
     ]
+
+
+async def test_check_type(dbus_session_bus: MessageBus):
+    """Test block device changes types correctly."""
+    block_services = (
+        await mock_dbus_services(
+            {
+                "udisks2_block": [
+                    "/org/freedesktop/UDisks2/block_devices/sda",
+                    "/org/freedesktop/UDisks2/block_devices/sda1",
+                ]
+            },
+            dbus_session_bus,
+        )
+    )["udisks2_block"]
+    sda_block_service = block_services["/org/freedesktop/UDisks2/block_devices/sda"]
+    sda1_block_service = block_services["/org/freedesktop/UDisks2/block_devices/sda1"]
+
+    sda = UDisks2Block("/org/freedesktop/UDisks2/block_devices/sda")
+    sda1 = UDisks2Block("/org/freedesktop/UDisks2/block_devices/sda1")
+    await sda.connect(dbus_session_bus)
+    await sda1.connect(dbus_session_bus)
+
+    # Connected but neither are filesystems are partition tables
+    assert sda.partition_table is None
+    assert sda1.filesystem is None
+    assert sda.id_label == ""
+    assert sda1.id_label == "hassos-data"
+
+    # Store current introspection then make sda into a partition table and sda1 into a filesystem
+    orig_introspection = await sda.dbus.introspect()
+    services = await mock_dbus_services(
+        {
+            "udisks2_partition_table": "/org/freedesktop/UDisks2/block_devices/sda",
+            "udisks2_filesystem": "/org/freedesktop/UDisks2/block_devices/sda1",
+        },
+        dbus_session_bus,
+    )
+    sda_pt_service = services["udisks2_partition_table"]
+    sda1_fs_service = services["udisks2_filesystem"]
+
+    await sda.check_type()
+    await sda1.check_type()
+
+    # Check that the type is now correct and property changes are syncing
+    assert sda.partition_table
+    assert sda1.filesystem
+
+    partition_table: UDisks2PartitionTable = sda.partition_table
+    filesystem: UDisks2Filesystem = sda1.filesystem
+    assert partition_table.type == PartitionTableType.GPT
+    assert filesystem.size == 250058113024
+
+    sda_pt_service.emit_properties_changed({"Type": "dos"})
+    await sda_pt_service.ping()
+    assert partition_table.type == PartitionTableType.DOS
+
+    sda1_fs_service.emit_properties_changed({"Size": 100})
+    await sda1_fs_service.ping()
+    assert filesystem.size == 100
+
+    # Force introspection to return the original block device only introspection and re-check type
+    with patch.object(DBus, "introspect", return_value=orig_introspection):
+        await sda.check_type()
+        await sda1.check_type()
+
+    # Check that it's a connected block device and no longer the other types
+    assert sda.is_connected is True
+    assert sda1.is_connected is True
+    assert sda.partition_table is None
+    assert sda1.filesystem is None
+
+    # Property changes should still sync for the block devices
+    sda_block_service.emit_properties_changed({"IdLabel": "test"})
+    await sda_block_service.ping()
+    assert sda.id_label == "test"
+
+    sda1_block_service.emit_properties_changed({"IdLabel": "test"})
+    await sda1_block_service.ping()
+    assert sda1.id_label == "test"
+
+    # Property changes should stop syncing for the now unused dbus objects
+    sda_pt_service.emit_properties_changed({"Type": "gpt"})
+    await sda_pt_service.ping()
+    assert partition_table.type == PartitionTableType.DOS
+
+    sda1_fs_service.emit_properties_changed({"Size": 250058113024})
+    await sda1_fs_service.ping()
+    assert filesystem.size == 100

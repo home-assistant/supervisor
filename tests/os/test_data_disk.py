@@ -2,6 +2,7 @@
 from pathlib import PosixPath
 from unittest.mock import patch
 
+from dbus_fast import Variant
 import pytest
 
 from supervisor.core import Core
@@ -13,6 +14,10 @@ from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.logind import Logind as LogindService
+from tests.dbus_service_mocks.udisks2_block import Block as BlockService
+from tests.dbus_service_mocks.udisks2_partition_table import (
+    PartitionTable as PartitionTableService,
+)
 
 # pylint: disable=protected-access
 
@@ -21,7 +26,7 @@ from tests.dbus_service_mocks.logind import Logind as LogindService
 async def add_unusable_drive(
     coresys: CoreSys,
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-):
+) -> None:
     """Add mock drive with multiple partition tables for negative tests."""
     await mock_dbus_services(
         {
@@ -53,6 +58,7 @@ async def tests_datadisk_current(coresys: CoreSys):
         size=31268536320,
         device_path=PosixPath("/dev/mmcblk1"),
         object_path="/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291",
+        device_object_path="/org/freedesktop/UDisks2/block_devices/mmcblk1",
     )
 
 
@@ -87,6 +93,7 @@ async def test_datadisk_list(coresys: CoreSys):
             size=250059350016,
             device_path=PosixPath("/dev/sda"),
             object_path="/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56",
+            device_object_path="/org/freedesktop/UDisks2/block_devices/sda",
         )
     ]
 
@@ -114,3 +121,83 @@ async def test_datadisk_migrate(
 
     assert datadisk_service.ChangeDevice.calls == [("/dev/sda",)]
     assert logind_service.Reboot.calls == [(False,)]
+
+
+@pytest.mark.parametrize(
+    "new_disk",
+    ["SSK-SSK-Storage-DF56419883D56", "/dev/sda"],
+    ids=["by drive id", "by device path"],
+)
+async def test_datadisk_migrate_mark_data_move(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    new_disk: str,
+):
+    """Test migrating data disk with os agent 1.5.0 or later."""
+    datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
+    datadisk_service.ChangeDevice.calls.clear()
+    datadisk_service.MarkDataMove.calls.clear()
+    block_service: BlockService = all_dbus_services["udisks2_block"][
+        "/org/freedesktop/UDisks2/block_devices/sda"
+    ]
+    block_service.Format.calls.clear()
+    partition_table_service: PartitionTableService = all_dbus_services[
+        "udisks2_partition_table"
+    ]["/org/freedesktop/UDisks2/block_devices/sda"]
+    partition_table_service.CreatePartition.calls.clear()
+    logind_service: LogindService = all_dbus_services["logind"]
+    logind_service.Reboot.calls.clear()
+
+    all_dbus_services["os_agent"].emit_properties_changed({"Version": "1.5.0"})
+    await all_dbus_services["os_agent"].ping()
+    coresys.os._available = True
+
+    with patch.object(Core, "shutdown") as shutdown:
+        await coresys.os.datadisk.migrate_disk(new_disk)
+        shutdown.assert_called_once()
+
+    assert datadisk_service.ChangeDevice.calls == []
+    assert datadisk_service.MarkDataMove.calls == [tuple()]
+    assert block_service.Format.calls == [
+        ("gpt", {"auth.no_user_interaction": Variant("b", True)})
+    ]
+    assert partition_table_service.CreatePartition.calls == [
+        (
+            0,
+            0,
+            "0FC63DAF-8483-4772-8E79-3D69D8477DE4",
+            "hassos-data-external",
+            {"auth.no_user_interaction": Variant("b", True)},
+        )
+    ]
+    assert logind_service.Reboot.calls == [(False,)]
+
+
+async def test_datadisk_migrate_too_small(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """Test migration stops and exits if new partition is too small."""
+    datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
+    datadisk_service.MarkDataMove.calls.clear()
+    logind_service: LogindService = all_dbus_services["logind"]
+    logind_service.Reboot.calls.clear()
+
+    partition_table_service: PartitionTableService = all_dbus_services[
+        "udisks2_partition_table"
+    ]["/org/freedesktop/UDisks2/block_devices/sda"]
+    partition_table_service.CreatePartition.calls.clear()
+    partition_table_service.new_partition = (
+        "/org/freedesktop/UDisks2/block_devices/mmcblk1p3"
+    )
+
+    all_dbus_services["os_agent"].emit_properties_changed({"Version": "1.5.0"})
+    await all_dbus_services["os_agent"].ping()
+    coresys.os._available = True
+
+    with pytest.raises(HassOSDataDiskError):
+        await coresys.os.datadisk.migrate_disk("SSK-SSK-Storage-DF56419883D56")
+
+    assert partition_table_service.CreatePartition.calls
+    assert datadisk_service.MarkDataMove.calls == []
+    assert logind_service.Reboot.calls == []

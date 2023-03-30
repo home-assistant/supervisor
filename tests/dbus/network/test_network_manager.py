@@ -142,7 +142,7 @@ async def test_handling_bad_devices(
     caplog.clear()
     caplog.set_level(logging.INFO, "supervisor.dbus.network")
 
-    with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
+    with patch.object(DBus, "init_proxy", side_effect=DBusFatalError()):
         await network_manager.update(
             {"Devices": ["/org/freedesktop/NetworkManager/Devices/100"]}
         )
@@ -157,7 +157,7 @@ async def test_handling_bad_devices(
 
     # Unparseable introspections shouldn't happen, this one is logged and captured
     await network_manager.update()
-    with patch.object(DBus, "_init_proxy", side_effect=(err := DBusParseError())):
+    with patch.object(DBus, "init_proxy", side_effect=(err := DBusParseError())):
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/102"]}
         )
@@ -167,7 +167,7 @@ async def test_handling_bad_devices(
     # We should be able to debug these situations if necessary
     caplog.set_level(logging.DEBUG, "supervisor.dbus.network")
     await network_manager.update()
-    with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
+    with patch.object(DBus, "init_proxy", side_effect=DBusFatalError()):
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/103"]}
         )

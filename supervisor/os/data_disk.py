@@ -4,11 +4,13 @@ from contextlib import suppress
 from dataclasses import dataclass
 import logging
 from pathlib import Path
+from typing import Final
 
 from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.udisks2.block import UDisks2Block
+from ..dbus.udisks2.const import FormatType
 from ..dbus.udisks2.drive import UDisks2Drive
 from ..exceptions import (
     DBusError,
@@ -20,6 +22,11 @@ from ..exceptions import (
 )
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
+from ..utils.sentry import capture_exception
+
+LINUX_DATA_PARTITION_GUID: Final = "0FC63DAF-8483-4772-8E79-3D69D8477DE4"
+EXTERNAL_DATA_DISK_PARTITION_NAME: Final = "hassos-data-external"
+OS_AGENT_MARK_DATA_MOVE_VERSION: Final = AwesomeVersion("1.5.0")
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -35,6 +42,7 @@ class Disk:
     size: int
     device_path: Path
     object_path: str
+    device_object_path: str
 
     @staticmethod
     def from_udisks2_drive(
@@ -49,6 +57,7 @@ class Disk:
             size=drive.size,
             device_path=drive_block_device.device,
             object_path=drive.object_path,
+            device_object_path=drive_block_device.object_path,
         )
 
     @property
@@ -115,6 +124,7 @@ class DataDisk(CoreSysAttributes):
             size=0,
             device_path=self.sys_dbus.agent.datadisk.current_device,
             object_path="",
+            device_object_path="",
         )
 
     @property
@@ -163,24 +173,42 @@ class DataDisk(CoreSysAttributes):
         # Force a dbus update first so all info is up to date
         await self.sys_dbus.udisks2.update()
 
-        try:
-            target_disk: Disk = next(
-                disk
-                for disk in self.available_disks
-                if disk.id == new_disk or disk.device_path.as_posix() == new_disk
-            )
-        except StopIteration:
+        target_disk: list[Disk] = [
+            disk
+            for disk in self.available_disks
+            if disk.id == new_disk or disk.device_path.as_posix() == new_disk
+        ]
+        if len(target_disk) != 1:
             raise HassOSDataDiskError(
                 f"'{new_disk!s}' not a valid data disk target!", _LOGGER.error
             ) from None
 
-        # Migrate data on Host
-        try:
-            await self.sys_dbus.agent.datadisk.change_device(target_disk.device_path)
-        except DBusError as err:
-            raise HassOSDataDiskError(
-                f"Can't move data partition to {new_disk!s}: {err!s}", _LOGGER.error
-            ) from err
+        # Older OS did not have mark data move API. Must let OS do disk format & migration
+        if self.sys_dbus.agent.version < OS_AGENT_MARK_DATA_MOVE_VERSION:
+            try:
+                await self.sys_dbus.agent.datadisk.change_device(
+                    target_disk[0].device_path
+                )
+            except DBusError as err:
+                raise HassOSDataDiskError(
+                    f"Can't move data partition to {new_disk!s}: {err!s}", _LOGGER.error
+                ) from err
+        else:
+            # Format disk then tell OS to migrate next reboot
+            partition = await self._format_device_with_single_partition(target_disk[0])
+
+            if self.disk_used and partition.size < self.disk_used.size:
+                raise HassOSDataDiskError(
+                    f"Cannot use {new_disk} as data disk as it is smaller then the current one (new: {partition.size}, current: {self.disk_used.size})"
+                )
+
+            try:
+                await self.sys_dbus.agent.datadisk.mark_data_move()
+            except DBusError as err:
+                raise HassOSDataDiskError(
+                    f"Unable to create data disk migration marker: {err!s}",
+                    _LOGGER.error,
+                ) from err
 
         # Restart Host for finish the process
         try:
@@ -190,3 +218,50 @@ class DataDisk(CoreSysAttributes):
                 f"Can't restart device to finish disk migration: {err!s}",
                 _LOGGER.warning,
             ) from err
+
+    async def _format_device_with_single_partition(
+        self, new_disk: Disk
+    ) -> UDisks2Block:
+        """Format device with a single partition to use as data disk."""
+        block_device: UDisks2Block = self.sys_dbus.udisks2.get_block_device(
+            new_disk.device_object_path
+        )
+
+        try:
+            await block_device.format(FormatType.GPT)
+        except DBusError as err:
+            capture_exception(err)
+            raise HassOSDataDiskError(
+                f"Could not format {new_disk.id}: {err!s}", _LOGGER.error
+            ) from err
+
+        await block_device.check_type()
+        if not block_device.partition_table:
+            raise HassOSDataDiskError(
+                "Block device does not contain a partition table after format, cannot create data partition",
+                _LOGGER.error,
+            )
+
+        try:
+            partition = await block_device.partition_table.create_partition(
+                0, 0, LINUX_DATA_PARTITION_GUID, EXTERNAL_DATA_DISK_PARTITION_NAME
+            )
+        except DBusError as err:
+            capture_exception(err)
+            raise HassOSDataDiskError(
+                f"Could not create new data partition: {err!s}"
+            ) from err
+
+        try:
+            partition_block = await UDisks2Block.new(
+                partition, self.sys_dbus.bus, sync_properties=False
+            )
+        except DBusError as err:
+            raise HassOSDataDiskError(
+                f"New data partition at {partition} is missing or unusable"
+            ) from err
+
+        _LOGGER.debug(
+            "New data partition prepared on device %s", partition_block.device
+        )
+        return partition_block

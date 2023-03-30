@@ -108,17 +108,17 @@ async def test_create_partition(
         await sda.create_partition(
             offset=0,
             size=1000000,
-            type_=PartitionTableType.DOS,
+            type_="0FC63DAF-8483-4772-8E79-3D69D8477DE4",
             name="hassos-data",
             options=CreatePartitionOptions(partition_type="primary"),
         )
-        == "/org/freedesktop/UDisks2/block_devices/sda2"
+        == "/org/freedesktop/UDisks2/block_devices/sda1"
     )
     assert partition_table_sda_service.CreatePartition.calls == [
         (
             0,
             1000000,
-            "dos",
+            "0FC63DAF-8483-4772-8E79-3D69D8477DE4",
             "hassos-data",
             {
                 "partition-type": Variant("s", "primary"),

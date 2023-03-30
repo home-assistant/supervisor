@@ -82,7 +82,7 @@ class DeviceSpecification:
     def to_dict(self) -> dict[str, Variant]:
         """Return dict representation."""
         data = {
-            "path": Variant("s", str(self.path)) if self.path else None,
+            "path": Variant("s", self.path.as_posix()) if self.path else None,
             "label": _optional_variant("s", self.label),
             "uuid": _optional_variant("s", self.uuid),
         }
