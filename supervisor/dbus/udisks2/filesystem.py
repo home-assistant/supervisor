@@ -10,9 +10,8 @@ from ..const import (
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
-from .block import udisks2_bytes_to_path
 from .const import UDISKS2_DEFAULT_OPTIONS
-from .data import MountOptions, UnmountOptions
+from .data import MountOptions, UnmountOptions, udisks2_bytes_to_path
 
 
 class UDisks2Filesystem(DBusInterfaceProxy):

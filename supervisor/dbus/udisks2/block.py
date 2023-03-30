@@ -30,21 +30,13 @@ from ..const import (
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .const import UDISKS2_DEFAULT_OPTIONS, FormatType
-from .data import FormatOptions
+from .data import FormatOptions, udisks2_bytes_to_path
 from .filesystem import UDisks2Filesystem
 from .partition_table import UDisks2PartitionTable
 
 ADDITIONAL_INTERFACES: dict[str, Callable[[str], DBusInterfaceProxy]] = {
     DBUS_IFACE_FILESYSTEM: UDisks2Filesystem
 }
-
-
-def udisks2_bytes_to_path(bytes: bytearray) -> Path:
-    """Convert bytes to path object without null character on end."""
-    if bytes and bytes[-1] == 0:
-        return Path(bytes[:-1].decode())
-
-    return Path(bytes.decode())
 
 
 class UDisks2Block(DBusInterfaceProxy):
