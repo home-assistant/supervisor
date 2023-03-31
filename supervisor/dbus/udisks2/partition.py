@@ -59,7 +59,7 @@ class UDisks2Partition(DBusInterfaceProxy):
 
     @property
     @dbus_property
-    def name(self) -> str:
+    def name_(self) -> str:
         """Name/label of partition if known."""
         return self.properties[DBUS_ATTR_NAME]
 

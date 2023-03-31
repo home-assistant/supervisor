@@ -199,7 +199,7 @@ class DataDisk(CoreSysAttributes):
                 block
                 for block in self.sys_dbus.udisks2.block_devices
                 if block.partition
-                and block.partition.name == PARTITION_NAME_EXTERNAL_DATA_DISK
+                and block.partition.name_ == PARTITION_NAME_EXTERNAL_DATA_DISK
                 and block.device != self.disk_used.device_path
                 and block.drive != target_disk[0].object_path
             ]
@@ -248,7 +248,7 @@ class DataDisk(CoreSysAttributes):
             if (
                 current_block
                 and current_block.partition
-                and current_block.partition.name == PARTITION_NAME_EXTERNAL_DATA_DISK
+                and current_block.partition.name_ == PARTITION_NAME_EXTERNAL_DATA_DISK
             ):
                 try:
                     await current_block.partition.set_name(

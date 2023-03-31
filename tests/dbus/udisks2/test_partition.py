@@ -49,32 +49,32 @@ async def test_partition_table_info(
         "/org/freedesktop/UDisks2/block_devices/sdb1", sync_properties=False
     )
 
-    assert sda1.name is None
+    assert sda1.name_ is None
     assert sda1.size is None
-    assert sdb1.name is None
+    assert sdb1.name_ is None
     assert sdb1.size is None
 
     await sda1.connect(dbus_session_bus)
     await sdb1.connect(dbus_session_bus)
 
-    assert sda1.name == "hassos-data-external"
+    assert sda1.name_ == "hassos-data-external"
     assert sda1.size == 250058113024
-    assert sdb1.name == ""
+    assert sdb1.name_ == ""
     assert sdb1.size == 67108864
 
     partition_sda1_service.emit_properties_changed({"Name": "test"})
     await partition_sda1_service.ping()
-    assert sda1.name == "test"
+    assert sda1.name_ == "test"
 
     partition_sda1_service.emit_properties_changed({}, ["Name"])
     await partition_sda1_service.ping()
     await partition_sda1_service.ping()
-    assert sda1.name == "hassos-data-external"
+    assert sda1.name_ == "hassos-data-external"
 
     # Prop changes should not sync for this one
     partition_sdb1_service.emit_properties_changed({"Name": "test"})
     await partition_sdb1_service.ping()
-    assert sdb1.name == ""
+    assert sdb1.name_ == ""
 
 
 async def test_set_type(

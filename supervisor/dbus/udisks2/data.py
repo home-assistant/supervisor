@@ -318,7 +318,7 @@ class DeletePartitionOptions(UDisks2StandardOptions):
     tear_down: bool | None = None
 
     @staticmethod
-    def from_Dict(data: DeletePartitionOptionsDataType) -> "DeletePartitionOptions":
+    def from_dict(data: DeletePartitionOptionsDataType) -> "DeletePartitionOptions":
         """Create DeletePartitionOptions from dict."""
         return DeletePartitionOptions(
             tear_down=data.get("tear-down"),
