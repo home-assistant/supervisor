@@ -128,6 +128,12 @@ class DataDisk(CoreSysAttributes):
         )
 
     @property
+    def disk_used_id(self) -> str | None:
+        """Return current Disk id for data."""
+        disk_used = self.disk_used
+        return disk_used.id if disk_used else None
+
+    @property
     def available_disks(self) -> list[Disk]:
         """Return a list of possible new disk locations.
 
