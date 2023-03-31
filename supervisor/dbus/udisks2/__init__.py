@@ -1,4 +1,5 @@
 """Interface to UDisks2 over D-Bus."""
+import asyncio
 import logging
 from typing import Any
 
@@ -63,10 +64,24 @@ class UDisks2(DBusInterfaceProxy):
                 UDISKS2_DEFAULT_OPTIONS
             )
 
+            unchanged_blocks = self._block_devices.keys() & set(block_devices)
             for removed in self._block_devices.keys() - set(block_devices):
                 self._block_devices[removed].shutdown()
 
-            await self._resolve_block_device_paths(block_devices)
+            self._block_devices = {
+                device: self._block_devices[device]
+                if device in unchanged_blocks
+                else await UDisks2Block.new(device, self.dbus.bus)
+                for device in block_devices
+            }
+
+            # For existing block devices, need to check their type and call update
+            await asyncio.gather(
+                *[self._block_devices[path].check_type() for path in unchanged_blocks]
+            )
+            await asyncio.gather(
+                *[self._block_devices[path].update() for path in unchanged_blocks]
+            )
 
             # Cache drives
             drives = {
@@ -75,6 +90,7 @@ class UDisks2(DBusInterfaceProxy):
                 if device.drive != DBUS_OBJECT_BASE
             }
 
+            unchanged_drives = self._drives.keys() & set(drives)
             for removed in self._drives.keys() - drives:
                 self._drives[removed].shutdown()
 
@@ -84,6 +100,11 @@ class UDisks2(DBusInterfaceProxy):
                 else await UDisks2Drive.new(drive, self.dbus.bus)
                 for drive in drives
             }
+
+            # Update existing drives
+            await asyncio.gather(
+                *[self._drives[path].update() for path in unchanged_drives]
+            )
 
     @property
     @dbus_property
@@ -126,25 +147,14 @@ class UDisks2(DBusInterfaceProxy):
     @dbus_connected
     async def resolve_device(self, devspec: DeviceSpecification) -> list[UDisks2Block]:
         """Return list of device object paths for specification."""
-        return await self._resolve_block_device_paths(
-            await self.dbus.Manager.call_resolve_device(
-                devspec.to_dict(), UDISKS2_DEFAULT_OPTIONS
-            )
+        return await asyncio.gather(
+            *[
+                UDisks2Block.new(path, self.dbus.bus, sync_properties=False)
+                for path in await self.dbus.Manager.call_resolve_device(
+                    devspec.to_dict(), UDISKS2_DEFAULT_OPTIONS
+                )
+            ]
         )
-
-    async def _resolve_block_device_paths(
-        self, block_devices: list[str]
-    ) -> list[UDisks2Block]:
-        """Resolve block device object paths to objects. Cache new ones if necessary."""
-        resolved = {
-            device: self._block_devices[device]
-            if device in self._block_devices
-            and self._block_devices[device].is_connected
-            else await UDisks2Block.new(device, self.dbus.bus)
-            for device in block_devices
-        }
-        self._block_devices.update(resolved)
-        return list(resolved.values())
 
     def shutdown(self) -> None:
         """Shutdown the object and disconnect from D-Bus.

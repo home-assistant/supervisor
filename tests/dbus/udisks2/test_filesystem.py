@@ -135,3 +135,14 @@ async def test_repair(
     assert filesystem_sda1_service.Repair.calls == [
         ({"auth.no_user_interaction": Variant("b", True)},)
     ]
+
+
+async def test_set_label(
+    sda1: UDisks2Filesystem, filesystem_sda1_service: FilesystemService
+):
+    """Test set label."""
+    filesystem_sda1_service.SetLabel.calls.clear()
+    await sda1.set_label("test")
+    assert filesystem_sda1_service.SetLabel.calls == [
+        ("test", {"auth.no_user_interaction": Variant("b", True)})
+    ]

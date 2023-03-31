@@ -242,7 +242,7 @@ FIXTURES: dict[str, BlockFixture] = {
         PreferredDevice=b"/dev/sda1\x00",
         Symlinks=[
             b"/dev/disk/by-id/usb-SSK_SSK_Storage_DF56419883D56-0:0-part1\x00",
-            b"/dev/disk/by-label/hassos-data\x00",
+            b"/dev/disk/by-label/hassos-data-old\x00",
             b"/dev/disk/by-partlabel/hassos-data-external\x00",
             b"/dev/disk/by-partuuid/6f3f99f4-4d34-476b-b051-77886da57fa9\x00",
             b"/dev/disk/by-path/platform-xhci-hcd.1.auto-usb-0:1.4:1.0-scsi-0:0:0:0-part1\x00",
@@ -258,7 +258,7 @@ FIXTURES: dict[str, BlockFixture] = {
         IdUsage="filesystem",
         IdType="ext4",
         IdVersion="1.0",
-        IdLabel="hassos-data",
+        IdLabel="hassos-data-old",
         IdUUID="b82b23cb-0c47-4bbb-acf5-2a2afa8894a2",
         Configuration=[],
         CryptoBackingDevice="/",
