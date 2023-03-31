@@ -63,7 +63,7 @@ class APIOS(CoreSysAttributes):
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
             ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
-            ATTR_DATA_DISK: self.sys_os.datadisk.disk_used.id,
+            ATTR_DATA_DISK: self.sys_os.datadisk.disk_used,
         }
 
     @api_process
