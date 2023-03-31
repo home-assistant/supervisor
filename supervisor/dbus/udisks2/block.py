@@ -32,7 +32,7 @@ from ..const import (
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .const import UDISKS2_DEFAULT_OPTIONS, FormatType
-from .data import FormatOptions
+from .data import FormatOptions, udisks2_bytes_to_path
 from .filesystem import UDisks2Filesystem
 from .partition_table import UDisks2PartitionTable
 
@@ -88,7 +88,7 @@ class UDisks2Block(DBusInterfaceProxy):
     @dbus_property
     def device(self) -> Path:
         """Return device file."""
-        return Path(bytes(self.properties[DBUS_ATTR_DEVICE]).decode())
+        return udisks2_bytes_to_path(self.properties[DBUS_ATTR_DEVICE])
 
     @property
     @dbus_property
@@ -113,7 +113,7 @@ class UDisks2Block(DBusInterfaceProxy):
     def symlinks(self) -> list[Path]:
         """Return list of symlinks."""
         return [
-            Path(bytes(symlink).decode(encoding="utf-8"))
+            udisks2_bytes_to_path(symlink)
             for symlink in self.properties[DBUS_ATTR_SYMLINKS]
         ]
 

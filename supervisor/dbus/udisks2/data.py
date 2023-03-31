@@ -11,6 +11,14 @@ from typing_extensions import NotRequired
 from .const import EncryptType, EraseMode
 
 
+def udisks2_bytes_to_path(path_bytes: bytearray) -> Path:
+    """Convert bytes to path object without null character on end."""
+    if path_bytes and path_bytes[-1] == 0:
+        return Path(path_bytes[:-1].decode())
+
+    return Path(path_bytes.decode())
+
+
 def _optional_variant(signature: str, value: Any | None) -> Variant | None:
     """Output variant if value is not none."""
     return Variant(signature, value) if value is not None else None
