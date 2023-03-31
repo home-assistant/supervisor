@@ -1,4 +1,5 @@
 """Test OS API."""
+from dataclasses import replace
 from pathlib import PosixPath
 from unittest.mock import patch
 
@@ -15,6 +16,8 @@ from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.logind import Logind as LogindService
 from tests.dbus_service_mocks.udisks2_block import Block as BlockService
+from tests.dbus_service_mocks.udisks2_filesystem import Filesystem as FilesystemService
+from tests.dbus_service_mocks.udisks2_partition import Partition as PartitionService
 from tests.dbus_service_mocks.udisks2_partition_table import (
     PartitionTable as PartitionTableService,
 )
@@ -71,7 +74,9 @@ async def test_datadisk_move_fail(coresys: CoreSys, new_disk: str):
     """Test datadisk move to non-existent or invalid devices."""
     coresys.os._available = True
 
-    with pytest.raises(HassOSDataDiskError):
+    with pytest.raises(
+        HassOSDataDiskError, match=f"'{new_disk}' not a valid data disk target!"
+    ):
         await coresys.os.datadisk.migrate_disk(new_disk)
 
 
@@ -195,9 +200,77 @@ async def test_datadisk_migrate_too_small(
     await all_dbus_services["os_agent"].ping()
     coresys.os._available = True
 
-    with pytest.raises(HassOSDataDiskError):
+    with pytest.raises(
+        HassOSDataDiskError,
+        match=r"Cannot use SSK-SSK-Storage-DF56419883D56 as data disk as it is smaller then the current one",
+    ):
         await coresys.os.datadisk.migrate_disk("SSK-SSK-Storage-DF56419883D56")
 
     assert partition_table_service.CreatePartition.calls
     assert datadisk_service.MarkDataMove.calls == []
     assert logind_service.Reboot.calls == []
+
+
+async def test_datadisk_migrate_multiple_external_data_disks(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """Test migration stops when another hassos-data-external partition detected."""
+    datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
+    datadisk_service.ChangeDevice.calls.clear()
+    datadisk_service.MarkDataMove.calls.clear()
+
+    sdb1_filesystem_service: FilesystemService = all_dbus_services[
+        "udisks2_filesystem"
+    ]["/org/freedesktop/UDisks2/block_devices/sdb1"]
+    sdb1_filesystem_service.fixture = replace(
+        sdb1_filesystem_service.fixture, MountPoints=[]
+    )
+    coresys.os._available = True
+
+    with pytest.raises(
+        HassOSDataDiskError,
+        match=r"Partition\(s\) /dev/sda1 have name 'hassos-data-external' which prevents migration",
+    ):
+        await coresys.os.datadisk.migrate_disk("Generic-Flash-Disk-61BCDDB6")
+
+    assert datadisk_service.ChangeDevice.calls == []
+    assert datadisk_service.MarkDataMove.calls == []
+
+
+async def test_datadisk_migrate_between_external_renames(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """Test migration from one external data disk to another renames the original."""
+    sdb1_partition_service: PartitionService = all_dbus_services["udisks2_partition"][
+        "/org/freedesktop/UDisks2/block_devices/sdb1"
+    ]
+    sdb1_partition_service.SetName.calls.clear()
+
+    sdb1_filesystem_service: FilesystemService = all_dbus_services[
+        "udisks2_filesystem"
+    ]["/org/freedesktop/UDisks2/block_devices/sdb1"]
+    sdb1_filesystem_service.fixture = replace(
+        sdb1_filesystem_service.fixture, MountPoints=[]
+    )
+    sdb1_block_service: BlockService = all_dbus_services["udisks2_block"][
+        "/org/freedesktop/UDisks2/block_devices/sdb1"
+    ]
+    sdb1_block_service.fixture = replace(sdb1_block_service.fixture, Size=250058113024)
+
+    datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
+    datadisk_service.MarkDataMove.calls.clear()
+    datadisk_service.emit_properties_changed({"CurrentDevice": "/dev/sda1"})
+    await datadisk_service.ping()
+
+    all_dbus_services["os_agent"].emit_properties_changed({"Version": "1.5.0"})
+    await all_dbus_services["os_agent"].ping()
+    coresys.os._available = True
+
+    await coresys.os.datadisk.migrate_disk("Generic-Flash-Disk-61BCDDB6")
+
+    assert datadisk_service.MarkDataMove.calls == [tuple()]
+    assert sdb1_partition_service.SetName.calls == [
+        ("hassos-data-external-old", {"auth.no_user_interaction": Variant("b", True)})
+    ]

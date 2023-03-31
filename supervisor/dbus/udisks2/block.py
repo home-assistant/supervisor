@@ -26,6 +26,7 @@ from ..const import (
     DBUS_ATTR_SYMLINKS,
     DBUS_IFACE_BLOCK,
     DBUS_IFACE_FILESYSTEM,
+    DBUS_IFACE_PARTITION,
     DBUS_IFACE_PARTITION_TABLE,
     DBUS_NAME_UDISKS2,
 )
@@ -34,6 +35,7 @@ from ..utils import dbus_connected
 from .const import UDISKS2_DEFAULT_OPTIONS, FormatType
 from .data import FormatOptions, udisks2_bytes_to_path
 from .filesystem import UDisks2Filesystem
+from .partition import UDisks2Partition
 from .partition_table import UDisks2PartitionTable
 
 ADDITIONAL_INTERFACES: dict[str, Callable[[str], DBusInterfaceProxy]] = {
@@ -52,6 +54,7 @@ class UDisks2Block(DBusInterfaceProxy):
     properties_interface: str = DBUS_IFACE_BLOCK
 
     _filesystem: UDisks2Filesystem | None = None
+    _partition: UDisks2Partition | None = None
     _partition_table: UDisks2PartitionTable | None = None
 
     def __init__(self, object_path: str, *, sync_properties: bool = True) -> None:
@@ -78,6 +81,11 @@ class UDisks2Block(DBusInterfaceProxy):
     def filesystem(self) -> UDisks2Filesystem | None:
         """Filesystem interface if block device is one."""
         return self._filesystem
+
+    @property
+    def partition(self) -> UDisks2Partition | None:
+        """Partition interface if block device is one."""
+        return self._partition
 
     @property
     def partition_table(self) -> UDisks2PartitionTable | None:
@@ -195,7 +203,7 @@ class UDisks2Block(DBusInterfaceProxy):
             await asyncio.gather(
                 *[
                     intr.update()
-                    for intr in (self.filesystem, self.partition_table)
+                    for intr in (self.filesystem, self.partition, self.partition_table)
                     if intr
                 ]
             )
@@ -224,6 +232,17 @@ class UDisks2Block(DBusInterfaceProxy):
         elif self.filesystem and DBUS_IFACE_FILESYSTEM not in self.dbus.proxies:
             self.filesystem.stop_sync_property_changes()
             self._filesystem = None
+
+        # Check if block device is a partition
+        if not self.partition and DBUS_IFACE_PARTITION in self.dbus.proxies:
+            self._partition = UDisks2Partition(
+                self.object_path, sync_properties=self.sync_properties
+            )
+            await self._partition.initialize(self.dbus)
+
+        elif self.partition and DBUS_IFACE_PARTITION not in self.dbus.proxies:
+            self.partition.stop_sync_property_changes()
+            self._partition = None
 
         # Check if block device is a partition table
         if not self.partition_table and DBUS_IFACE_PARTITION_TABLE in self.dbus.proxies:

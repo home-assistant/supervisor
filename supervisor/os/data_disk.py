@@ -23,7 +23,10 @@ from ..exceptions import (
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..utils.sentry import capture_exception
-from .const import PARTITION_NAME_EXTERNAL_DATA_DISK
+from .const import (
+    PARTITION_NAME_EXTERNAL_DATA_DISK,
+    PARTITION_NAME_OLD_EXTERNAL_DATA_DISK,
+)
 
 LINUX_DATA_PARTITION_GUID: Final = "0FC63DAF-8483-4772-8E79-3D69D8477DE4"
 OS_AGENT_MARK_DATA_MOVE_VERSION: Final = AwesomeVersion("1.5.0")
@@ -186,8 +189,25 @@ class DataDisk(CoreSysAttributes):
         ]
         if len(target_disk) != 1:
             raise HassOSDataDiskError(
-                f"'{new_disk!s}' not a valid data disk target!", _LOGGER.error
+                f"'{new_disk}' not a valid data disk target!", _LOGGER.error
             ) from None
+
+        # If any other partition is named "hassos-data-external" error and ask for its removal
+        # otherwise it will create a race condition at startup
+        if self.disk_used and (
+            conflicts := [
+                block
+                for block in self.sys_dbus.udisks2.block_devices
+                if block.partition
+                and block.partition.name == PARTITION_NAME_EXTERNAL_DATA_DISK
+                and block.device != self.disk_used.device_path
+                and block.drive != target_disk[0].object_path
+            ]
+        ):
+            raise HassOSDataDiskError(
+                f"Partition(s) {', '.join([conflict.device.as_posix() for conflict in conflicts])} have name 'hassos-data-external' which prevents migration. Remove or rename them first.",
+                _LOGGER.error,
+            )
 
         # Older OS did not have mark data move API. Must let OS do disk format & migration
         if self.sys_dbus.agent.version < OS_AGENT_MARK_DATA_MOVE_VERSION:
@@ -201,11 +221,19 @@ class DataDisk(CoreSysAttributes):
                 ) from err
         else:
             # Format disk then tell OS to migrate next reboot
+            current_block = (
+                self.sys_dbus.udisks2.get_block_device(
+                    self.disk_used.device_object_path
+                )
+                if self.disk_used
+                else None
+            )
             partition = await self._format_device_with_single_partition(target_disk[0])
 
-            if self.disk_used and partition.size < self.disk_used.size:
+            if current_block and current_block.size > partition.size:
                 raise HassOSDataDiskError(
-                    f"Cannot use {new_disk} as data disk as it is smaller then the current one (new: {partition.size}, current: {self.disk_used.size})"
+                    f"Cannot use {new_disk} as data disk as it is smaller then the current one (new: {partition.size}, current: {current_block.size})",
+                    _LOGGER.error,
                 )
 
             try:
@@ -215,6 +243,22 @@ class DataDisk(CoreSysAttributes):
                     f"Unable to create data disk migration marker: {err!s}",
                     _LOGGER.error,
                 ) from err
+
+            # If migrating from one external data disk to another, rename the old one to prevent conflicts
+            if (
+                current_block
+                and current_block.partition
+                and current_block.partition.name == PARTITION_NAME_EXTERNAL_DATA_DISK
+            ):
+                try:
+                    await current_block.partition.set_name(
+                        PARTITION_NAME_OLD_EXTERNAL_DATA_DISK
+                    )
+                except DBusError as err:
+                    raise HassOSDataDiskError(
+                        f"Could not rename existing external data disk to prevent name conflict: {err!s}",
+                        _LOGGER.error,
+                    ) from err
 
         # Restart Host for finish the process
         try:
@@ -255,7 +299,7 @@ class DataDisk(CoreSysAttributes):
         except DBusError as err:
             capture_exception(err)
             raise HassOSDataDiskError(
-                f"Could not create new data partition: {err!s}"
+                f"Could not create new data partition: {err!s}", _LOGGER.error
             ) from err
 
         try:
@@ -264,7 +308,8 @@ class DataDisk(CoreSysAttributes):
             )
         except DBusError as err:
             raise HassOSDataDiskError(
-                f"New data partition at {partition} is missing or unusable"
+                f"New data partition at {partition} is missing or unusable",
+                _LOGGER.error,
             ) from err
 
         _LOGGER.debug(

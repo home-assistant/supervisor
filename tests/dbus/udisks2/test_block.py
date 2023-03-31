@@ -11,6 +11,7 @@ from supervisor.dbus.udisks2.block import UDisks2Block
 from supervisor.dbus.udisks2.const import FormatType, PartitionTableType
 from supervisor.dbus.udisks2.data import FormatOptions
 from supervisor.dbus.udisks2.filesystem import UDisks2Filesystem
+from supervisor.dbus.udisks2.partition import UDisks2Partition
 from supervisor.dbus.udisks2.partition_table import UDisks2PartitionTable
 from supervisor.utils.dbus import DBus
 
@@ -57,6 +58,7 @@ async def test_block_device_info(
     assert sda1.id_label is None
     assert sda1.symlinks is None
     assert sda1.filesystem is None
+    assert sda1.partition is None
 
     await sda.connect(dbus_session_bus)
     await sda1.connect(dbus_session_bus)
@@ -66,6 +68,7 @@ async def test_block_device_info(
     assert sda.id_label == ""
     assert sda.partition_table.type == PartitionTableType.GPT
     assert sda.filesystem is None
+    assert sda.partition is None
 
     assert sda1.id_label == "hassos-data-old"
     assert sda1.symlinks == [
@@ -80,6 +83,7 @@ async def test_block_device_info(
     ]
     assert sda1.partition_table is None
     assert sda1.filesystem.mount_points == []
+    assert sda1.partition.number == 1
 
     block_sda_service.emit_properties_changed({"IdLabel": "test"})
     await block_sda_service.ping()
@@ -135,9 +139,10 @@ async def test_check_type(dbus_session_bus: MessageBus):
     await sda.connect(dbus_session_bus)
     await sda1.connect(dbus_session_bus)
 
-    # Connected but neither are filesystems are partition tables
+    # Connected but neither are filesystems, partitions or partition tables
     assert sda.partition_table is None
     assert sda1.filesystem is None
+    assert sda1.partition is None
     assert sda.id_label == ""
     assert sda1.id_label == "hassos-data-old"
 
@@ -147,11 +152,13 @@ async def test_check_type(dbus_session_bus: MessageBus):
         {
             "udisks2_partition_table": "/org/freedesktop/UDisks2/block_devices/sda",
             "udisks2_filesystem": "/org/freedesktop/UDisks2/block_devices/sda1",
+            "udisks2_partition": "/org/freedesktop/UDisks2/block_devices/sda1",
         },
         dbus_session_bus,
     )
     sda_pt_service = services["udisks2_partition_table"]
     sda1_fs_service = services["udisks2_filesystem"]
+    sda1_part_service = services["udisks2_partition"]
 
     await sda.check_type()
     await sda1.check_type()
@@ -159,11 +166,14 @@ async def test_check_type(dbus_session_bus: MessageBus):
     # Check that the type is now correct and property changes are syncing
     assert sda.partition_table
     assert sda1.filesystem
+    assert sda1.partition
 
     partition_table: UDisks2PartitionTable = sda.partition_table
     filesystem: UDisks2Filesystem = sda1.filesystem
+    partition: UDisks2Partition = sda1.partition
     assert partition_table.type == PartitionTableType.GPT
     assert filesystem.size == 250058113024
+    assert partition.name == "hassos-data-external"
 
     sda_pt_service.emit_properties_changed({"Type": "dos"})
     await sda_pt_service.ping()
@@ -172,6 +182,10 @@ async def test_check_type(dbus_session_bus: MessageBus):
     sda1_fs_service.emit_properties_changed({"Size": 100})
     await sda1_fs_service.ping()
     assert filesystem.size == 100
+
+    sda1_part_service.emit_properties_changed({"Name": "test"})
+    await sda1_part_service.ping()
+    assert partition.name == "test"
 
     # Force introspection to return the original block device only introspection and re-check type
     with patch.object(DBus, "introspect", return_value=orig_introspection):
@@ -183,6 +197,7 @@ async def test_check_type(dbus_session_bus: MessageBus):
     assert sda1.is_connected is True
     assert sda.partition_table is None
     assert sda1.filesystem is None
+    assert sda1.partition is None
 
     # Property changes should still sync for the block devices
     sda_block_service.emit_properties_changed({"IdLabel": "test"})
@@ -201,3 +216,7 @@ async def test_check_type(dbus_session_bus: MessageBus):
     sda1_fs_service.emit_properties_changed({"Size": 250058113024})
     await sda1_fs_service.ping()
     assert filesystem.size == 100
+
+    sda1_part_service.emit_properties_changed({"Name": "hassos-data-external"})
+    await sda1_part_service.ping()
+    assert partition.name == "test"
