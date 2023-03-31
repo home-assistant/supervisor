@@ -78,6 +78,7 @@ class IssueType(str, Enum):
     FREE_SPACE = "free_space"
     IPV4_CONNECTION_PROBLEM = "ipv4_connection_problem"
     MISSING_IMAGE = "missing_image"
+    MULTIPLE_DATA_DISKS = "multiple_data_disks"
     NO_CURRENT_BACKUP = "no_current_backup"
     PWNED = "pwned"
     REBOOT_REQUIRED = "reboot_required"
@@ -101,3 +102,4 @@ class SuggestionType(str, Enum):
     EXECUTE_STOP = "execute_stop"
     EXECUTE_UPDATE = "execute_update"
     REGISTRY_LOGIN = "registry_login"
+    RENAME_DATA_DISK = "rename_data_disk"

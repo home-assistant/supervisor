@@ -67,10 +67,10 @@ async def test_block_device_info(
     assert sda.partition_table.type == PartitionTableType.GPT
     assert sda.filesystem is None
 
-    assert sda1.id_label == "hassos-data"
+    assert sda1.id_label == "hassos-data-old"
     assert sda1.symlinks == [
         Path("/dev/disk/by-id/usb-SSK_SSK_Storage_DF56419883D56-0:0-part1"),
-        Path("/dev/disk/by-label/hassos-data"),
+        Path("/dev/disk/by-label/hassos-data-old"),
         Path("/dev/disk/by-partlabel/hassos-data-external"),
         Path("/dev/disk/by-partuuid/6f3f99f4-4d34-476b-b051-77886da57fa9"),
         Path(
@@ -93,7 +93,7 @@ async def test_block_device_info(
     # Prop changes should not sync for this one
     block_sda1_service.emit_properties_changed({"IdLabel": "test"})
     await block_sda1_service.ping()
-    assert sda1.id_label == "hassos-data"
+    assert sda1.id_label == "hassos-data-old"
 
 
 async def test_format(block_sda_service: BlockService, dbus_session_bus: MessageBus):
@@ -139,7 +139,7 @@ async def test_check_type(dbus_session_bus: MessageBus):
     assert sda.partition_table is None
     assert sda1.filesystem is None
     assert sda.id_label == ""
-    assert sda1.id_label == "hassos-data"
+    assert sda1.id_label == "hassos-data-old"
 
     # Store current introspection then make sda into a partition table and sda1 into a filesystem
     orig_introspection = await sda.dbus.introspect()

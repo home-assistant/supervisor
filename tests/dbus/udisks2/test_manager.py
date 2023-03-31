@@ -8,16 +8,18 @@ from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
 from supervisor.dbus.udisks2 import UDisks2
+from supervisor.dbus.udisks2.const import PartitionTableType
 from supervisor.dbus.udisks2.data import DeviceSpecification
 from supervisor.exceptions import DBusNotConnectedError, DBusObjectError
 
+from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.udisks2_manager import (
     UDisks2Manager as UDisks2ManagerService,
 )
 
 
-@pytest.fixture(name="udisks2_manager_service", autouse=True)
+@pytest.fixture(name="udisks2_manager_service")
 async def fixture_udisks2_manager_service(
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
 ) -> UDisks2ManagerService:
@@ -87,7 +89,128 @@ async def test_udisks2_manager_info(
     ]
 
 
-async def test_get_block_device(dbus_session_bus: MessageBus):
+async def test_update_checks_devices_and_drives(dbus_session_bus: MessageBus):
+    """Test update rechecks block devices and drives correctly."""
+    mocked = await mock_dbus_services(
+        {
+            "udisks2_manager": None,
+            "udisks2_block": [
+                "/org/freedesktop/UDisks2/block_devices/sda",
+                "/org/freedesktop/UDisks2/block_devices/sda1",
+                "/org/freedesktop/UDisks2/block_devices/sdb",
+            ],
+            "udisks2_drive": [
+                "/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56",
+                "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6",
+            ],
+        },
+        dbus_session_bus,
+    )
+    udisks2_manager_service: UDisks2ManagerService = mocked["udisks2_manager"]
+    udisks2_manager_service.block_devices = [
+        "/org/freedesktop/UDisks2/block_devices/sda",
+        "/org/freedesktop/UDisks2/block_devices/sda1",
+        "/org/freedesktop/UDisks2/block_devices/sdb",
+    ]
+
+    udisks2 = UDisks2()
+    await udisks2.connect(dbus_session_bus)
+
+    assert len(udisks2.block_devices) == 3
+    assert (
+        udisks2.get_block_device(
+            "/org/freedesktop/UDisks2/block_devices/sda"
+        ).partition_table
+        is None
+    )
+    assert (
+        udisks2.get_block_device(
+            "/org/freedesktop/UDisks2/block_devices/sda1"
+        ).filesystem
+        is None
+    )
+    sdb = udisks2.get_block_device("/org/freedesktop/UDisks2/block_devices/sdb")
+    assert sdb.is_connected is True
+    with pytest.raises(DBusObjectError):
+        udisks2.get_block_device("/org/freedesktop/UDisks2/block_devices/mmcblk1")
+
+    assert len(udisks2.drives) == 2
+    assert (
+        udisks2.get_drive(
+            "/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56"
+        ).is_connected
+        is True
+    )
+    flash_disk = udisks2.get_drive(
+        "/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6"
+    )
+    assert flash_disk.is_connected is True
+    with pytest.raises(DBusObjectError):
+        udisks2.get_drive("/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291")
+
+    await mock_dbus_services(
+        {
+            "udisks2_block": "/org/freedesktop/UDisks2/block_devices/mmcblk1",
+            "udisks2_drive": "/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291",
+            "udisks2_filesystem": "/org/freedesktop/UDisks2/block_devices/sda1",
+            "udisks2_partition_table": "/org/freedesktop/UDisks2/block_devices/sda",
+        },
+        dbus_session_bus,
+    )
+    udisks2_manager_service.block_devices = [
+        "/org/freedesktop/UDisks2/block_devices/sda",
+        "/org/freedesktop/UDisks2/block_devices/sda1",
+        "/org/freedesktop/UDisks2/block_devices/mmcblk1",
+    ]
+
+    await udisks2.update()
+
+    assert len(udisks2.block_devices) == 3
+    assert (
+        udisks2.get_block_device(
+            "/org/freedesktop/UDisks2/block_devices/sda"
+        ).partition_table.type
+        == PartitionTableType.GPT
+    )
+    assert (
+        udisks2.get_block_device(
+            "/org/freedesktop/UDisks2/block_devices/sda1"
+        ).filesystem.mount_points
+        == []
+    )
+    assert (
+        udisks2.get_block_device(
+            "/org/freedesktop/UDisks2/block_devices/mmcblk1"
+        ).is_connected
+        is True
+    )
+    with pytest.raises(DBusObjectError):
+        udisks2.get_block_device("/org/freedesktop/UDisks2/block_devices/sdb")
+    assert sdb.is_connected is False
+    assert sdb.is_shutdown is True
+
+    assert len(udisks2.drives) == 2
+    assert (
+        udisks2.get_drive(
+            "/org/freedesktop/UDisks2/drives/SSK_SSK_Storage_DF56419883D56"
+        ).is_connected
+        is True
+    )
+    assert (
+        udisks2.get_drive(
+            "/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291"
+        ).is_connected
+        is True
+    )
+    with pytest.raises(DBusObjectError):
+        udisks2.get_drive("/org/freedesktop/UDisks2/drives/Generic_Flash_Disk_61BCDDB6")
+    assert flash_disk.is_connected is False
+    assert flash_disk.is_shutdown is True
+
+
+async def test_get_block_device(
+    udisks2_manager_service: UDisks2ManagerService, dbus_session_bus: MessageBus
+):
     """Test get block device by object path."""
     udisks2 = UDisks2()
 
@@ -99,13 +222,15 @@ async def test_get_block_device(dbus_session_bus: MessageBus):
     block_device = udisks2.get_block_device(
         "/org/freedesktop/UDisks2/block_devices/sda1"
     )
-    assert block_device.id_label == "hassos-data"
+    assert block_device.id_label == "hassos-data-old"
 
     with pytest.raises(DBusObjectError):
         udisks2.get_block_device("non_existent")
 
 
-async def test_get_drive(dbus_session_bus: MessageBus):
+async def test_get_drive(
+    udisks2_manager_service: UDisks2ManagerService, dbus_session_bus: MessageBus
+):
     """Test get drive by object path."""
     udisks2 = UDisks2()
 
@@ -135,7 +260,7 @@ async def test_resolve_device(
 
     devices = await udisks2.resolve_device(DeviceSpecification(path=Path("/dev/sda1")))
     assert len(devices) == 1
-    assert devices[0].id_label == "hassos-data"
+    assert devices[0].id_label == "hassos-data-old"
     assert udisks2_manager_service.ResolveDevice.calls == [
         (
             {"path": Variant("s", "/dev/sda1")},

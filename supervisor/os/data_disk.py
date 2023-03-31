@@ -23,9 +23,9 @@ from ..exceptions import (
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..utils.sentry import capture_exception
+from .const import PARTITION_NAME_EXTERNAL_DATA_DISK
 
 LINUX_DATA_PARTITION_GUID: Final = "0FC63DAF-8483-4772-8E79-3D69D8477DE4"
-EXTERNAL_DATA_DISK_PARTITION_NAME: Final = "hassos-data-external"
 OS_AGENT_MARK_DATA_MOVE_VERSION: Final = AwesomeVersion("1.5.0")
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -250,7 +250,7 @@ class DataDisk(CoreSysAttributes):
 
         try:
             partition = await block_device.partition_table.create_partition(
-                0, 0, LINUX_DATA_PARTITION_GUID, EXTERNAL_DATA_DISK_PARTITION_NAME
+                0, 0, LINUX_DATA_PARTITION_GUID, PARTITION_NAME_EXTERNAL_DATA_DISK
             )
         except DBusError as err:
             capture_exception(err)
