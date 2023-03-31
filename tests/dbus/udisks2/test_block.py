@@ -173,7 +173,7 @@ async def test_check_type(dbus_session_bus: MessageBus):
     partition: UDisks2Partition = sda1.partition
     assert partition_table.type == PartitionTableType.GPT
     assert filesystem.size == 250058113024
-    assert partition.name == "hassos-data-external"
+    assert partition.name_ == "hassos-data-external"
 
     sda_pt_service.emit_properties_changed({"Type": "dos"})
     await sda_pt_service.ping()
@@ -185,7 +185,7 @@ async def test_check_type(dbus_session_bus: MessageBus):
 
     sda1_part_service.emit_properties_changed({"Name": "test"})
     await sda1_part_service.ping()
-    assert partition.name == "test"
+    assert partition.name_ == "test"
 
     # Force introspection to return the original block device only introspection and re-check type
     with patch.object(DBus, "introspect", return_value=orig_introspection):
@@ -219,4 +219,4 @@ async def test_check_type(dbus_session_bus: MessageBus):
 
     sda1_part_service.emit_properties_changed({"Name": "hassos-data-external"})
     await sda1_part_service.ping()
-    assert partition.name == "test"
+    assert partition.name_ == "test"

@@ -228,6 +228,24 @@ class DataDisk(CoreSysAttributes):
                 if self.disk_used
                 else None
             )
+
+            # If migrating from one external data disk to another, rename the old one to prevent conflicts
+            # Do this first because otherwise a subsequent failure could create a race condition on reboot
+            if (
+                current_block
+                and current_block.partition
+                and current_block.partition.name_ == PARTITION_NAME_EXTERNAL_DATA_DISK
+            ):
+                try:
+                    await current_block.partition.set_name(
+                        PARTITION_NAME_OLD_EXTERNAL_DATA_DISK
+                    )
+                except DBusError as err:
+                    raise HassOSDataDiskError(
+                        f"Could not rename existing external data disk to prevent name conflict: {err!s}",
+                        _LOGGER.error,
+                    ) from err
+
             partition = await self._format_device_with_single_partition(target_disk[0])
 
             if current_block and current_block.size > partition.size:
@@ -243,22 +261,6 @@ class DataDisk(CoreSysAttributes):
                     f"Unable to create data disk migration marker: {err!s}",
                     _LOGGER.error,
                 ) from err
-
-            # If migrating from one external data disk to another, rename the old one to prevent conflicts
-            if (
-                current_block
-                and current_block.partition
-                and current_block.partition.name_ == PARTITION_NAME_EXTERNAL_DATA_DISK
-            ):
-                try:
-                    await current_block.partition.set_name(
-                        PARTITION_NAME_OLD_EXTERNAL_DATA_DISK
-                    )
-                except DBusError as err:
-                    raise HassOSDataDiskError(
-                        f"Could not rename existing external data disk to prevent name conflict: {err!s}",
-                        _LOGGER.error,
-                    ) from err
 
         # Restart Host for finish the process
         try:
