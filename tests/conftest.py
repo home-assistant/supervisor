@@ -225,7 +225,7 @@ async def fixture_udisks2_services(
                 "/org/freedesktop/UDisks2/block_devices/sda",
                 "/org/freedesktop/UDisks2/block_devices/sdb",
             ],
-            "udisks2_parition": [
+            "udisks2_partition": [
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",

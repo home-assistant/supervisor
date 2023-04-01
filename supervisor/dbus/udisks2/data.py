@@ -194,7 +194,7 @@ MountOptionsDataType = TypedDict(
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class MountOptions(UDisks2StandardOptions):
     """Filesystem mount options.
 
@@ -236,7 +236,7 @@ UnmountOptionsDataType = TypedDict(
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class UnmountOptions(UDisks2StandardOptions):
     """Filesystem unmount options.
 
@@ -272,7 +272,7 @@ CreatePartitionOptionsDataType = TypedDict(
 )
 
 
-@dataclass
+@dataclass(slots=True)
 class CreatePartitionOptions(UDisks2StandardOptions):
     """Create partition options.
 
@@ -294,6 +294,42 @@ class CreatePartitionOptions(UDisks2StandardOptions):
         """Return dict representation."""
         data = {
             "partition-type": _optional_variant("s", self.partition_type),
+            # UDisks2 standard options
+            "auth.no_user_interaction": _optional_variant(
+                "b", self.auth_no_user_interaction
+            ),
+        }
+        return {k: v for k, v in data.items() if v}
+
+
+DeletePartitionOptionsDataType = TypedDict(
+    "DeletePartitionOptionsDataType",
+    {"tear-down": NotRequired[bool]} | _udisks2_standard_options_annotations,
+)
+
+
+@dataclass(slots=True)
+class DeletePartitionOptions(UDisks2StandardOptions):
+    """Delete partition options.
+
+    http://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Partition.html#gdbus-method-org-freedesktop-UDisks2-Partition.Delete
+    """
+
+    tear_down: bool | None = None
+
+    @staticmethod
+    def from_dict(data: DeletePartitionOptionsDataType) -> "DeletePartitionOptions":
+        """Create DeletePartitionOptions from dict."""
+        return DeletePartitionOptions(
+            tear_down=data.get("tear-down"),
+            # UDisks2 standard options
+            auth_no_user_interaction=data.get("auth.no_user_interaction"),
+        )
+
+    def to_dict(self) -> dict[str, Variant]:
+        """Return dict representation."""
+        data = {
+            "tear-down": _optional_variant("b", self.tear_down),
             # UDisks2 standard options
             "auth.no_user_interaction": _optional_variant(
                 "b", self.auth_no_user_interaction

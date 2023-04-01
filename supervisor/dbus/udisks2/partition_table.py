@@ -55,7 +55,8 @@ class UDisks2PartitionTable(DBusInterfaceProxy):
         """Create a new partition and return object path of new block device.
 
         Type should be a GUID from https://en.wikipedia.org/wiki/GUID_Partition_Table#Partition_type_GUIDs
-        or empty string and let UDisks2 choose a default based on partition table and OS.
+        for GPT type tables or a hexadecimal number for dos type tables. Can also use empty string
+        and let UDisks2 choose a default based on partition table and OS.
         Provide return value with UDisks2Block.new. Or UDisks2.get_block_device after UDisks2.update.
         """
         options = options.to_dict() if options else {}
