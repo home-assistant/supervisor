@@ -3,7 +3,6 @@ import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-import attr
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -211,8 +210,22 @@ async def test_events_on_issue_changes(coresys: CoreSys):
         assert len(coresys.resolution.suggestions) == 1
         issue = coresys.resolution.issues[0]
         suggestion = coresys.resolution.suggestions[0]
+        issue_expected = {
+            "type": "corrupt_repository",
+            "context": "store",
+            "reference": "test_repo",
+            "uuid": issue.uuid,
+        }
+        suggestion_expected = {
+            "type": "execute_reset",
+            "context": "store",
+            "reference": "test_repo",
+            "uuid": suggestion.uuid,
+        }
         send_message.assert_called_once_with(
-            _supervisor_event_message("issue_changed", attr.asdict(issue))
+            _supervisor_event_message(
+                "issue_changed", issue_expected | {"suggestions": [suggestion_expected]}
+            )
         )
 
         # Adding a suggestion that fixes the issue changes it
@@ -221,16 +234,28 @@ async def test_events_on_issue_changes(coresys: CoreSys):
             SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
         )
         await asyncio.sleep(0)
-        send_message.assert_called_once_with(
-            _supervisor_event_message("issue_changed", attr.asdict(issue))
-        )
+        send_message.assert_called_once()
+        sent_data = send_message.call_args.args[0]
+        assert sent_data["type"] == "supervisor/event"
+        assert sent_data["data"]["event"] == "issue_changed"
+        assert sent_data["data"]["data"].items() >= issue_expected.items()
+        assert len(sent_data["data"]["data"]["suggestions"]) == 2
+        assert suggestion_expected in sent_data["data"]["data"]["suggestions"]
+        assert {
+            "type": "execute_remove",
+            "context": "store",
+            "reference": "test_repo",
+            "uuid": execute_remove.uuid,
+        } in sent_data["data"]["data"]["suggestions"]
 
         # Removing a suggestion that fixes the issue changes it again
         send_message.reset_mock()
         coresys.resolution.dismiss_suggestion(execute_remove)
         await asyncio.sleep(0)
         send_message.assert_called_once_with(
-            _supervisor_event_message("issue_changed", attr.asdict(issue))
+            _supervisor_event_message(
+                "issue_changed", issue_expected | {"suggestions": [suggestion_expected]}
+            )
         )
 
         # Applying a suggestion should only fire an issue removed event
@@ -240,7 +265,7 @@ async def test_events_on_issue_changes(coresys: CoreSys):
 
         await asyncio.sleep(0)
         send_message.assert_called_once_with(
-            _supervisor_event_message("issue_removed", attr.asdict(issue))
+            _supervisor_event_message("issue_removed", issue_expected)
         )
 
 

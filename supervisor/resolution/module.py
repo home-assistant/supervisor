@@ -87,7 +87,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         # Event on issue creation
         self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.ISSUE_CHANGED, attr.asdict(issue)
+            WSEvent.ISSUE_CHANGED, self._make_issue_message(issue)
         )
 
     @property
@@ -112,7 +112,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         # Event on suggestion added to issue
         for issue in self.issues_for_suggestion(suggestion):
             self.sys_homeassistant.websocket.supervisor_event(
-                WSEvent.ISSUE_CHANGED, attr.asdict(issue)
+                WSEvent.ISSUE_CHANGED, self._make_issue_message(issue)
             )
 
     @property
@@ -144,6 +144,15 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
                 WSEvent.HEALTH_CHANGED,
                 attr.asdict(HealthChanged(False, self.unhealthy)),
             )
+
+    def _make_issue_message(self, issue: Issue) -> dict[str, Any]:
+        """Make issue into message for core."""
+        return attr.asdict(issue) | {
+            "suggestions": [
+                attr.asdict(suggestion)
+                for suggestion in self.suggestions_for_issue(issue)
+            ]
+        }
 
     def get_suggestion(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid."""
@@ -215,7 +224,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         # Event on suggestion removed from issues
         for issue in self.issues_for_suggestion(suggestion):
             self.sys_homeassistant.websocket.supervisor_event(
-                WSEvent.ISSUE_CHANGED, attr.asdict(issue)
+                WSEvent.ISSUE_CHANGED, self._make_issue_message(issue)
             )
 
     def dismiss_issue(self, issue: Issue) -> None:
