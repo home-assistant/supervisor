@@ -1,6 +1,7 @@
 """Interface to Systemd over D-Bus."""
 import logging
 
+from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError
@@ -13,6 +14,8 @@ from .const import (
     DBUS_IFACE_SYSTEMD_MANAGER,
     DBUS_NAME_SYSTEMD,
     DBUS_OBJECT_SYSTEMD,
+    StartUnitMode,
+    StopUnitMode,
 )
 from .interface import DBusInterfaceProxy, dbus_property
 from .utils import dbus_connected
@@ -73,24 +76,24 @@ class Systemd(DBusInterfaceProxy):
         await self.dbus.Manager.call_power_off()
 
     @dbus_connected
-    async def start_unit(self, unit, mode) -> str:
+    async def start_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Start a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_start_unit(unit, mode)
+        return await self.dbus.Manager.call_start_unit(unit, mode.value)
 
     @dbus_connected
-    async def stop_unit(self, unit, mode) -> str:
+    async def stop_unit(self, unit: str, mode: StopUnitMode) -> str:
         """Stop a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_stop_unit(unit, mode)
+        return await self.dbus.Manager.call_stop_unit(unit, mode.value)
 
     @dbus_connected
-    async def reload_unit(self, unit, mode) -> str:
+    async def reload_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Reload a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_reload_or_restart_unit(unit, mode)
+        return await self.dbus.Manager.call_reload_or_restart_unit(unit, mode.value)
 
     @dbus_connected
-    async def restart_unit(self, unit, mode) -> str:
+    async def restart_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Restart a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_restart_unit(unit, mode)
+        return await self.dbus.Manager.call_restart_unit(unit, mode.value)
 
     @dbus_connected
     async def list_units(
@@ -98,3 +101,12 @@ class Systemd(DBusInterfaceProxy):
     ) -> list[tuple[str, str, str, str, str, str, str, int, str, str]]:
         """Return a list of available systemd services."""
         return await self.dbus.Manager.call_list_units()
+
+    @dbus_connected
+    async def start_transient_unit(
+        self, unit: str, mode: StartUnitMode, properties: list[tuple[str, Variant]]
+    ) -> str:
+        """Start a transient unit which is released when stopped or on reboot. Returns object path of job."""
+        return await self.dbus.Manager.call_start_transient_unit(
+            unit, mode.value, properties, []
+        )

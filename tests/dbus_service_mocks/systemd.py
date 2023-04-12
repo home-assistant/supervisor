@@ -665,6 +665,13 @@ class Systemd(DBusServiceMock):
         return "/org/freedesktop/systemd1/job/7623"
 
     @dbus_method()
+    def StartTransientUnit(
+        self, name: "s", mode: "s", properties: "a(sv)", aux: "a(sa(sv))"
+    ) -> "o":
+        """Start a transient service unit."""
+        return "/org/freedesktop/systemd1/job/7623"
+
+    @dbus_method()
     def ListUnits(
         self,
     ) -> "a(ssssssouso)":
