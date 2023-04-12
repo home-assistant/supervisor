@@ -5,6 +5,7 @@ import logging
 import attr
 
 from ..coresys import CoreSysAttributes
+from ..dbus.const import StartUnitMode, StopUnitMode
 from ..exceptions import HassioError, HostNotSupportedError, HostServiceError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ class ServiceManager(CoreSysAttributes):
         self._check_dbus(unit)
 
         _LOGGER.info("Starting local service %s", unit)
-        return self.sys_dbus.systemd.start_unit(unit, MOD_REPLACE)
+        return self.sys_dbus.systemd.start_unit(unit, StartUnitMode.REPLACE)
 
     def stop(self, unit) -> Awaitable[str]:
         """Stop a service on host.
@@ -52,7 +53,7 @@ class ServiceManager(CoreSysAttributes):
         self._check_dbus(unit)
 
         _LOGGER.info("Stopping local service %s", unit)
-        return self.sys_dbus.systemd.stop_unit(unit, MOD_REPLACE)
+        return self.sys_dbus.systemd.stop_unit(unit, StopUnitMode.REPLACE)
 
     def reload(self, unit) -> Awaitable[str]:
         """Reload a service on host.
@@ -62,7 +63,7 @@ class ServiceManager(CoreSysAttributes):
         self._check_dbus(unit)
 
         _LOGGER.info("Reloading local service %s", unit)
-        return self.sys_dbus.systemd.reload_unit(unit, MOD_REPLACE)
+        return self.sys_dbus.systemd.reload_unit(unit, StartUnitMode.REPLACE)
 
     def restart(self, unit) -> Awaitable[str]:
         """Restart a service on host.
@@ -72,7 +73,7 @@ class ServiceManager(CoreSysAttributes):
         self._check_dbus(unit)
 
         _LOGGER.info("Restarting local service %s", unit)
-        return self.sys_dbus.systemd.restart_unit(unit, MOD_REPLACE)
+        return self.sys_dbus.systemd.restart_unit(unit, StartUnitMode.REPLACE)
 
     def exists(self, unit) -> bool:
         """Check if a unit exists and return True."""

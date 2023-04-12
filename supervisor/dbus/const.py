@@ -315,3 +315,22 @@ class ResolvConfMode(str, Enum):
     STATIC = "static"
     STUB = "stub"
     UPLINK = "uplink"
+
+
+class StopUnitMode(str, Enum):
+    """Mode for stopping the unit."""
+
+    REPLACE = "replace"
+    FAIL = "fail"
+    IGNORE_DEPENDENCIES = "ignore-dependencies"
+    IGNORE_REQUIREMENTS = "ignore-requirements"
+
+
+class StartUnitMode(str, Enum):
+    """Mode for starting the unit."""
+
+    REPLACE = "replace"
+    FAIL = "fail"
+    IGNORE_DEPENDENCIES = "ignore-dependencies"
+    IGNORE_REQUIREMENTS = "ignore-requirements"
+    ISOLATE = "isolate"
