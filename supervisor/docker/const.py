@@ -8,6 +8,7 @@ class Capabilities(str, Enum):
     DAC_READ_SEARCH = "DAC_READ_SEARCH"
     IPC_LOCK = "IPC_LOCK"
     NET_ADMIN = "NET_ADMIN"
+    NET_RAW = "NET_RAW"
     SYS_ADMIN = "SYS_ADMIN"
     SYS_MODULE = "SYS_MODULE"
     SYS_NICE = "SYS_NICE"
