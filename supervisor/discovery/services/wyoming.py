@@ -16,6 +16,7 @@ def validate_uri(value: Any) -> str:
     uri_value = str(value)
 
     if urlparse(uri_value).scheme == "tcp":
+        # pylint: disable-next=no-value-for-parameter
         return cast(str, vol.Schema(vol.Url())(uri_value))
 
     raise vol.Invalid("invalid Wyoming Protocol URI")
