@@ -1,8 +1,10 @@
 """Test hostname dbus interface."""
 # pylint: disable=import-error
+from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
+from supervisor.dbus.const import StartUnitMode, StopUnitMode
 from supervisor.dbus.systemd import Systemd
 from supervisor.exceptions import DBusNotConnectedError
 
@@ -65,12 +67,12 @@ async def test_start_unit(
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
-        await systemd.start_unit("test_unit", "replace")
+        await systemd.start_unit("test_unit", StartUnitMode.REPLACE)
 
     await systemd.connect(dbus_session_bus)
 
     assert (
-        await systemd.start_unit("test_unit", "replace")
+        await systemd.start_unit("test_unit", StartUnitMode.REPLACE)
         == "/org/freedesktop/systemd1/job/7623"
     )
     assert systemd_service.StartUnit.calls == [("test_unit", "replace")]
@@ -82,12 +84,12 @@ async def test_stop_unit(systemd_service: SystemdService, dbus_session_bus: Mess
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
-        await systemd.stop_unit("test_unit", "replace")
+        await systemd.stop_unit("test_unit", StopUnitMode.REPLACE)
 
     await systemd.connect(dbus_session_bus)
 
     assert (
-        await systemd.stop_unit("test_unit", "replace")
+        await systemd.stop_unit("test_unit", StopUnitMode.REPLACE)
         == "/org/freedesktop/systemd1/job/7623"
     )
     assert systemd_service.StopUnit.calls == [("test_unit", "replace")]
@@ -101,12 +103,12 @@ async def test_restart_unit(
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
-        await systemd.restart_unit("test_unit", "replace")
+        await systemd.restart_unit("test_unit", StartUnitMode.REPLACE)
 
     await systemd.connect(dbus_session_bus)
 
     assert (
-        await systemd.restart_unit("test_unit", "replace")
+        await systemd.restart_unit("test_unit", StartUnitMode.REPLACE)
         == "/org/freedesktop/systemd1/job/7623"
     )
     assert systemd_service.RestartUnit.calls == [("test_unit", "replace")]
@@ -120,12 +122,12 @@ async def test_reload_unit(
     systemd = Systemd()
 
     with pytest.raises(DBusNotConnectedError):
-        await systemd.reload_unit("test_unit", "replace")
+        await systemd.reload_unit("test_unit", StartUnitMode.REPLACE)
 
     await systemd.connect(dbus_session_bus)
 
     assert (
-        await systemd.reload_unit("test_unit", "replace")
+        await systemd.reload_unit("test_unit", StartUnitMode.REPLACE)
         == "/org/freedesktop/systemd1/job/7623"
     )
     assert systemd_service.ReloadOrRestartUnit.calls == [("test_unit", "replace")]
@@ -146,3 +148,47 @@ async def test_list_units(dbus_session_bus: MessageBus):
     assert units[1][2] == "not-found"
     assert units[3][0] == "zram-swap.service"
     assert units[3][2] == "loaded"
+
+
+async def test_start_transient_unit(
+    systemd_service: SystemdService, dbus_session_bus: MessageBus
+):
+    """Test start transient unit."""
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd = Systemd()
+
+    with pytest.raises(DBusNotConnectedError):
+        await systemd.start_transient_unit(
+            "tmp-test.mount",
+            StartUnitMode.FAIL,
+            [],
+        )
+
+    await systemd.connect(dbus_session_bus)
+
+    assert (
+        await systemd.start_transient_unit(
+            "tmp-test.mount",
+            StartUnitMode.FAIL,
+            [
+                ("Description", Variant("s", "Test")),
+                ("What", Variant("s", "//homeassistant/config")),
+                ("Type", Variant("s", "cifs")),
+                ("Options", Variant("s", "username=homeassistant,password=password")),
+            ],
+        )
+        == "/org/freedesktop/systemd1/job/7623"
+    )
+    assert systemd_service.StartTransientUnit.calls == [
+        (
+            "tmp-test.mount",
+            "fail",
+            [
+                ["Description", Variant("s", "Test")],
+                ["What", Variant("s", "//homeassistant/config")],
+                ["Type", Variant("s", "cifs")],
+                ["Options", Variant("s", "username=homeassistant,password=password")],
+            ],
+            [],
+        )
+    ]
