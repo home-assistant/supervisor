@@ -1,9 +1,24 @@
 """Discovery service for the Wyoming Protocol integration."""
+from typing import Any, cast
+from urllib.parse import urlparse
+
 import voluptuous as vol
 
-from ...validate import network_port
-from ..const import ATTR_HOST, ATTR_PORT
+from ..const import ATTR_URI
 
-SCHEMA = vol.Schema(
-    {vol.Required(ATTR_HOST): str, vol.Required(ATTR_PORT): network_port}
-)
+
+def validate_uri(value: Any) -> str:
+    """Validate an Wyoming URI.
+
+    Currently accepts TCP URIs, can extended
+    to accept UNIX sockets in the future.
+    """
+    uri_value = str(value)
+
+    if urlparse(uri_value).scheme == "tcp":
+        return cast(str, vol.Schema(vol.Url())(uri_value))
+
+    raise vol.Invalid("invalid Wyoming Protocol URI")
+
+
+SCHEMA = vol.Schema({vol.Required(ATTR_URI): validate_uri})
