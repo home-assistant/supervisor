@@ -24,4 +24,4 @@ def test_bad_config():
         valid_discovery_config("wyoming", {"uri": "https://also.an.uri.com"})
 
     with pytest.raises(vol.Invalid):
-        valid_discovery_config("wyoming", {"uri": "tcp://not-support-yet.local:1234"})
+        valid_discovery_config("wyoming", {"uri": "unix://not/supported/yet.socket"})
