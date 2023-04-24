@@ -50,6 +50,8 @@ def rating_security(addon: AddonModel) -> int:
                 Capabilities.SYS_RAWIO,
                 Capabilities.SYS_PTRACE,
                 Capabilities.SYS_MODULE,
+                Capabilities.CAP_BPF,
+                Capabilities.CAP_PERFMON,
                 Capabilities.DAC_READ_SEARCH,
             )
         )
