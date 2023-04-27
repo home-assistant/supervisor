@@ -5,12 +5,12 @@ from enum import Enum
 class Capabilities(str, Enum):
     """Linux Capabilities."""
 
-    CAP_BPF = "CAP_BPF"
-    CAP_PERFMON = "CAP_PERFMON"
+    BPF = "BPF"
     DAC_READ_SEARCH = "DAC_READ_SEARCH"
     IPC_LOCK = "IPC_LOCK"
     NET_ADMIN = "NET_ADMIN"
     NET_RAW = "NET_RAW"
+    PERFMON = "PERFMON"
     SYS_ADMIN = "SYS_ADMIN"
     SYS_MODULE = "SYS_MODULE"
     SYS_NICE = "SYS_NICE"
