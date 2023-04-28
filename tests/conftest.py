@@ -370,6 +370,8 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
         coresys.config.path_emergency.mkdir()
         coresys.config.path_media.mkdir()
         coresys.config.path_mounts.mkdir()
+        coresys.config.path_backup.mkdir()
+        coresys.config.path_tmp.mkdir()
         yield tmp_path
 
 

@@ -1,12 +1,9 @@
 """Constants for mount manager."""
 
 from enum import Enum
-from pathlib import Path
+from pathlib import PurePath
 
-from ..const import SUPERVISOR_DATA
-
-FILE_CONFIG_MOUNTS = Path(SUPERVISOR_DATA, "mounts.json")
-HOST_SUPERVISOR_DATA = Path("/mnt/data/supervisor")
+FILE_CONFIG_MOUNTS = PurePath("mounts.json")
 
 ATTR_MOUNTS = "mounts"
 ATTR_PATH = "path"

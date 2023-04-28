@@ -1,6 +1,8 @@
 """Tests for mount manager."""
 
+import json
 import os
+from pathlib import Path
 
 from dbus_fast import DBusError, Variant
 from dbus_fast.aio.message_bus import MessageBus
@@ -9,6 +11,7 @@ import pytest
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import MountNotFound
+from supervisor.mounts.manager import MountManager
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
@@ -360,3 +363,44 @@ async def test_remove_reload_mount_missing(coresys: CoreSys):
 
     with pytest.raises(MountNotFound):
         await coresys.mounts.reload_mount("does_not_exist")
+
+
+async def test_save_data(coresys: CoreSys, tmp_supervisor_data: Path, path_extern):
+    """Test saving mount config data."""
+    # Replace mount manager with one that doesn't have save_data mocked
+    coresys._mounts = MountManager(coresys)  # pylint: disable=protected-access
+
+    path = tmp_supervisor_data / "mounts.json"
+    assert not path.exists()
+
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "auth_test",
+                "type": "cifs",
+                "usage": "backup",
+                "server": "backup.local",
+                "share": "backups",
+                "username": "admin",
+                "password": "password",
+            },
+        )
+    )
+    coresys.mounts.save_data()
+
+    assert path.exists()
+    with path.open() as f:
+        config = json.load(f)
+        assert config["mounts"] == [
+            {
+                "name": "auth_test",
+                "type": "cifs",
+                "usage": "backup",
+                "server": "backup.local",
+                "share": "backups",
+                "username": "admin",
+                "password": "password",
+            }
+        ]

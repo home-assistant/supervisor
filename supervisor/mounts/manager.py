@@ -33,7 +33,9 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
     def __init__(self, coresys: CoreSys):
         """Initialize object."""
-        super().__init__(FILE_CONFIG_MOUNTS, SCHEMA_MOUNTS_CONFIG)
+        super().__init__(
+            coresys.config.path_supervisor / FILE_CONFIG_MOUNTS, SCHEMA_MOUNTS_CONFIG
+        )
 
         self.coresys: CoreSys = coresys
         self._mounts: dict[str, Mount] = {
@@ -56,6 +58,11 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     def media_mounts(self) -> list[Mount]:
         """Return list of media mounts."""
         return [mount for mount in self.mounts if mount.usage == MountUsage.MEDIA]
+
+    @property
+    def bound_mounts(self) -> list[BoundMount]:
+        """Return list of bound mounts and where else they have been bind mounted."""
+        return list(self._bound_mounts.values())
 
     def get(self, name: str) -> Mount:
         """Get mount by name."""
@@ -180,3 +187,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             emergency=emergency,
         )
         await bound_mount.bind_mount.load()
+
+    def save_data(self) -> None:
+        """Store data to configuration file."""
+        self._data[ATTR_MOUNTS] = [
+            mount.to_dict(skip_secrets=False) for mount in self.mounts
+        ]
+        super().save_data()

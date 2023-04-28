@@ -419,7 +419,11 @@ class Backup(CoreSysAttributes):
                 atomic_contents_add(
                     tar_file,
                     origin_dir,
-                    excludes=[],
+                    excludes=[
+                        bound.bind_mount.local_where.as_posix()
+                        for bound in self.sys_mounts.bound_mounts
+                        if bound.bind_mount.local_where
+                    ],
                     arcname=".",
                 )
 

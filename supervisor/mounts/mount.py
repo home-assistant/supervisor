@@ -58,7 +58,7 @@ class Mount(CoreSysAttributes, ABC):
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""
-        return MountData(name=self.name, type=self.type, usage=self.usage)
+        return MountData(name=self.name, type=self.type.value, usage=self.usage.value)
 
     @property
     def name(self) -> str:
