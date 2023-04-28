@@ -87,7 +87,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             *[mount.load() for mount in mounts], return_exceptions=True
         )
 
-        for i in range(len(errors)):
+        for i in range(len(errors)):  # pylint: disable=consider-using-enumerate
             if not errors[i]:
                 continue
             if not isinstance(errors[i], MountError):

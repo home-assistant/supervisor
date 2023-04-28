@@ -391,8 +391,8 @@ async def test_save_data(coresys: CoreSys, tmp_supervisor_data: Path, path_exter
     coresys.mounts.save_data()
 
     assert path.exists()
-    with path.open() as f:
-        config = json.load(f)
+    with path.open() as file:
+        config = json.load(file)
         assert config["mounts"] == [
             {
                 "name": "auth_test",

@@ -81,7 +81,7 @@ async def test_api_create_error_mount_exists(api_client: TestClient, mount):
             "share": "backups",
         },
     )
-    resp.status == 400
+    assert resp.status == 400
     result = await resp.json()
     assert result["result"] == "error"
     assert result["message"] == "A mount already exists with name backup_test"
@@ -128,7 +128,7 @@ async def test_api_update_error_mount_missing(api_client: TestClient):
             "share": "new_backups",
         },
     )
-    resp.status == 400
+    assert resp.status == 400
     result = await resp.json()
     assert result["result"] == "error"
     assert result["message"] == "No mount exists with name backup_test"
@@ -153,7 +153,7 @@ async def test_api_reload_mount(
 async def test_api_reload_error_mount_missing(api_client: TestClient):
     """Test reload mount API errors when mount does not exist."""
     resp = await api_client.post("/mounts/backup_test/reload")
-    resp.status == 400
+    assert resp.status == 400
     result = await resp.json()
     assert result["result"] == "error"
     assert result["message"] == "No mount exists with name backup_test"
@@ -176,7 +176,7 @@ async def test_api_delete_mount(api_client: TestClient, coresys: CoreSys, mount)
 async def test_api_delete_error_mount_missing(api_client: TestClient):
     """Test delete mount API errors when mount does not exist."""
     resp = await api_client.delete("/mounts/backup_test")
-    resp.status == 400
+    assert resp.status == 400
     result = await resp.json()
     assert result["result"] == "error"
     assert result["message"] == "No mount exists with name backup_test"

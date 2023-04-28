@@ -42,7 +42,7 @@ async def test_cifs_mount(
     }
     mount: CIFSMount = Mount.from_dict(coresys, mount_data)
 
-    assert type(mount) == CIFSMount
+    assert isinstance(mount, CIFSMount)
     assert mount.name == "test"
     assert mount.type == MountType.CIFS
     assert mount.usage == MountUsage.MEDIA
@@ -102,7 +102,7 @@ async def test_nfs_mount(
     }
     mount: NFSMount = Mount.from_dict(coresys, mount_data)
 
-    assert type(mount) == NFSMount
+    assert isinstance(mount, NFSMount)
     assert mount.name == "test"
     assert mount.type == MountType.NFS
     assert mount.usage == MountUsage.MEDIA
