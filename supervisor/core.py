@@ -117,6 +117,8 @@ class Core(CoreSysAttributes):
             self.sys_host.load(),
             # Adjust timezone / time settings
             self._adjust_system_datetime(),
+            # Load mounts
+            self.sys_mounts.load(),
             # Start docker monitoring
             self.sys_docker.load(),
             # Load Plugins container

@@ -240,6 +240,11 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             WSEvent.ISSUE_REMOVED, attr.asdict(issue)
         )
 
+        # Clean up any orphaned suggestions
+        for suggestion in self.suggestions_for_issue(issue):
+            if not self.issues_for_suggestion(suggestion):
+                self.dismiss_suggestion(suggestion)
+
     def dismiss_unsupported(self, reason: Issue) -> None:
         """Dismiss a reason for unsupported."""
         if reason not in self._unsupported:

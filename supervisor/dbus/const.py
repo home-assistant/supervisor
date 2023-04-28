@@ -81,6 +81,7 @@ DBUS_ATTR_CURRENT_DNS_SERVER = "CurrentDNSServer"
 DBUS_ATTR_CURRENT_DNS_SERVER_EX = "CurrentDNSServerEx"
 DBUS_ATTR_DEFAULT = "Default"
 DBUS_ATTR_DEPLOYMENT = "Deployment"
+DBUS_ATTR_DESCRIPTION = "Description"
 DBUS_ATTR_DEVICE = "Device"
 DBUS_ATTR_DEVICE_INTERFACE = "Interface"
 DBUS_ATTR_DEVICE_NUMBER = "DeviceNumber"
@@ -140,6 +141,7 @@ DBUS_ATTR_NUMBER = "Number"
 DBUS_ATTR_OFFSET = "Offset"
 DBUS_ATTR_OPERATING_SYSTEM_PRETTY_NAME = "OperatingSystemPrettyName"
 DBUS_ATTR_OPERATION = "Operation"
+DBUS_ATTR_OPTIONS = "Options"
 DBUS_ATTR_PARSER_VERSION = "ParserVersion"
 DBUS_ATTR_PARTITIONS = "Partitions"
 DBUS_ATTR_POWER_LED = "PowerLED"
@@ -172,7 +174,10 @@ DBUS_ATTR_UUID = "Uuid"
 DBUS_ATTR_VARIANT = "Variant"
 DBUS_ATTR_VENDOR = "Vendor"
 DBUS_ATTR_VERSION = "Version"
+DBUS_ATTR_WHAT = "What"
 DBUS_ATTR_WWN = "WWN"
+
+DBUS_ERR_SYSTEMD_NO_SUCH_UNIT = "org.freedesktop.systemd1.NoSuchUnit"
 
 
 class RaucState(str, Enum):
@@ -334,3 +339,15 @@ class StartUnitMode(str, Enum):
     IGNORE_DEPENDENCIES = "ignore-dependencies"
     IGNORE_REQUIREMENTS = "ignore-requirements"
     ISOLATE = "isolate"
+
+
+class UnitActiveState(str, Enum):
+    """Active state of a systemd unit."""
+
+    ACTIVE = "active"
+    ACTIVATING = "activating"
+    DEACTIVATING = "deactivating"
+    FAILED = "failed"
+    INACTIVE = "inactive"
+    MAINTENANCE = "maintenance"
+    RELOADING = "reloading"

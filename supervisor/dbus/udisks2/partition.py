@@ -41,7 +41,7 @@ class UDisks2Partition(DBusInterfaceProxy):
 
     @property
     @dbus_property
-    def type_(self) -> str:
+    def type(self) -> str:
         """Partition type."""
         return self.properties[DBUS_ATTR_TYPE]
 

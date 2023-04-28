@@ -23,6 +23,7 @@ from .host import APIHost
 from .ingress import APIIngress
 from .jobs import APIJobs
 from .middleware.security import SecurityMiddleware
+from .mounts import APIMounts
 from .multicast import APIMulticast
 from .network import APINetwork
 from .observer import APIObserver
@@ -81,20 +82,21 @@ class RestAPI(CoreSysAttributes):
         self._register_hardware()
         self._register_homeassistant()
         self._register_host()
-        self._register_root()
+        self._register_jobs()
         self._register_ingress()
+        self._register_mounts()
         self._register_multicast()
         self._register_network()
         self._register_observer()
         self._register_os()
-        self._register_jobs()
         self._register_panel()
         self._register_proxy()
         self._register_resolution()
-        self._register_services()
-        self._register_supervisor()
-        self._register_store()
+        self._register_root()
         self._register_security()
+        self._register_services()
+        self._register_store()
+        self._register_supervisor()
 
         await self.start()
 
@@ -563,6 +565,21 @@ class RestAPI(CoreSysAttributes):
                 web.post("/audio/mute/{source}/application", api_audio.set_mute),
                 web.post("/audio/mute/{source}", api_audio.set_mute),
                 web.post("/audio/default/{source}", api_audio.set_default),
+            ]
+        )
+
+    def _register_mounts(self) -> None:
+        """Register mounts endpoints."""
+        api_mounts = APIMounts()
+        api_mounts.coresys = self.coresys
+
+        self.webapp.add_routes(
+            [
+                web.get("/mounts", api_mounts.info),
+                web.post("/mounts", api_mounts.create_mount),
+                web.put("/mounts/{mount}", api_mounts.update_mount),
+                web.delete("/mounts/{mount}", api_mounts.delete_mount),
+                web.post("/mounts/{mount}/reload", api_mounts.reload_mount),
             ]
         )
 

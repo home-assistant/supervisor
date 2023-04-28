@@ -68,6 +68,13 @@ async def mock_async_return_true() -> bool:
 
 
 @pytest.fixture
+async def path_extern() -> None:
+    """Set external path env for tests."""
+    os.environ["SUPERVISOR_SHARE"] = "/mnt/data/supervisor"
+    yield
+
+
+@pytest.fixture
 def docker() -> DockerAPI:
     """Mock DockerAPI."""
     images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
@@ -272,6 +279,7 @@ async def fixture_all_dbus_services(
                 "rauc": None,
                 "resolved": None,
                 "systemd": None,
+                "systemd_unit": None,
                 "timedate": None,
             },
             dbus_session_bus,
@@ -298,6 +306,7 @@ async def coresys(
     coresys_obj._resolution.save_data = MagicMock()
     coresys_obj._addons.data.save_data = MagicMock()
     coresys_obj._store.save_data = MagicMock()
+    coresys_obj._mounts.save_data = MagicMock()
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
@@ -350,6 +359,18 @@ async def coresys(
 
     await coresys_obj.dbus.unload()
     await coresys_obj.websession.close()
+
+
+@pytest.fixture
+async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
+    """Patch supervisor data to be tmp_path."""
+    with patch.object(
+        su_config.CoreConfig, "path_supervisor", new=PropertyMock(return_value=tmp_path)
+    ):
+        coresys.config.path_emergency.mkdir()
+        coresys.config.path_media.mkdir()
+        coresys.config.path_mounts.mkdir()
+        yield tmp_path
 
 
 @pytest.fixture
