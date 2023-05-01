@@ -238,7 +238,7 @@ async def test_api_update_dbus_error_mount_remains(
             "type": "cifs",
             "usage": "backup",
             "server": "backup.local",
-            "share": "backups1",
+            "share": "backups",
             "state": None,
         }
     ]
@@ -277,7 +277,7 @@ async def test_api_update_dbus_error_mount_remains(
             "type": "cifs",
             "usage": "backup",
             "server": "backup.local",
-            "share": "backups2",
+            "share": "backups",
             "state": None,
         }
     ]

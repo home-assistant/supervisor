@@ -111,9 +111,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         """Add/update a mount."""
         if mount.name in self._mounts:
             _LOGGER.debug("Mount '%s' exists, unmounting then mounting from new config")
-            await self.remove_mount(mount.name)
-            # For updates, add to mounts immediately so mount failure doesn't delete it
-            self._mounts[mount.name] = mount
+            await self.remove_mount(mount.name, retain_entry=True)
 
         _LOGGER.info("Creating or updating mount: %s", mount.name)
         try:
@@ -126,7 +124,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         if mount.usage == MountUsage.MEDIA:
             await self._bind_media(mount)
 
-    async def remove_mount(self, name: str) -> None:
+    async def remove_mount(self, name: str, *, retain_entry: bool = False) -> None:
         """Remove a mount."""
         if name not in self._mounts:
             raise MountNotFound(
@@ -139,7 +137,8 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             del self._bound_mounts[name]
 
         await self._mounts[name].unmount()
-        del self._mounts[name]
+        if not retain_entry:
+            del self._mounts[name]
 
     async def reload_mount(self, name: str) -> None:
         """Reload a mount to retry mounting with same config."""
