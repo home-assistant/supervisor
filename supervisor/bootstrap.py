@@ -36,6 +36,7 @@ from .ingress import Ingress
 from .jobs import JobManager
 from .misc.scheduler import Scheduler
 from .misc.tasks import Tasks
+from .mounts.manager import MountManager
 from .os.manager import OSManager
 from .plugins.manager import PluginManager
 from .resolution.module import ResolutionManager
@@ -80,6 +81,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.scheduler = Scheduler(coresys)
     coresys.security = Security(coresys)
     coresys.bus = Bus(coresys)
+    coresys.mounts = MountManager(coresys)
 
     # diagnostics
     if coresys.config.diagnostics:
@@ -199,6 +201,18 @@ def initialize_system(coresys: CoreSys) -> None:
     if not config.path_media.is_dir():
         _LOGGER.debug("Creating Supervisor media folder at '%s'", config.path_media)
         config.path_media.mkdir()
+
+    # Mounts folder
+    if not config.path_mounts.is_dir():
+        _LOGGER.debug("Creating Supervisor mounts folder at '%s'", config.path_mounts)
+        config.path_mounts.mkdir()
+
+    # Emergency folder
+    if not config.path_emergency.is_dir():
+        _LOGGER.debug(
+            "Creating Supervisor emergency folder at '%s'", config.path_emergency
+        )
+        config.path_emergency.mkdir()
 
 
 def migrate_system_env(coresys: CoreSys) -> None:

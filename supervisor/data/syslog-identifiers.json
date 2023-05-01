@@ -15,6 +15,7 @@
   "hassos-supervisor",
   "hassos-zram",
   "kernel",
+  "mount",
   "os-agent",
   "rauc",
   "systemd",

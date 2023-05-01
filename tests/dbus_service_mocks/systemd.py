@@ -1,5 +1,6 @@
 """Mock of systemd dbus service."""
 
+from dbus_fast import DBusError
 from dbus_fast.service import PropertyAccess, dbus_property
 
 from .base import DBusServiceMock, dbus_method
@@ -12,7 +13,7 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Systemd()
 
 
-# pylint: disable=invalid-name,missing-function-docstring
+# pylint: disable=invalid-name,missing-function-docstring,raising-bad-type
 
 
 class Systemd(DBusServiceMock):
@@ -29,6 +30,16 @@ class Systemd(DBusServiceMock):
     reboot_watchdog_usec = 600000000
     kexec_watchdog_usec = 0
     service_watchdogs = True
+    response_get_unit: dict[str, list[str | DBusError]] | list[
+        str | DBusError
+    ] | str | DBusError = "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
+    response_stop_unit: str | DBusError = "/org/freedesktop/systemd1/job/7623"
+    response_reload_or_restart_unit: str | DBusError = (
+        "/org/freedesktop/systemd1/job/7623"
+    )
+    response_start_transient_unit: str | DBusError = (
+        "/org/freedesktop/systemd1/job/7623"
+    )
 
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> "s":
@@ -652,12 +663,16 @@ class Systemd(DBusServiceMock):
     @dbus_method()
     def StopUnit(self, name: "s", mode: "s") -> "o":
         """Stop a service unit."""
-        return "/org/freedesktop/systemd1/job/7623"
+        if isinstance(self.response_stop_unit, DBusError):
+            raise self.response_stop_unit
+        return self.response_stop_unit
 
     @dbus_method()
     def ReloadOrRestartUnit(self, name: "s", mode: "s") -> "o":
         """Reload or restart a service unit."""
-        return "/org/freedesktop/systemd1/job/7623"
+        if isinstance(self.response_reload_or_restart_unit, DBusError):
+            raise self.response_reload_or_restart_unit
+        return self.response_reload_or_restart_unit
 
     @dbus_method()
     def RestartUnit(self, name: "s", mode: "s") -> "o":
@@ -669,7 +684,27 @@ class Systemd(DBusServiceMock):
         self, name: "s", mode: "s", properties: "a(sv)", aux: "a(sa(sv))"
     ) -> "o":
         """Start a transient service unit."""
-        return "/org/freedesktop/systemd1/job/7623"
+        if isinstance(self.response_start_transient_unit, DBusError):
+            raise self.response_start_transient_unit
+        return self.response_start_transient_unit
+
+    @dbus_method()
+    def ResetFailedUnit(self, name: "s") -> None:
+        """Reset a failed unit."""
+
+    @dbus_method()
+    def GetUnit(self, name: "s") -> "s":
+        """Get unit."""
+        if isinstance(self.response_get_unit, dict):
+            unit = self.response_get_unit[name].pop(0)
+        elif isinstance(self.response_get_unit, list):
+            unit = self.response_get_unit.pop(0)
+        else:
+            unit = self.response_get_unit
+
+        if isinstance(unit, DBusError):
+            raise unit
+        return unit
 
     @dbus_method()
     def ListUnits(

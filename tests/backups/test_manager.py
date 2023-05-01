@@ -1,15 +1,23 @@
 """Test BackupManager class."""
 
+from shutil import rmtree
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
+from dbus_fast import DBusError
+
 from supervisor.addons.addon import Addon
+from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import AddonsError, DockerError
+from supervisor.homeassistant.core import HomeAssistantCore
+from supervisor.mounts.mount import Mount
 
 from tests.const import TEST_ADDON_SLUG
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 
 async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
@@ -354,3 +362,62 @@ async def test_restore_error(
     await coresys.backups.do_restore_full(backup_instance)
 
     capture_exception.assert_called_once_with(err)
+
+
+async def test_backup_media_with_mounts(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test backing up media folder with mounts."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.response_get_unit = [
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+
+    # Make some normal test files
+    (test_file_1 := coresys.config.path_media / "test.txt").touch()
+    (test_dir := coresys.config.path_media / "test").mkdir()
+    (test_file_2 := coresys.config.path_media / "test" / "inner.txt").touch()
+
+    # Add a media mount
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "media_test",
+                "usage": "media",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
+        )
+    )
+    assert (mount_dir := coresys.config.path_media / "media_test").is_dir()
+
+    # Make a partial backup
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    backup: Backup = await coresys.backups.do_backup_partial("test", folders=["media"])
+
+    # Remove the mount and wipe the media folder
+    await coresys.mounts.remove_mount("media_test")
+    rmtree(coresys.config.path_media)
+    coresys.config.path_media.mkdir()
+
+    # Restore the backup and check that only the test files we made returned
+    async def mock_async_true(*args, **kwargs):
+        return True
+
+    with patch.object(HomeAssistantCore, "is_running", new=mock_async_true):
+        await coresys.backups.do_restore_partial(backup, folders=["media"])
+
+    assert test_file_1.exists()
+    assert test_dir.is_dir()
+    assert test_file_2.exists()
+    assert not mount_dir.exists()

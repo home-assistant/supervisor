@@ -80,7 +80,7 @@ class DBus:
             return DBusNotConnectedError(err.text)
         if err.type == ErrorType.TIMEOUT:
             return DBusTimeoutError(err.text)
-        return DBusFatalError(err.text)
+        return DBusFatalError(err.text, type_=err.type)
 
     @staticmethod
     async def call_dbus(

@@ -40,7 +40,8 @@ class FixupBase(ABC, CoreSysAttributes):
         for issue in self.sys_resolution.issues_for_suggestion(fixing_suggestion):
             self.sys_resolution.dismiss_issue(issue)
 
-        self.sys_resolution.dismiss_suggestion(fixing_suggestion)
+        if fixing_suggestion in self.sys_resolution.suggestions:
+            self.sys_resolution.dismiss_suggestion(fixing_suggestion)
 
     @abstractmethod
     async def process_fixup(self, reference: str | None = None) -> None:

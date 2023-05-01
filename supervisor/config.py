@@ -45,6 +45,8 @@ APPARMOR_CACHE = PurePath("apparmor/cache")
 DNS_DATA = PurePath("dns")
 AUDIO_DATA = PurePath("audio")
 MEDIA_DATA = PurePath("media")
+MOUNTS_FOLDER = PurePath("mounts")
+EMERGENCY_DATA = PurePath("emergency")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
@@ -186,7 +188,7 @@ class CoreConfig(FileConfiguration):
     @property
     def path_homeassistant(self) -> Path:
         """Return config path inside supervisor."""
-        return Path(SUPERVISOR_DATA, HOMEASSISTANT_CONFIG)
+        return self.path_supervisor / HOMEASSISTANT_CONFIG
 
     @property
     def path_extern_ssl(self) -> str:
@@ -196,22 +198,22 @@ class CoreConfig(FileConfiguration):
     @property
     def path_ssl(self) -> Path:
         """Return SSL path inside supervisor."""
-        return Path(SUPERVISOR_DATA, HASSIO_SSL)
+        return self.path_supervisor / HASSIO_SSL
 
     @property
     def path_addons_core(self) -> Path:
         """Return git path for core Add-ons."""
-        return Path(SUPERVISOR_DATA, ADDONS_CORE)
+        return self.path_supervisor / ADDONS_CORE
 
     @property
     def path_addons_git(self) -> Path:
         """Return path for Git Add-on."""
-        return Path(SUPERVISOR_DATA, ADDONS_GIT)
+        return self.path_supervisor / ADDONS_GIT
 
     @property
     def path_addons_local(self) -> Path:
         """Return path for custom Add-ons."""
-        return Path(SUPERVISOR_DATA, ADDONS_LOCAL)
+        return self.path_supervisor / ADDONS_LOCAL
 
     @property
     def path_extern_addons_local(self) -> PurePath:
@@ -221,7 +223,7 @@ class CoreConfig(FileConfiguration):
     @property
     def path_addons_data(self) -> Path:
         """Return root Add-on data folder."""
-        return Path(SUPERVISOR_DATA, ADDONS_DATA)
+        return self.path_supervisor / ADDONS_DATA
 
     @property
     def path_extern_addons_data(self) -> PurePath:
@@ -231,7 +233,7 @@ class CoreConfig(FileConfiguration):
     @property
     def path_audio(self) -> Path:
         """Return root audio data folder."""
-        return Path(SUPERVISOR_DATA, AUDIO_DATA)
+        return self.path_supervisor / AUDIO_DATA
 
     @property
     def path_extern_audio(self) -> PurePath:
@@ -241,7 +243,7 @@ class CoreConfig(FileConfiguration):
     @property
     def path_tmp(self) -> Path:
         """Return Supervisor temp folder."""
-        return Path(SUPERVISOR_DATA, TMP_DATA)
+        return self.path_supervisor / TMP_DATA
 
     @property
     def path_extern_tmp(self) -> PurePath:
@@ -251,7 +253,7 @@ class CoreConfig(FileConfiguration):
     @property
     def path_backup(self) -> Path:
         """Return root backup data folder."""
-        return Path(SUPERVISOR_DATA, BACKUP_DATA)
+        return self.path_supervisor / BACKUP_DATA
 
     @property
     def path_extern_backup(self) -> PurePath:
@@ -261,17 +263,17 @@ class CoreConfig(FileConfiguration):
     @property
     def path_share(self) -> Path:
         """Return root share data folder."""
-        return Path(SUPERVISOR_DATA, SHARE_DATA)
+        return self.path_supervisor / SHARE_DATA
 
     @property
     def path_apparmor(self) -> Path:
         """Return root Apparmor profile folder."""
-        return Path(SUPERVISOR_DATA, APPARMOR_DATA)
+        return self.path_supervisor / APPARMOR_DATA
 
     @property
     def path_apparmor_cache(self) -> Path:
         """Return root Apparmor cache folder."""
-        return Path(SUPERVISOR_DATA, APPARMOR_CACHE)
+        return self.path_supervisor / APPARMOR_CACHE
 
     @property
     def path_extern_apparmor(self) -> Path:
@@ -296,12 +298,32 @@ class CoreConfig(FileConfiguration):
     @property
     def path_dns(self) -> Path:
         """Return dns path inside supervisor."""
-        return Path(SUPERVISOR_DATA, DNS_DATA)
+        return self.path_supervisor / DNS_DATA
 
     @property
     def path_media(self) -> Path:
         """Return root media data folder."""
-        return Path(SUPERVISOR_DATA, MEDIA_DATA)
+        return self.path_supervisor / MEDIA_DATA
+
+    @property
+    def path_mounts(self) -> Path:
+        """Return root mounts folder."""
+        return self.path_supervisor / MOUNTS_FOLDER
+
+    @property
+    def path_extern_mounts(self) -> PurePath:
+        """Return mounts path external for Docker."""
+        return self.path_extern_supervisor / MOUNTS_FOLDER
+
+    @property
+    def path_emergency(self) -> Path:
+        """Return emergency data folder."""
+        return self.path_supervisor / EMERGENCY_DATA
+
+    @property
+    def path_extern_emergency(self) -> PurePath:
+        """Return emergency path external for Docker."""
+        return self.path_extern_supervisor / EMERGENCY_DATA
 
     @property
     def path_extern_media(self) -> PurePath:
@@ -326,3 +348,11 @@ class CoreConfig(FileConfiguration):
             return
 
         self._data[ATTR_ADDONS_CUSTOM_LIST].remove(repo)
+
+    def local_to_extern_path(self, path: PurePath) -> PurePath:
+        """Translate a path relative to supervisor data in the container to its extern path."""
+        return self.path_extern_supervisor / path.relative_to(self.path_supervisor)
+
+    def extern_to_local_path(self, path: PurePath) -> Path:
+        """Translate a path relative to extern supervisor data to its path in the container."""
+        return self.path_supervisor / path.relative_to(self.path_extern_supervisor)

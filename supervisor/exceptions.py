@@ -335,16 +335,36 @@ class DBusInterfaceSignalError(DBusInterfaceError):
     """D-Bus signal not defined."""
 
 
-class DBusFatalError(DBusError):
-    """D-Bus call going wrong."""
-
-
 class DBusParseError(DBusError):
     """D-Bus parse error."""
 
 
 class DBusTimeoutError(DBusError):
     """D-Bus call timed out."""
+
+
+class DBusFatalError(DBusError):
+    """D-Bus call going wrong.
+
+    Type field contains specific error from D-Bus for interface specific errors (like Systemd ones).
+    """
+
+    def __init__(
+        self,
+        message: str | None = None,
+        logger: Callable[..., None] | None = None,
+        type_: str | None = None,
+    ) -> None:
+        """Initialize object."""
+        super().__init__(message, logger)
+        self.type = type_
+
+
+# dbus/systemd
+
+
+class DBusSystemdNoSuchUnit(DBusError):
+    """Systemd unit does not exist."""
 
 
 # util/apparmor
@@ -550,3 +570,18 @@ class SecurityError(HassioError):
 
 class SecurityJobError(SecurityError, JobException):
     """Raise on Security job error."""
+
+
+# Mount
+
+
+class MountError(HassioError):
+    """Raise on an error related to mounting/unmounting."""
+
+
+class MountInvalidError(MountError):
+    """Raise on invalid mount attempt."""
+
+
+class MountNotFound(MountError):
+    """Raise on mount not found."""

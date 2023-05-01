@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from .jobs import JobManager
     from .misc.scheduler import Scheduler
     from .misc.tasks import Tasks
+    from .mounts.manager import MountManager
     from .os.manager import OSManager
     from .plugins.manager import PluginManager
     from .resolution.module import ResolutionManager
@@ -90,6 +91,7 @@ class CoreSys:
         self._jobs: JobManager | None = None
         self._security: Security | None = None
         self._bus: Bus | None = None
+        self._mounts: MountManager | None = None
 
         # Set default header for aiohttp
         self._websession._default_headers = MappingProxyType(
@@ -476,6 +478,20 @@ class CoreSys:
         self._jobs = value
 
     @property
+    def mounts(self) -> MountManager:
+        """Return mount manager object."""
+        if self._mounts is None:
+            raise RuntimeError("mount manager not set!")
+        return self._mounts
+
+    @mounts.setter
+    def mounts(self, value: MountManager) -> None:
+        """Set a mount manager object."""
+        if self._mounts:
+            raise RuntimeError("mount manager already set!")
+        self._mounts = value
+
+    @property
     def machine(self) -> str | None:
         """Return machine type string."""
         return self._machine
@@ -673,6 +689,11 @@ class CoreSysAttributes:
     def sys_jobs(self) -> JobManager:
         """Return Job manager object."""
         return self.coresys.jobs
+
+    @property
+    def sys_mounts(self) -> MountManager:
+        """Return mount manager object."""
+        return self.coresys.mounts
 
     def now(self) -> datetime:
         """Return now in local timezone."""

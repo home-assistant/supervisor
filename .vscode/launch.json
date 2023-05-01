@@ -13,6 +13,13 @@
           "remoteRoot": "/usr/src/supervisor"
         }
       ]
+    },
+    {
+      "name": "Debug Tests",
+      "type": "python",
+      "request": "test",
+      "console": "internalConsole",
+      "justMyCode": false
     }
   ]
 }

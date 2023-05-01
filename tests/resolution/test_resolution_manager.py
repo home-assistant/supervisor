@@ -389,3 +389,42 @@ async def test_events_on_unhealthy_changed(coresys: CoreSys):
                 {"healthy": False, "unhealthy_reasons": ["docker", "untrusted"]},
             )
         )
+
+
+async def test_dismiss_issue_removes_orphaned_suggestions(coresys: CoreSys):
+    """Test dismissing an issue also removes any suggestions which have been orphaned."""
+    with patch.object(
+        type(coresys.homeassistant.websocket), "async_send_message"
+    ) as send_message:
+        coresys.resolution.create_issue(
+            IssueType.MOUNT_FAILED,
+            ContextType.MOUNT,
+            "test",
+            [SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
+        )
+        await asyncio.sleep(0)
+        assert len(coresys.resolution.issues) == 1
+        assert len(coresys.resolution.suggestions) == 2
+        send_message.assert_called_once()
+        send_message.reset_mock()
+
+        issue = coresys.resolution.issues[0]
+        coresys.resolution.dismiss_issue(issue)
+        await asyncio.sleep(0)
+
+        # The issue and both suggestions should be dismissed as they are now orphaned
+        assert coresys.resolution.issues == []
+        assert coresys.resolution.suggestions == []
+
+        # Only one message should fire to tell HA the issue was removed
+        send_message.assert_called_once_with(
+            _supervisor_event_message(
+                "issue_removed",
+                {
+                    "type": "mount_failed",
+                    "context": "mount",
+                    "reference": "test",
+                    "uuid": issue.uuid,
+                },
+            )
+        )
