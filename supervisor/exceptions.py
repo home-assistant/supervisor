@@ -579,6 +579,10 @@ class MountError(HassioError):
     """Raise on an error related to mounting/unmounting."""
 
 
+class MountActivationError(MountError):
+    """Raise on mount not reaching active state after mount/reload."""
+
+
 class MountInvalidError(MountError):
     """Raise on invalid mount attempt."""
 

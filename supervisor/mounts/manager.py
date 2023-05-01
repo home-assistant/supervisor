@@ -8,7 +8,7 @@ from pathlib import PurePath
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import UnitActiveState
-from ..exceptions import MountError, MountNotFound
+from ..exceptions import MountActivationError, MountError, MountNotFound
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.common import FileConfiguration
 from ..utils.sentry import capture_exception
@@ -112,11 +112,17 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         if mount.name in self._mounts:
             _LOGGER.debug("Mount '%s' exists, unmounting then mounting from new config")
             await self.remove_mount(mount.name)
+            # For updates, add to mounts immediately so mount failure doesn't delete it
+            self._mounts[mount.name] = mount
 
         _LOGGER.info("Creating or updating mount: %s", mount.name)
-        self._mounts[mount.name] = mount
-        await mount.load()
+        try:
+            await mount.load()
+        except MountActivationError as err:
+            await mount.unmount()
+            raise err
 
+        self._mounts[mount.name] = mount
         if mount.usage == MountUsage.MEDIA:
             await self._bind_media(mount)
 
