@@ -73,9 +73,9 @@ async def test_cifs_mount(
             "fail",
             [
                 ["Options", Variant("s", "username=admin,password=password")],
+                ["Type", Variant("s", "cifs")],
                 ["Description", Variant("s", "Supervisor cifs mount: test")],
                 ["What", Variant("s", "//test.local/camera")],
-                ["Type", Variant("s", "cifs")],
             ],
             [],
         )
@@ -130,9 +130,9 @@ async def test_nfs_mount(
             "fail",
             [
                 ["Options", Variant("s", "port=1234")],
+                ["Type", Variant("s", "nfs")],
                 ["Description", Variant("s", "Supervisor nfs mount: test")],
                 ["What", Variant("s", "test.local:/media/camera")],
-                ["Type", Variant("s", "nfs")],
             ],
             [],
         )
@@ -176,9 +176,9 @@ async def test_load(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
+                ["Type", Variant("s", "cifs")],
                 ["Description", Variant("s", "Supervisor cifs mount: test")],
                 ["What", Variant("s", "//test.local/share")],
-                ["Type", Variant("s", "cifs")],
             ],
             [],
         )

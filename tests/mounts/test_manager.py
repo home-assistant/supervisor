@@ -4,13 +4,13 @@ import json
 import os
 from pathlib import Path
 
-from dbus_fast import DBusError, Variant
+from dbus_fast import DBusError, ErrorType, Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
-from supervisor.exceptions import MountNotFound
+from supervisor.exceptions import MountActivationError, MountError, MountNotFound
 from supervisor.mounts.manager import MountManager
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -101,9 +101,9 @@ async def test_load(
             "mnt-data-supervisor-mounts-backup_test.mount",
             "fail",
             [
+                ["Type", Variant("s", "cifs")],
                 ["Description", Variant("s", "Supervisor cifs mount: backup_test")],
                 ["What", Variant("s", "//backup.local/backups")],
-                ["Type", Variant("s", "cifs")],
             ],
             [],
         ),
@@ -111,9 +111,9 @@ async def test_load(
             "mnt-data-supervisor-mounts-media_test.mount",
             "fail",
             [
+                ["Type", Variant("s", "nfs")],
                 ["Description", Variant("s", "Supervisor nfs mount: media_test")],
                 ["What", Variant("s", "media.local:/media")],
-                ["Type", Variant("s", "nfs")],
             ],
             [],
         ),
@@ -121,9 +121,9 @@ async def test_load(
             "mnt-data-supervisor-media-media_test.mount",
             "fail",
             [
+                ["Options", Variant("s", "bind")],
                 ["Description", Variant("s", "Supervisor bind mount: bind_media_test")],
                 ["What", Variant("s", "/mnt/data/supervisor/mounts/media_test")],
-                ["Type", Variant("s", "bind")],
             ],
             [],
         ),
@@ -229,12 +229,12 @@ async def test_mount_failed_during_load(
         "mnt-data-supervisor-media-media_test.mount",
         "fail",
         [
+            ["Options", Variant("s", "bind")],
             [
                 "Description",
                 Variant("s", "Supervisor bind mount: emergency_media_test"),
             ],
             ["What", Variant("s", "/mnt/data/supervisor/emergency/media_test")],
-            ["Type", Variant("s", "bind")],
         ],
         [],
     )
@@ -295,6 +295,8 @@ async def test_update_mount(
     assert mount_new.state is None
 
     systemd_service.response_get_unit = [
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ERROR_NO_UNIT,
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         ERROR_NO_UNIT,
@@ -404,3 +406,69 @@ async def test_save_data(coresys: CoreSys, tmp_supervisor_data: Path, path_exter
                 "password": "password",
             }
         ]
+
+
+async def test_create_mount_start_unit_failure(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test failure to start mount unit does not add mount to the list."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.ResetFailedUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+
+    systemd_service.response_get_unit = ERROR_NO_UNIT
+    systemd_service.response_start_transient_unit = DBusError(ErrorType.FAILED, "fail")
+
+    await coresys.mounts.load()
+
+    mount = Mount.from_dict(coresys, BACKUP_TEST_DATA)
+
+    with pytest.raises(MountError):
+        await coresys.mounts.create_mount(mount)
+
+    assert mount.state is None
+    assert mount not in coresys.mounts
+
+    assert len(systemd_service.StartTransientUnit.calls) == 1
+    assert not systemd_service.ResetFailedUnit.calls
+    assert not systemd_service.StopUnit.calls
+
+
+async def test_create_mount_activation_failure(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test activation failure during create mount does not add mount to the list and unmounts new mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.ResetFailedUnit.calls.clear()
+    systemd_service.StopUnit.calls.clear()
+
+    systemd_service.response_get_unit = [
+        ERROR_NO_UNIT,
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+    systemd_unit_service.active_state = "failed"
+
+    await coresys.mounts.load()
+
+    mount = Mount.from_dict(coresys, BACKUP_TEST_DATA)
+
+    with pytest.raises(MountActivationError):
+        await coresys.mounts.create_mount(mount)
+
+    assert mount.state is None
+    assert mount not in coresys.mounts
+
+    assert len(systemd_service.StartTransientUnit.calls) == 1
+    assert len(systemd_service.ResetFailedUnit.calls) == 1
+    assert not systemd_service.StopUnit.calls
