@@ -20,7 +20,13 @@ from ..dbus.const import (
     UnitActiveState,
 )
 from ..dbus.systemd import SystemdUnit
-from ..exceptions import DBusError, DBusSystemdNoSuchUnit, MountError, MountInvalidError
+from ..exceptions import (
+    DBusError,
+    DBusSystemdNoSuchUnit,
+    MountActivationError,
+    MountError,
+    MountInvalidError,
+)
 from ..utils.sentry import capture_exception
 from .const import ATTR_PATH, ATTR_SERVER, ATTR_SHARE, ATTR_USAGE, MountType, MountUsage
 from .validate import MountData
@@ -200,6 +206,9 @@ class Mount(CoreSysAttributes, ABC):
                 if self.options
                 else []
             )
+            if self.type != MountType.BIND:
+                options += [(DBUS_ATTR_TYPE, Variant("s", self.type.value))]
+
             await self.sys_dbus.systemd.start_transient_unit(
                 self.unit_name,
                 StartUnitMode.FAIL,
@@ -207,7 +216,6 @@ class Mount(CoreSysAttributes, ABC):
                 + [
                     (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
                     (DBUS_ATTR_WHAT, Variant("s", self.what)),
-                    (DBUS_ATTR_TYPE, Variant("s", self.type.value)),
                 ],
             )
         except DBusError as err:
@@ -218,15 +226,20 @@ class Mount(CoreSysAttributes, ABC):
         await self._update_await_activating()
 
         if self.state != UnitActiveState.ACTIVE:
-            raise MountError(
+            raise MountActivationError(
                 f"Mounting {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
                 _LOGGER.error,
             )
 
     async def unmount(self) -> None:
         """Unmount using systemd."""
+        await self.update()
+
         try:
-            await self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL)
+            if self.state == UnitActiveState.FAILED:
+                await self.sys_dbus.systemd.reset_failed_unit(self.unit_name)
+            else:
+                await self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL)
         except DBusSystemdNoSuchUnit:
             _LOGGER.info("Mount %s is not mounted, skipping unmount", self.name)
         except DBusError as err:
@@ -255,7 +268,7 @@ class Mount(CoreSysAttributes, ABC):
         await self._update_await_activating()
 
         if self.state != UnitActiveState.ACTIVE:
-            raise MountError(
+            raise MountActivationError(
                 f"Reloading {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
                 _LOGGER.error,
             )
@@ -407,4 +420,4 @@ class BindMount(Mount):
     @property
     def options(self) -> list[str]:
         """List of options to use to mount."""
-        return []
+        return ["bind"]
