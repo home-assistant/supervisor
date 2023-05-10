@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
+from typing import Any
 
 from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
@@ -19,6 +20,7 @@ from ..const import (
     ATTR_DAYS_UNTIL_STALE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
+    ATTR_LOCATON,
     ATTR_NAME,
     ATTR_PASSWORD,
     ATTR_PROTECTED,
@@ -31,6 +33,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
+from ..mounts.const import MountUsage
 from .const import CONTENT_TYPE_TAR
 from .utils import api_process, api_validate
 
@@ -59,6 +62,7 @@ SCHEMA_BACKUP_FULL = vol.Schema(
         vol.Optional(ATTR_NAME): str,
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_COMPRESSED): vol.Maybe(vol.Boolean()),
+        vol.Optional(ATTR_LOCATON): vol.Maybe(str),
     }
 )
 
@@ -173,11 +177,27 @@ class APIBackups(CoreSysAttributes):
             ATTR_FOLDERS: backup.folders,
         }
 
+    def _location_to_mount(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Change location field to mount if necessary."""
+        if not body.get(ATTR_LOCATON):
+            return body
+
+        body[ATTR_LOCATON] = self.sys_mounts.get(body[ATTR_LOCATON])
+        if body[ATTR_LOCATON].usage != MountUsage.BACKUP:
+            raise APIError(
+                f"Mount {body[ATTR_LOCATON].name} is not used for backups, cannot backup to there"
+            )
+
+        return body
+
     @api_process
     async def backup_full(self, request):
         """Create full backup."""
         body = await api_validate(SCHEMA_BACKUP_FULL, request)
-        backup = await asyncio.shield(self.sys_backups.do_backup_full(**body))
+
+        backup = await asyncio.shield(
+            self.sys_backups.do_backup_full(**self._location_to_mount(body))
+        )
 
         if backup:
             return {ATTR_SLUG: backup.slug}
@@ -187,7 +207,9 @@ class APIBackups(CoreSysAttributes):
     async def backup_partial(self, request):
         """Create a partial backup."""
         body = await api_validate(SCHEMA_BACKUP_PARTIAL, request)
-        backup = await asyncio.shield(self.sys_backups.do_backup_partial(**body))
+        backup = await asyncio.shield(
+            self.sys_backups.do_backup_partial(**self._location_to_mount(body))
+        )
 
         if backup:
             return {ATTR_SLUG: backup.slug}

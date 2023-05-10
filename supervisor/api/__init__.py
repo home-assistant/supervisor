@@ -576,6 +576,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/mounts", api_mounts.info),
+                web.post("/mounts/options", api_mounts.options),
                 web.post("/mounts", api_mounts.create_mount),
                 web.put("/mounts/{mount}", api_mounts.update_mount),
                 web.delete("/mounts/{mount}", api_mounts.delete_mount),

@@ -1,9 +1,13 @@
 """Test mounts API."""
 
+import asyncio
+from unittest.mock import patch
+
 from aiohttp.test_utils import TestClient
 from dbus_fast import DBusError, ErrorType
 import pytest
 
+from supervisor.backups.manager import BackupManager
 from supervisor.coresys import CoreSys
 from supervisor.mounts.mount import Mount
 
@@ -26,6 +30,7 @@ async def fixture_mount(coresys: CoreSys, tmp_supervisor_data, path_extern) -> M
         },
     )
     coresys.mounts._mounts = {"backup_test": mount}  # pylint: disable=protected-access
+    coresys.mounts.default_backup_mount = mount
     await coresys.mounts.load()
     yield mount
 
@@ -329,3 +334,298 @@ async def test_api_delete_error_mount_missing(api_client: TestClient):
     result = await resp.json()
     assert result["result"] == "error"
     assert result["message"] == "No mount exists with name backup_test"
+
+
+async def test_api_create_backup_mount_sets_default(
+    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data, path_extern
+):
+    """Test creating backup mounts sets default if not set."""
+    await coresys.mounts.load()
+    assert coresys.mounts.default_backup_mount is None
+
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert coresys.mounts.default_backup_mount.name == "backup_test"
+
+    # Confirm the default does not change if mount created after its been set
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "backup_test_2",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert coresys.mounts.default_backup_mount.name == "backup_test"
+
+
+async def test_update_backup_mount_changes_default(
+    api_client: TestClient, coresys: CoreSys, mount
+):
+    """Test updating a backup mount may unset the default."""
+    # Make another backup mount for testing
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "other_backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    # Changing this mount should have no effect on the default
+    resp = await api_client.put(
+        "/mounts/other_backup_test",
+        json={
+            "type": "cifs",
+            "usage": "media",
+            "server": "other-media.local",
+            "share": "media",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert coresys.mounts.default_backup_mount.name == "backup_test"
+
+    # Changing this one to non-backup should unset the default
+    resp = await api_client.put(
+        "/mounts/backup_test",
+        json={
+            "type": "cifs",
+            "usage": "media",
+            "server": "media.local",
+            "share": "media",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert coresys.mounts.default_backup_mount is None
+
+
+async def test_delete_backup_mount_changes_default(
+    api_client: TestClient, coresys: CoreSys, mount
+):
+    """Test deleting a backup mount may unset the default."""
+    # Make another backup mount for testing
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "other_backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    # Deleting this one should have no effect on the default
+    resp = await api_client.delete("/mounts/other_backup_test")
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert coresys.mounts.default_backup_mount.name == "backup_test"
+
+    # Deleting this current default should unset it
+    resp = await api_client.delete("/mounts/backup_test")
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert coresys.mounts.default_backup_mount is None
+
+
+async def test_backup_mounts_reload_backups(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test actions on a backup mount reload backups."""
+    await coresys.mounts.load()
+
+    with patch.object(BackupManager, "reload") as reload:
+        # Only creating a backup mount triggers reload
+        resp = await api_client.post(
+            "/mounts",
+            json={
+                "name": "media_test",
+                "type": "cifs",
+                "usage": "media",
+                "server": "media.local",
+                "share": "media",
+            },
+        )
+        result = await resp.json()
+        assert result["result"] == "ok"
+        await asyncio.sleep(0)
+        reload.assert_not_called()
+
+        resp = await api_client.post(
+            "/mounts",
+            json={
+                "name": "backup_test",
+                "type": "cifs",
+                "usage": "backup",
+                "server": "backup.local",
+                "share": "backups",
+            },
+        )
+        result = await resp.json()
+        assert result["result"] == "ok"
+        await asyncio.sleep(0)
+        reload.assert_called_once()
+
+        # Only updating a backup mount triggers reload
+        reload.reset_mock()
+        resp = await api_client.put(
+            "/mounts/media_test",
+            json={
+                "type": "cifs",
+                "usage": "media",
+                "server": "media.local",
+                "share": "media2",
+            },
+        )
+        result = await resp.json()
+        assert result["result"] == "ok"
+        await asyncio.sleep(0)
+        reload.assert_not_called()
+
+        resp = await api_client.put(
+            "/mounts/backup_test",
+            json={
+                "type": "cifs",
+                "usage": "backup",
+                "server": "backup.local",
+                "share": "backups2",
+            },
+        )
+        result = await resp.json()
+        assert result["result"] == "ok"
+        await asyncio.sleep(0)
+        reload.assert_called_once()
+
+        # Only reloading a backup mount triggers reload
+        reload.reset_mock()
+        resp = await api_client.post("/mounts/media_test/reload")
+        result = await resp.json()
+        assert result["result"] == "ok"
+        await asyncio.sleep(0)
+        reload.assert_not_called()
+
+        resp = await api_client.post("/mounts/backup_test/reload")
+        result = await resp.json()
+        assert result["result"] == "ok"
+        await asyncio.sleep(0)
+        reload.assert_called_once()
+
+        # Only deleting a backup mount triggers reload
+        reload.reset_mock()
+        resp = await api_client.delete("/mounts/media_test")
+        result = await resp.json()
+        assert result["result"] == "ok"
+        await asyncio.sleep(0)
+        reload.assert_not_called()
+
+        resp = await api_client.delete("/mounts/backup_test")
+        result = await resp.json()
+        assert result["result"] == "ok"
+        await asyncio.sleep(0)
+        reload.assert_called_once()
+
+
+async def test_options(api_client: TestClient, coresys: CoreSys, mount):
+    """Test changing options."""
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "other_backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "media_test",
+            "type": "cifs",
+            "usage": "media",
+            "server": "media.local",
+            "share": "media",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    coresys.mounts.save_data.reset_mock()
+
+    # Not a backup mount, will fail
+    resp = await api_client.post(
+        "/mounts/options",
+        json={
+            "default_backup_mount": "media_test",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "error"
+
+    # Mount doesn't exist, will fail
+    resp = await api_client.post(
+        "/mounts/options",
+        json={
+            "default_backup_mount": "junk",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "error"
+
+    assert coresys.mounts.default_backup_mount.name == "backup_test"
+    coresys.mounts.save_data.assert_not_called()
+
+    # Changes to new backup mount
+    resp = await api_client.post(
+        "/mounts/options",
+        json={
+            "default_backup_mount": "other_backup_test",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    assert coresys.mounts.default_backup_mount.name == "other_backup_test"
+    coresys.mounts.save_data.assert_called_once()
+
+    # Unsets default backup mount
+    resp = await api_client.post(
+        "/mounts/options",
+        json={
+            "default_backup_mount": None,
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    assert coresys.mounts.default_backup_mount is None
+    assert coresys.mounts.save_data.call_count == 2

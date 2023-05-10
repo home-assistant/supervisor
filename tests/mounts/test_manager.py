@@ -345,7 +345,7 @@ async def test_remove_mount(
     systemd_service.StopUnit.calls.clear()
 
     # Remove the mount
-    await coresys.mounts.remove_mount(mount.name)
+    assert mount == await coresys.mounts.remove_mount(mount.name)
 
     assert mount.state is None
     assert mount not in coresys.mounts
@@ -472,3 +472,37 @@ async def test_create_mount_activation_failure(
     assert len(systemd_service.StartTransientUnit.calls) == 1
     assert len(systemd_service.ResetFailedUnit.calls) == 1
     assert not systemd_service.StopUnit.calls
+
+
+async def test_reload_mounts(
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], mount: Mount
+):
+    """Test reloading mounts."""
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.ReloadOrRestartUnit.calls.clear()
+
+    await coresys.mounts.load()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert mount.failed_issue not in coresys.resolution.issues
+
+    systemd_unit_service.active_state = "failed"
+    await coresys.mounts.reload()
+
+    assert mount.state == UnitActiveState.FAILED
+    assert mount.failed_issue in coresys.resolution.issues
+    assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
+    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
+
+    # This shouldn't reload the mount again since this isn't a new failure
+    await coresys.mounts.reload()
+    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
+
+    # This should now remove the issue from the list
+    systemd_unit_service.active_state = "active"
+    await coresys.mounts.reload()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert mount.failed_issue not in coresys.resolution.issues
+    assert not coresys.resolution.suggestions_for_issue(mount.failed_issue)

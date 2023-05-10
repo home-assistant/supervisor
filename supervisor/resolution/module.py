@@ -178,11 +178,19 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         suggestions: list[SuggestionType] | None = None,
     ) -> None:
         """Create issues and suggestion."""
+        self.add_issue(Issue(issue, context, reference), suggestions)
+
+    def add_issue(
+        self, issue: Issue, suggestions: list[SuggestionType] | None = None
+    ) -> None:
+        """Add an issue and suggestions."""
         if suggestions:
             for suggestion in suggestions:
-                self.suggestions = Suggestion(suggestion, context, reference)
+                self.suggestions = Suggestion(
+                    suggestion, issue.context, issue.reference
+                )
 
-        self.issues = Issue(issue, context, reference)
+        self.issues = issue
 
     async def load(self):
         """Load the resoulution manager."""

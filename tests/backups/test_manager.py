@@ -3,6 +3,7 @@
 from shutil import rmtree
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
+from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError
 
 from supervisor.addons.addon import Addon
@@ -13,6 +14,7 @@ from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import AddonsError, DockerError
 from supervisor.homeassistant.core import HomeAssistantCore
+from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
 
 from tests.const import TEST_ADDON_SLUG
@@ -423,3 +425,98 @@ async def test_backup_media_with_mounts(
     assert test_dir.is_dir()
     assert test_file_2.exists()
     assert not mount_dir.exists()
+
+
+async def test_full_backup_to_mount(coresys: CoreSys, tmp_supervisor_data, path_extern):
+    """Test full backup to and restoring from a mount."""
+    (marker := coresys.config.path_homeassistant / "test.txt").touch()
+
+    # Add a backup mount
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    assert mount_dir in coresys.backups.backup_locations
+
+    # Make a backup and add it to mounts. Confirm it exists in the right place
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    backup: Backup = await coresys.backups.do_backup_full("test", location=mount)
+    assert (mount_dir / f"{backup.slug}.tar").exists()
+
+    # Reload and check that backups in mounts are listed
+    await coresys.backups.reload()
+    assert coresys.backups.get(backup.slug)
+
+    # Remove marker file and restore. Confirm it comes back
+    marker.unlink()
+
+    async def mock_async_true(*args, **kwargs):
+        return True
+
+    with patch.object(HomeAssistantCore, "is_running", new=mock_async_true):
+        await coresys.backups.do_restore_full(backup)
+
+    assert marker.exists()
+
+
+async def test_partial_backup_to_mount(
+    coresys: CoreSys, tmp_supervisor_data, path_extern
+):
+    """Test partial backup to and restoring from a mount."""
+    (marker := coresys.config.path_homeassistant / "test.txt").touch()
+
+    # Add a backup mount
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    assert mount_dir in coresys.backups.backup_locations
+
+    # Make a backup and add it to mounts. Confirm it exists in the right place
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        HomeAssistant,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2023.1.1")),
+    ):
+        backup: Backup = await coresys.backups.do_backup_partial(
+            "test", homeassistant=True, location=mount
+        )
+
+    assert (mount_dir / f"{backup.slug}.tar").exists()
+
+    # Reload and check that backups in mounts are listed
+    await coresys.backups.reload()
+    assert coresys.backups.get(backup.slug)
+
+    # Remove marker file and restore. Confirm it comes back
+    marker.unlink()
+
+    async def mock_async_true(*args, **kwargs):
+        return True
+
+    with patch.object(HomeAssistantCore, "is_running", new=mock_async_true):
+        await coresys.backups.do_restore_partial(backup, homeassistant=True)
+
+    assert marker.exists()

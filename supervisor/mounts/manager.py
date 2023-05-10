@@ -1,6 +1,7 @@
 """Supervisor mount manager."""
 
 import asyncio
+from collections.abc import Awaitable
 from dataclasses import dataclass
 import logging
 from pathlib import PurePath
@@ -12,7 +13,12 @@ from ..exceptions import MountActivationError, MountError, MountNotFound
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.common import FileConfiguration
 from ..utils.sentry import capture_exception
-from .const import ATTR_MOUNTS, FILE_CONFIG_MOUNTS, MountUsage
+from .const import (
+    ATTR_DEFAULT_BACKUP_MOUNT,
+    ATTR_MOUNTS,
+    FILE_CONFIG_MOUNTS,
+    MountUsage,
+)
 from .mount import BindMount, Mount
 from .validate import SCHEMA_MOUNTS_CONFIG
 
@@ -64,6 +70,21 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         """Return list of bound mounts and where else they have been bind mounted."""
         return list(self._bound_mounts.values())
 
+    @property
+    def default_backup_mount(self) -> Mount | None:
+        """Get default backup mount if set."""
+        if ATTR_DEFAULT_BACKUP_MOUNT not in self._data:
+            return None
+        return self.get(self._data[ATTR_DEFAULT_BACKUP_MOUNT])
+
+    @default_backup_mount.setter
+    def default_backup_mount(self, value: Mount | None):
+        """Set or unset default backup mount."""
+        if value:
+            self._data[ATTR_DEFAULT_BACKUP_MOUNT] = value.name
+        else:
+            self._data.pop(ATTR_DEFAULT_BACKUP_MOUNT, None)
+
     def get(self, name: str) -> Mount:
         """Get mount by name."""
         if name not in self._mounts:
@@ -82,10 +103,34 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             return
 
         _LOGGER.info("Initializing all user-configured mounts")
-        mounts = self.mounts
-        errors = await asyncio.gather(
-            *[mount.load() for mount in mounts], return_exceptions=True
+        await self._mount_errors_to_issues(
+            self.mounts.copy(), [mount.load() for mount in self.mounts]
         )
+
+        # Bind all media mounts to directories in media
+        if self.media_mounts:
+            await asyncio.wait([self._bind_media(mount) for mount in self.media_mounts])
+
+    async def reload(self) -> None:
+        """Update mounts info via dbus and reload failed mounts."""
+        await asyncio.wait([mount.update() for mount in self.mounts])
+
+        # Try to reload any newly failed mounts and report issues if failure persists
+        new_failures = [
+            mount
+            for mount in self.mounts
+            if mount.state != UnitActiveState.ACTIVE
+            and mount.failed_issue not in self.sys_resolution.issues
+        ]
+        await self._mount_errors_to_issues(
+            new_failures, [mount.reload() for mount in new_failures]
+        )
+
+    async def _mount_errors_to_issues(
+        self, mounts: list[Mount], mount_tasks: list[Awaitable[None]]
+    ) -> None:
+        """Await a list of tasks on mounts and turn each error into a failed mount issue."""
+        errors = await asyncio.gather(*mount_tasks, return_exceptions=True)
 
         for i in range(len(errors)):  # pylint: disable=consider-using-enumerate
             if not errors[i]:
@@ -93,19 +138,13 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             if not isinstance(errors[i], MountError):
                 capture_exception(errors[i])
 
-            self.sys_resolution.create_issue(
-                IssueType.MOUNT_FAILED,
-                ContextType.MOUNT,
-                reference=mounts[i].name,
+            self.sys_resolution.add_issue(
+                mounts[i].failed_issue,
                 suggestions=[
                     SuggestionType.EXECUTE_RELOAD,
                     SuggestionType.EXECUTE_REMOVE,
                 ],
             )
-
-        # Bind all media mounts to directories in media
-        if self.media_mounts:
-            await asyncio.wait([self._bind_media(mount) for mount in self.media_mounts])
 
     async def create_mount(self, mount: Mount) -> None:
         """Add/update a mount."""
@@ -136,9 +175,15 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             await self._bound_mounts[name].bind_mount.unmount()
             del self._bound_mounts[name]
 
-        await self._mounts[name].unmount()
+        mount = self._mounts[name]
+        await mount.unmount()
         if not retain_entry:
             del self._mounts[name]
+
+        if self._data.get(ATTR_DEFAULT_BACKUP_MOUNT) == mount.name:
+            self.default_backup_mount = None
+
+        return mount
 
     async def reload_mount(self, name: str) -> None:
         """Reload a mount to retry mounting with same config."""
