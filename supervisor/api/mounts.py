@@ -29,7 +29,7 @@ class APIMounts(CoreSysAttributes):
         """Return MountManager info."""
         return {
             ATTR_DEFAULT_BACKUP_MOUNT: self.sys_mounts.default_backup_mount.name
-            if self.sys_mounts.default_backup_mount.name
+            if self.sys_mounts.default_backup_mount
             else None,
             ATTR_MOUNTS: [
                 mount.to_dict() | {ATTR_STATE: mount.state}

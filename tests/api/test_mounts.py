@@ -310,7 +310,10 @@ async def test_api_reload_error_mount_missing(api_client: TestClient):
     assert resp.status == 400
     result = await resp.json()
     assert result["result"] == "error"
-    assert result["message"] == "No mount exists with name backup_test"
+    assert (
+        result["message"]
+        == "Cannot reload 'backup_test', no mount exists with that name"
+    )
 
 
 async def test_api_delete_mount(api_client: TestClient, coresys: CoreSys, mount):
@@ -333,7 +336,10 @@ async def test_api_delete_error_mount_missing(api_client: TestClient):
     assert resp.status == 400
     result = await resp.json()
     assert result["result"] == "error"
-    assert result["message"] == "No mount exists with name backup_test"
+    assert (
+        result["message"]
+        == "Cannot remove 'backup_test', no mount exists with that name"
+    )
 
 
 async def test_api_create_backup_mount_sets_default(

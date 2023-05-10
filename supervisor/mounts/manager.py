@@ -10,7 +10,7 @@ from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import UnitActiveState
 from ..exceptions import MountActivationError, MountError, MountNotFound
-from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.const import SuggestionType
 from ..utils.common import FileConfiguration
 from ..utils.sentry import capture_exception
 from .const import (
