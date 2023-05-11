@@ -520,3 +520,72 @@ async def test_partial_backup_to_mount(
         await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
     assert marker.exists()
+
+
+async def test_backup_to_local_with_default(
+    coresys: CoreSys, tmp_supervisor_data, path_extern
+):
+    """Test making backup to local when a default mount is specified."""
+    # Add a default backup mount
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    coresys.mounts.default_backup_mount = mount
+
+    # Make a backup for local. Confirm it exists in the right place
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        HomeAssistant,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2023.1.1")),
+    ):
+        backup: Backup = await coresys.backups.do_backup_partial(
+            "test", homeassistant=True, location=None
+        )
+
+    assert (coresys.config.path_backup / f"{backup.slug}.tar").exists()
+
+
+async def test_backup_to_default(coresys: CoreSys, tmp_supervisor_data, path_extern):
+    """Test making backup to default mount."""
+    # Add a default backup mount
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    coresys.mounts.default_backup_mount = mount
+
+    # Make a backup for default. Confirm it exists in the right place
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        HomeAssistant,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2023.1.1")),
+    ):
+        backup: Backup = await coresys.backups.do_backup_partial(
+            "test", homeassistant=True
+        )
+
+    assert (mount_dir / f"{backup.slug}.tar").exists()

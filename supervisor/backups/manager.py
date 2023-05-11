@@ -19,6 +19,7 @@ from ..jobs.decorator import Job, JobCondition
 from ..mounts.mount import Mount
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
+from ..utils.sentinel import DEFAULT
 from ..utils.sentry import capture_exception
 from .backup import Backup
 from .const import BackupType
@@ -66,12 +67,12 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         """Return backup object."""
         return self._backups.get(slug)
 
-    def _get_base_path(self, location: Mount | None = None) -> Path:
+    def _get_base_path(self, location: Mount | type[DEFAULT] | None = DEFAULT) -> Path:
         """Get base path for backup using location or default location."""
         if location:
             return location.local_where
 
-        if self.sys_mounts.default_backup_mount:
+        if location == DEFAULT and self.sys_mounts.default_backup_mount:
             return self.sys_mounts.default_backup_mount.local_where
 
         return self.sys_config.path_backup
@@ -82,7 +83,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         sys_type: BackupType,
         password: str | None,
         compressed: bool = True,
-        location: Mount | None = None,
+        location: Mount | type[DEFAULT] | None = DEFAULT,
     ) -> Backup:
         """Initialize a new backup object from name."""
         date_str = utcnow().isoformat()
@@ -206,7 +207,11 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
     async def do_backup_full(
-        self, name="", password=None, compressed=True, location: Mount | None = None
+        self,
+        name="",
+        password=None,
+        compressed=True,
+        location: Mount | type[DEFAULT] | None = DEFAULT,
     ):
         """Create a full backup."""
         if self.lock.locked():
@@ -235,7 +240,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         password: str | None = None,
         homeassistant: bool = False,
         compressed: bool = True,
-        location: Mount | None = None,
+        location: Mount | type[DEFAULT] | None = DEFAULT,
     ):
         """Create a partial backup."""
         if self.lock.locked():
