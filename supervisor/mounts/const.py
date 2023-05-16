@@ -5,6 +5,7 @@ from pathlib import PurePath
 
 FILE_CONFIG_MOUNTS = PurePath("mounts.json")
 
+ATTR_DEFAULT_BACKUP_MOUNT = "default_backup_mount"
 ATTR_MOUNTS = "mounts"
 ATTR_PATH = "path"
 ATTR_SERVER = "server"
@@ -25,11 +26,3 @@ class MountUsage(str, Enum):
 
     BACKUP = "backup"
     MEDIA = "media"
-
-
-class MountState(str, Enum):
-    """Mount state."""
-
-    ACTIVE = "active"
-    FAILED = "failed"
-    UNKNOWN = "unknown"

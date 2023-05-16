@@ -33,6 +33,7 @@ RUN_WATCHDOG_ADDON_APPLICATON = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
 RUN_REFRESH_ADDON = 15
+RUN_REFRESH_MOUNTS = 900
 
 PLUGIN_AUTO_UPDATE_CONDITIONS = PLUGIN_UPDATE_CONDITIONS + [JobCondition.RUNNING]
 
@@ -62,6 +63,7 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
         self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
+        self.sys_scheduler.register_task(self.sys_mounts.reload, RUN_REFRESH_MOUNTS)
 
         # Watchdog
         self.sys_scheduler.register_task(

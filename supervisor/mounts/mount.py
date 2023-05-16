@@ -27,6 +27,8 @@ from ..exceptions import (
     MountError,
     MountInvalidError,
 )
+from ..resolution.const import ContextType, IssueType
+from ..resolution.data import Issue
 from ..utils.sentry import capture_exception
 from .const import ATTR_PATH, ATTR_SERVER, ATTR_SHARE, ATTR_USAGE, MountType, MountUsage
 from .validate import MountData
@@ -132,6 +134,15 @@ class Mount(CoreSysAttributes, ABC):
             else None
         )
 
+    @property
+    def failed_issue(self) -> Issue:
+        """Get issue used if this mount has failed."""
+        return Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference=self.name)
+
+    def __eq__(self, other):
+        """Return true if mounts are the same."""
+        return isinstance(other, Mount) and self.name == other.name
+
     async def load(self) -> None:
         """Initialize object."""
         await self._update_await_activating()
@@ -163,6 +174,13 @@ class Mount(CoreSysAttributes, ABC):
             raise MountError(
                 f"Could not get active state of mount due to: {err!s}"
             ) from err
+
+        # If active, dismiss corresponding failed mount issue if found
+        if (
+            self.state == UnitActiveState.ACTIVE
+            and self.failed_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self.failed_issue)
 
     async def _update_await_activating(self):
         """Update info about mount from dbus. If 'activating' wait up to 30 seconds."""

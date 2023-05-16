@@ -12,6 +12,7 @@ from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import MountError, MountInvalidError
 from supervisor.mounts.const import MountType, MountUsage
 from supervisor.mounts.mount import CIFSMount, Mount, NFSMount
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
@@ -457,3 +458,35 @@ async def test_mount_local_where_invalid(
         await mount.mount()
 
     assert systemd_service.StartTransientUnit.calls == []
+
+
+async def test_update_clears_issue(coresys: CoreSys, path_extern):
+    """Test updating mount data clears corresponding failed mount issue if active."""
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test",
+            "usage": "media",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "share",
+        },
+    )
+
+    assert mount.failed_issue not in coresys.resolution.issues
+
+    coresys.resolution.create_issue(
+        IssueType.MOUNT_FAILED,
+        ContextType.MOUNT,
+        reference="test",
+        suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
+    )
+
+    assert mount.failed_issue in coresys.resolution.issues
+    assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
+
+    await mount.update()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert mount.failed_issue not in coresys.resolution.issues
+    assert not coresys.resolution.suggestions_for_issue(mount.failed_issue)
