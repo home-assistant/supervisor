@@ -117,7 +117,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                 self._backups[backup.slug] = backup
 
         tasks = [
-            _load_backup(tar_file)
+            self.sys_create_task(_load_backup(tar_file))
             for path in self.backup_locations
             for tar_file in path.glob("*.tar")
         ]
