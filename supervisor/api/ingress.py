@@ -48,7 +48,7 @@ class APIIngress(CoreSysAttributes):
 
     def __init__(self) -> None:
         """Initialize APIIngress."""
-        self._list_of_users = list()
+        self._list_of_users = []
 
     def _extract_addon(self, request: web.Request) -> Addon:
         """Return addon, throw an exception it it doesn't exist."""
@@ -84,14 +84,14 @@ class APIIngress(CoreSysAttributes):
     @require_home_assistant
     async def create_session(self, request: web.Request) -> dict[str, Any]:
         """Create a new session."""
-        schemaIngressConfigSessionData = await api_validate(
+        schema_ingress_config_session_data = await api_validate(
             SCHEMA_INGRESS_CREATE_SESSION_DATA, request
         )
         data: IngressSessionData = None
 
-        if ATTR_SESSION_DATA_USER_ID in schemaIngressConfigSessionData:
+        if ATTR_SESSION_DATA_USER_ID in schema_ingress_config_session_data:
             user = await self._find_user_by_id(
-                schemaIngressConfigSessionData[ATTR_SESSION_DATA_USER_ID]
+                schema_ingress_config_session_data[ATTR_SESSION_DATA_USER_ID]
             )
             if user:
                 data = IngressSessionData(user)
@@ -248,7 +248,9 @@ class APIIngress(CoreSysAttributes):
         try:
             list_of_users = await self.sys_homeassistant.get_users()
         except Exception as err:
-            _LOGGER.error("Error while requesting list of users", err)
+            _LOGGER.error(
+                "%s error occurred while requesting list of users: %s", type(err), err
+            )
             return None
 
         if list_of_users is not None:
