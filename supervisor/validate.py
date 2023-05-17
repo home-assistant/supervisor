@@ -1,5 +1,4 @@
 """Validate functions."""
-from dataclasses import dataclass
 import ipaddress
 import re
 
@@ -180,25 +179,26 @@ SCHEMA_DOCKER_CONFIG = vol.Schema(
 
 SCHEMA_AUTH_CONFIG = vol.Schema({sha256: sha256})
 
-
-@dataclass
-class UserInfo:
-    """Format of a user info obejct."""
-
-    id: str
-    username: str
-    name: str
-    is_owner: bool
-    is_active: bool
-    local_only: bool
-    system_generated: bool
-    group_ids: list[str]
-    credentials: list[dict["type", str]]
-
-
-SCHEMA_INGRESS_CONFIG_SESSION_DATA = vol.Schema(
+"""Expected optional payload of create session request"""
+SCHEMA_INGRESS_CREATE_SESSION_DATA = vol.Schema(
     {
         vol.Optional(ATTR_SESSION_DATA_USER_ID): str,
+    }
+)
+
+SCHEMA_SESSION_DATA = vol.Schema(
+    {
+        token: vol.Schema(
+            {
+                vol.Required(ATTR_SESSION_DATA_USER): vol.Schema(
+                    {
+                        vol.Required("id"): str,
+                        vol.Required("username"): str,
+                        vol.Required("displayname"): str,
+                    }
+                )
+            }
+        )
     }
 )
 
@@ -207,9 +207,7 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
         vol.Required(ATTR_SESSION, default=dict): vol.Schema(
             {token: vol.Coerce(float)}
         ),
-        vol.Required(ATTR_SESSION_DATA, default=dict): vol.Schema(
-            {token: vol.Schema({ATTR_SESSION_DATA_USER: vol.Any()})}
-        ),
+        vol.Required(ATTR_SESSION_DATA, default=dict): SCHEMA_SESSION_DATA,
         vol.Required(ATTR_PORTS, default=dict): vol.Schema({str: network_port}),
     },
     extra=vol.REMOVE_EXTRA,

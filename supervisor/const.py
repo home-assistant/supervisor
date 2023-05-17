@@ -1,4 +1,5 @@
 """Constants file for Supervisor."""
+from dataclasses import dataclass
 from enum import Enum
 from ipaddress import ip_network
 from pathlib import Path
@@ -71,6 +72,7 @@ RESULT_OK = "ok"
 
 HEADER_REMOTE_USER_ID = "X-Remote-User-Id"
 HEADER_REMOTE_USER_NAME = "X-Remote-User-Name"
+HEADER_REMOTE_USER_DISPLAY_NAME = "X-Remote-User-Display-Name"
 HEADER_TOKEN_OLD = "X-Hassio-Key"
 HEADER_TOKEN = "X-Supervisor-Token"
 
@@ -465,3 +467,19 @@ class CpuArch(str, Enum):
     AARCH64 = "aarch64"
     I386 = "i386"
     AMD64 = "amd64"
+
+
+@dataclass
+class IngressSessionDataUser:
+    """Format of an IngressSessionDataUser object."""
+
+    id: str
+    display_name: str
+    username: str
+
+
+@dataclass
+class IngressSessionData:
+    """Format of an IngressSessionData object."""
+
+    user: IngressSessionDataUser

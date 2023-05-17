@@ -21,16 +21,18 @@ from ..const import (
     ATTR_ICON,
     ATTR_PANELS,
     ATTR_SESSION,
-    ATTR_SESSION_DATA_USER,
     ATTR_SESSION_DATA_USER_ID,
     ATTR_TITLE,
+    HEADER_REMOTE_USER_DISPLAY_NAME,
     HEADER_REMOTE_USER_ID,
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
+    IngressSessionData,
+    IngressSessionDataUser,
 )
-from ..coresys import CoreSys, CoreSysAttributes
-from ..validate import SCHEMA_INGRESS_CONFIG_SESSION_DATA, UserInfo
+from ..coresys import CoreSysAttributes
+from ..validate import SCHEMA_INGRESS_CREATE_SESSION_DATA
 from .const import COOKIE_INGRESS
 from .utils import api_process, api_validate, require_home_assistant
 
@@ -42,10 +44,11 @@ VALIDATE_SESSION_DATA = vol.Schema({ATTR_SESSION: str})
 class APIIngress(CoreSysAttributes):
     """Ingress view to handle add-on webui routing."""
 
-    def __init__(self, coresys: CoreSys) -> None:
+    _list_of_users: list[IngressSessionDataUser]
+
+    def __init__(self) -> None:
         """Initialize APIIngress."""
-        self.coresys = coresys
-        self._list_of_users: list(UserInfo) = []
+        self._list_of_users = list()
 
     def _extract_addon(self, request: web.Request) -> Addon:
         """Return addon, throw an exception it it doesn't exist."""
@@ -81,12 +84,17 @@ class APIIngress(CoreSysAttributes):
     @require_home_assistant
     async def create_session(self, request: web.Request) -> dict[str, Any]:
         """Create a new session."""
-        data = await api_validate(SCHEMA_INGRESS_CONFIG_SESSION_DATA, request)
+        schemaIngressConfigSessionData = await api_validate(
+            SCHEMA_INGRESS_CREATE_SESSION_DATA, request
+        )
+        data: IngressSessionData = None
 
-        if ATTR_SESSION_DATA_USER_ID in data:
-            user = await self._find_user_by_id(data[ATTR_SESSION_DATA_USER_ID])
+        if ATTR_SESSION_DATA_USER_ID in schemaIngressConfigSessionData:
+            user = await self._find_user_by_id(
+                schemaIngressConfigSessionData[ATTR_SESSION_DATA_USER_ID]
+            )
             if user:
-                data[ATTR_SESSION_DATA_USER] = user
+                data = IngressSessionData(user)
 
         session = self.sys_ingress.create_session(data)
         return {ATTR_SESSION: session}
@@ -235,7 +243,7 @@ class APIIngress(CoreSysAttributes):
 
             return response
 
-    async def _find_user_by_id(self, user_id: str) -> dict[str, Any] | None:
+    async def _find_user_by_id(self, user_id: str) -> IngressSessionDataUser | None:
         """Find user object by the user's ID."""
         try:
             list_of_users = await self.sys_homeassistant.get_users()
@@ -250,15 +258,16 @@ class APIIngress(CoreSysAttributes):
 
 
 def _init_header(
-    request: web.Request, addon: Addon, session_data: dict
+    request: web.Request, addon: Addon, session_data: IngressSessionData
 ) -> CIMultiDict | dict[str, str]:
     """Create initial header."""
     headers = {}
 
-    if session_data[ATTR_SESSION_DATA_USER] is not None:
-        user: UserInfo = session_data[ATTR_SESSION_DATA_USER]
+    if session_data.user is not None:
+        user: IngressSessionDataUser = session_data.user
         headers[HEADER_REMOTE_USER_ID] = user.id
         headers[HEADER_REMOTE_USER_NAME] = user.username
+        headers[HEADER_REMOTE_USER_DISPLAY_NAME] = user.display_name
 
     # filter flags
     for name, value in request.headers.items():

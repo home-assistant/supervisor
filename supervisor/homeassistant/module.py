@@ -29,6 +29,7 @@ from ..const import (
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
     BusEvent,
+    IngressSessionDataUser,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -43,7 +44,6 @@ from ..jobs.decorator import Job, JobExecutionLimit
 from ..utils import remove_folder
 from ..utils.common import FileConfiguration
 from ..utils.json import read_json_file, write_json_file
-from ..validate import UserInfo
 from .api import HomeAssistantAPI
 from .const import WSType
 from .core import HomeAssistantCore
@@ -430,10 +430,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 self._data[attr] = data[attr]
 
     @Job(limit=JobExecutionLimit.THROTTLE_WAIT, throttle_period=timedelta(minutes=5))
-    async def get_users(self) -> list[UserInfo]:
+    async def get_users(self) -> list[IngressSessionDataUser]:
         """Get list of all configured users."""
         list_of_users = await self.sys_homeassistant.websocket.async_send_command(
             {ATTR_TYPE: "config/auth/list"}
         )
 
-        return [UserInfo(**data) for data in list_of_users]
+        return [IngressSessionDataUser(**data) for data in list_of_users]

@@ -462,7 +462,7 @@ class RestAPI(CoreSysAttributes):
 
     def _register_ingress(self) -> None:
         """Register Ingress functions."""
-        api_ingress = APIIngress(self.coresys)
+        api_ingress = APIIngress()
         api_ingress.coresys = self.coresys
 
         self.webapp.add_routes(

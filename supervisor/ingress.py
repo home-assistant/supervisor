@@ -5,7 +5,13 @@ import random
 import secrets
 
 from .addons.addon import Addon
-from .const import ATTR_PORTS, ATTR_SESSION, ATTR_SESSION_DATA, FILE_HASSIO_INGRESS
+from .const import (
+    ATTR_PORTS,
+    ATTR_SESSION,
+    ATTR_SESSION_DATA,
+    FILE_HASSIO_INGRESS,
+    IngressSessionData,
+)
 from .coresys import CoreSys, CoreSysAttributes
 from .utils import check_port
 from .utils.common import FileConfiguration
@@ -106,7 +112,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         for addon in self.addons:
             self.tokens[addon.ingress_token] = addon.slug
 
-    def create_session(self, data: dict[str, any] = None) -> str:
+    def create_session(self, data: IngressSessionData = None) -> str:
         """Create new session."""
         session = secrets.token_hex(64)
         valid = utcnow() + timedelta(minutes=15)
