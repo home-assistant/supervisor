@@ -4,8 +4,6 @@ from unittest.mock import patch
 
 import pytest
 
-from ...supervisor.const import ATTR_TYPE
-
 # pylint: disable=redefined-outer-name
 
 
@@ -64,7 +62,7 @@ async def test_validate_session_with_user_id(api_client, coresys):
         resp = await api_client.post("/ingress/session", json={"user_id": "some-id"})
         result = await resp.json()
 
-        client.async_send_command.assert_called_with({ATTR_TYPE: "config/auth/list"})
+        client.async_send_command.assert_called_with({"type": "config/auth/list"})
 
         assert "session" in result["data"]
         session = result["data"]["session"]
