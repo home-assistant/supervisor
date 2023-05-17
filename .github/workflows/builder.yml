@@ -38,7 +38,7 @@ env:
   BUILD_TYPE: supervisor
 
 concurrency:
-  group: '${{ github.workflow }}-${{ github.ref }}'
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
@@ -104,7 +104,7 @@ jobs:
         if: needs.init.outputs.requirements == 'true'
         uses: home-assistant/wheels@2023.04.0
         with:
-          abi: cp310
+          abi: cp311
           tag: musllinux_1_2
           arch: ${{ matrix.arch }}
           wheels-key: ${{ secrets.WHEELS_KEY }}
