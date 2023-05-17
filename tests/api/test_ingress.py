@@ -1,5 +1,5 @@
 """Test ingress API."""
-from asyncio import ensure_future
+import asyncio
 from unittest.mock import patch
 
 import pytest
@@ -55,11 +55,19 @@ async def test_validate_session_with_user_id(api_client, coresys):
         return_value=coresys.homeassistant,
     ):
         client = coresys.homeassistant.websocket._client
-        client.async_send_command.return_value = ensure_future(
+
+        create_session_result = asyncio.Future()
+        client.async_send_command.return_value = create_session_result
+
+        create_session_request = api_client.post(
+            "/ingress/session", json={"user_id": "some-id"}
+        )
+        create_session_result.set_result(
             [{"id": "some-id", "name": "Some Name", "username": "sn"}]
         )
+        create_session_result.done()
 
-        resp = await api_client.post("/ingress/session", json={"user_id": "some-id"})
+        resp = await create_session_request
         result = await resp.json()
 
         client.async_send_command.assert_called_with({"type": "config/auth/list"})
