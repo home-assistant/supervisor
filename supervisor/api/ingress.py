@@ -32,6 +32,7 @@ from ..const import (
     IngressSessionDataUser,
 )
 from ..coresys import CoreSysAttributes
+from ..exceptions import HomeAssistantAPIError
 from ..validate import SCHEMA_INGRESS_CREATE_SESSION_DATA
 from .const import COOKIE_INGRESS
 from .utils import api_process, api_validate, require_home_assistant
@@ -247,7 +248,7 @@ class APIIngress(CoreSysAttributes):
         """Find user object by the user's ID."""
         try:
             list_of_users = await self.sys_homeassistant.get_users()
-        except Exception as err:
+        except (HomeAssistantAPIError, TypeError) as err:
             _LOGGER.error(
                 "%s error occurred while requesting list of users: %s", type(err), err
             )
