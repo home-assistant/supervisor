@@ -436,4 +436,9 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             {ATTR_TYPE: "config/auth/list"}
         )
 
-        return [IngressSessionDataUser(**data) for data in list_of_users]
+        return [
+            IngressSessionDataUser(
+                id=data["id"], username=data["username"], display_name=data["name"]
+            )
+            for data in list_of_users
+        ]

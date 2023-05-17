@@ -1,4 +1,5 @@
 """Test ingress API."""
+# pylint: disable=protected-access
 import asyncio
 from unittest.mock import patch
 
@@ -86,6 +87,11 @@ async def test_validate_session_with_user_id(api_client, coresys):
         assert await resp.json() == {"result": "ok", "data": {}}
 
         assert coresys.ingress.sessions[session] > valid_time
+
+        assert "sessions_data" in coresys.ingress
+        assert session in coresys.ingress.sessions_data
+        assert "user" in coresys.ingress.sessions_data[session]
+
         assert coresys.ingress.sessions_data[session]["user"]["id"] == "some-id"
         assert coresys.ingress.sessions_data[session]["user"]["username"] == "sn"
         assert (
