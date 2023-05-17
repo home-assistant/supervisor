@@ -285,9 +285,12 @@ class Core(CoreSysAttributes):
             async with async_timeout.timeout(10):
                 await asyncio.wait(
                     [
-                        self.sys_api.stop(),
-                        self.sys_scheduler.shutdown(),
-                        self.sys_docker.unload(),
+                        self.sys_create_task(coro)
+                        for coro in (
+                            self.sys_api.stop(),
+                            self.sys_scheduler.shutdown(),
+                            self.sys_docker.unload(),
+                        )
                     ]
                 )
         except asyncio.TimeoutError:
@@ -298,10 +301,13 @@ class Core(CoreSysAttributes):
             async with async_timeout.timeout(10):
                 await asyncio.wait(
                     [
-                        self.sys_websession.close(),
-                        self.sys_ingress.unload(),
-                        self.sys_hardware.unload(),
-                        self.sys_dbus.unload(),
+                        self.sys_create_task(coro)
+                        for coro in (
+                            self.sys_websession.close(),
+                            self.sys_ingress.unload(),
+                            self.sys_hardware.unload(),
+                            self.sys_dbus.unload(),
+                        )
                     ]
                 )
         except asyncio.TimeoutError:
