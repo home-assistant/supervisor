@@ -1,7 +1,10 @@
 """Test ingress API."""
+from asyncio import ensure_future
 from unittest.mock import patch
 
 import pytest
+
+from ...supervisor.const import ATTR_TYPE
 
 # pylint: disable=redefined-outer-name
 
@@ -53,8 +56,15 @@ async def test_validate_session_with_user_id(api_client, coresys):
         "aiohttp.web_request.BaseRequest.__getitem__",
         return_value=coresys.homeassistant,
     ):
+        client = coresys.homeassistant.websocket._client
+        client.async_send_command.return_value = ensure_future(
+            [{"id": "some-id", "name": "Some Name", "username": "sn"}]
+        )
+
         resp = await api_client.post("/ingress/session", json={"user_id": "some-id"})
         result = await resp.json()
+
+        client.async_send_command.assert_called_with({ATTR_TYPE: "config/auth/list"})
 
         assert "session" in result["data"]
         session = result["data"]["session"]
@@ -71,3 +81,8 @@ async def test_validate_session_with_user_id(api_client, coresys):
 
         assert coresys.ingress.sessions[session] > valid_time
         assert coresys.ingress.sessions_data[session]["user"]["id"] == "some-id"
+        assert coresys.ingress.sessions_data[session]["user"]["username"] == "sn"
+        assert (
+            coresys.ingress.sessions_data[session]["user"]["display_name"]
+            == "Some Name"
+        )
