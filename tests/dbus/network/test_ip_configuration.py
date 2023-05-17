@@ -1,50 +1,91 @@
 """Test Network Manager IP configuration object."""
 
-import asyncio
 from ipaddress import IPv4Address, IPv6Address
 
-from supervisor.dbus.network import NetworkManager
+from dbus_fast.aio.message_bus import MessageBus
+import pytest
 
-from tests.common import fire_property_change_signal
-from tests.const import TEST_INTERFACE
+from supervisor.dbus.network.ip_configuration import IpConfiguration
+
+from tests.common import mock_dbus_services
+from tests.dbus_service_mocks.network_ip4config import IP4Config as IP4ConfigService
+from tests.dbus_service_mocks.network_ip6config import IP6Config as IP6ConfigService
 
 
-async def test_ipv4_configuration(network_manager: NetworkManager):
+@pytest.fixture(name="ip4config_service")
+async def fixture_ip4config_service(dbus_session_bus: MessageBus) -> IP4ConfigService:
+    """Mock IP4Config service."""
+    yield (await mock_dbus_services({"network_ip4config": None}, dbus_session_bus))[
+        "network_ip4config"
+    ]
+
+
+@pytest.fixture(name="ip6config_service")
+async def fixture_ip6config_service(dbus_session_bus: MessageBus) -> IP4ConfigService:
+    """Mock IP6Config service."""
+    yield (await mock_dbus_services({"network_ip6config": None}, dbus_session_bus))[
+        "network_ip6config"
+    ]
+
+
+async def test_ipv4_configuration(
+    ip4config_service: IP4ConfigService, dbus_session_bus: MessageBus
+):
     """Test ipv4 configuration object."""
-    ipv4 = network_manager.interfaces[TEST_INTERFACE].connection.ipv4
-    assert ipv4.gateway == IPv4Address("192.168.2.1")
-    assert ipv4.nameservers == [IPv4Address("192.168.2.2")]
+    ip4 = IpConfiguration("/org/freedesktop/NetworkManager/IP4Config/1")
 
-    fire_property_change_signal(ipv4, {"Gateway": "192.168.100.1"})
-    await asyncio.sleep(0)
-    assert ipv4.gateway == IPv4Address("192.168.100.1")
+    assert ip4.gateway is None
+    assert ip4.nameservers is None
 
-    fire_property_change_signal(ipv4, {}, ["Gateway"])
-    await asyncio.sleep(0)
-    assert ipv4.gateway == IPv4Address("192.168.2.1")
+    await ip4.connect(dbus_session_bus)
+
+    assert ip4.gateway == IPv4Address("192.168.2.1")
+    assert ip4.nameservers == [IPv4Address("192.168.2.2")]
+
+    ip4config_service.emit_properties_changed({"Gateway": "192.168.100.1"})
+    await ip4config_service.ping()
+    assert ip4.gateway == IPv4Address("192.168.100.1")
+
+    ip4config_service.emit_properties_changed({}, ["Gateway"])
+    await ip4config_service.ping()
+    await ip4config_service.ping()
+    assert ip4.gateway == IPv4Address("192.168.2.1")
 
 
-async def test_ipv6_configuration(network_manager: NetworkManager):
+async def test_ipv6_configuration(
+    ip6config_service: IP6ConfigService, dbus_session_bus: MessageBus
+):
     """Test ipv4 configuration object."""
-    ipv6 = network_manager.interfaces[TEST_INTERFACE].connection.ipv6
-    assert ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
-    assert ipv6.nameservers == [
+    ip6 = IpConfiguration("/org/freedesktop/NetworkManager/IP6Config/1", ip4=False)
+
+    assert ip6.gateway is None
+    assert ip6.nameservers is None
+
+    await ip6.connect(dbus_session_bus)
+
+    assert ip6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
+    assert ip6.nameservers == [
         IPv6Address("2001:1620:2777:1::10"),
         IPv6Address("2001:1620:2777:2::20"),
     ]
 
-    fire_property_change_signal(ipv6, {"Gateway": "2001:1620:2777:1::10"})
-    await asyncio.sleep(0)
-    assert ipv6.gateway == IPv6Address("2001:1620:2777:1::10")
+    ip6config_service.emit_properties_changed({"Gateway": "2001:1620:2777:1::10"})
+    await ip6config_service.ping()
+    assert ip6.gateway == IPv6Address("2001:1620:2777:1::10")
 
-    fire_property_change_signal(ipv6, {}, ["Gateway"])
-    await asyncio.sleep(0)
-    assert ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
+    ip6config_service.emit_properties_changed({}, ["Gateway"])
+    await ip6config_service.ping()
+    await ip6config_service.ping()
+    assert ip6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
 
 
-async def test_gateway_empty_string(network_manager: NetworkManager):
+async def test_gateway_empty_string(
+    ip4config_service: IP4ConfigService, dbus_session_bus: MessageBus
+):
     """Test empty string in gateway returns None."""
-    ipv4 = network_manager.interfaces[TEST_INTERFACE].connection.ipv4
-    fire_property_change_signal(ipv4, {"Gateway": ""})
-    await asyncio.sleep(0)
-    assert ipv4.gateway is None
+    ip4 = IpConfiguration("/org/freedesktop/NetworkManager/IP4Config/1", ip4=True)
+    await ip4.connect(dbus_session_bus)
+
+    ip4config_service.emit_properties_changed({"Gateway": ""})
+    await ip4config_service.ping()
+    assert ip4.gateway is None

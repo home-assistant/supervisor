@@ -7,32 +7,36 @@ import pytest
 
 from supervisor.coresys import CoreSys
 
+from tests.dbus_service_mocks.network_manager import (
+    NetworkManager as NetworkManagerService,
+)
 
-async def test_connectivity_not_connected(coresys: CoreSys):
+
+@pytest.mark.parametrize("force", [True, False])
+async def test_connectivity_not_connected(
+    coresys: CoreSys, force: bool, network_manager_service: NetworkManagerService
+):
     """Test host unknown connectivity."""
-    with patch("supervisor.utils.dbus.DBus.call_dbus", return_value=0):
-        await coresys.host.network.check_connectivity()
-        assert not coresys.host.network.connectivity
+    assert coresys.host.network.connectivity
 
-        await coresys.host.network.check_connectivity(force=True)
-        assert not coresys.host.network.connectivity
+    network_manager_service.connectivity = 0
+    await coresys.host.network.check_connectivity(force=force)
+    assert not coresys.host.network.connectivity
 
 
-async def test_connectivity_connected(coresys: CoreSys, dbus: list[str]):
+async def test_connectivity_connected(
+    coresys: CoreSys, network_manager_service: NetworkManagerService
+):
     """Test host full connectivity."""
-    dbus.clear()
+    network_manager_service.CheckConnectivity.calls.clear()
+
     await coresys.host.network.check_connectivity()
     assert coresys.host.network.connectivity
-    assert dbus == [
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.Connectivity"
-    ]
+    assert network_manager_service.CheckConnectivity.calls == []
 
-    dbus.clear()
     await coresys.host.network.check_connectivity(force=True)
     assert coresys.host.network.connectivity
-    assert dbus == [
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
-    ]
+    assert network_manager_service.CheckConnectivity.calls == [tuple()]
 
 
 @pytest.mark.parametrize("force", [True, False])

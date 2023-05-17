@@ -1,160 +1,232 @@
 """Test dbus interface."""
 
-import asyncio
-from dataclasses import dataclass
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from dbus_fast.aio.message_bus import MessageBus
+from dbus_fast.service import PropertyAccess, dbus_property, signal
 import pytest
 
 from supervisor.dbus.const import DBUS_OBJECT_BASE
 from supervisor.dbus.interface import DBusInterface, DBusInterfaceProxy
-from supervisor.exceptions import DBusInterfaceError
+from supervisor.exceptions import DBusInterfaceError, DBusNotConnectedError
 from supervisor.utils.dbus import DBus
 
-from tests.common import fire_property_change_signal, fire_watched_signal
+from tests.common import load_fixture
+from tests.dbus_service_mocks.base import DBusServiceMock
 
 
-@dataclass
-class DBusInterfaceProxyMock:
-    """DBus Interface and signalling mocks."""
+class TestInterface(DBusServiceMock):
+    """Test interface."""
 
-    obj: DBusInterfaceProxy
-    on_device_added: MagicMock = MagicMock()
-    off_device_added: MagicMock = MagicMock()
+    interface = "service.test.TestInterface"
+
+    def __init__(self, object_path: str = "/service/test/TestInterface"):
+        """Initialize object."""
+        super().__init__()
+        self.object_path = object_path
+
+    @signal(name="TestSignal")
+    def test_signal(self, value: str) -> "s":  # noqa: F821
+        """Send test signal."""
+        return value
+
+    @dbus_property(access=PropertyAccess.READ, name="TestProp")
+    def test_prop(self) -> "u":  # noqa: F821
+        """Get test property."""
+        return 4
+
+
+@pytest.fixture(name="test_service")
+async def fixture_test_service(dbus_session_bus: MessageBus) -> TestInterface:
+    """Export test interface on dbus."""
+    await dbus_session_bus.request_name("service.test.TestInterface")
+    service = TestInterface()
+    service.export(dbus_session_bus)
+    yield service
 
 
 @pytest.fixture(name="proxy")
 async def fixture_proxy(
-    request: pytest.FixtureRequest, dbus_bus: MessageBus, dbus
-) -> DBusInterfaceProxyMock:
+    request: pytest.FixtureRequest,
+    test_service: TestInterface,
+    dbus_session_bus: MessageBus,
+) -> DBusInterfaceProxy:
     """Get a proxy."""
     proxy = DBusInterfaceProxy()
-    proxy.bus_name = "org.freedesktop.NetworkManager"
-    proxy.object_path = "/org/freedesktop/NetworkManager"
-    proxy.properties_interface = "org.freedesktop.NetworkManager"
-    proxy.sync_properties = request.param
+    proxy.bus_name = "service.test.TestInterface"
+    proxy.object_path = "/service/test/TestInterface"
+    proxy.properties_interface = "service.test.TestInterface"
+    proxy.sync_properties = getattr(request, "param", True)
 
-    await proxy.connect(dbus_bus)
-
-    # pylint: disable=protected-access
-    nm_proxy = proxy.dbus._proxies["org.freedesktop.NetworkManager"]
-
-    mock = DBusInterfaceProxyMock(proxy)
-    setattr(nm_proxy, "on_device_added", mock.on_device_added)
-    setattr(nm_proxy, "off_device_added", mock.off_device_added)
-
-    yield mock
+    await proxy.connect(dbus_session_bus)
+    yield proxy
 
 
-@pytest.mark.parametrize("proxy", [True], indirect=True)
-async def test_dbus_proxy_connect(proxy: DBusInterfaceProxyMock):
+async def test_dbus_proxy_connect(
+    proxy: DBusInterfaceProxy, test_service: TestInterface
+):
     """Test dbus proxy connect."""
-    assert proxy.obj.is_connected
-    assert proxy.obj.properties["Connectivity"] == 4
+    assert proxy.is_connected
+    assert proxy.properties["TestProp"] == 4
 
-    fire_property_change_signal(proxy.obj, {"Connectivity": 1})
-    await asyncio.sleep(0)
-    assert proxy.obj.properties["Connectivity"] == 1
+    test_service.emit_properties_changed({"TestProp": 1})
+    await test_service.ping()
+    assert proxy.properties["TestProp"] == 1
+
+    test_service.emit_properties_changed({}, ["TestProp"])
+    await test_service.ping()
+    await test_service.ping()
+    assert proxy.properties["TestProp"] == 4
 
 
 @pytest.mark.parametrize("proxy", [False], indirect=True)
-async def test_dbus_proxy_connect_no_sync(proxy: DBusInterfaceProxyMock):
+async def test_dbus_proxy_connect_no_sync(
+    proxy: DBusInterfaceProxy, test_service: TestInterface
+):
     """Test dbus proxy connect with no properties sync."""
-    assert proxy.obj.is_connected
-    assert proxy.obj.properties["Connectivity"] == 4
+    assert proxy.is_connected
+    assert proxy.properties["TestProp"] == 4
 
-    with pytest.raises(AssertionError):
-        fire_property_change_signal(proxy.obj, {"Connectivity": 1})
+    test_service.emit_properties_changed({"TestProp": 1})
+    await test_service.ping()
+    assert proxy.properties["TestProp"] == 4
 
 
 @pytest.mark.parametrize("proxy", [False], indirect=True)
-async def test_signal_listener_disconnect(proxy: DBusInterfaceProxyMock):
+async def test_signal_listener_disconnect(
+    proxy: DBusInterfaceProxy, test_service: TestInterface
+):
     """Test disconnect/delete unattaches signal listeners."""
-    assert proxy.obj.is_connected
-    device = None
+    value = None
 
-    async def callback(dev: str):
-        nonlocal device
-        device = dev
+    async def callback(val: str):
+        nonlocal value
+        value = val
 
-    proxy.obj.dbus.on_device_added(callback)
-    proxy.on_device_added.assert_called_once_with(callback, unpack_variants=True)
+    assert proxy.is_connected
+    proxy.dbus.on_test_signal(callback)
 
-    fire_watched_signal(
-        proxy.obj, "org.freedesktop.NetworkManager.DeviceAdded", ["/test/obj/1"]
-    )
-    await asyncio.sleep(0)
-    assert device == "/test/obj/1"
+    test_service.test_signal("hello")
+    await test_service.ping()
+    assert value == "hello"
 
-    proxy.obj.disconnect()
-    proxy.off_device_added.assert_called_once_with(callback, unpack_variants=True)
-
-
-@pytest.mark.parametrize("proxy", [False], indirect=True)
-async def test_dbus_proxy_shutdown_pending_task(proxy: DBusInterfaceProxyMock):
-    """Test pending task does not raise DBusNotConnectedError after shutdown."""
-    assert proxy.obj.is_connected
-    device = None
-
-    async def callback(dev: str):
-        nonlocal device
-        await proxy.obj.update()
-        device = dev
-
-    proxy.obj.dbus.on_device_added(callback)
-    fire_watched_signal(
-        proxy.obj, "org.freedesktop.NetworkManager.DeviceAdded", ["/test/obj/1"]
-    )
-    proxy.obj.shutdown()
-    await asyncio.sleep(0)
-    assert device == "/test/obj/1"
+    proxy.disconnect()
+    test_service.test_signal("goodbye")
+    await test_service.ping()
+    assert value == "hello"
 
 
-async def test_proxy_missing_properties_interface(dbus_bus: MessageBus):
+async def test_dbus_connected_no_raise_after_shutdown(
+    test_service: TestInterface, dbus_session_bus: MessageBus
+):
+    """Test dbus connected methods do not raise DBusNotConnectedError after shutdown."""
+    proxy = DBusInterfaceProxy()
+    proxy.bus_name = "service.test.TestInterface"
+    proxy.object_path = "/service/test/TestInterface"
+    proxy.properties_interface = "service.test.TestInterface"
+    proxy.sync_properties = False
+
+    with pytest.raises(DBusNotConnectedError):
+        await proxy.update()
+
+    await proxy.connect(dbus_session_bus)
+    assert proxy.is_connected
+
+    proxy.shutdown()
+    assert proxy.is_shutdown
+    assert await proxy.update() is None
+
+
+async def test_proxy_missing_properties_interface(dbus_session_bus: MessageBus):
     """Test proxy instance disconnects and errors when missing properties interface."""
     proxy = DBusInterfaceProxy()
     proxy.bus_name = "test.no.properties.interface"
     proxy.object_path = DBUS_OBJECT_BASE
     proxy.properties_interface = "test.no.properties.interface"
 
-    with pytest.raises(DBusInterfaceError):
-        await proxy.connect(dbus_bus)
-        assert proxy.is_connected is False
+    async def mock_introspect(*args, **kwargs):
+        """Return introspection without properties."""
+        return load_fixture("test_no_properties_interface.xml")
 
-
-async def test_initialize(dbus_bus: MessageBus):
-    """Test initialize for reusing connected dbus object."""
-    proxy = DBusInterface()
-    proxy.bus_name = "org.freedesktop.UDisks2"
-    proxy.object_path = "/org/freedesktop/UDisks2/block_devices/sda"
+    with patch.object(MessageBus, "introspect", new=mock_introspect), pytest.raises(
+        DBusInterfaceError
+    ):
+        await proxy.connect(dbus_session_bus)
 
     assert proxy.is_connected is False
 
+
+async def test_initialize(test_service: TestInterface, dbus_session_bus: MessageBus):
+    """Test initialize for reusing connected dbus object."""
+    proxy = DBusInterface()
+    proxy.bus_name = "service.test.TestInterface"
+    proxy.object_path = "/service/test/TestInterface"
+
+    assert proxy.is_connected is False
+
+    # Not connected
     with pytest.raises(ValueError, match="must be a connected DBus object"):
         await proxy.initialize(
             DBus(
-                dbus_bus,
-                "org.freedesktop.UDisks2",
-                "/org/freedesktop/UDisks2/block_devices/sda",
+                dbus_session_bus,
+                "service.test.TestInterface",
+                "/service/test/TestInterface",
             )
         )
 
+    # Connected to wrong bus
+    await dbus_session_bus.request_name("service.test.TestInterface2")
     with pytest.raises(
         ValueError,
-        match="must be a DBus object connected to bus org.freedesktop.UDisks2 and object /org/freedesktop/UDisks2/block_devices/sda",
+        match="must be a DBus object connected to bus service.test.TestInterface and object /service/test/TestInterface",
     ):
         await proxy.initialize(
             await DBus.connect(
-                dbus_bus, "org.freedesktop.hostname1", "/org/freedesktop/hostname1"
+                dbus_session_bus,
+                "service.test.TestInterface2",
+                "/service/test/TestInterface",
             )
         )
 
+    # Connected to wrong object
+    test_service_2 = TestInterface("/service/test/TestInterface/2")
+    test_service_2.export(dbus_session_bus)
+    with pytest.raises(
+        ValueError,
+        match="must be a DBus object connected to bus service.test.TestInterface and object /service/test/TestInterface",
+    ):
+        await proxy.initialize(
+            await DBus.connect(
+                dbus_session_bus,
+                "service.test.TestInterface",
+                "/service/test/TestInterface/2",
+            )
+        )
+
+    # Connected to correct object on the correct bus
     await proxy.initialize(
         await DBus.connect(
-            dbus_bus,
-            "org.freedesktop.UDisks2",
-            "/org/freedesktop/UDisks2/block_devices/sda",
+            dbus_session_bus,
+            "service.test.TestInterface",
+            "/service/test/TestInterface",
         )
     )
     assert proxy.is_connected is True
+
+
+async def test_stop_sync_property_changes(
+    proxy: DBusInterfaceProxy, test_service: TestInterface
+):
+    """Test stop sync property changes disables the sync via signal."""
+    assert proxy.is_connected
+    assert proxy.properties["TestProp"] == 4
+
+    test_service.emit_properties_changed({"TestProp": 1})
+    await test_service.ping()
+    assert proxy.properties["TestProp"] == 1
+
+    proxy.stop_sync_property_changes()
+
+    test_service.emit_properties_changed({"TestProp": 4})
+    await test_service.ping()
+    assert proxy.properties["TestProp"] == 1

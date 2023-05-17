@@ -1,48 +1,29 @@
 """Test Boards manager."""
-
-from unittest.mock import patch
-
+# pylint: disable=import-error
 from dbus_fast.aio.message_bus import MessageBus
-from dbus_fast.aio.proxy_object import ProxyInterface
 import pytest
 
 from supervisor.dbus.agent.boards import BoardManager
 from supervisor.exceptions import BoardInvalidError
-from supervisor.utils.dbus import DBUS_INTERFACE_PROPERTIES, DBus
+
+from tests.common import mock_dbus_services
+from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
 
 
-@pytest.fixture(name="dbus_mock_board")
-async def fixture_dbus_mock_board(request: pytest.FixtureRequest, dbus: list[str]):
-    """Mock Boards dbus object to particular board name for tests."""
-    call_dbus = DBus.call_dbus
-
-    async def mock_call_dbus_specify_board(
-        proxy_interface: ProxyInterface,
-        method: str,
-        *args,
-        unpack_variants: bool = True,
-    ):
-        if (
-            proxy_interface.introspection.name == DBUS_INTERFACE_PROPERTIES
-            and method == "call_get_all"
-            and proxy_interface.path == "/io/hass/os/Boards"
-        ):
-            return {"Board": request.param}
-
-        return call_dbus(
-            proxy_interface, method, *args, unpack_variants=unpack_variants
-        )
-
-    with patch(
-        "supervisor.utils.dbus.DBus.call_dbus", new=mock_call_dbus_specify_board
-    ):
-        yield dbus
+@pytest.fixture(name="boards_service", autouse=True)
+async def fixture_boards_service(dbus_session_bus: MessageBus) -> BoardsService:
+    """Mock Boards dbus service."""
+    yield (await mock_dbus_services({"agent_boards": None}, dbus_session_bus))[
+        "agent_boards"
+    ]
 
 
-async def test_dbus_board(dbus: list[str], dbus_bus: MessageBus):
+async def test_dbus_board(dbus_session_bus: MessageBus):
     """Test DBus Board load."""
+    await mock_dbus_services({"agent_boards_yellow": None}, dbus_session_bus)
+
     board = BoardManager()
-    await board.connect(dbus_bus)
+    await board.connect(dbus_session_bus)
 
     assert board.board == "Yellow"
     assert board.yellow.power_led is True
@@ -51,11 +32,15 @@ async def test_dbus_board(dbus: list[str], dbus_bus: MessageBus):
         assert not board.supervised
 
 
-@pytest.mark.parametrize("dbus_mock_board", ["Supervised"], indirect=True)
-async def test_dbus_board_supervised(dbus_mock_board: list[str], dbus_bus: MessageBus):
+async def test_dbus_board_supervised(
+    boards_service: BoardsService, dbus_session_bus: MessageBus
+):
     """Test DBus Board load with supervised board."""
+    await mock_dbus_services({"agent_boards_supervised": None}, dbus_session_bus)
+    boards_service.board = "Supervised"
+
     board = BoardManager()
-    await board.connect(dbus_bus)
+    await board.connect(dbus_session_bus)
 
     assert board.board == "Supervised"
     assert board.supervised
@@ -64,11 +49,14 @@ async def test_dbus_board_supervised(dbus_mock_board: list[str], dbus_bus: Messa
         assert not board.yellow
 
 
-@pytest.mark.parametrize("dbus_mock_board", ["NotReal"], indirect=True)
-async def test_dbus_board_other(dbus_mock_board: list[str], dbus_bus: MessageBus):
+async def test_dbus_board_other(
+    boards_service: BoardsService, dbus_session_bus: MessageBus
+):
     """Test DBus Board load with board that has no dbus object."""
+    boards_service.board = "NotReal"
+
     board = BoardManager()
-    await board.connect(dbus_bus)
+    await board.connect(dbus_session_bus)
 
     assert board.board == "NotReal"
 

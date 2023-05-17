@@ -1,5 +1,6 @@
 """Mock of systemd dbus service."""
 
+from dbus_fast import DBusError
 from dbus_fast.service import PropertyAccess, dbus_property
 
 from .base import DBusServiceMock, dbus_method
@@ -12,7 +13,7 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Systemd()
 
 
-# pylint: disable=invalid-name,missing-function-docstring
+# pylint: disable=invalid-name,missing-function-docstring,raising-bad-type
 
 
 class Systemd(DBusServiceMock):
@@ -23,6 +24,22 @@ class Systemd(DBusServiceMock):
 
     object_path = "/org/freedesktop/systemd1"
     interface = "org.freedesktop.systemd1.Manager"
+    log_level = "info"
+    log_target = "journal-or-kmsg"
+    runtime_watchdog_usec = 0
+    reboot_watchdog_usec = 600000000
+    kexec_watchdog_usec = 0
+    service_watchdogs = True
+    response_get_unit: dict[str, list[str | DBusError]] | list[
+        str | DBusError
+    ] | str | DBusError = "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
+    response_stop_unit: str | DBusError = "/org/freedesktop/systemd1/job/7623"
+    response_reload_or_restart_unit: str | DBusError = (
+        "/org/freedesktop/systemd1/job/7623"
+    )
+    response_start_transient_unit: str | DBusError = (
+        "/org/freedesktop/systemd1/job/7623"
+    )
 
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> "s":
@@ -229,15 +246,25 @@ class Systemd(DBusServiceMock):
         """Get InitRDUnitsLoadFinishTimestampMonotonic."""
         return 0
 
-    @dbus_property(access=PropertyAccess.READ)
+    @dbus_property()
     def LogLevel(self) -> "s":
         """Get LogLevel."""
-        return "info"
+        return self.log_level
 
-    @dbus_property(access=PropertyAccess.READ)
+    @LogLevel.setter
+    def LogLevel(self, value: "s"):
+        """Set LogLevel. Does not emit prop change."""
+        self.log_level = value
+
+    @dbus_property()
     def LogTarget(self) -> "s":
         """Get LogTarget."""
-        return "journal-or-kmsg"
+        return self.log_target
+
+    @LogTarget.setter
+    def LogTarget(self, value: "s"):
+        """Set LogTarget. Does not emit prop change."""
+        self.log_target = value
 
     @dbus_property(access=PropertyAccess.READ)
     def NNames(self) -> "u":
@@ -325,25 +352,45 @@ class Systemd(DBusServiceMock):
         """Get DefaultStandardError."""
         return "journal"
 
-    @dbus_property(access=PropertyAccess.READ)
+    @dbus_property()
     def RuntimeWatchdogUSec(self) -> "t":
         """Get RuntimeWatchdogUSec."""
-        return 0
+        return self.runtime_watchdog_usec
 
-    @dbus_property(access=PropertyAccess.READ)
+    @RuntimeWatchdogUSec.setter
+    def RuntimeWatchdogUSec(self, value: "t"):
+        """Set RuntimeWatchdogUSec. Does not emit prop change."""
+        self.runtime_watchdog_usec = value
+
+    @dbus_property()
     def RebootWatchdogUSec(self) -> "t":
         """Get RebootWatchdogUSec."""
-        return 600000000
+        return self.reboot_watchdog_usec
 
-    @dbus_property(access=PropertyAccess.READ)
+    @RebootWatchdogUSec.setter
+    def RebootWatchdogUSec(self, value: "t"):
+        """Set RebootWatchdogUSec. Does not emit prop change."""
+        self.RebootWatchdogUSec = value
+
+    @dbus_property()
     def KExecWatchdogUSec(self) -> "t":
         """Get KExecWatchdogUSec."""
-        return 0
+        return self.kexec_watchdog_usec
 
-    @dbus_property(access=PropertyAccess.READ)
+    @KExecWatchdogUSec.setter
+    def KExecWatchdogUSec(self, value: "t"):
+        """Set KExecWatchdogUSec. Does not emit prop change."""
+        self.KExecWatchdogUSec = value
+
+    @dbus_property()
     def ServiceWatchdogs(self) -> "b":
         """Get ServiceWatchdogs."""
-        return True
+        return self.service_watchdogs
+
+    @ServiceWatchdogs.setter
+    def ServiceWatchdogs(self, value: "b"):
+        """Set ServiceWatchdogs. Does not emit prop change."""
+        self.service_watchdogs = value
 
     @dbus_property(access=PropertyAccess.READ)
     def ControlGroup(self) -> "s":
@@ -616,12 +663,16 @@ class Systemd(DBusServiceMock):
     @dbus_method()
     def StopUnit(self, name: "s", mode: "s") -> "o":
         """Stop a service unit."""
-        return "/org/freedesktop/systemd1/job/7623"
+        if isinstance(self.response_stop_unit, DBusError):
+            raise self.response_stop_unit
+        return self.response_stop_unit
 
     @dbus_method()
     def ReloadOrRestartUnit(self, name: "s", mode: "s") -> "o":
         """Reload or restart a service unit."""
-        return "/org/freedesktop/systemd1/job/7623"
+        if isinstance(self.response_reload_or_restart_unit, DBusError):
+            raise self.response_reload_or_restart_unit
+        return self.response_reload_or_restart_unit
 
     @dbus_method()
     def RestartUnit(self, name: "s", mode: "s") -> "o":
@@ -629,7 +680,34 @@ class Systemd(DBusServiceMock):
         return "/org/freedesktop/systemd1/job/7623"
 
     @dbus_method()
-    def list_units(
+    def StartTransientUnit(
+        self, name: "s", mode: "s", properties: "a(sv)", aux: "a(sa(sv))"
+    ) -> "o":
+        """Start a transient service unit."""
+        if isinstance(self.response_start_transient_unit, DBusError):
+            raise self.response_start_transient_unit
+        return self.response_start_transient_unit
+
+    @dbus_method()
+    def ResetFailedUnit(self, name: "s") -> None:
+        """Reset a failed unit."""
+
+    @dbus_method()
+    def GetUnit(self, name: "s") -> "s":
+        """Get unit."""
+        if isinstance(self.response_get_unit, dict):
+            unit = self.response_get_unit[name].pop(0)
+        elif isinstance(self.response_get_unit, list):
+            unit = self.response_get_unit.pop(0)
+        else:
+            unit = self.response_get_unit
+
+        if isinstance(unit, DBusError):
+            raise unit
+        return unit
+
+    @dbus_method()
+    def ListUnits(
         self,
     ) -> "a(ssssssouso)":
         """Return a list of available services."""

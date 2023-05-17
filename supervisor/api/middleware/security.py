@@ -8,6 +8,7 @@ from aiohttp.web import Request, RequestHandler, Response, middleware
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPUnauthorized
 from awesomeversion import AwesomeVersion
 
+from ...addons.const import RE_SLUG
 from ...const import (
     REQUEST_FROM,
     ROLE_ADMIN,
@@ -21,13 +22,13 @@ from ...coresys import CoreSys, CoreSysAttributes
 from ..utils import api_return_error, excract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-_CORE_VERSION: Final = AwesomeVersion("2023.3.0")
+_CORE_VERSION: Final = AwesomeVersion("2023.3.4")
 
 # fmt: off
 
 _CORE_FRONTEND_PATHS: Final = (
     r"|/app/.*\.(?:js|gz|json|map)"
-    r"|/(store/)?addons/[^/]+/(logo|icon)"
+    r"|/(store/)?addons/" + RE_SLUG + r"/(logo|icon)"
 )
 
 CORE_FRONTEND: Final = re.compile(
@@ -51,7 +52,7 @@ NO_SECURITY_CHECK: Final = re.compile(
     r"|/core/api/.*"
     r"|/core/websocket"
     r"|/supervisor/ping"
-    r"|/ingress/[^/]+/.*"
+    r"|/ingress/[-_A-Za-z0-9]+/.*"
     + _CORE_FRONTEND_PATHS
     + r")$"
 )
@@ -98,7 +99,7 @@ ADDONS_ROLE_ACCESS: dict[str, re.Pattern] = {
     ROLE_MANAGER: re.compile(
         r"^(?:"
         r"|/.+/info"
-        r"|/addons(?:/[^/]+/(?!security).+|/reload)?"
+        r"|/addons(?:/" + RE_SLUG + r"/(?!security).+|/reload)?"
         r"|/audio/.+"
         r"|/auth/cache"
         r"|/cli/.+"
@@ -296,7 +297,7 @@ class SecurityMiddleware(CoreSysAttributes):
             elif key == b"X-Ingress-Path":
                 ingress_request = True
 
-        if user_request or admin_request:
+        if (user_request or admin_request) and not ingress_request:
             return await handler(request)
 
         is_proxy_request = (

@@ -4,7 +4,6 @@ from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ...utils.dbus import DBus
 from ..const import (
     DBUS_ATTR_ACTIVE_CONNECTION,
     DBUS_ATTR_DEVICE_INTERFACE,
@@ -33,7 +32,7 @@ class NetworkInterface(DBusInterfaceProxy):
     properties_interface: str = DBUS_IFACE_DEVICE
     sync_properties: bool = False
 
-    def __init__(self, nm_dbus: DBus, object_path: str) -> None:
+    def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
         super().__init__()
 
@@ -43,7 +42,6 @@ class NetworkInterface(DBusInterfaceProxy):
 
         self._connection: NetworkConnection | None = None
         self._wireless: NetworkWireless | None = None
-        self._nm_dbus: DBus = nm_dbus
 
     @property
     @dbus_property
@@ -114,7 +112,10 @@ class NetworkInterface(DBusInterfaceProxy):
         await super().update(changed)
 
         # Abort if device is not managed
+        # Shutdown and disconnect managed objects if it became unmanaged
         if not self.managed:
+            self.connection = None
+            self.wireless = None
             return
 
         # If active connection exists

@@ -1,6 +1,5 @@
 """Test Supervisor API."""
 # pylint: disable=protected-access
-import asyncio
 from unittest.mock import MagicMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -10,10 +9,12 @@ from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitError, StoreNotFound
 from supervisor.store.repository import Repository
 
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.os_agent import OSAgent as OSAgentService
+
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 
 
-@pytest.mark.asyncio
 async def test_api_supervisor_options_debug(api_client: TestClient, coresys: CoreSys):
     """Test security options force security."""
     assert not coresys.config.debug
@@ -118,11 +119,15 @@ async def test_api_supervisor_options_auto_update(
 
 
 async def test_api_supervisor_options_diagnostics(
-    api_client: TestClient, coresys: CoreSys, dbus: list[str]
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ):
     """Test changing diagnostics."""
-    await coresys.dbus.agent.connect(coresys.dbus.bus)
-    dbus.clear()
+    os_agent_service: OSAgentService = os_agent_services["os_agent"]
+    os_agent_service.Diagnostics = False
+    await os_agent_service.ping()
+    assert coresys.dbus.agent.diagnostics is False
 
     with patch("supervisor.utils.sentry.sentry_sdk.init") as sentry_init:
         response = await api_client.post(
@@ -131,10 +136,9 @@ async def test_api_supervisor_options_diagnostics(
         assert response.status == 200
         sentry_init.assert_called_once()
 
-    await asyncio.sleep(0)
-    assert dbus == ["/io/hass/os-io.hass.os.Diagnostics"]
+    await os_agent_service.ping()
+    assert coresys.dbus.agent.diagnostics is True
 
-    dbus.clear()
     with patch("supervisor.api.supervisor.close_sentry") as close_sentry:
         response = await api_client.post(
             "/supervisor/options", json={"diagnostics": False}
@@ -142,8 +146,8 @@ async def test_api_supervisor_options_diagnostics(
         assert response.status == 200
         close_sentry.assert_called_once()
 
-    await asyncio.sleep(0)
-    assert dbus == ["/io/hass/os-io.hass.os.Diagnostics"]
+    await os_agent_service.ping()
+    assert coresys.dbus.agent.diagnostics is False
 
 
 async def test_api_supervisor_logs(api_client: TestClient, docker_logs: MagicMock):

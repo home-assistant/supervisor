@@ -5,11 +5,12 @@ from typing import Any
 
 from ..const import (
     DBUS_ATTR_ACTIVE_ACCESSPOINT,
+    DBUS_ATTR_BITRATE,
     DBUS_IFACE_DEVICE_WIRELESS,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
 )
-from ..interface import DBusInterfaceProxy
+from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .accesspoint import NetworkWirelessAP
 
@@ -32,6 +33,12 @@ class NetworkWireless(DBusInterfaceProxy):
         self.object_path: str = object_path
 
         self._active: NetworkWirelessAP | None = None
+
+    @property
+    @dbus_property
+    def bitrate(self) -> int:
+        """Bitrate currently used by wireless device in Kb/s."""
+        return self.properties[DBUS_ATTR_BITRATE]
 
     @property
     def active(self) -> NetworkWirelessAP | None:

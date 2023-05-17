@@ -2,15 +2,12 @@
 # pylint: disable=protected-access
 from unittest.mock import AsyncMock
 
-import pytest
-
 from supervisor.api.const import ATTR_AVAILABLE_UPDATES
 from supervisor.coresys import CoreSys
 
 from tests.const import TEST_ADDON_SLUG
 
 
-@pytest.mark.asyncio
 async def test_api_info(api_client):
     """Test docker info api."""
     resp = await api_client.get("/info")
@@ -21,10 +18,9 @@ async def test_api_info(api_client):
     assert result["data"]["supported"] is True
     assert result["data"]["channel"] == "stable"
     assert result["data"]["logging"] == "info"
-    assert result["data"]["timezone"] == "UTC"
+    assert result["data"]["timezone"] == "Etc/UTC"
 
 
-@pytest.mark.asyncio
 async def test_api_available_updates(
     install_addon_ssh,
     api_client,
@@ -70,7 +66,6 @@ async def test_api_available_updates(
     }
 
 
-@pytest.mark.asyncio
 async def test_api_refresh_updates(api_client, coresys: CoreSys):
     """Test docker info api."""
 

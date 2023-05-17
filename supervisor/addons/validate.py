@@ -109,7 +109,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
-from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
+from .const import ATTR_BACKUP, ATTR_CODENOTARY, RE_SLUG, AddonBackupMode
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -146,6 +146,8 @@ RE_MACHINE = re.compile(
     r"|tinker"
     r")$"
 )
+
+RE_SLUG_FIELD = re.compile(r"^" + RE_SLUG + r"$")
 
 
 def _warn_addon_config(config: dict[str, Any]):
@@ -252,7 +254,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_NAME): str,
         vol.Required(ATTR_VERSION): version_tag,
-        vol.Required(ATTR_SLUG): str,
+        vol.Required(ATTR_SLUG): vol.Match(RE_SLUG_FIELD),
         vol.Required(ATTR_DESCRIPTON): str,
         vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
         vol.Optional(ATTR_MACHINE): vol.All([vol.Match(RE_MACHINE)], vol.Unique()),

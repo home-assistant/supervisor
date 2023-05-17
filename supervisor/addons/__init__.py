@@ -178,8 +178,8 @@ class AddonManager(CoreSysAttributes):
         except DockerError as err:
             self.data.uninstall(addon)
             raise AddonsError() from err
-        else:
-            self.local[slug] = addon
+
+        self.local[slug] = addon
 
         # Reload ingress tokens
         if addon.with_ingress:
@@ -198,8 +198,8 @@ class AddonManager(CoreSysAttributes):
             await addon.instance.remove()
         except DockerError as err:
             raise AddonsError() from err
-        else:
-            addon.state = AddonState.UNKNOWN
+
+        addon.state = AddonState.UNKNOWN
 
         await addon.unload()
 
@@ -328,9 +328,9 @@ class AddonManager(CoreSysAttributes):
             await addon.instance.install(addon.version)
         except DockerError as err:
             raise AddonsError() from err
-        else:
-            self.data.update(store)
-            _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
+
+        self.data.update(store)
+        _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
 
         # restore state
         if last_state == AddonState.STARTED:

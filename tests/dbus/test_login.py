@@ -18,6 +18,7 @@ async def fixture_logind_service(dbus_session_bus: MessageBus) -> LogindService:
 
 async def test_reboot(logind_service: LogindService, dbus_session_bus: MessageBus):
     """Test reboot."""
+    logind_service.Reboot.calls.clear()
     logind = Logind()
 
     with pytest.raises(DBusNotConnectedError):
@@ -31,6 +32,7 @@ async def test_reboot(logind_service: LogindService, dbus_session_bus: MessageBu
 
 async def test_power_off(logind_service: LogindService, dbus_session_bus: MessageBus):
     """Test power off."""
+    logind_service.PowerOff.calls.clear()
     logind = Logind()
 
     with pytest.raises(DBusNotConnectedError):

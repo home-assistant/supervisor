@@ -274,8 +274,8 @@ class DockerInterface(CoreSysAttributes):
                 f"Error happened on Content-Trust check for {image}:{version!s}: {err!s}",
                 _LOGGER.error,
             ) from err
-        else:
-            self._meta = docker_image.attrs
+
+        self._meta = docker_image.attrs
 
     def exists(self) -> Awaitable[bool]:
         """Return True if Docker image exists in local repository."""
@@ -694,8 +694,8 @@ class DockerInterface(CoreSysAttributes):
             raise DockerRequestError(
                 f"Communication issues with dockerd on Host: {err}", _LOGGER.warning
             ) from err
-        else:
-            _LOGGER.info("Found %s versions: %s", self.image, available_version)
+
+        _LOGGER.info("Found %s versions: %s", self.image, available_version)
 
         # Sort version and return latest version
         available_version.sort(reverse=True)

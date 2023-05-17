@@ -6,6 +6,7 @@ from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.dbus.resolved import Resolved
 
 DEFAULT_RANGE = "entries=:-100:"
 # pylint: disable=protected-access
@@ -107,13 +108,12 @@ async def test_api_host_features(
     assert "disk" in result["data"]["features"]
 
 
-async def test_api_llmnr_mdns_info(
-    api_client: TestClient, coresys_disk_info: CoreSys, dbus_is_connected
-):
+async def test_api_llmnr_mdns_info(api_client: TestClient, coresys_disk_info: CoreSys):
     """Test llmnr and mdns details in info."""
     coresys = coresys_disk_info
-
-    coresys.host.sys_dbus.resolved.is_connected = False
+    # pylint: disable=protected-access
+    coresys.host.sys_dbus._resolved = Resolved()
+    # pylint: enable=protected-access
 
     resp = await api_client.get("/host/info")
     result = await resp.json()
@@ -121,9 +121,7 @@ async def test_api_llmnr_mdns_info(
     assert result["data"]["broadcast_mdns"] is None
     assert result["data"]["llmnr_hostname"] is None
 
-    coresys.host.sys_dbus.resolved.is_connected = True
     await coresys.dbus.resolved.connect(coresys.dbus.bus)
-    await coresys.dbus.resolved.update()
 
     resp = await api_client.get("/host/info")
     result = await resp.json()

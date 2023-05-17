@@ -1,66 +1,92 @@
 """Test AppArmor/Agent dbus interface."""
-import asyncio
+# pylint: disable=import-error
 from pathlib import Path
 
+from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.coresys import CoreSys
+from supervisor.dbus.agent import OSAgent
 from supervisor.exceptions import DBusNotConnectedError
 
-from tests.common import fire_property_change_signal
+from tests.dbus_service_mocks.agent_apparmor import AppArmor as AppArmorService
+from tests.dbus_service_mocks.base import DBusServiceMock
 
 
-async def test_dbus_osagent_apparmor(coresys: CoreSys):
-    """Test coresys dbus connection."""
-    assert coresys.dbus.agent.apparmor.version is None
-
-    await coresys.dbus.agent.connect(coresys.dbus.bus)
-    await coresys.dbus.agent.update()
-
-    assert coresys.dbus.agent.apparmor.version == "2.13.2"
-
-    fire_property_change_signal(coresys.dbus.agent.apparmor, {"ParserVersion": "1.0.0"})
-    await asyncio.sleep(0)
-    assert coresys.dbus.agent.apparmor.version == "1.0.0"
-
-    fire_property_change_signal(coresys.dbus.agent.apparmor, {}, ["ParserVersion"])
-    await asyncio.sleep(0)
-    assert coresys.dbus.agent.apparmor.version == "2.13.2"
+@pytest.fixture(name="apparmor_service", autouse=True)
+async def fixture_apparmor_service(
+    os_agent_services: dict[str, DBusServiceMock]
+) -> AppArmorService:
+    """Mock AppArmor dbus service."""
+    yield os_agent_services["agent_apparmor"]
 
 
-async def test_dbus_osagent_apparmor_load(coresys: CoreSys, dbus: list[str]):
+async def test_dbus_osagent_apparmor(
+    apparmor_service: AppArmorService, dbus_session_bus: MessageBus
+):
+    """Test AppArmor properties."""
+    os_agent = OSAgent()
+
+    assert os_agent.apparmor.version is None
+
+    await os_agent.connect(dbus_session_bus)
+
+    assert os_agent.apparmor.version == "2.13.2"
+
+    apparmor_service.emit_properties_changed({"ParserVersion": "1.0.0"})
+    await apparmor_service.ping()
+    assert os_agent.apparmor.version == "1.0.0"
+
+    apparmor_service.emit_properties_changed({}, ["ParserVersion"])
+    await apparmor_service.ping()
+    await apparmor_service.ping()
+    assert os_agent.apparmor.version == "2.13.2"
+
+
+async def test_dbus_osagent_apparmor_load(
+    apparmor_service: AppArmorService, dbus_session_bus: MessageBus
+):
     """Load AppArmor Profile on host."""
+    apparmor_service.LoadProfile.calls.clear()
+    os_agent = OSAgent()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.agent.apparmor.load_profile(
+        await os_agent.apparmor.load_profile(
             Path("/data/apparmor/profile"), Path("/data/apparmor/cache")
         )
 
-    await coresys.dbus.agent.connect(coresys.dbus.bus)
+    await os_agent.connect(dbus_session_bus)
 
-    dbus.clear()
     assert (
-        await coresys.dbus.agent.apparmor.load_profile(
+        await os_agent.apparmor.load_profile(
             Path("/data/apparmor/profile"), Path("/data/apparmor/cache")
         )
         is None
     )
-    assert dbus == ["/io/hass/os/AppArmor-io.hass.os.AppArmor.LoadProfile"]
+    assert apparmor_service.LoadProfile.calls == [
+        ("/data/apparmor/profile", "/data/apparmor/cache")
+    ]
 
 
-async def test_dbus_osagent_apparmor_unload(coresys: CoreSys, dbus: list[str]):
+async def test_dbus_osagent_apparmor_unload(
+    apparmor_service: AppArmorService, dbus_session_bus: MessageBus
+):
     """Unload AppArmor Profile on host."""
+    apparmor_service.UnloadProfile.calls.clear()
+    os_agent = OSAgent()
+
     with pytest.raises(DBusNotConnectedError):
-        await coresys.dbus.agent.apparmor.unload_profile(
+        await os_agent.apparmor.unload_profile(
             Path("/data/apparmor/profile"), Path("/data/apparmor/cache")
         )
 
-    await coresys.dbus.agent.connect(coresys.dbus.bus)
+    await os_agent.connect(dbus_session_bus)
 
-    dbus.clear()
     assert (
-        await coresys.dbus.agent.apparmor.unload_profile(
+        await os_agent.apparmor.unload_profile(
             Path("/data/apparmor/profile"), Path("/data/apparmor/cache")
         )
         is None
     )
-    assert dbus == ["/io/hass/os/AppArmor-io.hass.os.AppArmor.UnloadProfile"]
+    assert apparmor_service.UnloadProfile.calls == [
+        ("/data/apparmor/profile", "/data/apparmor/cache")
+    ]

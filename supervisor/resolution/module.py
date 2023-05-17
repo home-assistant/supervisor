@@ -87,7 +87,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         # Event on issue creation
         self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.ISSUE_CHANGED, attr.asdict(issue)
+            WSEvent.ISSUE_CHANGED, self._make_issue_message(issue)
         )
 
     @property
@@ -112,7 +112,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         # Event on suggestion added to issue
         for issue in self.issues_for_suggestion(suggestion):
             self.sys_homeassistant.websocket.supervisor_event(
-                WSEvent.ISSUE_CHANGED, attr.asdict(issue)
+                WSEvent.ISSUE_CHANGED, self._make_issue_message(issue)
             )
 
     @property
@@ -145,6 +145,15 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
                 attr.asdict(HealthChanged(False, self.unhealthy)),
             )
 
+    def _make_issue_message(self, issue: Issue) -> dict[str, Any]:
+        """Make issue into message for core."""
+        return attr.asdict(issue) | {
+            "suggestions": [
+                attr.asdict(suggestion)
+                for suggestion in self.suggestions_for_issue(issue)
+            ]
+        }
+
     def get_suggestion(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid."""
         for suggestion in self._suggestions:
@@ -169,11 +178,19 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         suggestions: list[SuggestionType] | None = None,
     ) -> None:
         """Create issues and suggestion."""
+        self.add_issue(Issue(issue, context, reference), suggestions)
+
+    def add_issue(
+        self, issue: Issue, suggestions: list[SuggestionType] | None = None
+    ) -> None:
+        """Add an issue and suggestions."""
         if suggestions:
             for suggestion in suggestions:
-                self.suggestions = Suggestion(suggestion, context, reference)
+                self.suggestions = Suggestion(
+                    suggestion, issue.context, issue.reference
+                )
 
-        self.issues = Issue(issue, context, reference)
+        self.issues = issue
 
     async def load(self):
         """Load the resoulution manager."""
@@ -215,7 +232,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         # Event on suggestion removed from issues
         for issue in self.issues_for_suggestion(suggestion):
             self.sys_homeassistant.websocket.supervisor_event(
-                WSEvent.ISSUE_CHANGED, attr.asdict(issue)
+                WSEvent.ISSUE_CHANGED, self._make_issue_message(issue)
             )
 
     def dismiss_issue(self, issue: Issue) -> None:
@@ -230,6 +247,11 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.ISSUE_REMOVED, attr.asdict(issue)
         )
+
+        # Clean up any orphaned suggestions
+        for suggestion in self.suggestions_for_issue(issue):
+            if not self.issues_for_suggestion(suggestion):
+                self.dismiss_suggestion(suggestion)
 
     def dismiss_unsupported(self, reason: Issue) -> None:
         """Dismiss a reason for unsupported."""

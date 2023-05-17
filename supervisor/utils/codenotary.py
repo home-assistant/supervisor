@@ -43,11 +43,13 @@ def calc_checksum_path_sourcecode(folder: Path) -> str:
     return dirhash(folder.as_posix(), "sha256", match=["*.py"])
 
 
+# pylint: disable=unreachable
 async def cas_validate(
     signer: str,
     checksum: str,
 ) -> None:
     """Validate data against CodeNotary."""
+    return
     if (checksum, signer) in _CACHE:
         return
 

@@ -1,1 +1,3071 @@
-{"data":{"units":{"simple":{"degree":{"long":{"other":"{0} מעלות","one":"מעלה אחת","two":"שתי מעלות"},"short":{"other":"{0}°"},"narrow":{"other":"{0}°"},"perUnit":{}},"hectare":{"long":{"other":"{0} הקטאר","one":"הקטאר {0}"},"short":{"other":"‎{0} ha"},"narrow":{"other":"{0} הקטאר","one":"הקטאר {0}"},"perUnit":{}},"acre":{"long":{"other":"{0} אקר","one":"אקר {0}"},"short":{"other":"‎{0} ac","two":"{0} ac"},"narrow":{"other":"{0} אקר","one":"אקר {0}"},"perUnit":{}},"percent":{"long":{"other":"{0} אחוז"},"short":{"other":"{0}%"},"narrow":{"other":"{0}%"},"perUnit":{}},"liter-per-kilometer":{"long":{"other":"{0} ליטרים/קילומטר","one":"{0} ליטר/קילומטר"},"short":{"other":"{0} ל׳/ק״מ"},"narrow":{"other":"{0} ל׳/ק״מ"},"perUnit":{}},"mile-per-gallon":{"long":{"other":"{0} מייל/גלון"},"short":{"other":"{0} mpg"},"narrow":{"other":"{0} mpg"},"perUnit":{}},"petabyte":{"long":{"other":"{0} פטה-בייט"},"short":{"other":"{0} PB"},"narrow":{"other":"{0} PB"},"perUnit":{}},"terabyte":{"long":{"other":"טרה-בייט {0}"},"short":{"other":"{0} TB"},"narrow":{"other":"{0} TB"},"perUnit":{}},"terabit":{"long":{"other":"טרה-ביט {0}"},"short":{"other":"{0} Tb"},"narrow":{"other":"{0} Tb"},"perUnit":{}},"gigabyte":{"long":{"other":"{0} ג׳יגה-בייט"},"short":{"other":"{0} GB"},"narrow":{"other":"{0} ג״ב"},"perUnit":{}},"gigabit":{"long":{"other":"{0} ג'יגה-ביט"},"short":{"other":"{0} Gb"},"narrow":{"other":"{0} Gb"},"perUnit":{}},"megabyte":{"long":{"other":"{0} מגה-בייט","one":"מגה-בייט"},"short":{"other":"{0} MB"},"narrow":{"other":"{0} מ״ב"},"perUnit":{}},"megabit":{"long":{"other":"מגה-ביט {0}"},"short":{"other":"{0} Mb"},"narrow":{"other":"{0} Mb"},"perUnit":{}},"kilobyte":{"long":{"other":"{0} קילו-בייט"},"short":{"other":"{0} kB"},"narrow":{"other":"{0} ק״ב","one":"ק״ב {0}"},"perUnit":{}},"kilobit":{"long":{"other":"{0} קילוביט"},"short":{"other":"{0} kb"},"narrow":{"other":"{0} kb"},"perUnit":{}},"byte":{"long":{"other":"{0} בייט"},"short":{"other":"{0} בייט"},"narrow":{"other":"{0} בייט"},"perUnit":{}},"bit":{"long":{"other":"ביט {0}"},"short":{"other":"ביט {0}"},"narrow":{"other":"ביט {0}"},"perUnit":{}},"year":{"long":{"other":"{0} שנים","one":"שנה","two":"שנתיים"},"short":{"other":"{0} שנים","one":"שנה {0}"},"narrow":{"other":"{0} ש′","one":"ש′ {0}"},"perUnit":{"long":"‏{0} לשנה","short":"{0}/שנה","narrow":"{0}/שנה"}},"month":{"long":{"other":"{0} חודשים","one":"חודש","two":"חודשיים"},"short":{"other":"{0} ח׳","one":"חודש","two":"חודשיים"},"narrow":{"other":"{0} ח׳","one":"ח׳ {0}"},"perUnit":{"long":"‏{0} לחודש","short":"{0}/חודש","narrow":"{0}/חודש"}},"week":{"long":{"other":"{0} שבועות","one":"שבוע","two":"שבועיים"},"short":{"other":"{0} שבועות","one":"שבוע {0}","two":"שבועיים"},"narrow":{"other":"{0} ש′","one":"ש′ {0}"},"perUnit":{"long":"{0}/שבוע","short":"{0}/שבוע","narrow":"{0}/שבוע"}},"day":{"long":{"other":"{0} ימים","one":"יום {0}","two":"יומיים","many":"{0} יום"},"short":{"other":"{0} ימ׳","one":"יום","two":"יומיים"},"narrow":{"other":"{0} י׳","one":"י׳"},"perUnit":{"long":"{0}/יום","short":"{0}/יום","narrow":"{0}/יום"}},"hour":{"long":{"other":"{0} שעות","one":"שעה","two":"שעתיים"},"short":{"other":"{0} שע׳","one":"שעה","two":"שעתיים"},"narrow":{"other":"{0} שע׳","one":"שעה {0}"},"perUnit":{"long":"{0} לשעה","short":"{0}/שעה","narrow":"{0}/שעה"}},"minute":{"long":{"other":"{0} דקות","one":"דקה","two":"שתי דקות"},"short":{"other":"{0} דק׳","one":"דקה","two":"שתי דק׳"},"narrow":{"other":"{0} דק׳","one":"דקה","two":"שתי דק׳"},"perUnit":{"long":"{0}/דקה","short":"{0}/ד׳","narrow":"{0}/ד׳"}},"second":{"long":{"other":"{0} שניות","one":"שניה","two":"שתי שניות","many":"‏{0} שניות"},"short":{"other":"{0} שנ׳","one":"שנ׳","two":"שתי שנ׳"},"narrow":{"other":"{0} שנ׳","one":"שניה","two":"שתי שנ׳"},"perUnit":{"long":"{0} לשניה","short":"{0}/שנ׳","narrow":"{0}/שנ׳"}},"millisecond":{"long":{"other":"{0} אלפיות שנייה","one":"אלפית שנייה {0}"},"short":{"other":"{0} ms"},"narrow":{"other":"{0} ms"},"perUnit":{}},"kilometer":{"long":{"other":"{0} קילומטרים","one":"קילומטר {0}"},"short":{"other":"{0} ק״מ"},"narrow":{"other":"{0} ק״מ"},"perUnit":{"long":"{0} לקילומטר","short":"{0}/ק״מ","narrow":"{0}/ק״מ"}},"meter":{"long":{"other":"{0} מטרים","one":"מטר {0}"},"short":{"other":"{0} מ׳"},"narrow":{"other":"{0} מ׳","two":"{0} מ′"},"perUnit":{"long":"{0} למטר","short":"{0}/מ׳","narrow":"{0}/מ׳"}},"centimeter":{"long":{"other":"{0} סנטימטרים","one":"סנטימטר {0}"},"short":{"other":"{0} ס״מ"},"narrow":{"other":"{0} ס״מ","one":"ס\\\"מ {0}"},"perUnit":{"long":"{0} לסנטימטר","short":"{0}/ס״מ","narrow":"{0}/ס״מ"}},"millimeter":{"long":{"other":"{0} מילימטרים","one":"מילימטר {0}"},"short":{"other":"{0} מ״מ","one":"מ″מ {0}"},"narrow":{"other":"{0} מ״מ","one":"מ״מ {0}"},"perUnit":{}},"mile":{"long":{"other":"{0} מייל","one":"מייל {0}"},"short":{"other":"{0} מייל"},"narrow":{"other":"{0} מייל","one":"מייל {0}"},"perUnit":{}},"yard":{"long":{"other":"{0} יארד","one":"יארד {0}"},"short":{"other":"{0} יארד","one":"יארד {0}"},"narrow":{"other":"{0} יארד","one":"יארד {0}"},"perUnit":{}},"foot":{"long":{"other":"{0} רגל","one":"רגל {0}"},"short":{"other":"‎{0} ft"},"narrow":{"other":"{0} רגל","one":"רגל {0}"},"perUnit":{"long":"{0} לרגל","short":"‎{0}/ft","narrow":"{0}/רגל"}},"inch":{"long":{"other":"{0} אינץ׳","one":"אינץ׳ {0}"},"short":{"other":"‎{0} in"},"narrow":{"other":"{0} אינץ׳","one":"אינץ׳ {0}"},"perUnit":{"long":"{0} לאינץ׳","short":"‎{0}/in","narrow":"{0}/אינץ׳"}},"mile-scandinavian":{"long":{"other":"{0} מייל-סקנדינביה","one":"מייל-סקנדינביה {0}"},"short":{"other":"{0} smi"},"narrow":{"other":"{0} smi"},"perUnit":{}},"kilogram":{"long":{"other":"{0} קילוגרם","one":"קילוגרם {0}"},"short":{"other":"{0} ק״ג","one":"ק״ג {0}"},"narrow":{"other":"{0}kg"},"perUnit":{"long":"{0}/קילוגרם","short":"{0}/ק״ג","narrow":"{0}/ק״ג"}},"gram":{"long":{"other":"{0} גרם","one":"גרם {0}"},"short":{"other":"{0} גר׳","one":"גר׳ {0}"},"narrow":{"other":"{0}g"},"perUnit":{"long":"{0}/גרם","short":"{0}/גר׳","narrow":"{0}/גר׳"}},"stone":{"long":{"other":"{0} סטון","one":"סטון {0}"},"short":{"other":"{0} סטון","one":"סטון {0}"},"narrow":{"other":"{0} סטון","one":"סטון {0}"},"perUnit":{}},"pound":{"long":{"other":"{0} פאונד","one":"פאונד אחד","two":"שני פאונד"},"short":{"other":"{0} lbs","one":"{0} lb"},"narrow":{"other":"{0} lbs","one":"{0} lb"},"perUnit":{"long":"{0}/פאונד","short":"{0}/lb","narrow":"{0}/lb"}},"ounce":{"long":{"other":"{0} אונקיות","one":"אונקיה {0}"},"short":{"other":"{0} oz"},"narrow":{"other":"{0} oz"},"perUnit":{"long":"{0}/אונקיה","short":"{0}/oz","narrow":"{0}/oz"}},"kilometer-per-hour":{"long":{"other":"{0} קילומטר לשעה"},"short":{"other":"{0} קמ״ש"},"narrow":{"other":"{0} קמ״ש"},"perUnit":{}},"meter-per-second":{"long":{"other":"{0} מטר לשנייה"},"short":{"other":"{0} מ׳/שנ׳"},"narrow":{"other":"{0} מ/ש"},"perUnit":{}},"mile-per-hour":{"long":{"other":"{0} מייל לשעה"},"short":{"other":"{0} mph"},"narrow":{"other":"{0} mph"},"perUnit":{}},"celsius":{"long":{"other":"{0} מעלות צלזיוס","one":"מעלת צלזיוס {0}"},"short":{"other":"{0}°C"},"narrow":{"other":"{0}°C"},"perUnit":{}},"fahrenheit":{"long":{"other":"{0} מעלות פרנהייט","one":"מעלת פרנהייט {0}"},"short":{"other":"{0}°F"},"narrow":{"other":"{0}°F"},"perUnit":{}},"liter":{"long":{"other":"{0} ליטר","one":"ליטר {0}"},"short":{"other":"{0} ל׳","one":"ל׳ {0}"},"narrow":{"other":"{0} ל׳"},"perUnit":{"long":"{0}/ליטר","short":"{0}/ל׳","narrow":"{0}/ל׳"}},"milliliter":{"long":{"other":"{0} מיליליטר","one":"מיליליטר {0}"},"short":{"other":"{0} מ״ל","one":"מ״ל {0}"},"narrow":{"other":"{0} מ״ל","one":"מ״ל {0}"},"perUnit":{}},"gallon":{"long":{"other":"{0} גלונים","one":"גלון {0}"},"short":{"other":"{0} גל׳"},"narrow":{"other":"{0} גל׳"},"perUnit":{"long":"{0}/גלון","short":"{0}/גל׳","narrow":"{0}/גל׳"}},"fluid-ounce":{"long":{"other":"{0} אונקיות נוזלים","one":"אונקיית נוזלים {0}"},"short":{"other":"‎{0} fl oz"},"narrow":{"other":"‎{0} fl oz"},"perUnit":{}}},"compound":{"per":{"long":"{0} ל{1}","short":"{0}/{1}","narrow":"{0}/{1}"}}},"currencies":{"ADP":{"displayName":{"other":"פזטה אנדורית"},"symbol":"ADP","narrow":"ADP"},"AED":{"displayName":{"other":"דירהם של איחוד הנסיכויות הערביות"},"symbol":"AED","narrow":"AED"},"AFA":{"displayName":{"other":"AFA"},"symbol":"AFA","narrow":"AFA"},"AFN":{"displayName":{"other":"אפגני אפגני"},"symbol":"AFN","narrow":"؋"},"ALK":{"displayName":{"other":"ALK"},"symbol":"ALK","narrow":"ALK"},"ALL":{"displayName":{"other":"לק אלבני"},"symbol":"ALL","narrow":"ALL"},"AMD":{"displayName":{"other":"דראם ארמני"},"symbol":"AMD","narrow":"֏"},"ANG":{"displayName":{"other":"גילדר של האנטילים ההולנדיים"},"symbol":"ANG","narrow":"ANG"},"AOA":{"displayName":{"other":"קואנזה אנגולי"},"symbol":"AOA","narrow":"Kz"},"AOK":{"displayName":{"other":"AOK"},"symbol":"AOK","narrow":"AOK"},"AON":{"displayName":{"other":"קואנזה חדש אנגולי (1990–2000)"},"symbol":"AON","narrow":"AON"},"AOR":{"displayName":{"other":"קואנזה רג׳וסטדו אנגולי (1995–1999)"},"symbol":"AOR","narrow":"AOR"},"ARA":{"displayName":{"other":"ARA"},"symbol":"ARA","narrow":"ARA"},"ARL":{"displayName":{"other":"ARL"},"symbol":"ARL","narrow":"ARL"},"ARM":{"displayName":{"other":"ARM"},"symbol":"ARM","narrow":"ARM"},"ARP":{"displayName":{"other":"פזו ארגנטינאי (1983–1985)"},"symbol":"ARP","narrow":"ARP"},"ARS":{"displayName":{"other":"פסו ארגנטינאי"},"symbol":"ARS","narrow":"$"},"ATS":{"displayName":{"other":"שילינג אוסטרי"},"symbol":"ATS","narrow":"ATS"},"AUD":{"displayName":{"other":"דולר אוסטרלי"},"symbol":"A$","narrow":"$"},"AWG":{"displayName":{"other":"פלורין של ארובה"},"symbol":"AWG","narrow":"AWG"},"AZM":{"displayName":{"other":"מנאט אזרביג׳אני (1993–2006)"},"symbol":"AZM","narrow":"AZM"},"AZN":{"displayName":{"other":"מאנאט אזרבייג׳ני"},"symbol":"AZN","narrow":"₼"},"BAD":{"displayName":{"other":"דינר של בוסניה־הרצגובינה"},"symbol":"BAD","narrow":"BAD"},"BAM":{"displayName":{"other":"מארק סחיר של בוסניה והרצגובינה"},"symbol":"BAM","narrow":"KM"},"BAN":{"displayName":{"other":"BAN"},"symbol":"BAN","narrow":"BAN"},"BBD":{"displayName":{"other":"דולר ברבדיאני"},"symbol":"BBD","narrow":"$"},"BDT":{"displayName":{"other":"טאקה בנגלדשי"},"symbol":"BDT","narrow":"৳"},"BEC":{"displayName":{"other":"פרנק בלגי (בר המרה)"},"symbol":"BEC","narrow":"BEC"},"BEF":{"displayName":{"other":"פרנק בלגי"},"symbol":"BEF","narrow":"BEF"},"BEL":{"displayName":{"other":"BEL"},"symbol":"BEL","narrow":"BEL"},"BGL":{"displayName":{"other":"לב בולגרי ישן"},"symbol":"BGL","narrow":"BGL"},"BGM":{"displayName":{"other":"BGM"},"symbol":"BGM","narrow":"BGM"},"BGN":{"displayName":{"other":"לב בולגרי"},"symbol":"BGN","narrow":"BGN"},"BGO":{"displayName":{"other":"BGO"},"symbol":"BGO","narrow":"BGO"},"BHD":{"displayName":{"other":"דינר בחרייני"},"symbol":"BHD","narrow":"BHD"},"BIF":{"displayName":{"other":"פרנק בורונדי"},"symbol":"BIF","narrow":"BIF"},"BMD":{"displayName":{"other":"דולר ברמודה"},"symbol":"BMD","narrow":"$"},"BND":{"displayName":{"other":"דולר ברוניי"},"symbol":"BND","narrow":"$"},"BOB":{"displayName":{"other":"בוליביאנו"},"symbol":"BOB","narrow":"Bs"},"BOL":{"displayName":{"other":"BOL"},"symbol":"BOL","narrow":"BOL"},"BOP":{"displayName":{"other":"פזו בוליבי"},"symbol":"BOP","narrow":"BOP"},"BOV":{"displayName":{"other":"BOV"},"symbol":"BOV","narrow":"BOV"},"BRB":{"displayName":{"other":"קרוזיארו חדש ברזילאי (1967–1986)"},"symbol":"BRB","narrow":"BRB"},"BRC":{"displayName":{"other":"קרוזדו ברזילאי"},"symbol":"BRC","narrow":"BRC"},"BRE":{"displayName":{"other":"BRE"},"symbol":"BRE","narrow":"BRE"},"BRL":{"displayName":{"other":"ריאל ברזילאי"},"symbol":"R$","narrow":"R$"},"BRN":{"displayName":{"other":"BRN"},"symbol":"BRN","narrow":"BRN"},"BRR":{"displayName":{"other":"BRR"},"symbol":"BRR","narrow":"BRR"},"BRZ":{"displayName":{"other":"BRZ"},"symbol":"BRZ","narrow":"BRZ"},"BSD":{"displayName":{"other":"דולר בהאמי"},"symbol":"BSD","narrow":"$"},"BTN":{"displayName":{"other":"נגולטרום בהוטני"},"symbol":"BTN","narrow":"BTN"},"BUK":{"displayName":{"other":"BUK"},"symbol":"BUK","narrow":"BUK"},"BWP":{"displayName":{"other":"פולה בוטסואני"},"symbol":"BWP","narrow":"P"},"BYB":{"displayName":{"other":"BYB"},"symbol":"BYB","narrow":"BYB"},"BYN":{"displayName":{"other":"רובל בלרוסי"},"symbol":"BYN","narrow":"р"},"BYR":{"displayName":{"other":"רובל בלרוסי (2000–2016)"},"symbol":"BYR","narrow":"BYR"},"BZD":{"displayName":{"other":"דולר בליזי"},"symbol":"BZD","narrow":"$"},"CAD":{"displayName":{"other":"דולר קנדי"},"symbol":"CA$","narrow":"$"},"CDF":{"displayName":{"other":"פרנק קונגולזי"},"symbol":"CDF","narrow":"CDF"},"CHE":{"displayName":{"other":"CHE"},"symbol":"CHE","narrow":"CHE"},"CHF":{"displayName":{"other":"פרנק שוויצרי"},"symbol":"CHF","narrow":"CHF"},"CHW":{"displayName":{"other":"CHW"},"symbol":"CHW","narrow":"CHW"},"CLE":{"displayName":{"other":"CLE"},"symbol":"CLE","narrow":"CLE"},"CLF":{"displayName":{"other":"CLF"},"symbol":"CLF","narrow":"CLF"},"CLP":{"displayName":{"other":"פסו צ׳ילאני"},"symbol":"CLP","narrow":"$"},"CNH":{"displayName":{"other":"יואן סיני (CNH)"},"symbol":"CNH","narrow":"CNH"},"CNX":{"displayName":{"other":"CNX"},"symbol":"CNX","narrow":"CNX"},"CNY":{"displayName":{"other":"יואן סיני"},"symbol":"‎CN¥‎","narrow":"¥"},"COP":{"displayName":{"other":"פסו קולומביאני"},"symbol":"COP","narrow":"$"},"COU":{"displayName":{"other":"COU"},"symbol":"COU","narrow":"COU"},"CRC":{"displayName":{"other":"קולון קוסטה־ריקני"},"symbol":"CRC","narrow":"₡"},"CSD":{"displayName":{"other":"דינר סרבי ישן"},"symbol":"CSD","narrow":"CSD"},"CSK":{"displayName":{"other":"CSK"},"symbol":"CSK","narrow":"CSK"},"CUC":{"displayName":{"other":"פסו קובני להמרה"},"symbol":"CUC","narrow":"$"},"CUP":{"displayName":{"other":"פסו קובני"},"symbol":"CUP","narrow":"$"},"CVE":{"displayName":{"other":"אסקודו כף ורדה"},"symbol":"CVE","narrow":"CVE"},"CYP":{"displayName":{"other":"לירה קפריסאית"},"symbol":"CYP","narrow":"CYP"},"CZK":{"displayName":{"other":"קורונה צ׳כית"},"symbol":"CZK","narrow":"Kč"},"DDM":{"displayName":{"other":"מרק מזרח גרמני"},"symbol":"DDM","narrow":"DDM"},"DEM":{"displayName":{"other":"מרק גרמני"},"symbol":"DEM","narrow":"DEM"},"DJF":{"displayName":{"other":"פרנק ג׳יבוטי"},"symbol":"DJF","narrow":"DJF"},"DKK":{"displayName":{"other":"כתר דני"},"symbol":"DKK","narrow":"kr"},"DOP":{"displayName":{"other":"פסו דומיניקני"},"symbol":"DOP","narrow":"$"},"DZD":{"displayName":{"other":"דינר אלג׳ירי"},"symbol":"DZD","narrow":"DZD"},"ECS":{"displayName":{"other":"סוקר אקואדורי"},"symbol":"ECS","narrow":"ECS"},"ECV":{"displayName":{"other":"ECV"},"symbol":"ECV","narrow":"ECV"},"EEK":{"displayName":{"other":"קרון אסטוני"},"symbol":"EEK","narrow":"EEK"},"EGP":{"displayName":{"other":"לירה מצרית"},"symbol":"EGP","narrow":"E£"},"ERN":{"displayName":{"other":"נאקפה אריתראי"},"symbol":"ERN","narrow":"ERN"},"ESA":{"displayName":{"other":"ESA"},"symbol":"ESA","narrow":"ESA"},"ESB":{"displayName":{"other":"ESB"},"symbol":"ESB","narrow":"ESB"},"ESP":{"displayName":{"other":"פסטה ספרדי"},"symbol":"ESP","narrow":"₧"},"ETB":{"displayName":{"other":"ביר אתיופי"},"symbol":"ETB","narrow":"ETB"},"EUR":{"displayName":{"other":"אירו"},"symbol":"€","narrow":"€"},"FIM":{"displayName":{"other":"מרק פיני"},"symbol":"FIM","narrow":"FIM"},"FJD":{"displayName":{"other":"דולר פיג׳י"},"symbol":"FJD","narrow":"$"},"FKP":{"displayName":{"other":"לירה של איי פוקלנד"},"symbol":"FKP","narrow":"£"},"FRF":{"displayName":{"other":"פרנק צרפתי"},"symbol":"FRF","narrow":"FRF"},"GBP":{"displayName":{"other":"לירה שטרלינג"},"symbol":"£","narrow":"£"},"GEK":{"displayName":{"other":"GEK"},"symbol":"GEK","narrow":"GEK"},"GEL":{"displayName":{"other":"לארי גאורגי"},"symbol":"GEL","narrow":"₾"},"GHC":{"displayName":{"other":"GHC"},"symbol":"GHC","narrow":"GHC"},"GHS":{"displayName":{"other":"סדי גאני"},"symbol":"GHS","narrow":"GH₵"},"GIP":{"displayName":{"other":"פאונד גיברלטר"},"symbol":"GIP","narrow":"£"},"GMD":{"displayName":{"other":"דלסי גמבי"},"symbol":"GMD","narrow":"GMD"},"GNF":{"displayName":{"other":"פרנק גינאי"},"symbol":"GNF","narrow":"FG"},"GNS":{"displayName":{"other":"GNS"},"symbol":"GNS","narrow":"GNS"},"GQE":{"displayName":{"other":"GQE"},"symbol":"GQE","narrow":"GQE"},"GRD":{"displayName":{"other":"דרכמה"},"symbol":"GRD","narrow":"GRD"},"GTQ":{"displayName":{"other":"קצאל גואטמלי"},"symbol":"GTQ","narrow":"Q"},"GWE":{"displayName":{"other":"GWE"},"symbol":"GWE","narrow":"GWE"},"GWP":{"displayName":{"other":"פזו גינאי"},"symbol":"GWP","narrow":"GWP"},"GYD":{"displayName":{"other":"דולר גיאני"},"symbol":"GYD","narrow":"$"},"HKD":{"displayName":{"other":"דולר הונג קונגי"},"symbol":"HK$","narrow":"$"},"HNL":{"displayName":{"other":"למפירה הונדורי"},"symbol":"HNL","narrow":"L"},"HRD":{"displayName":{"other":"HRD"},"symbol":"HRD","narrow":"HRD"},"HRK":{"displayName":{"other":"קונה קרואטי"},"symbol":"HRK","narrow":"kn"},"HTG":{"displayName":{"other":"גורד האיטי"},"symbol":"HTG","narrow":"HTG"},"HUF":{"displayName":{"other":"פורינט הונגרי"},"symbol":"HUF","narrow":"Ft"},"IDR":{"displayName":{"other":"רופיה אינדונזית"},"symbol":"IDR","narrow":"Rp"},"IEP":{"displayName":{"other":"לירה אירית"},"symbol":"IEP","narrow":"IEP"},"ILP":{"displayName":{"other":"לירה ישראלית"},"symbol":"ל״י","narrow":"ל״י"},"ILR":{"displayName":{"other":"ILR"},"symbol":"ILR","narrow":"ILR"},"ILS":{"displayName":{"other":"שקלים חדשים","one":"שקל חדש"},"symbol":"₪","narrow":"₪"},"INR":{"displayName":{"other":"רופי הודי"},"symbol":"₹","narrow":"₹"},"IQD":{"displayName":{"other":"דינר עיראקי"},"symbol":"IQD","narrow":"IQD"},"IRR":{"displayName":{"other":"ריאל איראני"},"symbol":"IRR","narrow":"IRR"},"ISJ":{"displayName":{"other":"ISJ"},"symbol":"ISJ","narrow":"ISJ"},"ISK":{"displayName":{"other":"כתר איסלנדי"},"symbol":"ISK","narrow":"kr"},"ITL":{"displayName":{"other":"לירה איטלקית"},"symbol":"ITL","narrow":"ITL"},"JMD":{"displayName":{"other":"דולר ג׳מייקני"},"symbol":"JMD","narrow":"$"},"JOD":{"displayName":{"other":"דינר ירדני"},"symbol":"JOD","narrow":"JOD"},"JPY":{"displayName":{"other":"ין יפני"},"symbol":"¥","narrow":"¥"},"KES":{"displayName":{"other":"שילינג קנייתי"},"symbol":"KES","narrow":"KES"},"KGS":{"displayName":{"other":"סום קירגיזי"},"symbol":"KGS","narrow":"KGS"},"KHR":{"displayName":{"other":"ריל קמבודי"},"symbol":"KHR","narrow":"៛"},"KMF":{"displayName":{"other":"פרנק קומורואי"},"symbol":"KMF","narrow":"CF"},"KPW":{"displayName":{"other":"וון צפון קוריאני"},"symbol":"KPW","narrow":"₩"},"KRH":{"displayName":{"other":"KRH"},"symbol":"KRH","narrow":"KRH"},"KRO":{"displayName":{"other":"KRO"},"symbol":"KRO","narrow":"KRO"},"KRW":{"displayName":{"other":"וון דרום קוריאני"},"symbol":"₩","narrow":"₩"},"KWD":{"displayName":{"other":"דינר כוויתי"},"symbol":"KWD","narrow":"KWD"},"KYD":{"displayName":{"other":"דולר קיימני"},"symbol":"KYD","narrow":"$"},"KZT":{"displayName":{"other":"טנגה קזחסטני"},"symbol":"KZT","narrow":"₸"},"LAK":{"displayName":{"other":"קיפ לאי"},"symbol":"LAK","narrow":"₭"},"LBP":{"displayName":{"other":"לירה לבנונית"},"symbol":"LBP","narrow":"L£"},"LKR":{"displayName":{"other":"רופי סרי לנקי"},"symbol":"LKR","narrow":"Rs"},"LRD":{"displayName":{"other":"דולר ליברי"},"symbol":"LRD","narrow":"$"},"LSL":{"displayName":{"other":"לוטי לסותי"},"symbol":"LSL","narrow":"LSL"},"LTL":{"displayName":{"other":"ליטא ליטאי"},"symbol":"LTL","narrow":"Lt"},"LTT":{"displayName":{"other":"LTT"},"symbol":"LTT","narrow":"LTT"},"LUC":{"displayName":{"other":"LUC"},"symbol":"LUC","narrow":"LUC"},"LUF":{"displayName":{"other":"פרנק לוקסמבורגי"},"symbol":"LUF","narrow":"LUF"},"LUL":{"displayName":{"other":"LUL"},"symbol":"LUL","narrow":"LUL"},"LVL":{"displayName":{"other":"לט לטבי"},"symbol":"LVL","narrow":"Ls"},"LVR":{"displayName":{"other":"LVR"},"symbol":"LVR","narrow":"LVR"},"LYD":{"displayName":{"other":"דינר לובי"},"symbol":"LYD","narrow":"LYD"},"MAD":{"displayName":{"other":"דירהם מרוקאי"},"symbol":"MAD","narrow":"MAD"},"MAF":{"displayName":{"other":"פרנק מרוקאי"},"symbol":"MAF","narrow":"MAF"},"MCF":{"displayName":{"other":"MCF"},"symbol":"MCF","narrow":"MCF"},"MDC":{"displayName":{"other":"MDC"},"symbol":"MDC","narrow":"MDC"},"MDL":{"displayName":{"other":"לאו מולדובני"},"symbol":"MDL","narrow":"MDL"},"MGA":{"displayName":{"other":"אריארי מלגשי"},"symbol":"MGA","narrow":"Ar"},"MGF":{"displayName":{"other":"פרנק מדגסקארי"},"symbol":"MGF","narrow":"MGF"},"MKD":{"displayName":{"other":"דינר מקדוני"},"symbol":"MKD","narrow":"MKD"},"MKN":{"displayName":{"other":"MKN"},"symbol":"MKN","narrow":"MKN"},"MLF":{"displayName":{"other":"MLF"},"symbol":"MLF","narrow":"MLF"},"MMK":{"displayName":{"other":"קיאט מיאנמרי"},"symbol":"MMK","narrow":"K"},"MNT":{"displayName":{"other":"טוגרוג מונגולי"},"symbol":"MNT","narrow":"₮"},"MOP":{"displayName":{"other":"פטקה של מקאו"},"symbol":"MOP","narrow":"MOP"},"MRO":{"displayName":{"other":"אואוגויה מאוריטני (1973–2017)"},"symbol":"MRO","narrow":"MRO"},"MRU":{"displayName":{"other":"אואוגויה מאוריטני"},"symbol":"MRU","narrow":"MRU"},"MTL":{"displayName":{"other":"לירה מלטית"},"symbol":"MTL","narrow":"MTL"},"MTP":{"displayName":{"other":"MTP"},"symbol":"MTP","narrow":"MTP"},"MUR":{"displayName":{"other":"רופי מאוריציני"},"symbol":"MUR","narrow":"Rs"},"MVP":{"displayName":{"other":"MVP"},"symbol":"MVP","narrow":"MVP"},"MVR":{"displayName":{"other":"רופיה מלדיבית"},"symbol":"MVR","narrow":"MVR"},"MWK":{"displayName":{"other":"קואצ׳ה מלאווי"},"symbol":"MWK","narrow":"MWK"},"MXN":{"displayName":{"other":"פסו מקסיקני"},"symbol":"MX$","narrow":"$"},"MXP":{"displayName":{"other":"פסו מקסיקני (1861 – 1992)"},"symbol":"MXP","narrow":"MXP"},"MXV":{"displayName":{"other":"יחידות השקעות מקסיקניות","one":"יחידת השקעות מקסיקנית"},"symbol":"MXV","narrow":"MXV"},"MYR":{"displayName":{"other":"רינגיט מלזי"},"symbol":"MYR","narrow":"RM"},"MZE":{"displayName":{"other":"אסקודואים מוזמביקיים","one":"אסקודו מוזמביקי","many":"אסקודו מוזמביקי"},"symbol":"MZE","narrow":"MZE"},"MZM":{"displayName":{"other":"מטיקל"},"symbol":"MZM","narrow":"MZM"},"MZN":{"displayName":{"other":"מטיקל מוזמביני"},"symbol":"MZN","narrow":"MZN"},"NAD":{"displayName":{"other":"דולר נמיבי"},"symbol":"NAD","narrow":"$"},"NGN":{"displayName":{"other":"נאירה ניגרי"},"symbol":"NGN","narrow":"₦"},"NIC":{"displayName":{"other":"קורדובות (1988–1991)","one":"קורדובה (1988–1991)"},"symbol":"NIC","narrow":"NIC"},"NIO":{"displayName":{"other":"קורדובה ניקרגואה"},"symbol":"NIO","narrow":"C$"},"NLG":{"displayName":{"other":"גילדן הולנדי"},"symbol":"NLG","narrow":"NLG"},"NOK":{"displayName":{"other":"כתר נורווגי"},"symbol":"NOK","narrow":"kr"},"NPR":{"displayName":{"other":"רופי נפאלי"},"symbol":"NPR","narrow":"Rs"},"NZD":{"displayName":{"other":"דולר ניו זילנדי"},"symbol":"NZ$","narrow":"$"},"OMR":{"displayName":{"other":"ריאל עומאני"},"symbol":"OMR","narrow":"OMR"},"PAB":{"displayName":{"other":"בלבואה פנמי"},"symbol":"PAB","narrow":"PAB"},"PEI":{"displayName":{"other":"PEI"},"symbol":"PEI","narrow":"PEI"},"PEN":{"displayName":{"other":"סול פרואני"},"symbol":"PEN","narrow":"PEN"},"PES":{"displayName":{"other":"PES"},"symbol":"PES","narrow":"PES"},"PGK":{"displayName":{"other":"קינה של פפואה גינאה החדשה"},"symbol":"PGK","narrow":"PGK"},"PHP":{"displayName":{"other":"פזו פיליפיני"},"symbol":"PHP","narrow":"₱"},"PKR":{"displayName":{"other":"רופי פקיסטני"},"symbol":"PKR","narrow":"Rs"},"PLN":{"displayName":{"other":"זלוטי פולני"},"symbol":"PLN","narrow":"zł"},"PLZ":{"displayName":{"other":"PLZ"},"symbol":"PLZ","narrow":"PLZ"},"PTE":{"displayName":{"other":"אסקודו פורטוגלי"},"symbol":"PTE","narrow":"PTE"},"PYG":{"displayName":{"other":"גוארני פרגוואי"},"symbol":"PYG","narrow":"₲"},"QAR":{"displayName":{"other":"ריאל קטארי"},"symbol":"QAR","narrow":"QAR"},"RHD":{"displayName":{"other":"RHD"},"symbol":"RHD","narrow":"RHD"},"ROL":{"displayName":{"other":"לאו רומני ישן"},"symbol":"ROL","narrow":"ROL"},"RON":{"displayName":{"other":"לאו רומני"},"symbol":"RON","narrow":"lei"},"RSD":{"displayName":{"other":"דינר סרבי"},"symbol":"RSD","narrow":"RSD"},"RUB":{"displayName":{"other":"רובל רוסי"},"symbol":"RUB","narrow":"₽"},"RUR":{"displayName":{"other":"רובל רוסי (1991 – 1998)"},"symbol":"RUR","narrow":"RUR"},"RWF":{"displayName":{"other":"פרנק רואנדי"},"symbol":"RWF","narrow":"RF"},"SAR":{"displayName":{"other":"ריאל סעודי"},"symbol":"SAR","narrow":"SAR"},"SBD":{"displayName":{"other":"דולר איי שלמה"},"symbol":"SBD","narrow":"$"},"SCR":{"displayName":{"other":"רופי סיישלי"},"symbol":"SCR","narrow":"SCR"},"SDD":{"displayName":{"other":"דינר סודני"},"symbol":"SDD","narrow":"SDD"},"SDG":{"displayName":{"other":"לירה סודנית"},"symbol":"SDG","narrow":"SDG"},"SDP":{"displayName":{"other":"לירה סודנית (1957–1998)"},"symbol":"SDP","narrow":"SDP"},"SEK":{"displayName":{"other":"כתר שוודי"},"symbol":"SEK","narrow":"kr"},"SGD":{"displayName":{"other":"דולר סינגפורי"},"symbol":"SGD","narrow":"$"},"SHP":{"displayName":{"other":"פאונד סנט הלני"},"symbol":"SHP","narrow":"£"},"SIT":{"displayName":{"other":"טולאר סלובני"},"symbol":"SIT","narrow":"SIT"},"SKK":{"displayName":{"other":"קורונה סלובקי"},"symbol":"SKK","narrow":"SKK"},"SLL":{"displayName":{"other":"ליאון סיירה לאוני"},"symbol":"SLL","narrow":"SLL"},"SOS":{"displayName":{"other":"שילינג סומלי"},"symbol":"SOS","narrow":"SOS"},"SRD":{"displayName":{"other":"דולר סורינאמי"},"symbol":"SRD","narrow":"$"},"SRG":{"displayName":{"other":"גילדר סורינאמי"},"symbol":"SRG","narrow":"SRG"},"SSP":{"displayName":{"other":"לירה דרום-סודנית"},"symbol":"SSP","narrow":"£"},"STD":{"displayName":{"other":"דוברה של סן טומה ופרינסיפה (1977–2017)"},"symbol":"STD","narrow":"STD"},"STN":{"displayName":{"other":"דוברה של סאו טומה ופרינסיפה"},"symbol":"STN","narrow":"Db"},"SUR":{"displayName":{"other":"רובל סובייטי"},"symbol":"SUR","narrow":"SUR"},"SVC":{"displayName":{"other":"קולונים סלבדוריים","one":"קולון סלבדורי","many":"קולון סלבדורי"},"symbol":"SVC","narrow":"SVC"},"SYP":{"displayName":{"other":"לירה סורית"},"symbol":"SYP","narrow":"£"},"SZL":{"displayName":{"other":"לילנגני סווזילנדי"},"symbol":"SZL","narrow":"SZL"},"THB":{"displayName":{"other":"בהט תאילנדי"},"symbol":"฿","narrow":"฿"},"TJR":{"displayName":{"other":"TJR"},"symbol":"TJR","narrow":"TJR"},"TJS":{"displayName":{"other":"סומוני טג׳קיסטני"},"symbol":"TJS","narrow":"TJS"},"TMM":{"displayName":{"other":"מנאט טורקמאני"},"symbol":"TMM","narrow":"TMM"},"TMT":{"displayName":{"other":"מאנאט טורקמני"},"symbol":"TMT","narrow":"TMT"},"TND":{"displayName":{"other":"דינר טוניסאי"},"symbol":"TND","narrow":"TND"},"TOP":{"displayName":{"other":"פאנגה טונגי"},"symbol":"TOP","narrow":"T$"},"TPE":{"displayName":{"other":"אסקודו טימוראי"},"symbol":"TPE","narrow":"TPE"},"TRL":{"displayName":{"other":"לירה טורקית"},"symbol":"TRL","narrow":"TRL"},"TRY":{"displayName":{"other":"לירה טורקית חדשה"},"symbol":"TRY","narrow":"₺"},"TTD":{"displayName":{"other":"דולר טרינידדי"},"symbol":"TTD","narrow":"$"},"TWD":{"displayName":{"other":"דולר טייוואני חדש"},"symbol":"NT$","narrow":"NT$"},"TZS":{"displayName":{"other":"שילינג טנזני"},"symbol":"TZS","narrow":"TZS"},"UAH":{"displayName":{"other":"הריבנה אוקראיני"},"symbol":"UAH","narrow":"₴"},"UAK":{"displayName":{"other":"UAK"},"symbol":"UAK","narrow":"UAK"},"UGS":{"displayName":{"other":"שילינג אוגנדי (1966 – 1987)"},"symbol":"UGS","narrow":"UGS"},"UGX":{"displayName":{"other":"שילינג אוגנדי"},"symbol":"UGX","narrow":"UGX"},"USD":{"displayName":{"other":"דולר אמריקאי"},"symbol":"$","narrow":"$"},"USN":{"displayName":{"other":"דולר אמריקאי (היום הבא)"},"symbol":"USN","narrow":"USN"},"USS":{"displayName":{"other":"דולר אמריקאי (היום הזה)"},"symbol":"USS","narrow":"USS"},"UYI":{"displayName":{"other":"UYI"},"symbol":"UYI","narrow":"UYI"},"UYP":{"displayName":{"other":"UYP"},"symbol":"UYP","narrow":"UYP"},"UYU":{"displayName":{"other":"פסו אורוגוואי"},"symbol":"UYU","narrow":"$"},"UYW":{"displayName":{"other":"UYW"},"symbol":"UYW","narrow":"UYW"},"UZS":{"displayName":{"other":"סום אוזבקי"},"symbol":"UZS","narrow":"UZS"},"VEB":{"displayName":{"other":"בוליבר ונצואלי (1871–2008)"},"symbol":"VEB","narrow":"VEB"},"VEF":{"displayName":{"other":"בוליבר ונצואלי (2008–2018)"},"symbol":"VEF","narrow":"Bs"},"VES":{"displayName":{"other":"בוליבר ונצואלי"},"symbol":"VES","narrow":"VES"},"VND":{"displayName":{"other":"דונג וייטנאמי"},"symbol":"₫","narrow":"₫"},"VNN":{"displayName":{"other":"VNN"},"symbol":"VNN","narrow":"VNN"},"VUV":{"displayName":{"other":"ואטו של ונואטו"},"symbol":"VUV","narrow":"VUV"},"WST":{"displayName":{"other":"טאלה סמואי"},"symbol":"WST","narrow":"WST"},"XAF":{"displayName":{"other":"פרנק CFA מרכז אפריקני"},"symbol":"FCFA","narrow":"FCFA"},"XAG":{"displayName":{"other":"כסף"},"symbol":"XAG","narrow":"XAG"},"XAU":{"displayName":{"other":"זהב"},"symbol":"XAU","narrow":"XAU"},"XBA":{"displayName":{"other":"XBA"},"symbol":"XBA","narrow":"XBA"},"XBB":{"displayName":{"other":"XBB"},"symbol":"XBB","narrow":"XBB"},"XBC":{"displayName":{"other":"XBC"},"symbol":"XBC","narrow":"XBC"},"XBD":{"displayName":{"other":"XBD"},"symbol":"XBD","narrow":"XBD"},"XCD":{"displayName":{"other":"דולר מזרח קריבי"},"symbol":"EC$","narrow":"$"},"XDR":{"displayName":{"other":"זכויות משיכה מיוחדות"},"symbol":"XDR","narrow":"XDR"},"XEU":{"displayName":{"other":"XEU"},"symbol":"XEU","narrow":"XEU"},"XFO":{"displayName":{"other":"פרנק זהב"},"symbol":"XFO","narrow":"XFO"},"XFU":{"displayName":{"other":"XFU"},"symbol":"XFU","narrow":"XFU"},"XOF":{"displayName":{"other":"פרנק CFA מערב אפריקני"},"symbol":"F CFA","narrow":"F CFA"},"XPD":{"displayName":{"other":"פלדיום"},"symbol":"XPD","narrow":"XPD"},"XPF":{"displayName":{"other":"פרנק פולינזיה הצרפתית"},"symbol":"CFPF","narrow":"CFPF"},"XPT":{"displayName":{"other":"פלטינה"},"symbol":"XPT","narrow":"XPT"},"XRE":{"displayName":{"other":"XRE"},"symbol":"XRE","narrow":"XRE"},"XSU":{"displayName":{"other":"XSU"},"symbol":"XSU","narrow":"XSU"},"XTS":{"displayName":{"other":"סימון למטרות בדיקה"},"symbol":"XTS","narrow":"XTS"},"XUA":{"displayName":{"other":"XUA"},"symbol":"XUA","narrow":"XUA"},"XXX":{"displayName":{"other":"(מטבע שאינו ידוע)"},"symbol":"¤","narrow":"¤"},"YDD":{"displayName":{"other":"דינר תימני"},"symbol":"YDD","narrow":"YDD"},"YER":{"displayName":{"other":"ריאל תימני"},"symbol":"YER","narrow":"YER"},"YUD":{"displayName":{"other":"YUD"},"symbol":"YUD","narrow":"YUD"},"YUM":{"displayName":{"other":"YUM"},"symbol":"YUM","narrow":"YUM"},"YUN":{"displayName":{"other":"YUN"},"symbol":"YUN","narrow":"YUN"},"YUR":{"displayName":{"other":"YUR"},"symbol":"YUR","narrow":"YUR"},"ZAL":{"displayName":{"other":"ראנד דרום אפריקאי (כספי)"},"symbol":"ZAL","narrow":"ZAL"},"ZAR":{"displayName":{"other":"ראנד דרום אפריקאי"},"symbol":"ZAR","narrow":"R"},"ZMK":{"displayName":{"other":"קוואצ׳ה זמבית (1968–2012)"},"symbol":"ZMK","narrow":"ZMK"},"ZMW":{"displayName":{"other":"קוואצ׳ה זמבי"},"symbol":"ZMW","narrow":"ZK"},"ZRN":{"displayName":{"other":"זאיר חדש"},"symbol":"ZRN","narrow":"ZRN"},"ZRZ":{"displayName":{"other":"ZRZ"},"symbol":"ZRZ","narrow":"ZRZ"},"ZWD":{"displayName":{"other":"דולר זימבבואי"},"symbol":"ZWD","narrow":"ZWD"},"ZWL":{"displayName":{"other":"ZWL"},"symbol":"ZWL","narrow":"ZWL"},"ZWR":{"displayName":{"other":"ZWR"},"symbol":"ZWR","narrow":"ZWR"}},"numbers":{"nu":["latn"],"symbols":{"latn":{"decimal":".","group":",","list":";","percentSign":"%","plusSign":"‎+","minusSign":"‎-","approximatelySign":"~","exponential":"E","superscriptingExponent":"×","perMille":"‰","infinity":"∞","nan":"NaN","timeSeparator":":","rangeSign":"–"}},"percent":{"latn":"#,##0%"},"decimal":{"latn":{"standard":"#,##0.###","long":{"1000":{"other":"‏0 אלף"},"10000":{"other":"‏00 אלף"},"100000":{"other":"‏000 אלף"},"1000000":{"other":"‏0 מיליון"},"10000000":{"other":"‏00 מיליון"},"100000000":{"other":"‏000 מיליון"},"1000000000":{"other":"‏0 מיליארד"},"10000000000":{"other":"‏00 מיליארד"},"100000000000":{"other":"‏000 מיליארד"},"1000000000000":{"other":"‏0 טריליון"},"10000000000000":{"other":"‏00 טריליון"},"100000000000000":{"other":"‏000 טריליון"}},"short":{"1000":{"other":"0K‏"},"10000":{"other":"00K‏"},"100000":{"other":"000K‏"},"1000000":{"other":"0M‏"},"10000000":{"other":"00M‏"},"100000000":{"other":"000M‏"},"1000000000":{"other":"0B‏"},"10000000000":{"other":"00B‏"},"100000000000":{"other":"000B‏"},"1000000000000":{"other":"0T‏"},"10000000000000":{"other":"00T‏"},"100000000000000":{"other":"000T‏"}}}},"currency":{"latn":{"currencySpacing":{"beforeInsertBetween":" ","afterInsertBetween":" "},"standard":"‏#,##0.00 ¤;‏-#,##0.00 ¤","accounting":"#,##0.00 ¤","unitPattern":"{0} {1}","short":{"1000":{"other":"¤0K‏"},"10000":{"other":"¤00K‏"},"100000":{"other":"¤000K‏"},"1000000":{"other":"¤0M‏"},"10000000":{"other":"¤00M‏"},"100000000":{"other":"¤000M‏"},"1000000000":{"other":"¤0B‏"},"10000000000":{"other":"¤00B‏"},"100000000000":{"other":"¤000B‏"},"1000000000000":{"other":"¤0T‏"},"10000000000000":{"other":"¤00T‏"},"100000000000000":{"other":"¤000T‏"}}}}},"nu":["latn"]},"locale":"he"}
+{
+  "data": {
+    "currencies": {
+      "ADP": {
+        "displayName": {
+          "other": "פזטה אנדורית"
+        },
+        "narrow": "ADP",
+        "symbol": "ADP"
+      },
+      "AED": {
+        "displayName": {
+          "other": "דירהם של איחוד הנסיכויות הערביות"
+        },
+        "narrow": "AED",
+        "symbol": "AED"
+      },
+      "AFA": {
+        "displayName": {
+          "other": "AFA"
+        },
+        "narrow": "AFA",
+        "symbol": "AFA"
+      },
+      "AFN": {
+        "displayName": {
+          "other": "אפגני אפגני"
+        },
+        "narrow": "؋",
+        "symbol": "AFN"
+      },
+      "ALK": {
+        "displayName": {
+          "other": "ALK"
+        },
+        "narrow": "ALK",
+        "symbol": "ALK"
+      },
+      "ALL": {
+        "displayName": {
+          "other": "לק אלבני"
+        },
+        "narrow": "ALL",
+        "symbol": "ALL"
+      },
+      "AMD": {
+        "displayName": {
+          "other": "דראם ארמני"
+        },
+        "narrow": "֏",
+        "symbol": "AMD"
+      },
+      "ANG": {
+        "displayName": {
+          "other": "גילדר של האנטילים ההולנדיים"
+        },
+        "narrow": "ANG",
+        "symbol": "ANG"
+      },
+      "AOA": {
+        "displayName": {
+          "other": "קואנזה אנגולי"
+        },
+        "narrow": "Kz",
+        "symbol": "AOA"
+      },
+      "AOK": {
+        "displayName": {
+          "other": "AOK"
+        },
+        "narrow": "AOK",
+        "symbol": "AOK"
+      },
+      "AON": {
+        "displayName": {
+          "other": "קואנזה חדש אנגולי (1990–2000)"
+        },
+        "narrow": "AON",
+        "symbol": "AON"
+      },
+      "AOR": {
+        "displayName": {
+          "other": "קואנזה רג׳וסטדו אנגולי (1995–1999)"
+        },
+        "narrow": "AOR",
+        "symbol": "AOR"
+      },
+      "ARA": {
+        "displayName": {
+          "other": "ARA"
+        },
+        "narrow": "ARA",
+        "symbol": "ARA"
+      },
+      "ARL": {
+        "displayName": {
+          "other": "ARL"
+        },
+        "narrow": "ARL",
+        "symbol": "ARL"
+      },
+      "ARM": {
+        "displayName": {
+          "other": "ARM"
+        },
+        "narrow": "ARM",
+        "symbol": "ARM"
+      },
+      "ARP": {
+        "displayName": {
+          "other": "פזו ארגנטינאי (1983–1985)"
+        },
+        "narrow": "ARP",
+        "symbol": "ARP"
+      },
+      "ARS": {
+        "displayName": {
+          "other": "פסו ארגנטינאי"
+        },
+        "narrow": "$",
+        "symbol": "ARS"
+      },
+      "ATS": {
+        "displayName": {
+          "other": "שילינג אוסטרי"
+        },
+        "narrow": "ATS",
+        "symbol": "ATS"
+      },
+      "AUD": {
+        "displayName": {
+          "other": "דולר אוסטרלי"
+        },
+        "narrow": "$",
+        "symbol": "A$"
+      },
+      "AWG": {
+        "displayName": {
+          "other": "פלורין של ארובה"
+        },
+        "narrow": "AWG",
+        "symbol": "AWG"
+      },
+      "AZM": {
+        "displayName": {
+          "other": "מנאט אזרביג׳אני (1993–2006)"
+        },
+        "narrow": "AZM",
+        "symbol": "AZM"
+      },
+      "AZN": {
+        "displayName": {
+          "other": "מאנאט אזרבייג׳ני"
+        },
+        "narrow": "₼",
+        "symbol": "AZN"
+      },
+      "BAD": {
+        "displayName": {
+          "other": "דינר של בוסניה־הרצגובינה"
+        },
+        "narrow": "BAD",
+        "symbol": "BAD"
+      },
+      "BAM": {
+        "displayName": {
+          "other": "מארק סחיר של בוסניה והרצגובינה"
+        },
+        "narrow": "KM",
+        "symbol": "BAM"
+      },
+      "BAN": {
+        "displayName": {
+          "other": "BAN"
+        },
+        "narrow": "BAN",
+        "symbol": "BAN"
+      },
+      "BBD": {
+        "displayName": {
+          "other": "דולר ברבדיאני"
+        },
+        "narrow": "$",
+        "symbol": "BBD"
+      },
+      "BDT": {
+        "displayName": {
+          "other": "טאקה בנגלדשי"
+        },
+        "narrow": "৳",
+        "symbol": "BDT"
+      },
+      "BEC": {
+        "displayName": {
+          "other": "פרנק בלגי (בר המרה)"
+        },
+        "narrow": "BEC",
+        "symbol": "BEC"
+      },
+      "BEF": {
+        "displayName": {
+          "other": "פרנק בלגי"
+        },
+        "narrow": "BEF",
+        "symbol": "BEF"
+      },
+      "BEL": {
+        "displayName": {
+          "other": "BEL"
+        },
+        "narrow": "BEL",
+        "symbol": "BEL"
+      },
+      "BGL": {
+        "displayName": {
+          "other": "לב בולגרי ישן"
+        },
+        "narrow": "BGL",
+        "symbol": "BGL"
+      },
+      "BGM": {
+        "displayName": {
+          "other": "BGM"
+        },
+        "narrow": "BGM",
+        "symbol": "BGM"
+      },
+      "BGN": {
+        "displayName": {
+          "other": "לב בולגרי"
+        },
+        "narrow": "BGN",
+        "symbol": "BGN"
+      },
+      "BGO": {
+        "displayName": {
+          "other": "BGO"
+        },
+        "narrow": "BGO",
+        "symbol": "BGO"
+      },
+      "BHD": {
+        "displayName": {
+          "other": "דינר בחרייני"
+        },
+        "narrow": "BHD",
+        "symbol": "BHD"
+      },
+      "BIF": {
+        "displayName": {
+          "other": "פרנק בורונדי"
+        },
+        "narrow": "BIF",
+        "symbol": "BIF"
+      },
+      "BMD": {
+        "displayName": {
+          "other": "דולר ברמודה"
+        },
+        "narrow": "$",
+        "symbol": "BMD"
+      },
+      "BND": {
+        "displayName": {
+          "other": "דולר ברוניי"
+        },
+        "narrow": "$",
+        "symbol": "BND"
+      },
+      "BOB": {
+        "displayName": {
+          "other": "בוליביאנו"
+        },
+        "narrow": "Bs",
+        "symbol": "BOB"
+      },
+      "BOL": {
+        "displayName": {
+          "other": "BOL"
+        },
+        "narrow": "BOL",
+        "symbol": "BOL"
+      },
+      "BOP": {
+        "displayName": {
+          "other": "פזו בוליבי"
+        },
+        "narrow": "BOP",
+        "symbol": "BOP"
+      },
+      "BOV": {
+        "displayName": {
+          "other": "BOV"
+        },
+        "narrow": "BOV",
+        "symbol": "BOV"
+      },
+      "BRB": {
+        "displayName": {
+          "other": "קרוזיארו חדש ברזילאי (1967–1986)"
+        },
+        "narrow": "BRB",
+        "symbol": "BRB"
+      },
+      "BRC": {
+        "displayName": {
+          "other": "קרוזדו ברזילאי"
+        },
+        "narrow": "BRC",
+        "symbol": "BRC"
+      },
+      "BRE": {
+        "displayName": {
+          "other": "BRE"
+        },
+        "narrow": "BRE",
+        "symbol": "BRE"
+      },
+      "BRL": {
+        "displayName": {
+          "other": "ריאל ברזילאי"
+        },
+        "narrow": "R$",
+        "symbol": "R$"
+      },
+      "BRN": {
+        "displayName": {
+          "other": "BRN"
+        },
+        "narrow": "BRN",
+        "symbol": "BRN"
+      },
+      "BRR": {
+        "displayName": {
+          "other": "BRR"
+        },
+        "narrow": "BRR",
+        "symbol": "BRR"
+      },
+      "BRZ": {
+        "displayName": {
+          "other": "BRZ"
+        },
+        "narrow": "BRZ",
+        "symbol": "BRZ"
+      },
+      "BSD": {
+        "displayName": {
+          "other": "דולר בהאמי"
+        },
+        "narrow": "$",
+        "symbol": "BSD"
+      },
+      "BTN": {
+        "displayName": {
+          "other": "נגולטרום בהוטני"
+        },
+        "narrow": "BTN",
+        "symbol": "BTN"
+      },
+      "BUK": {
+        "displayName": {
+          "other": "BUK"
+        },
+        "narrow": "BUK",
+        "symbol": "BUK"
+      },
+      "BWP": {
+        "displayName": {
+          "other": "פולה בוטסואני"
+        },
+        "narrow": "P",
+        "symbol": "BWP"
+      },
+      "BYB": {
+        "displayName": {
+          "other": "BYB"
+        },
+        "narrow": "BYB",
+        "symbol": "BYB"
+      },
+      "BYN": {
+        "displayName": {
+          "other": "רובל בלרוסי"
+        },
+        "narrow": "р",
+        "symbol": "BYN"
+      },
+      "BYR": {
+        "displayName": {
+          "other": "רובל בלרוסי (2000–2016)"
+        },
+        "narrow": "BYR",
+        "symbol": "BYR"
+      },
+      "BZD": {
+        "displayName": {
+          "other": "דולר בליזי"
+        },
+        "narrow": "$",
+        "symbol": "BZD"
+      },
+      "CAD": {
+        "displayName": {
+          "other": "דולר קנדי"
+        },
+        "narrow": "$",
+        "symbol": "CA$"
+      },
+      "CDF": {
+        "displayName": {
+          "other": "פרנק קונגולזי"
+        },
+        "narrow": "CDF",
+        "symbol": "CDF"
+      },
+      "CHE": {
+        "displayName": {
+          "other": "CHE"
+        },
+        "narrow": "CHE",
+        "symbol": "CHE"
+      },
+      "CHF": {
+        "displayName": {
+          "other": "פרנק שוויצרי"
+        },
+        "narrow": "CHF",
+        "symbol": "CHF"
+      },
+      "CHW": {
+        "displayName": {
+          "other": "CHW"
+        },
+        "narrow": "CHW",
+        "symbol": "CHW"
+      },
+      "CLE": {
+        "displayName": {
+          "other": "CLE"
+        },
+        "narrow": "CLE",
+        "symbol": "CLE"
+      },
+      "CLF": {
+        "displayName": {
+          "other": "CLF"
+        },
+        "narrow": "CLF",
+        "symbol": "CLF"
+      },
+      "CLP": {
+        "displayName": {
+          "other": "פסו צ׳ילאני"
+        },
+        "narrow": "$",
+        "symbol": "CLP"
+      },
+      "CNH": {
+        "displayName": {
+          "other": "יואן סיני (CNH)"
+        },
+        "narrow": "CNH",
+        "symbol": "CNH"
+      },
+      "CNX": {
+        "displayName": {
+          "other": "CNX"
+        },
+        "narrow": "CNX",
+        "symbol": "CNX"
+      },
+      "CNY": {
+        "displayName": {
+          "other": "יואן סיני"
+        },
+        "narrow": "¥",
+        "symbol": "‎CN¥‎"
+      },
+      "COP": {
+        "displayName": {
+          "other": "פסו קולומביאני"
+        },
+        "narrow": "$",
+        "symbol": "COP"
+      },
+      "COU": {
+        "displayName": {
+          "other": "COU"
+        },
+        "narrow": "COU",
+        "symbol": "COU"
+      },
+      "CRC": {
+        "displayName": {
+          "other": "קולון קוסטה־ריקני"
+        },
+        "narrow": "₡",
+        "symbol": "CRC"
+      },
+      "CSD": {
+        "displayName": {
+          "other": "דינר סרבי ישן"
+        },
+        "narrow": "CSD",
+        "symbol": "CSD"
+      },
+      "CSK": {
+        "displayName": {
+          "other": "CSK"
+        },
+        "narrow": "CSK",
+        "symbol": "CSK"
+      },
+      "CUC": {
+        "displayName": {
+          "other": "פסו קובני להמרה"
+        },
+        "narrow": "$",
+        "symbol": "CUC"
+      },
+      "CUP": {
+        "displayName": {
+          "other": "פסו קובני"
+        },
+        "narrow": "$",
+        "symbol": "CUP"
+      },
+      "CVE": {
+        "displayName": {
+          "other": "אסקודו כף ורדה"
+        },
+        "narrow": "CVE",
+        "symbol": "CVE"
+      },
+      "CYP": {
+        "displayName": {
+          "other": "לירה קפריסאית"
+        },
+        "narrow": "CYP",
+        "symbol": "CYP"
+      },
+      "CZK": {
+        "displayName": {
+          "other": "קורונה צ׳כית"
+        },
+        "narrow": "Kč",
+        "symbol": "CZK"
+      },
+      "DDM": {
+        "displayName": {
+          "other": "מרק מזרח גרמני"
+        },
+        "narrow": "DDM",
+        "symbol": "DDM"
+      },
+      "DEM": {
+        "displayName": {
+          "other": "מרק גרמני"
+        },
+        "narrow": "DEM",
+        "symbol": "DEM"
+      },
+      "DJF": {
+        "displayName": {
+          "other": "פרנק ג׳יבוטי"
+        },
+        "narrow": "DJF",
+        "symbol": "DJF"
+      },
+      "DKK": {
+        "displayName": {
+          "other": "כתר דני"
+        },
+        "narrow": "kr",
+        "symbol": "DKK"
+      },
+      "DOP": {
+        "displayName": {
+          "other": "פסו דומיניקני"
+        },
+        "narrow": "$",
+        "symbol": "DOP"
+      },
+      "DZD": {
+        "displayName": {
+          "other": "דינר אלג׳ירי"
+        },
+        "narrow": "DZD",
+        "symbol": "DZD"
+      },
+      "ECS": {
+        "displayName": {
+          "other": "סוקר אקואדורי"
+        },
+        "narrow": "ECS",
+        "symbol": "ECS"
+      },
+      "ECV": {
+        "displayName": {
+          "other": "ECV"
+        },
+        "narrow": "ECV",
+        "symbol": "ECV"
+      },
+      "EEK": {
+        "displayName": {
+          "other": "קרון אסטוני"
+        },
+        "narrow": "EEK",
+        "symbol": "EEK"
+      },
+      "EGP": {
+        "displayName": {
+          "other": "לירה מצרית"
+        },
+        "narrow": "E£",
+        "symbol": "EGP"
+      },
+      "ERN": {
+        "displayName": {
+          "other": "נאקפה אריתראי"
+        },
+        "narrow": "ERN",
+        "symbol": "ERN"
+      },
+      "ESA": {
+        "displayName": {
+          "other": "ESA"
+        },
+        "narrow": "ESA",
+        "symbol": "ESA"
+      },
+      "ESB": {
+        "displayName": {
+          "other": "ESB"
+        },
+        "narrow": "ESB",
+        "symbol": "ESB"
+      },
+      "ESP": {
+        "displayName": {
+          "other": "פסטה ספרדי"
+        },
+        "narrow": "₧",
+        "symbol": "ESP"
+      },
+      "ETB": {
+        "displayName": {
+          "other": "ביר אתיופי"
+        },
+        "narrow": "ETB",
+        "symbol": "ETB"
+      },
+      "EUR": {
+        "displayName": {
+          "other": "אירו"
+        },
+        "narrow": "€",
+        "symbol": "€"
+      },
+      "FIM": {
+        "displayName": {
+          "other": "מרק פיני"
+        },
+        "narrow": "FIM",
+        "symbol": "FIM"
+      },
+      "FJD": {
+        "displayName": {
+          "other": "דולר פיג׳י"
+        },
+        "narrow": "$",
+        "symbol": "FJD"
+      },
+      "FKP": {
+        "displayName": {
+          "other": "לירה של איי פוקלנד"
+        },
+        "narrow": "£",
+        "symbol": "FKP"
+      },
+      "FRF": {
+        "displayName": {
+          "other": "פרנק צרפתי"
+        },
+        "narrow": "FRF",
+        "symbol": "FRF"
+      },
+      "GBP": {
+        "displayName": {
+          "other": "לירה שטרלינג"
+        },
+        "narrow": "£",
+        "symbol": "£"
+      },
+      "GEK": {
+        "displayName": {
+          "other": "GEK"
+        },
+        "narrow": "GEK",
+        "symbol": "GEK"
+      },
+      "GEL": {
+        "displayName": {
+          "other": "לארי גאורגי"
+        },
+        "narrow": "₾",
+        "symbol": "GEL"
+      },
+      "GHC": {
+        "displayName": {
+          "other": "GHC"
+        },
+        "narrow": "GHC",
+        "symbol": "GHC"
+      },
+      "GHS": {
+        "displayName": {
+          "other": "סדי גאני"
+        },
+        "narrow": "GH₵",
+        "symbol": "GHS"
+      },
+      "GIP": {
+        "displayName": {
+          "other": "פאונד גיברלטר"
+        },
+        "narrow": "£",
+        "symbol": "GIP"
+      },
+      "GMD": {
+        "displayName": {
+          "other": "דלסי גמבי"
+        },
+        "narrow": "GMD",
+        "symbol": "GMD"
+      },
+      "GNF": {
+        "displayName": {
+          "other": "פרנק גינאי"
+        },
+        "narrow": "FG",
+        "symbol": "GNF"
+      },
+      "GNS": {
+        "displayName": {
+          "other": "GNS"
+        },
+        "narrow": "GNS",
+        "symbol": "GNS"
+      },
+      "GQE": {
+        "displayName": {
+          "other": "GQE"
+        },
+        "narrow": "GQE",
+        "symbol": "GQE"
+      },
+      "GRD": {
+        "displayName": {
+          "other": "דרכמה"
+        },
+        "narrow": "GRD",
+        "symbol": "GRD"
+      },
+      "GTQ": {
+        "displayName": {
+          "other": "קצאל גואטמלי"
+        },
+        "narrow": "Q",
+        "symbol": "GTQ"
+      },
+      "GWE": {
+        "displayName": {
+          "other": "GWE"
+        },
+        "narrow": "GWE",
+        "symbol": "GWE"
+      },
+      "GWP": {
+        "displayName": {
+          "other": "פזו גינאי"
+        },
+        "narrow": "GWP",
+        "symbol": "GWP"
+      },
+      "GYD": {
+        "displayName": {
+          "other": "דולר גיאני"
+        },
+        "narrow": "$",
+        "symbol": "GYD"
+      },
+      "HKD": {
+        "displayName": {
+          "other": "דולר הונג קונגי"
+        },
+        "narrow": "$",
+        "symbol": "HK$"
+      },
+      "HNL": {
+        "displayName": {
+          "other": "למפירה הונדורי"
+        },
+        "narrow": "L",
+        "symbol": "HNL"
+      },
+      "HRD": {
+        "displayName": {
+          "other": "HRD"
+        },
+        "narrow": "HRD",
+        "symbol": "HRD"
+      },
+      "HRK": {
+        "displayName": {
+          "other": "קונה קרואטי"
+        },
+        "narrow": "kn",
+        "symbol": "HRK"
+      },
+      "HTG": {
+        "displayName": {
+          "other": "גורד האיטי"
+        },
+        "narrow": "HTG",
+        "symbol": "HTG"
+      },
+      "HUF": {
+        "displayName": {
+          "other": "פורינט הונגרי"
+        },
+        "narrow": "Ft",
+        "symbol": "HUF"
+      },
+      "IDR": {
+        "displayName": {
+          "other": "רופיה אינדונזית"
+        },
+        "narrow": "Rp",
+        "symbol": "IDR"
+      },
+      "IEP": {
+        "displayName": {
+          "other": "לירה אירית"
+        },
+        "narrow": "IEP",
+        "symbol": "IEP"
+      },
+      "ILP": {
+        "displayName": {
+          "other": "לירה ישראלית"
+        },
+        "narrow": "ל״י",
+        "symbol": "ל״י"
+      },
+      "ILR": {
+        "displayName": {
+          "other": "ILR"
+        },
+        "narrow": "ILR",
+        "symbol": "ILR"
+      },
+      "ILS": {
+        "displayName": {
+          "one": "שקל חדש",
+          "other": "שקלים חדשים"
+        },
+        "narrow": "₪",
+        "symbol": "₪"
+      },
+      "INR": {
+        "displayName": {
+          "other": "רופי הודי"
+        },
+        "narrow": "₹",
+        "symbol": "₹"
+      },
+      "IQD": {
+        "displayName": {
+          "other": "דינר עיראקי"
+        },
+        "narrow": "IQD",
+        "symbol": "IQD"
+      },
+      "IRR": {
+        "displayName": {
+          "other": "ריאל איראני"
+        },
+        "narrow": "IRR",
+        "symbol": "IRR"
+      },
+      "ISJ": {
+        "displayName": {
+          "other": "ISJ"
+        },
+        "narrow": "ISJ",
+        "symbol": "ISJ"
+      },
+      "ISK": {
+        "displayName": {
+          "other": "כתר איסלנדי"
+        },
+        "narrow": "kr",
+        "symbol": "ISK"
+      },
+      "ITL": {
+        "displayName": {
+          "other": "לירה איטלקית"
+        },
+        "narrow": "ITL",
+        "symbol": "ITL"
+      },
+      "JMD": {
+        "displayName": {
+          "other": "דולר ג׳מייקני"
+        },
+        "narrow": "$",
+        "symbol": "JMD"
+      },
+      "JOD": {
+        "displayName": {
+          "other": "דינר ירדני"
+        },
+        "narrow": "JOD",
+        "symbol": "JOD"
+      },
+      "JPY": {
+        "displayName": {
+          "other": "ין יפני"
+        },
+        "narrow": "¥",
+        "symbol": "¥"
+      },
+      "KES": {
+        "displayName": {
+          "other": "שילינג קנייתי"
+        },
+        "narrow": "KES",
+        "symbol": "KES"
+      },
+      "KGS": {
+        "displayName": {
+          "other": "סום קירגיזי"
+        },
+        "narrow": "KGS",
+        "symbol": "KGS"
+      },
+      "KHR": {
+        "displayName": {
+          "other": "ריל קמבודי"
+        },
+        "narrow": "៛",
+        "symbol": "KHR"
+      },
+      "KMF": {
+        "displayName": {
+          "other": "פרנק קומורואי"
+        },
+        "narrow": "CF",
+        "symbol": "KMF"
+      },
+      "KPW": {
+        "displayName": {
+          "other": "וון צפון קוריאני"
+        },
+        "narrow": "₩",
+        "symbol": "KPW"
+      },
+      "KRH": {
+        "displayName": {
+          "other": "KRH"
+        },
+        "narrow": "KRH",
+        "symbol": "KRH"
+      },
+      "KRO": {
+        "displayName": {
+          "other": "KRO"
+        },
+        "narrow": "KRO",
+        "symbol": "KRO"
+      },
+      "KRW": {
+        "displayName": {
+          "other": "וון דרום קוריאני"
+        },
+        "narrow": "₩",
+        "symbol": "₩"
+      },
+      "KWD": {
+        "displayName": {
+          "other": "דינר כוויתי"
+        },
+        "narrow": "KWD",
+        "symbol": "KWD"
+      },
+      "KYD": {
+        "displayName": {
+          "other": "דולר קיימני"
+        },
+        "narrow": "$",
+        "symbol": "KYD"
+      },
+      "KZT": {
+        "displayName": {
+          "other": "טנגה קזחסטני"
+        },
+        "narrow": "₸",
+        "symbol": "KZT"
+      },
+      "LAK": {
+        "displayName": {
+          "other": "קיפ לאי"
+        },
+        "narrow": "₭",
+        "symbol": "LAK"
+      },
+      "LBP": {
+        "displayName": {
+          "other": "לירה לבנונית"
+        },
+        "narrow": "L£",
+        "symbol": "LBP"
+      },
+      "LKR": {
+        "displayName": {
+          "other": "רופי סרי לנקי"
+        },
+        "narrow": "Rs",
+        "symbol": "LKR"
+      },
+      "LRD": {
+        "displayName": {
+          "other": "דולר ליברי"
+        },
+        "narrow": "$",
+        "symbol": "LRD"
+      },
+      "LSL": {
+        "displayName": {
+          "other": "לוטי לסותי"
+        },
+        "narrow": "LSL",
+        "symbol": "LSL"
+      },
+      "LTL": {
+        "displayName": {
+          "other": "ליטא ליטאי"
+        },
+        "narrow": "Lt",
+        "symbol": "LTL"
+      },
+      "LTT": {
+        "displayName": {
+          "other": "LTT"
+        },
+        "narrow": "LTT",
+        "symbol": "LTT"
+      },
+      "LUC": {
+        "displayName": {
+          "other": "LUC"
+        },
+        "narrow": "LUC",
+        "symbol": "LUC"
+      },
+      "LUF": {
+        "displayName": {
+          "other": "פרנק לוקסמבורגי"
+        },
+        "narrow": "LUF",
+        "symbol": "LUF"
+      },
+      "LUL": {
+        "displayName": {
+          "other": "LUL"
+        },
+        "narrow": "LUL",
+        "symbol": "LUL"
+      },
+      "LVL": {
+        "displayName": {
+          "other": "לט לטבי"
+        },
+        "narrow": "Ls",
+        "symbol": "LVL"
+      },
+      "LVR": {
+        "displayName": {
+          "other": "LVR"
+        },
+        "narrow": "LVR",
+        "symbol": "LVR"
+      },
+      "LYD": {
+        "displayName": {
+          "other": "דינר לובי"
+        },
+        "narrow": "LYD",
+        "symbol": "LYD"
+      },
+      "MAD": {
+        "displayName": {
+          "other": "דירהם מרוקאי"
+        },
+        "narrow": "MAD",
+        "symbol": "MAD"
+      },
+      "MAF": {
+        "displayName": {
+          "other": "פרנק מרוקאי"
+        },
+        "narrow": "MAF",
+        "symbol": "MAF"
+      },
+      "MCF": {
+        "displayName": {
+          "other": "MCF"
+        },
+        "narrow": "MCF",
+        "symbol": "MCF"
+      },
+      "MDC": {
+        "displayName": {
+          "other": "MDC"
+        },
+        "narrow": "MDC",
+        "symbol": "MDC"
+      },
+      "MDL": {
+        "displayName": {
+          "other": "לאו מולדובני"
+        },
+        "narrow": "MDL",
+        "symbol": "MDL"
+      },
+      "MGA": {
+        "displayName": {
+          "other": "אריארי מלגשי"
+        },
+        "narrow": "Ar",
+        "symbol": "MGA"
+      },
+      "MGF": {
+        "displayName": {
+          "other": "פרנק מדגסקארי"
+        },
+        "narrow": "MGF",
+        "symbol": "MGF"
+      },
+      "MKD": {
+        "displayName": {
+          "other": "דינר מקדוני"
+        },
+        "narrow": "MKD",
+        "symbol": "MKD"
+      },
+      "MKN": {
+        "displayName": {
+          "other": "MKN"
+        },
+        "narrow": "MKN",
+        "symbol": "MKN"
+      },
+      "MLF": {
+        "displayName": {
+          "other": "MLF"
+        },
+        "narrow": "MLF",
+        "symbol": "MLF"
+      },
+      "MMK": {
+        "displayName": {
+          "other": "קיאט מיאנמרי"
+        },
+        "narrow": "K",
+        "symbol": "MMK"
+      },
+      "MNT": {
+        "displayName": {
+          "other": "טוגרוג מונגולי"
+        },
+        "narrow": "₮",
+        "symbol": "MNT"
+      },
+      "MOP": {
+        "displayName": {
+          "other": "פטקה של מקאו"
+        },
+        "narrow": "MOP",
+        "symbol": "MOP"
+      },
+      "MRO": {
+        "displayName": {
+          "other": "אואוגויה מאוריטני (1973–2017)"
+        },
+        "narrow": "MRO",
+        "symbol": "MRO"
+      },
+      "MRU": {
+        "displayName": {
+          "other": "אואוגויה מאוריטני"
+        },
+        "narrow": "MRU",
+        "symbol": "MRU"
+      },
+      "MTL": {
+        "displayName": {
+          "other": "לירה מלטית"
+        },
+        "narrow": "MTL",
+        "symbol": "MTL"
+      },
+      "MTP": {
+        "displayName": {
+          "other": "MTP"
+        },
+        "narrow": "MTP",
+        "symbol": "MTP"
+      },
+      "MUR": {
+        "displayName": {
+          "other": "רופי מאוריציני"
+        },
+        "narrow": "Rs",
+        "symbol": "MUR"
+      },
+      "MVP": {
+        "displayName": {
+          "other": "MVP"
+        },
+        "narrow": "MVP",
+        "symbol": "MVP"
+      },
+      "MVR": {
+        "displayName": {
+          "other": "רופיה מלדיבית"
+        },
+        "narrow": "MVR",
+        "symbol": "MVR"
+      },
+      "MWK": {
+        "displayName": {
+          "other": "קואצ׳ה מלאווי"
+        },
+        "narrow": "MWK",
+        "symbol": "MWK"
+      },
+      "MXN": {
+        "displayName": {
+          "other": "פסו מקסיקני"
+        },
+        "narrow": "$",
+        "symbol": "MX$"
+      },
+      "MXP": {
+        "displayName": {
+          "other": "פסו מקסיקני (1861 – 1992)"
+        },
+        "narrow": "MXP",
+        "symbol": "MXP"
+      },
+      "MXV": {
+        "displayName": {
+          "one": "יחידת השקעות מקסיקנית",
+          "other": "יחידות השקעות מקסיקניות"
+        },
+        "narrow": "MXV",
+        "symbol": "MXV"
+      },
+      "MYR": {
+        "displayName": {
+          "other": "רינגיט מלזי"
+        },
+        "narrow": "RM",
+        "symbol": "MYR"
+      },
+      "MZE": {
+        "displayName": {
+          "many": "אסקודו מוזמביקי",
+          "one": "אסקודו מוזמביקי",
+          "other": "אסקודואים מוזמביקיים"
+        },
+        "narrow": "MZE",
+        "symbol": "MZE"
+      },
+      "MZM": {
+        "displayName": {
+          "other": "מטיקל"
+        },
+        "narrow": "MZM",
+        "symbol": "MZM"
+      },
+      "MZN": {
+        "displayName": {
+          "other": "מטיקל מוזמביני"
+        },
+        "narrow": "MZN",
+        "symbol": "MZN"
+      },
+      "NAD": {
+        "displayName": {
+          "other": "דולר נמיבי"
+        },
+        "narrow": "$",
+        "symbol": "NAD"
+      },
+      "NGN": {
+        "displayName": {
+          "other": "נאירה ניגרי"
+        },
+        "narrow": "₦",
+        "symbol": "NGN"
+      },
+      "NIC": {
+        "displayName": {
+          "one": "קורדובה (1988–1991)",
+          "other": "קורדובות (1988–1991)"
+        },
+        "narrow": "NIC",
+        "symbol": "NIC"
+      },
+      "NIO": {
+        "displayName": {
+          "other": "קורדובה ניקרגואה"
+        },
+        "narrow": "C$",
+        "symbol": "NIO"
+      },
+      "NLG": {
+        "displayName": {
+          "other": "גילדן הולנדי"
+        },
+        "narrow": "NLG",
+        "symbol": "NLG"
+      },
+      "NOK": {
+        "displayName": {
+          "other": "כתר נורווגי"
+        },
+        "narrow": "kr",
+        "symbol": "NOK"
+      },
+      "NPR": {
+        "displayName": {
+          "other": "רופי נפאלי"
+        },
+        "narrow": "Rs",
+        "symbol": "NPR"
+      },
+      "NZD": {
+        "displayName": {
+          "other": "דולר ניו זילנדי"
+        },
+        "narrow": "$",
+        "symbol": "NZ$"
+      },
+      "OMR": {
+        "displayName": {
+          "other": "ריאל עומאני"
+        },
+        "narrow": "OMR",
+        "symbol": "OMR"
+      },
+      "PAB": {
+        "displayName": {
+          "other": "בלבואה פנמי"
+        },
+        "narrow": "PAB",
+        "symbol": "PAB"
+      },
+      "PEI": {
+        "displayName": {
+          "other": "PEI"
+        },
+        "narrow": "PEI",
+        "symbol": "PEI"
+      },
+      "PEN": {
+        "displayName": {
+          "other": "סול פרואני"
+        },
+        "narrow": "PEN",
+        "symbol": "PEN"
+      },
+      "PES": {
+        "displayName": {
+          "other": "PES"
+        },
+        "narrow": "PES",
+        "symbol": "PES"
+      },
+      "PGK": {
+        "displayName": {
+          "other": "קינה של פפואה גינאה החדשה"
+        },
+        "narrow": "PGK",
+        "symbol": "PGK"
+      },
+      "PHP": {
+        "displayName": {
+          "other": "פזו פיליפיני"
+        },
+        "narrow": "₱",
+        "symbol": "PHP"
+      },
+      "PKR": {
+        "displayName": {
+          "other": "רופי פקיסטני"
+        },
+        "narrow": "Rs",
+        "symbol": "PKR"
+      },
+      "PLN": {
+        "displayName": {
+          "other": "זלוטי פולני"
+        },
+        "narrow": "zł",
+        "symbol": "PLN"
+      },
+      "PLZ": {
+        "displayName": {
+          "other": "PLZ"
+        },
+        "narrow": "PLZ",
+        "symbol": "PLZ"
+      },
+      "PTE": {
+        "displayName": {
+          "other": "אסקודו פורטוגלי"
+        },
+        "narrow": "PTE",
+        "symbol": "PTE"
+      },
+      "PYG": {
+        "displayName": {
+          "other": "גוארני פרגוואי"
+        },
+        "narrow": "₲",
+        "symbol": "PYG"
+      },
+      "QAR": {
+        "displayName": {
+          "other": "ריאל קטארי"
+        },
+        "narrow": "QAR",
+        "symbol": "QAR"
+      },
+      "RHD": {
+        "displayName": {
+          "other": "RHD"
+        },
+        "narrow": "RHD",
+        "symbol": "RHD"
+      },
+      "ROL": {
+        "displayName": {
+          "other": "לאו רומני ישן"
+        },
+        "narrow": "ROL",
+        "symbol": "ROL"
+      },
+      "RON": {
+        "displayName": {
+          "other": "לאו רומני"
+        },
+        "narrow": "lei",
+        "symbol": "RON"
+      },
+      "RSD": {
+        "displayName": {
+          "other": "דינר סרבי"
+        },
+        "narrow": "RSD",
+        "symbol": "RSD"
+      },
+      "RUB": {
+        "displayName": {
+          "other": "רובל רוסי"
+        },
+        "narrow": "₽",
+        "symbol": "RUB"
+      },
+      "RUR": {
+        "displayName": {
+          "other": "רובל רוסי (1991 – 1998)"
+        },
+        "narrow": "RUR",
+        "symbol": "RUR"
+      },
+      "RWF": {
+        "displayName": {
+          "other": "פרנק רואנדי"
+        },
+        "narrow": "RF",
+        "symbol": "RWF"
+      },
+      "SAR": {
+        "displayName": {
+          "other": "ריאל סעודי"
+        },
+        "narrow": "SAR",
+        "symbol": "SAR"
+      },
+      "SBD": {
+        "displayName": {
+          "other": "דולר איי שלמה"
+        },
+        "narrow": "$",
+        "symbol": "SBD"
+      },
+      "SCR": {
+        "displayName": {
+          "other": "רופי סיישלי"
+        },
+        "narrow": "SCR",
+        "symbol": "SCR"
+      },
+      "SDD": {
+        "displayName": {
+          "other": "דינר סודני"
+        },
+        "narrow": "SDD",
+        "symbol": "SDD"
+      },
+      "SDG": {
+        "displayName": {
+          "other": "לירה סודנית"
+        },
+        "narrow": "SDG",
+        "symbol": "SDG"
+      },
+      "SDP": {
+        "displayName": {
+          "other": "לירה סודנית (1957–1998)"
+        },
+        "narrow": "SDP",
+        "symbol": "SDP"
+      },
+      "SEK": {
+        "displayName": {
+          "other": "כתר שוודי"
+        },
+        "narrow": "kr",
+        "symbol": "SEK"
+      },
+      "SGD": {
+        "displayName": {
+          "other": "דולר סינגפורי"
+        },
+        "narrow": "$",
+        "symbol": "SGD"
+      },
+      "SHP": {
+        "displayName": {
+          "other": "פאונד סנט הלני"
+        },
+        "narrow": "£",
+        "symbol": "SHP"
+      },
+      "SIT": {
+        "displayName": {
+          "other": "טולאר סלובני"
+        },
+        "narrow": "SIT",
+        "symbol": "SIT"
+      },
+      "SKK": {
+        "displayName": {
+          "other": "קורונה סלובקי"
+        },
+        "narrow": "SKK",
+        "symbol": "SKK"
+      },
+      "SLL": {
+        "displayName": {
+          "other": "ליאון סיירה לאוני"
+        },
+        "narrow": "SLL",
+        "symbol": "SLL"
+      },
+      "SOS": {
+        "displayName": {
+          "other": "שילינג סומלי"
+        },
+        "narrow": "SOS",
+        "symbol": "SOS"
+      },
+      "SRD": {
+        "displayName": {
+          "other": "דולר סורינאמי"
+        },
+        "narrow": "$",
+        "symbol": "SRD"
+      },
+      "SRG": {
+        "displayName": {
+          "other": "גילדר סורינאמי"
+        },
+        "narrow": "SRG",
+        "symbol": "SRG"
+      },
+      "SSP": {
+        "displayName": {
+          "other": "לירה דרום-סודנית"
+        },
+        "narrow": "£",
+        "symbol": "SSP"
+      },
+      "STD": {
+        "displayName": {
+          "other": "דוברה של סן טומה ופרינסיפה (1977–2017)"
+        },
+        "narrow": "STD",
+        "symbol": "STD"
+      },
+      "STN": {
+        "displayName": {
+          "other": "דוברה של סאו טומה ופרינסיפה"
+        },
+        "narrow": "Db",
+        "symbol": "STN"
+      },
+      "SUR": {
+        "displayName": {
+          "other": "רובל סובייטי"
+        },
+        "narrow": "SUR",
+        "symbol": "SUR"
+      },
+      "SVC": {
+        "displayName": {
+          "many": "קולון סלבדורי",
+          "one": "קולון סלבדורי",
+          "other": "קולונים סלבדוריים"
+        },
+        "narrow": "SVC",
+        "symbol": "SVC"
+      },
+      "SYP": {
+        "displayName": {
+          "other": "לירה סורית"
+        },
+        "narrow": "£",
+        "symbol": "SYP"
+      },
+      "SZL": {
+        "displayName": {
+          "other": "לילנגני סווזילנדי"
+        },
+        "narrow": "SZL",
+        "symbol": "SZL"
+      },
+      "THB": {
+        "displayName": {
+          "other": "בהט תאילנדי"
+        },
+        "narrow": "฿",
+        "symbol": "฿"
+      },
+      "TJR": {
+        "displayName": {
+          "other": "TJR"
+        },
+        "narrow": "TJR",
+        "symbol": "TJR"
+      },
+      "TJS": {
+        "displayName": {
+          "other": "סומוני טג׳קיסטני"
+        },
+        "narrow": "TJS",
+        "symbol": "TJS"
+      },
+      "TMM": {
+        "displayName": {
+          "other": "מנאט טורקמאני"
+        },
+        "narrow": "TMM",
+        "symbol": "TMM"
+      },
+      "TMT": {
+        "displayName": {
+          "other": "מאנאט טורקמני"
+        },
+        "narrow": "TMT",
+        "symbol": "TMT"
+      },
+      "TND": {
+        "displayName": {
+          "other": "דינר טוניסאי"
+        },
+        "narrow": "TND",
+        "symbol": "TND"
+      },
+      "TOP": {
+        "displayName": {
+          "other": "פאנגה טונגי"
+        },
+        "narrow": "T$",
+        "symbol": "TOP"
+      },
+      "TPE": {
+        "displayName": {
+          "other": "אסקודו טימוראי"
+        },
+        "narrow": "TPE",
+        "symbol": "TPE"
+      },
+      "TRL": {
+        "displayName": {
+          "other": "לירה טורקית"
+        },
+        "narrow": "TRL",
+        "symbol": "TRL"
+      },
+      "TRY": {
+        "displayName": {
+          "other": "לירה טורקית חדשה"
+        },
+        "narrow": "₺",
+        "symbol": "TRY"
+      },
+      "TTD": {
+        "displayName": {
+          "other": "דולר טרינידדי"
+        },
+        "narrow": "$",
+        "symbol": "TTD"
+      },
+      "TWD": {
+        "displayName": {
+          "other": "דולר טייוואני חדש"
+        },
+        "narrow": "NT$",
+        "symbol": "NT$"
+      },
+      "TZS": {
+        "displayName": {
+          "other": "שילינג טנזני"
+        },
+        "narrow": "TZS",
+        "symbol": "TZS"
+      },
+      "UAH": {
+        "displayName": {
+          "other": "הריבנה אוקראיני"
+        },
+        "narrow": "₴",
+        "symbol": "UAH"
+      },
+      "UAK": {
+        "displayName": {
+          "other": "UAK"
+        },
+        "narrow": "UAK",
+        "symbol": "UAK"
+      },
+      "UGS": {
+        "displayName": {
+          "other": "שילינג אוגנדי (1966 – 1987)"
+        },
+        "narrow": "UGS",
+        "symbol": "UGS"
+      },
+      "UGX": {
+        "displayName": {
+          "other": "שילינג אוגנדי"
+        },
+        "narrow": "UGX",
+        "symbol": "UGX"
+      },
+      "USD": {
+        "displayName": {
+          "other": "דולר אמריקאי"
+        },
+        "narrow": "$",
+        "symbol": "$"
+      },
+      "USN": {
+        "displayName": {
+          "other": "דולר אמריקאי (היום הבא)"
+        },
+        "narrow": "USN",
+        "symbol": "USN"
+      },
+      "USS": {
+        "displayName": {
+          "other": "דולר אמריקאי (היום הזה)"
+        },
+        "narrow": "USS",
+        "symbol": "USS"
+      },
+      "UYI": {
+        "displayName": {
+          "other": "UYI"
+        },
+        "narrow": "UYI",
+        "symbol": "UYI"
+      },
+      "UYP": {
+        "displayName": {
+          "other": "UYP"
+        },
+        "narrow": "UYP",
+        "symbol": "UYP"
+      },
+      "UYU": {
+        "displayName": {
+          "other": "פסו אורוגוואי"
+        },
+        "narrow": "$",
+        "symbol": "UYU"
+      },
+      "UYW": {
+        "displayName": {
+          "other": "UYW"
+        },
+        "narrow": "UYW",
+        "symbol": "UYW"
+      },
+      "UZS": {
+        "displayName": {
+          "other": "סום אוזבקי"
+        },
+        "narrow": "UZS",
+        "symbol": "UZS"
+      },
+      "VEB": {
+        "displayName": {
+          "other": "בוליבר ונצואלי (1871–2008)"
+        },
+        "narrow": "VEB",
+        "symbol": "VEB"
+      },
+      "VEF": {
+        "displayName": {
+          "other": "בוליבר ונצואלי (2008–2018)"
+        },
+        "narrow": "Bs",
+        "symbol": "VEF"
+      },
+      "VES": {
+        "displayName": {
+          "other": "בוליבר ונצואלי"
+        },
+        "narrow": "VES",
+        "symbol": "VES"
+      },
+      "VND": {
+        "displayName": {
+          "other": "דונג וייטנאמי"
+        },
+        "narrow": "₫",
+        "symbol": "₫"
+      },
+      "VNN": {
+        "displayName": {
+          "other": "VNN"
+        },
+        "narrow": "VNN",
+        "symbol": "VNN"
+      },
+      "VUV": {
+        "displayName": {
+          "other": "ואטו של ונואטו"
+        },
+        "narrow": "VUV",
+        "symbol": "VUV"
+      },
+      "WST": {
+        "displayName": {
+          "other": "טאלה סמואי"
+        },
+        "narrow": "WST",
+        "symbol": "WST"
+      },
+      "XAF": {
+        "displayName": {
+          "other": "פרנק CFA מרכז אפריקני"
+        },
+        "narrow": "FCFA",
+        "symbol": "FCFA"
+      },
+      "XAG": {
+        "displayName": {
+          "other": "כסף"
+        },
+        "narrow": "XAG",
+        "symbol": "XAG"
+      },
+      "XAU": {
+        "displayName": {
+          "other": "זהב"
+        },
+        "narrow": "XAU",
+        "symbol": "XAU"
+      },
+      "XBA": {
+        "displayName": {
+          "other": "XBA"
+        },
+        "narrow": "XBA",
+        "symbol": "XBA"
+      },
+      "XBB": {
+        "displayName": {
+          "other": "XBB"
+        },
+        "narrow": "XBB",
+        "symbol": "XBB"
+      },
+      "XBC": {
+        "displayName": {
+          "other": "XBC"
+        },
+        "narrow": "XBC",
+        "symbol": "XBC"
+      },
+      "XBD": {
+        "displayName": {
+          "other": "XBD"
+        },
+        "narrow": "XBD",
+        "symbol": "XBD"
+      },
+      "XCD": {
+        "displayName": {
+          "other": "דולר מזרח קריבי"
+        },
+        "narrow": "$",
+        "symbol": "EC$"
+      },
+      "XDR": {
+        "displayName": {
+          "other": "זכויות משיכה מיוחדות"
+        },
+        "narrow": "XDR",
+        "symbol": "XDR"
+      },
+      "XEU": {
+        "displayName": {
+          "other": "XEU"
+        },
+        "narrow": "XEU",
+        "symbol": "XEU"
+      },
+      "XFO": {
+        "displayName": {
+          "other": "פרנק זהב"
+        },
+        "narrow": "XFO",
+        "symbol": "XFO"
+      },
+      "XFU": {
+        "displayName": {
+          "other": "XFU"
+        },
+        "narrow": "XFU",
+        "symbol": "XFU"
+      },
+      "XOF": {
+        "displayName": {
+          "other": "פרנק CFA מערב אפריקני"
+        },
+        "narrow": "F CFA",
+        "symbol": "F CFA"
+      },
+      "XPD": {
+        "displayName": {
+          "other": "פלדיום"
+        },
+        "narrow": "XPD",
+        "symbol": "XPD"
+      },
+      "XPF": {
+        "displayName": {
+          "other": "פרנק פולינזיה הצרפתית"
+        },
+        "narrow": "CFPF",
+        "symbol": "CFPF"
+      },
+      "XPT": {
+        "displayName": {
+          "other": "פלטינה"
+        },
+        "narrow": "XPT",
+        "symbol": "XPT"
+      },
+      "XRE": {
+        "displayName": {
+          "other": "XRE"
+        },
+        "narrow": "XRE",
+        "symbol": "XRE"
+      },
+      "XSU": {
+        "displayName": {
+          "other": "XSU"
+        },
+        "narrow": "XSU",
+        "symbol": "XSU"
+      },
+      "XTS": {
+        "displayName": {
+          "other": "סימון למטרות בדיקה"
+        },
+        "narrow": "XTS",
+        "symbol": "XTS"
+      },
+      "XUA": {
+        "displayName": {
+          "other": "XUA"
+        },
+        "narrow": "XUA",
+        "symbol": "XUA"
+      },
+      "XXX": {
+        "displayName": {
+          "other": "(מטבע שאינו ידוע)"
+        },
+        "narrow": "¤",
+        "symbol": "¤"
+      },
+      "YDD": {
+        "displayName": {
+          "other": "דינר תימני"
+        },
+        "narrow": "YDD",
+        "symbol": "YDD"
+      },
+      "YER": {
+        "displayName": {
+          "other": "ריאל תימני"
+        },
+        "narrow": "YER",
+        "symbol": "YER"
+      },
+      "YUD": {
+        "displayName": {
+          "other": "YUD"
+        },
+        "narrow": "YUD",
+        "symbol": "YUD"
+      },
+      "YUM": {
+        "displayName": {
+          "other": "YUM"
+        },
+        "narrow": "YUM",
+        "symbol": "YUM"
+      },
+      "YUN": {
+        "displayName": {
+          "other": "YUN"
+        },
+        "narrow": "YUN",
+        "symbol": "YUN"
+      },
+      "YUR": {
+        "displayName": {
+          "other": "YUR"
+        },
+        "narrow": "YUR",
+        "symbol": "YUR"
+      },
+      "ZAL": {
+        "displayName": {
+          "other": "ראנד דרום אפריקאי (כספי)"
+        },
+        "narrow": "ZAL",
+        "symbol": "ZAL"
+      },
+      "ZAR": {
+        "displayName": {
+          "other": "ראנד דרום אפריקאי"
+        },
+        "narrow": "R",
+        "symbol": "ZAR"
+      },
+      "ZMK": {
+        "displayName": {
+          "other": "קוואצ׳ה זמבית (1968–2012)"
+        },
+        "narrow": "ZMK",
+        "symbol": "ZMK"
+      },
+      "ZMW": {
+        "displayName": {
+          "other": "קוואצ׳ה זמבי"
+        },
+        "narrow": "ZK",
+        "symbol": "ZMW"
+      },
+      "ZRN": {
+        "displayName": {
+          "other": "זאיר חדש"
+        },
+        "narrow": "ZRN",
+        "symbol": "ZRN"
+      },
+      "ZRZ": {
+        "displayName": {
+          "other": "ZRZ"
+        },
+        "narrow": "ZRZ",
+        "symbol": "ZRZ"
+      },
+      "ZWD": {
+        "displayName": {
+          "other": "דולר זימבבואי"
+        },
+        "narrow": "ZWD",
+        "symbol": "ZWD"
+      },
+      "ZWL": {
+        "displayName": {
+          "other": "ZWL"
+        },
+        "narrow": "ZWL",
+        "symbol": "ZWL"
+      },
+      "ZWR": {
+        "displayName": {
+          "other": "ZWR"
+        },
+        "narrow": "ZWR",
+        "symbol": "ZWR"
+      }
+    },
+    "nu": [
+      "latn"
+    ],
+    "numbers": {
+      "currency": {
+        "latn": {
+          "accounting": "#,##0.00 ¤",
+          "currencySpacing": {
+            "afterInsertBetween": " ",
+            "beforeInsertBetween": " "
+          },
+          "short": {
+            "1000": {
+              "other": "¤0K‏"
+            },
+            "10000": {
+              "other": "¤00K‏"
+            },
+            "100000": {
+              "other": "¤000K‏"
+            },
+            "1000000": {
+              "other": "¤0M‏"
+            },
+            "10000000": {
+              "other": "¤00M‏"
+            },
+            "100000000": {
+              "other": "¤000M‏"
+            },
+            "1000000000": {
+              "other": "¤0B‏"
+            },
+            "10000000000": {
+              "other": "¤00B‏"
+            },
+            "100000000000": {
+              "other": "¤000B‏"
+            },
+            "1000000000000": {
+              "other": "¤0T‏"
+            },
+            "10000000000000": {
+              "other": "¤00T‏"
+            },
+            "100000000000000": {
+              "other": "¤000T‏"
+            }
+          },
+          "standard": "‏#,##0.00 ¤;‏-#,##0.00 ¤",
+          "unitPattern": "{0} {1}"
+        }
+      },
+      "decimal": {
+        "latn": {
+          "long": {
+            "1000": {
+              "other": "‏0 אלף"
+            },
+            "10000": {
+              "other": "‏00 אלף"
+            },
+            "100000": {
+              "other": "‏000 אלף"
+            },
+            "1000000": {
+              "other": "‏0 מיליון"
+            },
+            "10000000": {
+              "other": "‏00 מיליון"
+            },
+            "100000000": {
+              "other": "‏000 מיליון"
+            },
+            "1000000000": {
+              "other": "‏0 מיליארד"
+            },
+            "10000000000": {
+              "other": "‏00 מיליארד"
+            },
+            "100000000000": {
+              "other": "‏000 מיליארד"
+            },
+            "1000000000000": {
+              "other": "‏0 טריליון"
+            },
+            "10000000000000": {
+              "other": "‏00 טריליון"
+            },
+            "100000000000000": {
+              "other": "‏000 טריליון"
+            }
+          },
+          "short": {
+            "1000": {
+              "other": "0K‏"
+            },
+            "10000": {
+              "other": "00K‏"
+            },
+            "100000": {
+              "other": "000K‏"
+            },
+            "1000000": {
+              "other": "0M‏"
+            },
+            "10000000": {
+              "other": "00M‏"
+            },
+            "100000000": {
+              "other": "000M‏"
+            },
+            "1000000000": {
+              "other": "0B‏"
+            },
+            "10000000000": {
+              "other": "00B‏"
+            },
+            "100000000000": {
+              "other": "000B‏"
+            },
+            "1000000000000": {
+              "other": "0T‏"
+            },
+            "10000000000000": {
+              "other": "00T‏"
+            },
+            "100000000000000": {
+              "other": "000T‏"
+            }
+          },
+          "standard": "#,##0.###"
+        }
+      },
+      "nu": [
+        "latn"
+      ],
+      "percent": {
+        "latn": "#,##0%"
+      },
+      "symbols": {
+        "latn": {
+          "approximatelySign": "~",
+          "decimal": ".",
+          "exponential": "E",
+          "group": ",",
+          "infinity": "∞",
+          "list": ";",
+          "minusSign": "‎-",
+          "nan": "NaN",
+          "perMille": "‰",
+          "percentSign": "%",
+          "plusSign": "‎+",
+          "rangeSign": "–",
+          "superscriptingExponent": "×",
+          "timeSeparator": ":"
+        }
+      }
+    },
+    "units": {
+      "compound": {
+        "per": {
+          "long": "{0} ל{1}",
+          "narrow": "{0}/{1}",
+          "short": "{0}/{1}"
+        }
+      },
+      "simple": {
+        "acre": {
+          "long": {
+            "one": "אקר {0}",
+            "other": "{0} אקר"
+          },
+          "narrow": {
+            "one": "אקר {0}",
+            "other": "{0} אקר"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "‎{0} ac",
+            "two": "{0} ac"
+          }
+        },
+        "bit": {
+          "long": {
+            "other": "ביט {0}"
+          },
+          "narrow": {
+            "other": "ביט {0}"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "ביט {0}"
+          }
+        },
+        "byte": {
+          "long": {
+            "other": "{0} בייט"
+          },
+          "narrow": {
+            "other": "{0} בייט"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} בייט"
+          }
+        },
+        "celsius": {
+          "long": {
+            "one": "מעלת צלזיוס {0}",
+            "other": "{0} מעלות צלזיוס"
+          },
+          "narrow": {
+            "other": "{0}°C"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0}°C"
+          }
+        },
+        "centimeter": {
+          "long": {
+            "one": "סנטימטר {0}",
+            "other": "{0} סנטימטרים"
+          },
+          "narrow": {
+            "one": "ס\\\"מ {0}",
+            "other": "{0} ס״מ"
+          },
+          "perUnit": {
+            "long": "{0} לסנטימטר",
+            "narrow": "{0}/ס״מ",
+            "short": "{0}/ס״מ"
+          },
+          "short": {
+            "other": "{0} ס״מ"
+          }
+        },
+        "day": {
+          "long": {
+            "many": "{0} יום",
+            "one": "יום {0}",
+            "other": "{0} ימים",
+            "two": "יומיים"
+          },
+          "narrow": {
+            "one": "י׳",
+            "other": "{0} י׳"
+          },
+          "perUnit": {
+            "long": "{0}/יום",
+            "narrow": "{0}/יום",
+            "short": "{0}/יום"
+          },
+          "short": {
+            "one": "יום",
+            "other": "{0} ימ׳",
+            "two": "יומיים"
+          }
+        },
+        "degree": {
+          "long": {
+            "one": "מעלה אחת",
+            "other": "{0} מעלות",
+            "two": "שתי מעלות"
+          },
+          "narrow": {
+            "other": "{0}°"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0}°"
+          }
+        },
+        "fahrenheit": {
+          "long": {
+            "one": "מעלת פרנהייט {0}",
+            "other": "{0} מעלות פרנהייט"
+          },
+          "narrow": {
+            "other": "{0}°F"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0}°F"
+          }
+        },
+        "fluid-ounce": {
+          "long": {
+            "one": "אונקיית נוזלים {0}",
+            "other": "{0} אונקיות נוזלים"
+          },
+          "narrow": {
+            "other": "‎{0} fl oz"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "‎{0} fl oz"
+          }
+        },
+        "foot": {
+          "long": {
+            "one": "רגל {0}",
+            "other": "{0} רגל"
+          },
+          "narrow": {
+            "one": "רגל {0}",
+            "other": "{0} רגל"
+          },
+          "perUnit": {
+            "long": "{0} לרגל",
+            "narrow": "{0}/רגל",
+            "short": "‎{0}/ft"
+          },
+          "short": {
+            "other": "‎{0} ft"
+          }
+        },
+        "gallon": {
+          "long": {
+            "one": "גלון {0}",
+            "other": "{0} גלונים"
+          },
+          "narrow": {
+            "other": "{0} גל׳"
+          },
+          "perUnit": {
+            "long": "{0}/גלון",
+            "narrow": "{0}/גל׳",
+            "short": "{0}/גל׳"
+          },
+          "short": {
+            "other": "{0} גל׳"
+          }
+        },
+        "gigabit": {
+          "long": {
+            "other": "{0} ג'יגה-ביט"
+          },
+          "narrow": {
+            "other": "{0} Gb"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} Gb"
+          }
+        },
+        "gigabyte": {
+          "long": {
+            "other": "{0} ג׳יגה-בייט"
+          },
+          "narrow": {
+            "other": "{0} ג״ב"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} GB"
+          }
+        },
+        "gram": {
+          "long": {
+            "one": "גרם {0}",
+            "other": "{0} גרם"
+          },
+          "narrow": {
+            "other": "{0}g"
+          },
+          "perUnit": {
+            "long": "{0}/גרם",
+            "narrow": "{0}/גר׳",
+            "short": "{0}/גר׳"
+          },
+          "short": {
+            "one": "גר׳ {0}",
+            "other": "{0} גר׳"
+          }
+        },
+        "hectare": {
+          "long": {
+            "one": "הקטאר {0}",
+            "other": "{0} הקטאר"
+          },
+          "narrow": {
+            "one": "הקטאר {0}",
+            "other": "{0} הקטאר"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "‎{0} ha"
+          }
+        },
+        "hour": {
+          "long": {
+            "one": "שעה",
+            "other": "{0} שעות",
+            "two": "שעתיים"
+          },
+          "narrow": {
+            "one": "שעה {0}",
+            "other": "{0} שע׳"
+          },
+          "perUnit": {
+            "long": "{0} לשעה",
+            "narrow": "{0}/שעה",
+            "short": "{0}/שעה"
+          },
+          "short": {
+            "one": "שעה",
+            "other": "{0} שע׳",
+            "two": "שעתיים"
+          }
+        },
+        "inch": {
+          "long": {
+            "one": "אינץ׳ {0}",
+            "other": "{0} אינץ׳"
+          },
+          "narrow": {
+            "one": "אינץ׳ {0}",
+            "other": "{0} אינץ׳"
+          },
+          "perUnit": {
+            "long": "{0} לאינץ׳",
+            "narrow": "{0}/אינץ׳",
+            "short": "‎{0}/in"
+          },
+          "short": {
+            "other": "‎{0} in"
+          }
+        },
+        "kilobit": {
+          "long": {
+            "other": "{0} קילוביט"
+          },
+          "narrow": {
+            "other": "{0} kb"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} kb"
+          }
+        },
+        "kilobyte": {
+          "long": {
+            "other": "{0} קילו-בייט"
+          },
+          "narrow": {
+            "one": "ק״ב {0}",
+            "other": "{0} ק״ב"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} kB"
+          }
+        },
+        "kilogram": {
+          "long": {
+            "one": "קילוגרם {0}",
+            "other": "{0} קילוגרם"
+          },
+          "narrow": {
+            "other": "{0}kg"
+          },
+          "perUnit": {
+            "long": "{0}/קילוגרם",
+            "narrow": "{0}/ק״ג",
+            "short": "{0}/ק״ג"
+          },
+          "short": {
+            "one": "ק״ג {0}",
+            "other": "{0} ק״ג"
+          }
+        },
+        "kilometer": {
+          "long": {
+            "one": "קילומטר {0}",
+            "other": "{0} קילומטרים"
+          },
+          "narrow": {
+            "other": "{0} ק״מ"
+          },
+          "perUnit": {
+            "long": "{0} לקילומטר",
+            "narrow": "{0}/ק״מ",
+            "short": "{0}/ק״מ"
+          },
+          "short": {
+            "other": "{0} ק״מ"
+          }
+        },
+        "kilometer-per-hour": {
+          "long": {
+            "other": "{0} קילומטר לשעה"
+          },
+          "narrow": {
+            "other": "{0} קמ״ש"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} קמ״ש"
+          }
+        },
+        "liter": {
+          "long": {
+            "one": "ליטר {0}",
+            "other": "{0} ליטר"
+          },
+          "narrow": {
+            "other": "{0} ל׳"
+          },
+          "perUnit": {
+            "long": "{0}/ליטר",
+            "narrow": "{0}/ל׳",
+            "short": "{0}/ל׳"
+          },
+          "short": {
+            "one": "ל׳ {0}",
+            "other": "{0} ל׳"
+          }
+        },
+        "liter-per-kilometer": {
+          "long": {
+            "one": "{0} ליטר/קילומטר",
+            "other": "{0} ליטרים/קילומטר"
+          },
+          "narrow": {
+            "other": "{0} ל׳/ק״מ"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} ל׳/ק״מ"
+          }
+        },
+        "megabit": {
+          "long": {
+            "other": "מגה-ביט {0}"
+          },
+          "narrow": {
+            "other": "{0} Mb"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} Mb"
+          }
+        },
+        "megabyte": {
+          "long": {
+            "one": "מגה-בייט",
+            "other": "{0} מגה-בייט"
+          },
+          "narrow": {
+            "other": "{0} מ״ב"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} MB"
+          }
+        },
+        "meter": {
+          "long": {
+            "one": "מטר {0}",
+            "other": "{0} מטרים"
+          },
+          "narrow": {
+            "other": "{0} מ׳",
+            "two": "{0} מ′"
+          },
+          "perUnit": {
+            "long": "{0} למטר",
+            "narrow": "{0}/מ׳",
+            "short": "{0}/מ׳"
+          },
+          "short": {
+            "other": "{0} מ׳"
+          }
+        },
+        "meter-per-second": {
+          "long": {
+            "other": "{0} מטר לשנייה"
+          },
+          "narrow": {
+            "other": "{0} מ/ש"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} מ׳/שנ׳"
+          }
+        },
+        "mile": {
+          "long": {
+            "one": "מייל {0}",
+            "other": "{0} מייל"
+          },
+          "narrow": {
+            "one": "מייל {0}",
+            "other": "{0} מייל"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} מייל"
+          }
+        },
+        "mile-per-gallon": {
+          "long": {
+            "other": "{0} מייל/גלון"
+          },
+          "narrow": {
+            "other": "{0} mpg"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} mpg"
+          }
+        },
+        "mile-per-hour": {
+          "long": {
+            "other": "{0} מייל לשעה"
+          },
+          "narrow": {
+            "other": "{0} mph"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} mph"
+          }
+        },
+        "mile-scandinavian": {
+          "long": {
+            "one": "מייל-סקנדינביה {0}",
+            "other": "{0} מייל-סקנדינביה"
+          },
+          "narrow": {
+            "other": "{0} smi"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} smi"
+          }
+        },
+        "milliliter": {
+          "long": {
+            "one": "מיליליטר {0}",
+            "other": "{0} מיליליטר"
+          },
+          "narrow": {
+            "one": "מ״ל {0}",
+            "other": "{0} מ״ל"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "one": "מ״ל {0}",
+            "other": "{0} מ״ל"
+          }
+        },
+        "millimeter": {
+          "long": {
+            "one": "מילימטר {0}",
+            "other": "{0} מילימטרים"
+          },
+          "narrow": {
+            "one": "מ״מ {0}",
+            "other": "{0} מ״מ"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "one": "מ″מ {0}",
+            "other": "{0} מ״מ"
+          }
+        },
+        "millisecond": {
+          "long": {
+            "one": "אלפית שנייה {0}",
+            "other": "{0} אלפיות שנייה"
+          },
+          "narrow": {
+            "other": "{0} ms"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} ms"
+          }
+        },
+        "minute": {
+          "long": {
+            "one": "דקה",
+            "other": "{0} דקות",
+            "two": "שתי דקות"
+          },
+          "narrow": {
+            "one": "דקה",
+            "other": "{0} דק׳",
+            "two": "שתי דק׳"
+          },
+          "perUnit": {
+            "long": "{0}/דקה",
+            "narrow": "{0}/ד׳",
+            "short": "{0}/ד׳"
+          },
+          "short": {
+            "one": "דקה",
+            "other": "{0} דק׳",
+            "two": "שתי דק׳"
+          }
+        },
+        "month": {
+          "long": {
+            "one": "חודש",
+            "other": "{0} חודשים",
+            "two": "חודשיים"
+          },
+          "narrow": {
+            "one": "ח׳ {0}",
+            "other": "{0} ח׳"
+          },
+          "perUnit": {
+            "long": "‏{0} לחודש",
+            "narrow": "{0}/חודש",
+            "short": "{0}/חודש"
+          },
+          "short": {
+            "one": "חודש",
+            "other": "{0} ח׳",
+            "two": "חודשיים"
+          }
+        },
+        "ounce": {
+          "long": {
+            "one": "אונקיה {0}",
+            "other": "{0} אונקיות"
+          },
+          "narrow": {
+            "other": "{0} oz"
+          },
+          "perUnit": {
+            "long": "{0}/אונקיה",
+            "narrow": "{0}/oz",
+            "short": "{0}/oz"
+          },
+          "short": {
+            "other": "{0} oz"
+          }
+        },
+        "percent": {
+          "long": {
+            "other": "{0} אחוז"
+          },
+          "narrow": {
+            "other": "{0}%"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0}%"
+          }
+        },
+        "petabyte": {
+          "long": {
+            "other": "{0} פטה-בייט"
+          },
+          "narrow": {
+            "other": "{0} PB"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} PB"
+          }
+        },
+        "pound": {
+          "long": {
+            "one": "פאונד אחד",
+            "other": "{0} פאונד",
+            "two": "שני פאונד"
+          },
+          "narrow": {
+            "one": "{0} lb",
+            "other": "{0} lbs"
+          },
+          "perUnit": {
+            "long": "{0}/פאונד",
+            "narrow": "{0}/lb",
+            "short": "{0}/lb"
+          },
+          "short": {
+            "one": "{0} lb",
+            "other": "{0} lbs"
+          }
+        },
+        "second": {
+          "long": {
+            "many": "‏{0} שניות",
+            "one": "שניה",
+            "other": "{0} שניות",
+            "two": "שתי שניות"
+          },
+          "narrow": {
+            "one": "שניה",
+            "other": "{0} שנ׳",
+            "two": "שתי שנ׳"
+          },
+          "perUnit": {
+            "long": "{0} לשניה",
+            "narrow": "{0}/שנ׳",
+            "short": "{0}/שנ׳"
+          },
+          "short": {
+            "one": "שנ׳",
+            "other": "{0} שנ׳",
+            "two": "שתי שנ׳"
+          }
+        },
+        "stone": {
+          "long": {
+            "one": "סטון {0}",
+            "other": "{0} סטון"
+          },
+          "narrow": {
+            "one": "סטון {0}",
+            "other": "{0} סטון"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "one": "סטון {0}",
+            "other": "{0} סטון"
+          }
+        },
+        "terabit": {
+          "long": {
+            "other": "טרה-ביט {0}"
+          },
+          "narrow": {
+            "other": "{0} Tb"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} Tb"
+          }
+        },
+        "terabyte": {
+          "long": {
+            "other": "טרה-בייט {0}"
+          },
+          "narrow": {
+            "other": "{0} TB"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "other": "{0} TB"
+          }
+        },
+        "week": {
+          "long": {
+            "one": "שבוע",
+            "other": "{0} שבועות",
+            "two": "שבועיים"
+          },
+          "narrow": {
+            "one": "ש′ {0}",
+            "other": "{0} ש′"
+          },
+          "perUnit": {
+            "long": "{0}/שבוע",
+            "narrow": "{0}/שבוע",
+            "short": "{0}/שבוע"
+          },
+          "short": {
+            "one": "שבוע {0}",
+            "other": "{0} שבועות",
+            "two": "שבועיים"
+          }
+        },
+        "yard": {
+          "long": {
+            "one": "יארד {0}",
+            "other": "{0} יארד"
+          },
+          "narrow": {
+            "one": "יארד {0}",
+            "other": "{0} יארד"
+          },
+          "perUnit": {
+          },
+          "short": {
+            "one": "יארד {0}",
+            "other": "{0} יארד"
+          }
+        },
+        "year": {
+          "long": {
+            "one": "שנה",
+            "other": "{0} שנים",
+            "two": "שנתיים"
+          },
+          "narrow": {
+            "one": "ש′ {0}",
+            "other": "{0} ש′"
+          },
+          "perUnit": {
+            "long": "‏{0} לשנה",
+            "narrow": "{0}/שנה",
+            "short": "{0}/שנה"
+          },
+          "short": {
+            "one": "שנה {0}",
+            "other": "{0} שנים"
+          }
+        }
+      }
+    }
+  },
+  "locale": "he"
+}

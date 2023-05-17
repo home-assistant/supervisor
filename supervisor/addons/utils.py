@@ -45,6 +45,7 @@ def rating_security(addon: AddonModel) -> int:
             privilege in addon.privileged
             for privilege in (
                 Capabilities.NET_ADMIN,
+                Capabilities.NET_RAW,
                 Capabilities.SYS_ADMIN,
                 Capabilities.SYS_RAWIO,
                 Capabilities.SYS_PTRACE,

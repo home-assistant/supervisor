@@ -184,7 +184,7 @@ class NetworkManager(DBusInterfaceProxy):
                 interface = curr_devices[device]
                 await interface.update()
             else:
-                interface = NetworkInterface(self.dbus, device)
+                interface = NetworkInterface(device)
 
                 # Connect to interface
                 try:

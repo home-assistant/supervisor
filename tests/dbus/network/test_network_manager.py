@@ -1,7 +1,7 @@
 """Test NetworkInterface."""
-import asyncio
+
 import logging
-from unittest.mock import AsyncMock, Mock, PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
@@ -12,59 +12,76 @@ from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.exceptions import DBusFatalError, DBusParseError, HostNotSupportedError
 from supervisor.utils.dbus import DBus
 
-from .setting.test_init import SETTINGS_WITH_SIGNATURE
-
-from tests.common import fire_property_change_signal
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.network_connection_settings import SETTINGS_FIXTURE
+from tests.dbus_service_mocks.network_manager import (
+    NetworkManager as NetworkManagerService,
+)
 
-# pylint: disable=protected-access
+
+@pytest.fixture(name="network_manager_service", autouse=True)
+async def fixture_network_manager_service(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> NetworkManagerService:
+    """Mock NetworkManager dbus service."""
+    yield network_manager_services["network_manager"]
 
 
-@pytest.mark.asyncio
-async def test_network_manager(network_manager: NetworkManager):
+async def test_network_manager(
+    network_manager_service: NetworkManagerService, dbus_session_bus: MessageBus
+):
     """Test network manager update."""
+    network_manager = NetworkManager()
+
+    assert network_manager.connectivity_enabled is None
+
+    await network_manager.connect(dbus_session_bus)
+
     assert TEST_INTERFACE in network_manager.interfaces
     assert network_manager.connectivity_enabled is True
 
-    fire_property_change_signal(network_manager, {"ConnectivityCheckEnabled": False})
-    await asyncio.sleep(0)
+    network_manager_service.emit_properties_changed({"ConnectivityCheckEnabled": False})
+    await network_manager_service.ping()
     assert network_manager.connectivity_enabled is False
 
-    fire_property_change_signal(network_manager, {"ConnectivityCheckEnabled": True})
-    await asyncio.sleep(0)
+    network_manager_service.emit_properties_changed({}, ["ConnectivityCheckEnabled"])
+    await network_manager_service.ping()
+    await network_manager_service.ping()
     assert network_manager.connectivity_enabled is True
 
 
-@pytest.mark.asyncio
-async def test_network_manager_version(network_manager: NetworkManager):
+async def test_network_manager_version(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
     """Test if version validate work."""
     await network_manager._validate_version()
     assert network_manager.version == "1.22.10"
 
-    network_manager.dbus.get_properties = AsyncMock(return_value={"Version": "1.13.9"})
+    network_manager_service.version = "1.13.9"
     with pytest.raises(HostNotSupportedError):
         await network_manager._validate_version()
     assert network_manager.version == "1.13.9"
 
 
-async def test_check_connectivity(network_manager: NetworkManager, dbus: list[str]):
+async def test_check_connectivity(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
     """Test connectivity check."""
-    dbus.clear()
+    network_manager_service.CheckConnectivity.calls.clear()
+
     assert await network_manager.check_connectivity() == 4
-    assert dbus == [
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.Connectivity"
-    ]
+    assert network_manager_service.CheckConnectivity.calls == []
 
-    dbus.clear()
     assert await network_manager.check_connectivity(force=True) == 4
-    assert dbus == [
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.CheckConnectivity"
-    ]
+    assert network_manager_service.CheckConnectivity.calls == [tuple()]
 
 
-async def test_activate_connection(network_manager: NetworkManager, dbus: list[str]):
+async def test_activate_connection(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
     """Test activate connection."""
-    dbus.clear()
+    network_manager_service.ActivateConnection.calls.clear()
     connection = await network_manager.activate_connection(
         "/org/freedesktop/NetworkManager/Settings/1",
         "/org/freedesktop/NetworkManager/Devices/1",
@@ -73,19 +90,23 @@ async def test_activate_connection(network_manager: NetworkManager, dbus: list[s
     assert (
         connection.settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
     )
-    assert dbus == [
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.ActivateConnection",
-        "/org/freedesktop/NetworkManager/Settings/1-org.freedesktop.NetworkManager.Settings.Connection.GetSettings",
+    assert network_manager_service.ActivateConnection.calls == [
+        (
+            "/org/freedesktop/NetworkManager/Settings/1",
+            "/org/freedesktop/NetworkManager/Devices/1",
+            "/",
+        )
     ]
 
 
 async def test_add_and_activate_connection(
-    network_manager: NetworkManager, dbus: list[str]
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Test add and activate connection."""
-    dbus.clear()
+    network_manager_service.AddAndActivateConnection.calls.clear()
+
     settings, connection = await network_manager.add_and_activate_connection(
-        SETTINGS_WITH_SIGNATURE, "/org/freedesktop/NetworkManager/Devices/1"
+        SETTINGS_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1"
     )
     assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
     assert settings.ipv4.method == "auto"
@@ -93,21 +114,20 @@ async def test_add_and_activate_connection(
     assert (
         connection.settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
     )
-    assert dbus == [
-        "/org/freedesktop/NetworkManager-org.freedesktop.NetworkManager.AddAndActivateConnection",
-        "/org/freedesktop/NetworkManager/Settings/1-org.freedesktop.NetworkManager.Settings.Connection.GetSettings",
+    assert network_manager_service.AddAndActivateConnection.calls == [
+        (SETTINGS_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1", "/")
     ]
 
 
-async def test_removed_devices_disconnect(network_manager: NetworkManager):
+async def test_removed_devices_disconnect(
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
+):
     """Test removed devices are disconnected."""
     wlan = network_manager.interfaces[TEST_INTERFACE_WLAN]
     assert wlan.is_connected is True
 
-    fire_property_change_signal(
-        network_manager, {"Devices": ["/org/freedesktop/NetworkManager/Devices/1"]}
-    )
-    await asyncio.sleep(0)
+    network_manager_service.emit_properties_changed({"Devices": []})
+    await network_manager_service.ping()
 
     assert TEST_INTERFACE_WLAN not in network_manager.interfaces
     assert wlan.is_connected is False
@@ -122,7 +142,7 @@ async def test_handling_bad_devices(
     caplog.clear()
     caplog.set_level(logging.INFO, "supervisor.dbus.network")
 
-    with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
+    with patch.object(DBus, "init_proxy", side_effect=DBusFatalError()):
         await network_manager.update(
             {"Devices": ["/org/freedesktop/NetworkManager/Devices/100"]}
         )
@@ -137,7 +157,7 @@ async def test_handling_bad_devices(
 
     # Unparseable introspections shouldn't happen, this one is logged and captured
     await network_manager.update()
-    with patch.object(DBus, "_init_proxy", side_effect=(err := DBusParseError())):
+    with patch.object(DBus, "init_proxy", side_effect=(err := DBusParseError())):
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/102"]}
         )
@@ -147,7 +167,7 @@ async def test_handling_bad_devices(
     # We should be able to debug these situations if necessary
     caplog.set_level(logging.DEBUG, "supervisor.dbus.network")
     await network_manager.update()
-    with patch.object(DBus, "_init_proxy", side_effect=DBusFatalError()):
+    with patch.object(DBus, "init_proxy", side_effect=DBusFatalError()):
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/103"]}
         )
@@ -162,15 +182,15 @@ async def test_handling_bad_devices(
 
 
 async def test_ignore_veth_only_changes(
-    network_manager: NetworkManager, dbus_bus: MessageBus
+    network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Changes to list of devices is ignored unless it changes managed devices."""
     assert network_manager.properties["Devices"] == [
         "/org/freedesktop/NetworkManager/Devices/1",
         "/org/freedesktop/NetworkManager/Devices/3",
     ]
-    with patch.object(NetworkInterface, "update") as update:
-        await network_manager.update(
+    with patch.object(NetworkInterface, "connect") as connect:
+        network_manager_service.emit_properties_changed(
             {
                 "Devices": [
                     "/org/freedesktop/NetworkManager/Devices/1",
@@ -179,9 +199,11 @@ async def test_ignore_veth_only_changes(
                 ]
             }
         )
-        update.assert_not_called()
+        await network_manager_service.ping()
+        connect.assert_not_called()
 
-        await network_manager.update(
+        network_manager_service.emit_properties_changed(
             {"Devices": ["/org/freedesktop/NetworkManager/Devices/35"]}
         )
-        update.assert_called_once()
+        await network_manager_service.ping()
+        connect.assert_called_once()

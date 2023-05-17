@@ -13,10 +13,13 @@ from ..const import (
     CoreState,
 )
 from ..coresys import CoreSysAttributes
+from ..dbus.const import UnitActiveState
 from ..exceptions import AddonsError
 from ..jobs.decorator import Job, JobCondition
+from ..mounts.mount import Mount
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
+from ..utils.sentinel import DEFAULT
 from ..utils.sentry import capture_exception
 from .backup import Backup
 from .const import BackupType
@@ -51,9 +54,28 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         """Set days until backup is considered stale."""
         self._data[ATTR_DAYS_UNTIL_STALE] = value
 
+    @property
+    def backup_locations(self) -> list[Path]:
+        """List of locations containing backups."""
+        return [self.sys_config.path_backup] + [
+            mount.local_where
+            for mount in self.sys_mounts.backup_mounts
+            if mount.state == UnitActiveState.ACTIVE
+        ]
+
     def get(self, slug):
         """Return backup object."""
         return self._backups.get(slug)
+
+    def _get_base_path(self, location: Mount | type[DEFAULT] | None = DEFAULT) -> Path:
+        """Get base path for backup using location or default location."""
+        if location:
+            return location.local_where
+
+        if location == DEFAULT and self.sys_mounts.default_backup_mount:
+            return self.sys_mounts.default_backup_mount.local_where
+
+        return self.sys_config.path_backup
 
     def _create_backup(
         self,
@@ -61,11 +83,12 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         sys_type: BackupType,
         password: str | None,
         compressed: bool = True,
+        location: Mount | type[DEFAULT] | None = DEFAULT,
     ) -> Backup:
         """Initialize a new backup object from name."""
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
-        tar_file = Path(self.sys_config.path_backup, f"{slug}.tar")
+        tar_file = Path(self._get_base_path(location), f"{slug}.tar")
 
         # init object
         backup = Backup(self.coresys, tar_file)
@@ -95,7 +118,8 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
         tasks = [
             _load_backup(tar_file)
-            for tar_file in self.sys_config.path_backup.glob("*.tar")
+            for path in self.backup_locations
+            for tar_file in path.glob("*.tar")
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))
@@ -182,13 +206,21 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             self.sys_core.state = CoreState.RUNNING
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
-    async def do_backup_full(self, name="", password=None, compressed=True):
+    async def do_backup_full(
+        self,
+        name="",
+        password=None,
+        compressed=True,
+        location: Mount | type[DEFAULT] | None = DEFAULT,
+    ):
         """Create a full backup."""
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
             return None
 
-        backup = self._create_backup(name, BackupType.FULL, password, compressed)
+        backup = self._create_backup(
+            name, BackupType.FULL, password, compressed, location
+        )
 
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
         async with self.lock:
@@ -208,6 +240,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         password: str | None = None,
         homeassistant: bool = False,
         compressed: bool = True,
+        location: Mount | type[DEFAULT] | None = DEFAULT,
     ):
         """Create a partial backup."""
         if self.lock.locked():
@@ -225,7 +258,9 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         if len(addons) == 0 and len(folders) == 0 and not homeassistant:
             _LOGGER.error("Nothing to create backup for")
 
-        backup = self._create_backup(name, BackupType.PARTIAL, password, compressed)
+        backup = self._create_backup(
+            name, BackupType.PARTIAL, password, compressed, location
+        )
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)
         async with self.lock:

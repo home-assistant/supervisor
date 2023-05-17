@@ -1,6 +1,8 @@
 """Interface to UDisks2 Block Device over D-Bus."""
+import asyncio
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from awesomeversion import AwesomeVersion
 from dbus_fast.aio import MessageBus
@@ -24,14 +26,16 @@ from ..const import (
     DBUS_ATTR_SYMLINKS,
     DBUS_IFACE_BLOCK,
     DBUS_IFACE_FILESYSTEM,
+    DBUS_IFACE_PARTITION,
     DBUS_IFACE_PARTITION_TABLE,
     DBUS_NAME_UDISKS2,
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .const import UDISKS2_DEFAULT_OPTIONS, FormatType
-from .data import FormatOptions
+from .data import FormatOptions, udisks2_bytes_to_path
 from .filesystem import UDisks2Filesystem
+from .partition import UDisks2Partition
 from .partition_table import UDisks2PartitionTable
 
 ADDITIONAL_INTERFACES: dict[str, Callable[[str], DBusInterfaceProxy]] = {
@@ -50,6 +54,7 @@ class UDisks2Block(DBusInterfaceProxy):
     properties_interface: str = DBUS_IFACE_BLOCK
 
     _filesystem: UDisks2Filesystem | None = None
+    _partition: UDisks2Partition | None = None
     _partition_table: UDisks2PartitionTable | None = None
 
     def __init__(self, object_path: str, *, sync_properties: bool = True) -> None:
@@ -61,18 +66,7 @@ class UDisks2Block(DBusInterfaceProxy):
     async def connect(self, bus: MessageBus) -> None:
         """Connect to bus."""
         await super().connect(bus)
-
-        if DBUS_IFACE_FILESYSTEM in self.dbus.proxies:
-            self._filesystem = UDisks2Filesystem(
-                self.object_path, sync_properties=self.sync_properties
-            )
-            await self._filesystem.initialize(self.dbus)
-
-        if DBUS_IFACE_PARTITION_TABLE in self.dbus.proxies:
-            self._partition_table = UDisks2PartitionTable(
-                self.object_path, sync_properties=self.sync_properties
-            )
-            await self._partition_table.initialize(self.dbus)
+        await self._reload_interfaces()
 
     @staticmethod
     async def new(
@@ -89,6 +83,11 @@ class UDisks2Block(DBusInterfaceProxy):
         return self._filesystem
 
     @property
+    def partition(self) -> UDisks2Partition | None:
+        """Partition interface if block device is one."""
+        return self._partition
+
+    @property
     def partition_table(self) -> UDisks2PartitionTable | None:
         """Partition table interface if block device is one."""
         return self._partition_table
@@ -97,7 +96,7 @@ class UDisks2Block(DBusInterfaceProxy):
     @dbus_property
     def device(self) -> Path:
         """Return device file."""
-        return Path(bytes(self.properties[DBUS_ATTR_DEVICE]).decode())
+        return udisks2_bytes_to_path(self.properties[DBUS_ATTR_DEVICE])
 
     @property
     @dbus_property
@@ -122,7 +121,7 @@ class UDisks2Block(DBusInterfaceProxy):
     def symlinks(self) -> list[Path]:
         """Return list of symlinks."""
         return [
-            Path(bytes(symlink).decode(encoding="utf-8"))
+            udisks2_bytes_to_path(symlink)
             for symlink in self.properties[DBUS_ATTR_SYMLINKS]
         ]
 
@@ -194,6 +193,69 @@ class UDisks2Block(DBusInterfaceProxy):
         Provide to UDisks2.get_drive for UDisks2Drive object.
         """
         return self.properties[DBUS_ATTR_DRIVE]
+
+    @dbus_connected
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus."""
+        await super().update(changed)
+
+        if not changed:
+            await asyncio.gather(
+                *[
+                    intr.update()
+                    for intr in (self.filesystem, self.partition, self.partition_table)
+                    if intr
+                ]
+            )
+
+    @dbus_connected
+    async def check_type(self) -> None:
+        """Check if type of block device has changed and adjust interfaces if so."""
+        introspection = await self.dbus.introspect()
+        interfaces = {intr.name for intr in introspection.interfaces}
+
+        # If interfaces changed, update the proxy from introspection and reload interfaces
+        if interfaces != set(self.dbus.proxies.keys()):
+            await self.dbus.init_proxy(introspection=introspection)
+            await self._reload_interfaces()
+
+    @dbus_connected
+    async def _reload_interfaces(self) -> None:
+        """Reload interfaces from introspection as necessary."""
+        # Check if block device is a filesystem
+        if not self.filesystem and DBUS_IFACE_FILESYSTEM in self.dbus.proxies:
+            self._filesystem = UDisks2Filesystem(
+                self.object_path, sync_properties=self.sync_properties
+            )
+            await self._filesystem.initialize(self.dbus)
+
+        elif self.filesystem and DBUS_IFACE_FILESYSTEM not in self.dbus.proxies:
+            self.filesystem.stop_sync_property_changes()
+            self._filesystem = None
+
+        # Check if block device is a partition
+        if not self.partition and DBUS_IFACE_PARTITION in self.dbus.proxies:
+            self._partition = UDisks2Partition(
+                self.object_path, sync_properties=self.sync_properties
+            )
+            await self._partition.initialize(self.dbus)
+
+        elif self.partition and DBUS_IFACE_PARTITION not in self.dbus.proxies:
+            self.partition.stop_sync_property_changes()
+            self._partition = None
+
+        # Check if block device is a partition table
+        if not self.partition_table and DBUS_IFACE_PARTITION_TABLE in self.dbus.proxies:
+            self._partition_table = UDisks2PartitionTable(
+                self.object_path, sync_properties=self.sync_properties
+            )
+            await self._partition_table.initialize(self.dbus)
+
+        elif (
+            self.partition_table and DBUS_IFACE_PARTITION_TABLE not in self.dbus.proxies
+        ):
+            self.partition_table.stop_sync_property_changes()
+            self._partition_table = None
 
     @dbus_connected
     async def format(

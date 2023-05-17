@@ -91,10 +91,10 @@ class PluginCli(PluginBase):
             await self.instance.update(version, image=self.sys_updater.image_cli)
         except DockerError as err:
             raise CliUpdateError("CLI update failed", _LOGGER.error) from err
-        else:
-            self.version = version
-            self.image = self.sys_updater.image_cli
-            self.save_data()
+
+        self.version = version
+        self.image = self.sys_updater.image_cli
+        self.save_data()
 
         # Cleanup
         with suppress(DockerError):

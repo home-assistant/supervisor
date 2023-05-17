@@ -1,5 +1,6 @@
 """Interface class for D-Bus wrappers."""
 from abc import ABC
+from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
@@ -83,6 +84,7 @@ class DBusInterfaceProxy(DBusInterface):
     properties_interface: str | None = None
     properties: dict[str, Any] | None = None
     sync_properties: bool = True
+    _sync_properties_callback: Callable | None = None
 
     def __init__(self):
         """Initialize properties."""
@@ -104,7 +106,17 @@ class DBusInterfaceProxy(DBusInterface):
 
         await self.update()
         if self.sync_properties and self.is_connected:
-            self.dbus.sync_property_changes(self.properties_interface, self.update)
+            self._sync_properties_callback = self.dbus.sync_property_changes(
+                self.properties_interface, self.update
+            )
+
+    def stop_sync_property_changes(self) -> None:
+        """Stop syncing property changes to object."""
+        if not self._sync_properties_callback:
+            return
+
+        self.dbus.stop_sync_property_changes(self._sync_properties_callback)
+        self.sync_properties = False
 
     @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:

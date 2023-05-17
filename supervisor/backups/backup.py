@@ -44,7 +44,7 @@ from ..exceptions import AddonsError, BackupError
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import write_json_file
-from .const import BackupType
+from .const import BUF_SIZE, BackupType
 from .utils import key_to_iv, password_to_key
 from .validate import SCHEMA_BACKUP
 
@@ -330,7 +330,11 @@ class Backup(CoreSysAttributes):
             """Task to store an add-on into backup."""
             tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
-                Path(self._tmp.name, tar_name), "w", key=self._key, gzip=self.compressed
+                Path(self._tmp.name, tar_name),
+                "w",
+                key=self._key,
+                gzip=self.compressed,
+                bufsize=BUF_SIZE,
             )
 
             # Take backup
@@ -365,7 +369,11 @@ class Backup(CoreSysAttributes):
             """Task to restore an add-on into backup."""
             tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
-                Path(self._tmp.name, tar_name), "r", key=self._key, gzip=self.compressed
+                Path(self._tmp.name, tar_name),
+                "r",
+                key=self._key,
+                gzip=self.compressed,
+                bufsize=BUF_SIZE,
             )
 
             # If exists inside backup
@@ -406,12 +414,16 @@ class Backup(CoreSysAttributes):
             # Take backup
             _LOGGER.info("Backing up folder %s", name)
             with SecureTarFile(
-                tar_name, "w", key=self._key, gzip=self.compressed
+                tar_name, "w", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
             ) as tar_file:
                 atomic_contents_add(
                     tar_file,
                     origin_dir,
-                    excludes=[],
+                    excludes=[
+                        bound.bind_mount.local_where.as_posix()
+                        for bound in self.sys_mounts.bound_mounts
+                        if bound.bind_mount.local_where
+                    ],
                     arcname=".",
                 )
 
@@ -453,7 +465,11 @@ class Backup(CoreSysAttributes):
                 try:
                     _LOGGER.info("Restore folder %s", name)
                     with SecureTarFile(
-                        tar_name, "r", key=self._key, gzip=self.compressed
+                        tar_name,
+                        "r",
+                        key=self._key,
+                        gzip=self.compressed,
+                        bufsize=BUF_SIZE,
                     ) as tar_file:
                         tar_file.extractall(path=origin_dir, members=tar_file)
                     _LOGGER.info("Restore folder %s done", name)
@@ -479,7 +495,7 @@ class Backup(CoreSysAttributes):
             self._tmp.name, f"homeassistant.tar{'.gz' if self.compressed else ''}"
         )
         homeassistant_file = SecureTarFile(
-            tar_name, "w", key=self._key, gzip=self.compressed
+            tar_name, "w", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
         )
 
         await self.sys_homeassistant.backup(homeassistant_file)
@@ -496,7 +512,7 @@ class Backup(CoreSysAttributes):
             self._tmp.name, f"homeassistant.tar{'.gz' if self.compressed else ''}"
         )
         homeassistant_file = SecureTarFile(
-            tar_name, "r", key=self._key, gzip=self.compressed
+            tar_name, "r", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
         )
 
         await self.sys_homeassistant.restore(homeassistant_file)

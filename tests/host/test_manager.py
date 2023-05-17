@@ -1,51 +1,34 @@
 """Test host manager."""
-from unittest.mock import PropertyMock, patch
+
+from unittest.mock import patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.dbus.agent import OSAgent
 from supervisor.dbus.const import MulticastProtocolEnabled
-from supervisor.dbus.hostname import Hostname
-from supervisor.dbus.manager import DBusManager
-from supervisor.dbus.resolved import Resolved
-from supervisor.dbus.systemd import Systemd
-from supervisor.dbus.timedate import TimeDate
-from supervisor.dbus.udisks2 import UDisks2
+
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 
-@pytest.fixture(name="coresys_dbus")
-async def fixture_coresys_dbus(
-    coresys: CoreSys,
-    hostname: Hostname,
-    systemd: Systemd,
-    timedate: TimeDate,
-    os_agent: OSAgent,
-    resolved: Resolved,
-    udisks2: UDisks2,
-) -> CoreSys:
-    """Coresys with all dbus interfaces mock loaded."""
-    DBusManager.hostname = PropertyMock(return_value=hostname)
-    DBusManager.systemd = PropertyMock(return_value=systemd)
-    DBusManager.timedate = PropertyMock(return_value=timedate)
-    DBusManager.agent = PropertyMock(return_value=os_agent)
-    DBusManager.resolved = PropertyMock(return_value=resolved)
-    DBusManager.udisks2 = PropertyMock(return_value=udisks2)
-
-    yield coresys
+@pytest.fixture(name="systemd_service")
+async def fixture_systemd_service(
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+) -> SystemdService:
+    """Return systemd service mock."""
+    yield all_dbus_services["systemd"]
 
 
-async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
+async def test_load(coresys: CoreSys, systemd_service: SystemdService):
     """Test manager load."""
-    coresys = coresys_dbus
-    dbus.clear()
+    systemd_service.ListUnits.calls.clear()
 
     with patch.object(coresys.host.sound, "update") as sound_update:
         await coresys.host.load()
 
         assert coresys.dbus.hostname.hostname == "homeassistant-n2"
-        assert coresys.dbus.systemd.boot_timestamp == 1646197962613554
+        assert coresys.dbus.systemd.boot_timestamp == 1632236713344227
         assert coresys.dbus.timedate.timezone == "Etc/UTC"
         assert coresys.dbus.agent.diagnostics is True
         assert coresys.dbus.network.connectivity_enabled is True
@@ -56,16 +39,13 @@ async def test_load(coresys_dbus: CoreSys, dbus: list[str]):
 
         sound_update.assert_called_once()
 
-    assert (
-        "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.ListUnits" in dbus
-    )
+    assert systemd_service.ListUnits.calls == [tuple()]
 
 
-async def test_reload(coresys_dbus: CoreSys, dbus: list[str]):
+async def test_reload(coresys: CoreSys, systemd_service: SystemdService):
     """Test manager reload and ensure it does not unnecessarily recreate dbus objects."""
-    coresys = coresys_dbus
     await coresys.host.load()
-    dbus.clear()
+    systemd_service.ListUnits.calls.clear()
 
     with patch("supervisor.utils.dbus.DBus.connect") as connect, patch.object(
         coresys.host.sound, "update"
@@ -75,6 +55,4 @@ async def test_reload(coresys_dbus: CoreSys, dbus: list[str]):
         connect.assert_not_called()
         sound_update.assert_called_once()
 
-    assert (
-        "/org/freedesktop/systemd1-org.freedesktop.systemd1.Manager.ListUnits" in dbus
-    )
+    assert systemd_service.ListUnits.calls == [tuple()]

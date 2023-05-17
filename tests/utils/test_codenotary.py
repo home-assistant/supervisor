@@ -13,6 +13,8 @@ from supervisor.exceptions import (
 )
 from supervisor.utils.codenotary import calc_checksum, cas_validate
 
+pytest.skip("code notary has been disabled due to issues", allow_module_level=True)
+
 
 @dataclass
 class SubprocessResponse:

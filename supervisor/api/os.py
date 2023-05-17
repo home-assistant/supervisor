@@ -2,7 +2,6 @@
 import asyncio
 from collections.abc import Awaitable
 import logging
-from pathlib import Path
 from typing import Any
 
 from aiohttp import web
@@ -12,6 +11,10 @@ from ..const import (
     ATTR_BOARD,
     ATTR_BOOT,
     ATTR_DEVICES,
+    ATTR_ID,
+    ATTR_NAME,
+    ATTR_SERIAL,
+    ATTR_SIZE,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
@@ -22,17 +25,21 @@ from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import version_tag
 from .const import (
     ATTR_DATA_DISK,
+    ATTR_DEV_PATH,
     ATTR_DEVICE,
     ATTR_DISK_LED,
+    ATTR_DISKS,
     ATTR_HEARTBEAT_LED,
+    ATTR_MODEL,
     ATTR_POWER_LED,
+    ATTR_VENDOR,
 )
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
-SCHEMA_DISK = vol.Schema({vol.Required(ATTR_DEVICE): vol.All(str, vol.Coerce(Path))})
+SCHEMA_DISK = vol.Schema({vol.Required(ATTR_DEVICE): str})
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_YELLOW_OPTIONS = vol.Schema(
@@ -56,7 +63,7 @@ class APIOS(CoreSysAttributes):
             ATTR_UPDATE_AVAILABLE: self.sys_os.need_update,
             ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
-            ATTR_DATA_DISK: self.sys_os.datadisk.disk_used,
+            ATTR_DATA_DISK: self.sys_os.datadisk.disk_used_id,
         }
 
     @api_process
@@ -83,7 +90,19 @@ class APIOS(CoreSysAttributes):
     async def list_data(self, request: web.Request) -> dict[str, Any]:
         """Return possible data targets."""
         return {
-            ATTR_DEVICES: self.sys_os.datadisk.available_disks,
+            ATTR_DEVICES: [disk.id for disk in self.sys_os.datadisk.available_disks],
+            ATTR_DISKS: [
+                {
+                    ATTR_NAME: disk.name,
+                    ATTR_VENDOR: disk.vendor,
+                    ATTR_MODEL: disk.model,
+                    ATTR_SERIAL: disk.serial,
+                    ATTR_SIZE: disk.size,
+                    ATTR_ID: disk.id,
+                    ATTR_DEV_PATH: disk.device_path.as_posix(),
+                }
+                for disk in self.sys_os.datadisk.available_disks
+            ],
         }
 
     @api_process

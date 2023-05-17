@@ -26,3 +26,5 @@ ADDON_UPDATE_CONDITIONS = [
     JobCondition.PLUGINS_UPDATED,
     JobCondition.SUPERVISOR_UPDATED,
 ]
+
+RE_SLUG = r"[-_.A-Za-z0-9]+"
