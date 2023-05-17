@@ -16,7 +16,7 @@ dirhash==0.2.1
 docker==6.0.1
 gitpython==3.1.31
 jinja2==3.1.2
-pulsectl==22.3.2
+pulsectl==23.5.1
 pyudev==0.24.1
 ruamel.yaml==0.17.21
 securetar==2023.3.0
