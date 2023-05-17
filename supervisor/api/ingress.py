@@ -140,7 +140,11 @@ class APIIngress(CoreSysAttributes):
         raise HTTPBadGateway()
 
     async def _handle_websocket(
-        self, request: web.Request, addon: Addon, path: str, session_data: dict
+        self,
+        request: web.Request,
+        addon: Addon,
+        path: str,
+        session_data: IngressSessionData,
     ) -> web.WebSocketResponse:
         """Ingress route for websocket."""
         if hdrs.SEC_WEBSOCKET_PROTOCOL in request.headers:
@@ -184,7 +188,11 @@ class APIIngress(CoreSysAttributes):
         return ws_server
 
     async def _handle_request(
-        self, request: web.Request, addon: Addon, path: str, session_data: dict
+        self,
+        request: web.Request,
+        addon: Addon,
+        path: str,
+        session_data: IngressSessionData,
     ) -> web.Response | web.StreamResponse:
         """Ingress route for request."""
         url = self._create_url(addon, path)
@@ -266,11 +274,10 @@ def _init_header(
     """Create initial header."""
     headers = {}
 
-    if session_data.user is not None:
-        user: IngressSessionDataUser = session_data.user
-        headers[HEADER_REMOTE_USER_ID] = user.id
-        headers[HEADER_REMOTE_USER_NAME] = user.username
-        headers[HEADER_REMOTE_USER_DISPLAY_NAME] = user.display_name
+    if session_data is not None:
+        headers[HEADER_REMOTE_USER_ID] = session_data.user.id
+        headers[HEADER_REMOTE_USER_NAME] = session_data.user.username
+        headers[HEADER_REMOTE_USER_DISPLAY_NAME] = session_data.user.display_name
 
     # filter flags
     for name, value in request.headers.items():

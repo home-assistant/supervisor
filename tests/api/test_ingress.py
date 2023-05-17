@@ -70,4 +70,4 @@ async def test_validate_session_with_user_id(api_client, coresys):
         assert await resp.json() == {"result": "ok", "data": {}}
 
         assert coresys.ingress.sessions[session] > valid_time
-        assert coresys.ingress.sessions_data[session]["user_id"] == "some-id"
+        assert coresys.ingress.sessions_data[session]["user"]["id"] == "some-id"
