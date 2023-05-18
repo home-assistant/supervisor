@@ -2,7 +2,7 @@ black==23.3.0
 coverage==7.2.5
 flake8-docstrings==1.7.0
 flake8==6.0.0
-pre-commit==3.3.1
+pre-commit==3.3.2
 pydocstyle==6.3.0
 pylint==2.17.4
 pytest-aiohttp==1.0.4
