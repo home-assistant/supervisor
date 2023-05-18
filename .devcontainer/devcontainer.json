@@ -1,8 +1,9 @@
 {
   "name": "Supervisor dev",
   "image": "ghcr.io/home-assistant/devcontainer:supervisor",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace/supervisor/,type=bind",
-  "workspaceFolder": "/workspace/supervisor/",
+  "containerEnv": {
+    "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
+  },
   "appPort": ["9123:8123", "7357:4357"],
   "postCreateCommand": "bash devcontainer_bootstrap",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
