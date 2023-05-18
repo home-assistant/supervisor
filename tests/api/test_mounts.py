@@ -4,7 +4,6 @@ import asyncio
 from unittest.mock import patch
 
 from aiohttp.test_utils import TestClient
-from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError, ErrorType
 import pytest
 
@@ -159,15 +158,13 @@ async def test_api_create_dbus_error_mount_not_added(
     assert result["data"]["mounts"] == []
 
 
+@pytest.mark.parametrize("os_available", ["9.5"], indirect=True)
 async def test_api_create_mount_fails_not_supported_feature(
-    api_client: TestClient, coresys: CoreSys
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_available,
 ):
     """Test creating a mount via API fails when mounting isn't a supported feature on system.."""
-    # pylint: disable=protected-access
-    coresys.os._available = True
-    coresys.os._version = AwesomeVersion("9.5")
-    # pylint: enable=protected-access
-
     resp = await api_client.post(
         "/mounts",
         json={
