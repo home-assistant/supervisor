@@ -589,3 +589,7 @@ class MountInvalidError(MountError):
 
 class MountNotFound(MountError):
     """Raise on mount not found."""
+
+
+class MountJobError(MountError, JobException):
+    """Raise on Mount job error."""

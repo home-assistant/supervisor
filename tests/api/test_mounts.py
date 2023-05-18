@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import patch
 
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError, ErrorType
 import pytest
 
@@ -156,6 +157,34 @@ async def test_api_create_dbus_error_mount_not_added(
     resp = await api_client.get("/mounts")
     result = await resp.json()
     assert result["data"]["mounts"] == []
+
+
+async def test_api_create_mount_fails_not_supported_feature(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test creating a mount via API fails when mounting isn't a supported feature on system.."""
+    # pylint: disable=protected-access
+    coresys.os._available = True
+    coresys.os._version = AwesomeVersion("9.5")
+    # pylint: emable=protected-access
+
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert (
+        result["message"]
+        == "'MountManager.create_mount' blocked from execution, mounting not supported on system"
+    )
 
 
 async def test_api_update_mount(api_client: TestClient, coresys: CoreSys, mount):

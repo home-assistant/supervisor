@@ -4,13 +4,19 @@ import json
 import os
 from pathlib import Path
 
+from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError, ErrorType, Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
-from supervisor.exceptions import MountActivationError, MountError, MountNotFound
+from supervisor.exceptions import (
+    MountActivationError,
+    MountError,
+    MountJobError,
+    MountNotFound,
+)
 from supervisor.mounts.manager import MountManager
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -506,3 +512,35 @@ async def test_reload_mounts(
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.failed_issue not in coresys.resolution.issues
     assert not coresys.resolution.suggestions_for_issue(mount.failed_issue)
+
+
+async def test_mounting_not_supported(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test mounting not supported on system."""
+    caplog.clear()
+
+    # pylint: disable=protected-access
+    coresys.os._available = True
+    coresys.os._version = AwesomeVersion("9.5")
+
+    await coresys.mounts.load()
+    assert not caplog.text
+
+    mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
+    coresys.mounts._mounts = {"media_test": mount}
+    # pylint: enable=protected-access
+
+    # Only tell the user about an issue here if they actually have mounts we couldn't load
+    # This is an edge case but users can downgrade OS so its possible
+    await coresys.mounts.load()
+    assert "Cannot load configured mounts" in caplog.text
+
+    with pytest.raises(MountJobError):
+        await coresys.mounts.create_mount(mount)
+
+    with pytest.raises(MountJobError):
+        await coresys.mounts.reload_mount("media_test")
+
+    with pytest.raises(MountJobError):
+        await coresys.mounts.remove_mount("media_test")
