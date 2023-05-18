@@ -166,7 +166,7 @@ async def test_api_create_mount_fails_not_supported_feature(
     # pylint: disable=protected-access
     coresys.os._available = True
     coresys.os._version = AwesomeVersion("9.5")
-    # pylint: emable=protected-access
+    # pylint: enable=protected-access
 
     resp = await api_client.post(
         "/mounts",
