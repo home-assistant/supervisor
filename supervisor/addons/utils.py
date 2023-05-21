@@ -44,13 +44,15 @@ def rating_security(addon: AddonModel) -> int:
         any(
             privilege in addon.privileged
             for privilege in (
+                Capabilities.BPF,
+                Capabilities.DAC_READ_SEARCH,
                 Capabilities.NET_ADMIN,
                 Capabilities.NET_RAW,
+                Capabilities.PERFMON,
                 Capabilities.SYS_ADMIN,
-                Capabilities.SYS_RAWIO,
-                Capabilities.SYS_PTRACE,
                 Capabilities.SYS_MODULE,
-                Capabilities.DAC_READ_SEARCH,
+                Capabilities.SYS_PTRACE,
+                Capabilities.SYS_RAWIO,
             )
         )
         or addon.with_kernel_modules
