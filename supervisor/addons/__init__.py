@@ -79,7 +79,7 @@ class AddonManager(CoreSysAttributes):
         tasks = []
         for slug in self.data.system:
             addon = self.local[slug] = Addon(self.coresys, slug)
-            tasks.append(addon.load())
+            tasks.append(self.sys_create_task(addon.load()))
 
         # Run initial tasks
         _LOGGER.info("Found %d installed add-ons", len(tasks))

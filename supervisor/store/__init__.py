@@ -83,7 +83,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     @Job(conditions=[JobCondition.SUPERVISOR_UPDATED], on_condition=StoreJobError)
     async def reload(self) -> None:
         """Update add-ons from repository and reload list."""
-        tasks = [repository.update() for repository in self.all]
+        tasks = [self.sys_create_task(repository.update()) for repository in self.all]
         if tasks:
             await asyncio.wait(tasks)
 

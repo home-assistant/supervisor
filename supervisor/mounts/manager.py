@@ -109,11 +109,18 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         # Bind all media mounts to directories in media
         if self.media_mounts:
-            await asyncio.wait([self._bind_media(mount) for mount in self.media_mounts])
+            await asyncio.wait(
+                [
+                    self.sys_create_task(self._bind_media(mount))
+                    for mount in self.media_mounts
+                ]
+            )
 
     async def reload(self) -> None:
         """Update mounts info via dbus and reload failed mounts."""
-        await asyncio.wait([mount.update() for mount in self.mounts])
+        await asyncio.wait(
+            [self.sys_create_task(mount.update()) for mount in self.mounts]
+        )
 
         # Try to reload any newly failed mounts and report issues if failure persists
         new_failures = [

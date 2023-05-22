@@ -8,7 +8,7 @@ on:
   pull_request: ~
 
 env:
-  DEFAULT_PYTHON: "3.10"
+  DEFAULT_PYTHON: "3.11"
   PRE_COMMIT_HOME: ~/.cache/pre-commit
   DEFAULT_CAS: v1.0.2
 

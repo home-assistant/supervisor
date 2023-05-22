@@ -107,7 +107,9 @@ class PluginManager(CoreSysAttributes):
 
     async def repair(self) -> None:
         """Repair Supervisor plugins."""
-        await asyncio.wait([plugin.repair() for plugin in self.all_plugins])
+        await asyncio.wait(
+            [self.sys_create_task(plugin.repair()) for plugin in self.all_plugins]
+        )
 
     async def shutdown(self) -> None:
         """Shutdown Supervisor plugin."""

@@ -258,7 +258,12 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
-        await asyncio.wait([self.secrets.load(), self.core.load()])
+        await asyncio.wait(
+            [
+                self.sys_create_task(self.secrets.load()),
+                self.sys_create_task(self.core.load()),
+            ]
+        )
 
         # Register for events
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
