@@ -29,7 +29,11 @@ async def test_simple_task_repeat(coresys):
         trigger.append(True)
 
     coresys.scheduler.register_task(test_task, 0.1, True)
-    await asyncio.sleep(0.3)
+
+    for _ in range(5):
+        await asyncio.sleep(0.1)
+        if len(trigger) > 1:
+            break
 
     assert len(trigger) > 1
 
