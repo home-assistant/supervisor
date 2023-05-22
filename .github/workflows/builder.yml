@@ -33,7 +33,7 @@ on:
       - setup.py
 
 env:
-  DEFAULT_PYTHON: "3.10"
+  DEFAULT_PYTHON: "3.11"
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
 
