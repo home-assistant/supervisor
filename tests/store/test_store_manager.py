@@ -15,6 +15,7 @@ from supervisor.exceptions import AddonsNotSupportedError, StoreJobError
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.store import StoreManager
 from supervisor.store.addon import AddonStore
+from supervisor.store.git import GitRepo
 from supervisor.store.repository import Repository
 
 from tests.common import load_yaml_fixture
@@ -231,3 +232,14 @@ async def test_install_unavailable_addon(
         await coresys.addons.install("local_ssh")
 
     assert log in caplog.text
+
+
+async def test_reload(coresys: CoreSys):
+    """Test store reload."""
+    await coresys.store.load()
+    assert len(coresys.store.all) == 4
+
+    with patch.object(GitRepo, "pull") as git_pull:
+        await coresys.store.reload()
+
+        assert git_pull.call_count == 3
