@@ -2,7 +2,7 @@
 import asyncio
 from ipaddress import IPv4Address
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
@@ -219,14 +219,14 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         self._data[ATTR_REFRESH_TOKEN] = value
 
     @property
-    def path_pulse(self):
+    def path_pulse(self) -> Path:
         """Return path to asound config."""
         return Path(self.sys_config.path_tmp, "homeassistant_pulse")
 
     @property
-    def path_extern_pulse(self):
+    def path_extern_pulse(self) -> PurePath:
         """Return path to asound config for Docker."""
-        return Path(self.sys_config.path_extern_tmp, "homeassistant_pulse")
+        return PurePath(self.sys_config.path_extern_tmp, "homeassistant_pulse")
 
     @property
     def audio_output(self) -> str | None:

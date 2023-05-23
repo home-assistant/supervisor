@@ -2,11 +2,20 @@
 import logging
 
 import docker
+from docker.types import Mount
 
 from ..const import DOCKER_CPU_RUNTIME_ALLOCATION, MACHINE_ID
 from ..coresys import CoreSysAttributes
 from ..hardware.const import PolicyGroup
-from .const import ENV_TIME, Capabilities
+from .const import (
+    ENV_TIME,
+    MOUNT_DBUS,
+    MOUNT_DEV,
+    MOUNT_MACHINE_ID,
+    MOUNT_UDEV,
+    Capabilities,
+    MountType,
+)
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -28,20 +37,25 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         return AUDIO_DOCKER_NAME
 
     @property
-    def volumes(self) -> dict[str, dict[str, str]]:
-        """Return Volumes for the mount."""
-        volumes = {
-            "/dev": {"bind": "/dev", "mode": "ro"},
-            str(self.sys_config.path_extern_audio): {"bind": "/data", "mode": "rw"},
-            "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
-            "/run/udev": {"bind": "/run/udev", "mode": "ro"},
-        }
+    def mounts(self) -> list[Mount]:
+        """Return mounts for container."""
+        mounts = [
+            MOUNT_DEV,
+            Mount(
+                type=MountType.BIND.value,
+                source=self.sys_config.path_extern_audio.as_posix(),
+                target="/data",
+                read_only=False,
+            ),
+            MOUNT_DBUS,
+            MOUNT_UDEV,
+        ]
 
         # Machine ID
         if MACHINE_ID.exists():
-            volumes.update({str(MACHINE_ID): {"bind": str(MACHINE_ID), "mode": "ro"}})
+            mounts.append(MOUNT_MACHINE_ID)
 
-        return volumes
+        return mounts
 
     @property
     def cgroups_rules(self) -> list[str]:
@@ -96,7 +110,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             environment={
                 ENV_TIME: self.sys_timezone,
             },
-            volumes=self.volumes,
+            mounts=self.mounts,
         )
 
         self._meta = docker_container.attrs

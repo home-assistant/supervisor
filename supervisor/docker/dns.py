@@ -1,8 +1,10 @@
 """DNS docker object."""
 import logging
 
+from docker.types import Mount
+
 from ..coresys import CoreSysAttributes
-from .const import DBUS_PATH, DBUS_VOLUME, ENV_TIME
+from .const import ENV_TIME, MOUNT_DBUS, MountType
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -46,10 +48,15 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             detach=True,
             security_opt=self.security_opt,
             environment={ENV_TIME: self.sys_timezone},
-            volumes={
-                str(self.sys_config.path_extern_dns): {"bind": "/config", "mode": "rw"},
-                DBUS_PATH: DBUS_VOLUME,
-            },
+            mounts=[
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_dns.as_posix(),
+                    target="/config",
+                    read_only=False,
+                ),
+                MOUNT_DBUS,
+            ],
             oom_score_adj=-300,
         )
 

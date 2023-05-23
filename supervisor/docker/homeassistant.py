@@ -5,13 +5,24 @@ import logging
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 import docker
+from docker.types import Mount
 import requests
 
 from ..const import LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
-from .const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD
+from .const import (
+    ENV_TIME,
+    ENV_TOKEN,
+    ENV_TOKEN_OLD,
+    MOUNT_DBUS,
+    MOUNT_DEV,
+    MOUNT_MACHINE_ID,
+    MOUNT_UDEV,
+    MountType,
+    PropagationMode,
+)
 from .interface import CommandReturn, DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -62,56 +73,64 @@ class DockerHomeAssistant(DockerInterface):
         )
 
     @property
-    def volumes(self) -> dict[str, dict[str, str]]:
-        """Return Volumes for the mount."""
-        volumes = {
-            "/dev": {"bind": "/dev", "mode": "ro"},
-            "/run/dbus": {"bind": "/run/dbus", "mode": "ro"},
-            "/run/udev": {"bind": "/run/udev", "mode": "ro"},
-        }
-
-        # Add folders
-        volumes.update(
-            {
-                str(self.sys_config.path_extern_homeassistant): {
-                    "bind": "/config",
-                    "mode": "rw",
-                },
-                str(self.sys_config.path_extern_ssl): {"bind": "/ssl", "mode": "ro"},
-                str(self.sys_config.path_extern_share): {
-                    "bind": "/share",
-                    "mode": "rw",
-                },
-                str(self.sys_config.path_extern_media): {
-                    "bind": "/media",
-                    "mode": "rw",
-                },
-            }
-        )
+    def mounts(self) -> list[Mount]:
+        """Return mounts for container."""
+        mounts = [
+            MOUNT_DEV,
+            MOUNT_DBUS,
+            MOUNT_UDEV,
+            # Add folders
+            Mount(
+                type=MountType.BIND.value,
+                source=self.sys_config.path_extern_homeassistant.as_posix(),
+                target="/config",
+                read_only=False,
+            ),
+            Mount(
+                type=MountType.BIND.value,
+                source=self.sys_config.path_extern_ssl.as_posix(),
+                target="/ssl",
+                read_only=True,
+            ),
+            Mount(
+                type=MountType.BIND.value,
+                source=self.sys_config.path_extern_share.as_posix(),
+                target="/share",
+                read_only=False,
+            ),
+            Mount(
+                type=MountType.BIND.value,
+                source=self.sys_config.path_extern_media.as_posix(),
+                target="/media",
+                read_only=False,
+                propagation=PropagationMode.SLAVE.value,
+            ),
+            # Configuration audio
+            Mount(
+                type=MountType.BIND.value,
+                source=self.sys_homeassistant.path_extern_pulse.as_posix(),
+                target="/etc/pulse/client.conf",
+                read_only=True,
+            ),
+            Mount(
+                type=MountType.BIND.value,
+                source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
+                target="/run/audio",
+                read_only=True,
+            ),
+            Mount(
+                type=MountType.BIND.value,
+                source=self.sys_plugins.audio.path_extern_asound.as_posix(),
+                target="/etc/asound.conf",
+                read_only=True,
+            ),
+        ]
 
         # Machine ID
         if MACHINE_ID.exists():
-            volumes.update({str(MACHINE_ID): {"bind": str(MACHINE_ID), "mode": "ro"}})
+            mounts.append(MOUNT_MACHINE_ID)
 
-        # Configuration Audio
-        volumes.update(
-            {
-                str(self.sys_homeassistant.path_extern_pulse): {
-                    "bind": "/etc/pulse/client.conf",
-                    "mode": "ro",
-                },
-                str(self.sys_plugins.audio.path_extern_pulse): {
-                    "bind": "/run/audio",
-                    "mode": "ro",
-                },
-                str(self.sys_plugins.audio.path_extern_asound): {
-                    "bind": "/etc/asound.conf",
-                    "mode": "ro",
-                },
-            }
-        )
-
-        return volumes
+        return mounts
 
     def _run(self) -> None:
         """Run Docker image.
@@ -135,7 +154,7 @@ class DockerHomeAssistant(DockerInterface):
             init=False,
             security_opt=self.security_opt,
             network_mode="host",
-            volumes=self.volumes,
+            mounts=self.mounts,
             device_cgroup_rules=self.cgroups_rules,
             extra_hosts={
                 "supervisor": self.sys_docker.network.supervisor,
@@ -172,17 +191,26 @@ class DockerHomeAssistant(DockerInterface):
             detach=True,
             stdout=True,
             stderr=True,
-            volumes={
-                str(self.sys_config.path_extern_homeassistant): {
-                    "bind": "/config",
-                    "mode": "rw",
-                },
-                str(self.sys_config.path_extern_ssl): {"bind": "/ssl", "mode": "ro"},
-                str(self.sys_config.path_extern_share): {
-                    "bind": "/share",
-                    "mode": "ro",
-                },
-            },
+            mounts=[
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_homeassistant.as_posix(),
+                    target="/config",
+                    read_only=False,
+                ),
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_ssl.as_posix(),
+                    target="/ssl",
+                    read_only=True,
+                ),
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_share.as_posix(),
+                    target="/share",
+                    read_only=False,
+                ),
+            ],
             environment={ENV_TIME: self.sys_timezone},
         )
 

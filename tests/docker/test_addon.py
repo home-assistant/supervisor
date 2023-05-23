@@ -3,13 +3,13 @@ from ipaddress import IPv4Address
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from docker.errors import NotFound
+from docker.types import Mount
 import pytest
 
 from supervisor.addons import validate as vd
 from supervisor.addons.addon import Addon
 from supervisor.addons.model import Data
 from supervisor.addons.options import AddonOptions
-from supervisor.const import SYSTEMD_JOURNAL_PERSISTENT, SYSTEMD_JOURNAL_VOLATILE
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.exceptions import CoreDNSError, DockerNotFound
@@ -66,18 +66,23 @@ def test_base_volumes_included(
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
-    volumes = docker_addon.volumes
 
     # Dev added as ro
-    assert "/dev" in volumes
-    assert volumes["/dev"]["bind"] == "/dev"
-    assert volumes["/dev"]["mode"] == "ro"
+    assert (
+        Mount(type="bind", source="/dev", target="/dev", read_only=True)
+        in docker_addon.mounts
+    )
 
     # Data added as rw
-    data_path = str(docker_addon.addon.path_extern_data)
-    assert data_path in volumes
-    assert volumes[data_path]["bind"] == "/data"
-    assert volumes[data_path]["mode"] == "rw"
+    assert (
+        Mount(
+            type="bind",
+            source=docker_addon.addon.path_extern_data.as_posix(),
+            target="/data",
+            read_only=False,
+        )
+        in docker_addon.mounts
+    )
 
 
 def test_addon_map_folder_defaults(
@@ -87,22 +92,42 @@ def test_addon_map_folder_defaults(
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
-    volumes = docker_addon.volumes
-
     # Config added and is marked rw
-    config_path = str(docker_addon.sys_config.path_extern_homeassistant)
-    assert config_path in volumes
-    assert volumes[config_path]["bind"] == "/config"
-    assert volumes[config_path]["mode"] == "rw"
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_homeassistant.as_posix(),
+            target="/config",
+            read_only=False,
+        )
+        in docker_addon.mounts
+    )
 
     # SSL added and defaults to ro
-    ssl_path = str(docker_addon.sys_config.path_extern_ssl)
-    assert ssl_path in volumes
-    assert volumes[ssl_path]["bind"] == "/ssl"
-    assert volumes[ssl_path]["mode"] == "ro"
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_ssl.as_posix(),
+            target="/ssl",
+            read_only=True,
+        )
+        in docker_addon.mounts
+    )
+
+    # Media added and propagation set
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_media.as_posix(),
+            target="/media",
+            read_only=True,
+            propagation="slave",
+        )
+        in docker_addon.mounts
+    )
 
     # Share not mapped
-    assert str(docker_addon.sys_config.path_extern_share) not in volumes
+    assert "/share" not in [mount["Target"] for mount in docker_addon.mounts]
 
 
 def test_journald_addon(
@@ -112,18 +137,25 @@ def test_journald_addon(
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "journald-addon-config.json"
     )
-    volumes = docker_addon.volumes
 
-    assert str(SYSTEMD_JOURNAL_PERSISTENT) in volumes
-    assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("bind") == str(
-        SYSTEMD_JOURNAL_PERSISTENT
+    assert (
+        Mount(
+            type="bind",
+            source="/var/log/journal",
+            target="/var/log/journal",
+            read_only=True,
+        )
+        in docker_addon.mounts
     )
-    assert volumes.get(str(SYSTEMD_JOURNAL_PERSISTENT)).get("mode") == "ro"
-    assert str(SYSTEMD_JOURNAL_VOLATILE) in volumes
-    assert volumes.get(str(SYSTEMD_JOURNAL_VOLATILE)).get("bind") == str(
-        SYSTEMD_JOURNAL_VOLATILE
+    assert (
+        Mount(
+            type="bind",
+            source="/run/log/journal",
+            target="/run/log/journal",
+            read_only=True,
+        )
+        in docker_addon.mounts
     )
-    assert volumes.get(str(SYSTEMD_JOURNAL_VOLATILE)).get("mode") == "ro"
 
 
 def test_not_journald_addon(
@@ -133,9 +165,8 @@ def test_not_journald_addon(
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
-    volumes = docker_addon.volumes
 
-    assert str(SYSTEMD_JOURNAL_PERSISTENT) not in volumes
+    assert "/var/log/journal" not in [mount["Target"] for mount in docker_addon.mounts]
 
 
 async def test_addon_run_docker_error(
