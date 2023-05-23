@@ -1,5 +1,5 @@
 """Test evaluation base."""
-# pylint: disable=import-error,protected-access
+# pylint: disable=import-error
 from unittest.mock import patch
 
 from supervisor.const import CoreState
@@ -24,7 +24,6 @@ async def test_evaluation(coresys: CoreSys):
     coresys.resolution.unsupported.clear()
 
     coresys.docker.info.cgroup = CGROUP_V2_VERSION
-    coresys.os._available = False
     await cgroup_version()
     assert cgroup_version.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
@@ -34,12 +33,11 @@ async def test_evaluation(coresys: CoreSys):
     assert cgroup_version.reason not in coresys.resolution.unsupported
 
 
-async def test_evaluation_os_available(coresys: CoreSys):
+async def test_evaluation_os_available(coresys: CoreSys, os_available):
     """Test evaluation with OS available."""
     cgroup_version = EvaluateCGroupVersion(coresys)
     coresys.core.state = CoreState.SETUP
 
-    coresys.os._available = True
     coresys.docker.info.cgroup = CGROUP_V2_VERSION
     await cgroup_version()
     assert cgroup_version.reason not in coresys.resolution.unsupported

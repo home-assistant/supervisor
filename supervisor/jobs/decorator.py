@@ -269,6 +269,14 @@ class Job(CoreSysAttributes):
                     f"'{self._method.__qualname__}' blocked from execution, was unable to update plugin(s) {', '.join(update_failures)} and all plugins must be up to date first"
                 )
 
+        if (
+            JobCondition.MOUNT_AVAILABLE in used_conditions
+            and HostFeature.MOUNT not in self.sys_host.features
+        ):
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, mounting not supported on system"
+            )
+
     async def _acquire_exection_limit(self) -> None:
         """Process exection limits."""
         if self.limit not in (

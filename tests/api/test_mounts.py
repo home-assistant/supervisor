@@ -158,6 +158,32 @@ async def test_api_create_dbus_error_mount_not_added(
     assert result["data"]["mounts"] == []
 
 
+@pytest.mark.parametrize("os_available", ["9.5"], indirect=True)
+async def test_api_create_mount_fails_not_supported_feature(
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_available,
+):
+    """Test creating a mount via API fails when mounting isn't a supported feature on system.."""
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert (
+        result["message"]
+        == "'MountManager.create_mount' blocked from execution, mounting not supported on system"
+    )
+
+
 async def test_api_update_mount(api_client: TestClient, coresys: CoreSys, mount):
     """Test updating a mount via API."""
     resp = await api_client.put(

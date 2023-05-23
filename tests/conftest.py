@@ -42,6 +42,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
 from supervisor.host.logs import LogsControl
+from supervisor.os.manager import OSManager
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
@@ -602,3 +603,17 @@ async def capture_exception() -> Mock:
         "supervisor.utils.sentry.sentry_sdk.capture_exception"
     ) as capture_exception:
         yield capture_exception
+
+
+@pytest.fixture
+async def os_available(request: pytest.FixtureRequest) -> None:
+    """Mock os as available."""
+    version = (
+        AwesomeVersion(request.param)
+        if hasattr(request, "param")
+        else AwesomeVersion("10.0")
+    )
+    with patch.object(
+        OSManager, "available", new=PropertyMock(return_value=True)
+    ), patch.object(OSManager, "version", new=PropertyMock(return_value=version)):
+        yield

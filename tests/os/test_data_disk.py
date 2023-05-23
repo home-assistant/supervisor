@@ -22,8 +22,6 @@ from tests.dbus_service_mocks.udisks2_partition_table import (
     PartitionTable as PartitionTableService,
 )
 
-# pylint: disable=protected-access
-
 
 @pytest.fixture(autouse=True)
 async def add_unusable_drive(
@@ -70,10 +68,8 @@ async def tests_datadisk_current(coresys: CoreSys):
     ["/dev/sdaaaa", "/dev/mmcblk1", "Generic-Flash-Disk-61BCDDB6"],
     ids=["non-existent", "unavailable drive by path", "unavailable drive by id"],
 )
-async def test_datadisk_move_fail(coresys: CoreSys, new_disk: str):
+async def test_datadisk_move_fail(coresys: CoreSys, new_disk: str, os_available):
     """Test datadisk move to non-existent or invalid devices."""
-    coresys.os._available = True
-
     with pytest.raises(
         HassOSDataDiskError, match=f"'{new_disk}' not a valid data disk target!"
     ):
@@ -112,13 +108,13 @@ async def test_datadisk_migrate(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
     new_disk: str,
+    os_available,
 ):
     """Test migrating data disk."""
     datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
     datadisk_service.ChangeDevice.calls.clear()
     logind_service: LogindService = all_dbus_services["logind"]
     logind_service.Reboot.calls.clear()
-    coresys.os._available = True
 
     with patch.object(Core, "shutdown") as shutdown:
         await coresys.os.datadisk.migrate_disk(new_disk)
@@ -137,6 +133,7 @@ async def test_datadisk_migrate_mark_data_move(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
     new_disk: str,
+    os_available,
 ):
     """Test migrating data disk with os agent 1.5.0 or later."""
     datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
@@ -155,7 +152,6 @@ async def test_datadisk_migrate_mark_data_move(
 
     all_dbus_services["os_agent"].emit_properties_changed({"Version": "1.5.0"})
     await all_dbus_services["os_agent"].ping()
-    coresys.os._available = True
 
     with patch.object(Core, "shutdown") as shutdown:
         await coresys.os.datadisk.migrate_disk(new_disk)
@@ -181,6 +177,7 @@ async def test_datadisk_migrate_mark_data_move(
 async def test_datadisk_migrate_too_small(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_available,
 ):
     """Test migration stops and exits if new partition is too small."""
     datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
@@ -198,7 +195,6 @@ async def test_datadisk_migrate_too_small(
 
     all_dbus_services["os_agent"].emit_properties_changed({"Version": "1.5.0"})
     await all_dbus_services["os_agent"].ping()
-    coresys.os._available = True
 
     with pytest.raises(
         HassOSDataDiskError,
@@ -214,6 +210,7 @@ async def test_datadisk_migrate_too_small(
 async def test_datadisk_migrate_multiple_external_data_disks(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_available,
 ):
     """Test migration stops when another hassos-data-external partition detected."""
     datadisk_service: DataDiskService = all_dbus_services["agent_datadisk"]
@@ -226,7 +223,6 @@ async def test_datadisk_migrate_multiple_external_data_disks(
     sdb1_filesystem_service.fixture = replace(
         sdb1_filesystem_service.fixture, MountPoints=[]
     )
-    coresys.os._available = True
 
     with pytest.raises(
         HassOSDataDiskError,
@@ -241,6 +237,7 @@ async def test_datadisk_migrate_multiple_external_data_disks(
 async def test_datadisk_migrate_between_external_renames(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_available,
 ):
     """Test migration from one external data disk to another renames the original."""
     sdb1_partition_service: PartitionService = all_dbus_services["udisks2_partition"][
@@ -266,7 +263,6 @@ async def test_datadisk_migrate_between_external_renames(
 
     all_dbus_services["os_agent"].emit_properties_changed({"Version": "1.5.0"})
     await all_dbus_services["os_agent"].ping()
-    coresys.os._available = True
 
     await coresys.os.datadisk.migrate_disk("Generic-Flash-Disk-61BCDDB6")
 
