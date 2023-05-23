@@ -374,6 +374,8 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
         coresys.config.path_backup.mkdir()
         coresys.config.path_tmp.mkdir()
         coresys.config.path_homeassistant.mkdir()
+        coresys.config.path_audio.mkdir()
+        coresys.config.path_dns.mkdir()
         yield tmp_path
 
 
