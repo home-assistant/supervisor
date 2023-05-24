@@ -9,6 +9,7 @@ import voluptuous as vol
 from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_PORT, ATTR_TYPE, ATTR_USERNAME
 from ..validate import network_port
 from .const import (
+    ATTR_DEFAULT_BACKUP_MOUNT,
     ATTR_MOUNTS,
     ATTR_PATH,
     ATTR_SERVER,
@@ -65,6 +66,7 @@ SCHEMA_MOUNT_CONFIG = vol.Any(SCHEMA_MOUNT_CIFS, SCHEMA_MOUNT_NFS)
 SCHEMA_MOUNTS_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_MOUNTS, default=[]): [SCHEMA_MOUNT_CONFIG],
+        vol.Optional(ATTR_DEFAULT_BACKUP_MOUNT): vol.Maybe(str),
     }
 )
 
