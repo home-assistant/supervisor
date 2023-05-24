@@ -3,7 +3,7 @@ import logging
 
 from ..const import DOCKER_NETWORK_MASK
 from ..coresys import CoreSysAttributes
-from .const import ENV_TIME, ENV_TOKEN, RestartPolicy
+from .const import ENV_TIME, ENV_TOKEN, MOUNT_DOCKER, RestartPolicy
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
                 ENV_TOKEN: self.sys_plugins.observer.supervisor_token,
                 ENV_NETWORK_MASK: DOCKER_NETWORK_MASK,
             },
-            volumes={"/run/docker.sock": {"bind": "/run/docker.sock", "mode": "ro"}},
+            mounts=[MOUNT_DOCKER],
             ports={"80/tcp": 4357},
             oom_score_adj=-300,
         )

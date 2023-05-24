@@ -181,9 +181,9 @@ class CoreConfig(FileConfiguration):
         return PurePath(os.environ[ENV_SUPERVISOR_SHARE])
 
     @property
-    def path_extern_homeassistant(self) -> str:
+    def path_extern_homeassistant(self) -> PurePath:
         """Return config path external for Docker."""
-        return str(PurePath(self.path_extern_supervisor, HOMEASSISTANT_CONFIG))
+        return PurePath(self.path_extern_supervisor, HOMEASSISTANT_CONFIG)
 
     @property
     def path_homeassistant(self) -> Path:
@@ -191,9 +191,9 @@ class CoreConfig(FileConfiguration):
         return self.path_supervisor / HOMEASSISTANT_CONFIG
 
     @property
-    def path_extern_ssl(self) -> str:
+    def path_extern_ssl(self) -> PurePath:
         """Return SSL path external for Docker."""
-        return str(PurePath(self.path_extern_supervisor, HASSIO_SSL))
+        return PurePath(self.path_extern_supervisor, HASSIO_SSL)
 
     @property
     def path_ssl(self) -> Path:
@@ -291,9 +291,9 @@ class CoreConfig(FileConfiguration):
         return PurePath(self.path_extern_supervisor, SHARE_DATA)
 
     @property
-    def path_extern_dns(self) -> str:
+    def path_extern_dns(self) -> PurePath:
         """Return dns path external for Docker."""
-        return str(PurePath(self.path_extern_supervisor, DNS_DATA))
+        return PurePath(self.path_extern_supervisor, DNS_DATA)
 
     @property
     def path_dns(self) -> Path:
