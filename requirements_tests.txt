@@ -1,5 +1,5 @@
 black==23.3.0
-coverage==7.2.5
+coverage==7.2.6
 flake8-docstrings==1.7.0
 flake8==6.0.0
 pre-commit==3.3.2
