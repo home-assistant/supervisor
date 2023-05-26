@@ -10,7 +10,10 @@ from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 
 async def test_fixup(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], path_extern
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    path_extern,
+    mount_propagation,
 ):
     """Test fixup."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
