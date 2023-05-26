@@ -111,9 +111,14 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.udisks2.is_connected:
             features.append(HostFeature.DISK)
 
-        # Support added in OS10. For supervised, assume they can if systemd is connected
-        if self.sys_dbus.systemd.is_connected and (
-            not self.sys_os.available or self.sys_os.version >= AwesomeVersion("10")
+        # Support added in OS10. Propagation mode changed on mount in 10.2 to support this
+        if (
+            self.sys_dbus.systemd.is_connected
+            and self.sys_supervisor.instance.host_mounts_available
+            and (
+                not self.sys_os.available
+                or self.sys_os.version >= AwesomeVersion("10.0")
+            )
         ):
             features.append(HostFeature.MOUNT)
 

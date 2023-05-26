@@ -112,6 +112,11 @@ class DockerInterface(CoreSysAttributes):
         return self.meta_config.get("Labels") or {}
 
     @property
+    def meta_mounts(self) -> list[dict[str, Any]]:
+        """Return meta data of mounts for container/image."""
+        return self._meta.get("Mounts", [])
+
+    @property
     def image(self) -> str | None:
         """Return name of Docker image."""
         try:

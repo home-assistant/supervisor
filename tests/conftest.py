@@ -63,7 +63,7 @@ from .dbus_service_mocks.network_manager import NetworkManager as NetworkManager
 # pylint: disable=redefined-outer-name, protected-access
 
 
-async def mock_async_return_true() -> bool:
+async def mock_async_return_true(*args, **kwargs) -> bool:
     """Mock methods to return True."""
     return True
 
@@ -620,3 +620,24 @@ async def os_available(request: pytest.FixtureRequest) -> None:
         OSManager, "available", new=PropertyMock(return_value=True)
     ), patch.object(OSManager, "version", new=PropertyMock(return_value=version)):
         yield
+
+
+@pytest.fixture
+async def mount_propagation(docker: DockerAPI, coresys: CoreSys) -> None:
+    """Mock supervisor connected to container with propagation set."""
+    os.environ["SUPERVISOR_NAME"] = "hassio_supervisor"
+    docker.containers.get.return_value = supervisor = MagicMock()
+    supervisor.attrs = {
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/mnt/data/supervisor",
+                "Destination": "/data",
+                "Mode": "rw",
+                "RW": True,
+                "Propagation": "slave",
+            }
+        ]
+    }
+    await coresys.supervisor.load()
+    yield
