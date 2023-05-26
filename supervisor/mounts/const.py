@@ -26,3 +26,4 @@ class MountUsage(str, Enum):
 
     BACKUP = "backup"
     MEDIA = "media"
+    SHARE = "share"
