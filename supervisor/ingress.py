@@ -36,6 +36,10 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             return None
         return self.sys_addons.get(self.tokens[token], local_only=True)
 
+    def get_session_data(self, session_id: str) -> IngressSessionData | None:
+        """Return complementary data of current session or None."""
+        return self.sessions_data.get(session_id)
+
     @property
     def sessions(self) -> dict[str, float]:
         """Return sessions."""
@@ -96,7 +100,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
             # Is valid
             sessions[session] = valid
-            sessions_data[session] = self.sessions_data[session]
+            sessions_data[session] = self.get_session_data(session)
 
         # Write back
         self.sessions.clear()

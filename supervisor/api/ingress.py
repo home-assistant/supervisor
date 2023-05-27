@@ -131,7 +131,7 @@ class APIIngress(CoreSysAttributes):
         # Process requests
         addon = self._extract_addon(request)
         path = request.match_info.get("path")
-        session_data = self.sys_ingress.sessions_data[session]
+        session_data = self.sys_ingress.get_session_data(session)
         try:
             # Websocket
             if _is_websocket(request):

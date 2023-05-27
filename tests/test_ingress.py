@@ -21,7 +21,7 @@ def test_session_handling(coresys):
     assert not coresys.ingress.validate_session(session)
     assert not coresys.ingress.validate_session("invalid session")
 
-    session_data = coresys.ingress.sessions_data[session]
+    session_data = coresys.ingress.get_session_data(session)
     assert session_data is None
 
 
@@ -33,7 +33,7 @@ def test_session_handling_with_session_data(coresys):
 
     assert session
 
-    session_data = coresys.ingress.sessions_data[session]
+    session_data = coresys.ingress.get_session_data(session)
     assert session_data[ATTR_SESSION_DATA_USER_ID] == "some-id"
 
 

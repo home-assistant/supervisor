@@ -80,6 +80,8 @@ async def test_validate_session_with_user_id(api_client, coresys):
         assert coresys.ingress.sessions[session] > valid_time
 
         assert session in coresys.ingress.sessions_data
-        assert coresys.ingress.sessions_data[session].user.id == "some-id"
-        assert coresys.ingress.sessions_data[session].user.username == "sn"
-        assert coresys.ingress.sessions_data[session].user.display_name == "Some Name"
+        assert coresys.ingress.get_session_data(session).user.id == "some-id"
+        assert coresys.ingress.get_session_data(session).user.username == "sn"
+        assert (
+            coresys.ingress.get_session_data(session).user.display_name == "Some Name"
+        )
