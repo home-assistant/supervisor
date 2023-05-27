@@ -33,7 +33,6 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
-from ..validate import SCHEMA_INGRESS_CREATE_SESSION_DATA
 from .const import COOKIE_INGRESS
 from .utils import api_process, api_validate, require_home_assistant
 
@@ -47,6 +46,7 @@ SCHEMA_INGRESS_CREATE_SESSION_DATA = vol.Schema(
         vol.Optional(ATTR_SESSION_DATA_USER_ID): str,
     }
 )
+
 
 class APIIngress(CoreSysAttributes):
     """Ingress view to handle add-on webui routing."""
