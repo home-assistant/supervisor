@@ -9,7 +9,10 @@ from pathlib import PurePath
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import UnitActiveState
-from ..exceptions import MountActivationError, MountError, MountNotFound
+from ..exceptions import MountActivationError, MountError, MountJobError, MountNotFound
+from ..host.const import HostFeature
+from ..jobs.const import JobCondition
+from ..jobs.decorator import Job
 from ..resolution.const import SuggestionType
 from ..utils.common import FileConfiguration
 from ..utils.sentry import capture_exception
@@ -102,6 +105,12 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         if not self.mounts:
             return
 
+        if HostFeature.MOUNT not in self.sys_host.features:
+            _LOGGER.error(
+                "Cannot load configured mounts because mounting not supported on system!"
+            )
+            return
+
         _LOGGER.info("Initializing all user-configured mounts")
         await self._mount_errors_to_issues(
             self.mounts.copy(), [mount.load() for mount in self.mounts]
@@ -109,11 +118,19 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         # Bind all media mounts to directories in media
         if self.media_mounts:
-            await asyncio.wait([self._bind_media(mount) for mount in self.media_mounts])
+            await asyncio.wait(
+                [
+                    self.sys_create_task(self._bind_media(mount))
+                    for mount in self.media_mounts
+                ]
+            )
 
+    @Job(conditions=[JobCondition.MOUNT_AVAILABLE])
     async def reload(self) -> None:
         """Update mounts info via dbus and reload failed mounts."""
-        await asyncio.wait([mount.update() for mount in self.mounts])
+        await asyncio.wait(
+            [self.sys_create_task(mount.update()) for mount in self.mounts]
+        )
 
         # Try to reload any newly failed mounts and report issues if failure persists
         new_failures = [
@@ -146,6 +163,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 ],
             )
 
+    @Job(conditions=[JobCondition.MOUNT_AVAILABLE], on_condition=MountJobError)
     async def create_mount(self, mount: Mount) -> None:
         """Add/update a mount."""
         if mount.name in self._mounts:
@@ -163,6 +181,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         if mount.usage == MountUsage.MEDIA:
             await self._bind_media(mount)
 
+    @Job(conditions=[JobCondition.MOUNT_AVAILABLE], on_condition=MountJobError)
     async def remove_mount(self, name: str, *, retain_entry: bool = False) -> None:
         """Remove a mount."""
         if name not in self._mounts:
@@ -185,6 +204,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         return mount
 
+    @Job(conditions=[JobCondition.MOUNT_AVAILABLE], on_condition=MountJobError)
     async def reload_mount(self, name: str) -> None:
         """Reload a mount to retry mounting with same config."""
         if name not in self._mounts:

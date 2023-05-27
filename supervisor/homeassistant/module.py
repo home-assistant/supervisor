@@ -3,7 +3,7 @@ import asyncio
 from datetime import timedelta
 from ipaddress import IPv4Address
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
@@ -221,14 +221,14 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         self._data[ATTR_REFRESH_TOKEN] = value
 
     @property
-    def path_pulse(self):
+    def path_pulse(self) -> Path:
         """Return path to asound config."""
         return Path(self.sys_config.path_tmp, "homeassistant_pulse")
 
     @property
-    def path_extern_pulse(self):
+    def path_extern_pulse(self) -> PurePath:
         """Return path to asound config for Docker."""
-        return Path(self.sys_config.path_extern_tmp, "homeassistant_pulse")
+        return PurePath(self.sys_config.path_extern_tmp, "homeassistant_pulse")
 
     @property
     def audio_output(self) -> str | None:
@@ -260,7 +260,12 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
-        await asyncio.wait([self.secrets.load(), self.core.load()])
+        await asyncio.wait(
+            [
+                self.sys_create_task(self.secrets.load()),
+                self.sys_create_task(self.core.load()),
+            ]
+        )
 
         # Register for events
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)

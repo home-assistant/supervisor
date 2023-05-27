@@ -532,14 +532,14 @@ class AddonModel(CoreSysAttributes, ABC):
         return ATTR_IMAGE not in self.data
 
     @property
-    def map_volumes(self) -> dict[str, str]:
-        """Return a dict of {volume: policy} from add-on."""
+    def map_volumes(self) -> dict[str, bool]:
+        """Return a dict of {volume: read-only} from add-on."""
         volumes = {}
         for volume in self.data[ATTR_MAP]:
             result = RE_VOLUME.match(volume)
             if not result:
                 continue
-            volumes[result.group(1)] = result.group(2) or "ro"
+            volumes[result.group(1)] = result.group(2) != "rw"
 
         return volumes
 

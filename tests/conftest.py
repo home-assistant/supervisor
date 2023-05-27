@@ -42,6 +42,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
 from supervisor.host.logs import LogsControl
+from supervisor.os.manager import OSManager
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
@@ -373,6 +374,8 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
         coresys.config.path_backup.mkdir()
         coresys.config.path_tmp.mkdir()
         coresys.config.path_homeassistant.mkdir()
+        coresys.config.path_audio.mkdir()
+        coresys.config.path_dns.mkdir()
         yield tmp_path
 
 
@@ -602,3 +605,17 @@ async def capture_exception() -> Mock:
         "supervisor.utils.sentry.sentry_sdk.capture_exception"
     ) as capture_exception:
         yield capture_exception
+
+
+@pytest.fixture
+async def os_available(request: pytest.FixtureRequest) -> None:
+    """Mock os as available."""
+    version = (
+        AwesomeVersion(request.param)
+        if hasattr(request, "param")
+        else AwesomeVersion("10.0")
+    )
+    with patch.object(
+        OSManager, "available", new=PropertyMock(return_value=True)
+    ), patch.object(OSManager, "version", new=PropertyMock(return_value=version)):
+        yield

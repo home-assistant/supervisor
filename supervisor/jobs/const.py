@@ -19,6 +19,7 @@ class JobCondition(str, Enum):
     HOST_NETWORK = "host_network"
     INTERNET_HOST = "internet_host"
     INTERNET_SYSTEM = "internet_system"
+    MOUNT_AVAILABLE = "mount_available"
     OS_AGENT = "os_agent"
     PLUGINS_UPDATED = "plugins_updated"
     RUNNING = "running"

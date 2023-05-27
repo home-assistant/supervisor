@@ -18,6 +18,7 @@ from supervisor.exceptions import (
     DockerAPIError,
     DockerNotFound,
 )
+from supervisor.plugins.dns import PluginDns
 from supervisor.utils import check_exception_chain
 
 from tests.common import load_json_fixture
@@ -164,3 +165,20 @@ async def test_addon_uninstall_removes_discovery(
 
     assert coresys.addons.installed == []
     assert coresys.discovery.list_messages == []
+
+
+async def test_load(
+    coresys: CoreSys, install_addon_ssh: Addon, caplog: pytest.LogCaptureFixture
+):
+    """Test addon manager load."""
+    caplog.clear()
+
+    with patch.object(DockerInterface, "attach") as attach, patch.object(
+        PluginDns, "write_hosts"
+    ) as write_hosts:
+        await coresys.addons.load()
+
+        attach.assert_called_once_with(version=AwesomeVersion("9.2.1"))
+        write_hosts.assert_called_once()
+
+    assert "Found 1 installed add-ons" in caplog.text

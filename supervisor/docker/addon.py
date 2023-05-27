@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from awesomeversion import AwesomeVersion
 import docker
+from docker.types import Mount
 import requests
 
 from ..addons.build import AddonBuild
@@ -46,12 +47,16 @@ from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import process_lock
 from ..utils.sentry import capture_exception
 from .const import (
-    DBUS_PATH,
-    DBUS_VOLUME,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_OLD,
+    MOUNT_DBUS,
+    MOUNT_DEV,
+    MOUNT_DOCKER,
+    MOUNT_UDEV,
     Capabilities,
+    MountType,
+    PropagationMode,
 )
 from .interface import DockerInterface
 
@@ -320,74 +325,80 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def volumes(self) -> dict[str, dict[str, str]]:
-        """Generate volumes for mappings."""
+    def mounts(self) -> list[Mount]:
+        """Return mounts for container."""
         addon_mapping = self.addon.map_volumes
 
-        volumes = {
-            "/dev": {"bind": "/dev", "mode": "ro"},
-            str(self.addon.path_extern_data): {"bind": "/data", "mode": "rw"},
-        }
+        mounts = [
+            MOUNT_DEV,
+            Mount(
+                type=MountType.BIND.value,
+                source=self.addon.path_extern_data.as_posix(),
+                target="/data",
+                read_only=False,
+            ),
+        ]
 
         # setup config mappings
         if MAP_CONFIG in addon_mapping:
-            volumes.update(
-                {
-                    str(self.sys_config.path_extern_homeassistant): {
-                        "bind": "/config",
-                        "mode": addon_mapping[MAP_CONFIG],
-                    }
-                }
+            mounts.append(
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_homeassistant.as_posix(),
+                    target="/config",
+                    read_only=addon_mapping[MAP_CONFIG],
+                )
             )
 
         if MAP_SSL in addon_mapping:
-            volumes.update(
-                {
-                    str(self.sys_config.path_extern_ssl): {
-                        "bind": "/ssl",
-                        "mode": addon_mapping[MAP_SSL],
-                    }
-                }
+            mounts.append(
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_ssl.as_posix(),
+                    target="/ssl",
+                    read_only=addon_mapping[MAP_SSL],
+                )
             )
 
         if MAP_ADDONS in addon_mapping:
-            volumes.update(
-                {
-                    str(self.sys_config.path_extern_addons_local): {
-                        "bind": "/addons",
-                        "mode": addon_mapping[MAP_ADDONS],
-                    }
-                }
+            mounts.append(
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_addons_local.as_posix(),
+                    target="/addons",
+                    read_only=addon_mapping[MAP_ADDONS],
+                )
             )
 
         if MAP_BACKUP in addon_mapping:
-            volumes.update(
-                {
-                    str(self.sys_config.path_extern_backup): {
-                        "bind": "/backup",
-                        "mode": addon_mapping[MAP_BACKUP],
-                    }
-                }
+            mounts.append(
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_backup.as_posix(),
+                    target="/backup",
+                    read_only=addon_mapping[MAP_BACKUP],
+                )
             )
 
         if MAP_SHARE in addon_mapping:
-            volumes.update(
-                {
-                    str(self.sys_config.path_extern_share): {
-                        "bind": "/share",
-                        "mode": addon_mapping[MAP_SHARE],
-                    }
-                }
+            mounts.append(
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_share.as_posix(),
+                    target="/share",
+                    read_only=addon_mapping[MAP_SHARE],
+                )
             )
 
         if MAP_MEDIA in addon_mapping:
-            volumes.update(
-                {
-                    str(self.sys_config.path_extern_media): {
-                        "bind": "/media",
-                        "mode": addon_mapping[MAP_MEDIA],
-                    }
-                }
+            mounts.append(
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_config.path_extern_media.as_posix(),
+                    target="/media",
+                    read_only=addon_mapping[MAP_MEDIA],
+                    propagation=PropagationMode.SLAVE.value,
+                )
             )
 
         # Init other hardware mappings
@@ -397,72 +408,90 @@ class DockerAddon(DockerInterface):
             for gpio_path in ("/sys/class/gpio", "/sys/devices/platform/soc"):
                 if not Path(gpio_path).exists():
                     continue
-                volumes.update({gpio_path: {"bind": gpio_path, "mode": "rw"}})
+                mounts.append(
+                    Mount(
+                        type=MountType.BIND.value,
+                        source=gpio_path,
+                        target=gpio_path,
+                        read_only=False,
+                    )
+                )
 
         # DeviceTree support
         if self.addon.with_devicetree:
-            volumes.update(
-                {
-                    "/sys/firmware/devicetree/base": {
-                        "bind": "/device-tree",
-                        "mode": "ro",
-                    }
-                }
+            mounts.append(
+                Mount(
+                    type=MountType.BIND.value,
+                    source="/sys/firmware/devicetree/base",
+                    target="/device-tree",
+                    read_only=True,
+                )
             )
 
         # Host udev support
         if self.addon.with_udev:
-            volumes.update({"/run/udev": {"bind": "/run/udev", "mode": "ro"}})
+            mounts.append(MOUNT_UDEV)
 
         # Kernel Modules support
         if self.addon.with_kernel_modules:
-            volumes.update({"/lib/modules": {"bind": "/lib/modules", "mode": "ro"}})
+            mounts.append(
+                Mount(
+                    type=MountType.BIND.value,
+                    source="/lib/modules",
+                    target="/lib/modules",
+                    read_only=True,
+                )
+            )
 
         # Docker API support
         if not self.addon.protected and self.addon.access_docker_api:
-            volumes.update(
-                {"/run/docker.sock": {"bind": "/run/docker.sock", "mode": "ro"}}
-            )
+            mounts.append(MOUNT_DOCKER)
 
         # Host D-Bus system
         if self.addon.host_dbus:
-            volumes.update({DBUS_PATH: DBUS_VOLUME})
+            mounts.append(MOUNT_DBUS)
 
         # Configuration Audio
         if self.addon.with_audio:
-            volumes.update(
-                {
-                    str(self.addon.path_extern_pulse): {
-                        "bind": "/etc/pulse/client.conf",
-                        "mode": "ro",
-                    },
-                    str(self.sys_plugins.audio.path_extern_pulse): {
-                        "bind": "/run/audio",
-                        "mode": "ro",
-                    },
-                    str(self.sys_plugins.audio.path_extern_asound): {
-                        "bind": "/etc/asound.conf",
-                        "mode": "ro",
-                    },
-                }
-            )
+            mounts += [
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_homeassistant.path_extern_pulse.as_posix(),
+                    target="/etc/pulse/client.conf",
+                    read_only=True,
+                ),
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
+                    target="/run/audio",
+                    read_only=True,
+                ),
+                Mount(
+                    type=MountType.BIND.value,
+                    source=self.sys_plugins.audio.path_extern_asound.as_posix(),
+                    target="/etc/asound.conf",
+                    read_only=True,
+                ),
+            ]
 
         # System Journal access
         if self.addon.with_journald:
-            volumes.update(
-                {
-                    str(SYSTEMD_JOURNAL_PERSISTENT): {
-                        "bind": str(SYSTEMD_JOURNAL_PERSISTENT),
-                        "mode": "ro",
-                    },
-                    str(SYSTEMD_JOURNAL_VOLATILE): {
-                        "bind": str(SYSTEMD_JOURNAL_VOLATILE),
-                        "mode": "ro",
-                    },
-                }
-            )
+            mounts += [
+                Mount(
+                    type=MountType.BIND.value,
+                    source=SYSTEMD_JOURNAL_PERSISTENT.as_posix(),
+                    target=SYSTEMD_JOURNAL_PERSISTENT.as_posix(),
+                    read_only=True,
+                ),
+                Mount(
+                    type=MountType.BIND.value,
+                    source=SYSTEMD_JOURNAL_VOLATILE.as_posix(),
+                    target=SYSTEMD_JOURNAL_VOLATILE.as_posix(),
+                    read_only=True,
+                ),
+            ]
 
-        return volumes
+        return mounts
 
     def _run(self) -> None:
         """Run Docker image.
@@ -503,7 +532,7 @@ class DockerAddon(DockerInterface):
                 cpu_rt_runtime=self.cpu_rt_runtime,
                 security_opt=self.security_opt,
                 environment=self.environment,
-                volumes=self.volumes,
+                mounts=self.mounts,
                 tmpfs=self.tmpfs,
                 oom_score_adj=200,
             )

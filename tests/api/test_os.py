@@ -17,8 +17,6 @@ from tests.dbus_service_mocks.agent_boards_yellow import Yellow as YellowService
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.base import DBusServiceMock
 
-# pylint: disable=protected-access
-
 
 @pytest.fixture(name="boards_service")
 async def fixture_boards_service(
@@ -58,11 +56,12 @@ async def test_api_os_info_with_agent(api_client: TestClient, coresys: CoreSys):
     ids=["non-existent", "unavailable drive by path", "unavailable drive by id"],
 )
 async def test_api_os_datadisk_move_fail(
-    api_client: TestClient, coresys: CoreSys, new_disk: str
+    api_client: TestClient,
+    coresys: CoreSys,
+    new_disk: str,
+    os_available,
 ):
     """Test datadisk move to non-existent or invalid devices."""
-    coresys.os._available = True
-
     resp = await api_client.post("/os/datadisk/move", json={"device": new_disk})
     result = await resp.json()
 
@@ -98,11 +97,11 @@ async def test_api_os_datadisk_migrate(
     coresys: CoreSys,
     os_agent_services: dict[str, DBusServiceMock],
     new_disk: str,
+    os_available,
 ):
     """Test migrating datadisk."""
     datadisk_service: DataDiskService = os_agent_services["agent_datadisk"]
     datadisk_service.ChangeDevice.calls.clear()
-    coresys.os._available = True
 
     with patch.object(SystemControl, "reboot") as reboot:
         resp = await api_client.post("/os/datadisk/move", json={"device": new_disk})

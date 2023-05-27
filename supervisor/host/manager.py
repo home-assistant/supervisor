@@ -3,7 +3,7 @@ from contextlib import suppress
 from functools import lru_cache
 import logging
 
-from supervisor.host.logs import LogsControl
+from awesomeversion import AwesomeVersion
 
 from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
@@ -14,6 +14,7 @@ from .apparmor import AppArmorControl
 from .const import HostFeature
 from .control import SystemControl
 from .info import InfoCenter
+from .logs import LogsControl
 from .network import NetworkManager
 from .services import ServiceManager
 from .sound import SoundControl
@@ -109,6 +110,12 @@ class HostManager(CoreSysAttributes):
 
         if self.sys_dbus.udisks2.is_connected:
             features.append(HostFeature.DISK)
+
+        # Support added in OS10. For supervised, assume they can if systemd is connected
+        if self.sys_dbus.systemd.is_connected and (
+            not self.sys_os.available or self.sys_os.version >= AwesomeVersion("10")
+        ):
+            features.append(HostFeature.MOUNT)
 
         return features
 

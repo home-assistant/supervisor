@@ -46,6 +46,7 @@ class HostFeature(str, Enum):
     HAOS = "haos"
     HOSTNAME = "hostname"
     JOURNAL = "journal"
+    MOUNT = "mount"
     NETWORK = "network"
     OS_AGENT = "os_agent"
     REBOOT = "reboot"

@@ -69,14 +69,14 @@ async def cas_validate(
 
         async with async_timeout.timeout(15):
             data, error = await proc.communicate()
-    except OSError as err:
-        raise CodeNotaryError(
-            f"CodeNotary fatal error: {err!s}", _LOGGER.critical
-        ) from err
     except asyncio.TimeoutError:
         raise CodeNotaryBackendError(
             "Timeout while processing CodeNotary", _LOGGER.warning
         ) from None
+    except OSError as err:
+        raise CodeNotaryError(
+            f"CodeNotary fatal error: {err!s}", _LOGGER.critical
+        ) from err
 
     # Check if Notarized
     if proc.returncode != 0 and not data:
