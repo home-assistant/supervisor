@@ -32,7 +32,6 @@ from .const import (
     ATTR_SESSION,
     ATTR_SESSION_DATA,
     ATTR_SESSION_DATA_USER,
-    ATTR_SESSION_DATA_USER_ID,
     ATTR_SUPERVISOR,
     ATTR_TIMEZONE,
     ATTR_USERNAME,
@@ -178,13 +177,6 @@ SCHEMA_DOCKER_CONFIG = vol.Schema(
 
 
 SCHEMA_AUTH_CONFIG = vol.Schema({sha256: sha256})
-
-"""Expected optional payload of create session request"""
-SCHEMA_INGRESS_CREATE_SESSION_DATA = vol.Schema(
-    {
-        vol.Optional(ATTR_SESSION_DATA_USER_ID): str,
-    }
-)
 
 SCHEMA_SESSION_DATA = vol.Schema(
     {

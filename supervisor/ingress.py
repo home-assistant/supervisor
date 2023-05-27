@@ -42,7 +42,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         return self._data[ATTR_SESSION]
 
     @property
-    def sessions_data(self) -> dict[str, float]:
+    def sessions_data(self) -> dict[str, IngressSessionData]:
         """Return sessions_data."""
         return self._data[ATTR_SESSION_DATA]
 
@@ -82,7 +82,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         now = utcnow()
 
         sessions = {}
-        sessions_data = {}
+        sessions_data: dict[str, IngressSessionData] = {}
         for session, valid in self.sessions.items():
             # check if timestamp valid, to avoid crash on malformed timestamp
             try:
@@ -112,13 +112,14 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         for addon in self.addons:
             self.tokens[addon.ingress_token] = addon.slug
 
-    def create_session(self, data: IngressSessionData = None) -> str:
+    def create_session(self, data: IngressSessionData | None = None) -> str:
         """Create new session."""
         session = secrets.token_hex(64)
         valid = utcnow() + timedelta(minutes=15)
 
         self.sessions[session] = valid.timestamp()
-        self.sessions_data[session] = data
+        if data is not None:
+            self.sessions_data[session] = data
 
         return session
 

@@ -41,6 +41,12 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 VALIDATE_SESSION_DATA = vol.Schema({ATTR_SESSION: str})
 
+"""Expected optional payload of create session request"""
+SCHEMA_INGRESS_CREATE_SESSION_DATA = vol.Schema(
+    {
+        vol.Optional(ATTR_SESSION_DATA_USER_ID): str,
+    }
+)
 
 class APIIngress(CoreSysAttributes):
     """Ingress view to handle add-on webui routing."""
@@ -88,7 +94,7 @@ class APIIngress(CoreSysAttributes):
         schema_ingress_config_session_data = await api_validate(
             SCHEMA_INGRESS_CREATE_SESSION_DATA, request
         )
-        data: IngressSessionData = None
+        data: IngressSessionData | None = None
 
         if ATTR_SESSION_DATA_USER_ID in schema_ingress_config_session_data:
             user = await self._find_user_by_id(
@@ -144,7 +150,7 @@ class APIIngress(CoreSysAttributes):
         request: web.Request,
         addon: Addon,
         path: str,
-        session_data: IngressSessionData,
+        session_data: IngressSessionData | None,
     ) -> web.WebSocketResponse:
         """Ingress route for websocket."""
         if hdrs.SEC_WEBSOCKET_PROTOCOL in request.headers:
@@ -192,7 +198,7 @@ class APIIngress(CoreSysAttributes):
         request: web.Request,
         addon: Addon,
         path: str,
-        session_data: IngressSessionData,
+        session_data: IngressSessionData | None,
     ) -> web.Response | web.StreamResponse:
         """Ingress route for request."""
         url = self._create_url(addon, path)
@@ -269,7 +275,7 @@ class APIIngress(CoreSysAttributes):
 
 
 def _init_header(
-    request: web.Request, addon: Addon, session_data: IngressSessionData
+    request: web.Request, addon: Addon, session_data: IngressSessionData | None
 ) -> CIMultiDict | dict[str, str]:
     """Create initial header."""
     headers = {}
