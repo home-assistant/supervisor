@@ -69,6 +69,11 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         return [mount for mount in self.mounts if mount.usage == MountUsage.MEDIA]
 
     @property
+    def share_mounts(self) -> list[Mount]:
+        """Return list of share mounts."""
+        return [mount for mount in self.mounts if mount.usage == MountUsage.SHARE]
+
+    @property
     def bound_mounts(self) -> list[BoundMount]:
         """Return list of bound mounts and where else they have been bind mounted."""
         return list(self._bound_mounts.values())
@@ -122,6 +127,15 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 [
                     self.sys_create_task(self._bind_media(mount))
                     for mount in self.media_mounts
+                ]
+            )
+
+        # Bind all share mounts to directories in share
+        if self.share_mounts:
+            await asyncio.wait(
+                [
+                    self.sys_create_task(self._bind_share(mount))
+                    for mount in self.share_mounts
                 ]
             )
 
@@ -180,6 +194,8 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         self._mounts[mount.name] = mount
         if mount.usage == MountUsage.MEDIA:
             await self._bind_media(mount)
+        elif mount.usage == MountUsage.SHARE:
+            await self._bind_share(mount)
 
     @Job(conditions=[JobCondition.MOUNT_AVAILABLE], on_condition=MountJobError)
     async def remove_mount(self, name: str, *, retain_entry: bool = False) -> None:
@@ -221,6 +237,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     async def _bind_media(self, mount: Mount) -> None:
         """Bind a media mount to media directory."""
         await self._bind_mount(mount, self.sys_config.path_extern_media / mount.name)
+
+    async def _bind_share(self, mount: Mount) -> None:
+        """Bind a share mount to share directory."""
+        await self._bind_mount(mount, self.sys_config.path_extern_share / mount.name)
 
     async def _bind_mount(self, mount: Mount, where: PurePath) -> None:
         """Bind mount to path, falling back on emergency if necessary.
