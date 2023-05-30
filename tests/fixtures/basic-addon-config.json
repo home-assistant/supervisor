@@ -7,7 +7,7 @@
   "url": "https://www.home-assistant.io/",
   "startup": "application",
   "boot": "auto",
-  "map": ["config:rw", "ssl", "media"],
+  "map": ["config:rw", "ssl", "media", "share"],
   "options": {},
   "schema": {},
   "image": "test/{arch}-my-custom-addon"

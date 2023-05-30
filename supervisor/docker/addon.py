@@ -387,6 +387,7 @@ class DockerAddon(DockerInterface):
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
                     read_only=addon_mapping[MAP_SHARE],
+                    propagation=PropagationMode.SLAVE.value,
                 )
             )
 
