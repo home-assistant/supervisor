@@ -114,7 +114,7 @@ async def test_nfs_mount(
     assert mount.what == "test.local:/media/camera"
     assert mount.where == Path("/mnt/data/supervisor/mounts/test")
     assert mount.local_where == tmp_supervisor_data / "mounts" / "test"
-    assert mount.options == ["port=1234"]
+    assert mount.options == ["port=1234", "soft", "timeo=200"]
 
     assert not mount.local_where.exists()
     assert mount.to_dict() == mount_data
@@ -130,7 +130,7 @@ async def test_nfs_mount(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "port=1234")],
+                ["Options", Variant("s", "port=1234,soft,timeo=200")],
                 ["Type", Variant("s", "nfs")],
                 ["Description", Variant("s", "Supervisor nfs mount: test")],
                 ["What", Variant("s", "test.local:/media/camera")],

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError
+import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup
@@ -662,3 +663,36 @@ async def test_backup_to_default(
         )
 
     assert (mount_dir / f"{backup.slug}.tar").exists()
+
+
+async def test_load_network_error(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test load of backup manager when there is a network error."""
+    (coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    caplog.clear()
+
+    # This should not raise, manager should just ignore backup locations with errors
+    mock_path = MagicMock()
+    mock_path.glob.side_effect = OSError("Host is down")
+    mock_path.as_posix.return_value = "/data/backup_test"
+    with patch.object(Mount, "local_where", new=PropertyMock(return_value=mock_path)):
+        await coresys.backups.load()
+
+    assert "Could not list backups from /data/backup_test" in caplog.text
