@@ -117,7 +117,7 @@ class HostManager(CoreSysAttributes):
             and self.sys_supervisor.instance.host_mounts_available
             and (
                 not self.sys_os.available
-                or self.sys_os.version >= AwesomeVersion("10.0")
+                or self.sys_os.version >= AwesomeVersion("10.2")
             )
         ):
             features.append(HostFeature.MOUNT)

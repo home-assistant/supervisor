@@ -57,8 +57,3 @@ class FixupAddonExecuteRebuild(FixupBase):
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
         return [IssueType.DOCKER_CONFIG]
-
-    @property
-    def auto(self) -> bool:
-        """Return if a fixup can be apply as auto fix."""
-        return False

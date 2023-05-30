@@ -614,7 +614,7 @@ async def os_available(request: pytest.FixtureRequest) -> None:
     version = (
         AwesomeVersion(request.param)
         if hasattr(request, "param")
-        else AwesomeVersion("10.0")
+        else AwesomeVersion("10.2")
     )
     with patch.object(
         OSManager, "available", new=PropertyMock(return_value=True)

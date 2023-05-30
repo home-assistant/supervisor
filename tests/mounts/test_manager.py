@@ -150,6 +150,7 @@ async def test_load_share_mount(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test mount manager loading with share mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -630,6 +631,7 @@ async def test_create_share_mount(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test creating a share mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
