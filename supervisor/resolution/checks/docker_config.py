@@ -14,7 +14,7 @@ def _check_container(container: DockerInterface) -> bool:
     return any(
         mount.get("Propagation") != PropagationMode.SLAVE.value
         for mount in container.meta_mounts
-        if mount.get("Destination") == "/media"
+        if mount.get("Destination") in ["/media", "/share"]
     )
 
 

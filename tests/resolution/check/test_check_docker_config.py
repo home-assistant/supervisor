@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from supervisor.addons.addon import Addon
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -14,24 +16,23 @@ from supervisor.resolution.data import Issue, Suggestion
 from tests.conftest import mock_async_return_true
 
 
-def _make_mock_container_get(bad_config_names: list[str]):
+def _make_mock_container_get(bad_config_names: list[str], folder: str = "media"):
     """Make mock of container get."""
+    mount = {
+        "Type": "bind",
+        "Source": f"/mnt/data/supervisor/{folder}",
+        "Destination": f"/{folder}",
+        "Mode": "rw",
+        "RW": True,
+        "Propagation": "rprivate",
+    }
 
     def mock_container_get(name):
         out = MagicMock()
         out.status = "running"
         out.attrs = {"State": {}, "Mounts": []}
         if name in bad_config_names:
-            out.attrs["Mounts"].append(
-                {
-                    "Type": "bind",
-                    "Source": "/mnt/data/supervisor/media",
-                    "Destination": "/media",
-                    "Mode": "rw",
-                    "RW": True,
-                    "Propagation": "rprivate",
-                }
-            )
+            out.attrs["Mounts"].append(mount)
 
         return out
 
@@ -45,10 +46,13 @@ async def test_base(coresys: CoreSys):
     assert docker_config.enabled
 
 
-async def test_check(docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon):
+@pytest.mark.parametrize("folder", ["media", "share"])
+async def test_check(
+    docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon, folder: str
+):
     """Test check reports issue when containers have incorrect config."""
     docker.containers.get = _make_mock_container_get(
-        ["homeassistant", "hassio_audio", "addon_local_ssh"]
+        ["homeassistant", "hassio_audio", "addon_local_ssh"], folder
     )
     with patch.object(DockerInterface, "is_running", new=mock_async_return_true):
         await coresys.plugins.load()
