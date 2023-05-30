@@ -10,6 +10,7 @@ import requests
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerError
+from .const import PropagationMode
 from .interface import DockerInterface
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -32,6 +33,15 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
     def privileged(self) -> bool:
         """Return True if the container run with Privileged."""
         return self.meta_host.get("Privileged", False)
+
+    @property
+    def host_mounts_available(self) -> bool:
+        """Return True if container can see mounts on host within its data directory."""
+        return self._meta and any(
+            mount.get("Propagation") == PropagationMode.SLAVE.value
+            for mount in self.meta_mounts
+            if mount.get("Destination") == "/data"
+        )
 
     def _attach(
         self, version: AwesomeVersion, skip_state_event_if_down: bool = False

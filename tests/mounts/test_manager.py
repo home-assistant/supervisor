@@ -51,7 +51,9 @@ SHARE_TEST_DATA = {
 
 
 @pytest.fixture(name="mount")
-async def fixture_mount(coresys: CoreSys, tmp_supervisor_data, path_extern) -> Mount:
+async def fixture_mount(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+) -> Mount:
     """Add an initial mount and load mounts."""
     mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
     coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
@@ -64,6 +66,7 @@ async def test_load(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test mount manager loading."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -147,6 +150,7 @@ async def test_load_share_mount(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test mount manager loading with share mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -210,6 +214,7 @@ async def test_mount_failed_during_load(
     dbus_session_bus: MessageBus,
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test mount failed during load."""
     await mock_dbus_services(
@@ -319,6 +324,7 @@ async def test_create_mount(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test creating a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -356,7 +362,9 @@ async def test_create_mount(
 
 
 async def test_update_mount(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], mount: Mount
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
 ):
     """Test updating a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -392,7 +400,9 @@ async def test_update_mount(
 
 
 async def test_reload_mount(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], mount: Mount
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
 ):
     """Test reloading a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -430,7 +440,7 @@ async def test_remove_mount(
     ]
 
 
-async def test_remove_reload_mount_missing(coresys: CoreSys):
+async def test_remove_reload_mount_missing(coresys: CoreSys, mount_propagation):
     """Test removing or reloading a non existent mount errors."""
     await coresys.mounts.load()
 
@@ -441,7 +451,9 @@ async def test_remove_reload_mount_missing(coresys: CoreSys):
         await coresys.mounts.reload_mount("does_not_exist")
 
 
-async def test_save_data(coresys: CoreSys, tmp_supervisor_data: Path, path_extern):
+async def test_save_data(
+    coresys: CoreSys, tmp_supervisor_data: Path, path_extern, mount_propagation
+):
     """Test saving mount config data."""
     # Replace mount manager with one that doesn't have save_data mocked
     coresys._mounts = MountManager(coresys)  # pylint: disable=protected-access
@@ -487,6 +499,7 @@ async def test_create_mount_start_unit_failure(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test failure to start mount unit does not add mount to the list."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -517,6 +530,7 @@ async def test_create_mount_activation_failure(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test activation failure during create mount does not add mount to the list and unmounts new mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -617,6 +631,7 @@ async def test_create_share_mount(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test creating a share mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]

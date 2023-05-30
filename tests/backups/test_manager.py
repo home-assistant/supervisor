@@ -371,6 +371,7 @@ async def test_backup_media_with_mounts(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test backing up media folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -432,6 +433,7 @@ async def test_backup_share_with_mounts(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test backing up share folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -488,7 +490,9 @@ async def test_backup_share_with_mounts(
     assert not mount_dir.exists()
 
 
-async def test_full_backup_to_mount(coresys: CoreSys, tmp_supervisor_data, path_extern):
+async def test_full_backup_to_mount(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+):
     """Test full backup to and restoring from a mount."""
     (marker := coresys.config.path_homeassistant / "test.txt").touch()
 
@@ -531,7 +535,10 @@ async def test_full_backup_to_mount(coresys: CoreSys, tmp_supervisor_data, path_
 
 
 async def test_partial_backup_to_mount(
-    coresys: CoreSys, tmp_supervisor_data, path_extern
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test partial backup to and restoring from a mount."""
     (marker := coresys.config.path_homeassistant / "test.txt").touch()
@@ -584,7 +591,10 @@ async def test_partial_backup_to_mount(
 
 
 async def test_backup_to_local_with_default(
-    coresys: CoreSys, tmp_supervisor_data, path_extern
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test making backup to local when a default mount is specified."""
     # Add a default backup mount
@@ -618,7 +628,9 @@ async def test_backup_to_local_with_default(
     assert (coresys.config.path_backup / f"{backup.slug}.tar").exists()
 
 
-async def test_backup_to_default(coresys: CoreSys, tmp_supervisor_data, path_extern):
+async def test_backup_to_default(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+):
     """Test making backup to default mount."""
     # Add a default backup mount
     (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()

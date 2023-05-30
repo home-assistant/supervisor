@@ -62,6 +62,7 @@ async def test_backup_to_location(
     backup_dir: PurePath,
     tmp_supervisor_data: Path,
     path_extern,
+    mount_propagation,
 ):
     """Test making a backup to a specific location with default mount."""
     await coresys.mounts.load()
@@ -96,7 +97,11 @@ async def test_backup_to_location(
 
 
 async def test_backup_to_default(
-    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data, path_extern
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test making backup to default mount."""
     await coresys.mounts.load()
