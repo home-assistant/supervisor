@@ -27,7 +27,7 @@ _CORE_VERSION: Final = AwesomeVersion("2023.3.4")
 # fmt: off
 
 _CORE_FRONTEND_PATHS: Final = (
-    r"|/app/.*\.(?:js|gz|json|map)"
+    r"|/app/.*\.(?:js|gz|json|map|woff2)"
     r"|/(store/)?addons/" + RE_SLUG + r"/(logo|icon)"
 )
 
