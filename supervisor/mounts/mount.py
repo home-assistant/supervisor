@@ -381,6 +381,11 @@ class NFSMount(NetworkMount):
         """What to mount."""
         return f"{self.server}:{self.path.as_posix()}"
 
+    @property
+    def options(self) -> list[str]:
+        """Options to use to mount."""
+        return super().options + ["soft", "timeo=200"]
+
 
 class BindMount(Mount):
     """A bind type mount."""

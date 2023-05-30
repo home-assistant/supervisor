@@ -126,6 +126,7 @@ async def test_load(
             "mnt-data-supervisor-mounts-media_test.mount",
             "fail",
             [
+                ["Options", Variant("s", "soft,timeo=200")],
                 ["Type", Variant("s", "nfs")],
                 ["Description", Variant("s", "Supervisor nfs mount: media_test")],
                 ["What", Variant("s", "media.local:/media")],
@@ -189,6 +190,7 @@ async def test_load_share_mount(
             "mnt-data-supervisor-mounts-share_test.mount",
             "fail",
             [
+                ["Options", Variant("s", "soft,timeo=200")],
                 ["Type", Variant("s", "nfs")],
                 ["Description", Variant("s", "Supervisor nfs mount: share_test")],
                 ["What", Variant("s", "share.local:/share")],
