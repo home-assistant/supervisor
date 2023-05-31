@@ -33,10 +33,13 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 def _list_backup_files(path: Path) -> Iterable[Path]:
     """Return iterable of backup files, suppress and log OSError for network mounts."""
     try:
-        return path.glob("*.tar")
+        # is_dir does a stat syscall which raises if the mount is down
+        if path.is_dir():
+            return path.glob("*.tar")
     except OSError as err:
         _LOGGER.error("Could not list backups from %s: %s", path.as_posix(), err)
-        return []
+
+    return []
 
 
 class BackupManager(FileConfiguration, CoreSysAttributes):
