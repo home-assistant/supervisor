@@ -690,7 +690,7 @@ async def test_load_network_error(
 
     # This should not raise, manager should just ignore backup locations with errors
     mock_path = MagicMock()
-    mock_path.glob.side_effect = OSError("Host is down")
+    mock_path.is_dir.side_effect = OSError("Host is down")
     mock_path.as_posix.return_value = "/data/backup_test"
     with patch.object(Mount, "local_where", new=PropertyMock(return_value=mock_path)):
         await coresys.backups.load()
