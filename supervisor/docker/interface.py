@@ -114,6 +114,8 @@ class DockerInterface(CoreSysAttributes):
     @property
     def meta_mounts(self) -> list[dict[str, Any]]:
         """Return meta data of mounts for container/image."""
+        if not self._meta:
+            return []
         return self._meta.get("Mounts", [])
 
     @property
