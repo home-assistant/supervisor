@@ -160,3 +160,9 @@ async def test_api_supervisor_logs(api_client: TestClient, docker_logs: MagicMoc
         "\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os\x1b[0m",
         "\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor\x1b[0m",
     ]
+
+
+async def test_api_supervisor_reload(api_client: TestClient):
+    """Test supervisor reload."""
+    resp = await api_client.post("/supervisor/reload")
+    assert resp.status == 200
