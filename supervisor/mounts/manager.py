@@ -142,6 +142,9 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     @Job(conditions=[JobCondition.MOUNT_AVAILABLE])
     async def reload(self) -> None:
         """Update mounts info via dbus and reload failed mounts."""
+        if not self.mounts:
+            return
+
         await asyncio.wait(
             [self.sys_create_task(mount.update()) for mount in self.mounts]
         )
