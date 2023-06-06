@@ -41,10 +41,19 @@ MEDIA_TEST_DATA = {
     "server": "media.local",
     "path": "/media",
 }
+SHARE_TEST_DATA = {
+    "name": "share_test",
+    "type": "nfs",
+    "usage": "share",
+    "server": "share.local",
+    "path": "/share",
+}
 
 
 @pytest.fixture(name="mount")
-async def fixture_mount(coresys: CoreSys, tmp_supervisor_data, path_extern) -> Mount:
+async def fixture_mount(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+) -> Mount:
     """Add an initial mount and load mounts."""
     mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
     coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
@@ -57,6 +66,7 @@ async def test_load(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test mount manager loading."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -116,6 +126,7 @@ async def test_load(
             "mnt-data-supervisor-mounts-media_test.mount",
             "fail",
             [
+                ["Options", Variant("s", "soft,timeo=200")],
                 ["Type", Variant("s", "nfs")],
                 ["Description", Variant("s", "Supervisor nfs mount: media_test")],
                 ["What", Variant("s", "media.local:/media")],
@@ -135,12 +146,77 @@ async def test_load(
     ]
 
 
+async def test_load_share_mount(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test mount manager loading with share mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    share_test = Mount.from_dict(coresys, SHARE_TEST_DATA)
+    # pylint: disable=protected-access
+    coresys.mounts._mounts = {
+        "share_test": share_test,
+    }
+    # pylint: enable=protected-access
+    assert coresys.mounts.share_mounts == [share_test]
+
+    assert share_test.state is None
+    assert not share_test.local_where.exists()
+    assert not any(coresys.config.path_share.iterdir())
+
+    systemd_service.response_get_unit = {
+        "mnt-data-supervisor-mounts-share_test.mount": [
+            ERROR_NO_UNIT,
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ],
+        "mnt-data-supervisor-share-share_test.mount": [
+            ERROR_NO_UNIT,
+            "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ],
+    }
+    await coresys.mounts.load()
+
+    assert share_test.state == UnitActiveState.ACTIVE
+    assert share_test.local_where.is_dir()
+    assert (coresys.config.path_share / "share_test").is_dir()
+
+    assert systemd_service.StartTransientUnit.calls == [
+        (
+            "mnt-data-supervisor-mounts-share_test.mount",
+            "fail",
+            [
+                ["Options", Variant("s", "soft,timeo=200")],
+                ["Type", Variant("s", "nfs")],
+                ["Description", Variant("s", "Supervisor nfs mount: share_test")],
+                ["What", Variant("s", "share.local:/share")],
+            ],
+            [],
+        ),
+        (
+            "mnt-data-supervisor-share-share_test.mount",
+            "fail",
+            [
+                ["Options", Variant("s", "bind")],
+                ["Description", Variant("s", "Supervisor bind mount: bind_share_test")],
+                ["What", Variant("s", "/mnt/data/supervisor/mounts/share_test")],
+            ],
+            [],
+        ),
+    ]
+
+
 async def test_mount_failed_during_load(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     dbus_session_bus: MessageBus,
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test mount failed during load."""
     await mock_dbus_services(
@@ -250,6 +326,7 @@ async def test_create_mount(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test creating a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -287,7 +364,9 @@ async def test_create_mount(
 
 
 async def test_update_mount(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], mount: Mount
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
 ):
     """Test updating a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -323,7 +402,9 @@ async def test_update_mount(
 
 
 async def test_reload_mount(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], mount: Mount
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
 ):
     """Test reloading a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -361,7 +442,7 @@ async def test_remove_mount(
     ]
 
 
-async def test_remove_reload_mount_missing(coresys: CoreSys):
+async def test_remove_reload_mount_missing(coresys: CoreSys, mount_propagation):
     """Test removing or reloading a non existent mount errors."""
     await coresys.mounts.load()
 
@@ -372,7 +453,9 @@ async def test_remove_reload_mount_missing(coresys: CoreSys):
         await coresys.mounts.reload_mount("does_not_exist")
 
 
-async def test_save_data(coresys: CoreSys, tmp_supervisor_data: Path, path_extern):
+async def test_save_data(
+    coresys: CoreSys, tmp_supervisor_data: Path, path_extern, mount_propagation
+):
     """Test saving mount config data."""
     # Replace mount manager with one that doesn't have save_data mocked
     coresys._mounts = MountManager(coresys)  # pylint: disable=protected-access
@@ -418,6 +501,7 @@ async def test_create_mount_start_unit_failure(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test failure to start mount unit does not add mount to the list."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -448,6 +532,7 @@ async def test_create_mount_activation_failure(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test activation failure during create mount does not add mount to the list and unmounts new mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -541,3 +626,45 @@ async def test_mounting_not_supported(
 
     with pytest.raises(MountJobError):
         await coresys.mounts.remove_mount("media_test")
+
+
+async def test_create_share_mount(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test creating a share mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    await coresys.mounts.load()
+
+    mount = Mount.from_dict(coresys, SHARE_TEST_DATA)
+
+    assert mount.state is None
+    assert mount not in coresys.mounts
+    assert "share_test" not in coresys.mounts
+    assert not mount.local_where.exists()
+    assert not any(coresys.config.path_share.iterdir())
+
+    # Create the mount
+    systemd_service.response_get_unit = [
+        ERROR_NO_UNIT,
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ERROR_NO_UNIT,
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+    await coresys.mounts.create_mount(mount)
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert mount in coresys.mounts
+    assert "share_test" in coresys.mounts
+    assert mount.local_where.exists()
+    assert (coresys.config.path_share / "share_test").exists()
+
+    assert [call[0] for call in systemd_service.StartTransientUnit.calls] == [
+        "mnt-data-supervisor-mounts-share_test.mount",
+        "mnt-data-supervisor-share-share_test.mount",
+    ]

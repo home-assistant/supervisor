@@ -126,8 +126,20 @@ def test_addon_map_folder_defaults(
         in docker_addon.mounts
     )
 
-    # Share not mapped
-    assert "/share" not in [mount["Target"] for mount in docker_addon.mounts]
+    # Share added and propagation set
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_share.as_posix(),
+            target="/share",
+            read_only=True,
+            propagation="slave",
+        )
+        in docker_addon.mounts
+    )
+
+    # Backup not added
+    assert "/backup" not in [mount["Target"] for mount in docker_addon.mounts]
 
 
 def test_journald_addon(

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterable
 import logging
 from pathlib import Path
 
@@ -27,6 +28,18 @@ from .utils import create_slug
 from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def _list_backup_files(path: Path) -> Iterable[Path]:
+    """Return iterable of backup files, suppress and log OSError for network mounts."""
+    try:
+        # is_dir does a stat syscall which raises if the mount is down
+        if path.is_dir():
+            return path.glob("*.tar")
+    except OSError as err:
+        _LOGGER.error("Could not list backups from %s: %s", path.as_posix(), err)
+
+    return []
 
 
 class BackupManager(FileConfiguration, CoreSysAttributes):
@@ -119,7 +132,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         tasks = [
             self.sys_create_task(_load_backup(tar_file))
             for path in self.backup_locations
-            for tar_file in path.glob("*.tar")
+            for tar_file in _list_backup_files(path)
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))

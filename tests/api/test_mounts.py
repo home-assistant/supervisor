@@ -17,7 +17,9 @@ from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitServ
 
 
 @pytest.fixture(name="mount")
-async def fixture_mount(coresys: CoreSys, tmp_supervisor_data, path_extern) -> Mount:
+async def fixture_mount(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+) -> Mount:
     """Add an initial mount and load mounts."""
     mount = Mount.from_dict(
         coresys,
@@ -44,7 +46,11 @@ async def test_api_mounts_info(api_client: TestClient):
 
 
 async def test_api_create_mount(
-    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data, path_extern
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test creating a mount via API."""
     resp = await api_client.post(
@@ -99,6 +105,7 @@ async def test_api_create_dbus_error_mount_not_added(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test mount not added to list of mounts if a dbus error occurs."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -159,12 +166,38 @@ async def test_api_create_dbus_error_mount_not_added(
 
 
 @pytest.mark.parametrize("os_available", ["9.5"], indirect=True)
-async def test_api_create_mount_fails_not_supported_feature(
+async def test_api_create_mount_fails_os_out_of_date(
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_available,
+    mount_propagation,
+):
+    """Test creating a mount via API fails when mounting isn't supported due to OS version."""
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert (
+        result["message"]
+        == "'MountManager.create_mount' blocked from execution, mounting not supported on system"
+    )
+
+
+async def test_api_create_mount_fails_missing_mount_propagation(
     api_client: TestClient,
     coresys: CoreSys,
     os_available,
 ):
-    """Test creating a mount via API fails when mounting isn't a supported feature on system.."""
+    """Test creating a mount via API fails when mounting isn't supported due to container config."""
     resp = await api_client.post(
         "/mounts",
         json={
@@ -214,7 +247,9 @@ async def test_api_update_mount(api_client: TestClient, coresys: CoreSys, mount)
     coresys.mounts.save_data.assert_called_once()
 
 
-async def test_api_update_error_mount_missing(api_client: TestClient):
+async def test_api_update_error_mount_missing(
+    api_client: TestClient, mount_propagation
+):
     """Test update mount API errors when mount does not exist."""
     resp = await api_client.put(
         "/mounts/backup_test",
@@ -237,6 +272,7 @@ async def test_api_update_dbus_error_mount_remains(
     mount,
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test mount remains in list with unsuccessful state if dbus error occurs during update."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -330,7 +366,9 @@ async def test_api_reload_mount(
     ]
 
 
-async def test_api_reload_error_mount_missing(api_client: TestClient):
+async def test_api_reload_error_mount_missing(
+    api_client: TestClient, mount_propagation
+):
     """Test reload mount API errors when mount does not exist."""
     resp = await api_client.post("/mounts/backup_test/reload")
     assert resp.status == 400
@@ -356,7 +394,9 @@ async def test_api_delete_mount(api_client: TestClient, coresys: CoreSys, mount)
     coresys.mounts.save_data.assert_called_once()
 
 
-async def test_api_delete_error_mount_missing(api_client: TestClient):
+async def test_api_delete_error_mount_missing(
+    api_client: TestClient, mount_propagation
+):
     """Test delete mount API errors when mount does not exist."""
     resp = await api_client.delete("/mounts/backup_test")
     assert resp.status == 400
@@ -369,7 +409,11 @@ async def test_api_delete_error_mount_missing(api_client: TestClient):
 
 
 async def test_api_create_backup_mount_sets_default(
-    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data, path_extern
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test creating backup mounts sets default if not set."""
     await coresys.mounts.load()
@@ -488,6 +532,7 @@ async def test_backup_mounts_reload_backups(
     coresys: CoreSys,
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test actions on a backup mount reload backups."""
     await coresys.mounts.load()

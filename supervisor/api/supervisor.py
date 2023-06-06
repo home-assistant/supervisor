@@ -208,9 +208,12 @@ class APISupervisor(CoreSysAttributes):
         return asyncio.shield(
             asyncio.wait(
                 [
-                    self.sys_updater.reload(),
-                    self.sys_homeassistant.secrets.reload(),
-                    self.sys_resolution.evaluate.evaluate_system(),
+                    self.sys_create_task(coro)
+                    for coro in [
+                        self.sys_updater.reload(),
+                        self.sys_homeassistant.secrets.reload(),
+                        self.sys_resolution.evaluate.evaluate_system(),
+                    ]
                 ]
             )
         )

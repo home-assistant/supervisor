@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError
+import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup
@@ -371,6 +372,7 @@ async def test_backup_media_with_mounts(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mount_propagation,
 ):
     """Test backing up media folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -427,7 +429,71 @@ async def test_backup_media_with_mounts(
     assert not mount_dir.exists()
 
 
-async def test_full_backup_to_mount(coresys: CoreSys, tmp_supervisor_data, path_extern):
+async def test_backup_share_with_mounts(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test backing up share folder with mounts."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.response_get_unit = [
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+
+    # Make some normal test files
+    (test_file_1 := coresys.config.path_share / "test.txt").touch()
+    (test_dir := coresys.config.path_share / "test").mkdir()
+    (test_file_2 := coresys.config.path_share / "test" / "inner.txt").touch()
+
+    # Add a media mount
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "share_test",
+                "usage": "share",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
+        )
+    )
+    assert (mount_dir := coresys.config.path_share / "share_test").is_dir()
+
+    # Make a partial backup
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    backup: Backup = await coresys.backups.do_backup_partial("test", folders=["share"])
+
+    # Remove the mount and wipe the media folder
+    await coresys.mounts.remove_mount("share_test")
+    rmtree(coresys.config.path_share)
+    coresys.config.path_share.mkdir()
+
+    # Restore the backup and check that only the test files we made returned
+    async def mock_async_true(*args, **kwargs):
+        return True
+
+    with patch.object(HomeAssistantCore, "is_running", new=mock_async_true):
+        await coresys.backups.do_restore_partial(backup, folders=["share"])
+
+    assert test_file_1.exists()
+    assert test_dir.is_dir()
+    assert test_file_2.exists()
+    assert not mount_dir.exists()
+
+
+async def test_full_backup_to_mount(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+):
     """Test full backup to and restoring from a mount."""
     (marker := coresys.config.path_homeassistant / "test.txt").touch()
 
@@ -470,7 +536,10 @@ async def test_full_backup_to_mount(coresys: CoreSys, tmp_supervisor_data, path_
 
 
 async def test_partial_backup_to_mount(
-    coresys: CoreSys, tmp_supervisor_data, path_extern
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test partial backup to and restoring from a mount."""
     (marker := coresys.config.path_homeassistant / "test.txt").touch()
@@ -523,7 +592,10 @@ async def test_partial_backup_to_mount(
 
 
 async def test_backup_to_local_with_default(
-    coresys: CoreSys, tmp_supervisor_data, path_extern
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test making backup to local when a default mount is specified."""
     # Add a default backup mount
@@ -557,7 +629,9 @@ async def test_backup_to_local_with_default(
     assert (coresys.config.path_backup / f"{backup.slug}.tar").exists()
 
 
-async def test_backup_to_default(coresys: CoreSys, tmp_supervisor_data, path_extern):
+async def test_backup_to_default(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+):
     """Test making backup to default mount."""
     # Add a default backup mount
     (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
@@ -589,3 +663,36 @@ async def test_backup_to_default(coresys: CoreSys, tmp_supervisor_data, path_ext
         )
 
     assert (mount_dir / f"{backup.slug}.tar").exists()
+
+
+async def test_load_network_error(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test load of backup manager when there is a network error."""
+    (coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    caplog.clear()
+
+    # This should not raise, manager should just ignore backup locations with errors
+    mock_path = MagicMock()
+    mock_path.is_dir.side_effect = OSError("Host is down")
+    mock_path.as_posix.return_value = "/data/backup_test"
+    with patch.object(Mount, "local_where", new=PropertyMock(return_value=mock_path)):
+        await coresys.backups.load()
+
+    assert "Could not list backups from /data/backup_test" in caplog.text
