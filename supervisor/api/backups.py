@@ -10,6 +10,7 @@ from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
+from ..backups.backup import Backup
 from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT, days_until_stale
 from ..const import (
     ATTR_ADDONS,
@@ -91,6 +92,14 @@ class APIBackups(CoreSysAttributes):
             raise APIError("Backup does not exist")
         return backup
 
+    def _backup_location(self, backup: Backup) -> str | None:
+        """Return the location of the backup."""
+        backup_path = backup.tarfile.as_posix()
+        for backup_mount in self.sys_mounts.backup_mounts:
+            if backup_path.startswith(backup_mount.local_where.as_posix()):
+                return backup_mount.name
+        return None
+
     def _list_backups(self):
         """Return list of backups."""
         return [
@@ -100,6 +109,7 @@ class APIBackups(CoreSysAttributes):
                 ATTR_DATE: backup.date,
                 ATTR_TYPE: backup.sys_type,
                 ATTR_SIZE: backup.size,
+                ATTR_LOCATON: self._backup_location(backup),
                 ATTR_PROTECTED: backup.protected,
                 ATTR_COMPRESSED: backup.compressed,
                 ATTR_CONTENT: {
@@ -172,6 +182,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_PROTECTED: backup.protected,
             ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
             ATTR_HOMEASSISTANT: backup.homeassistant_version,
+            ATTR_LOCATON: self._backup_location(backup),
             ATTR_ADDONS: data_addons,
             ATTR_REPOSITORIES: backup.repositories,
             ATTR_FOLDERS: backup.folders,
