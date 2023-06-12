@@ -21,9 +21,8 @@ from supervisor.exceptions import AddonsJobError, AudioUpdateError
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
-from ..const import TEST_ADDON_SLUG
-
 from tests.common import get_fixture_path
+from tests.const import TEST_ADDON_SLUG
 
 
 def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState):
