@@ -391,10 +391,11 @@ class APIAddons(CoreSysAttributes):
         return asyncio.shield(addon.uninstall())
 
     @api_process
-    def start(self, request: web.Request) -> Awaitable[None]:
+    async def start(self, request: web.Request) -> None:
         """Start add-on."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.start())
+        if start_task := await asyncio.shield(addon.start()):
+            await start_task
 
     @api_process
     def stop(self, request: web.Request) -> Awaitable[None]:
@@ -403,16 +404,18 @@ class APIAddons(CoreSysAttributes):
         return asyncio.shield(addon.stop())
 
     @api_process
-    def restart(self, request: web.Request) -> Awaitable[None]:
+    async def restart(self, request: web.Request) -> None:
         """Restart add-on."""
         addon: Addon = self._extract_addon(request)
-        return asyncio.shield(addon.restart())
+        if start_task := await asyncio.shield(addon.restart()):
+            await start_task
 
     @api_process
-    def rebuild(self, request: web.Request) -> Awaitable[None]:
+    async def rebuild(self, request: web.Request) -> None:
         """Rebuild local build add-on."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.rebuild())
+        if start_task := await asyncio.shield(addon.rebuild()):
+            await start_task
 
     @api_process_raw(CONTENT_TYPE_BINARY)
     def logs(self, request: web.Request) -> Awaitable[bytes]:

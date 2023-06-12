@@ -323,10 +323,14 @@ class Backup(CoreSysAttributes):
         finally:
             self._tmp.cleanup()
 
-    async def store_addons(self, addon_list: list[str]):
-        """Add a list of add-ons into backup."""
+    async def store_addons(self, addon_list: list[str]) -> list[Awaitable[None]]:
+        """Add a list of add-ons into backup.
 
-        async def _addon_save(addon: Addon):
+        For each addon that needs to be started after backup, returns a task which
+        completes when that addon has state 'started' (see addon.start).
+        """
+
+        async def _addon_save(addon: Addon) -> Awaitable[None] | None:
             """Task to store an add-on into backup."""
             tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
@@ -339,7 +343,7 @@ class Backup(CoreSysAttributes):
 
             # Take backup
             try:
-                await addon.backup(addon_file)
+                start_task = await addon.backup(addon_file)
             except AddonsError:
                 _LOGGER.error("Can't create backup for %s", addon.slug)
                 return
@@ -354,18 +358,24 @@ class Backup(CoreSysAttributes):
                 }
             )
 
+            return start_task
+
         # Save Add-ons sequential
         # avoid issue on slow IO
+        start_tasks: list[Awaitable[None]] = []
         for addon in addon_list:
             try:
-                await _addon_save(addon)
+                if start_task := await _addon_save(addon):
+                    start_tasks.append(start_task)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
 
-    async def restore_addons(self, addon_list: list[str]):
+        return start_tasks
+
+    async def restore_addons(self, addon_list: list[str]) -> list[Awaitable[None]]:
         """Restore a list add-on from backup."""
 
-        async def _addon_restore(addon_slug: str):
+        async def _addon_restore(addon_slug: str) -> Awaitable[None] | None:
             """Task to restore an add-on into backup."""
             tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
@@ -383,17 +393,21 @@ class Backup(CoreSysAttributes):
 
             # Perform a restore
             try:
-                await self.sys_addons.restore(addon_slug, addon_file)
+                return await self.sys_addons.restore(addon_slug, addon_file)
             except AddonsError:
                 _LOGGER.error("Can't restore backup %s", addon_slug)
 
         # Save Add-ons sequential
         # avoid issue on slow IO
+        start_tasks: list[Awaitable[None]] = []
         for slug in addon_list:
             try:
-                await _addon_restore(slug)
+                if start_task := await _addon_restore(slug):
+                    start_tasks.append(start_task)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore Add-on %s: %s", slug, err)
+
+        return start_tasks
 
     async def store_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""

@@ -6,8 +6,12 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 from docker.errors import DockerException
 import pytest
+from securetar import SecureTarFile
 
 from supervisor.addons.addon import Addon
+from supervisor.addons.const import AddonBackupMode
+from supervisor.addons.model import AddonModel
+from supervisor.arch import CpuArch
 from supervisor.const import AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
@@ -18,6 +22,8 @@ from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
 from ..const import TEST_ADDON_SLUG
+
+from tests.common import get_fixture_path
 
 
 def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState):
@@ -131,6 +137,7 @@ async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> Non
         await install_addon_ssh.load()
 
     install_addon_ssh.watchdog = True
+    install_addon_ssh._manual_stop = False  # pylint: disable=protected-access
 
     with patch.object(Addon, "restart") as restart, patch.object(
         Addon, "start"
@@ -219,7 +226,7 @@ async def test_listener_attached_on_install(coresys: CoreSys, repository):
 
     _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     await asyncio.sleep(0)
-    assert coresys.addons.get(TEST_ADDON_SLUG).state == AddonState.STARTED
+    assert coresys.addons.get(TEST_ADDON_SLUG).state == AddonState.STARTUP
 
 
 @pytest.mark.parametrize(
@@ -304,3 +311,164 @@ async def test_listeners_removed_on_uninstall(
             listener
             not in coresys.bus._listeners[BusEvent.DOCKER_CONTAINER_STATE_CHANGE]
         )
+
+
+async def test_start(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test starting an addon without healthcheck."""
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+    assert install_addon_ssh.state == AddonState.STOPPED
+
+    start_task = await install_addon_ssh.start()
+    assert start_task
+
+    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await start_task
+    assert install_addon_ssh.state == AddonState.STARTED
+
+
+@pytest.mark.parametrize("state", [ContainerState.HEALTHY, ContainerState.UNHEALTHY])
+async def test_start_wait_healthcheck(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    state: ContainerState,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test starting an addon with a healthcheck waits for health status."""
+    install_addon_ssh.path_data.mkdir()
+    container.attrs["Config"] = {"Healthcheck": "exists"}
+    await install_addon_ssh.load()
+    assert install_addon_ssh.state == AddonState.STOPPED
+
+    start_task = asyncio.create_task(await install_addon_ssh.start())
+    assert start_task
+
+    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await asyncio.sleep(0.01)
+
+    assert not start_task.done()
+    assert install_addon_ssh.state == AddonState.STARTUP
+
+    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", state)
+    await asyncio.sleep(0.01)
+
+    assert start_task.done()
+    assert install_addon_ssh.state == AddonState.STARTED
+
+
+async def test_start_timeout(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    caplog: pytest.LogCaptureFixture,
+    container,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test starting an addon times out while waiting."""
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+    assert install_addon_ssh.state == AddonState.STOPPED
+
+    start_task = await install_addon_ssh.start()
+    assert start_task
+
+    caplog.clear()
+    with patch(
+        "supervisor.addons.addon.asyncio.wait_for", side_effect=asyncio.TimeoutError
+    ):
+        await start_task
+
+    assert "Timeout while waiting for addon Terminal & SSH to start" in caplog.text
+
+
+async def test_restart(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test restarting an addon."""
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+    assert install_addon_ssh.state == AddonState.STOPPED
+
+    start_task = await install_addon_ssh.restart()
+    assert start_task
+
+    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await start_task
+    assert install_addon_ssh.state == AddonState.STARTED
+
+
+@pytest.mark.parametrize("status", ["running", "stopped"])
+async def test_backup(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    status: str,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test backing up an addon."""
+    container.status = status
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    assert await install_addon_ssh.backup(tarfile) is None
+
+
+@pytest.mark.parametrize("status", ["running", "stopped"])
+async def test_backup_cold_mode(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    status: str,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test backing up an addon in cold mode."""
+    container.status = status
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    with patch.object(
+        AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
+    ), patch.object(
+        DockerAddon, "_is_running", side_effect=[status == "running", False, False]
+    ):
+        start_task = await install_addon_ssh.backup(tarfile)
+
+    assert bool(start_task) is (status == "running")
+
+
+@pytest.mark.parametrize("status", ["running", "stopped"])
+async def test_restore(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    status: str,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test restoring an addon."""
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    tarfile = SecureTarFile(get_fixture_path(f"backup_local_ssh_{status}.tar.gz"), "r")
+    with patch.object(DockerAddon, "_is_running", return_value=False), patch.object(
+        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
+    ):
+        start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
+
+    assert bool(start_task) is (status == "running")

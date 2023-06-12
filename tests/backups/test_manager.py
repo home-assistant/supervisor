@@ -1,5 +1,6 @@
 """Test BackupManager class."""
 
+import asyncio
 from shutil import rmtree
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
@@ -8,11 +9,16 @@ from dbus_fast import DBusError
 import pytest
 
 from supervisor.addons.addon import Addon
+from supervisor.addons.const import AddonBackupMode
+from supervisor.addons.model import AddonModel
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.backups.manager import BackupManager
-from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, CoreState
+from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, AddonState, CoreState
 from supervisor.coresys import CoreSys
+from supervisor.docker.addon import DockerAddon
+from supervisor.docker.const import ContainerState
+from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, DockerError
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
@@ -696,3 +702,131 @@ async def test_load_network_error(
         await coresys.backups.load()
 
     assert "Could not list backups from /data/backup_test" in caplog.text
+
+
+async def test_backup_with_healthcheck(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test backup of addon with healthcheck in cold mode."""
+    container.status = "running"
+    container.attrs["Config"] = {"Healthcheck": "exists"}
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    await install_addon_ssh.load()
+    assert install_addon_ssh.state == AddonState.STARTUP
+
+    state_changes: list[AddonState] = []
+
+    async def container_events():
+        nonlocal state_changes
+        await asyncio.sleep(0.01)
+
+        await install_addon_ssh.container_state_changed(
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.STOPPED,
+                id="abc123",
+                time=1,
+            )
+        )
+
+        state_changes.append(install_addon_ssh.state)
+        await install_addon_ssh.container_state_changed(
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.RUNNING,
+                id="abc123",
+                time=1,
+            )
+        )
+
+        state_changes.append(install_addon_ssh.state)
+        await install_addon_ssh.container_state_changed(
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.HEALTHY,
+                id="abc123",
+                time=1,
+            )
+        )
+
+    asyncio.create_task(container_events())
+    with patch.object(
+        AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
+    ), patch.object(DockerAddon, "_is_running", side_effect=[True, False, False]):
+        backup = await coresys.backups.do_backup_partial(
+            homeassistant=False, addons=["local_ssh"]
+        )
+
+    assert backup
+    assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
+    assert install_addon_ssh.state == AddonState.STARTED
+    assert coresys.core.state == CoreState.RUNNING
+
+
+async def test_restore_with_healthcheck(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test backup of addon with healthcheck in cold mode."""
+    container.status = "running"
+    container.attrs["Config"] = {"Healthcheck": "exists"}
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    await install_addon_ssh.load()
+    assert install_addon_ssh.state == AddonState.STARTUP
+
+    backup = await coresys.backups.do_backup_partial(
+        homeassistant=False, addons=["local_ssh"]
+    )
+    state_changes: list[AddonState] = []
+
+    async def container_events():
+        nonlocal state_changes
+        await asyncio.sleep(0.01)
+
+        await install_addon_ssh.container_state_changed(
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.STOPPED,
+                id="abc123",
+                time=1,
+            )
+        )
+
+        state_changes.append(install_addon_ssh.state)
+        await install_addon_ssh.container_state_changed(
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.RUNNING,
+                id="abc123",
+                time=1,
+            )
+        )
+
+        state_changes.append(install_addon_ssh.state)
+        await install_addon_ssh.container_state_changed(
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.HEALTHY,
+                id="abc123",
+                time=1,
+            )
+        )
+
+    asyncio.create_task(container_events())
+    with patch.object(DockerAddon, "_is_running", side_effect=[True, False, False]):
+        await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
+
+    assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
+    assert install_addon_ssh.state == AddonState.STARTED
+    assert coresys.core.state == CoreState.RUNNING

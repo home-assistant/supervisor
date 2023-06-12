@@ -41,7 +41,7 @@ class FixupAddonExecuteRebuild(FixupBase):
             )
             await addon.stop()
         else:
-            await addon.restart()
+            await (await addon.restart())
 
     @property
     def suggestion(self) -> SuggestionType:

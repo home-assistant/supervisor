@@ -377,6 +377,7 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
         coresys.config.path_audio.mkdir()
         coresys.config.path_dns.mkdir()
         coresys.config.path_share.mkdir()
+        coresys.config.path_addons_data.mkdir(parents=True)
         yield tmp_path
 
 
@@ -641,3 +642,13 @@ async def mount_propagation(docker: DockerAPI, coresys: CoreSys) -> None:
     }
     await coresys.supervisor.load()
     yield
+
+
+@pytest.fixture
+async def container(docker: DockerAPI) -> MagicMock:
+    """Mock attrs and status for container on attach."""
+    docker.containers.get.return_value = addon = MagicMock()
+    docker.containers.create.return_value = addon
+    addon.status = "stopped"
+    addon.attrs = {"State": {"ExitCode": 0}}
+    yield addon

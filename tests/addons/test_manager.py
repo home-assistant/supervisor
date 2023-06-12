@@ -8,10 +8,12 @@ import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.arch import CpuArch
-from supervisor.const import AddonBoot, AddonStartup, AddonState
+from supervisor.const import AddonBoot, AddonStartup, AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
+from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AddonConfigurationError,
     AddonsError,
@@ -182,3 +184,86 @@ async def test_load(
         write_hosts.assert_called_once()
 
     assert "Found 1 installed add-ons" in caplog.text
+
+
+async def test_boot_waits_for_addons(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test addon manager boot waits for addons."""
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+    assert install_addon_ssh.state == AddonState.STOPPED
+
+    coresys.config.wait_boot = 0
+    boot_task = asyncio.create_task(coresys.addons.boot(AddonStartup.APPLICATION))
+
+    await asyncio.sleep(0.01)
+    assert not boot_task.done()
+
+    coresys.bus.fire_event(
+        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+        DockerContainerStateEvent(
+            name=f"addon_{TEST_ADDON_SLUG}",
+            state=ContainerState.RUNNING,
+            id="abc123",
+            time=1,
+        ),
+    )
+    await asyncio.sleep(0.01)
+    assert boot_task.done()
+    assert install_addon_ssh.state == AddonState.STARTED
+
+
+@pytest.mark.parametrize("status", ["running", "stopped"])
+async def test_update(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    status: str,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test addon update."""
+    container.status = status
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+    with patch(
+        "supervisor.store.data.read_json_or_yaml_file",
+        return_value=load_json_fixture("addon-config-add-image.json"),
+    ):
+        await coresys.store.data.update()
+
+    assert install_addon_ssh.need_update is True
+
+    with patch.object(DockerInterface, "_install"), patch.object(
+        DockerAddon, "_is_running", return_value=False
+    ):
+        start_task = await coresys.addons.update(TEST_ADDON_SLUG)
+
+    assert bool(start_task) is (status == "running")
+
+
+@pytest.mark.parametrize("status", ["running", "stopped"])
+async def test_rebuild(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    status: str,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test addon rebuild."""
+    container.status = status
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    with patch.object(DockerAddon, "_build"), patch.object(
+        DockerAddon, "_is_running", return_value=False
+    ), patch.object(Addon, "need_build", new=PropertyMock(return_value=True)):
+        start_task = await coresys.addons.rebuild(TEST_ADDON_SLUG)
+
+    assert bool(start_task) is (status == "running")

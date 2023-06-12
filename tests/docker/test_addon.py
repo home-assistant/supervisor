@@ -189,7 +189,7 @@ async def test_addon_run_docker_error(
 ):
     """Test docker error when addon is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
-    coresys.docker.docker.containers.create.side_effect = NotFound("Missing")
+    coresys.docker.containers.create.side_effect = NotFound("Missing")
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
