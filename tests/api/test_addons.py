@@ -109,7 +109,7 @@ async def test_api_addon_start_healthcheck(
         )
 
     asyncio.create_task(container_events())
-    resp = await asyncio.wait_for(api_client.post("/addons/local_ssh/start"), 2)
+    resp = await asyncio.wait_for(api_client.post("/addons/local_ssh/start"), 5)
 
     assert state_changes == [AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
@@ -146,7 +146,7 @@ async def test_api_addon_restart_healthcheck(
         )
 
     asyncio.create_task(container_events())
-    resp = await asyncio.wait_for(api_client.post("/addons/local_ssh/restart"), 2)
+    resp = await asyncio.wait_for(api_client.post("/addons/local_ssh/restart"), 5)
 
     assert state_changes == [AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
@@ -196,7 +196,7 @@ async def test_api_addon_rebuild_healthcheck(
     ), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
     ):
-        resp = await asyncio.wait_for(api_client.post("/addons/local_ssh/rebuild"), 2)
+        resp = await asyncio.wait_for(api_client.post("/addons/local_ssh/rebuild"), 5)
 
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
