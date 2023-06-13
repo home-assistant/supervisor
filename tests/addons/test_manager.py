@@ -36,6 +36,12 @@ async def fixture_mock_arch_disk() -> None:
         yield
 
 
+@pytest.fixture(autouse=True)
+async def fixture_remove_wait_boot(coresys: CoreSys) -> None:
+    """Remove default wait boot time for tests."""
+    coresys.config.wait_boot = 0
+
+
 async def test_image_added_removed_on_update(
     coresys: CoreSys, install_addon_ssh: Addon
 ):
@@ -215,7 +221,6 @@ async def test_boot_waits_for_addons(
             ),
         )
 
-    coresys.config.wait_boot = 0
     asyncio.create_task(fire_container_event())
     await coresys.addons.boot(AddonStartup.APPLICATION)
 
