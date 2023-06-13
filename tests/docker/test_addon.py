@@ -121,7 +121,7 @@ def test_addon_map_folder_defaults(
             source=coresys.config.path_extern_media.as_posix(),
             target="/media",
             read_only=True,
-            propagation="slave",
+            propagation="rslave",
         )
         in docker_addon.mounts
     )
@@ -133,7 +133,7 @@ def test_addon_map_folder_defaults(
             source=coresys.config.path_extern_share.as_posix(),
             target="/share",
             read_only=True,
-            propagation="slave",
+            propagation="rslave",
         )
         in docker_addon.mounts
     )
