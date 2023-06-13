@@ -457,7 +457,7 @@ class DockerAddon(DockerInterface):
             mounts += [
                 Mount(
                     type=MountType.BIND.value,
-                    source=self.sys_homeassistant.path_extern_pulse.as_posix(),
+                    source=self.addon.path_extern_pulse.as_posix(),
                     target="/etc/pulse/client.conf",
                     read_only=True,
                 ),
