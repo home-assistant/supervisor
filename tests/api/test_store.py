@@ -176,9 +176,7 @@ async def test_api_store_update_healthcheck(
     with patch.object(DockerInterface, "_install"), patch.object(
         DockerAddon, "_is_running", return_value=False
     ), patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])):
-        resp = await asyncio.wait_for(
-            api_client.post(f"/store/addons/{TEST_ADDON_SLUG}/update"), 5
-        )
+        resp = await api_client.post(f"/store/addons/{TEST_ADDON_SLUG}/update")
 
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED

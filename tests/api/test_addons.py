@@ -196,7 +196,7 @@ async def test_api_addon_rebuild_healthcheck(
     ), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
     ):
-        resp = await asyncio.wait_for(api_client.post("/addons/local_ssh/rebuild"), 5)
+        resp = await api_client.post("/addons/local_ssh/rebuild")
 
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED

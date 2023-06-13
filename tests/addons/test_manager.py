@@ -198,23 +198,28 @@ async def test_boot_waits_for_addons(
     await install_addon_ssh.load()
     assert install_addon_ssh.state == AddonState.STOPPED
 
+    addon_state: AddonState | None = None
+
+    async def fire_container_event():
+        nonlocal addon_state
+
+        await asyncio.sleep(0.01)
+        addon_state = install_addon_ssh.state
+        coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.RUNNING,
+                id="abc123",
+                time=1,
+            ),
+        )
+
     coresys.config.wait_boot = 0
-    boot_task = asyncio.create_task(coresys.addons.boot(AddonStartup.APPLICATION))
+    asyncio.create_task(fire_container_event())
+    await coresys.addons.boot(AddonStartup.APPLICATION)
 
-    await asyncio.sleep(0.01)
-    assert not boot_task.done()
-
-    coresys.bus.fire_event(
-        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-        DockerContainerStateEvent(
-            name=f"addon_{TEST_ADDON_SLUG}",
-            state=ContainerState.RUNNING,
-            id="abc123",
-            time=1,
-        ),
-    )
-    await asyncio.sleep(0.01)
-    assert boot_task.done()
+    assert addon_state == AddonState.STOPPED
     assert install_addon_ssh.state == AddonState.STARTED
 
 
