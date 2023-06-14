@@ -649,6 +649,8 @@ async def container(docker: DockerAPI) -> MagicMock:
     """Mock attrs and status for container on attach."""
     docker.containers.get.return_value = addon = MagicMock()
     docker.containers.create.return_value = addon
+    docker.images.pull.return_value = addon
+    docker.images.build.return_value = (addon, "")
     addon.status = "stopped"
     addon.attrs = {"State": {"ExitCode": 0}}
     yield addon

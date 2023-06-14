@@ -107,6 +107,14 @@ _OPTIONS_MERGER: Final = Merger(
     type_conflict_strategies=["override"],
 )
 
+# Backups just need to know if an addon was running or not
+# Map other addon states to those two
+_MAP_ADDON_STATE = {
+    AddonState.STARTUP: AddonState.STARTED,
+    AddonState.ERROR: AddonState.STOPPED,
+    AddonState.UNKNOWN: AddonState.STOPPED,
+}
+
 
 class Addon(AddonModel):
     """Hold data for add-on inside Supervisor."""
@@ -825,7 +833,7 @@ class Addon(AddonModel):
                 ATTR_USER: self.persist,
                 ATTR_SYSTEM: self.data,
                 ATTR_VERSION: self.version,
-                ATTR_STATE: self.state,
+                ATTR_STATE: _MAP_ADDON_STATE.get(self.state, self.state),
             }
 
             # Store local configs/state

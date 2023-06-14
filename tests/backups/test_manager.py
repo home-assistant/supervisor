@@ -755,8 +755,10 @@ async def test_backup_with_healthcheck(
             )
         )
 
-    asyncio.create_task(container_events())
-    with patch.object(
+    async def container_events_task(*args, **kwargs):
+        asyncio.create_task(container_events())
+
+    with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
         AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
     ), patch.object(DockerAddon, "_is_running", side_effect=[True, False, False]):
         backup = await coresys.backups.do_backup_partial(
@@ -792,7 +794,6 @@ async def test_restore_with_healthcheck(
 
     async def container_events():
         nonlocal state_changes
-        await asyncio.sleep(0.01)
 
         await install_addon_ssh.container_state_changed(
             DockerContainerStateEvent(
@@ -823,8 +824,14 @@ async def test_restore_with_healthcheck(
             )
         )
 
-    asyncio.create_task(container_events())
-    with patch.object(DockerAddon, "_is_running", side_effect=[True, False, False]):
+    async def container_events_task(*args, **kwargs):
+        asyncio.create_task(container_events())
+
+    with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
+        DockerAddon, "_is_running", return_value=False
+    ), patch.object(AddonModel, "_validate_availability"), patch.object(
+        Addon, "with_ingress", new=PropertyMock(return_value=False)
+    ):
         await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
 
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
