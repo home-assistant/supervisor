@@ -12,7 +12,7 @@ from .base import CheckBase
 def _check_container(container: DockerInterface) -> bool:
     """Return true if container has a config issue."""
     return any(
-        mount.get("Propagation") != PropagationMode.SLAVE.value
+        mount.get("Propagation") != PropagationMode.RSLAVE.value
         for mount in container.meta_mounts
         if mount.get("Destination") in ["/media", "/share"]
     )
