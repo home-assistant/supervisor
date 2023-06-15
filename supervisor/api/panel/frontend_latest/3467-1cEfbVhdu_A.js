@@ -1,0 +1,3 @@
+/*! For license information please see 3467-1cEfbVhdu_A.js.LICENSE.txt */
+export const id=3467;export const ids=[3467];export const modules={43467:(e,r,t)=>{t.r(r),t.d(r,{loadPolyfillIfNeeded:()=>o,provideResizeObserver:()=>n.SK});var n=t(51246);async function o(){try{return new ResizeObserver((function(){})),ResizeObserver}catch(e){const r=(await t.e(5442).then(t.bind(t,5442))).default;return(0,n.SK)(r),r}}}};
+//# sourceMappingURL=3467-1cEfbVhdu_A.js.map
