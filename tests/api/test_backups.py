@@ -95,6 +95,11 @@ async def test_backup_to_location(
 
     assert (tmp_supervisor_data / backup_dir / f"{slug}.tar").exists()
 
+    resp = await api_client.get(f"/backups/{slug}/info")
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert result["data"]["location"] == location
+
 
 async def test_backup_to_default(
     api_client: TestClient,
