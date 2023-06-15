@@ -2,6 +2,7 @@
 from base64 import b64decode, b64encode
 from collections.abc import Awaitable
 from datetime import timedelta
+from functools import cached_property
 import json
 import logging
 from pathlib import Path
@@ -149,6 +150,14 @@ class Backup(CoreSysAttributes):
     def docker(self, value):
         """Set the Docker config data."""
         self._data[ATTR_DOCKER] = value
+
+    @cached_property
+    def location(self) -> str | None:
+        """Return the location of the backup."""
+        for backup_mount in self.sys_mounts.backup_mounts:
+            if self.tarfile.is_relative_to(backup_mount.local_where):
+                return backup_mount.name
+        return None
 
     @property
     def size(self):
