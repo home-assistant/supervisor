@@ -358,7 +358,8 @@ class CIFSMount(NetworkMount):
     def options(self) -> list[str]:
         """Options to use to mount."""
         return (
-            super().options + [f"username={self.username}", f"password={self.password}"]
+            super().options
+            + [f"username={self.username}", f"password='{self.password}'"]
             if self.username
             else []
         )

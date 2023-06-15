@@ -21,13 +21,11 @@ from .const import (
 
 RE_MOUNT_NAME = re.compile(r"^\w+$")
 RE_PATH_PART = re.compile(r"^[^\\\/]+")
-RE_MOUNT_OPTION = re.compile(r"^[^,=]+$")
 
 VALIDATE_NAME = vol.Match(RE_MOUNT_NAME)
 VALIDATE_SERVER = vol.Match(RE_PATH_PART)
 VALIDATE_SHARE = vol.Match(RE_PATH_PART)
-VALIDATE_USERNAME = vol.Match(RE_MOUNT_OPTION)
-VALIDATE_PASSWORD = vol.Match(RE_MOUNT_OPTION)
+
 
 _SCHEMA_BASE_MOUNT_CONFIG = vol.Schema(
     {
@@ -49,8 +47,8 @@ SCHEMA_MOUNT_CIFS = _SCHEMA_MOUNT_NETWORK.extend(
     {
         vol.Required(ATTR_TYPE): MountType.CIFS.value,
         vol.Required(ATTR_SHARE): VALIDATE_SHARE,
-        vol.Inclusive(ATTR_USERNAME, "basic_auth"): VALIDATE_USERNAME,
-        vol.Inclusive(ATTR_PASSWORD, "basic_auth"): VALIDATE_PASSWORD,
+        vol.Inclusive(ATTR_USERNAME, "basic_auth"): str,
+        vol.Inclusive(ATTR_PASSWORD, "basic_auth"): str,
     }
 )
 

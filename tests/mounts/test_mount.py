@@ -39,7 +39,7 @@ async def test_cifs_mount(
         "server": "test.local",
         "share": "camera",
         "username": "admin",
-        "password": "password",
+        "password": "p@assword!,=",
     }
     mount: CIFSMount = Mount.from_dict(coresys, mount_data)
 
@@ -54,7 +54,7 @@ async def test_cifs_mount(
     assert mount.what == "//test.local/camera"
     assert mount.where == Path("/mnt/data/supervisor/mounts/test")
     assert mount.local_where == tmp_supervisor_data / "mounts" / "test"
-    assert mount.options == ["username=admin", "password=password"]
+    assert mount.options == ["username=admin", "password='p@assword!,='"]
 
     assert not mount.local_where.exists()
     assert mount.to_dict(skip_secrets=False) == mount_data
@@ -73,7 +73,7 @@ async def test_cifs_mount(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "username=admin,password=password")],
+                ["Options", Variant("s", "username=admin,password='p@assword!,='")],
                 ["Type", Variant("s", "cifs")],
                 ["Description", Variant("s", "Supervisor cifs mount: test")],
                 ["What", Variant("s", "//test.local/camera")],
