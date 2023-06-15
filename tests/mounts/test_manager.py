@@ -116,6 +116,7 @@ async def test_load(
             "mnt-data-supervisor-mounts-backup_test.mount",
             "fail",
             [
+                ["Options", Variant("s", "guest")],
                 ["Type", Variant("s", "cifs")],
                 ["Description", Variant("s", "Supervisor cifs mount: backup_test")],
                 ["What", Variant("s", "//backup.local/backups")],

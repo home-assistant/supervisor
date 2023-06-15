@@ -359,8 +359,8 @@ class CIFSMount(NetworkMount):
         """Options to use to mount."""
         return (
             super().options + [f"username={self.username}", f"password={self.password}"]
-            if self.username
-            else []
+            if self.username and self.password
+            else ["guest"]
         )
 
 
