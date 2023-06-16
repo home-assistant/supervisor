@@ -1,5 +1,7 @@
 """Tests for mount manager validation."""
 
+import re
+
 import pytest
 from voluptuous import Invalid
 
@@ -15,6 +17,8 @@ async def test_valid_mounts():
             "type": "cifs",
             "server": "test.local",
             "share": "test",
+            "username": "admin",
+            "password": "p@assword!,=",
         }
     )
 
@@ -77,12 +81,39 @@ async def test_invalid_cifs():
         SCHEMA_MOUNT_CONFIG(base)
 
     # Path is for NFS
-    with pytest.raises(Invalid):
-        SCHEMA_MOUNT_CONFIG({"path": "backups"})
+    with pytest.raises(
+        Invalid, match=re.escape("required key not provided @ data['share']")
+    ):
+        SCHEMA_MOUNT_CONFIG({**base, "path": "backups"})
 
     # Username and password must be together
-    with pytest.raises(Invalid):
-        SCHEMA_MOUNT_CONFIG({"username": "admin"})
+    with pytest.raises(
+        Invalid,
+        match=re.escape(
+            "some but not all values in the same group of inclusion 'basic_auth' @ data[<basic_auth>]"
+        ),
+    ):
+        SCHEMA_MOUNT_CONFIG({**base, "share": "test", "username": "admin"})
+
+    # Username and password must be together
+    with pytest.raises(
+        Invalid,
+        match=re.escape(
+            "some but not all values in the same group of inclusion 'basic_auth' @ data[<basic_auth>]"
+        ),
+    ):
+        SCHEMA_MOUNT_CONFIG({**base, "share": "test", "password": "my=!pass"})
+
+    # Invalid password
+    with pytest.raises(
+        Invalid,
+        match=re.escape(
+            "does not match regular expression ^[^']+$ for dictionary value @ data['password']"
+        ),
+    ):
+        SCHEMA_MOUNT_CONFIG(
+            {**base, "share": "test", "username": "admin", "password": "my=!pa'ss,"}
+        )
 
 
 async def test_invalid_nfs():
