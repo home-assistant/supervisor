@@ -9,12 +9,14 @@ import voluptuous as vol
 from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_PORT, ATTR_TYPE, ATTR_USERNAME
 from ..validate import network_port
 from .const import (
+    ATTR_CIFS_VERSION,
     ATTR_DEFAULT_BACKUP_MOUNT,
     ATTR_MOUNTS,
     ATTR_PATH,
     ATTR_SERVER,
     ATTR_SHARE,
     ATTR_USAGE,
+    MountCifsVersion,
     MountType,
     MountUsage,
 )
@@ -51,6 +53,9 @@ SCHEMA_MOUNT_CIFS = _SCHEMA_MOUNT_NETWORK.extend(
         vol.Required(ATTR_SHARE): VALIDATE_SHARE,
         vol.Inclusive(ATTR_USERNAME, "basic_auth"): VALIDATE_USERNAME,
         vol.Inclusive(ATTR_PASSWORD, "basic_auth"): VALIDATE_PASSWORD,
+        vol.Optional(ATTR_CIFS_VERSION, default=None): vol.Maybe(
+            vol.Coerce(MountCifsVersion)
+        ),
     }
 )
 

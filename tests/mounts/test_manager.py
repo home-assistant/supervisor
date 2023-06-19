@@ -485,6 +485,7 @@ async def test_save_data(
         config = json.load(file)
         assert config["mounts"] == [
             {
+                "cifs_version": None,
                 "name": "auth_test",
                 "type": "cifs",
                 "usage": "backup",

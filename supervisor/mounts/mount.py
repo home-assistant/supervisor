@@ -30,7 +30,16 @@ from ..exceptions import (
 from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
 from ..utils.sentry import capture_exception
-from .const import ATTR_PATH, ATTR_SERVER, ATTR_SHARE, ATTR_USAGE, MountType, MountUsage
+from .const import (
+    ATTR_CIFS_VERSION,
+    ATTR_PATH,
+    ATTR_SERVER,
+    ATTR_SHARE,
+    ATTR_USAGE,
+    MountCifsVersion,
+    MountType,
+    MountUsage,
+)
 from .validate import MountData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -332,6 +341,7 @@ class CIFSMount(NetworkMount):
         if not skip_secrets and self.username is not None:
             out[ATTR_USERNAME] = self.username
             out[ATTR_PASSWORD] = self.password
+        out[ATTR_CIFS_VERSION] = self.cifs_version
         return out
 
     @property
@@ -350,6 +360,16 @@ class CIFSMount(NetworkMount):
         return self._data.get(ATTR_PASSWORD)
 
     @property
+    def cifs_version(self) -> str | None:
+        """Get password, returns none if auth is not used."""
+        version = self._data.get(ATTR_CIFS_VERSION)
+        if version == MountCifsVersion.LEGACY_1_0:
+            return "1.0"
+        if version == MountCifsVersion.LEGACY_2_0:
+            return "2.0"
+        return None
+
+    @property
     def what(self) -> str:
         """What to mount."""
         return f"//{self.server}/{self.share}"
@@ -357,11 +377,13 @@ class CIFSMount(NetworkMount):
     @property
     def options(self) -> list[str]:
         """Options to use to mount."""
-        return (
-            super().options + [f"username={self.username}", f"password={self.password}"]
-            if self.username
-            else []
-        )
+        options = super().options
+        if self.cifs_version:
+            options.append(f"vers={self.cifs_version}")
+        if self.username:
+            options.extend([f"username={self.username}", f"password={self.password}"])
+
+        return options
 
 
 class NFSMount(NetworkMount):
