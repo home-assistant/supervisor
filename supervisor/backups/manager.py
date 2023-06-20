@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
+from collections.abc import Awaitable, Iterable
 import logging
 from pathlib import Path
 
@@ -190,6 +190,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         folder_list: list[str],
         homeassistant: bool,
     ):
+        addon_start_tasks: list[Awaitable[None]] | None = None
         try:
             self.sys_core.state = CoreState.FREEZE
 
@@ -197,7 +198,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                 # Backup add-ons
                 if addon_list:
                     _LOGGER.info("Backing up %s store Add-ons", backup.slug)
-                    await backup.store_addons(addon_list)
+                    addon_start_tasks = await backup.store_addons(addon_list)
 
                 # HomeAssistant Folder is for v1
                 if homeassistant:
@@ -214,6 +215,11 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             return None
         else:
             self._backups[backup.slug] = backup
+
+            if addon_start_tasks:
+                # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
+                await asyncio.gather(*addon_start_tasks, return_exceptions=True)
+
             return backup
         finally:
             self.sys_core.state = CoreState.RUNNING
@@ -300,6 +306,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         homeassistant: bool,
         replace: bool,
     ):
+        addon_start_tasks: list[Awaitable[None]] | None = None
         try:
             task_hass: asyncio.Task | None = None
             async with backup:
@@ -336,7 +343,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                     await backup.restore_repositories(replace)
 
                     _LOGGER.info("Restoring %s Add-ons", backup.slug)
-                    await backup.restore_addons(addon_list)
+                    addon_start_tasks = await backup.restore_addons(addon_list)
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
@@ -348,6 +355,10 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             capture_exception(err)
             return False
         else:
+            if addon_start_tasks:
+                # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
+                await asyncio.gather(*addon_start_tasks, return_exceptions=True)
+
             return True
         finally:
             # Do we need start Home Assistant Core?

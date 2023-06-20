@@ -99,12 +99,21 @@ RE_WATCHDOG = re.compile(
 )
 
 WATCHDOG_TIMEOUT = aiohttp.ClientTimeout(total=10)
+STARTUP_TIMEOUT = 120
 
 _OPTIONS_MERGER: Final = Merger(
     type_strategies=[(dict, ["merge"])],
     fallback_strategies=["override"],
     type_conflict_strategies=["override"],
 )
+
+# Backups just need to know if an addon was running or not
+# Map other addon states to those two
+_MAP_ADDON_STATE = {
+    AddonState.STARTUP: AddonState.STARTED,
+    AddonState.ERROR: AddonState.STOPPED,
+    AddonState.UNKNOWN: AddonState.STOPPED,
+}
 
 
 class Addon(AddonModel):
@@ -119,6 +128,7 @@ class Addon(AddonModel):
             self.sys_hardware.helper.last_boot != self.sys_config.last_boot
         )
         self._listeners: list[EventListener] = []
+        self._startup_event = asyncio.Event()
 
         @Job(
             name=f"addon_{slug}_restart_after_problem",
@@ -144,9 +154,9 @@ class Addon(AddonModel):
                                 with suppress(DockerError):
                                     await addon.instance.stop(remove_container=True)
 
-                            await addon.start()
+                            await (await addon.start())
                         else:
-                            await addon.restart()
+                            await (await addon.restart())
                     except AddonsError as err:
                         attempts = attempts + 1
                         _LOGGER.error(
@@ -182,7 +192,13 @@ class Addon(AddonModel):
         """Set the add-on into new state."""
         if self._state == new_state:
             return
+        old_state = self._state
         self._state = new_state
+
+        # Signal listeners about addon state change
+        if new_state == AddonState.STARTED or old_state == AddonState.STARTUP:
+            self._startup_event.set()
+
         self.sys_homeassistant.websocket.send_message(
             {
                 ATTR_TYPE: WSType.SUPERVISOR_EVENT,
@@ -680,8 +696,24 @@ class Addon(AddonModel):
             return False
         return True
 
-    async def start(self) -> None:
-        """Set options and start add-on."""
+    async def _wait_for_startup(self) -> None:
+        """Wait for startup event to be set with timeout."""
+        try:
+            await asyncio.wait_for(self._startup_event.wait(), STARTUP_TIMEOUT)
+        except asyncio.TimeoutError:
+            _LOGGER.warning(
+                "Timeout while waiting for addon %s to start, took more then %s seconds",
+                self.name,
+                STARTUP_TIMEOUT,
+            )
+
+    async def start(self) -> Awaitable[None]:
+        """Set options and start add-on.
+
+        Returns a coroutine that completes when addon has state 'started'.
+        For addons with a healthcheck, that is when they become healthy or unhealthy.
+        Addons without a healthcheck have state 'started' immediately.
+        """
         if await self.instance.is_running():
             _LOGGER.warning("%s is already running!", self.slug)
             return
@@ -698,11 +730,14 @@ class Addon(AddonModel):
             self.write_pulse()
 
         # Start Add-on
+        self._startup_event.clear()
         try:
             await self.instance.run()
         except DockerError as err:
             self.state = AddonState.ERROR
             raise AddonsError() from err
+
+        return self._wait_for_startup()
 
     async def stop(self) -> None:
         """Stop add-on."""
@@ -713,11 +748,14 @@ class Addon(AddonModel):
             self.state = AddonState.ERROR
             raise AddonsError() from err
 
-    async def restart(self) -> None:
-        """Restart add-on."""
+    async def restart(self) -> Awaitable[None]:
+        """Restart add-on.
+
+        Returns a coroutine that completes when addon has state 'started' (see start).
+        """
         with suppress(AddonsError):
             await self.stop()
-        await self.start()
+        return await self.start()
 
     def logs(self) -> Awaitable[bytes]:
         """Return add-ons log output.
@@ -772,8 +810,13 @@ class Addon(AddonModel):
                 _LOGGER.error,
             ) from err
 
-    async def backup(self, tar_file: tarfile.TarFile) -> None:
-        """Backup state of an add-on."""
+    async def backup(self, tar_file: tarfile.TarFile) -> Awaitable[None] | None:
+        """Backup state of an add-on.
+
+        Returns a coroutine that completes when addon has state 'started' (see start)
+        for cold backup. Else nothing is returned.
+        """
+        wait_for_start: Awaitable[None] | None = None
         is_running = await self.is_running()
 
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
@@ -790,7 +833,7 @@ class Addon(AddonModel):
                 ATTR_USER: self.persist,
                 ATTR_SYSTEM: self.data,
                 ATTR_VERSION: self.version,
-                ATTR_STATE: self.state,
+                ATTR_STATE: _MAP_ADDON_STATE.get(self.state, self.state),
             }
 
             # Store local configs/state
@@ -852,12 +895,18 @@ class Addon(AddonModel):
                     await self._backup_command(self.backup_post)
                 elif is_running and self.backup_mode is AddonBackupMode.COLD:
                     _LOGGER.info("Starting add-on %s again", self.slug)
-                    await self.start()
+                    wait_for_start = await self.start()
 
         _LOGGER.info("Finish backup for addon %s", self.slug)
+        return wait_for_start
 
-    async def restore(self, tar_file: tarfile.TarFile) -> None:
-        """Restore state of an add-on."""
+    async def restore(self, tar_file: tarfile.TarFile) -> Awaitable[None] | None:
+        """Restore state of an add-on.
+
+        Returns a coroutine that completes when addon has state 'started' (see start)
+        if addon is started after restore. Else nothing is returned.
+        """
+        wait_for_start: Awaitable[None] | None = None
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
             # extract backup
             def _extract_tarfile():
@@ -958,9 +1007,10 @@ class Addon(AddonModel):
 
             # Run add-on
             if data[ATTR_STATE] == AddonState.STARTED:
-                return await self.start()
+                wait_for_start = await self.start()
 
         _LOGGER.info("Finished restore for add-on %s", self.slug)
+        return wait_for_start
 
     def check_trust(self) -> Awaitable[None]:
         """Calculate Addon docker content trust.
@@ -974,12 +1024,15 @@ class Addon(AddonModel):
         if event.name != self.instance.name:
             return
 
-        if event.state in [
-            ContainerState.RUNNING,
+        if event.state == ContainerState.RUNNING:
+            self._manual_stop = False
+            self.state = (
+                AddonState.STARTUP if self.instance.healthcheck else AddonState.STARTED
+            )
+        elif event.state in [
             ContainerState.HEALTHY,
             ContainerState.UNHEALTHY,
         ]:
-            self._manual_stop = False
             self.state = AddonState.STARTED
         elif event.state == ContainerState.STOPPED:
             self.state = AddonState.STOPPED

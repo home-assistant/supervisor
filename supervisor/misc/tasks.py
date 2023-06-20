@@ -1,4 +1,6 @@
 """A collection of tasks."""
+import asyncio
+from collections.abc import Awaitable
 import logging
 
 from ..addons.const import ADDON_UPDATE_CONDITIONS
@@ -84,6 +86,7 @@ class Tasks(CoreSysAttributes):
     @Job(conditions=ADDON_UPDATE_CONDITIONS + [JobCondition.RUNNING])
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
+        start_tasks: list[Awaitable[None]] = []
         for addon in self.sys_addons.all:
             if not addon.is_installed or not addon.auto_update:
                 continue
@@ -101,9 +104,12 @@ class Tasks(CoreSysAttributes):
             # avoid issue on slow IO
             _LOGGER.info("Add-on auto update process %s", addon.slug)
             try:
-                await addon.update(backup=True)
+                if start_task := await addon.update(backup=True):
+                    start_tasks.append(start_task)
             except AddonsError:
                 _LOGGER.error("Can't auto update Add-on %s", addon.slug)
+
+        await asyncio.gather(*start_tasks)
 
     @Job(
         conditions=[
@@ -265,7 +271,7 @@ class Tasks(CoreSysAttributes):
 
             _LOGGER.warning("Watchdog found a problem with %s application!", addon.slug)
             try:
-                await addon.restart()
+                await (await addon.restart())
             except AddonsError as err:
                 _LOGGER.error("%s watchdog reanimation failed with %s", addon.slug, err)
                 capture_exception(err)
