@@ -94,7 +94,6 @@ class APISupervisor(CoreSysAttributes):
             ATTR_SUPPORTED: self.sys_core.supported,
             ATTR_HEALTHY: self.sys_core.healthy,
             ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),
-            ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_TIMEZONE: self.sys_config.timezone,
             ATTR_LOGGING: self.sys_config.logging,
             ATTR_DEBUG: self.sys_config.debug,
@@ -102,6 +101,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_AUTO_UPDATE: self.sys_updater.auto_update,
             # Depricated
+            ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_ADDONS: [
                 {
                     ATTR_NAME: addon.name,
@@ -132,9 +132,6 @@ class APISupervisor(CoreSysAttributes):
         if ATTR_TIMEZONE in body:
             self.sys_config.timezone = body[ATTR_TIMEZONE]
 
-        if ATTR_WAIT_BOOT in body:
-            self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
-
         if ATTR_DEBUG in body:
             self.sys_config.debug = body[ATTR_DEBUG]
 
@@ -155,6 +152,10 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_AUTO_UPDATE in body:
             self.sys_updater.auto_update = body[ATTR_AUTO_UPDATE]
+
+        # Deprecated
+        if ATTR_WAIT_BOOT in body:
+            self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
 
         # Save changes before processing addons in case of errors
         self.sys_updater.save_data()

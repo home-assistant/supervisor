@@ -395,6 +395,7 @@ class AddonStage(str, Enum):
 class AddonState(str, Enum):
     """State of add-on."""
 
+    STARTUP = "startup"
     STARTED = "started"
     STOPPED = "stopped"
     UNKNOWN = "unknown"

@@ -159,6 +159,11 @@ class DockerInterface(CoreSysAttributes):
         # causes problems on some types of host systems.
         return ["seccomp=unconfined"]
 
+    @property
+    def healthcheck(self) -> dict[str, Any] | None:
+        """Healthcheck of instance if it has one."""
+        return self.meta_config.get("Healthcheck")
+
     def _get_credentials(self, image: str) -> dict:
         """Return a dictionay with credentials for docker login."""
         registry = None

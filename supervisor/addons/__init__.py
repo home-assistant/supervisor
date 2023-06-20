@@ -1,5 +1,6 @@
 """Init file for Supervisor add-ons."""
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 import logging
 import tarfile
@@ -104,9 +105,13 @@ class AddonManager(CoreSysAttributes):
 
         # Start Add-ons sequential
         # avoid issue on slow IO
+        # Config.wait_boot is deprecated. Until addons update with healthchecks,
+        # add a sleep task for it to keep the same minimum amount of wait time
+        wait_boot: list[Awaitable[None]] = [asyncio.sleep(self.sys_config.wait_boot)]
         for addon in tasks:
             try:
-                await addon.start()
+                if start_task := await addon.start():
+                    wait_boot.append(start_task)
             except AddonsError as err:
                 # Check if there is an system/user issue
                 if check_exception_chain(
@@ -121,7 +126,8 @@ class AddonManager(CoreSysAttributes):
 
             _LOGGER.warning("Can't start Add-on %s", addon.slug)
 
-        await asyncio.sleep(self.sys_config.wait_boot)
+        # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
+        await asyncio.gather(*wait_boot, return_exceptions=True)
 
     async def shutdown(self, stage: AddonStartup) -> None:
         """Shutdown addons."""
@@ -244,8 +250,14 @@ class AddonManager(CoreSysAttributes):
         conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
     )
-    async def update(self, slug: str, backup: bool | None = False) -> None:
-        """Update add-on."""
+    async def update(
+        self, slug: str, backup: bool | None = False
+    ) -> Awaitable[None] | None:
+        """Update add-on.
+
+        Returns a coroutine that completes when addon has state 'started' (see addon.start)
+        if addon is started after update. Else nothing is returned.
+        """
         if slug not in self.local:
             raise AddonsError(f"Add-on {slug} is not installed", _LOGGER.error)
         addon = self.local[slug]
@@ -288,8 +300,11 @@ class AddonManager(CoreSysAttributes):
         await addon.install_apparmor()
 
         # restore state
-        if last_state == AddonState.STARTED:
+        return (
             await addon.start()
+            if last_state in [AddonState.STARTED, AddonState.STARTUP]
+            else None
+        )
 
     @Job(
         conditions=[
@@ -299,8 +314,12 @@ class AddonManager(CoreSysAttributes):
         ],
         on_condition=AddonsJobError,
     )
-    async def rebuild(self, slug: str) -> None:
-        """Perform a rebuild of local build add-on."""
+    async def rebuild(self, slug: str) -> Awaitable[None] | None:
+        """Perform a rebuild of local build add-on.
+
+        Returns a coroutine that completes when addon has state 'started' (see addon.start)
+        if addon is started after rebuild. Else nothing is returned.
+        """
         if slug not in self.local:
             raise AddonsError(f"Add-on {slug} is not installed", _LOGGER.error)
         addon = self.local[slug]
@@ -333,8 +352,11 @@ class AddonManager(CoreSysAttributes):
         _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
 
         # restore state
-        if last_state == AddonState.STARTED:
+        return (
             await addon.start()
+            if last_state in [AddonState.STARTED, AddonState.STARTUP]
+            else None
+        )
 
     @Job(
         conditions=[
@@ -344,8 +366,14 @@ class AddonManager(CoreSysAttributes):
         ],
         on_condition=AddonsJobError,
     )
-    async def restore(self, slug: str, tar_file: tarfile.TarFile) -> None:
-        """Restore state of an add-on."""
+    async def restore(
+        self, slug: str, tar_file: tarfile.TarFile
+    ) -> Awaitable[None] | None:
+        """Restore state of an add-on.
+
+        Returns a coroutine that completes when addon has state 'started' (see addon.start)
+        if addon is started after restore. Else nothing is returned.
+        """
         if slug not in self.local:
             _LOGGER.debug("Add-on %s is not local available for restore", slug)
             addon = Addon(self.coresys, slug)
@@ -353,7 +381,7 @@ class AddonManager(CoreSysAttributes):
             _LOGGER.debug("Add-on %s is local available for restore", slug)
             addon = self.local[slug]
 
-        await addon.restore(tar_file)
+        wait_for_start = await addon.restore(tar_file)
 
         # Check if new
         if slug not in self.local:
@@ -365,6 +393,8 @@ class AddonManager(CoreSysAttributes):
             await self.sys_ingress.reload()
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
+
+        return wait_for_start
 
     @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_HOST])
     async def repair(self) -> None:

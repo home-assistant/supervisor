@@ -386,8 +386,11 @@ class CIFSMount(NetworkMount):
         options = super().options
         if self.version:
             options.append(f"vers={self.version}")
-        if self.username:
+
+        if self.username and self.password:
             options.extend([f"username={self.username}", f"password={self.password}"])
+        else:
+            options.append("guest")
 
         return options
 
