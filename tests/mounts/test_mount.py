@@ -28,15 +28,15 @@ ERROR_NO_UNIT = DBusError("org.freedesktop.systemd1.NoSuchUnit", "error")
     "additional_data,expected_options",
     (
         (
-            {"cifs_version": MountCifsVersion.LEGACY_1_0},
+            {"version": MountCifsVersion.LEGACY_1_0},
             ["vers=1.0"],
         ),
         (
-            {"cifs_version": MountCifsVersion.LEGACY_2_0},
+            {"version": MountCifsVersion.LEGACY_2_0},
             ["vers=2.0"],
         ),
         (
-            {"cifs_version": None},
+            {"version": None},
             [],
         ),
     ),
@@ -59,7 +59,7 @@ async def test_cifs_mount(
         "type": "cifs",
         "server": "test.local",
         "share": "camera",
-        "cifs_version": None,
+        "version": None,
         "username": "admin",
         "password": "password",
         **additional_data,

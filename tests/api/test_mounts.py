@@ -61,7 +61,7 @@ async def test_api_create_mount(
             "usage": "backup",
             "server": "backup.local",
             "share": "backups",
-            "cifs_version": "2.0",
+            "version": "2.0",
         },
     )
     result = await resp.json()
@@ -72,7 +72,7 @@ async def test_api_create_mount(
 
     assert result["data"]["mounts"] == [
         {
-            "cifs_version": "2.0",
+            "version": "2.0",
             "name": "backup_test",
             "type": "cifs",
             "usage": "backup",
@@ -238,7 +238,7 @@ async def test_api_update_mount(api_client: TestClient, coresys: CoreSys, mount)
 
     assert result["data"]["mounts"] == [
         {
-            "cifs_version": None,
+            "version": None,
             "name": "backup_test",
             "type": "cifs",
             "usage": "backup",
@@ -304,7 +304,7 @@ async def test_api_update_dbus_error_mount_remains(
     result = await resp.json()
     assert result["data"]["mounts"] == [
         {
-            "cifs_version": None,
+            "version": None,
             "name": "backup_test",
             "type": "cifs",
             "usage": "backup",
@@ -344,7 +344,7 @@ async def test_api_update_dbus_error_mount_remains(
     result = await resp.json()
     assert result["data"]["mounts"] == [
         {
-            "cifs_version": None,
+            "version": None,
             "name": "backup_test",
             "type": "cifs",
             "usage": "backup",

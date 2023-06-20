@@ -8,7 +8,14 @@ from pathlib import Path, PurePath
 from dbus_fast import Variant
 from voluptuous import Coerce
 
-from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_PORT, ATTR_TYPE, ATTR_USERNAME
+from ..const import (
+    ATTR_NAME,
+    ATTR_PASSWORD,
+    ATTR_PORT,
+    ATTR_TYPE,
+    ATTR_USERNAME,
+    ATTR_VERSION,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
     DBUS_ATTR_DESCRIPTION,
@@ -31,7 +38,6 @@ from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
 from ..utils.sentry import capture_exception
 from .const import (
-    ATTR_CIFS_VERSION,
     ATTR_PATH,
     ATTR_SERVER,
     ATTR_SHARE,
@@ -341,7 +347,7 @@ class CIFSMount(NetworkMount):
         if not skip_secrets and self.username is not None:
             out[ATTR_USERNAME] = self.username
             out[ATTR_PASSWORD] = self.password
-        out[ATTR_CIFS_VERSION] = self.cifs_version
+        out[ATTR_VERSION] = self.version
         return out
 
     @property
@@ -360,9 +366,9 @@ class CIFSMount(NetworkMount):
         return self._data.get(ATTR_PASSWORD)
 
     @property
-    def cifs_version(self) -> str | None:
+    def version(self) -> str | None:
         """Get password, returns none if auth is not used."""
-        version = self._data.get(ATTR_CIFS_VERSION)
+        version = self._data.get(ATTR_VERSION)
         if version == MountCifsVersion.LEGACY_1_0:
             return "1.0"
         if version == MountCifsVersion.LEGACY_2_0:
@@ -378,8 +384,8 @@ class CIFSMount(NetworkMount):
     def options(self) -> list[str]:
         """Options to use to mount."""
         options = super().options
-        if self.cifs_version:
-            options.append(f"vers={self.cifs_version}")
+        if self.version:
+            options.append(f"vers={self.version}")
         if self.username:
             options.extend([f"username={self.username}", f"password={self.password}"])
 

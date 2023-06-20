@@ -11,7 +11,6 @@ ATTR_PATH = "path"
 ATTR_SERVER = "server"
 ATTR_SHARE = "share"
 ATTR_USAGE = "usage"
-ATTR_CIFS_VERSION = "cifs_version"
 
 
 class MountType(str, Enum):
