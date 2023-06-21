@@ -77,7 +77,7 @@ async def test_cifs_mount(
     assert mount.what == "//test.local/camera"
     assert mount.where == Path("/mnt/data/supervisor/mounts/test")
     assert mount.local_where == tmp_supervisor_data / "mounts" / "test"
-    assert mount.options == expected_options + [
+    assert mount.options == ["noserverino"] + expected_options + [
         f"username={mount_data['username']}",
         f"password={mount_data['password']}",
     ]
@@ -104,7 +104,8 @@ async def test_cifs_mount(
                     Variant(
                         "s",
                         ",".join(
-                            expected_options
+                            ["noserverino"]
+                            + expected_options
                             + [
                                 f"username={mount_data['username']}",
                                 f"password={mount_data['password']}",
@@ -215,7 +216,7 @@ async def test_load(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "guest")],
+                ["Options", Variant("s", "noserverino,guest")],
                 ["Type", Variant("s", "cifs")],
                 ["Description", Variant("s", "Supervisor cifs mount: test")],
                 ["What", Variant("s", "//test.local/share")],
