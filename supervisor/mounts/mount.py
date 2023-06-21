@@ -383,7 +383,7 @@ class CIFSMount(NetworkMount):
     @property
     def options(self) -> list[str]:
         """Options to use to mount."""
-        options = super().options
+        options = super().options + ["noserverino"]
         if self.version:
             options.append(f"vers={self.version}")
 
