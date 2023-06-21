@@ -27,3 +27,10 @@ class MountUsage(str, Enum):
     BACKUP = "backup"
     MEDIA = "media"
     SHARE = "share"
+
+
+class MountCifsVersion(str, Enum):
+    """Mount CIFS version."""
+
+    LEGACY_1_0 = "1.0"
+    LEGACY_2_0 = "2.0"

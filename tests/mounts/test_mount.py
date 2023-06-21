@@ -1,7 +1,9 @@
 """Tests for mounts."""
+from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from dbus_fast import DBusError, ErrorType, Variant
@@ -10,7 +12,7 @@ import pytest
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import UnitActiveState
 from supervisor.exceptions import MountError, MountInvalidError
-from supervisor.mounts.const import MountType, MountUsage
+from supervisor.mounts.const import MountCifsVersion, MountType, MountUsage
 from supervisor.mounts.mount import CIFSMount, Mount, NFSMount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 
@@ -22,11 +24,30 @@ ERROR_FAILURE = DBusError(ErrorType.FAILED, "error")
 ERROR_NO_UNIT = DBusError("org.freedesktop.systemd1.NoSuchUnit", "error")
 
 
+@pytest.mark.parametrize(
+    "additional_data,expected_options",
+    (
+        (
+            {"version": MountCifsVersion.LEGACY_1_0},
+            ["vers=1.0"],
+        ),
+        (
+            {"version": MountCifsVersion.LEGACY_2_0},
+            ["vers=2.0"],
+        ),
+        (
+            {"version": None},
+            [],
+        ),
+    ),
+)
 async def test_cifs_mount(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data: Path,
     path_extern,
+    additional_data: dict[str, Any],
+    expected_options: list[str],
 ):
     """Test CIFS mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -38,8 +59,10 @@ async def test_cifs_mount(
         "type": "cifs",
         "server": "test.local",
         "share": "camera",
+        "version": None,
         "username": "admin",
         "password": "password",
+        **additional_data,
     }
     mount: CIFSMount = Mount.from_dict(coresys, mount_data)
 
@@ -54,7 +77,10 @@ async def test_cifs_mount(
     assert mount.what == "//test.local/camera"
     assert mount.where == Path("/mnt/data/supervisor/mounts/test")
     assert mount.local_where == tmp_supervisor_data / "mounts" / "test"
-    assert mount.options == ["username=admin", "password=password"]
+    assert mount.options == expected_options + [
+        f"username={mount_data['username']}",
+        f"password={mount_data['password']}",
+    ]
 
     assert not mount.local_where.exists()
     assert mount.to_dict(skip_secrets=False) == mount_data
@@ -73,7 +99,19 @@ async def test_cifs_mount(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "username=admin,password=password")],
+                [
+                    "Options",
+                    Variant(
+                        "s",
+                        ",".join(
+                            expected_options
+                            + [
+                                f"username={mount_data['username']}",
+                                f"password={mount_data['password']}",
+                            ]
+                        ),
+                    ),
+                ],
                 ["Type", Variant("s", "cifs")],
                 ["Description", Variant("s", "Supervisor cifs mount: test")],
                 ["What", Variant("s", "//test.local/camera")],
