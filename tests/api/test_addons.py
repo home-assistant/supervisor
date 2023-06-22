@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
+import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
@@ -15,7 +16,8 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.store.repository import Repository
 
-from ..const import TEST_ADDON_SLUG
+from tests.common import load_json_fixture
+from tests.const import TEST_ADDON_SLUG
 
 
 def _create_test_event(name: str, state: ContainerState) -> DockerContainerStateEvent:
@@ -26,6 +28,15 @@ def _create_test_event(name: str, state: ContainerState) -> DockerContainerState
         id="abc123",
         time=1,
     )
+
+
+@pytest.fixture(name="container_stats")
+async def fixture_container_stats(container: MagicMock) -> MagicMock:
+    """Mock container stats."""
+    container.status = "running"
+    container.stats.return_value = load_json_fixture("container_stats.json")
+
+    yield container
 
 
 async def test_addons_info(
@@ -212,3 +223,46 @@ async def test_api_addon_rebuild_healthcheck(
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
     assert resp.status == 200
+
+
+async def test_api_addon_list(
+    api_client: TestClient, coresys: CoreSys, install_addon_ssh: Addon, container_stats
+):
+    """Test listing addons."""
+    resp = await api_client.get("/addons")
+    result = await resp.json()
+
+    assert len(result["data"]["addons"]) == 1
+    addon_data = result["data"]["addons"][0]
+    assert addon_data["name"] == "Terminal & SSH"
+    assert addon_data["version"] == "9.2.1"
+    assert "hostname" not in addon_data
+    assert "rating" not in addon_data
+    assert "cpu_percent" not in addon_data
+    assert "memory_percent" not in addon_data
+
+    # Now full view
+    resp = await api_client.get("/addons?view=full")
+    result = await resp.json()
+
+    assert len(result["data"]["addons"]) == 1
+    addon_data = result["data"]["addons"][0]
+    assert addon_data["name"] == "Terminal & SSH"
+    assert addon_data["version"] == "9.2.1"
+    assert addon_data["hostname"] == "local-ssh"
+    assert addon_data["rating"] == 6
+    assert "cpu_percent" not in addon_data
+    assert "memory_percent" not in addon_data
+
+    # Now full with stats
+    resp = await api_client.get("/addons?view=full&stats=true")
+    result = await resp.json()
+
+    assert len(result["data"]["addons"]) == 1
+    addon_data = result["data"]["addons"][0]
+    assert addon_data["name"] == "Terminal & SSH"
+    assert addon_data["version"] == "9.2.1"
+    assert addon_data["hostname"] == "local-ssh"
+    assert addon_data["rating"] == 6
+    assert addon_data["cpu_percent"] == 90.0
+    assert addon_data["memory_percent"] == 1.49

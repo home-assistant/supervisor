@@ -1,5 +1,7 @@
 """Const for API."""
 
+from enum import StrEnum
+
 CONTENT_TYPE_BINARY = "application/octet-stream"
 CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_PNG = "image/png"
@@ -53,3 +55,11 @@ ATTR_UPDATE_TYPE = "update_type"
 ATTR_USE_NTP = "use_ntp"
 ATTR_USAGE = "usage"
 ATTR_VENDOR = "vendor"
+
+
+class AddonView(StrEnum):
+    """Addon view."""
+
+    FULL = "full"
+    SIMPLE = "simple"
+    NONE = "none"

@@ -106,7 +106,7 @@ from ..exceptions import (
     PwnedSecret,
 )
 from ..validate import docker_ports
-from .const import ATTR_SIGNED, CONTENT_TYPE_BINARY
+from .const import ATTR_SIGNED, CONTENT_TYPE_BINARY, AddonView
 from .utils import api_process, api_process_raw, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -128,6 +128,109 @@ SCHEMA_OPTIONS = vol.Schema(
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_SECURITY = vol.Schema({vol.Optional(ATTR_PROTECTED): vol.Boolean()})
+
+
+async def _generate_addon_dict(
+    addon: Addon, *, view: AddonView = AddonView.SIMPLE, stats: bool = False
+) -> dict[str, Any]:
+    """Generate dictionary for addon."""
+    data = (
+        {}
+        if view == AddonView.NONE
+        else {
+            ATTR_NAME: addon.name,
+            ATTR_SLUG: addon.slug,
+            ATTR_DESCRIPTON: addon.description,
+            ATTR_ADVANCED: addon.advanced,
+            ATTR_STAGE: addon.stage,
+            ATTR_VERSION: addon.version,
+            ATTR_VERSION_LATEST: addon.latest_version,
+            ATTR_UPDATE_AVAILABLE: addon.need_update,
+            ATTR_AVAILABLE: addon.available,
+            ATTR_DETACHED: addon.is_detached,
+            ATTR_HOMEASSISTANT: addon.homeassistant_version,
+            ATTR_STATE: addon.state,
+            ATTR_REPOSITORY: addon.repository,
+            ATTR_BUILD: addon.need_build,
+            ATTR_URL: addon.url,
+            ATTR_ICON: addon.with_icon,
+            ATTR_LOGO: addon.with_logo,
+        }
+    )
+
+    if view == AddonView.FULL:
+        data |= {
+            ATTR_HOSTNAME: addon.hostname,
+            ATTR_DNS: addon.dns,
+            ATTR_LONG_DESCRIPTION: addon.long_description,
+            ATTR_PROTECTED: addon.protected,
+            ATTR_RATING: rating_security(addon),
+            ATTR_BOOT: addon.boot,
+            ATTR_OPTIONS: addon.options,
+            ATTR_SCHEMA: addon.schema_ui,
+            ATTR_ARCH: addon.supported_arch,
+            ATTR_MACHINE: addon.supported_machine,
+            ATTR_NETWORK: addon.ports,
+            ATTR_NETWORK_DESCRIPTION: addon.ports_description,
+            ATTR_HOST_NETWORK: addon.host_network,
+            ATTR_HOST_PID: addon.host_pid,
+            ATTR_HOST_IPC: addon.host_ipc,
+            ATTR_HOST_UTS: addon.host_uts,
+            ATTR_HOST_DBUS: addon.host_dbus,
+            ATTR_PRIVILEGED: addon.privileged,
+            ATTR_FULL_ACCESS: addon.with_full_access,
+            ATTR_APPARMOR: addon.apparmor,
+            ATTR_CHANGELOG: addon.with_changelog,
+            ATTR_DOCUMENTATION: addon.with_documentation,
+            ATTR_STDIN: addon.with_stdin,
+            ATTR_HASSIO_API: addon.access_hassio_api,
+            ATTR_HASSIO_ROLE: addon.hassio_role,
+            ATTR_AUTH_API: addon.access_auth_api,
+            ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
+            ATTR_GPIO: addon.with_gpio,
+            ATTR_USB: addon.with_usb,
+            ATTR_UART: addon.with_uart,
+            ATTR_KERNEL_MODULES: addon.with_kernel_modules,
+            ATTR_DEVICETREE: addon.with_devicetree,
+            ATTR_UDEV: addon.with_udev,
+            ATTR_DOCKER_API: addon.access_docker_api,
+            ATTR_VIDEO: addon.with_video,
+            ATTR_AUDIO: addon.with_audio,
+            ATTR_STARTUP: addon.startup,
+            ATTR_SERVICES: _pretty_services(addon),
+            ATTR_DISCOVERY: addon.discovery,
+            ATTR_TRANSLATIONS: addon.translations,
+            ATTR_INGRESS: addon.with_ingress,
+            ATTR_SIGNED: addon.signed,
+            ATTR_WEBUI: addon.webui,
+            ATTR_INGRESS_ENTRY: addon.ingress_entry,
+            ATTR_INGRESS_URL: addon.ingress_url,
+            ATTR_INGRESS_PORT: addon.ingress_port,
+            ATTR_INGRESS_PANEL: addon.ingress_panel,
+            ATTR_AUDIO_INPUT: addon.audio_input,
+            ATTR_AUDIO_OUTPUT: addon.audio_output,
+            ATTR_AUTO_UPDATE: addon.auto_update,
+            ATTR_IP_ADDRESS: str(addon.ip_address),
+            ATTR_WATCHDOG: addon.watchdog,
+            ATTR_DEVICES: addon.static_devices
+            + [device.path for device in addon.devices],
+        }
+
+    if stats:
+        stats: DockerStats = await addon.stats()
+
+        data |= {
+            ATTR_CPU_PERCENT: stats.cpu_percent,
+            ATTR_MEMORY_USAGE: stats.memory_usage,
+            ATTR_MEMORY_LIMIT: stats.memory_limit,
+            ATTR_MEMORY_PERCENT: stats.memory_percent,
+            ATTR_NETWORK_RX: stats.network_rx,
+            ATTR_NETWORK_TX: stats.network_tx,
+            ATTR_BLK_READ: stats.blk_read,
+            ATTR_BLK_WRITE: stats.blk_write,
+        }
+
+    return data
 
 
 class APIAddons(CoreSysAttributes):
@@ -155,28 +258,14 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def list(self, request: web.Request) -> dict[str, Any]:
         """Return all add-ons or repositories."""
-        data_addons = [
-            {
-                ATTR_NAME: addon.name,
-                ATTR_SLUG: addon.slug,
-                ATTR_DESCRIPTON: addon.description,
-                ATTR_ADVANCED: addon.advanced,
-                ATTR_STAGE: addon.stage,
-                ATTR_VERSION: addon.version,
-                ATTR_VERSION_LATEST: addon.latest_version,
-                ATTR_UPDATE_AVAILABLE: addon.need_update,
-                ATTR_AVAILABLE: addon.available,
-                ATTR_DETACHED: addon.is_detached,
-                ATTR_HOMEASSISTANT: addon.homeassistant_version,
-                ATTR_STATE: addon.state,
-                ATTR_REPOSITORY: addon.repository,
-                ATTR_BUILD: addon.need_build,
-                ATTR_URL: addon.url,
-                ATTR_ICON: addon.with_icon,
-                ATTR_LOGO: addon.with_logo,
-            }
-            for addon in self.sys_addons.installed
-        ]
+        view = vol.Coerce(AddonView)(request.query.get("view", AddonView.SIMPLE))
+        stats = vol.Boolean()(request.query.get("stats", False))
+        data_addons = await asyncio.gather(
+            *[
+                _generate_addon_dict(addon, view=view, stats=stats)
+                for addon in self.sys_addons.installed
+            ]
+        )
 
         return {ATTR_ADDONS: data_addons}
 
@@ -188,82 +277,10 @@ class APIAddons(CoreSysAttributes):
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
         addon: AnyAddon = self._extract_addon(request)
+        view = vol.Coerce(AddonView)(request.query.get("view", AddonView.FULL))
+        stats = vol.Boolean()(request.query.get("stats", False))
 
-        data = {
-            ATTR_NAME: addon.name,
-            ATTR_SLUG: addon.slug,
-            ATTR_HOSTNAME: addon.hostname,
-            ATTR_DNS: addon.dns,
-            ATTR_DESCRIPTON: addon.description,
-            ATTR_LONG_DESCRIPTION: addon.long_description,
-            ATTR_ADVANCED: addon.advanced,
-            ATTR_STAGE: addon.stage,
-            ATTR_REPOSITORY: addon.repository,
-            ATTR_VERSION_LATEST: addon.latest_version,
-            ATTR_PROTECTED: addon.protected,
-            ATTR_RATING: rating_security(addon),
-            ATTR_BOOT: addon.boot,
-            ATTR_OPTIONS: addon.options,
-            ATTR_SCHEMA: addon.schema_ui,
-            ATTR_ARCH: addon.supported_arch,
-            ATTR_MACHINE: addon.supported_machine,
-            ATTR_HOMEASSISTANT: addon.homeassistant_version,
-            ATTR_URL: addon.url,
-            ATTR_DETACHED: addon.is_detached,
-            ATTR_AVAILABLE: addon.available,
-            ATTR_BUILD: addon.need_build,
-            ATTR_NETWORK: addon.ports,
-            ATTR_NETWORK_DESCRIPTION: addon.ports_description,
-            ATTR_HOST_NETWORK: addon.host_network,
-            ATTR_HOST_PID: addon.host_pid,
-            ATTR_HOST_IPC: addon.host_ipc,
-            ATTR_HOST_UTS: addon.host_uts,
-            ATTR_HOST_DBUS: addon.host_dbus,
-            ATTR_PRIVILEGED: addon.privileged,
-            ATTR_FULL_ACCESS: addon.with_full_access,
-            ATTR_APPARMOR: addon.apparmor,
-            ATTR_ICON: addon.with_icon,
-            ATTR_LOGO: addon.with_logo,
-            ATTR_CHANGELOG: addon.with_changelog,
-            ATTR_DOCUMENTATION: addon.with_documentation,
-            ATTR_STDIN: addon.with_stdin,
-            ATTR_HASSIO_API: addon.access_hassio_api,
-            ATTR_HASSIO_ROLE: addon.hassio_role,
-            ATTR_AUTH_API: addon.access_auth_api,
-            ATTR_HOMEASSISTANT_API: addon.access_homeassistant_api,
-            ATTR_GPIO: addon.with_gpio,
-            ATTR_USB: addon.with_usb,
-            ATTR_UART: addon.with_uart,
-            ATTR_KERNEL_MODULES: addon.with_kernel_modules,
-            ATTR_DEVICETREE: addon.with_devicetree,
-            ATTR_UDEV: addon.with_udev,
-            ATTR_DOCKER_API: addon.access_docker_api,
-            ATTR_VIDEO: addon.with_video,
-            ATTR_AUDIO: addon.with_audio,
-            ATTR_STARTUP: addon.startup,
-            ATTR_SERVICES: _pretty_services(addon),
-            ATTR_DISCOVERY: addon.discovery,
-            ATTR_TRANSLATIONS: addon.translations,
-            ATTR_INGRESS: addon.with_ingress,
-            ATTR_SIGNED: addon.signed,
-            ATTR_STATE: addon.state,
-            ATTR_WEBUI: addon.webui,
-            ATTR_INGRESS_ENTRY: addon.ingress_entry,
-            ATTR_INGRESS_URL: addon.ingress_url,
-            ATTR_INGRESS_PORT: addon.ingress_port,
-            ATTR_INGRESS_PANEL: addon.ingress_panel,
-            ATTR_AUDIO_INPUT: addon.audio_input,
-            ATTR_AUDIO_OUTPUT: addon.audio_output,
-            ATTR_AUTO_UPDATE: addon.auto_update,
-            ATTR_IP_ADDRESS: str(addon.ip_address),
-            ATTR_VERSION: addon.version,
-            ATTR_UPDATE_AVAILABLE: addon.need_update,
-            ATTR_WATCHDOG: addon.watchdog,
-            ATTR_DEVICES: addon.static_devices
-            + [device.path for device in addon.devices],
-        }
-
-        return data
+        return await _generate_addon_dict(addon, view=view, stats=stats)
 
     @api_process
     async def options(self, request: web.Request) -> None:
@@ -371,18 +388,7 @@ class APIAddons(CoreSysAttributes):
         """Return resource information."""
         addon = self._extract_addon(request)
 
-        stats: DockerStats = await addon.stats()
-
-        return {
-            ATTR_CPU_PERCENT: stats.cpu_percent,
-            ATTR_MEMORY_USAGE: stats.memory_usage,
-            ATTR_MEMORY_LIMIT: stats.memory_limit,
-            ATTR_MEMORY_PERCENT: stats.memory_percent,
-            ATTR_NETWORK_RX: stats.network_rx,
-            ATTR_NETWORK_TX: stats.network_tx,
-            ATTR_BLK_READ: stats.blk_read,
-            ATTR_BLK_WRITE: stats.blk_write,
-        }
+        return _generate_addon_dict(addon, view=AddonView.NONE, stats=True)
 
     @api_process
     def uninstall(self, request: web.Request) -> Awaitable[None]:
