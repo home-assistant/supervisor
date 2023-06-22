@@ -212,7 +212,7 @@ def initialize_system(coresys: CoreSys) -> None:
             "Creating Supervisor mounts credentials folder at '%s'",
             config.path_mounts_credentials,
         )
-        config.path_mounts_credentials.mkdir()
+        config.path_mounts_credentials.mkdir(mode=0o600)
 
     # Emergency folder
     if not config.path_emergency.is_dir():

@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 import asyncio
+from collections.abc import Awaitable
 import logging
 from pathlib import Path, PurePath
 
@@ -404,13 +405,21 @@ class CIFSMount(NetworkMount):
         """Path to credentials file external to Docker."""
         return self.sys_config.path_extern_mounts_credentials / self.name
 
-    async def mount(self) -> None:
+    def mount(self) -> Awaitable[None]:
         """Mount using systemd."""
         if self.username and self.password:
+            if not self.path_credentials.exists():
+                self.path_credentials.touch(mode=0o600)
+
             with self.path_credentials.open(mode="w") as cred_file:
                 cred_file.write(f"username={self.username}\npassword={self.password}")
 
-        await super().mount()
+        return super().mount()
+
+    def unmount(self) -> Awaitable[None]:
+        """Unmount using systemd."""
+        self.path_credentials.unlink(missing_ok=True)
+        return super().unmount()
 
 
 class NFSMount(NetworkMount):

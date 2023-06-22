@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import stat
 from typing import Any
 from unittest.mock import patch
 
@@ -124,6 +125,13 @@ async def test_cifs_mount(
             f"username={mount_data['username']}",
             f"password={mount_data['password']}",
         ]
+
+    cred_stat = mount.path_credentials.stat()
+    assert not cred_stat.st_mode & stat.S_IRGRP
+    assert not cred_stat.st_mode & stat.S_IROTH
+
+    await mount.unmount()
+    assert not mount.path_credentials.exists()
 
 
 async def test_nfs_mount(
@@ -283,7 +291,7 @@ async def test_unmount(
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.StopUnit.calls.clear()
 
-    mount = Mount.from_dict(
+    mount: CIFSMount = Mount.from_dict(
         coresys,
         {
             "name": "test",
