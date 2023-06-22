@@ -78,8 +78,7 @@ async def test_cifs_mount(
     assert mount.where == Path("/mnt/data/supervisor/mounts/test")
     assert mount.local_where == tmp_supervisor_data / "mounts" / "test"
     assert mount.options == ["noserverino"] + expected_options + [
-        f"username={mount_data['username']}",
-        f"password={mount_data['password']}",
+        "credentials=/mnt/data/supervisor/.mounts_credentials/test",
     ]
 
     assert not mount.local_where.exists()
@@ -107,8 +106,7 @@ async def test_cifs_mount(
                             ["noserverino"]
                             + expected_options
                             + [
-                                f"username={mount_data['username']}",
-                                f"password={mount_data['password']}",
+                                "credentials=/mnt/data/supervisor/.mounts_credentials/test"
                             ]
                         ),
                     ),
@@ -120,6 +118,12 @@ async def test_cifs_mount(
             [],
         )
     ]
+    assert mount.path_credentials.exists()
+    with mount.path_credentials.open("r") as creds:
+        assert creds.read().split("\n") == [
+            f"username={mount_data['username']}",
+            f"password={mount_data['password']}",
+        ]
 
 
 async def test_nfs_mount(

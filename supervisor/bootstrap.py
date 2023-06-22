@@ -202,10 +202,17 @@ def initialize_system(coresys: CoreSys) -> None:
         _LOGGER.debug("Creating Supervisor media folder at '%s'", config.path_media)
         config.path_media.mkdir()
 
-    # Mounts folder
+    # Mounts folders
     if not config.path_mounts.is_dir():
         _LOGGER.debug("Creating Supervisor mounts folder at '%s'", config.path_mounts)
         config.path_mounts.mkdir()
+
+    if not config.path_mounts_credentials.is_dir():
+        _LOGGER.debug(
+            "Creating Supervisor mounts credentials folder at '%s'",
+            config.path_mounts_credentials,
+        )
+        config.path_mounts_credentials.mkdir()
 
     # Emergency folder
     if not config.path_emergency.is_dir():
