@@ -388,11 +388,37 @@ class CIFSMount(NetworkMount):
             options.append(f"vers={self.version}")
 
         if self.username and self.password:
-            options.extend([f"username={self.username}", f"password={self.password}"])
+            options.append(f"credentials={self.path_extern_credentials.as_posix()}")
         else:
             options.append("guest")
 
         return options
+
+    @property
+    def path_credentials(self) -> Path:
+        """Path to credentials file."""
+        return self.sys_config.path_mounts_credentials / self.name
+
+    @property
+    def path_extern_credentials(self) -> PurePath:
+        """Path to credentials file external to Docker."""
+        return self.sys_config.path_extern_mounts_credentials / self.name
+
+    async def mount(self) -> None:
+        """Mount using systemd."""
+        if self.username and self.password:
+            if not self.path_credentials.exists():
+                self.path_credentials.touch(mode=0o600)
+
+            with self.path_credentials.open(mode="w") as cred_file:
+                cred_file.write(f"username={self.username}\npassword={self.password}")
+
+        await super().mount()
+
+    async def unmount(self) -> None:
+        """Unmount using systemd."""
+        self.path_credentials.unlink(missing_ok=True)
+        await super().unmount()
 
 
 class NFSMount(NetworkMount):
