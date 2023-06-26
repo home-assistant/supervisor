@@ -10,7 +10,6 @@ on:
 env:
   DEFAULT_PYTHON: "3.11"
   PRE_COMMIT_HOME: ~/.cache/pre-commit
-  DEFAULT_CAS: v1.0.2
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
@@ -351,10 +350,10 @@ jobs:
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
-      - name: Install CAS tools
-        uses: home-assistant/actions/helpers/cas@master
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.0.5
         with:
-          version: ${{ env.DEFAULT_CAS }}
+          cosign-release: "v2.0.2"
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v3.3.1
