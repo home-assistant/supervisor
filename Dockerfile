@@ -7,7 +7,8 @@ ENV \
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1
 
 ARG \
-    CAS_VERSION
+    COSIGN_VERSION \
+    BUILD_ARCH
 
 # Install base
 WORKDIR /usr/src
@@ -21,19 +22,9 @@ RUN \
         libpulse \
         musl \
         openssl \
-    && apk add --no-cache --virtual .build-dependencies \
-        build-base \
-        go \
     \
-    && git clone -b "v${CAS_VERSION}" --depth 1 \
-        https://github.com/codenotary/cas \
-    && cd cas \
-    && make cas \
-    && mv cas /usr/bin/cas \
-    \
-    && apk del .build-dependencies \
-    && rm -rf /root/go /root/.cache \
-    && rm -rf /usr/src/cas
+    && curl -Lso /usr/bin/cosign "https://github.com/home-assistant/cosign/releases/download/${COSIGN_VERSION}/cosign_${BUILD_ARCH}" \
+    && chmod a+x /usr/bin/cosign
 
 # Install requirements
 COPY requirements.txt .
