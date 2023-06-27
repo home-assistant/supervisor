@@ -3,13 +3,16 @@
 from datetime import timedelta
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
+from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import UpdateChannel
 from supervisor.coresys import CoreSys
 from supervisor.docker.supervisor import DockerSupervisor
 from supervisor.exceptions import DockerError, SupervisorUpdateError
+from supervisor.host.apparmor import AppArmorControl
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 from supervisor.supervisor import Supervisor
@@ -83,3 +86,25 @@ async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
         Issue(IssueType.UPDATE_FAILED, ContextType.SUPERVISOR)
         in coresys.resolution.issues
     )
+
+
+@pytest.mark.parametrize(
+    "channel", [UpdateChannel.STABLE, UpdateChannel.BETA, UpdateChannel.DEV]
+)
+async def test_update_apparmor(
+    coresys: CoreSys, channel: UpdateChannel, tmp_supervisor_data
+):
+    """Test updating apparmor."""
+    coresys.updater.channel = channel
+    with patch("supervisor.coresys.aiohttp.ClientSession.get") as get, patch.object(
+        AppArmorControl, "load_profile"
+    ) as load_profile:
+        get.return_value.__aenter__.return_value.status = 200
+        get.return_value.__aenter__.return_value.text = AsyncMock(return_value="")
+        await coresys.supervisor.update_apparmor()
+
+        get.assert_called_once_with(
+            f"https://version.home-assistant.io/apparmor_{channel.value}.txt",
+            timeout=ClientTimeout(total=10),
+        )
+        load_profile.assert_called_once()
