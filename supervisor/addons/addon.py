@@ -716,7 +716,7 @@ class Addon(AddonModel):
         """
         if await self.instance.is_running():
             _LOGGER.warning("%s is already running!", self.slug)
-            return
+            return self._wait_for_startup()
 
         # Access Token
         self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)

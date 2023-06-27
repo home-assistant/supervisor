@@ -471,3 +471,22 @@ async def test_restore(
         start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
 
     assert bool(start_task) is (status == "running")
+
+
+async def test_start_when_running(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test starting an addon without healthcheck."""
+    container.status = "running"
+    await install_addon_ssh.load()
+    assert install_addon_ssh.state == AddonState.STARTED
+
+    caplog.clear()
+    start_task = await install_addon_ssh.start()
+    assert start_task
+    await start_task
+
+    assert "local_ssh is already running" in caplog.text
