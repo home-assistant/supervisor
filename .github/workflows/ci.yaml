@@ -351,7 +351,7 @@ jobs:
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
       - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.0.5
+        uses: sigstore/cosign-installer@v3.1.0
         with:
           cosign-release: "v2.0.2"
       - name: Restore Python virtual environment
