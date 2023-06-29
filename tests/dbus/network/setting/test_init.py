@@ -52,11 +52,13 @@ async def test_update(
     settings = connection_settings_service.Update.calls[0][0]
 
     assert settings["connection"]["id"] == Variant("s", "Supervisor eth0")
-    assert settings["connection"]["interface-name"] == Variant("s", "eth0")
+    assert "interface-name" not in settings["connection"]
     assert settings["connection"]["uuid"] == Variant(
         "s", "0c23631e-2118-355c-bbb0-8943229cb0d6"
     )
     assert settings["connection"]["autoconnect"] == Variant("b", True)
+
+    assert settings["device"] == {"match-device": Variant("s", "mac:AA:BB:CC:DD:EE:FF")}
 
     assert "ipv4" in settings
     assert settings["ipv4"]["method"] == Variant("s", "auto")

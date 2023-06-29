@@ -38,7 +38,7 @@ async def test_network_manager(
 
     await network_manager.connect(dbus_session_bus)
 
-    assert TEST_INTERFACE in network_manager.interfaces
+    assert TEST_INTERFACE in network_manager
     assert network_manager.connectivity_enabled is True
 
     network_manager_service.emit_properties_changed({"ConnectivityCheckEnabled": False})
@@ -123,13 +123,13 @@ async def test_removed_devices_disconnect(
     network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Test removed devices are disconnected."""
-    wlan = network_manager.interfaces[TEST_INTERFACE_WLAN]
+    wlan = network_manager.get(TEST_INTERFACE_WLAN)
     assert wlan.is_connected is True
 
     network_manager_service.emit_properties_changed({"Devices": []})
     await network_manager_service.ping()
 
-    assert TEST_INTERFACE_WLAN not in network_manager.interfaces
+    assert TEST_INTERFACE_WLAN not in network_manager
     assert wlan.is_connected is False
 
 

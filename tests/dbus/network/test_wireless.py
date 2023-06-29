@@ -56,17 +56,16 @@ async def test_request_scan(
     """Test request scan."""
     device_wireless_service.RequestScan.calls.clear()
     assert (
-        await network_manager.interfaces[TEST_INTERFACE_WLAN].wireless.request_scan()
-        is None
+        await network_manager.get(TEST_INTERFACE_WLAN).wireless.request_scan() is None
     )
     assert device_wireless_service.RequestScan.calls == [({},)]
 
 
 async def test_get_all_access_points(network_manager: NetworkManager):
     """Test get all access points."""
-    accesspoints = await network_manager.interfaces[
+    accesspoints = await network_manager.get(
         TEST_INTERFACE_WLAN
-    ].wireless.get_all_accesspoints()
+    ).wireless.get_all_accesspoints()
     assert len(accesspoints) == 2
     assert accesspoints[0].mac == "E4:57:40:A9:D7:DE"
     assert accesspoints[0].mode == 2
@@ -76,7 +75,7 @@ async def test_get_all_access_points(network_manager: NetworkManager):
 
 async def test_old_active_ap_disconnects(network_manager: NetworkManager):
     """Test old access point disconnects on active ap change."""
-    wireless = network_manager.interfaces[TEST_INTERFACE_WLAN].wireless
+    wireless = network_manager.get(TEST_INTERFACE_WLAN).wireless
 
     await wireless.update(
         {"ActiveAccessPoint": "/org/freedesktop/NetworkManager/AccessPoint/43099"}

@@ -593,3 +593,10 @@ class MountNotFound(MountError):
 
 class MountJobError(MountError, JobException):
     """Raise on Mount job error."""
+
+
+# Network
+
+
+class NetworkInterfaceNotFound(HassioError):
+    """Raise on network interface not found."""
