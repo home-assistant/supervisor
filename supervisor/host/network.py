@@ -17,6 +17,7 @@ from ..dbus.const import (
     WirelessMethodType,
 )
 from ..dbus.network.connection import NetworkConnection
+from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
@@ -173,24 +174,14 @@ class NetworkManager(CoreSysAttributes):
         self, interface: Interface, *, update_only: bool = False
     ) -> None:
         """Apply Interface changes to host."""
-        inet: Interface | None = None
+        inet: NetworkInterface | None = None
         with suppress(NetworkInterfaceNotFound):
             inet = self.sys_dbus.network.get(interface.name)
 
         con: NetworkConnection = None
 
         # Update exist configuration
-        if (
-            inet
-            and inet.settings
-            and (
-                inet.settings.device
-                and inet.settings.device.match_device == f"mac:{interface.mac}"
-                or inet.settings.connection
-                and inet.settings.connection.interface_name == interface.name
-            )
-            and interface.enabled
-        ):
+        if inet and interface.equals_dbus_interface(inet) and interface.enabled:
             _LOGGER.debug("Updating existing configuration for %s", interface.name)
             settings = get_connection_from_interface(
                 interface,

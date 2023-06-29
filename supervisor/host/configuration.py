@@ -70,6 +70,16 @@ class Interface:
     wifi: WifiConfig | None
     vlan: VlanConfig | None
 
+    def equals_dbus_interface(self, inet: NetworkInterface) -> bool:
+        """Return true if this represents the dbus interface."""
+        if not inet.settings:
+            return False
+
+        if inet.settings.device:
+            return inet.settings.device.match_device == f"mac:{self.mac}"
+
+        return inet.settings.connection.interface_name == self.name
+
     @staticmethod
     def from_dbus_interface(inet: NetworkInterface) -> "Interface":
         """Coerce a dbus interface into normal Interface."""
