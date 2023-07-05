@@ -7,7 +7,7 @@ import logging
 
 import async_timeout
 
-from .const import RUN_SUPERVISOR_STATE, AddonStartup, CoreState
+from .const import ATTR_STARTUP, RUN_SUPERVISOR_STATE, AddonStartup, CoreState
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     HassioError,
@@ -266,7 +266,9 @@ class Core(CoreSysAttributes):
             self.sys_create_task(self.sys_resolution.healthcheck())
 
             self.state = CoreState.RUNNING
-            self.sys_homeassistant.websocket.supervisor_update_event("supervisor", {})
+            self.sys_homeassistant.websocket.supervisor_update_event(
+                "supervisor", {ATTR_STARTUP: "complete"}
+            )
             _LOGGER.info("Supervisor is up and running")
 
     async def stop(self):
