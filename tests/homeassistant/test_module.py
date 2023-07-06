@@ -1,8 +1,10 @@
 """Test Homeassistant module."""
 
+import asyncio
 from pathlib import Path
 from unittest.mock import patch
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
 from supervisor.homeassistant.secrets import HomeAssistantSecrets
@@ -10,6 +12,7 @@ from supervisor.homeassistant.secrets import HomeAssistantSecrets
 
 async def test_load(coresys: CoreSys, tmp_supervisor_data: Path):
     """Test homeassistant module load."""
+    client = coresys.homeassistant.websocket._client  # pylint: disable=protected-access
     with open(tmp_supervisor_data / "homeassistant" / "secrets.yaml", "w") as secrets:
         secrets.write("hello: world\n")
 
@@ -24,3 +27,11 @@ async def test_load(coresys: CoreSys, tmp_supervisor_data: Path):
         attach.assert_called_once()
 
     assert coresys.homeassistant.secrets.secrets == {"hello": "world"}
+
+    coresys.core.state = CoreState.SETUP
+    await coresys.homeassistant.websocket.async_send_message({"lorem": "ipsum"})
+    client.async_send_command.assert_not_called()
+
+    coresys.core.state = CoreState.RUNNING
+    await asyncio.sleep(0)
+    assert client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}

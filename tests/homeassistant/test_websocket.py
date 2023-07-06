@@ -1,9 +1,11 @@
 """Test websocket."""
 # pylint: disable=protected-access, import-error
+import asyncio
 import logging
 
 from awesomeversion import AwesomeVersion
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.homeassistant.const import WSEvent, WSType
 
@@ -48,3 +50,36 @@ async def test_send_command_old_core_version(coresys: CoreSys, caplog):
         "test", {"lorem": "ipsum"}
     )
     client.async_send_command.assert_not_called()
+
+
+async def test_send_message_during_startup(coresys: CoreSys):
+    """Test websocket messages queue during startup."""
+    client = coresys.homeassistant.websocket._client
+    await coresys.homeassistant.websocket.load()
+    coresys.core.state = CoreState.SETUP
+
+    await coresys.homeassistant.websocket.async_supervisor_update_event(
+        "test", {"lorem": "ipsum"}
+    )
+    client.async_send_command.assert_not_called()
+
+    coresys.core.state = CoreState.RUNNING
+    await asyncio.sleep(0)
+
+    assert client.async_send_command.call_count == 2
+    assert client.async_send_command.call_args_list[0][0][0] == {
+        "type": WSType.SUPERVISOR_EVENT,
+        "data": {
+            "event": WSEvent.SUPERVISOR_UPDATE,
+            "update_key": "test",
+            "data": {"lorem": "ipsum"},
+        },
+    }
+    assert client.async_send_command.call_args_list[1][0][0] == {
+        "type": WSType.SUPERVISOR_EVENT,
+        "data": {
+            "event": WSEvent.SUPERVISOR_UPDATE,
+            "update_key": "info",
+            "data": {"state": "running"},
+        },
+    }
