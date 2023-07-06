@@ -1,13 +1,8 @@
 """Info control for host."""
-from __future__ import annotations
-
 import asyncio
 from contextlib import suppress
-from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 import logging
 from typing import Any
-
-import attr
 
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
@@ -16,11 +11,9 @@ from ..dbus.const import (
     DBUS_ATTR_CONNECTIVITY,
     DBUS_IFACE_NM,
     DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
-    ConnectionStateFlags,
     ConnectionStateType,
     ConnectivityState,
     DeviceType,
-    InterfaceMethod as NMInterfaceMethod,
     WirelessMethodType,
 )
 from ..dbus.network.connection import NetworkConnection
@@ -32,11 +25,13 @@ from ..exceptions import (
     HostNetworkError,
     HostNetworkNotFound,
     HostNotSupportedError,
+    NetworkInterfaceNotFound,
 )
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
-from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
+from .configuration import AccessPoint, Interface
+from .const import InterfaceMethod, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -74,7 +69,7 @@ class NetworkManager(CoreSysAttributes):
     def interfaces(self) -> list[Interface]:
         """Return a dictionary of active interfaces."""
         interfaces: list[Interface] = []
-        for inet in self.sys_dbus.network.interfaces.values():
+        for inet in self.sys_dbus.network.interfaces:
             interfaces.append(Interface.from_dbus_interface(inet))
 
         return interfaces
@@ -107,12 +102,10 @@ class NetworkManager(CoreSysAttributes):
 
     def get(self, inet_name: str) -> Interface:
         """Return interface from interface name."""
-        if inet_name not in self.sys_dbus.network.interfaces:
+        if inet_name not in self.sys_dbus.network:
             raise HostNetworkNotFound()
 
-        return Interface.from_dbus_interface(
-            self.sys_dbus.network.interfaces[inet_name]
-        )
+        return Interface.from_dbus_interface(self.sys_dbus.network.get(inet_name))
 
     @Job(conditions=[JobCondition.HOST_NETWORK])
     async def load(self):
@@ -120,7 +113,7 @@ class NetworkManager(CoreSysAttributes):
         # Apply current settings on each interface so OS can update any out of date defaults
         interfaces = [
             Interface.from_dbus_interface(interface)
-            for interface in self.sys_dbus.network.interfaces.values()
+            for interface in self.sys_dbus.network.interfaces
             if not CheckNetworkInterfaceIPV4.check_interface(interface)
         ]
         with suppress(HostNetworkNotFound):
@@ -181,16 +174,14 @@ class NetworkManager(CoreSysAttributes):
         self, interface: Interface, *, update_only: bool = False
     ) -> None:
         """Apply Interface changes to host."""
-        inet = self.sys_dbus.network.interfaces.get(interface.name)
+        inet: NetworkInterface | None = None
+        with suppress(NetworkInterfaceNotFound):
+            inet = self.sys_dbus.network.get(interface.name)
+
         con: NetworkConnection = None
 
         # Update exist configuration
-        if (
-            inet
-            and inet.settings
-            and inet.settings.connection.interface_name == interface.name
-            and interface.enabled
-        ):
+        if inet and interface.equals_dbus_interface(inet) and interface.enabled:
             _LOGGER.debug("Updating existing configuration for %s", interface.name)
             settings = get_connection_from_interface(
                 interface,
@@ -287,7 +278,7 @@ class NetworkManager(CoreSysAttributes):
 
     async def scan_wifi(self, interface: Interface) -> list[AccessPoint]:
         """Scan on Interface for AccessPoint."""
-        inet = self.sys_dbus.network.interfaces.get(interface.name)
+        inet = self.sys_dbus.network.get(interface.name)
 
         if inet.type != DeviceType.WIRELESS:
             raise HostNotSupportedError(
@@ -315,188 +306,3 @@ class NetworkManager(CoreSysAttributes):
             for accesspoint in await inet.wireless.get_all_accesspoints()
             if accesspoint.dbus
         ]
-
-
-@attr.s(slots=True)
-class AccessPoint:
-    """Represent a wifi configuration."""
-
-    mode: WifiMode = attr.ib()
-    ssid: str = attr.ib()
-    mac: str = attr.ib()
-    frequency: int = attr.ib()
-    signal: int = attr.ib()
-
-
-@attr.s(slots=True)
-class IpConfig:
-    """Represent a IP configuration."""
-
-    method: InterfaceMethod = attr.ib()
-    address: list[IPv4Interface | IPv6Interface] = attr.ib()
-    gateway: IPv4Address | IPv6Address | None = attr.ib()
-    nameservers: list[IPv4Address | IPv6Address] = attr.ib()
-    ready: bool | None = attr.ib()
-
-
-@attr.s(slots=True)
-class WifiConfig:
-    """Represent a wifi configuration."""
-
-    mode: WifiMode = attr.ib()
-    ssid: str = attr.ib()
-    auth: AuthMethod = attr.ib()
-    psk: str | None = attr.ib()
-    signal: int | None = attr.ib()
-
-
-@attr.s(slots=True)
-class VlanConfig:
-    """Represent a vlan configuration."""
-
-    id: int = attr.ib()
-    interface: str = attr.ib()
-
-
-@attr.s(slots=True)
-class Interface:
-    """Represent a host network interface."""
-
-    name: str = attr.ib()
-    enabled: bool = attr.ib()
-    connected: bool = attr.ib()
-    primary: bool = attr.ib()
-    type: InterfaceType = attr.ib()
-    ipv4: IpConfig | None = attr.ib()
-    ipv6: IpConfig | None = attr.ib()
-    wifi: WifiConfig | None = attr.ib()
-    vlan: VlanConfig | None = attr.ib()
-
-    @staticmethod
-    def from_dbus_interface(inet: NetworkInterface) -> Interface:
-        """Concert a dbus interface into normal Interface."""
-        ipv4_method = (
-            Interface._map_nm_method(inet.settings.ipv4.method)
-            if inet.settings and inet.settings.ipv4
-            else InterfaceMethod.DISABLED
-        )
-        ipv6_method = (
-            Interface._map_nm_method(inet.settings.ipv6.method)
-            if inet.settings and inet.settings.ipv6
-            else InterfaceMethod.DISABLED
-        )
-        ipv4_ready = (
-            bool(inet.connection)
-            and ConnectionStateFlags.IP4_READY in inet.connection.state_flags
-        )
-        ipv6_ready = (
-            bool(inet.connection)
-            and ConnectionStateFlags.IP6_READY in inet.connection.state_flags
-        )
-        return Interface(
-            inet.name,
-            inet.settings is not None,
-            Interface._map_nm_connected(inet.connection),
-            inet.primary,
-            Interface._map_nm_type(inet.type),
-            IpConfig(
-                ipv4_method,
-                inet.connection.ipv4.address if inet.connection.ipv4.address else [],
-                inet.connection.ipv4.gateway,
-                inet.connection.ipv4.nameservers
-                if inet.connection.ipv4.nameservers
-                else [],
-                ipv4_ready,
-            )
-            if inet.connection and inet.connection.ipv4
-            else IpConfig(ipv4_method, [], None, [], ipv4_ready),
-            IpConfig(
-                ipv6_method,
-                inet.connection.ipv6.address if inet.connection.ipv6.address else [],
-                inet.connection.ipv6.gateway,
-                inet.connection.ipv6.nameservers
-                if inet.connection.ipv6.nameservers
-                else [],
-                ipv6_ready,
-            )
-            if inet.connection and inet.connection.ipv6
-            else IpConfig(ipv6_method, [], None, [], ipv6_ready),
-            Interface._map_nm_wifi(inet),
-            Interface._map_nm_vlan(inet),
-        )
-
-    @staticmethod
-    def _map_nm_method(method: str) -> InterfaceMethod:
-        """Map IP interface method."""
-        mapping = {
-            NMInterfaceMethod.AUTO: InterfaceMethod.AUTO,
-            NMInterfaceMethod.DISABLED: InterfaceMethod.DISABLED,
-            NMInterfaceMethod.MANUAL: InterfaceMethod.STATIC,
-            NMInterfaceMethod.LINK_LOCAL: InterfaceMethod.DISABLED,
-        }
-
-        return mapping.get(method, InterfaceMethod.DISABLED)
-
-    @staticmethod
-    def _map_nm_connected(connection: NetworkConnection | None) -> bool:
-        """Map connectivity state."""
-        if not connection:
-            return False
-
-        return connection.state in (
-            ConnectionStateType.ACTIVATED,
-            ConnectionStateType.ACTIVATING,
-        )
-
-    @staticmethod
-    def _map_nm_type(device_type: int) -> InterfaceType:
-        mapping = {
-            DeviceType.ETHERNET: InterfaceType.ETHERNET,
-            DeviceType.WIRELESS: InterfaceType.WIRELESS,
-            DeviceType.VLAN: InterfaceType.VLAN,
-        }
-        return mapping[device_type]
-
-    @staticmethod
-    def _map_nm_wifi(inet: NetworkInterface) -> WifiConfig | None:
-        """Create mapping to nm wifi property."""
-        if inet.type != DeviceType.WIRELESS or not inet.settings:
-            return None
-
-        # Authentication and PSK
-        auth = None
-        psk = None
-        if not inet.settings.wireless_security:
-            auth = AuthMethod.OPEN
-        elif inet.settings.wireless_security.key_mgmt == "none":
-            auth = AuthMethod.WEP
-        elif inet.settings.wireless_security.key_mgmt == "wpa-psk":
-            auth = AuthMethod.WPA_PSK
-            psk = inet.settings.wireless_security.psk
-
-        # WifiMode
-        mode = WifiMode.INFRASTRUCTURE
-        if inet.settings.wireless.mode:
-            mode = WifiMode(inet.settings.wireless.mode)
-
-        # Signal
-        if inet.wireless:
-            signal = inet.wireless.active.strength
-        else:
-            signal = None
-
-        return WifiConfig(
-            mode,
-            inet.settings.wireless.ssid,
-            auth,
-            psk,
-            signal,
-        )
-
-    @staticmethod
-    def _map_nm_vlan(inet: NetworkInterface) -> WifiConfig | None:
-        """Create mapping to nm vlan property."""
-        if inet.type != DeviceType.VLAN or not inet.settings:
-            return None
-
-        return VlanConfig(inet.settings.vlan.id, inet.settings.vlan.parent)

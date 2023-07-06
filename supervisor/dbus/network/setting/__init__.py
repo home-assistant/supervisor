@@ -2,6 +2,7 @@
 import logging
 from typing import Any
 
+from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 
 from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
@@ -10,6 +11,7 @@ from ...interface import DBusInterface
 from ...utils import dbus_connected
 from ..configuration import (
     ConnectionProperties,
+    DeviceProperties,
     EthernetProperties,
     IpProperties,
     VlanProperties,
@@ -24,6 +26,7 @@ CONF_ATTR_802_WIRELESS_SECURITY = "802-11-wireless-security"
 CONF_ATTR_VLAN = "vlan"
 CONF_ATTR_IPV4 = "ipv4"
 CONF_ATTR_IPV6 = "ipv6"
+CONF_ATTR_DEVICE = "device"
 
 ATTR_ID = "id"
 ATTR_UUID = "uuid"
@@ -34,6 +37,7 @@ ATTR_POWERSAVE = "powersave"
 ATTR_AUTH_ALG = "auth-alg"
 ATTR_KEY_MGMT = "key-mgmt"
 ATTR_INTERFACE_NAME = "interface-name"
+ATTR_MATCH_DEVICE = "match-device"
 
 IPV4_6_IGNORE_FIELDS = [
     "addresses",
@@ -47,8 +51,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def _merge_settings_attribute(
-    base_settings: Any,
-    new_settings: Any,
+    base_settings: dict[str, dict[str, Variant]],
+    new_settings: dict[str, dict[str, Variant]],
     attribute: str,
     *,
     ignore_current_value: list[str] = None,
@@ -58,8 +62,7 @@ def _merge_settings_attribute(
         if attribute in base_settings:
             if ignore_current_value:
                 for field in ignore_current_value:
-                    if field in base_settings[attribute]:
-                        del base_settings[attribute][field]
+                    base_settings[attribute].pop(field, None)
 
             base_settings[attribute].update(new_settings[attribute])
         else:
@@ -85,6 +88,7 @@ class NetworkSetting(DBusInterface):
         self._vlan: VlanProperties | None = None
         self._ipv4: IpProperties | None = None
         self._ipv6: IpProperties | None = None
+        self._device: DeviceProperties | None = None
 
     @property
     def connection(self) -> ConnectionProperties | None:
@@ -121,19 +125,29 @@ class NetworkSetting(DBusInterface):
         """Return ipv6 properties if any."""
         return self._ipv6
 
+    @property
+    def device(self) -> DeviceProperties | None:
+        """Return device properties if any."""
+        return self._device
+
     @dbus_connected
     async def get_settings(self) -> dict[str, Any]:
         """Return connection settings."""
         return await self.dbus.Settings.Connection.call_get_settings()
 
     @dbus_connected
-    async def update(self, settings: Any) -> None:
+    async def update(self, settings: dict[str, dict[str, Variant]]) -> None:
         """Update connection settings."""
-        new_settings = await self.dbus.Settings.Connection.call_get_settings(
-            unpack_variants=False
-        )
+        new_settings: dict[
+            str, dict[str, Variant]
+        ] = await self.dbus.Settings.Connection.call_get_settings(unpack_variants=False)
 
-        _merge_settings_attribute(new_settings, settings, CONF_ATTR_CONNECTION)
+        _merge_settings_attribute(
+            new_settings,
+            settings,
+            CONF_ATTR_CONNECTION,
+            ignore_current_value=[ATTR_INTERFACE_NAME],
+        )
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_802_ETHERNET)
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_802_WIRELESS)
         _merge_settings_attribute(
@@ -152,6 +166,7 @@ class NetworkSetting(DBusInterface):
             CONF_ATTR_IPV6,
             ignore_current_value=IPV4_6_IGNORE_FIELDS,
         )
+        _merge_settings_attribute(new_settings, settings, CONF_ATTR_DEVICE)
 
         await self.dbus.Settings.Connection.call_update(new_settings)
 
@@ -216,4 +231,9 @@ class NetworkSetting(DBusInterface):
         if CONF_ATTR_IPV6 in data:
             self._ipv6 = IpProperties(
                 data[CONF_ATTR_IPV6].get(ATTR_METHOD),
+            )
+
+        if CONF_ATTR_DEVICE in data:
+            self._device = DeviceProperties(
+                data[CONF_ATTR_DEVICE].get(ATTR_MATCH_DEVICE)
             )

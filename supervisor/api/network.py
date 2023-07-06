@@ -1,11 +1,11 @@
 """REST API for network."""
 import asyncio
 from collections.abc import Awaitable
+from dataclasses import replace
 from ipaddress import ip_address, ip_interface
 from typing import Any
 
 from aiohttp import web
-import attr
 import voluptuous as vol
 
 from ..const import (
@@ -43,8 +43,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HostNetworkNotFound
-from ..host.const import AuthMethod, InterfaceType, WifiMode
-from ..host.network import (
+from ..host.configuration import (
     AccessPoint,
     Interface,
     InterfaceMethod,
@@ -52,6 +51,7 @@ from ..host.network import (
     VlanConfig,
     WifiConfig,
 )
+from ..host.const import AuthMethod, InterfaceType, WifiMode
 from .utils import api_process, api_validate
 
 _SCHEMA_IP_CONFIG = vol.Schema(
@@ -121,6 +121,7 @@ def interface_struct(interface: Interface) -> dict[str, Any]:
         ATTR_ENABLED: interface.enabled,
         ATTR_CONNECTED: interface.connected,
         ATTR_PRIMARY: interface.primary,
+        ATTR_MAC: interface.mac,
         ATTR_IPV4: ipconfig_struct(interface.ipv4) if interface.ipv4 else None,
         ATTR_IPV6: ipconfig_struct(interface.ipv6) if interface.ipv6 else None,
         ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
@@ -196,19 +197,19 @@ class APINetwork(CoreSysAttributes):
         # Apply config
         for key, config in body.items():
             if key == ATTR_IPV4:
-                interface.ipv4 = attr.evolve(
+                interface.ipv4 = replace(
                     interface.ipv4
                     or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
                     **config,
                 )
             elif key == ATTR_IPV6:
-                interface.ipv6 = attr.evolve(
+                interface.ipv6 = replace(
                     interface.ipv6
                     or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
                     **config,
                 )
             elif key == ATTR_WIFI:
-                interface.wifi = attr.evolve(
+                interface.wifi = replace(
                     interface.wifi
                     or WifiConfig(
                         WifiMode.INFRASTRUCTURE, "", AuthMethod.OPEN, None, None
@@ -276,6 +277,7 @@ class APINetwork(CoreSysAttributes):
             )
 
         vlan_interface = Interface(
+            "",
             "",
             True,
             True,
