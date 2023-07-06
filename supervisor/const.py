@@ -451,6 +451,7 @@ class BusEvent(str, Enum):
     HARDWARE_NEW_DEVICE = "hardware_new_device"
     HARDWARE_REMOVE_DEVICE = "hardware_remove_device"
     DOCKER_CONTAINER_STATE_CHANGE = "docker_container_state_change"
+    SUPERVISOR_STATE_CHANGE = "supervisor_state_change"
 
 
 class CpuArch(str, Enum):
@@ -461,3 +462,10 @@ class CpuArch(str, Enum):
     AARCH64 = "aarch64"
     I386 = "i386"
     AMD64 = "amd64"
+
+
+STARTING_STATES = [
+    CoreState.INITIALIZE,
+    CoreState.STARTUP,
+    CoreState.SETUP,
+]

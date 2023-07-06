@@ -9,7 +9,16 @@ import aiohttp
 from aiohttp.http_websocket import WSMsgType
 from awesomeversion import AwesomeVersion
 
-from ..const import ATTR_ACCESS_TOKEN, ATTR_DATA, ATTR_EVENT, ATTR_TYPE, ATTR_UPDATE_KEY
+from ..const import (
+    ATTR_ACCESS_TOKEN,
+    ATTR_DATA,
+    ATTR_EVENT,
+    ATTR_TYPE,
+    ATTR_UPDATE_KEY,
+    STARTING_STATES,
+    BusEvent,
+    CoreState,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     HomeAssistantAPIError,
@@ -172,6 +181,15 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._client: WSClient | None = None
         self._lock: asyncio.Lock = asyncio.Lock()
+        self._queue: list[dict[str, Any]] = []
+
+    async def _process_queue(self, reference: CoreState) -> None:
+        """Process queue once supervisor is running."""
+        if reference == CoreState.RUNNING:
+            for msg in self._queue:
+                await self.async_send_message(msg)
+
+            self._queue.clear()
 
     async def _get_ws_client(self) -> WSClient:
         """Return a websocket client."""
@@ -219,8 +237,21 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             return False
         return True
 
+    async def load(self) -> None:
+        """Set up queue processor after startup completes."""
+        self.sys_bus.register_event(
+            BusEvent.SUPERVISOR_STATE_CHANGE, self._process_queue
+        )
+
     async def async_send_message(self, message: dict[str, Any]) -> None:
         """Send a command with the WS client."""
+        # Only commands allowed during startup as those tell Home Assistant to do something.
+        # Messages may cause clients to make follow-up API calls so those wait.
+        if self.sys_core.state in STARTING_STATES:
+            self._queue.append(message)
+            _LOGGER.debug("Queuing message until startup has completed: %s", message)
+            return
+
         if not await self._can_send(message):
             return
 

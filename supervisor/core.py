@@ -7,7 +7,14 @@ import logging
 
 import async_timeout
 
-from .const import ATTR_STARTUP, RUN_SUPERVISOR_STATE, AddonStartup, CoreState
+from .const import (
+    ATTR_STARTUP,
+    RUN_SUPERVISOR_STATE,
+    STARTING_STATES,
+    AddonStartup,
+    BusEvent,
+    CoreState,
+)
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     HassioError,
@@ -63,9 +70,13 @@ class Core(CoreSysAttributes):
             )
         finally:
             self._state = new_state
-            self.sys_homeassistant.websocket.supervisor_update_event(
-                "info", {"state": new_state}
-            )
+            self.sys_bus.fire_event(BusEvent.SUPERVISOR_STATE_CHANGE, new_state)
+
+            # These will be received by HA after startup has completed which won't make sense
+            if new_state not in STARTING_STATES:
+                self.sys_homeassistant.websocket.supervisor_update_event(
+                    "info", {"state": new_state}
+                )
 
     async def connect(self):
         """Connect Supervisor container."""
