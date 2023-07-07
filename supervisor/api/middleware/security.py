@@ -190,6 +190,7 @@ class SecurityMiddleware(CoreSysAttributes):
     ) -> Response:
         """Check if core is ready to response."""
         if self.sys_core.state not in (
+            CoreState.SETUP,
             CoreState.STARTUP,
             CoreState.RUNNING,
             CoreState.FREEZE,
