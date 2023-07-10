@@ -25,6 +25,10 @@ def make_mock_container_get(status: str):
     return mock_container_get
 
 
+async def _mock_wait_for_container() -> None:
+    """Mock of wait for container."""
+
+
 async def test_fixup(docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon):
     """Test fixup rebuilds addon's container."""
     docker.containers.get = make_mock_container_get("running")
@@ -39,7 +43,9 @@ async def test_fixup(docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Add
         reference="local_ssh",
         suggestions=[SuggestionType.EXECUTE_REBUILD],
     )
-    with patch.object(Addon, "restart") as restart:
+    with patch.object(
+        Addon, "restart", return_value=_mock_wait_for_container()
+    ) as restart:
         await addon_execute_rebuild()
         restart.assert_called_once()
 

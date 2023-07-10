@@ -262,6 +262,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         """Prepare Home Assistant object."""
         await asyncio.wait(
             [
+                self.sys_create_task(self.websocket.load()),
                 self.sys_create_task(self.secrets.load()),
                 self.sys_create_task(self.core.load()),
             ]

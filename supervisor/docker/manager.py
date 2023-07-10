@@ -185,7 +185,7 @@ class DockerAPI:
 
         # Create container
         try:
-            container = self.docker.containers.create(
+            container = self.containers.create(
                 f"{image}:{tag}", use_config_proxy=False, **kwargs
             )
         except docker_errors.NotFound as err:

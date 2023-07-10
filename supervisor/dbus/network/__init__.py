@@ -10,6 +10,7 @@ from ...exceptions import (
     DBusFatalError,
     DBusInterfaceError,
     HostNotSupportedError,
+    NetworkInterfaceNotFound,
 )
 from ...utils.sentry import capture_exception
 from ..const import (
@@ -67,9 +68,9 @@ class NetworkManager(DBusInterfaceProxy):
         return self._settings
 
     @property
-    def interfaces(self) -> dict[str, NetworkInterface]:
+    def interfaces(self) -> set[NetworkInterface]:
         """Return a dictionary of active interfaces."""
-        return self._interfaces
+        return set(self._interfaces.values())
 
     @property
     @dbus_property
@@ -82,6 +83,20 @@ class NetworkManager(DBusInterfaceProxy):
     def version(self) -> AwesomeVersion:
         """Return Network Manager version."""
         return AwesomeVersion(self.properties[DBUS_ATTR_VERSION])
+
+    def get(self, name_or_mac: str) -> NetworkInterface:
+        """Get an interface by name or mac address."""
+        if name_or_mac not in self._interfaces:
+            raise NetworkInterfaceNotFound(
+                f"No interface exists with name or mac address '{name_or_mac}'"
+            )
+        return self._interfaces[name_or_mac]
+
+    def __contains__(self, item: NetworkInterface | str) -> bool:
+        """Return true if specified network interface exists."""
+        if isinstance(item, str):
+            return item in self._interfaces
+        return item in self.interfaces
 
     @dbus_connected
     async def activate_connection(
@@ -167,9 +182,9 @@ class NetworkManager(DBusInterfaceProxy):
 
         if changed and (
             DBUS_ATTR_DEVICES not in changed
-            or {
-                intr.object_path for intr in self.interfaces.values() if intr.managed
-            }.issubset(set(changed[DBUS_ATTR_DEVICES]))
+            or {intr.object_path for intr in self.interfaces if intr.managed}.issubset(
+                set(changed[DBUS_ATTR_DEVICES])
+            )
         ):
             # If none of our managed devices were removed then most likely this is just veths changing.
             # We don't care about veths and reprocessing all their changes can swamp a system when
@@ -177,8 +192,8 @@ class NetworkManager(DBusInterfaceProxy):
             # in rare occaisions but we'll catch it on the next host update scheduled task.
             return
 
-        interfaces = {}
-        curr_devices = {intr.object_path: intr for intr in self.interfaces.values()}
+        interfaces: dict[str, NetworkInterface] = {}
+        curr_devices = {intr.object_path: intr for intr in self.interfaces}
         for device in self.properties[DBUS_ATTR_DEVICES]:
             if device in curr_devices and curr_devices[device].is_connected:
                 interface = curr_devices[device]
@@ -222,6 +237,7 @@ class NetworkManager(DBusInterfaceProxy):
                 interface.primary = False
 
             interfaces[interface.name] = interface
+            interfaces[interface.hw_address] = interface
 
         # Disconnect removed devices
         for device in set(curr_devices.keys()) - set(
@@ -242,7 +258,7 @@ class NetworkManager(DBusInterfaceProxy):
 
     def disconnect(self) -> None:
         """Disconnect from D-Bus."""
-        for intr in self.interfaces.values():
+        for intr in self.interfaces:
             intr.shutdown()
 
         super().disconnect()

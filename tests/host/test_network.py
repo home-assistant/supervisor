@@ -58,18 +58,18 @@ async def test_load(coresys: CoreSys, network_manager_service: NetworkManagerSer
     assert str(coresys.host.network.dns_servers[0]) == "192.168.30.1"
 
     assert len(coresys.host.network.interfaces) == 2
-    assert coresys.host.network.interfaces[0].name == "eth0"
-    assert coresys.host.network.interfaces[0].enabled is True
-    assert coresys.host.network.interfaces[0].ipv4.method == InterfaceMethod.AUTO
-    assert coresys.host.network.interfaces[0].ipv4.gateway == IPv4Address("192.168.2.1")
-    assert coresys.host.network.interfaces[0].ipv4.ready is True
-    assert coresys.host.network.interfaces[0].ipv6.method == InterfaceMethod.AUTO
-    assert coresys.host.network.interfaces[0].ipv6.gateway == IPv6Address(
-        "fe80::da58:d7ff:fe00:9c69"
-    )
-    assert coresys.host.network.interfaces[0].ipv6.ready is True
-    assert coresys.host.network.interfaces[1].name == "wlan0"
-    assert coresys.host.network.interfaces[1].enabled is False
+    name_dict = {intr.name: intr for intr in coresys.host.network.interfaces}
+    assert "eth0" in name_dict
+    assert name_dict["eth0"].mac == "AA:BB:CC:DD:EE:FF"
+    assert name_dict["eth0"].enabled is True
+    assert name_dict["eth0"].ipv4.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv4.gateway == IPv4Address("192.168.2.1")
+    assert name_dict["eth0"].ipv4.ready is True
+    assert name_dict["eth0"].ipv6.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
+    assert name_dict["eth0"].ipv6.ready is True
+    assert "wlan0" in name_dict
+    assert name_dict["wlan0"].enabled is False
 
     assert network_manager_service.ActivateConnection.calls == [
         (
@@ -94,7 +94,7 @@ async def test_load_with_disabled_methods(
         "ipv4": disabled,
         "ipv6": disabled,
     }
-    await coresys.dbus.network.interfaces["eth0"].settings.reload()
+    await coresys.dbus.network.get("eth0").settings.reload()
 
     await coresys.host.network.load()
     assert network_manager_service.ActivateConnection.calls == []
@@ -117,14 +117,13 @@ async def test_load_with_network_connection_issues(
 
     assert network_manager_service.ActivateConnection.calls == []
     assert len(coresys.host.network.interfaces) == 2
-    assert coresys.host.network.interfaces[0].name == "eth0"
-    assert coresys.host.network.interfaces[0].enabled is True
-    assert coresys.host.network.interfaces[0].ipv4.method == InterfaceMethod.AUTO
-    assert coresys.host.network.interfaces[0].ipv4.gateway is None
-    assert coresys.host.network.interfaces[0].ipv6.method == InterfaceMethod.AUTO
-    assert coresys.host.network.interfaces[0].ipv6.gateway == IPv6Address(
-        "fe80::da58:d7ff:fe00:9c69"
-    )
+    name_dict = {intr.name: intr for intr in coresys.host.network.interfaces}
+    assert "eth0" in name_dict
+    assert name_dict["eth0"].enabled is True
+    assert name_dict["eth0"].ipv4.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv4.gateway is None
+    assert name_dict["eth0"].ipv6.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
 
 
 async def test_scan_wifi(coresys: CoreSys):

@@ -1,3 +1,0 @@
-/*! For license information please see 3467-YQVtmmjD6UA.js.LICENSE.txt */
-"use strict";(self.webpackChunkhome_assistant_frontend=self.webpackChunkhome_assistant_frontend||[]).push([[3467],{43467:(e,n,s)=>{s.r(n),s.d(n,{loadPolyfillIfNeeded:()=>r,provideResizeObserver:()=>t.SK});var t=s(51246);async function r(){try{return new ResizeObserver((function(){})),ResizeObserver}catch(e){const n=(await s.e(5442).then(s.bind(s,5442))).default;return(0,t.SK)(n),n}}}}]);
-//# sourceMappingURL=3467-YQVtmmjD6UA.js.map

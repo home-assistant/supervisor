@@ -208,7 +208,10 @@ class APIStore(CoreSysAttributes):
 
         body = await api_validate(SCHEMA_UPDATE, request)
 
-        return await asyncio.shield(addon.update(backup=body.get(ATTR_BACKUP)))
+        if start_task := await asyncio.shield(
+            addon.update(backup=body.get(ATTR_BACKUP))
+        ):
+            await start_task
 
     @api_process
     async def addons_addon_info(self, request: web.Request) -> dict[str, Any]:

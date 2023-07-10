@@ -6,7 +6,14 @@ from typing import TypedDict
 from typing_extensions import NotRequired
 import voluptuous as vol
 
-from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_PORT, ATTR_TYPE, ATTR_USERNAME
+from ..const import (
+    ATTR_NAME,
+    ATTR_PASSWORD,
+    ATTR_PORT,
+    ATTR_TYPE,
+    ATTR_USERNAME,
+    ATTR_VERSION,
+)
 from ..validate import network_port
 from .const import (
     ATTR_DEFAULT_BACKUP_MOUNT,
@@ -15,6 +22,7 @@ from .const import (
     ATTR_SERVER,
     ATTR_SHARE,
     ATTR_USAGE,
+    MountCifsVersion,
     MountType,
     MountUsage,
 )
@@ -26,8 +34,6 @@ RE_MOUNT_OPTION = re.compile(r"^[^,=]+$")
 VALIDATE_NAME = vol.Match(RE_MOUNT_NAME)
 VALIDATE_SERVER = vol.Match(RE_PATH_PART)
 VALIDATE_SHARE = vol.Match(RE_PATH_PART)
-VALIDATE_USERNAME = vol.Match(RE_MOUNT_OPTION)
-VALIDATE_PASSWORD = vol.Match(RE_MOUNT_OPTION)
 
 _SCHEMA_BASE_MOUNT_CONFIG = vol.Schema(
     {
@@ -49,8 +55,11 @@ SCHEMA_MOUNT_CIFS = _SCHEMA_MOUNT_NETWORK.extend(
     {
         vol.Required(ATTR_TYPE): MountType.CIFS.value,
         vol.Required(ATTR_SHARE): VALIDATE_SHARE,
-        vol.Inclusive(ATTR_USERNAME, "basic_auth"): VALIDATE_USERNAME,
-        vol.Inclusive(ATTR_PASSWORD, "basic_auth"): VALIDATE_PASSWORD,
+        vol.Inclusive(ATTR_USERNAME, "basic_auth"): str,
+        vol.Inclusive(ATTR_PASSWORD, "basic_auth"): str,
+        vol.Optional(ATTR_VERSION, default=None): vol.Maybe(
+            vol.Coerce(MountCifsVersion)
+        ),
     }
 )
 

@@ -46,6 +46,7 @@ DNS_DATA = PurePath("dns")
 AUDIO_DATA = PurePath("audio")
 MEDIA_DATA = PurePath("media")
 MOUNTS_FOLDER = PurePath("mounts")
+MOUNTS_CREDENTIALS = PurePath(".mounts_credentials")
 EMERGENCY_DATA = PurePath("emergency")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
@@ -314,6 +315,16 @@ class CoreConfig(FileConfiguration):
     def path_extern_mounts(self) -> PurePath:
         """Return mounts path external for Docker."""
         return self.path_extern_supervisor / MOUNTS_FOLDER
+
+    @property
+    def path_mounts_credentials(self) -> Path:
+        """Return mounts credentials folder."""
+        return self.path_supervisor / MOUNTS_CREDENTIALS
+
+    @property
+    def path_extern_mounts_credentials(self) -> PurePath:
+        """Return mounts credentials path external for Docker."""
+        return self.path_extern_supervisor / MOUNTS_CREDENTIALS
 
     @property
     def path_emergency(self) -> Path:

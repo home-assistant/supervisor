@@ -100,6 +100,7 @@ class APIBackups(CoreSysAttributes):
                 ATTR_DATE: backup.date,
                 ATTR_TYPE: backup.sys_type,
                 ATTR_SIZE: backup.size,
+                ATTR_LOCATON: backup.location,
                 ATTR_PROTECTED: backup.protected,
                 ATTR_COMPRESSED: backup.compressed,
                 ATTR_CONTENT: {
@@ -172,6 +173,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_PROTECTED: backup.protected,
             ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
             ATTR_HOMEASSISTANT: backup.homeassistant_version,
+            ATTR_LOCATON: backup.location,
             ATTR_ADDONS: data_addons,
             ATTR_REPOSITORIES: backup.repositories,
             ATTR_FOLDERS: backup.folders,

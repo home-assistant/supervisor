@@ -9,10 +9,12 @@ from dbus_fast import Variant
 
 from . import (
     ATTR_ASSIGNED_MAC,
+    ATTR_MATCH_DEVICE,
     CONF_ATTR_802_ETHERNET,
     CONF_ATTR_802_WIRELESS,
     CONF_ATTR_802_WIRELESS_SECURITY,
     CONF_ATTR_CONNECTION,
+    CONF_ATTR_DEVICE,
     CONF_ATTR_IPV4,
     CONF_ATTR_IPV6,
     CONF_ATTR_VLAN,
@@ -20,7 +22,7 @@ from . import (
 from ....host.const import InterfaceMethod, InterfaceType
 
 if TYPE_CHECKING:
-    from ....host.network import Interface
+    from ....host.configuration import Interface
 
 
 def get_connection_from_interface(
@@ -45,20 +47,21 @@ def get_connection_from_interface(
     if not uuid:
         uuid = str(uuid4())
 
-    connection = {
-        "id": Variant("s", name),
-        "type": Variant("s", iftype),
-        "uuid": Variant("s", uuid),
-        "llmnr": Variant("i", 2),
-        "mdns": Variant("i", 2),
-        "autoconnect": Variant("b", True),
+    conn: dict[str, dict[str, Variant]] = {
+        CONF_ATTR_CONNECTION: {
+            "id": Variant("s", name),
+            "type": Variant("s", iftype),
+            "uuid": Variant("s", uuid),
+            "llmnr": Variant("i", 2),
+            "mdns": Variant("i", 2),
+            "autoconnect": Variant("b", True),
+        },
     }
 
     if interface.type != InterfaceType.VLAN:
-        connection["interface-name"] = Variant("s", interface.name)
-
-    conn = {}
-    conn[CONF_ATTR_CONNECTION] = connection
+        conn[CONF_ATTR_DEVICE] = {
+            ATTR_MATCH_DEVICE: Variant("s", f"mac:{interface.mac}")
+        }
 
     ipv4 = {}
     if not interface.ipv4 or interface.ipv4.method == InterfaceMethod.AUTO:

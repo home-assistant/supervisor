@@ -97,14 +97,14 @@ class DockerHomeAssistant(DockerInterface):
                 source=self.sys_config.path_extern_share.as_posix(),
                 target="/share",
                 read_only=False,
-                propagation=PropagationMode.SLAVE.value,
+                propagation=PropagationMode.RSLAVE.value,
             ),
             Mount(
                 type=MountType.BIND.value,
                 source=self.sys_config.path_extern_media.as_posix(),
                 target="/media",
                 read_only=False,
-                propagation=PropagationMode.SLAVE.value,
+                propagation=PropagationMode.RSLAVE.value,
             ),
             # Configuration audio
             Mount(

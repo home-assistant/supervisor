@@ -118,7 +118,7 @@ async def test_old_connection_disconnect(
     network_manager: NetworkManager, device_eth0_service: DeviceService
 ):
     """Test old connection disconnects on connection change."""
-    interface = network_manager.interfaces[TEST_INTERFACE]
+    interface = network_manager.get(TEST_INTERFACE)
     connection = interface.connection
     assert connection.is_connected is True
 
@@ -133,7 +133,7 @@ async def test_old_wireless_disconnect(
     network_manager: NetworkManager, device_wlan0_service: DeviceService
 ):
     """Test old wireless disconnects on type change."""
-    interface = network_manager.interfaces[TEST_INTERFACE_WLAN]
+    interface = network_manager.get(TEST_INTERFACE_WLAN)
     wireless = interface.wireless
     assert wireless.is_connected is True
 
@@ -167,9 +167,9 @@ async def test_interface_becomes_unmanaged(
     device_wlan0_service: DeviceService,
 ):
     """Test managed objects disconnect when interface becomes unmanaged."""
-    eth0 = network_manager.interfaces[TEST_INTERFACE]
+    eth0 = network_manager.get(TEST_INTERFACE)
     connection = eth0.connection
-    wlan0 = network_manager.interfaces[TEST_INTERFACE_WLAN]
+    wlan0 = network_manager.get(TEST_INTERFACE_WLAN)
     wireless = wlan0.wireless
 
     assert connection.is_connected is True

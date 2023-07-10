@@ -9,6 +9,7 @@ from ..const import (
     DBUS_ATTR_DEVICE_INTERFACE,
     DBUS_ATTR_DEVICE_TYPE,
     DBUS_ATTR_DRIVER,
+    DBUS_ATTR_HWADDRESS,
     DBUS_ATTR_MANAGED,
     DBUS_IFACE_DEVICE,
     DBUS_NAME_NM,
@@ -68,6 +69,12 @@ class NetworkInterface(DBusInterfaceProxy):
         return self.properties[DBUS_ATTR_MANAGED]
 
     @property
+    @dbus_property
+    def hw_address(self) -> str:
+        """Return hardware address (i.e. mac address) of device."""
+        return self.properties[DBUS_ATTR_HWADDRESS]
+
+    @property
     def connection(self) -> NetworkConnection | None:
         """Return the connection used for this interface."""
         return self._connection
@@ -97,6 +104,18 @@ class NetworkInterface(DBusInterfaceProxy):
             self._wireless.shutdown()
 
         self._wireless = wireless
+
+    def __eq__(self, other: object) -> bool:
+        """Is object equal to another."""
+        return (
+            isinstance(other, type(self))
+            and other.bus_name == self.bus_name
+            and other.object_path == self.object_path
+        )
+
+    def __hash__(self) -> int:
+        """Hash of object."""
+        return hash((self.bus_name, self.object_path))
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""

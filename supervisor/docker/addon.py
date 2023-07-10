@@ -387,7 +387,7 @@ class DockerAddon(DockerInterface):
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
                     read_only=addon_mapping[MAP_SHARE],
-                    propagation=PropagationMode.SLAVE.value,
+                    propagation=PropagationMode.RSLAVE.value,
                 )
             )
 
@@ -398,7 +398,7 @@ class DockerAddon(DockerInterface):
                     source=self.sys_config.path_extern_media.as_posix(),
                     target="/media",
                     read_only=addon_mapping[MAP_MEDIA],
-                    propagation=PropagationMode.SLAVE.value,
+                    propagation=PropagationMode.RSLAVE.value,
                 )
             )
 
@@ -457,7 +457,7 @@ class DockerAddon(DockerInterface):
             mounts += [
                 Mount(
                     type=MountType.BIND.value,
-                    source=self.sys_homeassistant.path_extern_pulse.as_posix(),
+                    source=self.addon.path_extern_pulse.as_posix(),
                     target="/etc/pulse/client.conf",
                     read_only=True,
                 ),
