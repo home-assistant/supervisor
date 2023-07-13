@@ -70,9 +70,7 @@ class EvaluateContainer(EvaluateBase):
         self._images.clear()
 
         try:
-            containers = await self.sys_run_in_executor(
-                self.sys_docker.containers.list()
-            )
+            containers = await self.sys_run_in_executor(self.sys_docker.containers.list)
         except (DockerException, RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
             self.sys_resolution.create_issue(
