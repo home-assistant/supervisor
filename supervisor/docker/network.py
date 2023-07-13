@@ -1,4 +1,5 @@
 """Internal network manager for Supervisor."""
+from asyncio import BaseEventLoop
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
@@ -21,7 +22,7 @@ class DockerNetwork:
     def __init__(self, docker_client: docker.DockerClient):
         """Initialize internal Supervisor network."""
         self.docker: docker.DockerClient = docker_client
-        self.network: docker.models.networks.Network = self._get_network()
+        self._network: docker.models.networks.Network | None = None
 
     @property
     def name(self) -> str:
@@ -29,18 +30,16 @@ class DockerNetwork:
         return DOCKER_NETWORK
 
     @property
-    def containers(self) -> list[docker.models.containers.Container]:
-        """Return of connected containers from network."""
-        containers: list[docker.models.containers.Container] = []
-        for cid, _ in self.network.attrs.get("Containers", {}).items():
-            try:
-                containers.append(self.docker.containers.get(cid))
-            except docker.errors.NotFound:
-                _LOGGER.warning("Docker network is corrupt! %s", cid)
-            except (docker.errors.DockerException, requests.RequestException) as err:
-                _LOGGER.error("Unknown error with container lookup %s", err)
+    def network(self) -> docker.models.networks.Network:
+        """Return docker network."""
+        if self._network is None:
+            raise RuntimeError("Network not set!")
+        return self._network
 
-        return containers
+    @property
+    def containers(self) -> list[str]:
+        """Return of connected containers from network."""
+        return list(self.network.attrs.get("Containers", {}).keys())
 
     @property
     def gateway(self) -> IPv4Address:
@@ -71,6 +70,10 @@ class DockerNetwork:
     def observer(self) -> IPv4Address:
         """Return observer of the network."""
         return DOCKER_NETWORK_MASK[6]
+
+    async def load(self, loop: BaseEventLoop) -> None:
+        """Load docker network."""
+        self._network = await loop.run_in_executor(None, self._get_network)
 
     def _get_network(self) -> docker.models.networks.Network:
         """Get supervisor network."""

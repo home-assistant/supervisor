@@ -43,15 +43,14 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             if mount.get("Destination") == "/data"
         )
 
-    def _attach(
+    async def _attach(
         self, version: AwesomeVersion, skip_state_event_if_down: bool = False
     ) -> None:
-        """Attach to running docker container.
-
-        Need run inside executor.
-        """
+        """Attach to running docker container."""
         try:
-            docker_container = self.sys_docker.containers.get(self.name)
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.containers.get, self.name
+            )
         except (docker.errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
@@ -63,12 +62,13 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
         )
 
         # If already attach
-        if docker_container in self.sys_docker.network.containers:
+        if docker_container.id in self.sys_docker.network.containers:
             return
 
         # Attach to network
         _LOGGER.info("Connecting Supervisor to hassio-network")
-        self.sys_docker.network.attach_container(
+        await self.sys_run_in_executor(
+            self.sys_docker.network.attach_container,
             docker_container,
             alias=["supervisor"],
             ipv4=self.sys_docker.network.supervisor,

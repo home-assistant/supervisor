@@ -28,19 +28,17 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         """Generate needed capabilities."""
         return [Capabilities.NET_ADMIN.value]
 
-    def _run(self) -> None:
-        """Run Docker image.
-
-        Need run inside executor.
-        """
-        if self._is_running():
+    async def _run(self) -> None:
+        """Run Docker image."""
+        if await self.is_running():
             return
 
         # Cleanup
-        self._stop()
+        await self._stop()
 
         # Create & Run container
-        docker_container = self.sys_docker.run(
+        docker_container = await self.sys_run_in_executor(
+            self.sys_docker.run,
             self.image,
             tag=str(self.sys_plugins.multicast.version),
             init=False,

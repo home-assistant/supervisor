@@ -12,6 +12,7 @@ from ..const import LABEL_MACHINE, MACHINE_ID
 from ..exceptions import DockerError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
+from ..utils import process_lock
 from .const import (
     ENV_TIME,
     ENV_TOKEN,
@@ -133,19 +134,17 @@ class DockerHomeAssistant(DockerInterface):
 
         return mounts
 
-    def _run(self) -> None:
-        """Run Docker image.
-
-        Need run inside executor.
-        """
-        if self._is_running():
+    async def _run(self) -> None:
+        """Run Docker image."""
+        if await self.is_running():
             return
 
         # Cleanup
-        self._stop()
+        await self._stop()
 
         # Create & Run container
-        docker_container = self.sys_docker.run(
+        docker_container = await self.sys_run_in_executor(
+            self.sys_docker.run,
             self.image,
             tag=(self.sys_homeassistant.version),
             name=self.name,
@@ -177,12 +176,11 @@ class DockerHomeAssistant(DockerInterface):
             "Starting Home Assistant %s with version %s", self.image, self.version
         )
 
-    def _execute_command(self, command: str) -> CommandReturn:
-        """Create a temporary container and run command.
-
-        Need run inside executor.
-        """
-        return self.sys_docker.run_command(
+    @process_lock
+    async def execute_command(self, command: str) -> CommandReturn:
+        """Create a temporary container and run command."""
+        return await self.sys_run_in_executor(
+            self.sys_docker.run_command,
             self.image,
             version=self.sys_homeassistant.version,
             command=command,
@@ -246,7 +244,7 @@ class DockerHomeAssistant(DockerInterface):
 
     def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
-    ) -> None:
+    ) -> Awaitable[None]:
         """Validate trust of content."""
         try:
             if version != LANDINGPAGE and version < _VERIFY_TRUST:
@@ -254,4 +252,4 @@ class DockerHomeAssistant(DockerInterface):
         except AwesomeVersionCompareException:
             return
 
-        super()._validate_trust(image_id, image, version)
+        return super()._validate_trust(image_id, image, version)

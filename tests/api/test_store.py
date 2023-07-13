@@ -177,7 +177,7 @@ async def test_api_store_update_healthcheck(
 
     with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
         DockerInterface, "_install"
-    ), patch.object(DockerAddon, "_is_running", return_value=False), patch.object(
+    ), patch.object(DockerAddon, "is_running", return_value=False), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
     ):
         resp = await api_client.post(f"/store/addons/{TEST_ADDON_SLUG}/update")

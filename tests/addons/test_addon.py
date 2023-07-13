@@ -38,11 +38,6 @@ def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState):
     )
 
 
-async def mock_current_state(state: ContainerState) -> ContainerState:
-    """Mock for current state method."""
-    return state
-
-
 async def mock_stop() -> None:
     """Mock for stop method."""
 
@@ -142,7 +137,7 @@ async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> Non
         Addon, "start"
     ) as start, patch.object(DockerAddon, "current_state") as current_state:
         # Restart if it becomes unhealthy
-        current_state.return_value = mock_current_state(ContainerState.UNHEALTHY)
+        current_state.return_value = ContainerState.UNHEALTHY
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY)
         await asyncio.sleep(0)
         restart.assert_called_once()
@@ -151,7 +146,7 @@ async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> Non
         restart.reset_mock()
 
         # Rebuild if it failed
-        current_state.return_value = mock_current_state(ContainerState.FAILED)
+        current_state.return_value = ContainerState.FAILED
         with patch.object(DockerAddon, "stop", return_value=mock_stop()) as stop:
             _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED)
             await asyncio.sleep(0)
@@ -162,14 +157,14 @@ async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> Non
         start.reset_mock()
 
         # Do not process event if container state has changed since fired
-        current_state.return_value = mock_current_state(ContainerState.HEALTHY)
+        current_state.return_value = ContainerState.HEALTHY
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED)
         await asyncio.sleep(0)
         restart.assert_not_called()
         start.assert_not_called()
 
         # Other addons ignored
-        current_state.return_value = mock_current_state(ContainerState.UNHEALTHY)
+        current_state.return_value = ContainerState.UNHEALTHY
         _fire_test_event(coresys, "addon_local_non_installed", ContainerState.UNHEALTHY)
         await asyncio.sleep(0)
         restart.assert_not_called()
@@ -186,7 +181,7 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_addon_ssh: Addon) -> N
     with patch.object(Addon, "restart") as restart, patch.object(
         DockerAddon,
         "current_state",
-        return_value=mock_current_state(ContainerState.STOPPED),
+        return_value=ContainerState.STOPPED,
     ), patch.object(DockerAddon, "stop", return_value=mock_stop()):
         # Do not restart when addon stopped by user
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
@@ -248,7 +243,7 @@ async def test_watchdog_during_attach(
     ), patch.object(DockerAddon, "attach"), patch.object(
         DockerAddon,
         "current_state",
-        return_value=mock_current_state(ContainerState.STOPPED),
+        return_value=ContainerState.STOPPED,
     ):
         coresys.config.last_boot = coresys.hardware.helper.last_boot + boot_timedelta
         addon = Addon(coresys, store.slug)
@@ -322,6 +317,7 @@ async def test_start(
     """Test starting an addon without healthcheck."""
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
     start_task = await install_addon_ssh.start()
@@ -345,6 +341,7 @@ async def test_start_wait_healthcheck(
     install_addon_ssh.path_data.mkdir()
     container.attrs["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
     start_task = asyncio.create_task(await install_addon_ssh.start())
@@ -374,6 +371,7 @@ async def test_start_timeout(
     """Test starting an addon times out while waiting."""
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
     start_task = await install_addon_ssh.start()
@@ -398,6 +396,7 @@ async def test_restart(
     """Test restarting an addon."""
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
     start_task = await install_addon_ssh.restart()
@@ -444,7 +443,7 @@ async def test_backup_cold_mode(
     with patch.object(
         AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
     ), patch.object(
-        DockerAddon, "_is_running", side_effect=[status == "running", False, False]
+        DockerAddon, "is_running", side_effect=[status == "running", False, False]
     ):
         start_task = await install_addon_ssh.backup(tarfile)
 
@@ -465,7 +464,7 @@ async def test_restore(
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(get_fixture_path(f"backup_local_ssh_{status}.tar.gz"), "r")
-    with patch.object(DockerAddon, "_is_running", return_value=False), patch.object(
+    with patch.object(DockerAddon, "is_running", return_value=False), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
     ):
         start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
@@ -482,6 +481,7 @@ async def test_start_when_running(
     """Test starting an addon without healthcheck."""
     container.status = "running"
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STARTED
 
     caplog.clear()

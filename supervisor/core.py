@@ -130,8 +130,8 @@ class Core(CoreSysAttributes):
             self._adjust_system_datetime(),
             # Load mounts
             self.sys_mounts.load(),
-            # Start docker monitoring
-            self.sys_docker.load(),
+            # Load Docker manager
+            self.sys_docker.load(self.sys_loop),
             # Load Plugins container
             self.sys_plugins.load(),
             # load last available data

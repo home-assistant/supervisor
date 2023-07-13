@@ -154,7 +154,7 @@ class PluginDns(PluginBase):
         except OSError as err:
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
-        self._init_hosts()
+        await self._init_hosts()
         await super().load()
 
         # Update supervisor
@@ -184,7 +184,7 @@ class PluginDns(PluginBase):
         self.save_data()
 
         # Init Hosts
-        self.write_hosts()
+        await self.write_hosts()
 
     @Job(
         conditions=PLUGIN_UPDATE_CONDITIONS,
@@ -254,7 +254,7 @@ class PluginDns(PluginBase):
         # Resets hosts
         with suppress(OSError):
             self.hosts.unlink()
-        self._init_hosts()
+        await self._init_hosts()
 
         # Reset loop protection
         self._loop = False
@@ -333,32 +333,40 @@ class PluginDns(PluginBase):
                 f"Can't update coredns config: {err}", _LOGGER.error
             ) from err
 
-    def _init_hosts(self) -> None:
+    async def _init_hosts(self) -> None:
         """Import hosts entry."""
         # Generate Default
-        self.add_host(IPv4Address("127.0.0.1"), ["localhost"], write=False)
-        self.add_host(
-            self.sys_docker.network.supervisor, ["hassio", "supervisor"], write=False
+        await asyncio.gather(
+            self.add_host(IPv4Address("127.0.0.1"), ["localhost"], write=False),
+            self.add_host(
+                self.sys_docker.network.supervisor,
+                ["hassio", "supervisor"],
+                write=False,
+            ),
+            self.add_host(
+                self.sys_docker.network.gateway,
+                ["homeassistant", "home-assistant"],
+                write=False,
+            ),
+            self.add_host(self.sys_docker.network.dns, ["dns"], write=False),
+            self.add_host(self.sys_docker.network.observer, ["observer"], write=False),
         )
-        self.add_host(
-            self.sys_docker.network.gateway,
-            ["homeassistant", "home-assistant"],
-            write=False,
-        )
-        self.add_host(self.sys_docker.network.dns, ["dns"], write=False)
-        self.add_host(self.sys_docker.network.observer, ["observer"], write=False)
 
-    def write_hosts(self) -> None:
+    async def write_hosts(self) -> None:
         """Write hosts from memory to file."""
         # Generate config file
         data = self.hosts_template.render(entries=self._hosts)
 
         try:
-            self.hosts.write_text(data, encoding="utf-8")
+            await self.sys_run_in_executor(
+                self.hosts.write_text, data, encoding="utf-8"
+            )
         except OSError as err:
             raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
-    def add_host(self, ipv4: IPv4Address, names: list[str], write: bool = True) -> None:
+    async def add_host(
+        self, ipv4: IPv4Address, names: list[str], write: bool = True
+    ) -> None:
         """Add a new host entry."""
         if not ipv4 or ipv4 == IPv4Address("0.0.0.0"):
             return
@@ -381,9 +389,9 @@ class PluginDns(PluginBase):
 
         # Update hosts file
         if write:
-            self.write_hosts()
+            await self.write_hosts()
 
-    def delete_host(self, host: str, write: bool = True) -> None:
+    async def delete_host(self, host: str, write: bool = True) -> None:
         """Remove a entry from hosts."""
         entry = self._search_host([host])
         if not entry:
@@ -394,7 +402,7 @@ class PluginDns(PluginBase):
 
         # Update hosts file
         if write:
-            self.write_hosts()
+            await self.write_hosts()
 
     def _search_host(self, names: list[str]) -> HostEntry | None:
         """Search a host entry."""

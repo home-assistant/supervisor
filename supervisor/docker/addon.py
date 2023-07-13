@@ -1,7 +1,6 @@
 """Init file for Supervisor add-on Docker object."""
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 from ipaddress import IPv4Address, ip_address
@@ -12,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from awesomeversion import AwesomeVersion
 import docker
+from docker.models.images import Image
 from docker.types import Mount
 import requests
 
@@ -494,12 +494,9 @@ class DockerAddon(DockerInterface):
 
         return mounts
 
-    def _run(self) -> None:
-        """Run Docker image.
-
-        Need run inside executor.
-        """
-        if self._is_running():
+    async def _run(self) -> None:
+        """Run Docker image."""
+        if await self.is_running():
             return
 
         # Security check
@@ -507,14 +504,15 @@ class DockerAddon(DockerInterface):
             _LOGGER.warning("%s running with disabled protected mode!", self.addon.name)
 
         # Cleanup
-        self._stop()
+        await self._stop()
 
         # Don't set a hostname if no separate UTS namespace is used
         hostname = None if self.uts_mode else self.addon.hostname
 
         # Create & Run container
         try:
-            docker_container = self.sys_docker.run(
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.run,
                 self.image,
                 tag=str(self.addon.version),
                 name=self.name,
@@ -553,7 +551,7 @@ class DockerAddon(DockerInterface):
 
         # Write data to DNS server
         try:
-            self.sys_plugins.dns.add_host(
+            await self.sys_plugins.dns.add_host(
                 ipv4=self.ip_address, names=[self.addon.hostname]
             )
         except CoreDNSError as err:
@@ -566,13 +564,10 @@ class DockerAddon(DockerInterface):
                 BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events
             )
 
-    def _update(
+    async def _update(
         self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> None:
-        """Update a docker image.
-
-        Need run inside executor.
-        """
+        """Update a docker image."""
         image = image or self.image
 
         _LOGGER.info(
@@ -580,15 +575,15 @@ class DockerAddon(DockerInterface):
         )
 
         # Update docker image
-        self._install(
+        await self._install(
             version, image=image, latest=latest, need_build=self.addon.latest_need_build
         )
 
         # Stop container & cleanup
         with suppress(DockerError):
-            self._stop()
+            await self._stop()
 
-    def _install(
+    async def _install(
         self,
         version: AwesomeVersion,
         image: str | None = None,
@@ -597,20 +592,14 @@ class DockerAddon(DockerInterface):
         *,
         need_build: bool | None = None,
     ) -> None:
-        """Pull Docker image or build it.
-
-        Need run inside executor.
-        """
+        """Pull Docker image or build it."""
         if need_build is None and self.addon.need_build or need_build:
-            self._build(version)
+            await self._build(version)
         else:
-            super()._install(version, image, latest, arch)
+            await super()._install(version, image, latest, arch)
 
-    def _build(self, version: AwesomeVersion) -> None:
-        """Build a Docker container.
-
-        Need run inside executor.
-        """
+    async def _build(self, version: AwesomeVersion) -> None:
+        """Build a Docker container."""
         build_env = AddonBuild(self.coresys, self.addon)
         if not build_env.is_valid:
             _LOGGER.error("Invalid build environment, can't build this add-on!")
@@ -618,8 +607,10 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Starting build for %s:%s", self.image, version)
         try:
-            image, log = self.sys_docker.images.build(
-                use_config_proxy=False, **build_env.get_docker_args(version)
+            image, log = await self.sys_run_in_executor(
+                self.sys_docker.images.build,
+                use_config_proxy=False,
+                **build_env.get_docker_args(version),
             )
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, version, log)
@@ -670,11 +661,17 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Export image %s done", self.image)
 
     @process_lock
-    def import_image(self, tar_file: Path) -> Awaitable[None]:
+    async def import_image(self, tar_file: Path) -> None:
         """Import a tar file as image."""
-        return self.sys_run_in_executor(self._import_image, tar_file)
+        docker_image = await self.sys_run_in_executor(self._import_image, tar_file)
+        if docker_image:
+            self._meta = docker_image.attrs
+            _LOGGER.info("Importing image %s and version %s", tar_file, self.version)
 
-    def _import_image(self, tar_file: Path) -> None:
+            with suppress(DockerError):
+                await self._cleanup()
+
+    def _import_image(self, tar_file: Path) -> Image | None:
         """Import a tar file as image.
 
         Need run inside executor.
@@ -689,30 +686,24 @@ class DockerAddon(DockerInterface):
                     len(docker_image_list),
                 )
                 return
-            docker_image = docker_image_list[0]
+            return docker_image_list[0]
         except (docker.errors.DockerException, OSError) as err:
             _LOGGER.error("Can't import image %s: %s", self.image, err)
             raise DockerError() from err
 
-        self._meta = docker_image.attrs
-        _LOGGER.info("Importing image %s and version %s", tar_file, self.version)
-
-        with suppress(DockerError):
-            self._cleanup()
-
     @process_lock
-    def write_stdin(self, data: bytes) -> Awaitable[None]:
+    async def write_stdin(self, data: bytes) -> None:
         """Write to add-on stdin."""
-        return self.sys_run_in_executor(self._write_stdin, data)
+        if not await self.is_running():
+            raise DockerError()
+
+        await self.sys_run_in_executor(self._write_stdin, data)
 
     def _write_stdin(self, data: bytes) -> None:
         """Write to add-on stdin.
 
         Need run inside executor.
         """
-        if not self._is_running():
-            raise DockerError()
-
         try:
             # Load needed docker objects
             container = self.sys_docker.containers.get(self.name)
@@ -730,15 +721,12 @@ class DockerAddon(DockerInterface):
             _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
             raise DockerError() from err
 
-    def _stop(self, remove_container=True) -> None:
-        """Stop/remove Docker container.
-
-        Need run inside executor.
-        """
+    async def _stop(self, remove_container: bool = True) -> None:
+        """Stop/remove Docker container."""
         # DNS
         if self.ip_address != NO_ADDDRESS:
             try:
-                self.sys_plugins.dns.delete_host(self.addon.hostname)
+                await self.sys_plugins.dns.delete_host(self.addon.hostname)
             except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
                 capture_exception(err)
@@ -748,9 +736,9 @@ class DockerAddon(DockerInterface):
             self.sys_bus.remove_listener(self._hw_listener)
             self._hw_listener = None
 
-        super()._stop(remove_container)
+        await super()._stop(remove_container)
 
-    def _validate_trust(
+    async def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
     ) -> None:
         """Validate trust of content."""
@@ -758,11 +746,7 @@ class DockerAddon(DockerInterface):
             return
 
         checksum = image_id.partition(":")[2]
-        job = asyncio.run_coroutine_threadsafe(
-            self.sys_security.verify_content(self.addon.codenotary, checksum),
-            self.sys_loop,
-        )
-        job.result()
+        return await self.sys_security.verify_content(self.addon.codenotary, checksum)
 
     @Job(conditions=[JobCondition.OS_AGENT], limit=JobExecutionLimit.SINGLE_WAIT)
     async def _hardware_events(self, device: Device) -> None:

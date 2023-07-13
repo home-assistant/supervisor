@@ -1,4 +1,5 @@
 """Manager for Supervisor Docker."""
+from asyncio import BaseEventLoop
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
@@ -11,8 +12,9 @@ from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
 from docker.api.client import APIClient
 from docker.client import DockerClient
+from docker.errors import DockerException, ImageNotFound, NotFound
 from docker.models.containers import Container, ContainerCollection
-from docker.models.images import ImageCollection
+from docker.models.images import Image, ImageCollection
 from docker.models.networks import Network
 from docker.types.daemon import CancellableStream
 import requests
@@ -103,11 +105,12 @@ class DockerAPI:
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
+        coresys.run_in_executor
         self.docker: DockerClient = DockerClient(
             base_url=f"unix:/{str(SOCKET_DOCKER)}", version="auto", timeout=900
         )
         self.network: DockerNetwork = DockerNetwork(self.docker)
-        self._info: DockerInfo = DockerInfo.new(self.docker.info())
+        self._info: DockerInfo | None = None
         self.config: DockerConfig = DockerConfig()
         self._monitor: DockerMonitor = DockerMonitor(coresys)
 
@@ -129,6 +132,8 @@ class DockerAPI:
     @property
     def info(self) -> DockerInfo:
         """Return local docker info."""
+        if self._info is None:
+            raise RuntimeError("Info not set!")
         return self._info
 
     @property
@@ -141,8 +146,10 @@ class DockerAPI:
         """Return docker events monitor."""
         return self._monitor
 
-    async def load(self) -> None:
+    async def load(self, loop: BaseEventLoop) -> None:
         """Start docker events monitor."""
+        self._info = DockerInfo.new(await loop.run_in_executor(None, self.docker.info))
+        await self.network.load(loop)
         await self.monitor.load()
 
     async def unload(self) -> None:
@@ -351,3 +358,167 @@ class DockerAPI:
 
             with suppress(docker_errors.DockerException, requests.RequestException):
                 network.disconnect(data.get("Name", cid), force=True)
+
+    def stop_container(
+        self, name: str, timeout: int, remove_container: bool = True
+    ) -> None:
+        """Stop/remove Docker container."""
+        try:
+            docker_container: Container = self.containers.get(name)
+        except NotFound:
+            raise DockerNotFound() from None
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        if docker_container.status == "running":
+            _LOGGER.info("Stopping %s application", name)
+            with suppress(DockerException, requests.RequestException):
+                docker_container.stop(timeout=timeout)
+
+        if remove_container:
+            with suppress(DockerException, requests.RequestException):
+                _LOGGER.info("Cleaning %s application", name)
+                docker_container.remove(force=True)
+
+    def start_container(self, name: str) -> None:
+        """Start Docker container."""
+        try:
+            docker_container: Container = self.containers.get(name)
+        except NotFound:
+            raise DockerNotFound(
+                f"{name} not found for starting up", _LOGGER.error
+            ) from None
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Could not get {name} for starting up", _LOGGER.error
+            ) from err
+
+        _LOGGER.info("Starting %s", name)
+        try:
+            docker_container.start()
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(f"Can't start {name}: {err}", _LOGGER.error) from err
+
+    def restart_container(self, name: str, timeout: int) -> None:
+        """Restart docker container."""
+        try:
+            container: Container = self.containers.get(name)
+        except NotFound:
+            raise DockerNotFound() from None
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        _LOGGER.info("Restarting %s", name)
+        try:
+            container.restart(timeout=timeout)
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(f"Can't restart {name}: {err}", _LOGGER.warning) from err
+
+    def container_logs(self, name: str, tail: int = 100) -> bytes:
+        """Return Docker logs of container."""
+        try:
+            docker_container: Container = self.containers.get(name)
+        except NotFound:
+            raise DockerNotFound() from None
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        try:
+            return docker_container.logs(tail=tail, stdout=True, stderr=True)
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Can't grep logs from {name}: {err}", _LOGGER.warning
+            ) from err
+
+    def container_stats(self, name: str) -> dict[str, Any]:
+        """Read and return stats from container."""
+        try:
+            docker_container: Container = self.containers.get(name)
+        except NotFound:
+            raise DockerNotFound() from None
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        # container is not running
+        if docker_container.status != "running":
+            raise DockerError(f"Container {name} is not running", _LOGGER.error)
+
+        try:
+            return docker_container.stats(stream=False)
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Can't read stats from {name}: {err}", _LOGGER.error
+            ) from err
+
+    def container_run_inside(self, name: str, command: str) -> CommandReturn:
+        """Execute a command inside Docker container."""
+        try:
+            docker_container: Container = self.containers.get(name)
+        except NotFound:
+            raise DockerNotFound() from None
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        # Execute
+        try:
+            code, output = docker_container.exec_run(command)
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        return CommandReturn(code, output)
+
+    def remove_image(
+        self, image: str, version: AwesomeVersion, latest: bool = True
+    ) -> None:
+        """Remove a Docker image by version and latest."""
+        try:
+            if latest:
+                _LOGGER.info("Removing image %s with latest", image)
+                with suppress(ImageNotFound):
+                    self.images.remove(image=f"{image}:latest", force=True)
+
+            _LOGGER.info("Removing image %s with %s", image, version)
+            with suppress(ImageNotFound):
+                self.images.remove(image=f"{image}:{version!s}", force=True)
+
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Can't remove image {image}: {err}", _LOGGER.warning
+            ) from err
+
+    def cleanup_old_images(
+        self,
+        current_image: str,
+        current_version: AwesomeVersion,
+        old_images: set[str] | None = None,
+    ) -> None:
+        """Clean up old versions of an image."""
+        try:
+            current: Image = self.images.get(f"{current_image}:{current_version!s}")
+        except ImageNotFound:
+            raise DockerNotFound(
+                f"{current_image} not found for cleanup", _LOGGER.warning
+            ) from None
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Can't get {current_image} for cleanup", _LOGGER.warning
+            ) from err
+
+        # Cleanup old and current
+        image_names = list(
+            old_images | {current_image} if old_images else {current_image}
+        )
+        try:
+            images_list = self.images.list(name=image_names)
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Corrupt docker overlayfs found: {err}", _LOGGER.warning
+            ) from err
+
+        for image in images_list:
+            if current.id == image.id:
+                continue
+
+            with suppress(DockerException, requests.RequestException):
+                _LOGGER.info("Cleanup images: %s", image.tags)
+                self.images.remove(image.id, force=True)

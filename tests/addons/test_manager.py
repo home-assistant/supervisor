@@ -202,6 +202,7 @@ async def test_boot_waits_for_addons(
     """Test addon manager boot waits for addons."""
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
     addon_state: AddonState | None = None
@@ -249,7 +250,7 @@ async def test_update(
     assert install_addon_ssh.need_update is True
 
     with patch.object(DockerInterface, "_install"), patch.object(
-        DockerAddon, "_is_running", return_value=False
+        DockerAddon, "is_running", return_value=False
     ):
         start_task = await coresys.addons.update(TEST_ADDON_SLUG)
 
@@ -271,7 +272,7 @@ async def test_rebuild(
     await install_addon_ssh.load()
 
     with patch.object(DockerAddon, "_build"), patch.object(
-        DockerAddon, "_is_running", return_value=False
+        DockerAddon, "is_running", return_value=False
     ), patch.object(Addon, "need_build", new=PropertyMock(return_value=True)):
         start_task = await coresys.addons.rebuild(TEST_ADDON_SLUG)
 
