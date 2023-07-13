@@ -1,5 +1,5 @@
 """Pulse host control."""
-from dataclasses import Field, dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum
 import logging
@@ -73,10 +73,10 @@ class SoundCard:
 class PulseData:
     """Represent pulse data we care about."""
 
-    cards: list[SoundCard] = Field(default_factory=list)
-    inputs: list[AudioStream] = Field(default_factory=list)
-    outputs: list[AudioStream] = Field(default_factory=list)
-    applications: list[AudioApplication] = Field(default_factory=list)
+    cards: list[SoundCard] = field(default_factory=list)
+    inputs: list[AudioStream] = field(default_factory=list)
+    outputs: list[AudioStream] = field(default_factory=list)
+    applications: list[AudioApplication] = field(default_factory=list)
 
 
 class SoundControl(CoreSysAttributes):
@@ -238,10 +238,11 @@ class SoundControl(CoreSysAttributes):
         _LOGGER.info("Updating PulseAudio information")
 
         def _get_pulse_data() -> PulseData:
+            data = PulseData()
+
             try:
                 with Pulse(PULSE_NAME) as pulse:
                     server = pulse.server_info()
-                    data = PulseData()
 
                     # Update applications
                     data.applications = [
@@ -338,14 +339,14 @@ class SoundControl(CoreSysAttributes):
                         for card in pulse.card_list()
                     ]
 
-                    return data
-
             except PulseOperationFailed as err:
                 raise PulseAudioError(
                     f"Error while processing pulse update: {err}", _LOGGER.error
                 ) from err
             except PulseError as err:
                 _LOGGER.debug("Can't update PulseAudio data: %s", err)
+
+            return data
 
         # Update data from pulse server
         data: PulseData = await self.sys_run_in_executor(_get_pulse_data)
