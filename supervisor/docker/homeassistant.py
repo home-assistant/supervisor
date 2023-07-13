@@ -242,9 +242,9 @@ class DockerHomeAssistant(DockerInterface):
 
         return True
 
-    def _validate_trust(
+    async def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
-    ) -> Awaitable[None]:
+    ) -> None:
         """Validate trust of content."""
         try:
             if version != LANDINGPAGE and version < _VERIFY_TRUST:
@@ -252,4 +252,4 @@ class DockerHomeAssistant(DockerInterface):
         except AwesomeVersionCompareException:
             return
 
-        return super()._validate_trust(image_id, image, version)
+        await super()._validate_trust(image_id, image, version)

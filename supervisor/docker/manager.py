@@ -105,7 +105,6 @@ class DockerAPI:
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
-        coresys.run_in_executor
         self.docker: DockerClient = DockerClient(
             base_url=f"unix:/{str(SOCKET_DOCKER)}", version="auto", timeout=900
         )
@@ -485,6 +484,45 @@ class DockerAPI:
             raise DockerError(
                 f"Can't remove image {image}: {err}", _LOGGER.warning
             ) from err
+
+    def import_image(self, tar_file: Path) -> Image | None:
+        """Import a tar file as image."""
+        try:
+            with tar_file.open("rb") as read_tar:
+                docker_image_list: list[Image] = self.images.load(read_tar)
+
+            if len(docker_image_list) != 1:
+                _LOGGER.warning(
+                    "Unexpected image count %d while importing image from tar",
+                    len(docker_image_list),
+                )
+                return None
+            return docker_image_list[0]
+        except (DockerException, OSError) as err:
+            raise DockerError(
+                f"Can't import image from tar: {err}", _LOGGER.error
+            ) from err
+
+    def export_image(self, image: str, version: AwesomeVersion, tar_file: Path) -> None:
+        """Export current images into a tar file."""
+        try:
+            image = self.api.get_image(f"{image}:{version}")
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Can't fetch image {image}: {err}", _LOGGER.error
+            ) from err
+
+        _LOGGER.info("Export image %s to %s", image, tar_file)
+        try:
+            with tar_file.open("wb") as write_tar:
+                for chunk in image:
+                    write_tar.write(chunk)
+        except (OSError, requests.RequestException) as err:
+            raise DockerError(
+                f"Can't write tar file {tar_file}: {err}", _LOGGER.error
+            ) from err
+
+        _LOGGER.info("Export image %s done", image)
 
     def cleanup_old_images(
         self,

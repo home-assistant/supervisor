@@ -193,7 +193,7 @@ class DockerInterface(CoreSysAttributes):
 
         return credentials
 
-    def _docker_login(self, image: str) -> Awaitable[None]:
+    async def _docker_login(self, image: str) -> None:
         """Try to log in to the registry if there are credentials available."""
         if not self.sys_docker.config.registries:
             return
@@ -202,7 +202,7 @@ class DockerInterface(CoreSysAttributes):
         if not credentials:
             return
 
-        return self.sys_run_in_executor(self.sys_docker.docker.login, **credentials)
+        await self.sys_run_in_executor(self.sys_docker.docker.login, **credentials)
 
     @process_lock
     def install(

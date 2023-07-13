@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 
 from awesomeversion import AwesomeVersion
 import docker
-from docker.models.images import Image
 from docker.types import Mount
 import requests
 
@@ -636,60 +635,22 @@ class DockerAddon(DockerInterface):
     @process_lock
     def export_image(self, tar_file: Path) -> Awaitable[None]:
         """Export current images into a tar file."""
-        return self.sys_run_in_executor(self._export_image, tar_file)
-
-    def _export_image(self, tar_file: Path) -> None:
-        """Export current images into a tar file.
-
-        Need run inside executor.
-        """
-        try:
-            image = self.sys_docker.api.get_image(f"{self.image}:{self.version}")
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Can't fetch image %s: %s", self.image, err)
-            raise DockerError() from err
-
-        _LOGGER.info("Export image %s to %s", self.image, tar_file)
-        try:
-            with tar_file.open("wb") as write_tar:
-                for chunk in image:
-                    write_tar.write(chunk)
-        except (OSError, requests.RequestException) as err:
-            _LOGGER.error("Can't write tar file %s: %s", tar_file, err)
-            raise DockerError() from err
-
-        _LOGGER.info("Export image %s done", self.image)
+        return self.sys_run_in_executor(
+            self.sys_docker.export_image, self.image, self.version, tar_file
+        )
 
     @process_lock
     async def import_image(self, tar_file: Path) -> None:
         """Import a tar file as image."""
-        docker_image = await self.sys_run_in_executor(self._import_image, tar_file)
+        docker_image = await self.sys_run_in_executor(
+            self.sys_docker.import_image, tar_file
+        )
         if docker_image:
             self._meta = docker_image.attrs
             _LOGGER.info("Importing image %s and version %s", tar_file, self.version)
 
             with suppress(DockerError):
                 await self._cleanup()
-
-    def _import_image(self, tar_file: Path) -> Image | None:
-        """Import a tar file as image.
-
-        Need run inside executor.
-        """
-        try:
-            with tar_file.open("rb") as read_tar:
-                docker_image_list = self.sys_docker.images.load(read_tar)
-
-            if len(docker_image_list) != 1:
-                _LOGGER.warning(
-                    "Unexpected image count %d while importing image from tar",
-                    len(docker_image_list),
-                )
-                return
-            return docker_image_list[0]
-        except (docker.errors.DockerException, OSError) as err:
-            _LOGGER.error("Can't import image %s: %s", self.image, err)
-            raise DockerError() from err
 
     @process_lock
     async def write_stdin(self, data: bytes) -> None:
