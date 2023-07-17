@@ -18,6 +18,13 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 FORWARD_HEADERS = ("X-Speech-Content",)
 HEADER_HA_ACCESS = "X-Ha-Access"
 
+# Maximum message size for websocket messages from Home Assistant.
+# Since these are coming from core we want the largest possible size
+# that is not likely to cause a memory problem as most modern browsers
+# support large messages.
+# https://github.com/home-assistant/supervisor/issues/4392
+MAX_MESSAGE_SIZE_FROM_CORE = 64 * 1024 * 1024
+
 
 class APIProxy(CoreSysAttributes):
     """API Proxy for Home Assistant."""
@@ -112,7 +119,9 @@ class APIProxy(CoreSysAttributes):
         url = f"{self.sys_homeassistant.api_url}/api/websocket"
 
         try:
-            client = await self.sys_websession.ws_connect(url, heartbeat=30, ssl=False)
+            client = await self.sys_websession.ws_connect(
+                url, heartbeat=30, ssl=False, max_msg_size=MAX_MESSAGE_SIZE_FROM_CORE
+            )
 
             # Handle authentication
             data = await client.receive_json()
