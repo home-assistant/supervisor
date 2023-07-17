@@ -4,7 +4,7 @@ import asyncio
 from datetime import timedelta
 from unittest.mock import MagicMock, PropertyMock, patch
 
-from docker.errors import DockerException
+from docker.errors import DockerException, NotFound
 import pytest
 from securetar import SecureTarFile
 
@@ -17,7 +17,7 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsJobError, AudioUpdateError
+from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
@@ -423,6 +423,69 @@ async def test_backup(
 
     tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
     assert await install_addon_ssh.backup(tarfile) is None
+
+
+async def test_backup_with_pre_post_command(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test backing up an addon with pre and post command."""
+    container.status = "running"
+    container.exec_run.return_value = (0, None)
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    with patch.object(
+        Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")
+    ), patch.object(Addon, "backup_post", new=PropertyMock(return_value="backup_post")):
+        assert await install_addon_ssh.backup(tarfile) is None
+
+    assert container.exec_run.call_count == 2
+    assert container.exec_run.call_args_list[0].args[0] == "backup_pre"
+    assert container.exec_run.call_args_list[1].args[0] == "backup_post"
+
+
+@pytest.mark.parametrize(
+    "get_error,exception_on_exec",
+    [
+        (NotFound("missing"), False),
+        (DockerException(), False),
+        (None, True),
+        (None, False),
+    ],
+)
+async def test_backup_with_pre_command_error(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    get_error: DockerException | None,
+    exception_on_exec: bool,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test backing up an addon with error running pre command."""
+    if get_error:
+        coresys.docker.containers.get.side_effect = get_error
+
+    if exception_on_exec:
+        container.exec_run.side_effect = DockerException()
+    else:
+        container.exec_run.return_value = (1, None)
+
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    with patch.object(DockerAddon, "is_running", return_value=True), patch.object(
+        Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")
+    ), pytest.raises(AddonsError):
+        assert await install_addon_ssh.backup(tarfile) is None
+
+    assert not tarfile.path.exists()
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])

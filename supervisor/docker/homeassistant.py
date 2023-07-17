@@ -4,12 +4,9 @@ from ipaddress import IPv4Address
 import logging
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-import docker
 from docker.types import Mount
-import requests
 
 from ..const import LABEL_MACHINE, MACHINE_ID
-from ..exceptions import DockerError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
 from ..utils import process_lock
@@ -215,32 +212,12 @@ class DockerHomeAssistant(DockerInterface):
 
     def is_initialize(self) -> Awaitable[bool]:
         """Return True if Docker container exists."""
-        return self.sys_run_in_executor(self._is_initialize)
-
-    def _is_initialize(self) -> bool:
-        """Return True if docker container exists.
-
-        Need run inside executor.
-        """
-        try:
-            docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.images.get(
-                f"{self.image}:{self.sys_homeassistant.version}"
-            )
-        except docker.errors.NotFound:
-            return False
-        except (docker.errors.DockerException, requests.RequestException):
-            return DockerError()
-
-        # we run on an old image, stop and start it
-        if docker_container.image.id != docker_image.id:
-            return False
-
-        # Check of correct state
-        if docker_container.status not in ("exited", "running", "created"):
-            return False
-
-        return True
+        return self.sys_run_in_executor(
+            self.sys_docker.container_is_initialized,
+            self.name,
+            self.image,
+            self.sys_homeassistant.version,
+        )
 
     async def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion

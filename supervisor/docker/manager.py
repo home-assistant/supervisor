@@ -358,6 +358,24 @@ class DockerAPI:
             with suppress(docker_errors.DockerException, requests.RequestException):
                 network.disconnect(data.get("Name", cid), force=True)
 
+    def container_is_initialized(
+        self, name: str, image: str, version: AwesomeVersion
+    ) -> bool:
+        """Return True if docker container exists in good state and is built from expected image."""
+        try:
+            docker_container = self.containers.get(name)
+            docker_image = self.images.get(f"{image}:{version}")
+        except NotFound:
+            return False
+        except (DockerException, requests.RequestException) as err:
+            raise DockerError() from err
+
+        # Check the image is correct and state is good
+        return (
+            docker_container.image.id == docker_image.id
+            and docker_container.status in ("exited", "running", "created")
+        )
+
     def stop_container(
         self, name: str, timeout: int, remove_container: bool = True
     ) -> None:
