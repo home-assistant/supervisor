@@ -58,7 +58,9 @@ async def test_update(
     )
     assert settings["connection"]["autoconnect"] == Variant("b", True)
 
-    assert settings["device"] == {"match-device": Variant("s", "mac:AA:BB:CC:DD:EE:FF")}
+    assert settings["device"] == {
+        "match-device": Variant("s", "mac:AA:BB:CC:DD:EE:FF,interface-name:eth0")
+    }
 
     assert "ipv4" in settings
     assert settings["ipv4"]["method"] == Variant("s", "auto")

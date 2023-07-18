@@ -75,8 +75,12 @@ class Interface:
         if not inet.settings:
             return False
 
-        if inet.settings.device:
-            return inet.settings.device.match_device == f"mac:{self.mac}"
+        if inet.settings.device and inet.settings.device.match_device:
+            matchers = inet.settings.device.match_device.split(",", 1)
+            return (
+                f"mac:{self.mac}" in matchers
+                or f"interface-name:{self.name}" in matchers
+            )
 
         return inet.settings.connection.interface_name == self.name
 
