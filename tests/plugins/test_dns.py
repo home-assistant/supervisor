@@ -15,8 +15,6 @@ from supervisor.plugins.dns import HostEntry
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
-from tests.plugins.test_plugin_base import mock_current_state, mock_is_running
-
 
 @pytest.fixture(name="docker_interface")
 async def fixture_docker_interface() -> tuple[AsyncMock, AsyncMock]:
@@ -131,11 +129,6 @@ async def test_reset(coresys: CoreSys):
         ]
 
 
-async def mock_logs(logs: bytes) -> bytes:
-    """Mock for logs method."""
-    return logs
-
-
 async def test_loop_detection_on_failure(coresys: CoreSys):
     """Test loop detection when coredns fails."""
     assert len(coresys.resolution.issues) == 0
@@ -144,7 +137,7 @@ async def test_loop_detection_on_failure(coresys: CoreSys):
     with patch.object(type(coresys.plugins.dns.instance), "attach"), patch.object(
         type(coresys.plugins.dns.instance),
         "is_running",
-        return_value=mock_is_running(True),
+        return_value=True,
     ):
         await coresys.plugins.dns.load()
 
@@ -152,11 +145,11 @@ async def test_loop_detection_on_failure(coresys: CoreSys):
         type(coresys.plugins.dns.instance),
         "current_state",
         side_effect=[
-            mock_current_state(ContainerState.FAILED),
-            mock_current_state(ContainerState.FAILED),
+            ContainerState.FAILED,
+            ContainerState.FAILED,
         ],
     ), patch.object(type(coresys.plugins.dns.instance), "logs") as logs:
-        logs.return_value = mock_logs(b"")
+        logs.return_value = b""
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -172,7 +165,7 @@ async def test_loop_detection_on_failure(coresys: CoreSys):
         rebuild.assert_called_once()
 
         rebuild.reset_mock()
-        logs.return_value = mock_logs(b"plugin/loop: Loop")
+        logs.return_value = b"plugin/loop: Loop"
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(

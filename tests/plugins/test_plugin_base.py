@@ -53,21 +53,6 @@ async def fixture_plugin(
         yield coresys.plugins.observer
 
 
-async def mock_current_state(state: ContainerState) -> ContainerState:
-    """Mock for current state method."""
-    return state
-
-
-async def mock_is_running(running: bool) -> bool:
-    """Mock for is running method."""
-    return running
-
-
-async def mock_get_latest_version(version: AwesomeVersion) -> AwesomeVersion:
-    """Mock for get latest version method."""
-    return version
-
-
 @pytest.mark.parametrize(
     "plugin",
     [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
@@ -76,14 +61,14 @@ async def mock_get_latest_version(version: AwesomeVersion) -> AwesomeVersion:
 async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
     """Test plugin watchdog works correctly."""
     with patch.object(type(plugin.instance), "attach"), patch.object(
-        type(plugin.instance), "is_running", return_value=mock_is_running(True)
+        type(plugin.instance), "is_running", return_value=True
     ):
         await plugin.load()
 
     with patch.object(type(plugin), "rebuild") as rebuild, patch.object(
         type(plugin), "start"
     ) as start, patch.object(type(plugin.instance), "current_state") as current_state:
-        current_state.return_value = mock_current_state(ContainerState.UNHEALTHY)
+        current_state.return_value = ContainerState.UNHEALTHY
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -98,7 +83,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         start.assert_not_called()
 
         rebuild.reset_mock()
-        current_state.return_value = mock_current_state(ContainerState.FAILED)
+        current_state.return_value = ContainerState.FAILED
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -114,7 +99,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
 
         rebuild.reset_mock()
         # Plugins are restarted anytime they stop, not just on failure
-        current_state.return_value = mock_current_state(ContainerState.STOPPED)
+        current_state.return_value = ContainerState.STOPPED
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -130,7 +115,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
 
         start.reset_mock()
         # Do not process event if container state has changed since fired
-        current_state.return_value = mock_current_state(ContainerState.HEALTHY)
+        current_state.return_value = ContainerState.HEALTHY
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -175,7 +160,7 @@ async def test_plugin_watchdog_rebuild_on_failure(
 ) -> None:
     """Test plugin watchdog rebuilds if start fails."""
     with patch.object(type(plugin.instance), "attach"), patch.object(
-        type(plugin.instance), "is_running", return_value=mock_is_running(True)
+        type(plugin.instance), "is_running", return_value=True
     ):
         await plugin.load()
 
@@ -187,8 +172,8 @@ async def test_plugin_watchdog_rebuild_on_failure(
         type(plugin.instance),
         "current_state",
         side_effect=[
-            mock_current_state(ContainerState.STOPPED),
-            mock_current_state(ContainerState.STOPPED),
+            ContainerState.STOPPED,
+            ContainerState.STOPPED,
         ],
     ):
         coresys.bus.fire_event(
@@ -228,9 +213,9 @@ async def test_plugin_load_running_container(
     ) as start, patch.object(
         type(plugin.instance),
         "get_latest_version",
-        return_value=mock_get_latest_version(test_version),
+        return_value=test_version,
     ), patch.object(
-        type(plugin.instance), "is_running", return_value=mock_is_running(True)
+        type(plugin.instance), "is_running", return_value=True
     ):
         await plugin.load()
         register_event.assert_any_call(
@@ -264,9 +249,9 @@ async def test_plugin_load_stopped_container(
     ) as start, patch.object(
         type(plugin.instance),
         "get_latest_version",
-        return_value=mock_get_latest_version(test_version),
+        return_value=test_version,
     ), patch.object(
-        type(plugin.instance), "is_running", return_value=mock_is_running(False)
+        type(plugin.instance), "is_running", return_value=False
     ):
         await plugin.load()
         register_event.assert_any_call(
@@ -300,9 +285,9 @@ async def test_plugin_load_missing_container(
     ) as start, patch.object(
         type(plugin.instance),
         "get_latest_version",
-        return_value=mock_get_latest_version(test_version),
+        return_value=test_version,
     ), patch.object(
-        type(plugin.instance), "is_running", return_value=mock_is_running(False)
+        type(plugin.instance), "is_running", return_value=False
     ):
         await plugin.load()
         register_event.assert_any_call(
@@ -347,9 +332,7 @@ async def test_repair_failed(
     coresys: CoreSys, capture_exception: Mock, plugin: PluginBase
 ):
     """Test repair failed."""
-    with patch.object(
-        DockerInterface, "exists", return_value=mock_is_running(False)
-    ), patch.object(
+    with patch.object(DockerInterface, "exists", return_value=False), patch.object(
         DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
     ), patch(
         "supervisor.security.module.cas_validate", side_effect=CodeNotaryUntrusted

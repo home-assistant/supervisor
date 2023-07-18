@@ -92,6 +92,7 @@ async def test_api_addon_start_healthcheck(
     install_addon_ssh.path_data.mkdir()
     container.attrs["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
     state_changes: list[AddonState] = []
@@ -132,6 +133,7 @@ async def test_api_addon_restart_healthcheck(
     install_addon_ssh.path_data.mkdir()
     container.attrs["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
     state_changes: list[AddonState] = []
@@ -173,6 +175,7 @@ async def test_api_addon_rebuild_healthcheck(
     install_addon_ssh.path_data.mkdir()
     container.attrs["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STARTUP
 
     state_changes: list[AddonState] = []
@@ -200,7 +203,7 @@ async def test_api_addon_rebuild_healthcheck(
 
     with patch.object(
         AddonBuild, "is_valid", new=PropertyMock(return_value=True)
-    ), patch.object(DockerAddon, "_is_running", return_value=False), patch.object(
+    ), patch.object(DockerAddon, "is_running", return_value=False), patch.object(
         Addon, "need_build", new=PropertyMock(return_value=True)
     ), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["amd64"])

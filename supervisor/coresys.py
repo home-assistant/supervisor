@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Coroutine
 from datetime import datetime
+from functools import partial
 import logging
 import os
 from types import MappingProxyType
@@ -520,9 +521,12 @@ class CoreSys:
         return datetime.now(get_time_zone(self.timezone) or UTC)
 
     def run_in_executor(
-        self, funct: Callable[..., T], *args: Any
+        self, funct: Callable[..., T], *args: tuple[Any], **kwargs: dict[str, Any]
     ) -> Coroutine[Any, Any, T]:
         """Add an job to the executor pool."""
+        if kwargs:
+            funct = partial(funct, **kwargs)
+
         return self.loop.run_in_executor(None, funct, *args)
 
     def create_task(self, coroutine: Coroutine) -> asyncio.Task:
@@ -700,10 +704,10 @@ class CoreSysAttributes:
         return self.coresys.now()
 
     def sys_run_in_executor(
-        self, funct: Callable[..., T], *args: Any
+        self, funct: Callable[..., T], *args: tuple[Any], **kwargs: dict[str, Any]
     ) -> Coroutine[Any, Any, T]:
         """Add an job to the executor pool."""
-        return self.coresys.run_in_executor(funct, *args)
+        return self.coresys.run_in_executor(funct, *args, **kwargs)
 
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""

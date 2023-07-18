@@ -4,14 +4,12 @@ from ipaddress import IPv4Address
 import logging
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-import docker
 from docker.types import Mount
-import requests
 
 from ..const import LABEL_MACHINE, MACHINE_ID
-from ..exceptions import DockerError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
+from ..utils import process_lock
 from .const import (
     ENV_TIME,
     ENV_TOKEN,
@@ -133,19 +131,17 @@ class DockerHomeAssistant(DockerInterface):
 
         return mounts
 
-    def _run(self) -> None:
-        """Run Docker image.
-
-        Need run inside executor.
-        """
-        if self._is_running():
+    async def _run(self) -> None:
+        """Run Docker image."""
+        if await self.is_running():
             return
 
         # Cleanup
-        self._stop()
+        await self._stop()
 
         # Create & Run container
-        docker_container = self.sys_docker.run(
+        docker_container = await self.sys_run_in_executor(
+            self.sys_docker.run,
             self.image,
             tag=(self.sys_homeassistant.version),
             name=self.name,
@@ -177,12 +173,11 @@ class DockerHomeAssistant(DockerInterface):
             "Starting Home Assistant %s with version %s", self.image, self.version
         )
 
-    def _execute_command(self, command: str) -> CommandReturn:
-        """Create a temporary container and run command.
-
-        Need run inside executor.
-        """
-        return self.sys_docker.run_command(
+    @process_lock
+    async def execute_command(self, command: str) -> CommandReturn:
+        """Create a temporary container and run command."""
+        return await self.sys_run_in_executor(
+            self.sys_docker.run_command,
             self.image,
             version=self.sys_homeassistant.version,
             command=command,
@@ -217,34 +212,14 @@ class DockerHomeAssistant(DockerInterface):
 
     def is_initialize(self) -> Awaitable[bool]:
         """Return True if Docker container exists."""
-        return self.sys_run_in_executor(self._is_initialize)
+        return self.sys_run_in_executor(
+            self.sys_docker.container_is_initialized,
+            self.name,
+            self.image,
+            self.sys_homeassistant.version,
+        )
 
-    def _is_initialize(self) -> bool:
-        """Return True if docker container exists.
-
-        Need run inside executor.
-        """
-        try:
-            docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.images.get(
-                f"{self.image}:{self.sys_homeassistant.version}"
-            )
-        except docker.errors.NotFound:
-            return False
-        except (docker.errors.DockerException, requests.RequestException):
-            return DockerError()
-
-        # we run on an old image, stop and start it
-        if docker_container.image.id != docker_image.id:
-            return False
-
-        # Check of correct state
-        if docker_container.status not in ("exited", "running", "created"):
-            return False
-
-        return True
-
-    def _validate_trust(
+    async def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
     ) -> None:
         """Validate trust of content."""
@@ -254,4 +229,4 @@ class DockerHomeAssistant(DockerInterface):
         except AwesomeVersionCompareException:
             return
 
-        super()._validate_trust(image_id, image, version)
+        await super()._validate_trust(image_id, image, version)

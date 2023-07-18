@@ -144,16 +144,16 @@ async def test_handling_bad_devices(
 
     with patch.object(DBus, "init_proxy", side_effect=DBusFatalError()):
         await network_manager.update(
-            {"Devices": ["/org/freedesktop/NetworkManager/Devices/100"]}
+            {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/100"]}
         )
-        assert not caplog.text
+        assert f"Can't process {device}" not in caplog.text
 
     await network_manager.update()
     with patch.object(DBus, "properties", new=PropertyMock(return_value=None)):
         await network_manager.update(
-            {"Devices": ["/org/freedesktop/NetworkManager/Devices/101"]}
+            {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/101"]}
         )
-        assert not caplog.text
+        assert f"Can't process {device}" not in caplog.text
 
     # Unparseable introspections shouldn't happen, this one is logged and captured
     await network_manager.update()

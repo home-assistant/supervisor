@@ -21,7 +21,7 @@ class DockerNetwork:
     def __init__(self, docker_client: docker.DockerClient):
         """Initialize internal Supervisor network."""
         self.docker: docker.DockerClient = docker_client
-        self.network: docker.models.networks.Network = self._get_network()
+        self._network: docker.models.networks.Network = self._get_network()
 
     @property
     def name(self) -> str:
@@ -29,18 +29,14 @@ class DockerNetwork:
         return DOCKER_NETWORK
 
     @property
-    def containers(self) -> list[docker.models.containers.Container]:
-        """Return of connected containers from network."""
-        containers: list[docker.models.containers.Container] = []
-        for cid, _ in self.network.attrs.get("Containers", {}).items():
-            try:
-                containers.append(self.docker.containers.get(cid))
-            except docker.errors.NotFound:
-                _LOGGER.warning("Docker network is corrupt! %s", cid)
-            except (docker.errors.DockerException, requests.RequestException) as err:
-                _LOGGER.error("Unknown error with container lookup %s", err)
+    def network(self) -> docker.models.networks.Network:
+        """Return docker network."""
+        return self._network
 
-        return containers
+    @property
+    def containers(self) -> list[str]:
+        """Return of connected containers from network."""
+        return list(self.network.attrs.get("Containers", {}).keys())
 
     @property
     def gateway(self) -> IPv4Address:

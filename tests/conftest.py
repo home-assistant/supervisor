@@ -63,11 +63,6 @@ from .dbus_service_mocks.network_manager import NetworkManager as NetworkManager
 # pylint: disable=redefined-outer-name, protected-access
 
 
-async def mock_async_return_true(*args, **kwargs) -> bool:
-    """Mock methods to return True."""
-    return True
-
-
 @pytest.fixture
 async def path_extern() -> None:
     """Set external path env for tests."""
@@ -76,7 +71,7 @@ async def path_extern() -> None:
 
 
 @pytest.fixture
-def docker() -> DockerAPI:
+async def docker() -> DockerAPI:
     """Mock DockerAPI."""
     images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
 
@@ -97,11 +92,12 @@ def docker() -> DockerAPI:
         "supervisor.docker.manager.DockerConfig",
         return_value=MagicMock(),
     ), patch(
-        "supervisor.docker.manager.DockerAPI.load"
-    ), patch(
         "supervisor.docker.manager.DockerAPI.unload"
     ):
         docker_obj = DockerAPI(MagicMock())
+        with patch("supervisor.docker.monitor.DockerMonitor.load"):
+            await docker_obj.load()
+
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
         docker_obj.info.version = "1.0.0"
@@ -344,7 +340,7 @@ async def coresys(
     )
 
     # WebSocket
-    coresys_obj.homeassistant.api.check_api_state = mock_async_return_true
+    coresys_obj.homeassistant.api.check_api_state = AsyncMock(return_value=True)
     coresys_obj.homeassistant._websocket._client = AsyncMock(
         ha_version=AwesomeVersion("2021.2.4")
     )

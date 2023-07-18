@@ -434,6 +434,7 @@ class AddonManager(CoreSysAttributes):
     async def sync_dns(self) -> None:
         """Sync add-ons DNS names."""
         # Update hosts
+        add_host_coros: list[Awaitable[None]] = []
         for addon in self.installed:
             try:
                 if not await addon.instance.is_running():
@@ -448,9 +449,13 @@ class AddonManager(CoreSysAttributes):
                 )
                 capture_exception(err)
             else:
-                self.sys_plugins.dns.add_host(
-                    ipv4=addon.ip_address, names=[addon.hostname], write=False
+                add_host_coros.append(
+                    self.sys_plugins.dns.add_host(
+                        ipv4=addon.ip_address, names=[addon.hostname], write=False
+                    )
                 )
+
+        await asyncio.gather(*add_host_coros)
 
         # Write hosts files
         with suppress(CoreDNSError):
