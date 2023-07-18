@@ -71,7 +71,7 @@ async def path_extern() -> None:
 
 
 @pytest.fixture
-async def docker(event_loop) -> DockerAPI:
+async def docker() -> DockerAPI:
     """Mock DockerAPI."""
     images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
 
@@ -96,7 +96,7 @@ async def docker(event_loop) -> DockerAPI:
     ):
         docker_obj = DockerAPI(MagicMock())
         with patch("supervisor.docker.monitor.DockerMonitor.load"):
-            await docker_obj.load(event_loop)
+            await docker_obj.load()
 
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"

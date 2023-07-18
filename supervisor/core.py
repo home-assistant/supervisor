@@ -131,7 +131,7 @@ class Core(CoreSysAttributes):
             # Load mounts
             self.sys_mounts.load(),
             # Load Docker manager
-            self.sys_docker.load(self.sys_loop),
+            self.sys_docker.load(),
             # Load Plugins container
             self.sys_plugins.load(),
             # load last available data

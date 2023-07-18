@@ -1,5 +1,4 @@
 """Manager for Supervisor Docker."""
-from asyncio import BaseEventLoop
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
@@ -109,7 +108,7 @@ class DockerAPI:
             base_url=f"unix:/{str(SOCKET_DOCKER)}", version="auto", timeout=900
         )
         self.network: DockerNetwork = DockerNetwork(self.docker)
-        self._info: DockerInfo | None = None
+        self._info: DockerInfo = DockerInfo.new(self.docker.info())
         self.config: DockerConfig = DockerConfig()
         self._monitor: DockerMonitor = DockerMonitor(coresys)
 
@@ -131,8 +130,6 @@ class DockerAPI:
     @property
     def info(self) -> DockerInfo:
         """Return local docker info."""
-        if self._info is None:
-            raise RuntimeError("Info not set!")
         return self._info
 
     @property
@@ -145,10 +142,8 @@ class DockerAPI:
         """Return docker events monitor."""
         return self._monitor
 
-    async def load(self, loop: BaseEventLoop) -> None:
+    async def load(self) -> None:
         """Start docker events monitor."""
-        self._info = DockerInfo.new(await loop.run_in_executor(None, self.docker.info))
-        await self.network.load(loop)
         await self.monitor.load()
 
     async def unload(self) -> None:

@@ -1,5 +1,4 @@
 """Internal network manager for Supervisor."""
-from asyncio import BaseEventLoop
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
@@ -22,7 +21,7 @@ class DockerNetwork:
     def __init__(self, docker_client: docker.DockerClient):
         """Initialize internal Supervisor network."""
         self.docker: docker.DockerClient = docker_client
-        self._network: docker.models.networks.Network | None = None
+        self._network: docker.models.networks.Network = self._get_network()
 
     @property
     def name(self) -> str:
@@ -32,8 +31,6 @@ class DockerNetwork:
     @property
     def network(self) -> docker.models.networks.Network:
         """Return docker network."""
-        if self._network is None:
-            raise RuntimeError("Network not set!")
         return self._network
 
     @property
@@ -70,10 +67,6 @@ class DockerNetwork:
     def observer(self) -> IPv4Address:
         """Return observer of the network."""
         return DOCKER_NETWORK_MASK[6]
-
-    async def load(self, loop: BaseEventLoop) -> None:
-        """Load docker network."""
-        self._network = await loop.run_in_executor(None, self._get_network)
 
     def _get_network(self) -> docker.models.networks.Network:
         """Get supervisor network."""
