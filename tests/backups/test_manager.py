@@ -18,9 +18,9 @@ from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, AddonState, Cor
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
+from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, DockerError
-from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
 
@@ -423,10 +423,7 @@ async def test_backup_media_with_mounts(
     coresys.config.path_media.mkdir()
 
     # Restore the backup and check that only the test files we made returned
-    async def mock_async_true(*args, **kwargs):
-        return True
-
-    with patch.object(HomeAssistantCore, "is_running", new=mock_async_true):
+    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
         await coresys.backups.do_restore_partial(backup, folders=["media"])
 
     assert test_file_1.exists()
@@ -485,10 +482,7 @@ async def test_backup_share_with_mounts(
     coresys.config.path_share.mkdir()
 
     # Restore the backup and check that only the test files we made returned
-    async def mock_async_true(*args, **kwargs):
-        return True
-
-    with patch.object(HomeAssistantCore, "is_running", new=mock_async_true):
+    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
         await coresys.backups.do_restore_partial(backup, folders=["share"])
 
     assert test_file_1.exists()
@@ -532,10 +526,7 @@ async def test_full_backup_to_mount(
     # Remove marker file and restore. Confirm it comes back
     marker.unlink()
 
-    async def mock_async_true(*args, **kwargs):
-        return True
-
-    with patch.object(HomeAssistantCore, "is_running", new=mock_async_true):
+    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
         await coresys.backups.do_restore_full(backup)
 
     assert marker.exists()
@@ -588,10 +579,7 @@ async def test_partial_backup_to_mount(
     # Remove marker file and restore. Confirm it comes back
     marker.unlink()
 
-    async def mock_async_true(*args, **kwargs):
-        return True
-
-    with patch.object(HomeAssistantCore, "is_running", new=mock_async_true):
+    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
         await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
     assert marker.exists()
@@ -718,6 +706,7 @@ async def test_backup_with_healthcheck(
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STARTUP
 
     state_changes: list[AddonState] = []
@@ -760,7 +749,7 @@ async def test_backup_with_healthcheck(
 
     with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
         AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
-    ), patch.object(DockerAddon, "_is_running", side_effect=[True, False, False]):
+    ), patch.object(DockerAddon, "is_running", side_effect=[True, False, False]):
         backup = await coresys.backups.do_backup_partial(
             homeassistant=False, addons=["local_ssh"]
         )
@@ -785,6 +774,7 @@ async def test_restore_with_healthcheck(
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await install_addon_ssh.load()
+    await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STARTUP
 
     backup = await coresys.backups.do_backup_partial(
@@ -828,7 +818,7 @@ async def test_restore_with_healthcheck(
         asyncio.create_task(container_events())
 
     with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
-        DockerAddon, "_is_running", return_value=False
+        DockerAddon, "is_running", return_value=False
     ), patch.object(AddonModel, "_validate_availability"), patch.object(
         Addon, "with_ingress", new=PropertyMock(return_value=False)
     ):

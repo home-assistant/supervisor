@@ -318,10 +318,7 @@ class HomeAssistantCore(CoreSysAttributes):
 
     @process_lock
     async def stop(self) -> None:
-        """Stop Home Assistant Docker.
-
-        Return a coroutine.
-        """
+        """Stop Home Assistant Docker."""
         try:
             return await self.instance.stop(remove_container=False)
         except DockerError as err:
