@@ -60,7 +60,9 @@ def get_connection_from_interface(
 
     if interface.type != InterfaceType.VLAN:
         conn[CONF_ATTR_DEVICE] = {
-            ATTR_MATCH_DEVICE: Variant("s", f"mac:{interface.mac}")
+            ATTR_MATCH_DEVICE: Variant(
+                "s", f"mac:{interface.mac},interface-name:{interface.name}"
+            )
         }
 
     ipv4 = {}
