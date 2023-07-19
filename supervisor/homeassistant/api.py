@@ -7,6 +7,7 @@ from typing import Any, AsyncContextManager
 
 import aiohttp
 from aiohttp import hdrs
+from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
@@ -16,6 +17,8 @@ from ..utils import check_port
 from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+GET_CORE_STATE_MIN_VERSION: AwesomeVersion = AwesomeVersion("2023.8.0")
 
 
 class HomeAssistantAPI(CoreSysAttributes):
@@ -106,14 +109,22 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         raise HomeAssistantAPIError()
 
-    async def get_config(self) -> dict[str, Any]:
-        """Return Home Assistant config."""
-        async with self.make_request("get", "api/config") as resp:
+    async def _get(self, path: str) -> dict[str, Any]:
+        """Return Home Assistant get API."""
+        async with self.make_request("get", path) as resp:
             if resp.status in (200, 201):
                 return await resp.json()
             else:
                 _LOGGER.debug("Home Assistant API return: %d", resp.status)
         raise HomeAssistantAPIError()
+
+    async def get_config(self) -> dict[str, Any]:
+        """Return Home Assistant config."""
+        await self._get("api/config")
+
+    async def get_core_state(self) -> dict[str, Any]:
+        """Return Home Assistant state."""
+        return await self._get("api/core/state")
 
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
@@ -134,8 +145,15 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         # Check if API is up
         with suppress(HomeAssistantAPIError):
-            data = await self.get_config()
+            # get_core_state is available since 2023.8.0 and preferred
+            # since it is significantly faster than get_config because
+            # it does not require serializing the entire config
+            if self.sys_homeassistant.version >= GET_CORE_STATE_MIN_VERSION:
+                data = await self.get_core_state()
+            else:
+                data = await self.get_config()
             # Older versions of home assistant does not expose the state
             if data and data.get("state", "RUNNING") == "RUNNING":
                 return True
+
         return False
