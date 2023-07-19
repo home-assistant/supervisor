@@ -109,7 +109,7 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         raise HomeAssistantAPIError()
 
-    async def _get(self, path: str) -> dict[str, Any]:
+    async def _get_json(self, path: str) -> dict[str, Any]:
         """Return Home Assistant get API."""
         async with self.make_request("get", path) as resp:
             if resp.status in (200, 201):
@@ -120,11 +120,11 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     async def get_config(self) -> dict[str, Any]:
         """Return Home Assistant config."""
-        await self._get("api/config")
+        await self._get_json("api/config")
 
     async def get_core_state(self) -> dict[str, Any]:
         """Return Home Assistant state."""
-        return await self._get("api/core/state")
+        return await self._get_json("api/core/state")
 
     async def check_api_state(self) -> bool:
         """Return True if Home Assistant up and running."""
