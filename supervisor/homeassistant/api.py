@@ -123,7 +123,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         await self._get_json("api/config")
 
     async def get_core_state(self) -> dict[str, Any]:
-        """Return Home Assistant state."""
+        """Return Home Assistant core state."""
         return await self._get_json("api/core/state")
 
     async def check_api_state(self) -> bool:
