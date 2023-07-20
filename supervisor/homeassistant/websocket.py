@@ -212,7 +212,11 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         """Determine if we can use WebSocket messages."""
         if self.sys_core.state in CLOSING_STATES:
             return False
-        if not await self.sys_homeassistant.api.check_api_state():
+
+        connected = self._client and self._client.connected
+        # If we are already connected, we can avoid the check_api_state call
+        # since it makes a new socket connection and we already have one.
+        if not connected and not await self.sys_homeassistant.api.check_api_state():
             # No core access, don't try.
             return False
 
