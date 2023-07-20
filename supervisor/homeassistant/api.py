@@ -18,7 +18,7 @@ from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-GET_CORE_STATE_MIN_VERSION: AwesomeVersion = AwesomeVersion("2023.8.0dev0")
+GET_CORE_STATE_MIN_VERSION: AwesomeVersion = AwesomeVersion("2023.8.0.dev20230720")
 
 
 class HomeAssistantAPI(CoreSysAttributes):
