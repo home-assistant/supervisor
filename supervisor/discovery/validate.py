@@ -33,7 +33,7 @@ SCHEMA_DISCOVERY = vol.Schema(
             {
                 vol.Required(ATTR_UUID): uuid_match,
                 vol.Required(ATTR_ADDON): str,
-                vol.Required(ATTR_SERVICE): valid_discovery_service,
+                vol.Required(ATTR_SERVICE): str,
                 vol.Required(ATTR_CONFIG): vol.Maybe(dict),
             },
             extra=vol.REMOVE_EXTRA,

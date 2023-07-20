@@ -1,6 +1,7 @@
 """Utilities for sentry."""
 
 import logging
+from typing import Any
 
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
@@ -15,6 +16,8 @@ from ..coresys import CoreSys
 from ..misc.filter import filter_data
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+only_once_events: set[str] = set()
 
 
 def sentry_connected() -> bool:
@@ -42,6 +45,14 @@ def init_sentry(coresys: CoreSys) -> None:
             release=SUPERVISOR_VERSION,
             max_breadcrumbs=30,
         )
+
+
+def capture_event(event: dict[str, Any], only_once: str | None = None):
+    """Capture an event and send to sentry."""
+    if sentry_connected():
+        if only_once and only_once not in only_once_events:
+            only_once_events.add(only_once)
+            sentry_sdk.capture_event(event)
 
 
 def capture_exception(err: Exception) -> None:

@@ -408,13 +408,21 @@ def sys_supervisor():
 
 
 @pytest.fixture
-async def api_client(aiohttp_client, coresys: CoreSys) -> TestClient:
+async def api_client(
+    aiohttp_client, coresys: CoreSys, request: pytest.FixtureRequest
+) -> TestClient:
     """Fixture for RestAPI client."""
+
+    request_from: str | None = getattr(request, "param", None)
 
     @web.middleware
     async def _security_middleware(request: web.Request, handler: web.RequestHandler):
-        """Make request are from Core."""
-        request[REQUEST_FROM] = coresys.homeassistant
+        """Make request are from Core or specified add-on."""
+        if request_from:
+            request[REQUEST_FROM] = coresys.addons.get(request_from, local_only=True)
+        else:
+            request[REQUEST_FROM] = coresys.homeassistant
+
         return await handler(request)
 
     api = RestAPI(coresys)
@@ -604,6 +612,15 @@ async def capture_exception() -> Mock:
         "supervisor.utils.sentry.sentry_sdk.capture_exception"
     ) as capture_exception:
         yield capture_exception
+
+
+@pytest.fixture
+async def capture_event() -> Mock:
+    """Mock capture event for testing."""
+    with patch("supervisor.utils.sentry.sentry_connected", return_value=True), patch(
+        "supervisor.utils.sentry.sentry_sdk.capture_event"
+    ) as capture_event:
+        yield capture_event
 
 
 @pytest.fixture

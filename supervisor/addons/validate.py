@@ -100,6 +100,7 @@ from ..const import (
 )
 from ..discovery.validate import valid_discovery_service
 from ..docker.const import Capabilities
+from ..utils.sentry import capture_event
 from ..validate import (
     docker_image,
     docker_ports,
@@ -173,6 +174,32 @@ def _warn_addon_config(config: dict[str, Any]):
         _LOGGER.warning(
             "Add-on which only support COLD backups trying to use post/pre commands. Please report this to the maintainer of %s",
             name,
+        )
+
+    invalid_services: list[str] = []
+    for service in config.get(ATTR_DISCOVERY, []):
+        try:
+            valid_discovery_service(service)
+        except vol.Invalid:
+            invalid_services.append(service)
+
+    if invalid_services:
+        # Logging at debug level as addon config is processed regularly and user may not have even installed this addon
+        _LOGGER.debug(
+            "Add-on lists the following unknown services for discovery: %s. Please report this to the maintainer of %s",
+            (services_list := ", ".join(invalid_services)),
+            name,
+        )
+        capture_event(
+            {
+                "message": f"Add-on {name} lists the following unknown services for discovery: {services_list}",
+                "name": name,
+                "slug": (slug := config[ATTR_SLUG]),
+                "version": (version := str(config[ATTR_VERSION])),
+                "url": config.get(ATTR_URL),
+                "discovery": config[ATTR_DISCOVERY],
+            },
+            only_once=f"addon_invalid_discovery_{slug}_{version}",
         )
 
     return config
@@ -313,7 +340,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_AUTH_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
-        vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
+        vol.Optional(ATTR_DISCOVERY): [str],
         vol.Optional(ATTR_BACKUP_EXCLUDE): [str],
         vol.Optional(ATTR_BACKUP_PRE): str,
         vol.Optional(ATTR_BACKUP_POST): str,
