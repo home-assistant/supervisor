@@ -175,6 +175,20 @@ def _warn_addon_config(config: dict[str, Any]):
             name,
         )
 
+    invalid_services: list[str] = []
+    for service in config.get(ATTR_DISCOVERY, []):
+        try:
+            valid_discovery_service(service)
+        except vol.Invalid:
+            invalid_services.append(service)
+
+    if invalid_services:
+        _LOGGER.warning(
+            "Add-on lists the following unknown services for discovery: %s. Please report this to the maintainer of %s",
+            ", ".join(invalid_services),
+            name,
+        )
+
     return config
 
 
@@ -313,7 +327,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_DOCKER_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_AUTH_API, default=False): vol.Boolean(),
         vol.Optional(ATTR_SERVICES): [vol.Match(RE_SERVICE)],
-        vol.Optional(ATTR_DISCOVERY): [valid_discovery_service],
+        vol.Optional(ATTR_DISCOVERY): [str],
         vol.Optional(ATTR_BACKUP_EXCLUDE): [str],
         vol.Optional(ATTR_BACKUP_PRE): str,
         vol.Optional(ATTR_BACKUP_POST): str,
