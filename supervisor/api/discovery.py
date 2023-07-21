@@ -12,6 +12,7 @@ from ..const import (
     ATTR_SERVICES,
     ATTR_UUID,
     REQUEST_FROM,
+    AddonState,
 )
 from ..coresys import CoreSysAttributes
 from ..discovery.validate import valid_discovery_service
@@ -41,19 +42,19 @@ class APIDiscovery(CoreSysAttributes):
     @api_process
     @require_home_assistant
     async def list(self, request):
-        """Show register services."""
-
+        """Show register  and available services."""
         # Get available discovery
-        discovery = []
-        for message in self.sys_discovery.list_messages:
-            discovery.append(
-                {
-                    ATTR_ADDON: message.addon,
-                    ATTR_SERVICE: message.service,
-                    ATTR_UUID: message.uuid,
-                    ATTR_CONFIG: message.config,
-                }
-            )
+        discovery = [
+            {
+                ATTR_ADDON: message.addon,
+                ATTR_SERVICE: message.service,
+                ATTR_UUID: message.uuid,
+                ATTR_CONFIG: message.config,
+            }
+            for message in self.sys_discovery.list_messages
+            if (addon := self.sys_addons.get(message.addon, local_only=True))
+            and addon.state == AddonState.STARTED
+        ]
 
         # Get available services/add-ons
         services = {}
