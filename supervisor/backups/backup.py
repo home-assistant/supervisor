@@ -183,7 +183,15 @@ class Backup(CoreSysAttributes):
             days=self.sys_backups.days_until_stale
         )
 
-    def new(self, slug, name, date, sys_type, password=None, compressed=True):
+    def new(
+        self,
+        slug: str,
+        name: str,
+        date: str,
+        sys_type: BackupType,
+        password: str | None = None,
+        compressed: bool = True,
+    ):
         """Initialize a new backup."""
         # Init metadata
         self._data[ATTR_VERSION] = 2
@@ -288,7 +296,7 @@ class Backup(CoreSysAttributes):
 
     async def __aenter__(self):
         """Async context to open a backup."""
-        self._tmp = TemporaryDirectory(dir=str(self.sys_config.path_tmp))
+        self._tmp = TemporaryDirectory(dir=str(self.tarfile.parent))
 
         # create a backup
         if not self.tarfile.is_file():
