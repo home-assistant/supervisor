@@ -100,7 +100,6 @@ from ..const import (
 )
 from ..discovery.validate import valid_discovery_service
 from ..docker.const import Capabilities
-from ..utils.sentry import capture_event
 from ..validate import (
     docker_image,
     docker_ports,
@@ -184,22 +183,10 @@ def _warn_addon_config(config: dict[str, Any]):
             invalid_services.append(service)
 
     if invalid_services:
-        # Logging at debug level as addon config is processed regularly and user may not have even installed this addon
-        _LOGGER.debug(
+        _LOGGER.warning(
             "Add-on lists the following unknown services for discovery: %s. Please report this to the maintainer of %s",
-            (services_list := ", ".join(invalid_services)),
+            ", ".join(invalid_services),
             name,
-        )
-        capture_event(
-            {
-                "message": f"Add-on {name} lists the following unknown services for discovery: {services_list}",
-                "name": name,
-                "slug": (slug := config[ATTR_SLUG]),
-                "version": (version := str(config[ATTR_VERSION])),
-                "url": config.get(ATTR_URL),
-                "discovery": config[ATTR_DISCOVERY],
-            },
-            only_once=f"addon_invalid_discovery_{slug}_{version}",
         )
 
     return config

@@ -1,7 +1,7 @@
 """Validate Add-on configs."""
 
 import logging
-from unittest.mock import ANY, Mock
+from unittest.mock import Mock
 
 import pytest
 import voluptuous as vol
@@ -294,21 +294,5 @@ def test_invalid_discovery(capture_event: Mock, caplog: pytest.LogCaptureFixture
 
     assert vd.SCHEMA_ADDON_CONFIG(config)
 
-    assert "unknown services for discovery: junk, junk2" not in caplog.text
-    capture_event.assert_called_once_with(
-        {
-            "message": ANY,
-            "name": "Test Add-on",
-            "slug": "test_addon",
-            "version": "1.0.1",
-            "url": "https://www.home-assistant.io/",
-            "discovery": ["mqtt", "junk", "junk2"],
-        }
-    )
-
-    capture_event.reset_mock()
-    with caplog.at_level(logging.DEBUG):
-        assert vd.SCHEMA_ADDON_CONFIG(config)
-
-    assert "unknown services for discovery: junk, junk2" in caplog.text
-    capture_event.assert_not_called()
+    with caplog.at_level(logging.WARNING):
+        assert "unknown services for discovery: junk, junk2" in caplog.text
