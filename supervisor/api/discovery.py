@@ -42,7 +42,7 @@ class APIDiscovery(CoreSysAttributes):
     @api_process
     @require_home_assistant
     async def list(self, request):
-        """Show register  and available services."""
+        """Show registered and available services."""
         # Get available discovery
         discovery = [
             {
