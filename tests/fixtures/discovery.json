@@ -1,0 +1,26 @@
+{
+  "discovery": [
+    {
+      "addon": "core_mosquitto",
+      "service": "mqtt",
+      "config": {
+        "host": "core-mosquitto",
+        "port": 1883,
+        "ssl": false,
+        "protocol": "3.1.1",
+        "username": "homeassistant",
+        "password": "password"
+      },
+      "uuid": "0c83a27125fe4421b58ea28eef5834c5"
+    },
+    {
+      "addon": "local_ssh",
+      "service": "adguard",
+      "config": {
+        "host": "127.0.0.1",
+        "port": 45158
+      },
+      "uuid": "0658be435a2948ec8b4d706d6708c56e"
+    }
+  ]
+}
