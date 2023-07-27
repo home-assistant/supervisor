@@ -71,6 +71,13 @@ async def path_extern() -> None:
 
 
 @pytest.fixture
+async def supervisor_name() -> None:
+    """Set env for supervisor name."""
+    os.environ["SUPERVISOR_NAME"] = "hassio_supervisor"
+    yield
+
+
+@pytest.fixture
 async def docker() -> DockerAPI:
     """Mock DockerAPI."""
     images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
@@ -286,7 +293,13 @@ async def fixture_all_dbus_services(
 
 @pytest.fixture
 async def coresys(
-    event_loop, docker, dbus_session_bus, all_dbus_services, aiohttp_client, run_dir
+    event_loop,
+    docker,
+    dbus_session_bus,
+    all_dbus_services,
+    aiohttp_client,
+    run_dir,
+    supervisor_name,
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with patch("supervisor.bootstrap.initialize_system"), patch(
@@ -409,7 +422,9 @@ def sys_supervisor():
 
 @pytest.fixture
 async def api_client(
-    aiohttp_client, coresys: CoreSys, request: pytest.FixtureRequest
+    aiohttp_client,
+    coresys: CoreSys,
+    request: pytest.FixtureRequest,
 ) -> TestClient:
     """Fixture for RestAPI client."""
 
@@ -428,9 +443,7 @@ async def api_client(
     api = RestAPI(coresys)
     api.webapp = web.Application(middlewares=[_security_middleware])
     api.start = AsyncMock()
-    with patch("supervisor.docker.supervisor.os") as os:
-        os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
-        await api.load()
+    await api.load()
     yield await aiohttp_client(api.webapp)
 
 
@@ -593,16 +606,12 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
 
 
 @pytest.fixture
-async def docker_logs(docker: DockerAPI) -> MagicMock:
+async def docker_logs(docker: DockerAPI, supervisor_name) -> MagicMock:
     """Mock log output for a container from docker."""
     container_mock = MagicMock()
     container_mock.logs.return_value = load_binary_fixture("logs_docker_container.txt")
     docker.containers.get.return_value = container_mock
-
-    with patch("supervisor.docker.supervisor.os") as os:
-        os.environ = {"SUPERVISOR_NAME": "hassio_supervisor"}
-
-        yield container_mock.logs
+    yield container_mock.logs
 
 
 @pytest.fixture
@@ -640,7 +649,6 @@ async def os_available(request: pytest.FixtureRequest) -> None:
 @pytest.fixture
 async def mount_propagation(docker: DockerAPI, coresys: CoreSys) -> None:
     """Mock supervisor connected to container with propagation set."""
-    os.environ["SUPERVISOR_NAME"] = "hassio_supervisor"
     docker.containers.get.return_value = supervisor = MagicMock()
     supervisor.attrs = {
         "Mounts": [

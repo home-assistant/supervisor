@@ -1,49 +1,48 @@
 """Supervisor job manager."""
-import logging
+from contextlib import contextmanager
+from contextvars import ContextVar
+from uuid import UUID, uuid4
+
+from attrs import define, field
+from attrs.setters import frozen
+from attrs.validators import ge, le
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import JobStartException
 from ..utils.common import FileConfiguration
 from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
 from .validate import SCHEMA_JOBS_CONFIG
 
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+current_job: ContextVar[UUID] = ContextVar("current_job")
 
 
-class SupervisorJob(CoreSysAttributes):
+@define
+class SupervisorJob:
     """Supervisor running job class."""
 
-    def __init__(self, coresys: CoreSys, name: str):
-        """Initialize the JobManager class."""
-        self.coresys: CoreSys = coresys
-        self.name: str = name
-        self._progress: int = 0
-        self._stage: str | None = None
+    name: str = field(on_setattr=frozen)
+    progress: int = field(default=0, validator=[ge(0), le(100)])
+    stage: str | None = None
+    uuid: UUID = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
+    parent_id: UUID = field(
+        init=False, factory=lambda: current_job.get(None), on_setattr=frozen
+    )
+    done: bool = field(init=False, default=False)
 
-    @property
-    def progress(self) -> int:
-        """Return the current progress."""
-        return self._progress
+    @contextmanager
+    def start(self):
+        """Start the job in the current task."""
+        if self.done:
+            raise JobStartException("Job is already complete")
+        if current_job.get(None) != self.parent_id:
+            raise JobStartException("Job has a different parent from current job")
 
-    @property
-    def stage(self) -> str | None:
-        """Return the current stage."""
-        return self._stage
-
-    def update(self, progress: int | None = None, stage: str | None = None) -> None:
-        """Update the job object."""
-        if progress is not None:
-            if progress >= round(100):
-                self.sys_jobs.remove_job(self)
-                return
-            self._progress = round(progress)
-        if stage is not None:
-            self._stage = stage
-        _LOGGER.debug(
-            "Job updated; name: %s, progress: %s, stage: %s",
-            self.name,
-            self.progress,
-            self.stage,
-        )
+        try:
+            token = current_job.set(self.uuid)
+            yield self
+        finally:
+            self.done = True
+            current_job.reset(token)
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
@@ -58,7 +57,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
     @property
     def jobs(self) -> list[SupervisorJob]:
         """Return a list of current jobs."""
-        return self._jobs
+        return list(self._jobs.values())
 
     @property
     def ignore_conditions(self) -> list[JobCondition]:
@@ -70,18 +69,17 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         """Set a list of ignored condition."""
         self._data[ATTR_IGNORE_CONDITIONS] = value
 
-    def get_job(self, name: str) -> SupervisorJob:
-        """Return a job, create one if it does not exist."""
-        if name not in self._jobs:
-            self._jobs[name] = SupervisorJob(self.coresys, name)
+    def new_job(self, name: str, initial_stage: str | None = None) -> SupervisorJob:
+        """Create a new job."""
+        job = SupervisorJob(name, stage=initial_stage)
+        self._jobs[job.uuid] = job
+        return job
 
-        return self._jobs[name]
+    def get_job(self, uuid: UUID | None = None) -> SupervisorJob | None:
+        """Return a job by uuid if it exists. Returns the current job of the thread if uuid omitted."""
+        if uuid:
+            return self._jobs.get(uuid)
 
-    def remove_job(self, job: SupervisorJob) -> None:
-        """Remove a job."""
-        if job.name in self._jobs:
-            del self._jobs[job.name]
-
-    def clear(self) -> None:
-        """Clear all jobs."""
-        self._jobs.clear()
+        if uuid := current_job.get(None):
+            return self._jobs.get(uuid)
+        return None

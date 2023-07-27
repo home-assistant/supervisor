@@ -177,7 +177,7 @@ async def test_api_store_update_healthcheck(
         asyncio.create_task(container_events())
 
     with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
-        DockerInterface, "_install"
+        DockerInterface, "install"
     ), patch.object(DockerAddon, "is_running", return_value=False), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
     ):

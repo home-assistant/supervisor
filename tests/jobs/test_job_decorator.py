@@ -20,6 +20,7 @@ from supervisor.host.const import HostFeature
 from supervisor.host.manager import HostManager
 from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
+from supervisor.jobs.job_group import JobGroup
 from supervisor.plugins.audio import PluginAudio
 from supervisor.resolution.const import UnhealthyReason
 from supervisor.utils.dt import utcnow
@@ -552,3 +553,105 @@ async def test_host_network(coresys: CoreSys):
 
     coresys.jobs.ignore_conditions = [JobCondition.HOST_NETWORK]
     assert await test.execute()
+
+
+async def test_job_group_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+    """Test job group once execution limitation."""
+
+    class TestClass(JobGroup):
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            super().__init__(coresys, "TestClass")
+            self.event = asyncio.Event()
+
+        @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=JobException)
+        async def inner_execute(self) -> bool:
+            """Inner class method called by execute, group level lock allows this."""
+            await self.event.wait()
+            return True
+
+        @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=JobException)
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return await self.inner_execute()
+
+        @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=JobException)
+        async def separate_execute(self) -> bool:
+            """Alternate execute method that shares group lock."""
+            return True
+
+        @Job(limit=JobExecutionLimit.ONCE, on_condition=JobException)
+        async def unrelated_method(self) -> bool:
+            """Unrelated method, sparate job with separate lock."""
+            return True
+
+    test = TestClass(coresys)
+    run_task = loop.create_task(test.execute())
+    await asyncio.sleep(0)
+
+    # All methods with group limits should be locked
+    with pytest.raises(JobException):
+        await test.execute()
+
+    with pytest.raises(JobException):
+        await test.inner_execute()
+
+    with pytest.raises(JobException):
+        await test.separate_execute()
+
+    # The once method is still callable
+    assert await test.unrelated_method()
+
+    test.event.set()
+    assert await run_task
+
+
+async def test_job_group_wait(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+    """Test job group wait execution limitation."""
+
+    class TestClass(JobGroup):
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            super().__init__(coresys, "TestClass")
+            self.execute_count = 0
+            self.other_count = 0
+            self.event = asyncio.Event()
+
+        @Job(limit=JobExecutionLimit.GROUP_WAIT, on_condition=JobException)
+        async def inner_execute(self) -> None:
+            """Inner class method called by execute, group level lock allows this."""
+            self.execute_count += 1
+            await self.event.wait()
+
+        @Job(limit=JobExecutionLimit.GROUP_WAIT, on_condition=JobException)
+        async def execute(self) -> None:
+            """Execute the class method."""
+            await self.inner_execute()
+
+        @Job(limit=JobExecutionLimit.GROUP_WAIT, on_condition=JobException)
+        async def separate_execute(self) -> None:
+            """Alternate execute method that shares group lock."""
+            self.other_count += 1
+
+    test = TestClass(coresys)
+    run_task = loop.create_task(test.execute())
+    await asyncio.sleep(0)
+
+    repeat_task = loop.create_task(test.execute())
+    other_task = loop.create_task(test.separate_execute())
+    await asyncio.sleep(0)
+
+    assert test.execute_count == 1
+    assert test.other_count == 0
+
+    test.event.set()
+    await run_task
+    await repeat_task
+    await other_task
+
+    assert test.execute_count == 2
+    assert test.other_count == 1

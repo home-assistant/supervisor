@@ -791,10 +791,7 @@ class Addon(AddonModel):
             raise AddonsError() from err
 
     async def write_stdin(self, data) -> None:
-        """Write data to add-on stdin.
-
-        Return a coroutine.
-        """
+        """Write data to add-on stdin."""
         if not self.with_stdin:
             raise AddonsNotSupportedError(
                 f"Add-on {self.slug} does not support writing to stdin!", _LOGGER.error
@@ -889,7 +886,10 @@ class Addon(AddonModel):
                 await self._backup_command(self.backup_pre)
             elif is_running and self.backup_mode == AddonBackupMode.COLD:
                 _LOGGER.info("Shutdown add-on %s for cold backup", self.slug)
-                await self.instance.stop()
+                try:
+                    await self.instance.stop()
+                except DockerError as err:
+                    raise AddonsError() from err
 
             try:
                 _LOGGER.info("Building backup for add-on %s", self.slug)

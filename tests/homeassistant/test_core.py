@@ -92,7 +92,7 @@ async def test_install_docker_error(
 ):
     """Test install fails due to docker error."""
     coresys.security.force = True
-    with patch.object(HomeAssistantCore, "_start"), patch.object(
+    with patch.object(HomeAssistantCore, "start"), patch.object(
         DockerHomeAssistant, "cleanup"
     ), patch.object(
         Updater, "image_homeassistant", new=PropertyMock(return_value="homeassistant")
@@ -119,7 +119,7 @@ async def test_install_other_error(
     """Test install fails due to other error."""
     coresys.docker.images.pull.side_effect = [(err := OSError()), MagicMock()]
 
-    with patch.object(HomeAssistantCore, "_start"), patch.object(
+    with patch.object(HomeAssistantCore, "start"), patch.object(
         DockerHomeAssistant, "cleanup"
     ), patch.object(
         Updater, "image_homeassistant", new=PropertyMock(return_value="homeassistant")

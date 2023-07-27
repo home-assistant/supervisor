@@ -36,14 +36,15 @@ from ..exceptions import (
     CoreDNSError,
     DBusError,
     DockerError,
+    DockerJobError,
     DockerNotFound,
     HardwareNotFound,
 )
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
-from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
+from ..jobs.const import JobCondition, JobExecutionLimit
+from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
-from ..utils import process_lock
 from ..utils.sentry import capture_exception
 from .const import (
     ENV_TIME,
@@ -73,8 +74,8 @@ class DockerAddon(DockerInterface):
 
     def __init__(self, coresys: CoreSys, addon: Addon):
         """Initialize Docker Home Assistant wrapper."""
-        super().__init__(coresys)
         self.addon: Addon = addon
+        super().__init__(coresys)
 
         self._hw_listener: EventListener | None = None
 
@@ -493,7 +494,8 @@ class DockerAddon(DockerInterface):
 
         return mounts
 
-    async def _run(self) -> None:
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def run(self) -> None:
         """Run Docker image."""
         if await self.is_running():
             return
@@ -503,7 +505,7 @@ class DockerAddon(DockerInterface):
             _LOGGER.warning("%s running with disabled protected mode!", self.addon.name)
 
         # Cleanup
-        await self._stop()
+        await self.stop()
 
         # Don't set a hostname if no separate UTS namespace is used
         hostname = None if self.uts_mode else self.addon.hostname
@@ -563,7 +565,8 @@ class DockerAddon(DockerInterface):
                 BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events
             )
 
-    async def _update(
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def update(
         self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> None:
         """Update a docker image."""
@@ -574,15 +577,16 @@ class DockerAddon(DockerInterface):
         )
 
         # Update docker image
-        await self._install(
+        await self.install(
             version, image=image, latest=latest, need_build=self.addon.latest_need_build
         )
 
         # Stop container & cleanup
         with suppress(DockerError):
-            await self._stop()
+            await self.stop()
 
-    async def _install(
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def install(
         self,
         version: AwesomeVersion,
         image: str | None = None,
@@ -595,7 +599,7 @@ class DockerAddon(DockerInterface):
         if need_build is None and self.addon.need_build or need_build:
             await self._build(version)
         else:
-            await super()._install(version, image, latest, arch)
+            await super().install(version, image, latest, arch)
 
     async def _build(self, version: AwesomeVersion) -> None:
         """Build a Docker container."""
@@ -632,14 +636,14 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Build %s:%s done", self.image, version)
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     def export_image(self, tar_file: Path) -> Awaitable[None]:
         """Export current images into a tar file."""
         return self.sys_run_in_executor(
             self.sys_docker.export_image, self.image, self.version, tar_file
         )
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     async def import_image(self, tar_file: Path) -> None:
         """Import a tar file as image."""
         docker_image = await self.sys_run_in_executor(
@@ -650,9 +654,9 @@ class DockerAddon(DockerInterface):
             _LOGGER.info("Importing image %s and version %s", tar_file, self.version)
 
             with suppress(DockerError):
-                await self._cleanup()
+                await self.cleanup()
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     async def write_stdin(self, data: bytes) -> None:
         """Write to add-on stdin."""
         if not await self.is_running():
@@ -682,7 +686,8 @@ class DockerAddon(DockerInterface):
             _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
             raise DockerError() from err
 
-    async def _stop(self, remove_container: bool = True) -> None:
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
         # DNS
         if self.ip_address != NO_ADDDRESS:
@@ -697,7 +702,7 @@ class DockerAddon(DockerInterface):
             self.sys_bus.remove_listener(self._hw_listener)
             self._hw_listener = None
 
-        await super()._stop(remove_container)
+        await super().stop(remove_container)
 
     async def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
