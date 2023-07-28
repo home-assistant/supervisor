@@ -1,6 +1,6 @@
 """Supervisor job manager."""
 from contextlib import contextmanager
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from uuid import UUID, uuid4
 
 from attrs import define, field
@@ -37,6 +37,7 @@ class SupervisorJob:
         if current_job.get(None) != self.parent_id:
             raise JobStartException("Job has a different parent from current job")
 
+        token: Token[UUID] | None = None
         try:
             token = current_job.set(self.uuid)
             yield self
