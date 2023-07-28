@@ -47,7 +47,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
 
     @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     async def attach(
-        self, version: AwesomeVersion, skip_state_event_if_down: bool = False
+        self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
         """Attach to running docker container."""
         try:

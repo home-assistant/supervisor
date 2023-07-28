@@ -42,7 +42,8 @@ class SupervisorJob:
             yield self
         finally:
             self.done = True
-            current_job.reset(token)
+            if token:
+                current_job.reset(token)
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
