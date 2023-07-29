@@ -1,6 +1,8 @@
 """Supervisor job manager."""
+from collections.abc import Callable
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
+import logging
 from uuid import UUID, uuid4
 
 from attrs import define, field
@@ -8,12 +10,14 @@ from attrs.setters import frozen
 from attrs.validators import ge, le
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JobStartException
+from ..exceptions import JobNotFound, JobStartException
 from ..utils.common import FileConfiguration
 from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
 from .validate import SCHEMA_JOBS_CONFIG
 
 current_job: ContextVar[UUID] = ContextVar("current_job")
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 @define
@@ -30,7 +34,7 @@ class SupervisorJob:
     done: bool = field(init=False, default=False)
 
     @contextmanager
-    def start(self):
+    def start(self, *, on_done: Callable[["SupervisorJob"], None] | None = None):
         """Start the job in the current task."""
         if self.done:
             raise JobStartException("Job is already complete")
@@ -45,6 +49,8 @@ class SupervisorJob:
             self.done = True
             if token:
                 current_job.reset(token)
+            if on_done:
+                on_done(self)
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
@@ -84,4 +90,15 @@ class JobManager(FileConfiguration, CoreSysAttributes):
 
         if uuid := current_job.get(None):
             return self._jobs.get(uuid)
+
         return None
+
+    def remove_job(self, job: SupervisorJob) -> None:
+        """Remove a job by UUID."""
+        if job.uuid not in self._jobs:
+            raise JobNotFound(f"Could not find job {job.name}", _LOGGER.error)
+
+        if not job.done:
+            _LOGGER.warning("Removing incomplete job %s from job manager", job.name)
+
+        del self._jobs[job.uuid]

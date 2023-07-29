@@ -40,6 +40,10 @@ class JobStartException(JobException):
     """Exception occurred starting a job on thread."""
 
 
+class JobNotFound(JobException):
+    """Exception for job not found."""
+
+
 class JobGroupExecutionLimitExceeded(JobException):
     """Exception when job group execution limit exceeded."""
 

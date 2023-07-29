@@ -18,6 +18,7 @@ from supervisor.exceptions import (
 )
 from supervisor.host.const import HostFeature
 from supervisor.host.manager import HostManager
+from supervisor.jobs import SupervisorJob
 from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.jobs.job_group import JobGroup
@@ -655,3 +656,69 @@ async def test_job_group_wait(coresys: CoreSys, loop: asyncio.BaseEventLoop):
 
     assert test.execute_count == 2
     assert test.other_count == 1
+
+
+async def test_job_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+    """Test job is cleaned up."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.event = asyncio.Event()
+            self.job: SupervisorJob | None = None
+
+        @Job(limit=JobExecutionLimit.ONCE)
+        async def execute(self):
+            """Execute the class method."""
+            self.job = coresys.jobs.get_job()
+            await self.event.wait()
+            return True
+
+    test = TestClass(coresys)
+    run_task = loop.create_task(test.execute())
+    await asyncio.sleep(0)
+
+    assert coresys.jobs.jobs == [test.job]
+    assert not test.job.done
+
+    test.event.set()
+    assert await run_task
+
+    assert coresys.jobs.jobs == []
+    assert test.job.done
+
+
+async def test_job_skip_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+    """Test job is left in job manager when cleanup is false."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.event = asyncio.Event()
+            self.job: SupervisorJob | None = None
+
+        @Job(limit=JobExecutionLimit.ONCE, cleanup=False)
+        async def execute(self):
+            """Execute the class method."""
+            self.job = coresys.jobs.get_job()
+            await self.event.wait()
+            return True
+
+    test = TestClass(coresys)
+    run_task = loop.create_task(test.execute())
+    await asyncio.sleep(0)
+
+    assert coresys.jobs.jobs == [test.job]
+    assert not test.job.done
+
+    test.event.set()
+    assert await run_task
+
+    assert coresys.jobs.jobs == [test.job]
+    assert test.job.done

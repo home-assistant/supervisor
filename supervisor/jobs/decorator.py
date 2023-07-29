@@ -30,6 +30,7 @@ class Job(CoreSysAttributes):
         self,
         name: str | None = None,
         conditions: list[JobCondition] | None = None,
+        cleanup: bool = True,
         on_condition: JobException | None = None,
         limit: JobExecutionLimit | None = None,
         throttle_period: timedelta
@@ -40,6 +41,7 @@ class Job(CoreSysAttributes):
         """Initialize the Job class."""
         self.name = name
         self.conditions = conditions
+        self.cleanup = cleanup
         self.on_condition = on_condition
         self.limit = limit
         self._throttle_period = throttle_period
@@ -164,7 +166,7 @@ class Job(CoreSysAttributes):
                     )
 
             # Execute Job
-            with job.start():
+            with job.start(on_done=self.sys_jobs.remove_job if self.cleanup else None):
                 try:
                     self._last_call = datetime.now()
                     if self._rate_limited_calls is not None:
