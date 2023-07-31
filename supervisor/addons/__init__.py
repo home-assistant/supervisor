@@ -459,4 +459,4 @@ class AddonManager(CoreSysAttributes):
 
         # Write hosts files
         with suppress(CoreDNSError):
-            self.sys_plugins.dns.write_hosts()
+            await self.sys_plugins.dns.write_hosts()
