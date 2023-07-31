@@ -50,6 +50,10 @@ class Job(CoreSysAttributes):
         self._method = None
         self._last_call = datetime.min
         self._rate_limited_calls: list[datetime] | None = None
+        self._job_group_limit = self.limit in (
+            JobExecutionLimit.GROUP_ONCE,
+            JobExecutionLimit.GROUP_WAIT,
+        )
 
         # Validate Options
         if (
@@ -82,7 +86,7 @@ class Job(CoreSysAttributes):
             self.coresys, self._last_call, self._rate_limited_calls
         )
 
-    def _post_init(self, obj: CoreSysAttributes) -> None:
+    def _post_init(self, obj: JobGroup | CoreSysAttributes) -> None:
         """Runtime init."""
         if self.name is None:
             self.name = str(self._method.__qualname__).lower().replace(".", "_")
@@ -95,6 +99,15 @@ class Job(CoreSysAttributes):
         if not self.coresys:
             raise RuntimeError(f"Job on {self.name} need to be an coresys object!")
 
+        # Job groups
+        if self._job_group_limit:
+            try:
+                _ = obj.acquire and obj.release
+            except AttributeError:
+                raise RuntimeError(
+                    f"Job on {self.name} need to be a JobGroup to use group based limits!"
+                )
+
         # Others
         if self._lock is None:
             self._lock = asyncio.Semaphore()
@@ -105,7 +118,11 @@ class Job(CoreSysAttributes):
 
         @wraps(method)
         async def wrapper(obj: JobGroup | CoreSysAttributes, *args, **kwargs) -> Any:
-            """Wrap the method."""
+            """Wrap the method.
+
+            This method must be on an instance of CoreSysAttributes. If a JOB_GROUP limit
+            is used, then it must be on an instance of JobGroup.
+            """
             self._post_init(obj)
 
             job = self.sys_jobs.new_job(self.name)
@@ -124,14 +141,7 @@ class Job(CoreSysAttributes):
             # Handle exection limits
             if self.limit in (JobExecutionLimit.SINGLE_WAIT, JobExecutionLimit.ONCE):
                 await self._acquire_exection_limit()
-            elif self.limit in (
-                JobExecutionLimit.GROUP_ONCE,
-                JobExecutionLimit.GROUP_WAIT,
-            ):
-                if not isinstance(obj, JobGroup):
-                    raise RuntimeError(
-                        f"Job on {self.name} need to be a JobGroup to use group based limits!"
-                    )
+            elif self._job_group_limit:
                 try:
                     await obj.acquire(job, self.limit == JobExecutionLimit.GROUP_WAIT)
                 except JobGroupExecutionLimitExceeded as err:
@@ -181,10 +191,7 @@ class Job(CoreSysAttributes):
                     raise JobException() from err
                 finally:
                     self._release_exception_limits()
-                    if self.limit in (
-                        JobExecutionLimit.GROUP_ONCE,
-                        JobExecutionLimit.GROUP_WAIT,
-                    ):
+                    if self._job_group_limit:
                         obj.release()
 
         return wrapper
