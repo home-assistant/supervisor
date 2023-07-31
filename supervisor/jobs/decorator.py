@@ -106,7 +106,7 @@ class Job(CoreSysAttributes):
             except AttributeError:
                 raise RuntimeError(
                     f"Job on {self.name} need to be a JobGroup to use group based limits!"
-                )
+                ) from None
 
         # Others
         if self._lock is None:
