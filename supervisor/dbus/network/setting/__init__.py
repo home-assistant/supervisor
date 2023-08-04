@@ -11,9 +11,9 @@ from ...interface import DBusInterface
 from ...utils import dbus_connected
 from ..configuration import (
     ConnectionProperties,
-    DeviceProperties,
     EthernetProperties,
     IpProperties,
+    MatchProperties,
     VlanProperties,
     WirelessProperties,
     WirelessSecurityProperties,
@@ -26,7 +26,8 @@ CONF_ATTR_802_WIRELESS_SECURITY = "802-11-wireless-security"
 CONF_ATTR_VLAN = "vlan"
 CONF_ATTR_IPV4 = "ipv4"
 CONF_ATTR_IPV6 = "ipv6"
-CONF_ATTR_DEVICE = "device"
+CONF_ATTR_MATCH = "match"
+CONF_ATTR_PATH = "path"
 
 ATTR_ID = "id"
 ATTR_UUID = "uuid"
@@ -37,7 +38,7 @@ ATTR_POWERSAVE = "powersave"
 ATTR_AUTH_ALG = "auth-alg"
 ATTR_KEY_MGMT = "key-mgmt"
 ATTR_INTERFACE_NAME = "interface-name"
-ATTR_MATCH_DEVICE = "match-device"
+ATTR_PATH = "path"
 
 IPV4_6_IGNORE_FIELDS = [
     "addresses",
@@ -88,7 +89,7 @@ class NetworkSetting(DBusInterface):
         self._vlan: VlanProperties | None = None
         self._ipv4: IpProperties | None = None
         self._ipv6: IpProperties | None = None
-        self._device: DeviceProperties | None = None
+        self._match: MatchProperties | None = None
 
     @property
     def connection(self) -> ConnectionProperties | None:
@@ -126,9 +127,9 @@ class NetworkSetting(DBusInterface):
         return self._ipv6
 
     @property
-    def device(self) -> DeviceProperties | None:
-        """Return device properties if any."""
-        return self._device
+    def match(self) -> MatchProperties | None:
+        """Return match properties if any."""
+        return self._match
 
     @dbus_connected
     async def get_settings(self) -> dict[str, Any]:
@@ -166,7 +167,7 @@ class NetworkSetting(DBusInterface):
             CONF_ATTR_IPV6,
             ignore_current_value=IPV4_6_IGNORE_FIELDS,
         )
-        _merge_settings_attribute(new_settings, settings, CONF_ATTR_DEVICE)
+        _merge_settings_attribute(new_settings, settings, CONF_ATTR_MATCH)
 
         await self.dbus.Settings.Connection.call_update(new_settings)
 
@@ -233,7 +234,5 @@ class NetworkSetting(DBusInterface):
                 data[CONF_ATTR_IPV6].get(ATTR_METHOD),
             )
 
-        if CONF_ATTR_DEVICE in data:
-            self._device = DeviceProperties(
-                data[CONF_ATTR_DEVICE].get(ATTR_MATCH_DEVICE)
-            )
+        if CONF_ATTR_MATCH in data:
+            self._match = MatchProperties(data[CONF_ATTR_MATCH].get(ATTR_PATH))

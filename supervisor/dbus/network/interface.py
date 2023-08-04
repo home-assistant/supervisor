@@ -11,6 +11,7 @@ from ..const import (
     DBUS_ATTR_DRIVER,
     DBUS_ATTR_HWADDRESS,
     DBUS_ATTR_MANAGED,
+    DBUS_ATTR_PATH,
     DBUS_IFACE_DEVICE,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
@@ -73,6 +74,12 @@ class NetworkInterface(DBusInterfaceProxy):
     def hw_address(self) -> str:
         """Return hardware address (i.e. mac address) of device."""
         return self.properties[DBUS_ATTR_HWADDRESS]
+
+    @property
+    @dbus_property
+    def path(self) -> str:
+        """Return The path of the device as exposed by the udev property ID_PATH."""
+        return self.properties[DBUS_ATTR_PATH]
 
     @property
     def connection(self) -> NetworkConnection | None:

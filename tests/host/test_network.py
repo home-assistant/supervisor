@@ -13,7 +13,6 @@ from supervisor.exceptions import HostNotSupportedError
 from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.host.const import WifiMode
 
-from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_active_connection import (
     ActiveConnection as ActiveConnectionService,
@@ -253,47 +252,3 @@ async def test_host_connectivity_disabled(
         }
     )
     assert "connectivity_check" not in coresys.resolution.unsupported
-
-
-@pytest.mark.parametrize(
-    "interface_obj_path",
-    [
-        "/org/freedesktop/NetworkManager/Devices/4",
-        "/org/freedesktop/NetworkManager/Devices/5",
-    ],
-)
-async def test_load_with_mac_or_name_change(
-    coresys: CoreSys,
-    network_manager_service: NetworkManagerService,
-    interface_obj_path: str,
-):
-    """Test load fixes match-device settings if mac address or interface name has changed."""
-    await mock_dbus_services(
-        {
-            "network_active_connection": "/org/freedesktop/NetworkManager/ActiveConnection/2",
-            "network_connection_settings": "/org/freedesktop/NetworkManager/Settings/2",
-            "network_device": interface_obj_path,
-        },
-        coresys.dbus.bus,
-    )
-    await coresys.dbus.network.update({"Devices": [interface_obj_path]})
-
-    network_manager_service.ActivateConnection.calls.clear()
-    assert len(coresys.dbus.network.interfaces) == 1
-    interface = next(iter(coresys.dbus.network.interfaces))
-    assert interface.object_path == interface_obj_path
-    expected_match_device = (
-        f"mac:{interface.hw_address},interface-name:{interface.name}"
-    )
-    assert interface.settings.device.match_device != expected_match_device
-
-    await coresys.host.network.load()
-
-    assert network_manager_service.ActivateConnection.calls == [
-        (
-            "/org/freedesktop/NetworkManager/Settings/2",
-            interface_obj_path,
-            "/",
-        )
-    ]
-    assert interface.settings.device.match_device == expected_match_device
