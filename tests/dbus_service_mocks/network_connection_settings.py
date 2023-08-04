@@ -77,9 +77,7 @@ SETINGS_FIXTURES: dict[str, dict[str, dict[str, Variant]]] = {
         "proxy": {},
         "802-3-ethernet": SETTINGS_FIXTURE["802-3-ethernet"],
         "802-11-wireless": SETTINGS_FIXTURE["802-11-wireless"],
-        "device": {
-            "match-device": Variant("s", "mac:AA:BB:CC:DD:EE:FF,interface-name:eth0"),
-        },
+        "match": {"path": Variant("as", ["platform-ff3f0000.ethernet"])},
     },
 }
 

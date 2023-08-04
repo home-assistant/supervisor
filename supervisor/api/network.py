@@ -279,6 +279,7 @@ class APINetwork(CoreSysAttributes):
         vlan_interface = Interface(
             "",
             "",
+            "",
             True,
             True,
             False,

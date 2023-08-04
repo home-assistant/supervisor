@@ -17,10 +17,7 @@ async def test_get_connection_from_interface(network_manager: NetworkManager):
 
     assert "interface-name" not in connection_payload["connection"]
     assert connection_payload["connection"]["type"].value == "802-3-ethernet"
-    assert (
-        connection_payload["device"]["match-device"].value
-        == "mac:AA:BB:CC:DD:EE:FF,interface-name:eth0"
-    )
+    assert connection_payload["match"]["path"].value == ["platform-ff3f0000.ethernet"]
 
     assert connection_payload["ipv4"]["method"].value == "auto"
     assert "address-data" not in connection_payload["ipv4"]
