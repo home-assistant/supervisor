@@ -171,6 +171,7 @@ async def test_api_addon_rebuild_healthcheck(
     path_extern,
 ):
     """Test rebuilding an addon waits for healthy."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     container.status = "running"
     install_addon_ssh.path_data.mkdir()
     container.attrs["Config"] = {"Healthcheck": "exists"}

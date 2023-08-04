@@ -129,6 +129,7 @@ class Addon(AddonModel):
         )
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
+        self._startup_task: asyncio.Task | None = None
 
         @Job(
             name=f"addon_{slug}_restart_after_problem",
@@ -608,6 +609,12 @@ class Addon(AddonModel):
 
     async def unload(self) -> None:
         """Unload add-on and remove data."""
+        if self._startup_task:
+            # If we were waiting on startup, cancel that and let the task finish before proceeding
+            self._startup_task.cancel(f"Removing add-on {self.name} from system")
+            with suppress(asyncio.CancelledError):
+                await self._startup_task
+
         for listener in self._listeners:
             self.sys_bus.remove_listener(listener)
 
@@ -699,13 +706,18 @@ class Addon(AddonModel):
     async def _wait_for_startup(self) -> None:
         """Wait for startup event to be set with timeout."""
         try:
-            await asyncio.wait_for(self._startup_event.wait(), STARTUP_TIMEOUT)
+            self._startup_task = self.sys_create_task(self._startup_event.wait())
+            await asyncio.wait_for(self._startup_task, STARTUP_TIMEOUT)
         except asyncio.TimeoutError:
             _LOGGER.warning(
                 "Timeout while waiting for addon %s to start, took more then %s seconds",
                 self.name,
                 STARTUP_TIMEOUT,
             )
+        except asyncio.CancelledError as err:
+            _LOGGER.info("Wait for addon startup task cancelled due to: %s", err)
+        finally:
+            self._startup_task = None
 
     async def start(self) -> Awaitable[None]:
         """Set options and start add-on.

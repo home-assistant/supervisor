@@ -277,3 +277,42 @@ async def test_rebuild(
         start_task = await coresys.addons.rebuild(TEST_ADDON_SLUG)
 
     assert bool(start_task) is (status == "running")
+
+
+async def test_start_wait_cancel_on_uninstall(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data,
+    path_extern,
+) -> None:
+    """Test the addon wait task is cancelled when addon is uninstalled."""
+    install_addon_ssh.path_data.mkdir()
+    container.attrs["Config"] = {"Healthcheck": "exists"}
+    await install_addon_ssh.load()
+    await asyncio.sleep(0)
+    assert install_addon_ssh.state == AddonState.STOPPED
+
+    start_task = asyncio.create_task(await install_addon_ssh.start())
+    assert start_task
+
+    coresys.bus.fire_event(
+        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+        DockerContainerStateEvent(
+            name=f"addon_{TEST_ADDON_SLUG}",
+            state=ContainerState.RUNNING,
+            id="abc123",
+            time=1,
+        ),
+    )
+    await asyncio.sleep(0.01)
+
+    assert not start_task.done()
+    assert install_addon_ssh.state == AddonState.STARTUP
+
+    caplog.clear()
+    await coresys.addons.uninstall(TEST_ADDON_SLUG)
+    await asyncio.sleep(0.01)
+    assert start_task.done()
+    assert "Wait for addon startup task cancelled" in caplog.text
