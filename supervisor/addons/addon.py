@@ -612,7 +612,7 @@ class Addon(AddonModel):
         if self._startup_task:
             # If we were waiting on startup, cancel that and let the task finish before proceeding
             self._startup_task.cancel(f"Removing add-on {self.name} from system")
-            await asyncio.sleep(0)
+            await self._startup_task
 
         for listener in self._listeners:
             self.sys_bus.remove_listener(listener)
