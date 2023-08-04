@@ -523,6 +523,7 @@ async def test_restore(
     path_extern,
 ) -> None:
     """Test restoring an addon."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 

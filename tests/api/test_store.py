@@ -125,6 +125,7 @@ async def test_api_store_update_healthcheck(
     path_extern,
 ):
     """Test updating an addon with healthcheck waits for health status."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     container.status = "running"
     container.attrs["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
