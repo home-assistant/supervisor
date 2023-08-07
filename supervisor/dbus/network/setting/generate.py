@@ -59,7 +59,10 @@ def get_connection_from_interface(
     }
 
     if interface.type != InterfaceType.VLAN:
-        conn[CONF_ATTR_MATCH] = {CONF_ATTR_PATH: Variant("as", [interface.path])}
+        if interface.path:
+            conn[CONF_ATTR_MATCH] = {CONF_ATTR_PATH: Variant("as", [interface.path])}
+        else:
+            conn[CONF_ATTR_CONNECTION]["interface-name"] = Variant("s", interface.name)
 
     ipv4 = {}
     if not interface.ipv4 or interface.ipv4.method == InterfaceMethod.AUTO:
