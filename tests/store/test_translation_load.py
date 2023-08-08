@@ -3,6 +3,7 @@
 import os
 
 from supervisor.coresys import CoreSys
+from supervisor.store.data import _read_addon_translations
 from supervisor.utils.common import write_json_or_yaml_file
 
 
@@ -10,7 +11,7 @@ def test_loading_traslations(coresys: CoreSys, tmp_path):
     """Test loading add-translation."""
     os.makedirs(tmp_path / "translations")
     # no transaltions
-    assert coresys.store.data._read_addon_translations(tmp_path) == {}
+    assert _read_addon_translations(tmp_path) == {}
 
     for file in ("en.json", "es.json"):
         write_json_or_yaml_file(
@@ -27,7 +28,7 @@ def test_loading_traslations(coresys: CoreSys, tmp_path):
             },
         )
 
-    translations = coresys.store.data._read_addon_translations(tmp_path)
+    translations = _read_addon_translations(tmp_path)
 
     assert translations["en"]["configuration"]["test"]["name"] == "test"
     assert translations["es"]["configuration"]["test"]["name"] == "test"
