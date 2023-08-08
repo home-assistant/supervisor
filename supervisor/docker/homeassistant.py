@@ -7,9 +7,11 @@ from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker.types import Mount
 
 from ..const import LABEL_MACHINE, MACHINE_ID
+from ..exceptions import DockerJobError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
-from ..utils import process_lock
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from .const import (
     ENV_TIME,
     ENV_TOKEN,
@@ -131,13 +133,14 @@ class DockerHomeAssistant(DockerInterface):
 
         return mounts
 
-    async def _run(self) -> None:
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def run(self) -> None:
         """Run Docker image."""
         if await self.is_running():
             return
 
         # Cleanup
-        await self._stop()
+        await self.stop()
 
         # Create & Run container
         docker_container = await self.sys_run_in_executor(
@@ -173,7 +176,7 @@ class DockerHomeAssistant(DockerInterface):
             "Starting Home Assistant %s with version %s", self.image, self.version
         )
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     async def execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command."""
         return await self.sys_run_in_executor(

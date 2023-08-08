@@ -8,6 +8,7 @@ import logging
 import re
 from time import time
 from typing import Any
+from uuid import uuid4
 
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
@@ -24,18 +25,21 @@ from ..const import (
     BusEvent,
     CpuArch,
 )
-from ..coresys import CoreSys, CoreSysAttributes
+from ..coresys import CoreSys
 from ..exceptions import (
     CodeNotaryError,
     CodeNotaryUntrusted,
     DockerAPIError,
     DockerError,
+    DockerJobError,
     DockerNotFound,
     DockerRequestError,
     DockerTrustError,
 )
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
+from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
-from ..utils import process_lock
 from ..utils.sentry import capture_exception
 from .const import ContainerState, RestartPolicy
 from .manager import CommandReturn
@@ -73,11 +77,12 @@ def _container_state_from_model(docker_container: Container) -> ContainerState:
     return ContainerState.STOPPED
 
 
-class DockerInterface(CoreSysAttributes):
+class DockerInterface(JobGroup):
     """Docker Supervisor interface."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
+        super().__init__(coresys, f"container_{self.name or uuid4().hex}")
         self.coresys: CoreSys = coresys
         self._meta: dict[str, Any] | None = None
         self.lock: asyncio.Lock = asyncio.Lock()
@@ -204,25 +209,15 @@ class DockerInterface(CoreSysAttributes):
 
         await self.sys_run_in_executor(self.sys_docker.docker.login, **credentials)
 
-    @process_lock
-    def install(
-        self,
-        version: AwesomeVersion,
-        image: str | None = None,
-        latest: bool = False,
-        arch: CpuArch | None = None,
-    ) -> Awaitable[None]:
-        """Pull docker image."""
-        return self._install(version, image, latest, arch)
-
-    async def _install(
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def install(
         self,
         version: AwesomeVersion,
         image: str | None = None,
         latest: bool = False,
         arch: CpuArch | None = None,
     ) -> None:
-        """Pull Docker image."""
+        """Pull docker image."""
         image = image or self.image
         arch = arch or self.sys_arch.supervisor
 
@@ -328,17 +323,11 @@ class DockerInterface(CoreSysAttributes):
 
         return _container_state_from_model(docker_container)
 
-    @process_lock
-    def attach(
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def attach(
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
-    ) -> Awaitable[None]:
-        """Attach to running Docker container."""
-        return self._attach(version, skip_state_event_if_down)
-
-    async def _attach(
-        self, version: AwesomeVersion, skip_state_event_if_down: bool = False
     ) -> None:
-        """Attach to running docker container."""
+        """Attach to running Docker container."""
         with suppress(docker.errors.DockerException, requests.RequestException):
             docker_container = await self.sys_run_in_executor(
                 self.sys_docker.containers.get, self.name
@@ -370,21 +359,13 @@ class DockerInterface(CoreSysAttributes):
             raise DockerError()
         _LOGGER.info("Attaching to %s with version %s", self.image, self.version)
 
-    @process_lock
-    def run(self) -> Awaitable[None]:
-        """Run Docker image."""
-        return self._run()
-
-    async def _run(self) -> None:
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def run(self) -> None:
         """Run Docker image."""
         raise NotImplementedError()
 
-    @process_lock
-    def stop(self, remove_container: bool = True) -> Awaitable[None]:
-        """Stop/remove Docker container."""
-        return self._stop(remove_container)
-
-    async def _stop(self, remove_container: bool = True) -> None:
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
         with suppress(DockerNotFound):
             await self.sys_run_in_executor(
@@ -394,34 +375,28 @@ class DockerInterface(CoreSysAttributes):
                 remove_container,
             )
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     def start(self) -> Awaitable[None]:
         """Start Docker container."""
         return self.sys_run_in_executor(self.sys_docker.start_container, self.name)
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     async def remove(self) -> None:
         """Remove Docker images."""
         # Cleanup container
         with suppress(DockerError):
-            await self._stop()
+            await self.stop()
 
         await self.sys_run_in_executor(
             self.sys_docker.remove_image, self.image, self.version
         )
         self._meta = None
 
-    @process_lock
-    def update(
-        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
-    ) -> Awaitable[None]:
-        """Update a Docker image."""
-        return self._update(version, image, latest)
-
-    async def _update(
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def update(
         self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> None:
-        """Update a docker image."""
+        """Update a Docker image."""
         image = image or self.image
 
         _LOGGER.info(
@@ -429,11 +404,11 @@ class DockerInterface(CoreSysAttributes):
         )
 
         # Update docker image
-        await self._install(version, image=image, latest=latest)
+        await self.install(version, image=image, latest=latest)
 
         # Stop container & cleanup
         with suppress(DockerError):
-            await self._stop()
+            await self.stop()
 
     async def logs(self) -> bytes:
         """Return Docker logs of container."""
@@ -444,12 +419,8 @@ class DockerInterface(CoreSysAttributes):
 
         return b""
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     def cleanup(self, old_image: str | None = None) -> Awaitable[None]:
-        """Check if old version exists and cleanup."""
-        return self._cleanup(old_image)
-
-    def _cleanup(self, old_image: str | None = None) -> Awaitable[None]:
         """Check if old version exists and cleanup."""
         return self.sys_run_in_executor(
             self.sys_docker.cleanup_old_images,
@@ -458,14 +429,14 @@ class DockerInterface(CoreSysAttributes):
             {old_image} if old_image else None,
         )
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     def restart(self) -> Awaitable[None]:
         """Restart docker container."""
         return self.sys_run_in_executor(
             self.sys_docker.restart_container, self.name, self.timeout
         )
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     async def execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command."""
         raise NotImplementedError()
@@ -526,7 +497,7 @@ class DockerInterface(CoreSysAttributes):
         available_version.sort(reverse=True)
         return available_version[0]
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     def run_inside(self, command: str) -> Awaitable[CommandReturn]:
         """Execute a command inside Docker container."""
         return self.sys_run_in_executor(
@@ -540,7 +511,7 @@ class DockerInterface(CoreSysAttributes):
         checksum = image_id.partition(":")[2]
         return await self.sys_security.verify_own_content(checksum)
 
-    @process_lock
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
     async def check_trust(self) -> None:
         """Check trust of exists Docker image."""
         try:

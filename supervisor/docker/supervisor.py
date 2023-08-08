@@ -9,7 +9,9 @@ import docker
 import requests
 
 from ..coresys import CoreSysAttributes
-from ..exceptions import DockerError
+from ..exceptions import DockerError, DockerJobError
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from .const import PropagationMode
 from .interface import DockerInterface
 
@@ -43,8 +45,9 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             if mount.get("Destination") == "/data"
         )
 
-    async def _attach(
-        self, version: AwesomeVersion, skip_state_event_if_down: bool = False
+    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    async def attach(
+        self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
         """Attach to running docker container."""
         try:

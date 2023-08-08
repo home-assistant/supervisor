@@ -194,7 +194,7 @@ async def test_addon_run_docker_error(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
 
-    with patch.object(DockerAddon, "_stop"), patch.object(
+    with patch.object(DockerAddon, "stop"), patch.object(
         AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
     ), pytest.raises(DockerNotFound):
         await docker_addon.run()
@@ -218,7 +218,7 @@ async def test_addon_run_add_host_error(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
 
-    with patch.object(DockerAddon, "_stop"), patch.object(
+    with patch.object(DockerAddon, "stop"), patch.object(
         AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
     ), patch.object(PluginDns, "add_host", side_effect=(err := CoreDNSError())):
         await docker_addon.run()

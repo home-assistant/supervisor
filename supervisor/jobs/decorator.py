@@ -8,11 +8,17 @@ from typing import Any
 
 from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, JobConditionException, JobException
+from ..exceptions import (
+    HassioError,
+    JobConditionException,
+    JobException,
+    JobGroupExecutionLimitExceeded,
+)
 from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 from ..utils.sentry import capture_exception
 from .const import JobCondition, JobExecutionLimit
+from .job_group import JobGroup
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
 
@@ -44,6 +50,10 @@ class Job(CoreSysAttributes):
         self._method = None
         self._last_call = datetime.min
         self._rate_limited_calls: list[datetime] | None = None
+        self._job_group_limit = self.limit in (
+            JobExecutionLimit.GROUP_ONCE,
+            JobExecutionLimit.GROUP_WAIT,
+        )
 
         # Validate Options
         if (
@@ -76,18 +86,27 @@ class Job(CoreSysAttributes):
             self.coresys, self._last_call, self._rate_limited_calls
         )
 
-    def _post_init(self, args: tuple[Any]) -> None:
+    def _post_init(self, obj: JobGroup | CoreSysAttributes) -> None:
         """Runtime init."""
         if self.name is None:
             self.name = str(self._method.__qualname__).lower().replace(".", "_")
 
         # Coresys
         try:
-            self.coresys = args[0].coresys
+            self.coresys = obj.coresys
         except AttributeError:
             pass
         if not self.coresys:
             raise RuntimeError(f"Job on {self.name} need to be an coresys object!")
+
+        # Job groups
+        if self._job_group_limit:
+            try:
+                _ = obj.acquire and obj.release
+            except AttributeError:
+                raise RuntimeError(
+                    f"Job on {self.name} need to be a JobGroup to use group based limits!"
+                ) from None
 
         # Others
         if self._lock is None:
@@ -98,11 +117,15 @@ class Job(CoreSysAttributes):
         self._method = method
 
         @wraps(method)
-        async def wrapper(*args, **kwargs) -> Any:
-            """Wrap the method."""
-            self._post_init(args)
+        async def wrapper(obj: JobGroup | CoreSysAttributes, *args, **kwargs) -> Any:
+            """Wrap the method.
 
-            job = self.sys_jobs.get_job(self.name)
+            This method must be on an instance of CoreSysAttributes. If a JOB_GROUP limit
+            is used, then it must be on an instance of JobGroup.
+            """
+            self._post_init(obj)
+
+            job = self.sys_jobs.new_job(self.name)
 
             # Handle condition
             if self.conditions:
@@ -118,6 +141,13 @@ class Job(CoreSysAttributes):
             # Handle exection limits
             if self.limit in (JobExecutionLimit.SINGLE_WAIT, JobExecutionLimit.ONCE):
                 await self._acquire_exection_limit()
+            elif self._job_group_limit:
+                try:
+                    await obj.acquire(job, self.limit == JobExecutionLimit.GROUP_WAIT)
+                except JobGroupExecutionLimitExceeded as err:
+                    if self.on_condition:
+                        raise self.on_condition(str(err)) from err
+                    raise err
             elif self.limit == JobExecutionLimit.THROTTLE:
                 time_since_last_call = datetime.now() - self._last_call
                 if time_since_last_call < self.throttle_period:
@@ -146,22 +176,23 @@ class Job(CoreSysAttributes):
                     )
 
             # Execute Job
-            try:
-                self._last_call = datetime.now()
-                if self._rate_limited_calls is not None:
-                    self._rate_limited_calls.append(self._last_call)
+            with job.start(on_done=self.sys_jobs.remove_job if self.cleanup else None):
+                try:
+                    self._last_call = datetime.now()
+                    if self._rate_limited_calls is not None:
+                        self._rate_limited_calls.append(self._last_call)
 
-                return await self._method(*args, **kwargs)
-            except HassioError as err:
-                raise err
-            except Exception as err:
-                _LOGGER.exception("Unhandled exception: %s", err)
-                capture_exception(err)
-                raise JobException() from err
-            finally:
-                if self.cleanup:
-                    self.sys_jobs.remove_job(job)
-                self._release_exception_limits()
+                    return await self._method(obj, *args, **kwargs)
+                except HassioError as err:
+                    raise err
+                except Exception as err:
+                    _LOGGER.exception("Unhandled exception: %s", err)
+                    capture_exception(err)
+                    raise JobException() from err
+                finally:
+                    self._release_exception_limits()
+                    if self._job_group_limit:
+                        obj.release()
 
         return wrapper
 

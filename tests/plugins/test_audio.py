@@ -6,8 +6,16 @@ import pytest
 
 from supervisor.const import LogLevel
 from supervisor.coresys import CoreSys
+from supervisor.docker.audio import DockerAudio
 
-from tests.plugins.test_dns import fixture_docker_interface  # noqa: F401
+
+@pytest.fixture(name="docker_interface")
+async def fixture_docker_interface() -> tuple[AsyncMock, AsyncMock]:
+    """Mock docker interface methods."""
+    with patch.object(DockerAudio, "run") as run, patch.object(
+        DockerAudio, "restart"
+    ) as restart:
+        yield (run, restart)
 
 
 @pytest.fixture(name="write_json")

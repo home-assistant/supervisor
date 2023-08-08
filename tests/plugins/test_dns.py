@@ -9,7 +9,7 @@ import pytest
 from supervisor.const import BusEvent, LogLevel
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
-from supervisor.docker.interface import DockerInterface
+from supervisor.docker.dns import DockerDNS
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.plugins.dns import HostEntry
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -19,8 +19,8 @@ from supervisor.resolution.data import Issue, Suggestion
 @pytest.fixture(name="docker_interface")
 async def fixture_docker_interface() -> tuple[AsyncMock, AsyncMock]:
     """Mock docker interface methods."""
-    with patch.object(DockerInterface, "run") as run, patch.object(
-        DockerInterface, "restart"
+    with patch.object(DockerDNS, "run") as run, patch.object(
+        DockerDNS, "restart"
     ) as restart:
         yield (run, restart)
 

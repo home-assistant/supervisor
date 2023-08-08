@@ -57,7 +57,7 @@ async def test_image_added_removed_on_update(
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
     assert coresys.addons.store.get(TEST_ADDON_SLUG).image == "test/amd64-my-ssh-addon"
 
-    with patch.object(DockerInterface, "_install") as install, patch.object(
+    with patch.object(DockerInterface, "install") as install, patch.object(
         DockerAddon, "_build"
     ) as build:
         await install_addon_ssh.update()
@@ -77,7 +77,7 @@ async def test_image_added_removed_on_update(
     assert install_addon_ssh.image == "test/amd64-my-ssh-addon"
     assert coresys.addons.store.get(TEST_ADDON_SLUG).image == "local/amd64-addon-ssh"
 
-    with patch.object(DockerInterface, "_install") as install, patch.object(
+    with patch.object(DockerInterface, "install") as install, patch.object(
         DockerAddon, "_build"
     ) as build:
         await install_addon_ssh.update()
@@ -249,7 +249,7 @@ async def test_update(
 
     assert install_addon_ssh.need_update is True
 
-    with patch.object(DockerInterface, "_install"), patch.object(
+    with patch.object(DockerInterface, "install"), patch.object(
         DockerAddon, "is_running", return_value=False
     ):
         start_task = await coresys.addons.update(TEST_ADDON_SLUG)
