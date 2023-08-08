@@ -16,6 +16,24 @@ DNS_GOOD_V6 = [
     "DNS://2606:4700:4700::1001",  # cloudflare
 ]
 DNS_BAD = ["hello world", "https://foo.bar", "", "dns://example.com"]
+IMAGE_NAME_GOOD = [
+    "ghcr.io/home-assistant/{machine}-homeassistant",
+    "ghcr.io/home-assistant/{arch}-homeassistant",
+    "homeassistant/{arch}-homeassistant",
+    "doocker.io/homeassistant/{arch}-homeassistant",
+    "ghcr.io/home-assistant/amd64-homeassistant",
+    "homeassistant/amd64-homeassistant",
+    "ttl.sh/homeassistant",
+    "myreg.local:8080/homeassistant",
+]
+IMAGE_NAME_BAD = [
+    "ghcr.io/home-assistant/homeassistant:123",
+    ".ghcr.io/home-assistant/homeassistant",
+    "HOMEASSISTANT/homeassistant",
+    "homeassistant/HOMEASSISTANT",
+    "homeassistant/_homeassistant",
+    "homeassistant/-homeassistant",
+]
 
 
 async def test_dns_url_v4_good():
@@ -70,6 +88,19 @@ def test_dns_server_list_bad_combined():
     with pytest.raises(vol.error.Invalid):
         # bad list
         assert validate.dns_server_list(combined)
+
+
+def test_image_name_good():
+    """Test container image names validator with known-good image names."""
+    for image_name in IMAGE_NAME_GOOD:
+        assert validate.docker_image(image_name)
+
+
+def test_image_name_bad():
+    """Test container image names validator with known-bad image names."""
+    for image_name in IMAGE_NAME_BAD:
+        with pytest.raises(vol.error.Invalid):
+            assert validate.docker_image(image_name)
 
 
 def test_version_complex():
