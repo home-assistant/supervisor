@@ -15,46 +15,55 @@ from ..utils.common import FileConfiguration
 from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
 from .validate import SCHEMA_JOBS_CONFIG
 
-current_job: ContextVar[UUID] = ContextVar("current_job")
+# Context vars only act as a global within the same asyncio task
+# When a new asyncio task is started the current context is copied over.
+# Modifications to it in one task are not visible to others though.
+# This allows us to track what job is currently in progress in each task.
+_CURRENT_JOB: ContextVar[UUID] = ContextVar("current_job")
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 @define
 class SupervisorJob:
-    """Supervisor running job class."""
+    """Representation of a job running in supervisor."""
 
     name: str = field(on_setattr=frozen)
     progress: int = field(default=0, validator=[ge(0), le(100)])
     stage: str | None = None
     uuid: UUID = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
     parent_id: UUID = field(
-        init=False, factory=lambda: current_job.get(None), on_setattr=frozen
+        init=False, factory=lambda: _CURRENT_JOB.get(None), on_setattr=frozen
     )
     done: bool = field(init=False, default=False)
 
     @contextmanager
     def start(self, *, on_done: Callable[["SupervisorJob"], None] | None = None):
-        """Start the job in the current task."""
+        """Start the job in the current task.
+
+        This can only be called if the parent ID matches the job running in the current task.
+        This is to ensure that each asyncio task can only be doing one job at a time as that
+        determines what resources it can and cannot access.
+        """
         if self.done:
             raise JobStartException("Job is already complete")
-        if current_job.get(None) != self.parent_id:
+        if _CURRENT_JOB.get(None) != self.parent_id:
             raise JobStartException("Job has a different parent from current job")
 
         token: Token[UUID] | None = None
         try:
-            token = current_job.set(self.uuid)
+            token = _CURRENT_JOB.set(self.uuid)
             yield self
         finally:
             self.done = True
             if token:
-                current_job.reset(token)
+                _CURRENT_JOB.reset(token)
             if on_done:
                 on_done(self)
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
-    """Job class."""
+    """Job Manager class."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize the JobManager class."""
@@ -84,11 +93,11 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         return job
 
     def get_job(self, uuid: UUID | None = None) -> SupervisorJob | None:
-        """Return a job by uuid if it exists. Returns the current job of the thread if uuid omitted."""
+        """Return a job by uuid if it exists. Returns the current job of the asyncio task if uuid omitted."""
         if uuid:
             return self._jobs.get(uuid)
 
-        if uuid := current_job.get(None):
+        if uuid := _CURRENT_JOB.get(None):
             return self._jobs.get(uuid)
 
         return None

@@ -37,7 +37,7 @@ class JobConditionException(JobException):
 
 
 class JobStartException(JobException):
-    """Exception occurred starting a job on thread."""
+    """Exception occurred starting a job on in current asyncio task."""
 
 
 class JobNotFound(JobException):

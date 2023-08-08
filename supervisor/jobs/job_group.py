@@ -8,7 +8,13 @@ from ..exceptions import JobException, JobGroupExecutionLimitExceeded
 
 
 class JobGroup(CoreSysAttributes):
-    """Object with methods that require a common lock."""
+    """Object with methods that require a common lock.
+
+    This is used in classes like our DockerInterface class. Where each method
+    requires a lock as it involves some extensive I/O with Docker. But some
+    methods may need to call others as a part of processing to complete a
+    higher-level task and should not need to relinquish the lock in between.
+    """
 
     def __init__(self, coresys: CoreSys, group_name: str) -> None:
         """Initialize object."""
