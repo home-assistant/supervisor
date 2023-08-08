@@ -110,7 +110,7 @@ def test_invalid_repository():
     """Validate basic config with invalid repositories."""
     config = load_json_fixture("basic-addon-config.json")
 
-    config["image"] = "something"
+    config["image"] = "-invalid-something"
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
 
