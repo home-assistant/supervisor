@@ -1,6 +1,7 @@
 """Test addon manager."""
 
 import asyncio
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -8,6 +9,7 @@ import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.arch import CpuArch
+from supervisor.config import CoreConfig
 from supervisor.const import AddonBoot, AddonStartup, AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
@@ -22,6 +24,7 @@ from supervisor.exceptions import (
 )
 from supervisor.plugins.dns import PluginDns
 from supervisor.utils import check_exception_chain
+from supervisor.utils.common import write_json_file
 
 from tests.common import load_json_fixture
 from tests.const import TEST_ADDON_SLUG
@@ -316,3 +319,48 @@ async def test_start_wait_cancel_on_uninstall(
     await asyncio.sleep(0.01)
     assert start_task.done()
     assert "Wait for addon startup task cancelled" in caplog.text
+
+
+async def test_repository_file_missing(
+    coresys: CoreSys, tmp_supervisor_data: Path, caplog: pytest.LogCaptureFixture
+):
+    """Test repository file is missing."""
+    with patch.object(
+        CoreConfig,
+        "path_addons_git",
+        new=PropertyMock(return_value=tmp_supervisor_data / "addons" / "git"),
+    ):
+        repo_dir = coresys.config.path_addons_git / "test"
+        repo_dir.mkdir(parents=True)
+
+        await coresys.store.data.update()
+
+    assert f"No repository information exists at {repo_dir.as_posix()}" in caplog.text
+
+
+async def test_repository_file_error(
+    coresys: CoreSys, tmp_supervisor_data: Path, caplog: pytest.LogCaptureFixture
+):
+    """Test repository file is missing."""
+    with patch.object(
+        CoreConfig,
+        "path_addons_git",
+        new=PropertyMock(return_value=tmp_supervisor_data / "addons" / "git"),
+    ):
+        repo_dir = coresys.config.path_addons_git / "test"
+        repo_dir.mkdir(parents=True)
+
+        repo_file = repo_dir / "repository.json"
+
+        with repo_file.open("w") as file:
+            file.write("not json")
+
+        await coresys.store.data.update()
+        assert (
+            f"Can't read repository information from {repo_file.as_posix()}"
+            in caplog.text
+        )
+
+        write_json_file(repo_file, {"invalid": "bad"})
+        await coresys.store.data.update()
+        assert f"Repository parse error {repo_dir.as_posix()}" in caplog.text
