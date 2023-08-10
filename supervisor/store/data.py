@@ -133,7 +133,7 @@ class StoreData(CoreSysAttributes):
 
         for repo in await self.sys_run_in_executor(_read_git_repositories):
             self.repositories[repo.slug] = repo.config
-            self._read_addons_folder(repo.path, repo.slug)
+            await self._read_addons_folder(repo.path, repo.slug)
 
     async def _find_addons(self, path: Path, repository: dict) -> list[Path] | None:
         """Find add-ons in the path."""
