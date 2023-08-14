@@ -536,6 +536,29 @@ async def test_restore(
     assert bool(start_task) is (status == "running")
 
 
+async def test_restore_while_running(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test restore of a running addon."""
+    container.status = "running"
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
+    with patch.object(DockerAddon, "is_running", return_value=True), patch.object(
+        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
+    ):
+        start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
+
+    assert bool(start_task) is False
+    container.stop.assert_called_once()
+
+
 async def test_start_when_running(
     coresys: CoreSys,
     install_addon_ssh: Addon,

@@ -962,6 +962,11 @@ class Addon(AddonModel):
                 self.slug, data[ATTR_USER], data[ATTR_SYSTEM], restore_image
             )
 
+            # Stop it first if its running
+            if await self.instance.is_running():
+                with suppress(DockerError):
+                    await self.instance.stop()
+
             # Check version / restore image
             version = data[ATTR_VERSION]
             if not await self.instance.exists():
@@ -979,9 +984,6 @@ class Addon(AddonModel):
                 _LOGGER.info("Restore/Update of image for addon %s", self.slug)
                 with suppress(DockerError):
                     await self.instance.update(version, restore_image)
-            else:
-                with suppress(DockerError):
-                    await self.instance.stop()
 
             # Restore data
             def _restore_data():
