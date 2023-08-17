@@ -232,7 +232,11 @@ class SoundControl(CoreSysAttributes):
         await self.sys_run_in_executor(_activate_profile)
         await self.update()
 
-    @Job(limit=JobExecutionLimit.THROTTLE_WAIT, throttle_period=timedelta(seconds=10))
+    @Job(
+        name="sound_control_update",
+        limit=JobExecutionLimit.THROTTLE_WAIT,
+        throttle_period=timedelta(seconds=10),
+    )
     async def update(self):
         """Update properties over dbus."""
         _LOGGER.info("Updating PulseAudio information")

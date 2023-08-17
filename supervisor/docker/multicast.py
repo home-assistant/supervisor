@@ -31,7 +31,11 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         """Generate needed capabilities."""
         return [Capabilities.NET_ADMIN.value]
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_multicast_run",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def run(self) -> None:
         """Run Docker image."""
         if await self.is_running():

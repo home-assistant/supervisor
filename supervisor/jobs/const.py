@@ -36,3 +36,6 @@ class JobExecutionLimit(str, Enum):
     THROTTLE_RATE_LIMIT = "throttle_rate_limit"
     GROUP_ONCE = "group_once"
     GROUP_WAIT = "group_wait"
+    GROUP_THROTTLE = "group_throttle"
+    GROUP_THROTTLE_WAIT = "group_throttle_wait"
+    GROUP_THROTTLE_RATE_LIMIT = "group_throttle_rate_limit"

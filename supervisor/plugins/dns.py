@@ -187,6 +187,7 @@ class PluginDns(PluginBase):
         await self.write_hosts()
 
     @Job(
+        name="plugin_dns_update",
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=CoreDNSJobError,
     )
@@ -269,6 +270,7 @@ class PluginDns(PluginBase):
         return await super().watchdog_container(event)
 
     @Job(
+        name="plugin_dns_restart_after_problem",
         limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,

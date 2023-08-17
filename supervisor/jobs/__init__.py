@@ -29,6 +29,7 @@ class SupervisorJob:
     """Representation of a job running in supervisor."""
 
     name: str = field(on_setattr=frozen)
+    reference: str | None = None
     progress: int = field(default=0, validator=[ge(0), le(100)])
     stage: str | None = None
     uuid: UUID = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
@@ -86,9 +87,11 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         """Set a list of ignored condition."""
         self._data[ATTR_IGNORE_CONDITIONS] = value
 
-    def new_job(self, name: str, initial_stage: str | None = None) -> SupervisorJob:
+    def new_job(
+        self, name: str, reference: str | None = None, initial_stage: str | None = None
+    ) -> SupervisorJob:
         """Create a new job."""
-        job = SupervisorJob(name, stage=initial_stage)
+        job = SupervisorJob(name, reference=reference, stage=initial_stage)
         self._jobs[job.uuid] = job
         return job
 

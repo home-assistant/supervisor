@@ -156,6 +156,7 @@ class OSManager(CoreSysAttributes):
         )
 
     @Job(
+        name="os_manager_config_sync",
         conditions=[JobCondition.HAOS],
         on_condition=HassOSJobError,
     )
@@ -170,6 +171,7 @@ class OSManager(CoreSysAttributes):
         await self.sys_host.services.restart("hassos-config.service")
 
     @Job(
+        name="os_manager_update",
         conditions=[
             JobCondition.HAOS,
             JobCondition.INTERNET_SYSTEM,
@@ -225,7 +227,7 @@ class OSManager(CoreSysAttributes):
         )
         raise HassOSUpdateError()
 
-    @Job(conditions=[JobCondition.HAOS])
+    @Job(name="os_manager_mark_healthy", conditions=[JobCondition.HAOS])
     async def mark_healthy(self) -> None:
         """Set booted partition as good for rauc."""
         try:

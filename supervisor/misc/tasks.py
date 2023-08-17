@@ -83,7 +83,10 @@ class Tasks(CoreSysAttributes):
 
         _LOGGER.info("All core tasks are scheduled")
 
-    @Job(conditions=ADDON_UPDATE_CONDITIONS + [JobCondition.RUNNING])
+    @Job(
+        name="tasks_update_addons",
+        conditions=ADDON_UPDATE_CONDITIONS + [JobCondition.RUNNING],
+    )
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
         start_tasks: list[Awaitable[None]] = []
@@ -112,13 +115,14 @@ class Tasks(CoreSysAttributes):
         await asyncio.gather(*start_tasks)
 
     @Job(
+        name="tasks_update_supervisor",
         conditions=[
             JobCondition.AUTO_UPDATE,
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
             JobCondition.RUNNING,
-        ]
+        ],
     )
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
@@ -172,7 +176,7 @@ class Tasks(CoreSysAttributes):
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
-    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(name="tasks_update_cli", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_cli(self):
         """Check and run update of cli."""
         if not self.sys_plugins.cli.need_update:
@@ -183,7 +187,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.cli.update()
 
-    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(name="tasks_update_dns", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_dns(self):
         """Check and run update of CoreDNS plugin."""
         if not self.sys_plugins.dns.need_update:
@@ -195,7 +199,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.dns.update()
 
-    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(name="tasks_update_audio", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_audio(self):
         """Check and run update of PulseAudio plugin."""
         if not self.sys_plugins.audio.need_update:
@@ -207,7 +211,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.audio.update()
 
-    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(name="tasks_update_observer", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_observer(self):
         """Check and run update of Observer plugin."""
         if not self.sys_plugins.observer.need_update:
@@ -219,7 +223,7 @@ class Tasks(CoreSysAttributes):
         )
         await self.sys_plugins.observer.update()
 
-    @Job(conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
+    @Job(name="tasks_update_multicast", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_multicast(self):
         """Check and run update of multicast."""
         if not self.sys_plugins.multicast.need_update:
@@ -292,7 +296,7 @@ class Tasks(CoreSysAttributes):
             # Adjust state
             addon.state = AddonState.STOPPED
 
-    @Job(conditions=[JobCondition.SUPERVISOR_UPDATED])
+    @Job(name="tasks_reload_store", conditions=[JobCondition.SUPERVISOR_UPDATED])
     async def _reload_store(self) -> None:
         """Reload store and check for addon updates."""
         await self.sys_store.reload()

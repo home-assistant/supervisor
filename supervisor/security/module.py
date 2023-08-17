@@ -103,6 +103,7 @@ class Security(FileConfiguration, CoreSysAttributes):
             return
 
     @Job(
+        name="security_manager_integrity_check",
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=SecurityJobError,
         limit=JobExecutionLimit.ONCE,

@@ -211,7 +211,11 @@ class Supervisor(CoreSysAttributes):
 
         self.sys_create_task(self.sys_core.stop())
 
-    @Job(conditions=[JobCondition.RUNNING], on_condition=SupervisorJobError)
+    @Job(
+        name="supervisor_restart",
+        conditions=[JobCondition.RUNNING],
+        on_condition=SupervisorJobError,
+    )
     async def restart(self) -> None:
         """Restart Supervisor soft."""
         self.sys_core.exit_code = 100
@@ -255,6 +259,7 @@ class Supervisor(CoreSysAttributes):
             _LOGGER.error("Repair of Supervisor failed")
 
     @Job(
+        name="supervisor_check_connectivity",
         limit=JobExecutionLimit.THROTTLE,
         throttle_period=_check_connectivity_throttle_period,
     )

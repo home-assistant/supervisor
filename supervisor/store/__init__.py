@@ -80,7 +80,11 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             self._data[ATTR_REPOSITORIES], add_with_errors=True
         )
 
-    @Job(conditions=[JobCondition.SUPERVISOR_UPDATED], on_condition=StoreJobError)
+    @Job(
+        name="store_manager_reload",
+        conditions=[JobCondition.SUPERVISOR_UPDATED],
+        on_condition=StoreJobError,
+    )
     async def reload(self) -> None:
         """Update add-ons from repository and reload list."""
         tasks = [self.sys_create_task(repository.update()) for repository in self.all]
@@ -92,6 +96,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         self._read_addons()
 
     @Job(
+        name="store_manager_add_repository",
         conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.SUPERVISOR_UPDATED],
         on_condition=StoreJobError,
     )

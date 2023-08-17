@@ -22,6 +22,7 @@ class FixupSystemExecuteIntegrity(FixupBase):
     """Storage class for fixup."""
 
     @Job(
+        name="fixup_system_execute_integrity_process",
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=ResolutionFixupJobError,
         limit=JobExecutionLimit.THROTTLE,

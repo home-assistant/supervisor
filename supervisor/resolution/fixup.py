@@ -36,7 +36,10 @@ class ResolutionFixup(CoreSysAttributes):
         """Return a list of all fixups."""
         return list(self._fixups.values())
 
-    @Job(conditions=[JobCondition.HEALTHY, JobCondition.RUNNING])
+    @Job(
+        name="resolution_fixup_run_autofix",
+        conditions=[JobCondition.HEALTHY, JobCondition.RUNNING],
+    )
     async def run_autofix(self) -> None:
         """Run all startup fixes."""
         _LOGGER.info("Starting system autofix at state %s", self.sys_core.state)
