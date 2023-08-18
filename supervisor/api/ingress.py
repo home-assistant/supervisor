@@ -284,6 +284,10 @@ def _init_header(
         headers[HEADER_REMOTE_USER_ID] = session_data.user.id
         headers[HEADER_REMOTE_USER_NAME] = session_data.user.username
         headers[HEADER_REMOTE_USER_DISPLAY_NAME] = session_data.user.display_name
+    else:
+        headers.pop(HEADER_REMOTE_USER_ID, None)
+        headers.pop(HEADER_REMOTE_USER_NAME, None)
+        headers.pop(HEADER_REMOTE_USER_DISPLAY_NAME, None)
 
     # filter flags
     for name, value in request.headers.items():
