@@ -1,5 +1,6 @@
 """Init file for Supervisor add-ons."""
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 import logging
@@ -82,6 +83,7 @@ from ..const import (
 from ..coresys import CoreSys
 from ..docker.const import Capabilities
 from ..exceptions import AddonsNotSupportedError
+from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
 from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
 from .options import AddonOptions, UiOptions
@@ -97,7 +99,9 @@ class AddonModel(JobGroup, ABC):
 
     def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""
-        super().__init__(coresys, f"addon_{slug}", slug)
+        super().__init__(
+            coresys, JOB_GROUP_ADDON.format_map(defaultdict(str, slug=slug)), slug
+        )
         self.slug: str = slug
 
     @property

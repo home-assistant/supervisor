@@ -24,7 +24,7 @@ from ..exceptions import (
     HomeAssistantUpdateError,
     JobException,
 )
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobExecutionLimit
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType
@@ -56,7 +56,7 @@ class HomeAssistantCore(JobGroup):
 
     def __init__(self, coresys: CoreSys):
         """Initialize Home Assistant object."""
-        super().__init__(coresys, "home_assistant_core")
+        super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self.lock: asyncio.Lock = asyncio.Lock()
         self._error_state: bool = False

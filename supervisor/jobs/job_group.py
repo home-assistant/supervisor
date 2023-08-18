@@ -6,8 +6,6 @@ from . import SupervisorJob
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JobException, JobGroupExecutionLimitExceeded
 
-_GROUP_NAMES: set[str] = set()
-
 
 class JobGroup(CoreSysAttributes):
     """Object with methods that require a common lock.
@@ -22,10 +20,6 @@ class JobGroup(CoreSysAttributes):
         self, coresys: CoreSys, group_name: str, job_reference: str | None = None
     ) -> None:
         """Initialize object."""
-        if group_name in _GROUP_NAMES:
-            raise RuntimeError(f"A job group already exists with name {group_name}!")
-
-        _GROUP_NAMES.add(group_name)
         self.coresys: CoreSys = coresys
         self._group_name: str = group_name
         self._lock: Lock = Lock()

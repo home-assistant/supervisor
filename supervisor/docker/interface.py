@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 from collections.abc import Awaitable
 from contextlib import suppress
 import logging
@@ -36,7 +37,7 @@ from ..exceptions import (
     DockerRequestError,
     DockerTrustError,
 )
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
@@ -82,7 +83,13 @@ class DockerInterface(JobGroup):
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
-        super().__init__(coresys, f"container_{self.name or uuid4().hex}", self.name)
+        super().__init__(
+            coresys,
+            JOB_GROUP_DOCKER_INTERFACE.format_map(
+                defaultdict(str, name=self.name or uuid4().hex)
+            ),
+            self.name,
+        )
         self.coresys: CoreSys = coresys
         self._meta: dict[str, Any] | None = None
         self.lock: asyncio.Lock = asyncio.Lock()
