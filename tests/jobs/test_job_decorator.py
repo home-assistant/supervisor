@@ -3,6 +3,7 @@
 import asyncio
 from datetime import timedelta
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
+from uuid import uuid4
 
 from aiohttp.client_exceptions import ClientError
 import pytest
@@ -37,7 +38,7 @@ async def test_healthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.HEALTHY])
+        @Job(name="test_healthy_execute", conditions=[JobCondition.HEALTHY])
         async def execute(self):
             """Execute the class method."""
             return True
@@ -79,12 +80,18 @@ async def test_internet(
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute_host", conditions=[JobCondition.INTERNET_HOST])
+        @Job(
+            name=f"test_internet_execute_host_{uuid4().hex}",
+            conditions=[JobCondition.INTERNET_HOST],
+        )
         async def execute_host(self):
             """Execute the class method."""
             return True
 
-        @Job(name="test_execute_system", conditions=[JobCondition.INTERNET_SYSTEM])
+        @Job(
+            name=f"test_internet_execute_system_{uuid4().hex}",
+            conditions=[JobCondition.INTERNET_SYSTEM],
+        )
         async def execute_system(self):
             """Execute the class method."""
             return True
@@ -120,7 +127,7 @@ async def test_free_space(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.FREE_SPACE])
+        @Job(name="test_free_space_execute", conditions=[JobCondition.FREE_SPACE])
         async def execute(self):
             """Execute the class method."""
             return True
@@ -146,7 +153,7 @@ async def test_haos(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.HAOS])
+        @Job(name="test_haos_execute", conditions=[JobCondition.HAOS])
         async def execute(self):
             """Execute the class method."""
             return True
@@ -172,7 +179,7 @@ async def test_exception(coresys: CoreSys, capture_exception: Mock):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.HEALTHY])
+        @Job(name="test_exception_execute", conditions=[JobCondition.HEALTHY])
         async def execute(self):
             """Execute the class method."""
             raise HassioError()
@@ -196,7 +203,9 @@ async def test_exception_not_handle(coresys: CoreSys, capture_exception: Mock):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.HEALTHY])
+        @Job(
+            name="test_exception_not_handle_execute", conditions=[JobCondition.HEALTHY]
+        )
         async def execute(self):
             """Execute the class method."""
             raise err
@@ -219,7 +228,7 @@ async def test_running(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.RUNNING])
+        @Job(name="test_running_execute", conditions=[JobCondition.RUNNING])
         async def execute(self):
             """Execute the class method."""
             return True
@@ -247,7 +256,7 @@ async def test_exception_conditions(coresys: CoreSys):
             self.coresys = coresys
 
         @Job(
-            name="test_execute",
+            name="test_exception_conditions_execute",
             conditions=[JobCondition.RUNNING],
             on_condition=HassioError,
         )
@@ -278,7 +287,10 @@ async def test_execution_limit_single_wait(
             self.coresys = coresys
             self.run = asyncio.Lock()
 
-        @Job(name="test_execute", limit=JobExecutionLimit.SINGLE_WAIT)
+        @Job(
+            name="test_execution_limit_single_wait_execute",
+            limit=JobExecutionLimit.SINGLE_WAIT,
+        )
         async def execute(self, sleep: float):
             """Execute the class method."""
             assert not self.run.locked()
@@ -305,7 +317,7 @@ async def test_execution_limit_throttle_wait(
             self.call = 0
 
         @Job(
-            name="test_execute",
+            name="test_execution_limit_throttle_wait_execute",
             limit=JobExecutionLimit.THROTTLE_WAIT,
             throttle_period=timedelta(hours=1),
         )
@@ -341,7 +353,7 @@ async def test_execution_limit_throttle_rate_limit(
             self.call = 0
 
         @Job(
-            name="test_execute",
+            name=f"test_execution_limit_throttle_rate_limit_execute_{uuid4().hex}",
             limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
             throttle_period=timedelta(hours=1),
             throttle_max_calls=2,
@@ -380,7 +392,7 @@ async def test_execution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEven
             self.call = 0
 
         @Job(
-            name="test_execute",
+            name="test_execution_limit_throttle_execute",
             limit=JobExecutionLimit.THROTTLE,
             throttle_period=timedelta(hours=1),
         )
@@ -412,7 +424,9 @@ async def test_execution_limit_once(coresys: CoreSys, loop: asyncio.BaseEventLoo
             self.run = asyncio.Lock()
 
         @Job(
-            name="test_execute", limit=JobExecutionLimit.ONCE, on_condition=JobException
+            name="test_execution_limit_once_execute",
+            limit=JobExecutionLimit.ONCE,
+            on_condition=JobException,
         )
         async def execute(self, sleep: float):
             """Execute the class method."""
@@ -440,7 +454,10 @@ async def test_supervisor_updated(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.SUPERVISOR_UPDATED])
+        @Job(
+            name="test_supervisor_updated_execute",
+            conditions=[JobCondition.SUPERVISOR_UPDATED],
+        )
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
@@ -468,7 +485,10 @@ async def test_plugins_updated(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.PLUGINS_UPDATED])
+        @Job(
+            name="test_plugins_updated_execute",
+            conditions=[JobCondition.PLUGINS_UPDATED],
+        )
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
@@ -501,7 +521,7 @@ async def test_auto_update(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.AUTO_UPDATE])
+        @Job(name="test_auto_update_execute", conditions=[JobCondition.AUTO_UPDATE])
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
@@ -527,7 +547,7 @@ async def test_os_agent(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.OS_AGENT])
+        @Job(name="test_os_agent_execute", conditions=[JobCondition.OS_AGENT])
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
@@ -556,7 +576,7 @@ async def test_host_network(coresys: CoreSys):
             """Initialize the test class."""
             self.coresys = coresys
 
-        @Job(name="test_execute", conditions=[JobCondition.HOST_NETWORK])
+        @Job(name="test_host_network_execute", conditions=[JobCondition.HOST_NETWORK])
         async def execute(self) -> bool:
             """Execute the class method."""
             return True
@@ -583,7 +603,7 @@ async def test_job_group_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             self.event = asyncio.Event()
 
         @Job(
-            name="test_inner_execute",
+            name="test_job_group_once_inner_execute",
             limit=JobExecutionLimit.GROUP_ONCE,
             on_condition=JobException,
         )
@@ -593,7 +613,7 @@ async def test_job_group_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             return True
 
         @Job(
-            name="test_execute",
+            name="test_job_group_once_execute",
             limit=JobExecutionLimit.GROUP_ONCE,
             on_condition=JobException,
         )
@@ -602,7 +622,7 @@ async def test_job_group_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             return await self.inner_execute()
 
         @Job(
-            name="test_separate_execute",
+            name="test_job_group_once_separate_execute",
             limit=JobExecutionLimit.GROUP_ONCE,
             on_condition=JobException,
         )
@@ -610,7 +630,11 @@ async def test_job_group_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             """Alternate execute method that shares group lock."""
             return True
 
-        @Job(limit=JobExecutionLimit.ONCE, on_condition=JobException)
+        @Job(
+            name="test_job_group_once_unrelated",
+            limit=JobExecutionLimit.ONCE,
+            on_condition=JobException,
+        )
         async def unrelated_method(self) -> bool:
             """Unrelated method, sparate job with separate lock."""
             return True
@@ -650,7 +674,7 @@ async def test_job_group_wait(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             self.event = asyncio.Event()
 
         @Job(
-            name="test_inner_execute",
+            name="test_job_group_wait_inner_execute",
             limit=JobExecutionLimit.GROUP_WAIT,
             on_condition=JobException,
         )
@@ -660,7 +684,7 @@ async def test_job_group_wait(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             await self.event.wait()
 
         @Job(
-            name="test_execute",
+            name="test_job_group_wait_execute",
             limit=JobExecutionLimit.GROUP_WAIT,
             on_condition=JobException,
         )
@@ -669,7 +693,7 @@ async def test_job_group_wait(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             await self.inner_execute()
 
         @Job(
-            name="test_separate_execute",
+            name="test_job_group_wait_separate_execute",
             limit=JobExecutionLimit.GROUP_WAIT,
             on_condition=JobException,
         )
@@ -709,7 +733,7 @@ async def test_job_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             self.event = asyncio.Event()
             self.job: SupervisorJob | None = None
 
-        @Job(name="test_execute", limit=JobExecutionLimit.ONCE)
+        @Job(name="test_job_cleanup_execute", limit=JobExecutionLimit.ONCE)
         async def execute(self):
             """Execute the class method."""
             self.job = coresys.jobs.get_job()
@@ -742,7 +766,11 @@ async def test_job_skip_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             self.event = asyncio.Event()
             self.job: SupervisorJob | None = None
 
-        @Job(name="test_execute", limit=JobExecutionLimit.ONCE, cleanup=False)
+        @Job(
+            name="test_job_skip_cleanup_execute",
+            limit=JobExecutionLimit.ONCE,
+            cleanup=False,
+        )
         async def execute(self):
             """Execute the class method."""
             self.job = coresys.jobs.get_job()
@@ -778,7 +806,7 @@ async def test_execution_limit_group_throttle(
             self.call = 0
 
         @Job(
-            name="test_execute",
+            name="test_execution_limit_group_throttle_execute",
             limit=JobExecutionLimit.GROUP_THROTTLE,
             throttle_period=timedelta(milliseconds=95),
         )
@@ -827,7 +855,7 @@ async def test_execution_limit_group_throttle_wait(
             self.call = 0
 
         @Job(
-            name="test_execute",
+            name="test_execution_limit_group_throttle_wait_execute",
             limit=JobExecutionLimit.GROUP_THROTTLE_WAIT,
             throttle_period=timedelta(milliseconds=95),
         )
@@ -879,7 +907,7 @@ async def test_execution_limit_group_throttle_rate_limit(
             self.call = 0
 
         @Job(
-            name="test_execute",
+            name=f"test_execution_limit_group_throttle_rate_limit_execute_{uuid4().hex}",
             limit=JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
             throttle_period=timedelta(hours=1),
             throttle_max_calls=2,
