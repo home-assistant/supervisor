@@ -28,7 +28,11 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
         """Return name of Docker container."""
         return DNS_DOCKER_NAME
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_dns_run",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def run(self) -> None:
         """Run Docker image."""
         if await self.is_running():

@@ -45,7 +45,11 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             if mount.get("Destination") == "/data"
         )
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_supervisor_attach",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def attach(
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:

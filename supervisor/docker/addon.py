@@ -494,7 +494,11 @@ class DockerAddon(DockerInterface):
 
         return mounts
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_addon_run",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def run(self) -> None:
         """Run Docker image."""
         if await self.is_running():
@@ -565,7 +569,11 @@ class DockerAddon(DockerInterface):
                 BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events
             )
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_addon_update",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def update(
         self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> None:
@@ -585,7 +593,11 @@ class DockerAddon(DockerInterface):
         with suppress(DockerError):
             await self.stop()
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_addon_install",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def install(
         self,
         version: AwesomeVersion,
@@ -636,14 +648,22 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Build %s:%s done", self.image, version)
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_addon_export_image",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     def export_image(self, tar_file: Path) -> Awaitable[None]:
         """Export current images into a tar file."""
         return self.sys_run_in_executor(
             self.sys_docker.export_image, self.image, self.version, tar_file
         )
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_addon_import_image",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def import_image(self, tar_file: Path) -> None:
         """Import a tar file as image."""
         docker_image = await self.sys_run_in_executor(
@@ -656,7 +676,11 @@ class DockerAddon(DockerInterface):
             with suppress(DockerError):
                 await self.cleanup()
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_addon_write_stdin",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def write_stdin(self, data: bytes) -> None:
         """Write to add-on stdin."""
         if not await self.is_running():
@@ -686,7 +710,11 @@ class DockerAddon(DockerInterface):
             _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
             raise DockerError() from err
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_addon_stop",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
         # DNS
@@ -714,7 +742,11 @@ class DockerAddon(DockerInterface):
         checksum = image_id.partition(":")[2]
         return await self.sys_security.verify_content(self.addon.codenotary, checksum)
 
-    @Job(conditions=[JobCondition.OS_AGENT], limit=JobExecutionLimit.SINGLE_WAIT)
+    @Job(
+        name="docker_addon_hardware_events",
+        conditions=[JobCondition.OS_AGENT],
+        limit=JobExecutionLimit.SINGLE_WAIT,
+    )
     async def _hardware_events(self, device: Device) -> None:
         """Process Hardware events for adjust device access."""
         if not any(

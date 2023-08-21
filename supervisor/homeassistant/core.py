@@ -24,7 +24,7 @@ from ..exceptions import (
     HomeAssistantUpdateError,
     JobException,
 )
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobExecutionLimit
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType
@@ -56,7 +56,7 @@ class HomeAssistantCore(JobGroup):
 
     def __init__(self, coresys: CoreSys):
         """Initialize Home Assistant object."""
-        super().__init__(coresys, "home_assistant_core")
+        super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self.lock: asyncio.Lock = asyncio.Lock()
         self._error_state: bool = False
@@ -99,7 +99,11 @@ class HomeAssistantCore(JobGroup):
             with suppress(HomeAssistantError):
                 await self.start()
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=HomeAssistantJobError)
+    @Job(
+        name="home_assistant_core_install_landing_page",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def install_landingpage(self) -> None:
         """Install a landing page."""
         # Try to use a preinstalled landingpage
@@ -141,7 +145,11 @@ class HomeAssistantCore(JobGroup):
         self.sys_homeassistant.image = self.sys_updater.image_homeassistant
         self.sys_homeassistant.save_data()
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=HomeAssistantJobError)
+    @Job(
+        name="home_assistant_core_install",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def install(self) -> None:
         """Install a landing page."""
         _LOGGER.info("Home Assistant setup")
@@ -182,6 +190,7 @@ class HomeAssistantCore(JobGroup):
             await self.instance.cleanup()
 
     @Job(
+        name="home_assistant_core_update",
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
@@ -283,7 +292,11 @@ class HomeAssistantCore(JobGroup):
             self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
             raise HomeAssistantUpdateError()
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=HomeAssistantJobError)
+    @Job(
+        name="home_assistant_core_start",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def start(self) -> None:
         """Run Home Assistant docker."""
         if await self.instance.is_running():
@@ -314,7 +327,11 @@ class HomeAssistantCore(JobGroup):
 
             await self._block_till_run(self.sys_homeassistant.version)
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=HomeAssistantJobError)
+    @Job(
+        name="home_assistant_core_stop",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def stop(self) -> None:
         """Stop Home Assistant Docker."""
         try:
@@ -322,7 +339,11 @@ class HomeAssistantCore(JobGroup):
         except DockerError as err:
             raise HomeAssistantError() from err
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=HomeAssistantJobError)
+    @Job(
+        name="home_assistant_core_restart",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def restart(self) -> None:
         """Restart Home Assistant Docker."""
         try:
@@ -332,7 +353,11 @@ class HomeAssistantCore(JobGroup):
 
         await self._block_till_run(self.sys_homeassistant.version)
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=HomeAssistantJobError)
+    @Job(
+        name="home_assistant_core_rebuild",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def rebuild(self) -> None:
         """Rebuild Home Assistant Docker container."""
         with suppress(DockerError):
@@ -429,10 +454,11 @@ class HomeAssistantCore(JobGroup):
         raise HomeAssistantCrashError()
 
     @Job(
+        name="home_assistant_core_repair",
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
-        ]
+        ],
     )
     async def repair(self):
         """Repair local Home Assistant data."""
@@ -454,6 +480,7 @@ class HomeAssistantCore(JobGroup):
             await self._restart_after_problem(event.state)
 
     @Job(
+        name="home_assistant_core_restart_after_problem",
         limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,

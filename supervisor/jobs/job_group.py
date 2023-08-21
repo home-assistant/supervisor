@@ -16,13 +16,16 @@ class JobGroup(CoreSysAttributes):
     higher-level task and should not need to relinquish the lock in between.
     """
 
-    def __init__(self, coresys: CoreSys, group_name: str) -> None:
+    def __init__(
+        self, coresys: CoreSys, group_name: str, job_reference: str | None = None
+    ) -> None:
         """Initialize object."""
         self.coresys: CoreSys = coresys
         self._group_name: str = group_name
         self._lock: Lock = Lock()
         self._active_job: SupervisorJob | None = None
         self._parent_jobs: list[SupervisorJob] = []
+        self._job_reference: str | None = job_reference
 
     @property
     def active_job(self) -> SupervisorJob | None:
@@ -42,6 +45,11 @@ class JobGroup(CoreSysAttributes):
             and (task_job := self.sys_jobs.get_job())
             and self.active_job == task_job
         )
+
+    @property
+    def job_reference(self) -> str | None:
+        """Return value to use as reference for all jobs created for this job group."""
+        return self._job_reference
 
     async def acquire(self, job: SupervisorJob, wait: bool = False) -> None:
         """Acquire the lock for the group for the specified job."""

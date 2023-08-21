@@ -77,6 +77,7 @@ class GitRepo(CoreSysAttributes):
                 raise StoreGitError() from err
 
     @Job(
+        name="git_repo_clone",
         conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
         on_condition=StoreJobError,
     )
@@ -112,6 +113,7 @@ class GitRepo(CoreSysAttributes):
                 raise StoreGitCloneError() from err
 
     @Job(
+        name="git_repo_pull",
         conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
         on_condition=StoreJobError,
     )

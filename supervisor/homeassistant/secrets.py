@@ -40,7 +40,11 @@ class HomeAssistantSecrets(CoreSysAttributes):
         """Reload secrets."""
         await self._read_secrets()
 
-    @Job(limit=JobExecutionLimit.THROTTLE_WAIT, throttle_period=timedelta(seconds=60))
+    @Job(
+        name="home_assistant_secrets_read",
+        limit=JobExecutionLimit.THROTTLE_WAIT,
+        throttle_period=timedelta(seconds=60),
+    )
     async def _read_secrets(self):
         """Read secrets.yaml into memory."""
         if not self.path_secrets.exists():

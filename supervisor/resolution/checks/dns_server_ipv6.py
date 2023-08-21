@@ -23,6 +23,7 @@ class CheckDNSServerIPv6(CheckBase):
     """CheckDNSServerIPv6 class for check."""
 
     @Job(
+        name="check_dns_server_ipv6_run",
         conditions=[JobCondition.INTERNET_SYSTEM],
         limit=JobExecutionLimit.THROTTLE,
         throttle_period=timedelta(hours=24),
@@ -47,7 +48,9 @@ class CheckDNSServerIPv6(CheckBase):
             )
             capture_exception(results[i])
 
-    @Job(conditions=[JobCondition.INTERNET_SYSTEM])
+    @Job(
+        name="check_dns_server_ipv6_approve", conditions=[JobCondition.INTERNET_SYSTEM]
+    )
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
         if reference not in self.dns_servers:

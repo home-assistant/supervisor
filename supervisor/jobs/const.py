@@ -8,6 +8,10 @@ FILE_CONFIG_JOBS = Path(SUPERVISOR_DATA, "jobs.json")
 
 ATTR_IGNORE_CONDITIONS = "ignore_conditions"
 
+JOB_GROUP_ADDON = "addon_{slug}"
+JOB_GROUP_DOCKER_INTERFACE = "container_{name}"
+JOB_GROUP_HOME_ASSISTANT_CORE = "home_assistant_core"
+
 
 class JobCondition(str, Enum):
     """Job condition enum."""
@@ -36,3 +40,6 @@ class JobExecutionLimit(str, Enum):
     THROTTLE_RATE_LIMIT = "throttle_rate_limit"
     GROUP_ONCE = "group_once"
     GROUP_WAIT = "group_wait"
+    GROUP_THROTTLE = "group_throttle"
+    GROUP_THROTTLE_WAIT = "group_throttle_wait"
+    GROUP_THROTTLE_RATE_LIMIT = "group_throttle_rate_limit"

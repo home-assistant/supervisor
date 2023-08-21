@@ -133,7 +133,11 @@ class DockerHomeAssistant(DockerInterface):
 
         return mounts
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_home_assistant_run",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def run(self) -> None:
         """Run Docker image."""
         if await self.is_running():
@@ -176,7 +180,11 @@ class DockerHomeAssistant(DockerInterface):
             "Starting Home Assistant %s with version %s", self.image, self.version
         )
 
-    @Job(limit=JobExecutionLimit.GROUP_ONCE, on_condition=DockerJobError)
+    @Job(
+        name="docker_home_assistant_execute_command",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     async def execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command."""
         return await self.sys_run_in_executor(

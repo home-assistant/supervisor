@@ -26,6 +26,7 @@ class FixupStoreExecuteReset(FixupBase):
     """Storage class for fixup."""
 
     @Job(
+        name="fixup_store_execute_reset_process",
         conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.FREE_SPACE],
         on_condition=ResolutionFixupJobError,
     )

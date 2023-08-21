@@ -110,6 +110,10 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         backup.store_repositories()
         backup.store_dockerconfig()
 
+        # Add backup ID to job
+        if job := self.sys_jobs.get_job():
+            job.reference = backup.slug
+
         return backup
 
     def load(self):
@@ -224,7 +228,10 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         finally:
             self.sys_core.state = CoreState.RUNNING
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
+    @Job(
+        name="backup_manager_full_backup",
+        conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING],
+    )
     async def do_backup_full(
         self,
         name="",
@@ -250,7 +257,10 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                 _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
             return backup
 
-    @Job(conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING])
+    @Job(
+        name="backup_manager_partial_backup",
+        conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING],
+    )
     async def do_backup_partial(
         self,
         name: str = "",
@@ -371,16 +381,21 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                 await self.sys_homeassistant.core.restart()
 
     @Job(
+        name="backup_manager_full_restore",
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
             JobCondition.INTERNET_SYSTEM,
             JobCondition.RUNNING,
-        ]
+        ],
     )
     async def do_restore_full(self, backup: Backup, password=None):
         """Restore a backup."""
+        # Add backup ID to job
+        if job := self.sys_jobs.get_job():
+            job.reference = backup.slug
+
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
             return False
@@ -418,13 +433,14 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                 _LOGGER.info("Full-Restore %s done", backup.slug)
 
     @Job(
+        name="backup_manager_partial_restore",
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
             JobCondition.INTERNET_SYSTEM,
             JobCondition.RUNNING,
-        ]
+        ],
     )
     async def do_restore_partial(
         self,
@@ -435,6 +451,10 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         password: str | None = None,
     ):
         """Restore a backup."""
+        # Add backup ID to job
+        if job := self.sys_jobs.get_job():
+            job.reference = backup.slug
+
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
             return False

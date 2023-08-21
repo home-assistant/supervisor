@@ -118,6 +118,7 @@ class PluginAudio(PluginBase):
         self.save_data()
 
     @Job(
+        name="plugin_audio_update",
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=AudioJobError,
     )
@@ -218,6 +219,7 @@ class PluginAudio(PluginBase):
             ) from err
 
     @Job(
+        name="plugin_audio_restart_after_problem",
         limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,

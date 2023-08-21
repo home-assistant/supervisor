@@ -304,7 +304,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
         self.sys_homeassistant.websocket.send_message({ATTR_TYPE: "usb/scan"})
 
-    @Job()
+    @Job(name="home_assistant_module_backup")
     async def backup(self, tar_file: tarfile.TarFile) -> None:
         """Backup Home Assistant Core config/ directory."""
 

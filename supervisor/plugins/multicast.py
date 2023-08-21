@@ -71,6 +71,7 @@ class PluginMulticast(PluginBase):
         self.save_data()
 
     @Job(
+        name="plugin_multicast_update",
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=MulticastJobError,
     )
@@ -146,6 +147,7 @@ class PluginMulticast(PluginBase):
             capture_exception(err)
 
     @Job(
+        name="plugin_multicast_restart_after_problem",
         limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
