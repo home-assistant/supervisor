@@ -1,5 +1,5 @@
 """Init file for Supervisor add-on data."""
-from collections.abc import Awaitable
+from dataclasses import dataclass
 import logging
 from pathlib import Path
 from typing import Any
@@ -29,6 +29,72 @@ from .validate import SCHEMA_REPOSITORY_CONFIG
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+@dataclass(slots=True)
+class ProcessedRepository:
+    """Representation of a repository processed from its git folder."""
+
+    slug: str
+    path: Path
+    config: dict[str, Any]
+
+
+def _read_addon_translations(addon_path: Path) -> dict:
+    """Read translations from add-ons folder.
+
+    Should be run in the executor.
+    """
+    translations_dir = addon_path / "translations"
+    translations = {}
+
+    if not translations_dir.exists():
+        return translations
+
+    translation_files = [
+        translation
+        for translation in translations_dir.glob("*")
+        if translation.suffix in FILE_SUFFIX_CONFIGURATION
+    ]
+
+    for translation in translation_files:
+        try:
+            translations[translation.stem] = SCHEMA_ADDON_TRANSLATIONS(
+                read_json_or_yaml_file(translation)
+            )
+
+        except (ConfigurationFileError, vol.Invalid) as err:
+            _LOGGER.warning("Can't read translations from %s - %s", translation, err)
+            continue
+
+    return translations
+
+
+def _read_git_repository(path: Path) -> ProcessedRepository | None:
+    """Process a custom repository folder."""
+    slug = extract_hash_from_path(path)
+
+    # exists repository json
+    try:
+        repository_file = find_one_filetype(
+            path, "repository", FILE_SUFFIX_CONFIGURATION
+        )
+    except ConfigurationFileError:
+        _LOGGER.warning("No repository information exists at %s", path)
+        return None
+
+    try:
+        return ProcessedRepository(
+            slug,
+            path,
+            SCHEMA_REPOSITORY_CONFIG(read_json_or_yaml_file(repository_file)),
+        )
+    except ConfigurationFileError:
+        _LOGGER.warning("Can't read repository information from %s", repository_file)
+        return None
+    except vol.Invalid:
+        _LOGGER.warning("Repository parse error %s", repository_file)
+        return None
+
+
 class StoreData(CoreSysAttributes):
     """Hold data for Add-ons inside Supervisor."""
 
@@ -38,63 +104,43 @@ class StoreData(CoreSysAttributes):
         self.repositories: dict[str, Any] = {}
         self.addons: dict[str, Any] = {}
 
-    async def update(self) -> Awaitable[None]:
+    async def update(self) -> None:
         """Read data from add-on repository."""
-        return await self.sys_run_in_executor(self._update)
-
-    def _update(self) -> None:
         self.repositories.clear()
         self.addons.clear()
 
         # read core repository
-        self._read_addons_folder(self.sys_config.path_addons_core, REPOSITORY_CORE)
+        await self._read_addons_folder(
+            self.sys_config.path_addons_core, REPOSITORY_CORE
+        )
 
         # read local repository
-        self._read_addons_folder(self.sys_config.path_addons_local, REPOSITORY_LOCAL)
+        await self._read_addons_folder(
+            self.sys_config.path_addons_local, REPOSITORY_LOCAL
+        )
 
         # add built-in repositories information
-        self._set_builtin_repositories()
+        await self._set_builtin_repositories()
 
         # read custom git repositories
-        for repository_element in self.sys_config.path_addons_git.iterdir():
-            if repository_element.is_dir():
-                self._read_git_repository(repository_element)
+        def _read_git_repositories() -> list[ProcessedRepository]:
+            return [
+                repo
+                for repository_element in self.sys_config.path_addons_git.iterdir()
+                if repository_element.is_dir()
+                and (repo := _read_git_repository(repository_element))
+            ]
 
-    def _read_git_repository(self, path: Path) -> None:
-        """Process a custom repository folder."""
-        slug = extract_hash_from_path(path)
+        for repo in await self.sys_run_in_executor(_read_git_repositories):
+            self.repositories[repo.slug] = repo.config
+            await self._read_addons_folder(repo.path, repo.slug)
 
-        # exists repository json
-        try:
-            repository_file = find_one_filetype(
-                path, "repository", FILE_SUFFIX_CONFIGURATION
-            )
-        except ConfigurationFileError:
-            _LOGGER.warning("No repository information exists at %s", path)
-            return
-
-        try:
-            repository_info = SCHEMA_REPOSITORY_CONFIG(
-                read_json_or_yaml_file(repository_file)
-            )
-        except ConfigurationFileError:
-            _LOGGER.warning(
-                "Can't read repository information from %s", repository_file
-            )
-            return
-        except vol.Invalid:
-            _LOGGER.warning("Repository parse error %s", repository_file)
-            return
-
-        # process data
-        self.repositories[slug] = repository_info
-        self._read_addons_folder(path, slug)
-
-    def _find_addons(self, path: Path, repository: dict) -> list[Path] | None:
+    async def _find_addons(self, path: Path, repository: dict) -> list[Path] | None:
         """Find add-ons in the path."""
-        try:
+
+        def _get_addons_list() -> list[Path]:
             # Generate a list without artefact, safe for corruptions
-            addon_list = [
+            return [
                 addon
                 for addon in path.glob("**/config.*")
                 if not [
@@ -104,6 +150,9 @@ class StoreData(CoreSysAttributes):
                 ]
                 and addon.suffix in FILE_SUFFIX_CONFIGURATION
             ]
+
+        try:
+            addon_list = await self.sys_run_in_executor(_get_addons_list)
         except OSError as err:
             suggestion = None
             if path.stem != StoreType.LOCAL:
@@ -120,77 +169,59 @@ class StoreData(CoreSysAttributes):
             return None
         return addon_list
 
-    def _read_addons_folder(self, path: Path, repository: dict) -> None:
+    async def _read_addons_folder(self, path: Path, repository: str) -> None:
         """Read data from add-ons folder."""
-        if not (addon_list := self._find_addons(path, repository)):
+        if not (addon_list := await self._find_addons(path, repository)):
             return
 
-        for addon in addon_list:
-            try:
-                addon_config = read_json_or_yaml_file(addon)
-            except ConfigurationFileError:
-                _LOGGER.warning("Can't read %s from repository %s", addon, repository)
-                continue
+        def _process_addons_config() -> dict[str, dict[str, Any]]:
+            addons_config: dict[str, dict[str, Any]] = {}
+            for addon in addon_list:
+                try:
+                    addon_config = read_json_or_yaml_file(addon)
+                except ConfigurationFileError:
+                    _LOGGER.warning(
+                        "Can't read %s from repository %s", addon, repository
+                    )
+                    continue
 
-            # validate
-            try:
-                addon_config = SCHEMA_ADDON_CONFIG(addon_config)
-            except vol.Invalid as ex:
-                _LOGGER.warning(
-                    "Can't read %s: %s", addon, humanize_error(addon_config, ex)
-                )
-                continue
+                # validate
+                try:
+                    addon_config = SCHEMA_ADDON_CONFIG(addon_config)
+                except vol.Invalid as ex:
+                    _LOGGER.warning(
+                        "Can't read %s: %s", addon, humanize_error(addon_config, ex)
+                    )
+                    continue
 
-            # Generate slug
-            addon_slug = f"{repository}_{addon_config[ATTR_SLUG]}"
+                # Generate slug
+                addon_slug = f"{repository}_{addon_config[ATTR_SLUG]}"
 
-            # store
-            addon_config[ATTR_REPOSITORY] = repository
-            addon_config[ATTR_LOCATON] = str(addon.parent)
-            addon_config[ATTR_TRANSLATIONS] = self._read_addon_translations(
-                addon.parent
-            )
-            self.addons[addon_slug] = addon_config
+                # store
+                addon_config[ATTR_REPOSITORY] = repository
+                addon_config[ATTR_LOCATON] = str(addon.parent)
+                addon_config[ATTR_TRANSLATIONS] = _read_addon_translations(addon.parent)
+                addons_config[addon_slug] = addon_config
 
-    def _set_builtin_repositories(self):
+            return addons_config
+
+        self.addons.update(await self.sys_run_in_executor(_process_addons_config))
+
+    async def _set_builtin_repositories(self):
         """Add local built-in repository into dataset."""
-        try:
-            builtin_file = Path(__file__).parent.joinpath("built-in.json")
-            builtin_data = read_json_file(builtin_file)
-        except ConfigurationFileError:
-            _LOGGER.warning("Can't read built-in json")
-            return
 
-        # core repository
-        self.repositories[REPOSITORY_CORE] = builtin_data[REPOSITORY_CORE]
-
-        # local repository
-        self.repositories[REPOSITORY_LOCAL] = builtin_data[REPOSITORY_LOCAL]
-
-    def _read_addon_translations(self, addon_path: Path) -> dict:
-        """Read translations from add-ons folder."""
-        translations_dir = addon_path / "translations"
-        translations = {}
-
-        if not translations_dir.exists():
-            return translations
-
-        translation_files = [
-            translation
-            for translation in translations_dir.glob("*")
-            if translation.suffix in FILE_SUFFIX_CONFIGURATION
-        ]
-
-        for translation in translation_files:
+        def _get_builtins() -> dict[str, dict[str, str]] | None:
             try:
-                translations[translation.stem] = SCHEMA_ADDON_TRANSLATIONS(
-                    read_json_or_yaml_file(translation)
-                )
+                builtin_file = Path(__file__).parent.joinpath("built-in.json")
+                return read_json_file(builtin_file)
+            except ConfigurationFileError:
+                _LOGGER.warning("Can't read built-in json")
+                return None
 
-            except (ConfigurationFileError, vol.Invalid) as err:
-                _LOGGER.warning(
-                    "Can't read translations from %s - %s", translation, err
-                )
-                continue
+        builtin_data = await self.sys_run_in_executor(_get_builtins)
+        if builtin_data:
+            # core repository
+            self.repositories[REPOSITORY_CORE] = builtin_data[REPOSITORY_CORE]
 
-        return translations
+            # local repository
+            self.repositories[REPOSITORY_LOCAL] = builtin_data[REPOSITORY_LOCAL]

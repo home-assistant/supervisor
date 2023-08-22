@@ -61,6 +61,7 @@ class Interface:
 
     name: str
     mac: str
+    path: str
     enabled: bool
     connected: bool
     primary: bool
@@ -75,8 +76,8 @@ class Interface:
         if not inet.settings:
             return False
 
-        if inet.settings.device:
-            return inet.settings.device.match_device == f"mac:{self.mac}"
+        if inet.settings.match and inet.settings.match.path:
+            return inet.settings.match.path == [self.path]
 
         return inet.settings.connection.interface_name == self.name
 
@@ -104,6 +105,7 @@ class Interface:
         return Interface(
             inet.name,
             inet.hw_address,
+            inet.path,
             inet.settings is not None,
             Interface._map_nm_connected(inet.connection),
             inet.primary,

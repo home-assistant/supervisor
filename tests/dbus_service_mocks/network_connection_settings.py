@@ -6,7 +6,9 @@ from dbus_fast.service import PropertyAccess, dbus_property, signal
 from .base import DBusServiceMock, dbus_method
 
 BUS_NAME = "org.freedesktop.NetworkManager"
-SETTINGS_FIXTURE = {
+DEFAULT_OBJECT_PATH = "/org/freedesktop/NetworkManager/Settings/1"
+
+SETTINGS_FIXTURE: dict[str, dict[str, Variant]] = {
     "connection": {
         "id": Variant("s", "Wired connection 1"),
         "interface-name": Variant("s", "eth0"),
@@ -62,11 +64,27 @@ SETTINGS_FIXTURE = {
     },
     "802-11-wireless": {"ssid": Variant("ay", b"NETT")},
 }
+SETINGS_FIXTURES: dict[str, dict[str, dict[str, Variant]]] = {
+    "/org/freedesktop/NetworkManager/Settings/1": SETTINGS_FIXTURE,
+    "/org/freedesktop/NetworkManager/Settings/2": {
+        "connection": {
+            k: v
+            for k, v in SETTINGS_FIXTURE["connection"].items()
+            if k != "interface-name"
+        },
+        "ipv4": SETTINGS_FIXTURE["ipv4"],
+        "ipv6": SETTINGS_FIXTURE["ipv6"],
+        "proxy": {},
+        "802-3-ethernet": SETTINGS_FIXTURE["802-3-ethernet"],
+        "802-11-wireless": SETTINGS_FIXTURE["802-11-wireless"],
+        "match": {"path": Variant("as", ["platform-ff3f0000.ethernet"])},
+    },
+}
 
 
 def setup(object_path: str | None = None) -> DBusServiceMock:
     """Create dbus mock object."""
-    return ConnectionSettings()
+    return ConnectionSettings(object_path if object_path else DEFAULT_OBJECT_PATH)
 
 
 # pylint: disable=invalid-name
@@ -79,8 +97,12 @@ class ConnectionSettings(DBusServiceMock):
     """
 
     interface = "org.freedesktop.NetworkManager.Settings.Connection"
-    object_path = "/org/freedesktop/NetworkManager/Settings/1"
-    settings = SETTINGS_FIXTURE
+
+    def __init__(self, object_path: str):
+        """Initialize object."""
+        super().__init__()
+        self.object_path = object_path
+        self.settings = SETINGS_FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
     def Unsaved(self) -> "b":

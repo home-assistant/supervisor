@@ -125,6 +125,7 @@ async def test_api_store_update_healthcheck(
     path_extern,
 ):
     """Test updating an addon with healthcheck waits for health status."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     container.status = "running"
     container.attrs["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
@@ -176,8 +177,8 @@ async def test_api_store_update_healthcheck(
         asyncio.create_task(container_events())
 
     with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
-        DockerInterface, "_install"
-    ), patch.object(DockerAddon, "_is_running", return_value=False), patch.object(
+        DockerInterface, "install"
+    ), patch.object(DockerAddon, "is_running", return_value=False), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
     ):
         resp = await api_client.post(f"/store/addons/{TEST_ADDON_SLUG}/update")

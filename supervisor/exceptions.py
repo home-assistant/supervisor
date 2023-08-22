@@ -36,6 +36,18 @@ class JobConditionException(JobException):
     """Exception happening for job conditions."""
 
 
+class JobStartException(JobException):
+    """Exception occurred starting a job on in current asyncio task."""
+
+
+class JobNotFound(JobException):
+    """Exception for job not found."""
+
+
+class JobGroupExecutionLimitExceeded(JobException):
+    """Exception when job group execution limit exceeded."""
+
+
 # HomeAssistant
 
 
@@ -476,6 +488,10 @@ class DockerTrustError(DockerError):
 
 class DockerNotFound(DockerError):
     """Docker object don't Exists."""
+
+
+class DockerJobError(DockerError, JobException):
+    """Error executing docker job."""
 
 
 # Hardware

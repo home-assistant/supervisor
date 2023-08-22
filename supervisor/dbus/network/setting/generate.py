@@ -9,14 +9,14 @@ from dbus_fast import Variant
 
 from . import (
     ATTR_ASSIGNED_MAC,
-    ATTR_MATCH_DEVICE,
     CONF_ATTR_802_ETHERNET,
     CONF_ATTR_802_WIRELESS,
     CONF_ATTR_802_WIRELESS_SECURITY,
     CONF_ATTR_CONNECTION,
-    CONF_ATTR_DEVICE,
     CONF_ATTR_IPV4,
     CONF_ATTR_IPV6,
+    CONF_ATTR_MATCH,
+    CONF_ATTR_PATH,
     CONF_ATTR_VLAN,
 )
 from ....host.const import InterfaceMethod, InterfaceType
@@ -59,9 +59,10 @@ def get_connection_from_interface(
     }
 
     if interface.type != InterfaceType.VLAN:
-        conn[CONF_ATTR_DEVICE] = {
-            ATTR_MATCH_DEVICE: Variant("s", f"mac:{interface.mac}")
-        }
+        if interface.path:
+            conn[CONF_ATTR_MATCH] = {CONF_ATTR_PATH: Variant("as", [interface.path])}
+        else:
+            conn[CONF_ATTR_CONNECTION]["interface-name"] = Variant("s", interface.name)
 
     ipv4 = {}
     if not interface.ipv4 or interface.ipv4.method == InterfaceMethod.AUTO:

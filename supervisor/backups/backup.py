@@ -183,7 +183,15 @@ class Backup(CoreSysAttributes):
             days=self.sys_backups.days_until_stale
         )
 
-    def new(self, slug, name, date, sys_type, password=None, compressed=True):
+    def new(
+        self,
+        slug: str,
+        name: str,
+        date: str,
+        sys_type: BackupType,
+        password: str | None = None,
+        compressed: bool = True,
+    ):
         """Initialize a new backup."""
         # Init metadata
         self._data[ATTR_VERSION] = 2
@@ -288,7 +296,7 @@ class Backup(CoreSysAttributes):
 
     async def __aenter__(self):
         """Async context to open a backup."""
-        self._tmp = TemporaryDirectory(dir=str(self.sys_config.path_tmp))
+        self._tmp = TemporaryDirectory(dir=str(self.tarfile.parent))
 
         # create a backup
         if not self.tarfile.is_file():
@@ -421,7 +429,7 @@ class Backup(CoreSysAttributes):
     async def store_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
 
-        def _folder_save(name: str):
+        async def _folder_save(name: str):
             """Take backup of a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(
@@ -434,30 +442,33 @@ class Backup(CoreSysAttributes):
                 _LOGGER.warning("Can't find backup folder %s", name)
                 return
 
-            # Take backup
-            _LOGGER.info("Backing up folder %s", name)
-            with SecureTarFile(
-                tar_name, "w", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
-            ) as tar_file:
-                atomic_contents_add(
-                    tar_file,
-                    origin_dir,
-                    excludes=[
-                        bound.bind_mount.local_where.as_posix()
-                        for bound in self.sys_mounts.bound_mounts
-                        if bound.bind_mount.local_where
-                    ],
-                    arcname=".",
-                )
+            def _save() -> None:
+                # Take backup
+                _LOGGER.info("Backing up folder %s", name)
+                with SecureTarFile(
+                    tar_name, "w", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
+                ) as tar_file:
+                    atomic_contents_add(
+                        tar_file,
+                        origin_dir,
+                        excludes=[
+                            bound.bind_mount.local_where.as_posix()
+                            for bound in self.sys_mounts.bound_mounts
+                            if bound.bind_mount.local_where
+                        ],
+                        arcname=".",
+                    )
 
-            _LOGGER.info("Backup folder %s done", name)
+                _LOGGER.info("Backup folder %s done", name)
+
+            await self.sys_run_in_executor(_save)
             self._data[ATTR_FOLDERS].append(name)
 
         # Save folder sequential
         # avoid issue on slow IO
         for folder in folder_list:
             try:
-                await self.sys_run_in_executor(_folder_save, folder)
+                await _folder_save(folder)
             except (tarfile.TarError, OSError) as err:
                 raise BackupError(
                     f"Can't backup folder {folder}: {str(err)}", _LOGGER.error

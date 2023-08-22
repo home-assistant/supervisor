@@ -11,11 +11,6 @@ from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import HomeAssistantError
 
 
-async def mock_current_state(state: ContainerState) -> ContainerState:
-    """Mock for current state method."""
-    return state
-
-
 async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
     """Test homeassistant watchdog works correctly."""
     coresys.homeassistant.version = AwesomeVersion("2022.7.3")
@@ -34,7 +29,7 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
     ) as start, patch.object(
         type(coresys.homeassistant.core.instance), "current_state"
     ) as current_state:
-        current_state.return_value = mock_current_state(ContainerState.UNHEALTHY)
+        current_state.return_value = ContainerState.UNHEALTHY
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -49,7 +44,7 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
         start.assert_not_called()
 
         restart.reset_mock()
-        current_state.return_value = mock_current_state(ContainerState.FAILED)
+        current_state.return_value = ContainerState.FAILED
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -65,7 +60,7 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
 
         start.reset_mock()
         # Do not process event if container state has changed since fired
-        current_state.return_value = mock_current_state(ContainerState.HEALTHY)
+        current_state.return_value = ContainerState.HEALTHY
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -126,7 +121,7 @@ async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> N
     ) as rebuild, patch.object(
         type(coresys.homeassistant.core.instance),
         "current_state",
-        return_value=mock_current_state(ContainerState.FAILED),
+        return_value=ContainerState.FAILED,
     ):
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,

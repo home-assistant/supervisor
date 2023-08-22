@@ -25,14 +25,15 @@ class NetworkManager(DBusServiceMock):
     object_path = "/org/freedesktop/NetworkManager"
     version = "1.22.10"
     connectivity = 4
+    devices = [
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/org/freedesktop/NetworkManager/Devices/3",
+    ]
 
     @dbus_property(access=PropertyAccess.READ)
     def Devices(self) -> "ao":
         """Get Devices."""
-        return [
-            "/org/freedesktop/NetworkManager/Devices/1",
-            "/org/freedesktop/NetworkManager/Devices/3",
-        ]
+        return self.devices
 
     @dbus_property(access=PropertyAccess.READ)
     def AllDevices(self) -> "ao":

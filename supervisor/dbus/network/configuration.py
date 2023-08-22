@@ -66,7 +66,7 @@ class IpProperties:
 
 
 @dataclass(slots=True)
-class DeviceProperties:
-    """Device properties object for Network Manager."""
+class MatchProperties:
+    """Match properties object for Network Manager."""
 
-    match_device: str | None
+    path: list[str] | None = None

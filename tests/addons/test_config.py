@@ -1,5 +1,8 @@
 """Validate Add-on configs."""
 
+import logging
+from unittest.mock import Mock
+
 import pytest
 import voluptuous as vol
 
@@ -107,7 +110,7 @@ def test_invalid_repository():
     """Validate basic config with invalid repositories."""
     config = load_json_fixture("basic-addon-config.json")
 
-    config["image"] = "something"
+    config["image"] = "-invalid-something"
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
 
@@ -283,4 +286,13 @@ def test_valid_slug():
     with pytest.raises(vol.Invalid):
         assert vd.SCHEMA_ADDON_CONFIG(config)
 
-    #
+
+def test_invalid_discovery(capture_event: Mock, caplog: pytest.LogCaptureFixture):
+    """Test invalid discovery."""
+    config = load_json_fixture("basic-addon-config.json")
+    config["discovery"] = ["mqtt", "junk", "junk2"]
+
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    with caplog.at_level(logging.WARNING):
+        assert "unknown services for discovery: junk, junk2" in caplog.text

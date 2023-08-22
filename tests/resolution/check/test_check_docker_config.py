@@ -13,8 +13,6 @@ from supervisor.resolution.checks.docker_config import CheckDockerConfig
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
-from tests.conftest import mock_async_return_true
-
 
 def _make_mock_container_get(bad_config_names: list[str], folder: str = "media"):
     """Make mock of container get."""
@@ -54,7 +52,7 @@ async def test_check(
     docker.containers.get = _make_mock_container_get(
         ["homeassistant", "hassio_audio", "addon_local_ssh"], folder
     )
-    with patch.object(DockerInterface, "is_running", new=mock_async_return_true):
+    with patch.object(DockerInterface, "is_running", return_value=True):
         await coresys.plugins.load()
         await coresys.homeassistant.load()
         await coresys.addons.load()
@@ -107,7 +105,7 @@ async def test_check(
 
     # IF config issue is resolved, all issues are removed except the main one. Which will be removed if check isn't approved
     docker.containers.get = _make_mock_container_get([])
-    with patch.object(DockerInterface, "is_running", new=mock_async_return_true):
+    with patch.object(DockerInterface, "is_running", return_value=True):
         await coresys.plugins.load()
         await coresys.homeassistant.load()
         await coresys.addons.load()

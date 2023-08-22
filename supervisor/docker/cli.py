@@ -2,6 +2,9 @@
 import logging
 
 from ..coresys import CoreSysAttributes
+from ..exceptions import DockerJobError
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from .const import ENV_TIME, ENV_TOKEN
 from .interface import DockerInterface
 
@@ -23,19 +26,22 @@ class DockerCli(DockerInterface, CoreSysAttributes):
         """Return name of Docker container."""
         return CLI_DOCKER_NAME
 
-    def _run(self) -> None:
-        """Run Docker image.
-
-        Need run inside executor.
-        """
-        if self._is_running():
+    @Job(
+        name="docker_cli_run",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def run(self) -> None:
+        """Run Docker image."""
+        if await self.is_running():
             return
 
         # Cleanup
-        self._stop()
+        await self.stop()
 
         # Create & Run container
-        docker_container = self.sys_docker.run(
+        docker_container = await self.sys_run_in_executor(
+            self.sys_docker.run,
             self.image,
             entrypoint=["/init"],
             tag=str(self.sys_plugins.cli.version),

@@ -165,7 +165,7 @@ class DataDisk(CoreSysAttributes):
             if block.drive == drive.object_path
         ]
 
-    @Job(conditions=[JobCondition.OS_AGENT])
+    @Job(name="data_disk_load", conditions=[JobCondition.OS_AGENT])
     async def load(self) -> None:
         """Load DataDisk feature."""
         # Update datadisk details on OS-Agent
@@ -173,6 +173,7 @@ class DataDisk(CoreSysAttributes):
             await self.sys_dbus.agent.datadisk.reload_device()
 
     @Job(
+        name="data_disk_migrate",
         conditions=[JobCondition.HAOS, JobCondition.OS_AGENT, JobCondition.HEALTHY],
         limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,

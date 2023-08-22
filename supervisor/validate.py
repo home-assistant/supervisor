@@ -51,7 +51,9 @@ RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 # pylint: disable=invalid-name
 network_port = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 wait_boot = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
-docker_image = vol.Match(r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)$")
+docker_image = vol.Match(
+    r"^([a-z0-9][a-z0-9.\-]*(:[0-9]+)?/)*?([a-z0-9{][a-z0-9.\-_{}]*/)*?([a-z0-9{][a-z0-9.\-_{}]*)$"
+)
 uuid_match = vol.Match(r"^[0-9a-f]{32}$")
 sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")

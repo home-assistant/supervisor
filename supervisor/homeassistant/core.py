@@ -11,7 +11,7 @@ import attr
 from awesomeversion import AwesomeVersion
 
 from ..const import ATTR_HOMEASSISTANT, BusEvent
-from ..coresys import CoreSys, CoreSysAttributes
+from ..coresys import CoreSys
 from ..docker.const import ContainerState
 from ..docker.homeassistant import DockerHomeAssistant
 from ..docker.monitor import DockerContainerStateEvent
@@ -22,11 +22,13 @@ from ..exceptions import (
     HomeAssistantError,
     HomeAssistantJobError,
     HomeAssistantUpdateError,
+    JobException,
 )
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobExecutionLimit
 from ..jobs.decorator import Job, JobCondition
+from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType
-from ..utils import convert_to_ascii, process_lock
+from ..utils import convert_to_ascii
 from ..utils.sentry import capture_exception
 from .const import (
     LANDINGPAGE,
@@ -49,12 +51,12 @@ class ConfigResult:
     log = attr.ib()
 
 
-class HomeAssistantCore(CoreSysAttributes):
+class HomeAssistantCore(JobGroup):
     """Home Assistant core object for handle it."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Home Assistant object."""
-        self.coresys: CoreSys = coresys
+        super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self.lock: asyncio.Lock = asyncio.Lock()
         self._error_state: bool = False
@@ -95,9 +97,13 @@ class HomeAssistantCore(CoreSysAttributes):
         _LOGGER.info("Starting HomeAssistant landingpage")
         if not await self.instance.is_running():
             with suppress(HomeAssistantError):
-                await self._start()
+                await self.start()
 
-    @process_lock
+    @Job(
+        name="home_assistant_core_install_landing_page",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def install_landingpage(self) -> None:
         """Install a landing page."""
         # Try to use a preinstalled landingpage
@@ -127,7 +133,7 @@ class HomeAssistantCore(CoreSysAttributes):
                     LANDINGPAGE, image=self.sys_updater.image_homeassistant
                 )
                 break
-            except DockerError:
+            except (DockerError, JobException):
                 pass
             except Exception as err:  # pylint: disable=broad-except
                 capture_exception(err)
@@ -139,7 +145,11 @@ class HomeAssistantCore(CoreSysAttributes):
         self.sys_homeassistant.image = self.sys_updater.image_homeassistant
         self.sys_homeassistant.save_data()
 
-    @process_lock
+    @Job(
+        name="home_assistant_core_install",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def install(self) -> None:
         """Install a landing page."""
         _LOGGER.info("Home Assistant setup")
@@ -155,7 +165,7 @@ class HomeAssistantCore(CoreSysAttributes):
                         image=self.sys_updater.image_homeassistant,
                     )
                     break
-                except DockerError:
+                except (DockerError, JobException):
                     pass
                 except Exception as err:  # pylint: disable=broad-except
                     capture_exception(err)
@@ -171,7 +181,7 @@ class HomeAssistantCore(CoreSysAttributes):
         # finishing
         try:
             _LOGGER.info("Starting Home Assistant")
-            await self._start()
+            await self.start()
         except HomeAssistantError:
             _LOGGER.error("Can't start Home Assistant!")
 
@@ -179,8 +189,8 @@ class HomeAssistantCore(CoreSysAttributes):
         with suppress(DockerError):
             await self.instance.cleanup()
 
-    @process_lock
     @Job(
+        name="home_assistant_core_update",
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
@@ -188,6 +198,7 @@ class HomeAssistantCore(CoreSysAttributes):
             JobCondition.PLUGINS_UPDATED,
             JobCondition.SUPERVISOR_UPDATED,
         ],
+        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
     )
     async def update(
@@ -231,7 +242,7 @@ class HomeAssistantCore(CoreSysAttributes):
             self.sys_homeassistant.image = self.sys_updater.image_homeassistant
 
             if running:
-                await self._start()
+                await self.start()
             _LOGGER.info("Successfully started Home Assistant %s", to_version)
 
             # Successfull - last step
@@ -281,23 +292,11 @@ class HomeAssistantCore(CoreSysAttributes):
             self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
             raise HomeAssistantUpdateError()
 
-    async def _start(self) -> None:
-        """Start Home Assistant Docker & wait."""
-        # Create new API token
-        self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
-        self.sys_homeassistant.save_data()
-
-        # Write audio settings
-        self.sys_homeassistant.write_pulse()
-
-        try:
-            await self.instance.run()
-        except DockerError as err:
-            raise HomeAssistantError() from err
-
-        await self._block_till_run(self.sys_homeassistant.version)
-
-    @process_lock
+    @Job(
+        name="home_assistant_core_start",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def start(self) -> None:
         """Run Home Assistant docker."""
         if await self.instance.is_running():
@@ -314,20 +313,37 @@ class HomeAssistantCore(CoreSysAttributes):
             await self._block_till_run(self.sys_homeassistant.version)
         # No Instance/Container found, extended start
         else:
-            await self._start()
+            # Create new API token
+            self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
+            self.sys_homeassistant.save_data()
 
-    @process_lock
+            # Write audio settings
+            self.sys_homeassistant.write_pulse()
+
+            try:
+                await self.instance.run()
+            except DockerError as err:
+                raise HomeAssistantError() from err
+
+            await self._block_till_run(self.sys_homeassistant.version)
+
+    @Job(
+        name="home_assistant_core_stop",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def stop(self) -> None:
-        """Stop Home Assistant Docker.
-
-        Return a coroutine.
-        """
+        """Stop Home Assistant Docker."""
         try:
             return await self.instance.stop(remove_container=False)
         except DockerError as err:
             raise HomeAssistantError() from err
 
-    @process_lock
+    @Job(
+        name="home_assistant_core_restart",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def restart(self) -> None:
         """Restart Home Assistant Docker."""
         try:
@@ -337,12 +353,16 @@ class HomeAssistantCore(CoreSysAttributes):
 
         await self._block_till_run(self.sys_homeassistant.version)
 
-    @process_lock
+    @Job(
+        name="home_assistant_core_rebuild",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=HomeAssistantJobError,
+    )
     async def rebuild(self) -> None:
         """Rebuild Home Assistant Docker container."""
         with suppress(DockerError):
             await self.instance.stop()
-        await self._start()
+        await self.start()
 
     def logs(self) -> Awaitable[bytes]:
         """Get HomeAssistant docker logs.
@@ -359,10 +379,7 @@ class HomeAssistantCore(CoreSysAttributes):
         return self.instance.check_trust()
 
     async def stats(self) -> DockerStats:
-        """Return stats of Home Assistant.
-
-        Return a coroutine.
-        """
+        """Return stats of Home Assistant."""
         try:
             return await self.instance.stats()
         except DockerError as err:
@@ -389,9 +406,12 @@ class HomeAssistantCore(CoreSysAttributes):
 
     async def check_config(self) -> ConfigResult:
         """Run Home Assistant config check."""
-        result = await self.instance.execute_command(
-            "python3 -m homeassistant -c /config --script check_config"
-        )
+        try:
+            result = await self.instance.execute_command(
+                "python3 -m homeassistant -c /config --script check_config"
+            )
+        except DockerError as err:
+            raise HomeAssistantError() from err
 
         # If not valid
         if result.exit_code is None:
@@ -434,10 +454,11 @@ class HomeAssistantCore(CoreSysAttributes):
         raise HomeAssistantCrashError()
 
     @Job(
+        name="home_assistant_core_repair",
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.INTERNET_HOST,
-        ]
+        ],
     )
     async def repair(self):
         """Repair local Home Assistant data."""
@@ -459,6 +480,7 @@ class HomeAssistantCore(CoreSysAttributes):
             await self._restart_after_problem(event.state)
 
     @Job(
+        name="home_assistant_core_restart_after_problem",
         limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,

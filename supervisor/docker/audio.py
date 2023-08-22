@@ -6,7 +6,10 @@ from docker.types import Mount
 
 from ..const import DOCKER_CPU_RUNTIME_ALLOCATION, MACHINE_ID
 from ..coresys import CoreSysAttributes
+from ..exceptions import DockerJobError
 from ..hardware.const import PolicyGroup
+from ..jobs.const import JobExecutionLimit
+from ..jobs.decorator import Job
 from .const import (
     ENV_TIME,
     MOUNT_DBUS,
@@ -82,19 +85,22 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             return None
         return DOCKER_CPU_RUNTIME_ALLOCATION
 
-    def _run(self) -> None:
-        """Run Docker image.
-
-        Need run inside executor.
-        """
-        if self._is_running():
+    @Job(
+        name="docker_audio_run",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def run(self) -> None:
+        """Run Docker image."""
+        if await self.is_running():
             return
 
         # Cleanup
-        self._stop()
+        await self.stop()
 
         # Create & Run container
-        docker_container = self.sys_docker.run(
+        docker_container = await self.sys_run_in_executor(
+            self.sys_docker.run,
             self.image,
             tag=str(self.sys_plugins.audio.version),
             init=False,

@@ -129,54 +129,7 @@ class Addon(AddonModel):
         )
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
-
-        @Job(
-            name=f"addon_{slug}_restart_after_problem",
-            limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
-            throttle_period=WATCHDOG_THROTTLE_PERIOD,
-            throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
-            on_condition=AddonsJobError,
-        )
-        async def restart_after_problem(addon: Addon, state: ContainerState):
-            """Restart unhealthy or failed addon."""
-            attempts = 0
-            while await addon.instance.current_state() == state:
-                if not addon.in_progress:
-                    _LOGGER.warning(
-                        "Watchdog found addon %s is %s, restarting...",
-                        addon.name,
-                        state.value,
-                    )
-                    try:
-                        if state == ContainerState.FAILED:
-                            # Ensure failed container is removed before attempting reanimation
-                            if attempts == 0:
-                                with suppress(DockerError):
-                                    await addon.instance.stop(remove_container=True)
-
-                            await (await addon.start())
-                        else:
-                            await (await addon.restart())
-                    except AddonsError as err:
-                        attempts = attempts + 1
-                        _LOGGER.error(
-                            "Watchdog restart of addon %s failed!", addon.name
-                        )
-                        capture_exception(err)
-                    else:
-                        break
-
-                if attempts >= WATCHDOG_MAX_ATTEMPTS:
-                    _LOGGER.critical(
-                        "Watchdog cannot restart addon %s, failed all %s attempts",
-                        addon.name,
-                        attempts,
-                    )
-                    break
-
-                await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
-
-        self._restart_after_problem = restart_after_problem
+        self._startup_task: asyncio.Task | None = None
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -608,6 +561,12 @@ class Addon(AddonModel):
 
     async def unload(self) -> None:
         """Unload add-on and remove data."""
+        if self._startup_task:
+            # If we were waiting on startup, cancel that and let the task finish before proceeding
+            self._startup_task.cancel(f"Removing add-on {self.name} from system")
+            with suppress(asyncio.CancelledError):
+                await self._startup_task
+
         for listener in self._listeners:
             self.sys_bus.remove_listener(listener)
 
@@ -699,13 +658,18 @@ class Addon(AddonModel):
     async def _wait_for_startup(self) -> None:
         """Wait for startup event to be set with timeout."""
         try:
-            await asyncio.wait_for(self._startup_event.wait(), STARTUP_TIMEOUT)
+            self._startup_task = self.sys_create_task(self._startup_event.wait())
+            await asyncio.wait_for(self._startup_task, STARTUP_TIMEOUT)
         except asyncio.TimeoutError:
             _LOGGER.warning(
                 "Timeout while waiting for addon %s to start, took more then %s seconds",
                 self.name,
                 STARTUP_TIMEOUT,
             )
+        except asyncio.CancelledError as err:
+            _LOGGER.info("Wait for addon startup task cancelled due to: %s", err)
+        finally:
+            self._startup_task = None
 
     async def start(self) -> Awaitable[None]:
         """Set options and start add-on.
@@ -779,10 +743,7 @@ class Addon(AddonModel):
             raise AddonsError() from err
 
     async def write_stdin(self, data) -> None:
-        """Write data to add-on stdin.
-
-        Return a coroutine.
-        """
+        """Write data to add-on stdin."""
         if not self.with_stdin:
             raise AddonsNotSupportedError(
                 f"Add-on {self.slug} does not support writing to stdin!", _LOGGER.error
@@ -877,7 +838,10 @@ class Addon(AddonModel):
                 await self._backup_command(self.backup_pre)
             elif is_running and self.backup_mode == AddonBackupMode.COLD:
                 _LOGGER.info("Shutdown add-on %s for cold backup", self.slug)
-                await self.instance.stop()
+                try:
+                    await self.instance.stop()
+                except DockerError as err:
+                    raise AddonsError() from err
 
             try:
                 _LOGGER.info("Building backup for add-on %s", self.slug)
@@ -950,6 +914,11 @@ class Addon(AddonModel):
                 self.slug, data[ATTR_USER], data[ATTR_SYSTEM], restore_image
             )
 
+            # Stop it first if its running
+            if await self.instance.is_running():
+                with suppress(DockerError):
+                    await self.instance.stop()
+
             # Check version / restore image
             version = data[ATTR_VERSION]
             if not await self.instance.exists():
@@ -967,9 +936,6 @@ class Addon(AddonModel):
                 _LOGGER.info("Restore/Update of image for addon %s", self.slug)
                 with suppress(DockerError):
                     await self.instance.update(version, restore_image)
-            else:
-                with suppress(DockerError):
-                    await self.instance.stop()
 
             # Restore data
             def _restore_data():
@@ -1019,6 +985,50 @@ class Addon(AddonModel):
         """
         return self.instance.check_trust()
 
+    @Job(
+        name="addon_restart_after_problem",
+        limit=JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
+        throttle_period=WATCHDOG_THROTTLE_PERIOD,
+        throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        on_condition=AddonsJobError,
+    )
+    async def _restart_after_problem(self, state: ContainerState):
+        """Restart unhealthy or failed addon."""
+        attempts = 0
+        while await self.instance.current_state() == state:
+            if not self.in_progress:
+                _LOGGER.warning(
+                    "Watchdog found addon %s is %s, restarting...",
+                    self.name,
+                    state.value,
+                )
+                try:
+                    if state == ContainerState.FAILED:
+                        # Ensure failed container is removed before attempting reanimation
+                        if attempts == 0:
+                            with suppress(DockerError):
+                                await self.instance.stop(remove_container=True)
+
+                        await (await self.start())
+                    else:
+                        await (await self.restart())
+                except AddonsError as err:
+                    attempts = attempts + 1
+                    _LOGGER.error("Watchdog restart of addon %s failed!", self.name)
+                    capture_exception(err)
+                else:
+                    break
+
+            if attempts >= WATCHDOG_MAX_ATTEMPTS:
+                _LOGGER.critical(
+                    "Watchdog cannot restart addon %s, failed all %s attempts",
+                    self.name,
+                    attempts,
+                )
+                break
+
+            await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+
     async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
         """Set addon state from container state."""
         if event.name != self.instance.name:
@@ -1053,4 +1063,4 @@ class Addon(AddonModel):
             ContainerState.STOPPED,
             ContainerState.UNHEALTHY,
         ]:
-            await self._restart_after_problem(self, event.state)
+            await self._restart_after_problem(event.state)

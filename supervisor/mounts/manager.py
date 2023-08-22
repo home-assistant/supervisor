@@ -139,7 +139,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 ]
             )
 
-    @Job(conditions=[JobCondition.MOUNT_AVAILABLE])
+    @Job(name="mount_manager_reload", conditions=[JobCondition.MOUNT_AVAILABLE])
     async def reload(self) -> None:
         """Update mounts info via dbus and reload failed mounts."""
         if not self.mounts:
@@ -180,9 +180,17 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 ],
             )
 
-    @Job(conditions=[JobCondition.MOUNT_AVAILABLE], on_condition=MountJobError)
+    @Job(
+        name="mount_manager_create_mount",
+        conditions=[JobCondition.MOUNT_AVAILABLE],
+        on_condition=MountJobError,
+    )
     async def create_mount(self, mount: Mount) -> None:
         """Add/update a mount."""
+        # Add mount name to job
+        if job := self.sys_jobs.get_job():
+            job.reference = mount.name
+
         if mount.name in self._mounts:
             _LOGGER.debug("Mount '%s' exists, unmounting then mounting from new config")
             await self.remove_mount(mount.name, retain_entry=True)
@@ -200,9 +208,17 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         elif mount.usage == MountUsage.SHARE:
             await self._bind_share(mount)
 
-    @Job(conditions=[JobCondition.MOUNT_AVAILABLE], on_condition=MountJobError)
+    @Job(
+        name="mount_manager_remove_mount",
+        conditions=[JobCondition.MOUNT_AVAILABLE],
+        on_condition=MountJobError,
+    )
     async def remove_mount(self, name: str, *, retain_entry: bool = False) -> None:
         """Remove a mount."""
+        # Add mount name to job
+        if job := self.sys_jobs.get_job():
+            job.reference = name
+
         if name not in self._mounts:
             raise MountNotFound(
                 f"Cannot remove '{name}', no mount exists with that name"
@@ -223,9 +239,17 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         return mount
 
-    @Job(conditions=[JobCondition.MOUNT_AVAILABLE], on_condition=MountJobError)
+    @Job(
+        name="mount_manager_reload_mount",
+        conditions=[JobCondition.MOUNT_AVAILABLE],
+        on_condition=MountJobError,
+    )
     async def reload_mount(self, name: str) -> None:
         """Reload a mount to retry mounting with same config."""
+        # Add mount name to job
+        if job := self.sys_jobs.get_job():
+            job.reference = name
+
         if name not in self._mounts:
             raise MountNotFound(
                 f"Cannot reload '{name}', no mount exists with that name"

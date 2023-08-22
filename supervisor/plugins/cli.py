@@ -75,6 +75,7 @@ class PluginCli(PluginBase):
         self.save_data()
 
     @Job(
+        name="plugin_cli_update",
         conditions=PLUGIN_UPDATE_CONDITIONS,
         on_condition=CliJobError,
     )
@@ -151,6 +152,7 @@ class PluginCli(PluginBase):
             capture_exception(err)
 
     @Job(
+        name="plugin_cli_restart_after_problem",
         limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,

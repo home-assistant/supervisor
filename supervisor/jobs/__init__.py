@@ -1,53 +1,70 @@
 """Supervisor job manager."""
+from collections.abc import Callable
+from contextlib import contextmanager
+from contextvars import ContextVar, Token
 import logging
+from uuid import UUID, uuid4
+
+from attrs import define, field
+from attrs.setters import frozen
+from attrs.validators import ge, le
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import JobNotFound, JobStartException
 from ..utils.common import FileConfiguration
 from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
 from .validate import SCHEMA_JOBS_CONFIG
 
-_LOGGER: logging.Logger = logging.getLogger(__package__)
+# Context vars only act as a global within the same asyncio task
+# When a new asyncio task is started the current context is copied over.
+# Modifications to it in one task are not visible to others though.
+# This allows us to track what job is currently in progress in each task.
+_CURRENT_JOB: ContextVar[UUID] = ContextVar("current_job")
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class SupervisorJob(CoreSysAttributes):
-    """Supervisor running job class."""
+@define
+class SupervisorJob:
+    """Representation of a job running in supervisor."""
 
-    def __init__(self, coresys: CoreSys, name: str):
-        """Initialize the JobManager class."""
-        self.coresys: CoreSys = coresys
-        self.name: str = name
-        self._progress: int = 0
-        self._stage: str | None = None
+    name: str = field(on_setattr=frozen)
+    reference: str | None = None
+    progress: int = field(default=0, validator=[ge(0), le(100)])
+    stage: str | None = None
+    uuid: UUID = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
+    parent_id: UUID = field(
+        init=False, factory=lambda: _CURRENT_JOB.get(None), on_setattr=frozen
+    )
+    done: bool = field(init=False, default=False)
 
-    @property
-    def progress(self) -> int:
-        """Return the current progress."""
-        return self._progress
+    @contextmanager
+    def start(self, *, on_done: Callable[["SupervisorJob"], None] | None = None):
+        """Start the job in the current task.
 
-    @property
-    def stage(self) -> str | None:
-        """Return the current stage."""
-        return self._stage
+        This can only be called if the parent ID matches the job running in the current task.
+        This is to ensure that each asyncio task can only be doing one job at a time as that
+        determines what resources it can and cannot access.
+        """
+        if self.done:
+            raise JobStartException("Job is already complete")
+        if _CURRENT_JOB.get(None) != self.parent_id:
+            raise JobStartException("Job has a different parent from current job")
 
-    def update(self, progress: int | None = None, stage: str | None = None) -> None:
-        """Update the job object."""
-        if progress is not None:
-            if progress >= round(100):
-                self.sys_jobs.remove_job(self)
-                return
-            self._progress = round(progress)
-        if stage is not None:
-            self._stage = stage
-        _LOGGER.debug(
-            "Job updated; name: %s, progress: %s, stage: %s",
-            self.name,
-            self.progress,
-            self.stage,
-        )
+        token: Token[UUID] | None = None
+        try:
+            token = _CURRENT_JOB.set(self.uuid)
+            yield self
+        finally:
+            self.done = True
+            if token:
+                _CURRENT_JOB.reset(token)
+            if on_done:
+                on_done(self)
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
-    """Job class."""
+    """Job Manager class."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize the JobManager class."""
@@ -58,7 +75,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
     @property
     def jobs(self) -> list[SupervisorJob]:
         """Return a list of current jobs."""
-        return self._jobs
+        return list(self._jobs.values())
 
     @property
     def ignore_conditions(self) -> list[JobCondition]:
@@ -70,18 +87,30 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         """Set a list of ignored condition."""
         self._data[ATTR_IGNORE_CONDITIONS] = value
 
-    def get_job(self, name: str) -> SupervisorJob:
-        """Return a job, create one if it does not exist."""
-        if name not in self._jobs:
-            self._jobs[name] = SupervisorJob(self.coresys, name)
+    def new_job(
+        self, name: str, reference: str | None = None, initial_stage: str | None = None
+    ) -> SupervisorJob:
+        """Create a new job."""
+        job = SupervisorJob(name, reference=reference, stage=initial_stage)
+        self._jobs[job.uuid] = job
+        return job
 
-        return self._jobs[name]
+    def get_job(self, uuid: UUID | None = None) -> SupervisorJob | None:
+        """Return a job by uuid if it exists. Returns the current job of the asyncio task if uuid omitted."""
+        if uuid:
+            return self._jobs.get(uuid)
+
+        if uuid := _CURRENT_JOB.get(None):
+            return self._jobs.get(uuid)
+
+        return None
 
     def remove_job(self, job: SupervisorJob) -> None:
-        """Remove a job."""
-        if job.name in self._jobs:
-            del self._jobs[job.name]
+        """Remove a job by UUID."""
+        if job.uuid not in self._jobs:
+            raise JobNotFound(f"Could not find job {job.name}", _LOGGER.error)
 
-    def clear(self) -> None:
-        """Clear all jobs."""
-        self._jobs.clear()
+        if not job.done:
+            _LOGGER.warning("Removing incomplete job %s from job manager", job.name)
+
+        del self._jobs[job.uuid]

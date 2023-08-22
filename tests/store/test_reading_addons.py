@@ -5,7 +5,7 @@ from unittest.mock import patch
 from supervisor.coresys import CoreSys
 
 
-def test_read_addon_files(coresys: CoreSys):
+async def test_read_addon_files(coresys: CoreSys):
     """Test that we are reading add-on files correctly."""
     with patch(
         "pathlib.Path.glob",
@@ -19,7 +19,7 @@ def test_read_addon_files(coresys: CoreSys):
             Path(".circleci/config.yml"),
         ],
     ):
-        addon_list = coresys.store.data._find_addons(Path("test"), {})
+        addon_list = await coresys.store.data._find_addons(Path("test"), {})
 
         assert len(addon_list) == 1
         assert str(addon_list[0]) == "addon/config.yml"

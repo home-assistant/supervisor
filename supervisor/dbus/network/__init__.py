@@ -69,7 +69,7 @@ class NetworkManager(DBusInterfaceProxy):
 
     @property
     def interfaces(self) -> set[NetworkInterface]:
-        """Return a dictionary of active interfaces."""
+        """Return a set of active interfaces."""
         return set(self._interfaces.values())
 
     @property

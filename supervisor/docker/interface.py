@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 from collections.abc import Awaitable
 from contextlib import suppress
 import logging
 import re
 from time import time
 from typing import Any
+from uuid import uuid4
 
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
@@ -24,18 +26,21 @@ from ..const import (
     BusEvent,
     CpuArch,
 )
-from ..coresys import CoreSys, CoreSysAttributes
+from ..coresys import CoreSys
 from ..exceptions import (
     CodeNotaryError,
     CodeNotaryUntrusted,
     DockerAPIError,
     DockerError,
+    DockerJobError,
     DockerNotFound,
     DockerRequestError,
     DockerTrustError,
 )
+from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobExecutionLimit
+from ..jobs.decorator import Job
+from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
-from ..utils import process_lock
 from ..utils.sentry import capture_exception
 from .const import ContainerState, RestartPolicy
 from .manager import CommandReturn
@@ -73,11 +78,18 @@ def _container_state_from_model(docker_container: Container) -> ContainerState:
     return ContainerState.STOPPED
 
 
-class DockerInterface(CoreSysAttributes):
+class DockerInterface(JobGroup):
     """Docker Supervisor interface."""
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
+        super().__init__(
+            coresys,
+            JOB_GROUP_DOCKER_INTERFACE.format_map(
+                defaultdict(str, name=self.name or uuid4().hex)
+            ),
+            self.name,
+        )
         self.coresys: CoreSys = coresys
         self._meta: dict[str, Any] | None = None
         self.lock: asyncio.Lock = asyncio.Lock()
@@ -193,7 +205,7 @@ class DockerInterface(CoreSysAttributes):
 
         return credentials
 
-    def _docker_login(self, image: str) -> None:
+    async def _docker_login(self, image: str) -> None:
         """Try to log in to the registry if there are credentials available."""
         if not self.sys_docker.config.registries:
             return
@@ -202,30 +214,21 @@ class DockerInterface(CoreSysAttributes):
         if not credentials:
             return
 
-        self.sys_docker.docker.login(**credentials)
+        await self.sys_run_in_executor(self.sys_docker.docker.login, **credentials)
 
-    @process_lock
-    def install(
-        self,
-        version: AwesomeVersion,
-        image: str | None = None,
-        latest: bool = False,
-        arch: CpuArch | None = None,
-    ):
-        """Pull docker image."""
-        return self.sys_run_in_executor(self._install, version, image, latest, arch)
-
-    def _install(
+    @Job(
+        name="docker_interface_install",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def install(
         self,
         version: AwesomeVersion,
         image: str | None = None,
         latest: bool = False,
         arch: CpuArch | None = None,
     ) -> None:
-        """Pull Docker image.
-
-        Need run inside executor.
-        """
+        """Pull docker image."""
         image = image or self.image
         arch = arch or self.sys_arch.supervisor
 
@@ -233,21 +236,24 @@ class DockerInterface(CoreSysAttributes):
         try:
             if self.sys_docker.config.registries:
                 # Try login if we have defined credentials
-                self._docker_login(image)
+                await self._docker_login(image)
 
             # Pull new image
-            docker_image = self.sys_docker.images.pull(
+            docker_image = await self.sys_run_in_executor(
+                self.sys_docker.images.pull,
                 f"{image}:{version!s}",
                 platform=MAP_ARCH[arch],
             )
 
             # Validate content
             try:
-                self._validate_trust(docker_image.id, image, version)
+                await self._validate_trust(docker_image.id, image, version)
             except CodeNotaryError:
                 with suppress(docker.errors.DockerException):
-                    self.sys_docker.images.remove(
-                        image=f"{image}:{version!s}", force=True
+                    await self.sys_run_in_executor(
+                        self.sys_docker.images.remove,
+                        image=f"{image}:{version!s}",
+                        force=True,
                     )
                 raise
 
@@ -256,7 +262,7 @@ class DockerInterface(CoreSysAttributes):
                 _LOGGER.info(
                     "Tagging image %s with version %s as latest", image, version
                 )
-                docker_image.tag(image, tag="latest")
+                await self.sys_run_in_executor(docker_image.tag, image, tag="latest")
         except docker.errors.APIError as err:
             if err.status_code == 429:
                 self.sys_resolution.create_issue(
@@ -289,34 +295,21 @@ class DockerInterface(CoreSysAttributes):
 
         self._meta = docker_image.attrs
 
-    def exists(self) -> Awaitable[bool]:
+    async def exists(self) -> bool:
         """Return True if Docker image exists in local repository."""
-        return self.sys_run_in_executor(self._exists)
-
-    def _exists(self) -> bool:
-        """Return True if Docker image exists in local repository.
-
-        Need run inside executor.
-        """
         with suppress(docker.errors.DockerException, requests.RequestException):
-            self.sys_docker.images.get(f"{self.image}:{self.version!s}")
+            await self.sys_run_in_executor(
+                self.sys_docker.images.get, f"{self.image}:{self.version!s}"
+            )
             return True
         return False
 
-    def is_running(self) -> Awaitable[bool]:
-        """Return True if Docker is running.
-
-        Return a Future.
-        """
-        return self.sys_run_in_executor(self._is_running)
-
-    def _is_running(self) -> bool:
-        """Return True if Docker is running.
-
-        Need run inside executor.
-        """
+    async def is_running(self) -> bool:
+        """Return True if Docker is running."""
         try:
-            docker_container = self.sys_docker.containers.get(self.name)
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.containers.get, self.name
+            )
         except docker.errors.NotFound:
             return False
         except docker.errors.DockerException as err:
@@ -326,20 +319,12 @@ class DockerInterface(CoreSysAttributes):
 
         return docker_container.status == "running"
 
-    def current_state(self) -> Awaitable[ContainerState]:
-        """Return current state of container.
-
-        Return a Future.
-        """
-        return self.sys_run_in_executor(self._current_state)
-
-    def _current_state(self) -> ContainerState:
-        """Return current state of container.
-
-        Need run inside executor.
-        """
+    async def current_state(self) -> ContainerState:
+        """Return current state of container."""
         try:
-            docker_container = self.sys_docker.containers.get(self.name)
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.containers.get, self.name
+            )
         except docker.errors.NotFound:
             return ContainerState.UNKNOWN
         except docker.errors.DockerException as err:
@@ -349,22 +334,19 @@ class DockerInterface(CoreSysAttributes):
 
         return _container_state_from_model(docker_container)
 
-    @process_lock
-    def attach(
+    @Job(
+        name="docker_interface_attach",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def attach(
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
-    ) -> Awaitable[None]:
-        """Attach to running Docker container."""
-        return self.sys_run_in_executor(self._attach, version, skip_state_event_if_down)
-
-    def _attach(
-        self, version: AwesomeVersion, skip_state_event_if_down: bool = False
     ) -> None:
-        """Attach to running docker container.
-
-        Need run inside executor.
-        """
+        """Attach to running Docker container."""
         with suppress(docker.errors.DockerException, requests.RequestException):
-            docker_container = self.sys_docker.containers.get(self.name)
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.containers.get, self.name
+            )
             self._meta = docker_container.attrs
             self.sys_docker.monitor.watch_container(docker_container)
 
@@ -374,8 +356,7 @@ class DockerInterface(CoreSysAttributes):
                 and state in [ContainerState.STOPPED, ContainerState.FAILED]
             ):
                 # Fire event with current state of container
-                self.sys_loop.call_soon_threadsafe(
-                    self.sys_bus.fire_event,
+                self.sys_bus.fire_event(
                     BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
                     DockerContainerStateEvent(
                         self.name, state, docker_container.id, int(time())
@@ -393,114 +374,64 @@ class DockerInterface(CoreSysAttributes):
             raise DockerError()
         _LOGGER.info("Attaching to %s with version %s", self.image, self.version)
 
-    @process_lock
-    def run(self) -> Awaitable[None]:
+    @Job(
+        name="docker_interface_run",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def run(self) -> None:
         """Run Docker image."""
-        return self.sys_run_in_executor(self._run)
-
-    def _run(self) -> None:
-        """Run Docker image.
-
-        Need run inside executor.
-        """
         raise NotImplementedError()
 
-    @process_lock
-    def stop(self, remove_container=True) -> Awaitable[None]:
+    @Job(
+        name="docker_interface_stop",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
-        return self.sys_run_in_executor(self._stop, remove_container)
+        with suppress(DockerNotFound):
+            await self.sys_run_in_executor(
+                self.sys_docker.stop_container,
+                self.name,
+                self.timeout,
+                remove_container,
+            )
 
-    def _stop(self, remove_container=True) -> None:
-        """Stop/remove Docker container.
-
-        Need run inside executor.
-        """
-        try:
-            docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.NotFound:
-            return
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
-
-        if docker_container.status == "running":
-            _LOGGER.info("Stopping %s application", self.name)
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                docker_container.stop(timeout=self.timeout)
-
-        if remove_container:
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                _LOGGER.info("Cleaning %s application", self.name)
-                docker_container.remove(force=True)
-
-    @process_lock
+    @Job(
+        name="docker_interface_start",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     def start(self) -> Awaitable[None]:
         """Start Docker container."""
-        return self.sys_run_in_executor(self._start)
+        return self.sys_run_in_executor(self.sys_docker.start_container, self.name)
 
-    def _start(self) -> None:
-        """Start docker container.
-
-        Need run inside executor.
-        """
-        try:
-            docker_container = self.sys_docker.containers.get(self.name)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError(
-                f"{self.name} not found for starting up", _LOGGER.error
-            ) from err
-
-        _LOGGER.info("Starting %s", self.name)
-        try:
-            docker_container.start()
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError(f"Can't start {self.name}: {err}", _LOGGER.error) from err
-
-    @process_lock
-    def remove(self) -> Awaitable[None]:
+    @Job(
+        name="docker_interface_remove",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def remove(self) -> None:
         """Remove Docker images."""
-        return self.sys_run_in_executor(self._remove)
-
-    def _remove(self) -> None:
-        """Remove docker images.
-
-        Needs run inside executor.
-        """
         # Cleanup container
         with suppress(DockerError):
-            self._stop()
+            await self.stop()
 
-        _LOGGER.info("Removing image %s with latest and %s", self.image, self.version)
-
-        try:
-            with suppress(docker.errors.ImageNotFound):
-                self.sys_docker.images.remove(image=f"{self.image}:latest", force=True)
-
-            with suppress(docker.errors.ImageNotFound):
-                self.sys_docker.images.remove(
-                    image=f"{self.image}:{self.version!s}", force=True
-                )
-
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError(
-                f"Can't remove image {self.image}: {err}", _LOGGER.warning
-            ) from err
-
+        await self.sys_run_in_executor(
+            self.sys_docker.remove_image, self.image, self.version
+        )
         self._meta = None
 
-    @process_lock
-    def update(
-        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
-    ) -> Awaitable[None]:
-        """Update a Docker image."""
-        return self.sys_run_in_executor(self._update, version, image, latest)
-
-    def _update(
+    @Job(
+        name="docker_interface_update",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def update(
         self, version: AwesomeVersion, image: str | None = None, latest: bool = False
     ) -> None:
-        """Update a docker image.
-
-        Need run inside executor.
-        """
+        """Update a Docker image."""
         image = image or self.image
 
         _LOGGER.info(
@@ -508,163 +439,68 @@ class DockerInterface(CoreSysAttributes):
         )
 
         # Update docker image
-        self._install(version, image=image, latest=latest)
+        await self.install(version, image=image, latest=latest)
 
         # Stop container & cleanup
         with suppress(DockerError):
-            self._stop()
+            await self.stop()
 
-    def logs(self) -> Awaitable[bytes]:
-        """Return Docker logs of container.
-
-        Return a Future.
-        """
-        return self.sys_run_in_executor(self._logs)
-
-    def _logs(self) -> bytes:
-        """Return Docker logs of container.
-
-        Need run inside executor.
-        """
-        try:
-            docker_container = self.sys_docker.containers.get(self.name)
-        except (docker.errors.DockerException, requests.RequestException):
-            return b""
-
-        try:
-            return docker_container.logs(tail=100, stdout=True, stderr=True)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.warning("Can't grep logs from %s: %s", self.image, err)
+    async def logs(self) -> bytes:
+        """Return Docker logs of container."""
+        with suppress(DockerError):
+            return await self.sys_run_in_executor(
+                self.sys_docker.container_logs, self.name
+            )
 
         return b""
 
-    @process_lock
+    @Job(
+        name="docker_interface_cleanup",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     def cleanup(self, old_image: str | None = None) -> Awaitable[None]:
         """Check if old version exists and cleanup."""
-        return self.sys_run_in_executor(self._cleanup, old_image)
+        return self.sys_run_in_executor(
+            self.sys_docker.cleanup_old_images,
+            self.image,
+            self.version,
+            {old_image} if old_image else None,
+        )
 
-    def _cleanup(self, old_image: str | None = None) -> None:
-        """Check if old version exists and cleanup.
-
-        Need run inside executor.
-        """
-        try:
-            origin = self.sys_docker.images.get(f"{self.image}:{self.version!s}")
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError(
-                f"Can't find {self.image} for cleanup", _LOGGER.warning
-            ) from err
-
-        # Cleanup Current
-        try:
-            images_list = self.sys_docker.images.list(name=self.image)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError(
-                f"Corrupt docker overlayfs found: {err}", _LOGGER.warning
-            ) from err
-
-        for image in images_list:
-            if origin.id == image.id:
-                continue
-
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                _LOGGER.info("Cleanup images: %s", image.tags)
-                self.sys_docker.images.remove(image.id, force=True)
-
-        # Cleanup Old
-        if not old_image or self.image == old_image:
-            return
-
-        try:
-            images_list = self.sys_docker.images.list(name=old_image)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError(
-                f"Corrupt docker overlayfs found: {err}", _LOGGER.warning
-            ) from err
-
-        for image in images_list:
-            if origin.id == image.id:
-                continue
-
-            with suppress(docker.errors.DockerException, requests.RequestException):
-                _LOGGER.info("Cleanup images: %s", image.tags)
-                self.sys_docker.images.remove(image.id, force=True)
-
-    @process_lock
+    @Job(
+        name="docker_interface_restart",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     def restart(self) -> Awaitable[None]:
         """Restart docker container."""
-        return self.sys_loop.run_in_executor(None, self._restart)
+        return self.sys_run_in_executor(
+            self.sys_docker.restart_container, self.name, self.timeout
+        )
 
-    def _restart(self) -> None:
-        """Restart docker container.
-
-        Need run inside executor.
-        """
-        try:
-            container = self.sys_docker.containers.get(self.name)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
-
-        _LOGGER.info("Restarting %s", self.image)
-        try:
-            container.restart(timeout=self.timeout)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError(
-                f"Can't restart {self.image}: {err}", _LOGGER.warning
-            ) from err
-
-    @process_lock
-    def execute_command(self, command: str) -> Awaitable[CommandReturn]:
+    @Job(
+        name="docker_interface_execute_command",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command."""
-        return self.sys_run_in_executor(self._execute_command, command)
-
-    def _execute_command(self, command: str) -> CommandReturn:
-        """Create a temporary container and run command.
-
-        Need run inside executor.
-        """
         raise NotImplementedError()
 
-    def stats(self) -> Awaitable[DockerStats]:
+    async def stats(self) -> DockerStats:
         """Read and return stats from container."""
-        return self.sys_run_in_executor(self._stats)
+        stats = await self.sys_run_in_executor(
+            self.sys_docker.container_stats, self.name
+        )
+        return DockerStats(stats)
 
-    def _stats(self) -> DockerStats:
-        """Create a temporary container and run command.
-
-        Need run inside executor.
-        """
+    async def is_failed(self) -> bool:
+        """Return True if Docker is failing state."""
         try:
-            docker_container = self.sys_docker.containers.get(self.name)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
-
-        # container is not running
-        if docker_container.status != "running":
-            raise DockerError(f"Container {self.name} is not running", _LOGGER.error)
-
-        try:
-            stats = docker_container.stats(stream=False)
-            return DockerStats(stats)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError(
-                f"Can't read stats from {self.name}: {err}", _LOGGER.error
-            ) from err
-
-    def is_failed(self) -> Awaitable[bool]:
-        """Return True if Docker is failing state.
-
-        Return a Future.
-        """
-        return self.sys_run_in_executor(self._is_failed)
-
-    def _is_failed(self) -> bool:
-        """Return True if Docker is failing state.
-
-        Need run inside executor.
-        """
-        try:
-            docker_container = self.sys_docker.containers.get(self.name)
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.containers.get, self.name
+            )
         except docker.errors.NotFound:
             return False
         except (docker.errors.DockerException, requests.RequestException) as err:
@@ -677,18 +513,13 @@ class DockerInterface(CoreSysAttributes):
         # Check return value
         return int(docker_container.attrs["State"]["ExitCode"]) != 0
 
-    def get_latest_version(self) -> Awaitable[AwesomeVersion]:
+    async def get_latest_version(self) -> AwesomeVersion:
         """Return latest version of local image."""
-        return self.sys_run_in_executor(self._get_latest_version)
-
-    def _get_latest_version(self) -> AwesomeVersion:
-        """Return latest version of local image.
-
-        Need run inside executor.
-        """
         available_version: list[AwesomeVersion] = []
         try:
-            for image in self.sys_docker.images.list(self.image):
+            for image in await self.sys_run_in_executor(
+                self.sys_docker.images.list, self.image
+            ):
                 for tag in image.tags:
                     version = AwesomeVersion(tag.partition(":")[2])
                     if version.strategy == AwesomeVersionStrategy.UNKNOWN:
@@ -713,51 +544,36 @@ class DockerInterface(CoreSysAttributes):
         available_version.sort(reverse=True)
         return available_version[0]
 
-    @process_lock
+    @Job(
+        name="docker_interface_run_inside",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
     def run_inside(self, command: str) -> Awaitable[CommandReturn]:
         """Execute a command inside Docker container."""
-        return self.sys_run_in_executor(self._run_inside, command)
+        return self.sys_run_in_executor(
+            self.sys_docker.container_run_inside, self.name, command
+        )
 
-    def _run_inside(self, command: str) -> CommandReturn:
-        """Execute a command inside Docker container.
-
-        Need run inside executor.
-        """
-        try:
-            docker_container = self.sys_docker.containers.get(self.name)
-        except docker.errors.NotFound:
-            raise DockerNotFound() from None
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
-
-        # Execute
-        try:
-            code, output = docker_container.exec_run(command)
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
-
-        return CommandReturn(code, output)
-
-    def _validate_trust(
+    async def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
     ) -> None:
         """Validate trust of content."""
         checksum = image_id.partition(":")[2]
-        job = asyncio.run_coroutine_threadsafe(
-            self.sys_security.verify_own_content(checksum), self.sys_loop
-        )
-        job.result()
+        return await self.sys_security.verify_own_content(checksum)
 
-    @process_lock
-    def check_trust(self) -> Awaitable[None]:
+    @Job(
+        name="docker_interface_check_trust",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def check_trust(self) -> None:
         """Check trust of exists Docker image."""
-        return self.sys_run_in_executor(self._check_trust)
-
-    def _check_trust(self) -> None:
-        """Check trust of current image."""
         try:
-            image = self.sys_docker.images.get(f"{self.image}:{self.version!s}")
+            image = await self.sys_run_in_executor(
+                self.sys_docker.images.get, f"{self.image}:{self.version!s}"
+            )
         except (docker.errors.DockerException, requests.RequestException):
             return
 
-        self._validate_trust(image.id, self.image, self.version)
+        await self._validate_trust(image.id, self.image, self.version)

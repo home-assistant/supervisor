@@ -1,4 +1,5 @@
 """Test Docker interface."""
+import asyncio
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
 
@@ -151,6 +152,7 @@ async def test_attach_existing_container(
         "supervisor.docker.interface.time", return_value=1
     ):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
+        await asyncio.sleep(0)
         fire_event.assert_called_once_with(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent("homeassistant", expected, "abc123", 1),
@@ -160,6 +162,7 @@ async def test_attach_existing_container(
         await coresys.homeassistant.core.instance.attach(
             AwesomeVersion("2022.7.3"), skip_state_event_if_down=True
         )
+        await asyncio.sleep(0)
         if fired_when_skip_down:
             fire_event.assert_called_once_with(
                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE,

@@ -8,13 +8,20 @@ from typing import Any
 
 from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, JobConditionException, JobException
+from ..exceptions import (
+    HassioError,
+    JobConditionException,
+    JobException,
+    JobGroupExecutionLimitExceeded,
+)
 from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 from ..utils.sentry import capture_exception
 from .const import JobCondition, JobExecutionLimit
+from .job_group import JobGroup
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
+_JOB_NAMES: set[str] = set()
 
 
 class Job(CoreSysAttributes):
@@ -22,7 +29,7 @@ class Job(CoreSysAttributes):
 
     def __init__(
         self,
-        name: str | None = None,
+        name: str,
         conditions: list[JobCondition] | None = None,
         cleanup: bool = True,
         on_condition: JobException | None = None,
@@ -33,6 +40,10 @@ class Job(CoreSysAttributes):
         throttle_max_calls: int | None = None,
     ):
         """Initialize the Job class."""
+        if name in _JOB_NAMES:
+            raise RuntimeError(f"A job already exists with name {name}!")
+
+        _JOB_NAMES.add(name)
         self.name = name
         self.conditions = conditions
         self.cleanup = cleanup
@@ -42,8 +53,8 @@ class Job(CoreSysAttributes):
         self.throttle_max_calls = throttle_max_calls
         self._lock: asyncio.Semaphore | None = None
         self._method = None
-        self._last_call = datetime.min
-        self._rate_limited_calls: list[datetime] | None = None
+        self._last_call: dict[str | None, datetime] = {}
+        self._rate_limited_calls: dict[str, list[datetime]] | None = None
 
         # Validate Options
         if (
@@ -52,19 +63,70 @@ class Job(CoreSysAttributes):
                 JobExecutionLimit.THROTTLE,
                 JobExecutionLimit.THROTTLE_WAIT,
                 JobExecutionLimit.THROTTLE_RATE_LIMIT,
+                JobExecutionLimit.GROUP_THROTTLE,
+                JobExecutionLimit.GROUP_THROTTLE_WAIT,
+                JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
             )
             and self._throttle_period is None
         ):
-            raise RuntimeError("Using Job without a Throttle period!")
+            raise RuntimeError(
+                f"Job {name} is using execution limit {limit.value} without a throttle period!"
+            )
 
-        if self.limit == JobExecutionLimit.THROTTLE_RATE_LIMIT:
+        if self.limit in (
+            JobExecutionLimit.THROTTLE_RATE_LIMIT,
+            JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
+        ):
             if self.throttle_max_calls is None:
-                raise RuntimeError("Using rate limit without throttle max calls!")
+                raise RuntimeError(
+                    f"Job {name} is using execution limit {limit.value} without throttle max calls!"
+                )
 
-            self._rate_limited_calls = []
+            self._rate_limited_calls = {}
 
-    @property
-    def throttle_period(self) -> timedelta | None:
+    def last_call(self, group_name: str | None = None) -> datetime:
+        """Return last call datetime."""
+        return self._last_call.get(group_name, datetime.min)
+
+    def set_last_call(self, value: datetime, group_name: str | None = None) -> None:
+        """Set last call datetime."""
+        self._last_call[group_name] = value
+
+    def rate_limited_calls(
+        self, group_name: str | None = None
+    ) -> list[datetime] | None:
+        """Return rate limited calls if used."""
+        if self._rate_limited_calls is None:
+            return None
+
+        return self._rate_limited_calls.get(group_name, [])
+
+    def add_rate_limited_call(
+        self, value: datetime, group_name: str | None = None
+    ) -> None:
+        """Add a rate limited call to list if used."""
+        if self._rate_limited_calls is None:
+            raise RuntimeError(
+                f"Rate limited calls not available for limit type {self.limit}"
+            )
+
+        if group_name in self._rate_limited_calls:
+            self._rate_limited_calls[group_name].append(value)
+        else:
+            self._rate_limited_calls[group_name] = [value]
+
+    def set_rate_limited_calls(
+        self, value: list[datetime], group_name: str | None = None
+    ) -> None:
+        """Set rate limited calls if used."""
+        if self._rate_limited_calls is None:
+            raise RuntimeError(
+                f"Rate limited calls not available for limit type {self.limit}"
+            )
+
+        self._rate_limited_calls[group_name] = value
+
+    def throttle_period(self, group_name: str | None = None) -> timedelta | None:
         """Return throttle period."""
         if self._throttle_period is None:
             return None
@@ -73,36 +135,59 @@ class Job(CoreSysAttributes):
             return self._throttle_period
 
         return self._throttle_period(
-            self.coresys, self._last_call, self._rate_limited_calls
+            self.coresys,
+            self.last_call(group_name),
+            self.rate_limited_calls(group_name),
         )
 
-    def _post_init(self, args: tuple[Any]) -> None:
+    def _post_init(self, obj: JobGroup | CoreSysAttributes) -> JobGroup | None:
         """Runtime init."""
-        if self.name is None:
-            self.name = str(self._method.__qualname__).lower().replace(".", "_")
-
         # Coresys
         try:
-            self.coresys = args[0].coresys
+            self.coresys = obj.coresys
         except AttributeError:
             pass
         if not self.coresys:
             raise RuntimeError(f"Job on {self.name} need to be an coresys object!")
 
-        # Others
+        # Setup lock for limits
         if self._lock is None:
             self._lock = asyncio.Semaphore()
+
+        # Job groups
+        if self.limit in (
+            JobExecutionLimit.GROUP_ONCE,
+            JobExecutionLimit.GROUP_WAIT,
+            JobExecutionLimit.GROUP_THROTTLE,
+            JobExecutionLimit.GROUP_THROTTLE_WAIT,
+            JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
+        ):
+            try:
+                _ = obj.acquire and obj.release
+            except AttributeError:
+                raise RuntimeError(
+                    f"Job on {self.name} need to be a JobGroup to use group based limits!"
+                ) from None
+
+            return obj
+        return None
 
     def __call__(self, method):
         """Call the wrapper logic."""
         self._method = method
 
         @wraps(method)
-        async def wrapper(*args, **kwargs) -> Any:
-            """Wrap the method."""
-            self._post_init(args)
+        async def wrapper(obj: JobGroup | CoreSysAttributes, *args, **kwargs) -> Any:
+            """Wrap the method.
 
-            job = self.sys_jobs.get_job(self.name)
+            This method must be on an instance of CoreSysAttributes. If a JOB_GROUP limit
+            is used, then it must be on an instance of JobGroup.
+            """
+            job_group = self._post_init(obj)
+            group_name: str | None = job_group.group_name if job_group else None
+            job = self.sys_jobs.new_job(
+                self.name, job_group.job_reference if job_group else None
+            )
 
             # Handle condition
             if self.conditions:
@@ -118,50 +203,78 @@ class Job(CoreSysAttributes):
             # Handle exection limits
             if self.limit in (JobExecutionLimit.SINGLE_WAIT, JobExecutionLimit.ONCE):
                 await self._acquire_exection_limit()
-            elif self.limit == JobExecutionLimit.THROTTLE:
-                time_since_last_call = datetime.now() - self._last_call
-                if time_since_last_call < self.throttle_period:
+            elif self.limit in (
+                JobExecutionLimit.GROUP_ONCE,
+                JobExecutionLimit.GROUP_WAIT,
+            ):
+                try:
+                    await obj.acquire(job, self.limit == JobExecutionLimit.GROUP_WAIT)
+                except JobGroupExecutionLimitExceeded as err:
+                    if self.on_condition:
+                        raise self.on_condition(str(err)) from err
+                    raise err
+            elif self.limit in (
+                JobExecutionLimit.THROTTLE,
+                JobExecutionLimit.GROUP_THROTTLE,
+            ):
+                time_since_last_call = datetime.now() - self.last_call(group_name)
+                if time_since_last_call < self.throttle_period(group_name):
                     return
-            elif self.limit == JobExecutionLimit.THROTTLE_WAIT:
+            elif self.limit in (
+                JobExecutionLimit.THROTTLE_WAIT,
+                JobExecutionLimit.GROUP_THROTTLE_WAIT,
+            ):
                 await self._acquire_exection_limit()
-                time_since_last_call = datetime.now() - self._last_call
-                if time_since_last_call < self.throttle_period:
+                time_since_last_call = datetime.now() - self.last_call(group_name)
+                if time_since_last_call < self.throttle_period(group_name):
                     self._release_exception_limits()
                     return
-            elif self.limit == JobExecutionLimit.THROTTLE_RATE_LIMIT:
+            elif self.limit in (
+                JobExecutionLimit.THROTTLE_RATE_LIMIT,
+                JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
+            ):
                 # Only reprocess array when necessary (at limit)
-                if len(self._rate_limited_calls) >= self.throttle_max_calls:
-                    self._rate_limited_calls = [
-                        call
-                        for call in self._rate_limited_calls
-                        if call > datetime.now() - self.throttle_period
-                    ]
+                if len(self.rate_limited_calls(group_name)) >= self.throttle_max_calls:
+                    self.set_rate_limited_calls(
+                        [
+                            call
+                            for call in self.rate_limited_calls(group_name)
+                            if call > datetime.now() - self.throttle_period(group_name)
+                        ],
+                        group_name,
+                    )
 
-                if len(self._rate_limited_calls) >= self.throttle_max_calls:
+                if len(self.rate_limited_calls(group_name)) >= self.throttle_max_calls:
                     on_condition = (
                         JobException if self.on_condition is None else self.on_condition
                     )
                     raise on_condition(
-                        f"Rate limit exceeded, more then {self.throttle_max_calls} calls in {self.throttle_period}",
+                        f"Rate limit exceeded, more then {self.throttle_max_calls} calls in {self.throttle_period(group_name)}",
                     )
 
             # Execute Job
-            try:
-                self._last_call = datetime.now()
-                if self._rate_limited_calls is not None:
-                    self._rate_limited_calls.append(self._last_call)
+            with job.start(on_done=self.sys_jobs.remove_job if self.cleanup else None):
+                try:
+                    self.set_last_call(datetime.now(), group_name)
+                    if self.rate_limited_calls(group_name) is not None:
+                        self.add_rate_limited_call(
+                            self.last_call(group_name), group_name
+                        )
 
-                return await self._method(*args, **kwargs)
-            except HassioError as err:
-                raise err
-            except Exception as err:
-                _LOGGER.exception("Unhandled exception: %s", err)
-                capture_exception(err)
-                raise JobException() from err
-            finally:
-                if self.cleanup:
-                    self.sys_jobs.remove_job(job)
-                self._release_exception_limits()
+                    return await self._method(obj, *args, **kwargs)
+                except HassioError as err:
+                    raise err
+                except Exception as err:
+                    _LOGGER.exception("Unhandled exception: %s", err)
+                    capture_exception(err)
+                    raise JobException() from err
+                finally:
+                    self._release_exception_limits()
+                    if self.limit in (
+                        JobExecutionLimit.GROUP_ONCE,
+                        JobExecutionLimit.GROUP_WAIT,
+                    ):
+                        obj.release()
 
         return wrapper
 
@@ -283,6 +396,7 @@ class Job(CoreSysAttributes):
             JobExecutionLimit.SINGLE_WAIT,
             JobExecutionLimit.ONCE,
             JobExecutionLimit.THROTTLE_WAIT,
+            JobExecutionLimit.GROUP_THROTTLE_WAIT,
         ):
             return
 
@@ -300,6 +414,7 @@ class Job(CoreSysAttributes):
             JobExecutionLimit.SINGLE_WAIT,
             JobExecutionLimit.ONCE,
             JobExecutionLimit.THROTTLE_WAIT,
+            JobExecutionLimit.GROUP_THROTTLE_WAIT,
         ):
             return
         self._lock.release()

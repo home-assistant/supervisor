@@ -181,6 +181,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         self._data[ATTR_AUTO_UPDATE] = value
 
     @Job(
+        name="updater_fetch_data",
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=UpdaterJobError,
         limit=JobExecutionLimit.THROTTLE_WAIT,
