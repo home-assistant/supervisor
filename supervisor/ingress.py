@@ -5,7 +5,13 @@ import random
 import secrets
 
 from .addons.addon import Addon
-from .const import ATTR_PORTS, ATTR_SESSION, FILE_HASSIO_INGRESS
+from .const import (
+    ATTR_PORTS,
+    ATTR_SESSION,
+    ATTR_SESSION_DATA,
+    FILE_HASSIO_INGRESS,
+    IngressSessionData,
+)
 from .coresys import CoreSys, CoreSysAttributes
 from .utils import check_port
 from .utils.common import FileConfiguration
@@ -30,10 +36,19 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             return None
         return self.sys_addons.get(self.tokens[token], local_only=True)
 
+    def get_session_data(self, session_id: str) -> IngressSessionData | None:
+        """Return complementary data of current session or None."""
+        return self.sessions_data.get(session_id)
+
     @property
     def sessions(self) -> dict[str, float]:
         """Return sessions."""
         return self._data[ATTR_SESSION]
+
+    @property
+    def sessions_data(self) -> dict[str, IngressSessionData]:
+        """Return sessions_data."""
+        return self._data[ATTR_SESSION_DATA]
 
     @property
     def ports(self) -> dict[str, int]:
@@ -71,6 +86,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         now = utcnow()
 
         sessions = {}
+        sessions_data: dict[str, IngressSessionData] = {}
         for session, valid in self.sessions.items():
             # check if timestamp valid, to avoid crash on malformed timestamp
             try:
@@ -84,10 +100,13 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
             # Is valid
             sessions[session] = valid
+            sessions_data[session] = self.get_session_data(session)
 
         # Write back
         self.sessions.clear()
         self.sessions.update(sessions)
+        self.sessions_data.clear()
+        self.sessions_data.update(sessions_data)
 
     def _update_token_list(self) -> None:
         """Regenerate token <-> Add-on map."""
@@ -97,12 +116,15 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         for addon in self.addons:
             self.tokens[addon.ingress_token] = addon.slug
 
-    def create_session(self) -> str:
+    def create_session(self, data: IngressSessionData | None = None) -> str:
         """Create new session."""
         session = secrets.token_hex(64)
         valid = utcnow() + timedelta(minutes=15)
 
         self.sessions[session] = valid.timestamp()
+        if data is not None:
+            self.sessions_data[session] = data
+
         return session
 
     def validate_session(self, session: str) -> bool:

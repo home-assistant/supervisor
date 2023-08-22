@@ -1,5 +1,6 @@
 """Home Assistant control object."""
 import asyncio
+from datetime import timedelta
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path, PurePath
@@ -28,6 +29,7 @@ from ..const import (
     ATTR_WATCHDOG,
     FILE_HASSIO_HOMEASSISTANT,
     BusEvent,
+    IngressSessionDataUser,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -38,7 +40,7 @@ from ..exceptions import (
 )
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
-from ..jobs.decorator import Job
+from ..jobs.decorator import Job, JobExecutionLimit
 from ..utils import remove_folder
 from ..utils.common import FileConfiguration
 from ..utils.json import read_json_file, write_json_file
@@ -432,3 +434,21 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 ATTR_WATCHDOG,
             ):
                 self._data[attr] = data[attr]
+
+    @Job(
+        name="home_assistant_get_users",
+        limit=JobExecutionLimit.THROTTLE_WAIT,
+        throttle_period=timedelta(minutes=5),
+    )
+    async def get_users(self) -> list[IngressSessionDataUser]:
+        """Get list of all configured users."""
+        list_of_users = await self.sys_homeassistant.websocket.async_send_command(
+            {ATTR_TYPE: "config/auth/list"}
+        )
+
+        return [
+            IngressSessionDataUser(
+                id=data["id"], username=data["username"], display_name=data["name"]
+            )
+            for data in list_of_users
+        ]
