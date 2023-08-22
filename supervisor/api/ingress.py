@@ -279,9 +279,8 @@ def _init_header(
 ) -> CIMultiDict | dict[str, str]:
     """Create initial header."""
     headers = {}
-    is_session_data_given = session_data is not None
 
-    if is_session_data_given:
+    if session_data is not None:
         headers[HEADER_REMOTE_USER_ID] = session_data.user.id
         headers[HEADER_REMOTE_USER_NAME] = session_data.user.username
         headers[HEADER_REMOTE_USER_DISPLAY_NAME] = session_data.user.display_name
@@ -298,7 +297,6 @@ def _init_header(
             hdrs.SEC_WEBSOCKET_KEY,
             istr(HEADER_TOKEN),
             istr(HEADER_TOKEN_OLD),
-        ) + () if is_session_data_given else (
             istr(HEADER_REMOTE_USER_ID),
             istr(HEADER_REMOTE_USER_NAME),
             istr(HEADER_REMOTE_USER_DISPLAY_NAME),
