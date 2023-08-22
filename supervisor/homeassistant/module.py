@@ -435,7 +435,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             ):
                 self._data[attr] = data[attr]
 
-    @Job(limit=JobExecutionLimit.THROTTLE_WAIT, throttle_period=timedelta(minutes=5))
+    @Job(
+        name="home_assistant_get_users",
+        limit=JobExecutionLimit.THROTTLE_WAIT,
+        throttle_period=timedelta(minutes=5),
+    )
     async def get_users(self) -> list[IngressSessionDataUser]:
         """Get list of all configured users."""
         list_of_users = await self.sys_homeassistant.websocket.async_send_command(
