@@ -28,14 +28,12 @@ RUN_RELOAD_BACKUPS = 72000
 RUN_RELOAD_HOST = 7600
 RUN_RELOAD_UPDATER = 7200
 RUN_RELOAD_INGRESS = 930
+RUN_RELOAD_MOUNTS = 900
 
 RUN_WATCHDOG_HOMEASSISTANT_API = 120
 
 RUN_WATCHDOG_ADDON_APPLICATON = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
-
-RUN_REFRESH_ADDON = 15
-RUN_REFRESH_MOUNTS = 900
 
 PLUGIN_AUTO_UPDATE_CONDITIONS = PLUGIN_UPDATE_CONDITIONS + [JobCondition.RUNNING]
 
@@ -65,7 +63,7 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
         self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
-        self.sys_scheduler.register_task(self.sys_mounts.reload, RUN_REFRESH_MOUNTS)
+        self.sys_scheduler.register_task(self.sys_mounts.reload, RUN_RELOAD_MOUNTS)
 
         # Watchdog
         self.sys_scheduler.register_task(
@@ -77,9 +75,6 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(
             self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
         )
-
-        # Refresh
-        self.sys_scheduler.register_task(self._refresh_addon, RUN_REFRESH_ADDON)
 
         _LOGGER.info("All core tasks are scheduled")
 
@@ -281,20 +276,6 @@ class Tasks(CoreSysAttributes):
                 capture_exception(err)
             finally:
                 self._cache[addon.slug] = 0
-
-    async def _refresh_addon(self) -> None:
-        """Refresh addon state."""
-        for addon in self.sys_addons.installed:
-            # if watchdog need looking for
-            if addon.watchdog or addon.state != AddonState.STARTED:
-                continue
-
-            # if Addon have running actions
-            if addon.in_progress or await addon.is_running():
-                continue
-
-            # Adjust state
-            addon.state = AddonState.STOPPED
 
     @Job(name="tasks_reload_store", conditions=[JobCondition.SUPERVISOR_UPDATED])
     async def _reload_store(self) -> None:
