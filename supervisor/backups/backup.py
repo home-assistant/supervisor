@@ -1,6 +1,6 @@
 """Representation of a backup file."""
 from base64 import b64decode, b64encode
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable
 from datetime import timedelta
 from functools import cached_property
 import json
@@ -340,9 +340,7 @@ class Backup(CoreSysAttributes):
         finally:
             self._tmp.cleanup()
 
-    async def store_addons(
-        self, addon_list: list[str], *, on_complete: Callable[[], None] | None = None
-    ) -> list[Awaitable[None]]:
+    async def store_addons(self, addon_list: list[str]) -> list[Awaitable[None]]:
         """Add a list of add-ons into backup.
 
         For each addon that needs to be started after backup, returns a task which
@@ -388,15 +386,10 @@ class Backup(CoreSysAttributes):
                     start_tasks.append(start_task)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
-            finally:
-                if on_complete:
-                    on_complete()
 
         return start_tasks
 
-    async def restore_addons(
-        self, addon_list: list[str], *, on_complete: Callable[[], None] | None = None
-    ) -> list[Awaitable[None]]:
+    async def restore_addons(self, addon_list: list[str]) -> list[Awaitable[None]]:
         """Restore a list add-on from backup."""
 
         async def _addon_restore(addon_slug: str) -> Awaitable[None] | None:
@@ -430,15 +423,10 @@ class Backup(CoreSysAttributes):
                     start_tasks.append(start_task)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore Add-on %s: %s", slug, err)
-            finally:
-                if on_complete:
-                    on_complete()
 
         return start_tasks
 
-    async def store_folders(
-        self, folder_list: list[str], *, on_complete: Callable[[], None] | None = None
-    ) -> None:
+    async def store_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
 
         async def _folder_save(name: str):
@@ -485,13 +473,8 @@ class Backup(CoreSysAttributes):
                 raise BackupError(
                     f"Can't backup folder {folder}: {str(err)}", _LOGGER.error
                 ) from err
-            finally:
-                if on_complete:
-                    on_complete()
 
-    async def restore_folders(
-        self, folder_list: list[str], *, on_complete: Callable[[], None] | None = None
-    ) -> None:
+    async def restore_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
 
         async def _folder_restore(name: str) -> None:
@@ -536,9 +519,6 @@ class Backup(CoreSysAttributes):
                 await _folder_restore(folder)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore folder %s: %s", folder, err)
-            finally:
-                if on_complete:
-                    on_complete()
 
     async def store_homeassistant(self):
         """Backup Home Assitant Core configuration folder."""

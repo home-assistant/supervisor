@@ -372,6 +372,12 @@ async def coresys(
 
 
 @pytest.fixture
+def ha_ws_client(coresys: CoreSys) -> AsyncMock:
+    """Return HA WS client mock for assertions."""
+    return coresys.homeassistant.websocket._client
+
+
+@pytest.fixture
 async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
     """Patch supervisor data to be tmp_path."""
     with patch.object(

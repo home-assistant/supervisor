@@ -1,14 +1,13 @@
 """Test ingress API."""
-# pylint: disable=protected-access
-from unittest.mock import patch
 
-import pytest
+from unittest.mock import AsyncMock, patch
 
-# pylint: disable=redefined-outer-name
+from aiohttp.test_utils import TestClient
+
+from supervisor.coresys import CoreSys
 
 
-@pytest.mark.asyncio
-async def test_validate_session(api_client, coresys):
+async def test_validate_session(api_client: TestClient, coresys: CoreSys):
     """Test validating ingress session."""
     with patch("aiohttp.web_request.BaseRequest.__getitem__", return_value=None):
         resp = await api_client.post(
@@ -40,8 +39,9 @@ async def test_validate_session(api_client, coresys):
         assert coresys.ingress.sessions[session] > valid_time
 
 
-@pytest.mark.asyncio
-async def test_validate_session_with_user_id(api_client, coresys):
+async def test_validate_session_with_user_id(
+    api_client: TestClient, coresys: CoreSys, ha_ws_client: AsyncMock
+):
     """Test validating ingress session with user ID passed."""
     with patch("aiohttp.web_request.BaseRequest.__getitem__", return_value=None):
         resp = await api_client.post(
@@ -54,15 +54,16 @@ async def test_validate_session_with_user_id(api_client, coresys):
         "aiohttp.web_request.BaseRequest.__getitem__",
         return_value=coresys.homeassistant,
     ):
-        client = coresys.homeassistant.websocket._client
-        client.async_send_command.return_value = [
+        ha_ws_client.async_send_command.return_value = [
             {"id": "some-id", "name": "Some Name", "username": "sn"}
         ]
 
         resp = await api_client.post("/ingress/session", json={"user_id": "some-id"})
         result = await resp.json()
 
-        client.async_send_command.assert_called_with({"type": "config/auth/list"})
+        assert {"type": "config/auth/list"} in [
+            call.args[0] for call in ha_ws_client.async_send_command.call_args_list
+        ]
 
         assert "session" in result["data"]
         session = result["data"]["session"]
