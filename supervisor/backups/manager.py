@@ -23,7 +23,7 @@ from ..utils.dt import utcnow
 from ..utils.sentinel import DEFAULT
 from ..utils.sentry import capture_exception
 from .backup import Backup
-from .const import BackupType
+from .const import BackupJobStage, BackupType, RestoreJobStage
 from .utils import create_slug
 from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
@@ -49,7 +49,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         """Initialize a backup manager."""
         super().__init__(FILE_HASSIO_BACKUPS, SCHEMA_BACKUPS_CONFIG)
         self.coresys = coresys
-        self._backups = {}
+        self._backups: dict[str, Backup] = {}
         self.lock = asyncio.Lock()
 
     @property
@@ -76,7 +76,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             if mount.state == UnitActiveState.ACTIVE
         ]
 
-    def get(self, slug):
+    def get(self, slug: str) -> Backup:
         """Return backup object."""
         return self._backups.get(slug)
 
@@ -116,14 +116,14 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
         return backup
 
-    def load(self):
+    def load(self) -> Awaitable[None]:
         """Load exists backups data.
 
         Return a coroutine.
         """
         return self.reload()
 
-    async def reload(self):
+    async def reload(self) -> None:
         """Load exists backups."""
         self._backups = {}
 
@@ -143,7 +143,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         if tasks:
             await asyncio.wait(tasks)
 
-    def remove(self, backup):
+    def remove(self, backup: Backup) -> bool:
         """Remove a backup."""
         try:
             backup.tarfile.unlink()
@@ -156,7 +156,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
         return True
 
-    async def import_backup(self, tar_file):
+    async def import_backup(self, tar_file: Path) -> Backup | None:
         """Check backup tarfile and import it."""
         backup = Backup(self.coresys, tar_file)
 
@@ -193,8 +193,30 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         addon_list: list[Addon],
         folder_list: list[str],
         homeassistant: bool,
-    ):
+    ) -> Backup | None:
+        """Create a backup."""
         addon_start_tasks: list[Awaitable[None]] | None = None
+        job = self.sys_jobs.get_job()
+        completed_tasks = 0
+        task_count = len(addon_list) + len(folder_list)
+        if homeassistant:
+            task_count += 1
+
+        def track_progress(stage: BackupJobStage | None = None) -> None:
+            """Set job to specified stage or add a completed task and change progress."""
+            nonlocal completed_tasks
+            if job:
+                # Allocate 1% to metadata writing. If we wait on addon restarts, allocate 3% to that
+                max_progress = 96 if addon_start_tasks else 99
+
+                if stage:
+                    job.stage = stage
+                elif completed_tasks < task_count:
+                    completed_tasks += 1
+                    job.progress = (completed_tasks / task_count) * max_progress
+                elif job.stage == BackupJobStage.METADATA:
+                    job.progress = max_progress + 1
+
         try:
             self.sys_core.state = CoreState.FREEZE
 
@@ -202,30 +224,47 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                 # Backup add-ons
                 if addon_list:
                     _LOGGER.info("Backing up %s store Add-ons", backup.slug)
-                    addon_start_tasks = await backup.store_addons(addon_list)
+                    track_progress(BackupJobStage.ADDONS)
+                    addon_start_tasks = await backup.store_addons(
+                        addon_list, on_complete=track_progress
+                    )
 
                 # HomeAssistant Folder is for v1
                 if homeassistant:
-                    await backup.store_homeassistant()
+                    _LOGGER.info("Backing up %s store Home Assistant", backup.slug)
+                    track_progress(BackupJobStage.HOME_ASSISTANT)
+                    try:
+                        await backup.store_homeassistant()
+                    finally:
+                        track_progress()
 
                 # Backup folders
                 if folder_list:
                     _LOGGER.info("Backing up %s store folders", backup.slug)
-                    await backup.store_folders(folder_list)
+                    track_progress(BackupJobStage.FOLDERS)
+                    await backup.store_folders(folder_list, on_complete=track_progress)
+
+                track_progress(BackupJobStage.METADATA)
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Backup %s error", backup.slug)
             capture_exception(err)
             return None
         else:
+            # First mark that the metadata stage has completed
+            track_progress()
             self._backups[backup.slug] = backup
 
             if addon_start_tasks:
+                _LOGGER.info("Backing up %s wait for addons to start", backup.slug)
+                track_progress(BackupJobStage.ADDON_RESTARTS)
                 # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
                 await asyncio.gather(*addon_start_tasks, return_exceptions=True)
 
             return backup
         finally:
+            if job and job.progress < 100:
+                job.progress = 100
             self.sys_core.state = CoreState.RUNNING
 
     @Job(
@@ -234,11 +273,11 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
     )
     async def do_backup_full(
         self,
-        name="",
-        password=None,
-        compressed=True,
+        name: str = "",
+        password: str | None = None,
+        compressed: bool = True,
         location: Mount | type[DEFAULT] | None = DEFAULT,
-    ):
+    ) -> Backup | None:
         """Create a full backup."""
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
@@ -270,7 +309,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         homeassistant: bool = False,
         compressed: bool = True,
         location: Mount | type[DEFAULT] | None = DEFAULT,
-    ):
+    ) -> Backup | None:
         """Create a partial backup."""
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
@@ -315,50 +354,100 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         folder_list: list[str],
         homeassistant: bool,
         replace: bool,
-    ):
+    ) -> bool:
         addon_start_tasks: list[Awaitable[None]] | None = None
+        job = self.sys_jobs.get_job()
+        completed_tasks = 0
+        task_count = len(addon_list) + len(folder_list)
+        if homeassistant:
+            task_count += 1
+
+        addons_to_remove: list[Addon] | None = None
+        if replace:
+            addons_to_remove = [
+                addon
+                for addon in self.sys_addons.installed
+                if addon.slug not in backup.addon_list
+            ]
+            task_count += len(addons_to_remove)
+
+        # If we restore HA or addons, allocate 3% to waiting for restart (and possible rollback for HA)
+        max_progress = 100
+        if homeassistant:
+            max_progress -= 3
+        if addon_list:
+            max_progress -= 3
+
+        def track_progress(stage: RestoreJobStage | None = None):
+            """Set job to specified stage or add a completed task and change progress."""
+            nonlocal completed_tasks
+            if job:
+                if stage:
+                    job.stage = stage
+                elif completed_tasks < task_count:
+                    completed_tasks += 1
+                    job.progress = (completed_tasks / task_count) * max_progress
+                elif job.stage == RestoreJobStage.HOME_ASSISTANT_RESTART:
+                    job.progress = max_progress + 3
+
         try:
             task_hass: asyncio.Task | None = None
             async with backup:
                 # Restore docker config
                 _LOGGER.info("Restoring %s Docker config", backup.slug)
+                track_progress(RestoreJobStage.DOCKER_CONFIG)
                 backup.restore_dockerconfig(replace)
 
                 # Process folders
                 if folder_list:
                     _LOGGER.info("Restoring %s folders", backup.slug)
-                    await backup.restore_folders(folder_list)
+                    track_progress(RestoreJobStage.FOLDERS)
+                    await backup.restore_folders(
+                        folder_list, on_complete=track_progress
+                    )
 
                 # Process Home-Assistant
                 if homeassistant:
                     _LOGGER.info("Restoring %s Home Assistant Core", backup.slug)
-                    task_hass = await backup.restore_homeassistant()
+                    track_progress(RestoreJobStage.HOME_ASSISTANT)
+                    try:
+                        task_hass = await backup.restore_homeassistant()
+                    finally:
+                        track_progress()
 
                 # Delete delta add-ons
-                if replace:
+                if addons_to_remove:
                     _LOGGER.info("Removing Add-ons not in the backup %s", backup.slug)
-                    for addon in self.sys_addons.installed:
-                        if addon.slug in backup.addon_list:
-                            continue
-
+                    track_progress(RestoreJobStage.REMOVE_ADDONS)
+                    for addon in addons_to_remove:
                         # Remove Add-on because it's not a part of the new env
                         # Do it sequential avoid issue on slow IO
                         try:
                             await addon.uninstall()
                         except AddonsError:
                             _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
+                        finally:
+                            track_progress()
 
                 if addon_list:
                     _LOGGER.info("Restoring %s Repositories", backup.slug)
+                    track_progress(RestoreJobStage.ADDON_REPOSITORIES)
                     await backup.restore_repositories(replace)
 
                     _LOGGER.info("Restoring %s Add-ons", backup.slug)
-                    addon_start_tasks = await backup.restore_addons(addon_list)
+                    track_progress(RestoreJobStage.ADDONS)
+                    addon_start_tasks = await backup.restore_addons(
+                        addon_list, on_complete=track_progress
+                    )
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
                     _LOGGER.info("Restore %s wait for Home-Assistant", backup.slug)
+                    track_progress(RestoreJobStage.HOME_ASSISTANT_RESTART)
                     await task_hass
+                    # Don't wrap this in a try finally because if something goes wrong there are more
+                    # restart steps below. Don't want progress to say 100% for those.
+                    track_progress()
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", backup.slug)
@@ -366,6 +455,8 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             return False
         else:
             if addon_start_tasks:
+                _LOGGER.info("Restore %s wait for addons to start", backup.slug)
+                track_progress(RestoreJobStage.ADDON_RESTARTS)
                 # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
                 await asyncio.gather(*addon_start_tasks, return_exceptions=True)
 
@@ -380,6 +471,9 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                 _LOGGER.warning("Need restart HomeAssistant for API")
                 await self.sys_homeassistant.core.restart()
 
+            if job and job.progress < 100:
+                job.progress = 100
+
     @Job(
         name="backup_manager_full_restore",
         conditions=[
@@ -390,7 +484,9 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             JobCondition.RUNNING,
         ],
     )
-    async def do_restore_full(self, backup: Backup, password=None):
+    async def do_restore_full(
+        self, backup: Backup, password: str | None = None
+    ) -> bool:
         """Restore a backup."""
         # Add backup ID to job
         if job := self.sys_jobs.get_job():
@@ -431,6 +527,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
             if success:
                 _LOGGER.info("Full-Restore %s done", backup.slug)
+            return success
 
     @Job(
         name="backup_manager_partial_restore",
@@ -449,7 +546,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         addons: list[str] | None = None,
         folders: list[Path] | None = None,
         password: str | None = None,
-    ):
+    ) -> bool:
         """Restore a backup."""
         # Add backup ID to job
         if job := self.sys_jobs.get_job():
@@ -495,3 +592,4 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
             if success:
                 _LOGGER.info("Partial-Restore %s done", backup.slug)
+            return success

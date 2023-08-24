@@ -2,7 +2,7 @@
 
 import asyncio
 from shutil import rmtree
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError
@@ -21,6 +21,7 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, DockerError
+from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
 
@@ -827,3 +828,427 @@ async def test_restore_with_healthcheck(
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
     assert coresys.core.state == CoreState.RUNNING
+
+
+def _make_backup_message_for_assert(
+    *,
+    full: bool = True,
+    restore: bool = False,
+    reference: str,
+    progress: float,
+    stage: str | None,
+    done: bool = False,
+):
+    """Make a backup message to use for assert test."""
+    return {
+        "type": "supervisor/event",
+        "data": {
+            "event": "job",
+            "data": {
+                "name": f"backup_manager_{'full' if full else 'partial'}_{'restore' if restore else 'backup'}",
+                "reference": reference,
+                "uuid": ANY,
+                "progress": progress,
+                "stage": stage,
+                "done": done,
+                "parent_id": None,
+            },
+        },
+    }
+
+
+async def test_backup_progress(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test progress is tracked during backups."""
+    container.status = "running"
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(
+        AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
+    ), patch("supervisor.addons.addon.asyncio.Event.wait"):
+        full_backup: Backup = await coresys.backups.do_backup_full()
+    await asyncio.sleep(0)
+
+    messages = [
+        call.args[0]
+        for call in coresys.homeassistant.websocket._client.async_send_command.call_args_list
+        if call.args[0]["data"].get("data", {}).get("name")
+        == "backup_manager_full_backup"
+    ]
+    assert messages == [
+        _make_backup_message_for_assert(reference=None, progress=0, stage=None),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=0, stage=None
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=0, stage="addons"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=16.5, stage="addons"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=16.5, stage="home_assistant"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=32, stage="home_assistant"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=32, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=48, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=64, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=80, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=96, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=96, stage="metadata"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=97, stage="metadata"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=97, stage="addon_restarts"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=100, stage="addon_restarts"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, progress=100, stage="addon_restarts", done=True
+        ),
+    ]
+
+    coresys.homeassistant.websocket._client.async_send_command.reset_mock()
+    partial_backup: Backup = await coresys.backups.do_backup_partial(
+        addons=["local_ssh"], folders=["media", "share", "ssl"]
+    )
+    await asyncio.sleep(0)
+
+    messages = [
+        call.args[0]
+        for call in coresys.homeassistant.websocket._client.async_send_command.call_args_list
+        if call.args[0]["data"].get("data", {}).get("name")
+        == "backup_manager_partial_backup"
+    ]
+    assert messages == [
+        _make_backup_message_for_assert(
+            full=False, reference=None, progress=0, stage=None
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=0, stage=None
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=0, stage="addons"
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=24.8, stage="addons"
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=24.8, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=49.5, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=74.2, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=99, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=99, stage="metadata"
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, progress=100, stage="metadata"
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            reference=partial_backup.slug,
+            progress=100,
+            stage="metadata",
+            done=True,
+        ),
+    ]
+
+
+async def test_restore_progress(
+    request: pytest.FixtureRequest,
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test progress is tracked during backups."""
+    container.status = "running"
+    install_addon_ssh.path_data.mkdir()
+    install_addon_ssh.state = AddonState.STARTED
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    full_backup: Backup = await coresys.backups.do_backup_full()
+    await asyncio.sleep(0)
+    coresys.homeassistant.websocket._client.async_send_command.reset_mock()
+
+    # Install another addon to be uninstalled
+    request.getfixturevalue("install_addon_example")
+    with patch("supervisor.addons.addon.asyncio.Event.wait"), patch.object(
+        HomeAssistant, "restore"
+    ), patch.object(HomeAssistantCore, "update"), patch.object(
+        AddonModel, "_validate_availability"
+    ), patch.object(
+        AddonModel, "with_ingress", new=PropertyMock(return_value=False)
+    ):
+        await coresys.backups.do_restore_full(full_backup)
+    await asyncio.sleep(0)
+
+    messages = [
+        call.args[0]
+        for call in coresys.homeassistant.websocket._client.async_send_command.call_args_list
+        if call.args[0]["data"].get("data", {}).get("name")
+        == "backup_manager_full_restore"
+    ]
+    assert messages == [
+        _make_backup_message_for_assert(
+            restore=True, reference=None, progress=0, stage=None
+        ),
+        _make_backup_message_for_assert(
+            restore=True, reference=full_backup.slug, progress=0, stage=None
+        ),
+        _make_backup_message_for_assert(
+            restore=True, reference=full_backup.slug, progress=0, stage="docker_config"
+        ),
+        _make_backup_message_for_assert(
+            restore=True, reference=full_backup.slug, progress=0, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            restore=True, reference=full_backup.slug, progress=18.8, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            restore=True, reference=full_backup.slug, progress=37.6, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=37.6,
+            stage="home_assistant",
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=56.4,
+            stage="home_assistant",
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=56.4,
+            stage="remove_addons",
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=75.2,
+            stage="remove_addons",
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=75.2,
+            stage="addon_repositories",
+        ),
+        _make_backup_message_for_assert(
+            restore=True, reference=full_backup.slug, progress=75.2, stage="addons"
+        ),
+        _make_backup_message_for_assert(
+            restore=True, reference=full_backup.slug, progress=94, stage="addons"
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=94,
+            stage="home_assistant_restart",
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=97,
+            stage="home_assistant_restart",
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=97,
+            stage="addon_restarts",
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=100,
+            stage="addon_restarts",
+        ),
+        _make_backup_message_for_assert(
+            restore=True,
+            reference=full_backup.slug,
+            progress=100,
+            stage="addon_restarts",
+            done=True,
+        ),
+    ]
+
+    folders_backup: Backup = await coresys.backups.do_backup_partial(
+        folders=["media", "share", "ssl"]
+    )
+    coresys.homeassistant.websocket._client.async_send_command.reset_mock()
+    await coresys.backups.do_restore_partial(
+        folders_backup, folders=["media", "share", "ssl"]
+    )
+    await asyncio.sleep(0)
+
+    messages = [
+        call.args[0]
+        for call in coresys.homeassistant.websocket._client.async_send_command.call_args_list
+        if call.args[0]["data"].get("data", {}).get("name")
+        == "backup_manager_partial_restore"
+    ]
+    assert messages == [
+        _make_backup_message_for_assert(
+            full=False, restore=True, reference=None, progress=0, stage=None
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=folders_backup.slug,
+            progress=0,
+            stage=None,
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=folders_backup.slug,
+            progress=0,
+            stage="docker_config",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=folders_backup.slug,
+            progress=0,
+            stage="folders",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=folders_backup.slug,
+            progress=33.3,
+            stage="folders",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=folders_backup.slug,
+            progress=66.7,
+            stage="folders",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=folders_backup.slug,
+            progress=100,
+            stage="folders",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=folders_backup.slug,
+            progress=100,
+            stage="folders",
+            done=True,
+        ),
+    ]
+
+    container.status = "stopped"
+    install_addon_ssh.state = AddonState.STOPPED
+    addon_backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
+
+    coresys.homeassistant.websocket._client.async_send_command.reset_mock()
+    with patch.object(AddonModel, "_validate_availability"), patch.object(
+        HomeAssistantCore, "start"
+    ):
+        await coresys.backups.do_restore_partial(addon_backup, addons=["local_ssh"])
+    await asyncio.sleep(0)
+
+    messages = [
+        call.args[0]
+        for call in coresys.homeassistant.websocket._client.async_send_command.call_args_list
+        if call.args[0]["data"].get("data", {}).get("name")
+        == "backup_manager_partial_restore"
+    ]
+    assert messages == [
+        _make_backup_message_for_assert(
+            full=False, restore=True, reference=None, progress=0, stage=None
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=addon_backup.slug,
+            progress=0,
+            stage=None,
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=addon_backup.slug,
+            progress=0,
+            stage="docker_config",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=addon_backup.slug,
+            progress=0,
+            stage="addon_repositories",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=addon_backup.slug,
+            progress=0,
+            stage="addons",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=addon_backup.slug,
+            progress=97,
+            stage="addons",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=addon_backup.slug,
+            progress=100,
+            stage="addons",
+        ),
+        _make_backup_message_for_assert(
+            full=False,
+            restore=True,
+            reference=addon_backup.slug,
+            progress=100,
+            stage="addons",
+            done=True,
+        ),
+    ]

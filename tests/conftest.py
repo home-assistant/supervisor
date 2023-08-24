@@ -517,6 +517,18 @@ def install_addon_ssh(coresys: CoreSys, repository):
 
 
 @pytest.fixture
+def install_addon_example(coresys: CoreSys, repository):
+    """Install local_example add-on."""
+    store = coresys.addons.store["local_example"]
+    coresys.addons.data.install(store)
+    coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
+
+    addon = Addon(coresys, store.slug)
+    coresys.addons.local[addon.slug] = addon
+    yield addon
+
+
+@pytest.fixture
 async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a full backup."""
     mock_backup = Backup(coresys, Path(tmp_path, "test_backup"))
