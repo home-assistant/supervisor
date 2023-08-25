@@ -394,14 +394,17 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             return True
         finally:
             change_stage(RestoreJobStage.CHECK_HOME_ASSISTANT)
-            # Do we need start Home Assistant Core?
-            if not await self.sys_homeassistant.core.is_running():
-                await self.sys_homeassistant.core.start()
 
-            # Check If we can access to API / otherwise restart
-            if not await self.sys_homeassistant.api.check_api_state():
-                _LOGGER.warning("Need restart HomeAssistant for API")
-                await self.sys_homeassistant.core.restart()
+            # Leave Home Assistant alone if it wasn't part of the restore
+            if homeassistant:
+                # Do we need start Home Assistant Core?
+                if not await self.sys_homeassistant.core.is_running():
+                    await self.sys_homeassistant.core.start()
+
+                # Check If we can access to API / otherwise restart
+                if not await self.sys_homeassistant.api.check_api_state():
+                    _LOGGER.warning("Need restart HomeAssistant for API")
+                    await self.sys_homeassistant.core.restart()
 
     @Job(
         name="backup_manager_full_restore",
