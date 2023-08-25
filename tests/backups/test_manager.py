@@ -1065,13 +1065,7 @@ async def test_restore_progress(
             full=False,
             restore=True,
             reference=folders_backup.slug,
-            stage="check_home_assistant",
-        ),
-        _make_backup_message_for_assert(
-            full=False,
-            restore=True,
-            reference=folders_backup.slug,
-            stage="check_home_assistant",
+            stage="folders",
             done=True,
         ),
     ]
@@ -1125,13 +1119,7 @@ async def test_restore_progress(
             full=False,
             restore=True,
             reference=addon_backup.slug,
-            stage="check_home_assistant",
-        ),
-        _make_backup_message_for_assert(
-            full=False,
-            restore=True,
-            reference=addon_backup.slug,
-            stage="check_home_assistant",
+            stage="addons",
             done=True,
         ),
     ]

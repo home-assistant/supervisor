@@ -393,10 +393,10 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
             return True
         finally:
-            change_stage(RestoreJobStage.CHECK_HOME_ASSISTANT)
-
             # Leave Home Assistant alone if it wasn't part of the restore
             if homeassistant:
+                change_stage(RestoreJobStage.CHECK_HOME_ASSISTANT)
+
                 # Do we need start Home Assistant Core?
                 if not await self.sys_homeassistant.core.is_running():
                     await self.sys_homeassistant.core.start()
