@@ -198,6 +198,13 @@ class InterfaceMethod(str, Enum):
     LINK_LOCAL = "link-local"
 
 
+class InterfaceAddrGenMode(int, Enum):
+    """Interface addr gen mode."""
+
+    EUI64 = 0
+    STABLE_PRIVACY = 1
+
+
 class ConnectionType(str, Enum):
     """Connection type."""
 

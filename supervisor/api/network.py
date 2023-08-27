@@ -11,6 +11,7 @@ import voluptuous as vol
 from ..const import (
     ATTR_ACCESSPOINTS,
     ATTR_ADDRESS,
+    ATTR_ADDR_GEN_MODE,
     ATTR_AUTH,
     ATTR_CONNECTED,
     ATTR_DNS,
@@ -46,6 +47,7 @@ from ..exceptions import APIError, HostNetworkNotFound
 from ..host.configuration import (
     AccessPoint,
     Interface,
+    InterfaceAddrGenMode,
     InterfaceMethod,
     IpConfig,
     VlanConfig,
@@ -58,6 +60,7 @@ _SCHEMA_IP_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_ADDRESS): [vol.Coerce(ip_interface)],
         vol.Optional(ATTR_METHOD): vol.Coerce(InterfaceMethod),
+        vol.Optional(ATTR_ADDR_GEN_MODE): vol.Coerce(InterfaceAddrGenMode),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(ip_address),
         vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(ip_address)],
     }
@@ -88,6 +91,7 @@ def ipconfig_struct(config: IpConfig) -> dict[str, Any]:
     """Return a dict with information about ip configuration."""
     return {
         ATTR_METHOD: config.method,
+        ATTR_ADDR_GEN_MODE: config.addr_gen_mode,
         ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway) if config.gateway else None,
@@ -199,13 +203,13 @@ class APINetwork(CoreSysAttributes):
             if key == ATTR_IPV4:
                 interface.ipv4 = replace(
                     interface.ipv4
-                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
+                    or IpConfig(InterfaceMethod.STATIC, None, [], None, [], None),
                     **config,
                 )
             elif key == ATTR_IPV6:
                 interface.ipv6 = replace(
                     interface.ipv6
-                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
+                    or IpConfig(InterfaceMethod.STATIC, None, [], None, [], None),
                     **config,
                 )
             elif key == ATTR_WIFI:

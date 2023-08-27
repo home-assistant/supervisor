@@ -39,6 +39,7 @@ ATTR_AUTH_ALG = "auth-alg"
 ATTR_KEY_MGMT = "key-mgmt"
 ATTR_INTERFACE_NAME = "interface-name"
 ATTR_PATH = "path"
+ATTR_ADDR_GEN_MODE = "addr-gen-mode"
 
 IPV4_6_IGNORE_FIELDS = [
     "addresses",
@@ -46,6 +47,7 @@ IPV4_6_IGNORE_FIELDS = [
     "dns",
     "gateway",
     "method",
+    "addr-gen-mode",
 ]
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -227,11 +229,13 @@ class NetworkSetting(DBusInterface):
         if CONF_ATTR_IPV4 in data:
             self._ipv4 = IpProperties(
                 data[CONF_ATTR_IPV4].get(ATTR_METHOD),
+                None,
             )
 
         if CONF_ATTR_IPV6 in data:
             self._ipv6 = IpProperties(
                 data[CONF_ATTR_IPV6].get(ATTR_METHOD),
+                data[CONF_ATTR_IPV6].get(ATTR_ADDR_GEN_MODE),
             )
 
         if CONF_ATTR_MATCH in data:

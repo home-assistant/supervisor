@@ -63,6 +63,7 @@ class IpProperties:
     """IP properties object for Network Manager."""
 
     method: str | None
+    addr_gen_mode: int | None
 
 
 @dataclass(slots=True)

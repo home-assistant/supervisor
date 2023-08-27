@@ -14,6 +14,13 @@ class InterfaceMethod(str, Enum):
     AUTO = "auto"
 
 
+class InterfaceAddrGenMode(str, Enum):
+    """Configuration of an interface."""
+
+    EUI64 = "eui64"
+    STABLE_PRIVACY = "stable-privacy"
+
+
 class InterfaceType(str, Enum):
     """Configuration of an interface."""
 

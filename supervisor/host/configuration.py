@@ -8,10 +8,11 @@ from ..dbus.const import (
     ConnectionStateType,
     DeviceType,
     InterfaceMethod as NMInterfaceMethod,
+    InterfaceAddrGenMode as NMInterfaceAddrGenMode,
 )
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
-from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
+from .const import AuthMethod, InterfaceMethod, InterfaceAddrGenMode, InterfaceType, WifiMode
 
 
 @dataclass(slots=True)
@@ -30,6 +31,7 @@ class IpConfig:
     """Represent a IP configuration."""
 
     method: InterfaceMethod
+    addr_gen_mode: InterfaceAddrGenMode | None
     address: list[IPv4Interface | IPv6Interface]
     gateway: IPv4Address | IPv6Address | None
     nameservers: list[IPv4Address | IPv6Address]
@@ -102,6 +104,11 @@ class Interface:
             bool(inet.connection)
             and ConnectionStateFlags.IP6_READY in inet.connection.state_flags
         )
+        ipv6_addr_gen_mode = (
+            Interface._map_nm_addr_gen_mode(inet.settings.ipv6.addr_gen_mode)
+            if inet.settings and inet.settings.ipv6
+            else None
+        )
         return Interface(
             inet.name,
             inet.hw_address,
@@ -112,6 +119,7 @@ class Interface:
             Interface._map_nm_type(inet.type),
             IpConfig(
                 ipv4_method,
+                None,
                 inet.connection.ipv4.address if inet.connection.ipv4.address else [],
                 inet.connection.ipv4.gateway,
                 inet.connection.ipv4.nameservers
@@ -120,9 +128,10 @@ class Interface:
                 ipv4_ready,
             )
             if inet.connection and inet.connection.ipv4
-            else IpConfig(ipv4_method, [], None, [], ipv4_ready),
+            else IpConfig(ipv4_method, None, [], None, [], ipv4_ready),
             IpConfig(
                 ipv6_method,
+                ipv6_addr_gen_mode,
                 inet.connection.ipv6.address if inet.connection.ipv6.address else [],
                 inet.connection.ipv6.gateway,
                 inet.connection.ipv6.nameservers
@@ -131,7 +140,7 @@ class Interface:
                 ipv6_ready,
             )
             if inet.connection and inet.connection.ipv6
-            else IpConfig(ipv6_method, [], None, [], ipv6_ready),
+            else IpConfig(ipv6_method, ipv6_addr_gen_mode, [], None, [], ipv6_ready),
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
         )
@@ -147,6 +156,16 @@ class Interface:
         }
 
         return mapping.get(method, InterfaceMethod.DISABLED)
+
+    @staticmethod
+    def _map_nm_addr_gen_mode(addr_gen_mode: int) -> InterfaceAddrGenMode:
+        """Map IPv6 interface addr gen mode."""
+        mapping = {
+            NMInterfaceAddrGenMode.EUI64: InterfaceAddrGenMode.EUI64,
+            NMInterfaceAddrGenMode.STABLE_PRIVACY: InterfaceAddrGenMode.STABLE_PRIVACY,
+        }
+
+        return mapping.get(addr_gen_mode, InterfaceAddrGenMode.STABLE_PRIVACY)
 
     @staticmethod
     def _map_nm_connected(connection: NetworkConnection | None) -> bool:
