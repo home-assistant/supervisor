@@ -7,12 +7,18 @@ from ..dbus.const import (
     ConnectionStateFlags,
     ConnectionStateType,
     DeviceType,
-    InterfaceMethod as NMInterfaceMethod,
     InterfaceAddrGenMode as NMInterfaceAddrGenMode,
+    InterfaceMethod as NMInterfaceMethod,
 )
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
-from .const import AuthMethod, InterfaceMethod, InterfaceAddrGenMode, InterfaceType, WifiMode
+from .const import (
+    AuthMethod,
+    InterfaceAddrGenMode,
+    InterfaceMethod,
+    InterfaceType,
+    WifiMode,
+)
 
 
 @dataclass(slots=True)

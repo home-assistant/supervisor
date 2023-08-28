@@ -102,7 +102,9 @@ def get_connection_from_interface(
             if interface.ipv6.addr_gen_mode == InterfaceAddrGenMode.EUI64:
                 ipv6["addr-gen-mode"] = Variant("u", NMInterfaceAddrGenMode.EUI64)
             else:
-                ipv6["addr-gen-mode"] = Variant("u", NMInterfaceAddrGenMode.STABLE_PRIVACY)
+                ipv6["addr-gen-mode"] = Variant(
+                    "u", NMInterfaceAddrGenMode.STABLE_PRIVACY
+                )
 
     elif interface.ipv6.method == InterfaceMethod.DISABLED:
         ipv6["method"] = Variant("s", "link-local")
