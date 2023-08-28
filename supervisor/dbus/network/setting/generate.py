@@ -19,8 +19,8 @@ from . import (
     CONF_ATTR_PATH,
     CONF_ATTR_VLAN,
 )
-from ...const import InterfaceAddrGenMode as NMInterfaceAddrGenMode
 from ....host.const import InterfaceAddrGenMode, InterfaceMethod, InterfaceType
+from ...const import InterfaceAddrGenMode as NMInterfaceAddrGenMode
 
 if TYPE_CHECKING:
     from ....host.configuration import Interface
@@ -100,10 +100,10 @@ def get_connection_from_interface(
 
         if interface.ipv6:
             if interface.ipv6.addr_gen_mode == InterfaceAddrGenMode.EUI64:
-                ipv6["addr-gen-mode"] = Variant("u", NMInterfaceAddrGenMode.EUI64)
+                ipv6["addr-gen-mode"] = Variant("i", NMInterfaceAddrGenMode.EUI64)
             else:
                 ipv6["addr-gen-mode"] = Variant(
-                    "u", NMInterfaceAddrGenMode.STABLE_PRIVACY
+                    "i", NMInterfaceAddrGenMode.STABLE_PRIVACY
                 )
 
     elif interface.ipv6.method == InterfaceMethod.DISABLED:

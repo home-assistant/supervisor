@@ -10,8 +10,8 @@ import voluptuous as vol
 
 from ..const import (
     ATTR_ACCESSPOINTS,
-    ATTR_ADDRESS,
     ATTR_ADDR_GEN_MODE,
+    ATTR_ADDRESS,
     ATTR_AUTH,
     ATTR_CONNECTED,
     ATTR_DNS,
@@ -91,7 +91,11 @@ def ipconfig_struct(config: IpConfig) -> dict[str, Any]:
     """Return a dict with information about ip configuration."""
     return {
         ATTR_METHOD: config.method,
-        ATTR_ADDR_GEN_MODE: config.addr_gen_mode,
+        **(
+            {ATTR_ADDR_GEN_MODE: config.addr_gen_mode}
+            if config.addr_gen_mode is not None
+            else {}
+        ),
         ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway) if config.gateway else None,
@@ -264,6 +268,7 @@ class APINetwork(CoreSysAttributes):
         if ATTR_IPV4 in body:
             ipv4_config = IpConfig(
                 body[ATTR_IPV4].get(ATTR_METHOD, InterfaceMethod.AUTO),
+                None,
                 body[ATTR_IPV4].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV4].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV4].get(ATTR_NAMESERVERS, []),
@@ -274,6 +279,9 @@ class APINetwork(CoreSysAttributes):
         if ATTR_IPV6 in body:
             ipv6_config = IpConfig(
                 body[ATTR_IPV6].get(ATTR_METHOD, InterfaceMethod.AUTO),
+                body[ATTR_IPV6].get(
+                    ATTR_ADDR_GEN_MODE, InterfaceAddrGenMode.STABLE_PRIVACY
+                ),
                 body[ATTR_IPV6].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV6].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV6].get(ATTR_NAMESERVERS, []),
