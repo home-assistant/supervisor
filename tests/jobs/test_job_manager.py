@@ -34,13 +34,14 @@ async def test_job_done(coresys: CoreSys):
     """Test done set correctly with jobs."""
     job = coresys.jobs.new_job(TEST_JOB)
     assert not job.done
-    assert coresys.jobs.current != job
+    assert not coresys.jobs.is_job
 
     with job.start():
+        assert coresys.jobs.is_job
         assert coresys.jobs.current == job
         assert not job.done
 
-    assert coresys.jobs.current != job
+    assert not coresys.jobs.is_job
     assert job.done
 
     with pytest.raises(JobStartException):
