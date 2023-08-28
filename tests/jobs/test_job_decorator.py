@@ -736,7 +736,7 @@ async def test_job_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
         @Job(name="test_job_cleanup_execute", limit=JobExecutionLimit.ONCE)
         async def execute(self):
             """Execute the class method."""
-            self.job = coresys.jobs.get_job()
+            self.job = coresys.jobs.current
             await self.event.wait()
             return True
 
@@ -773,7 +773,7 @@ async def test_job_skip_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
         )
         async def execute(self):
             """Execute the class method."""
-            self.job = coresys.jobs.get_job()
+            self.job = coresys.jobs.current
             await self.event.wait()
             return True
 

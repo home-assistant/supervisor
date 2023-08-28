@@ -14,18 +14,20 @@ class BackupType(StrEnum):
 class BackupJobStage(StrEnum):
     """Backup job stage enum."""
 
+    ADDON_REPOSITORIES = "addon_repositories"
     ADDONS = "addons"
+    DOCKER_CONFIG = "docker_config"
+    FINISHING_FILE = "finishing_file"
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
-    METADATA = "metadata"
     AWAIT_ADDON_RESTARTS = "await_addon_restarts"
 
 
 class RestoreJobStage(StrEnum):
     """Restore job stage enum."""
 
-    ADDONS = "addons"
     ADDON_REPOSITORIES = "addon_repositories"
+    ADDONS = "addons"
     AWAIT_ADDON_RESTARTS = "await_addon_restarts"
     AWAIT_HOME_ASSISTANT_RESTART = "await_home_assistant_restart"
     CHECK_HOME_ASSISTANT = "check_home_assistant"

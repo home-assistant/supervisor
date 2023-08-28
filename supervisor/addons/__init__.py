@@ -158,8 +158,7 @@ class AddonManager(CoreSysAttributes):
     )
     async def install(self, slug: str) -> None:
         """Install an add-on."""
-        if job := self.sys_jobs.get_job():
-            job.reference = slug
+        self.sys_jobs.current.reference = slug
 
         if slug in self.local:
             raise AddonsError(f"Add-on {slug} is already installed", _LOGGER.warning)
@@ -263,8 +262,7 @@ class AddonManager(CoreSysAttributes):
         Returns a coroutine that completes when addon has state 'started' (see addon.start)
         if addon is started after update. Else nothing is returned.
         """
-        if job := self.sys_jobs.get_job():
-            job.reference = slug
+        self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
             raise AddonsError(f"Add-on {slug} is not installed", _LOGGER.error)
@@ -329,8 +327,7 @@ class AddonManager(CoreSysAttributes):
         Returns a coroutine that completes when addon has state 'started' (see addon.start)
         if addon is started after rebuild. Else nothing is returned.
         """
-        if job := self.sys_jobs.get_job():
-            job.reference = slug
+        self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
             raise AddonsError(f"Add-on {slug} is not installed", _LOGGER.error)
@@ -387,8 +384,7 @@ class AddonManager(CoreSysAttributes):
         Returns a coroutine that completes when addon has state 'started' (see addon.start)
         if addon is started after restore. Else nothing is returned.
         """
-        if job := self.sys_jobs.get_job():
-            job.reference = slug
+        self.sys_jobs.current.reference = slug
 
         if slug not in self.local:
             _LOGGER.debug("Add-on %s is not local available for restore", slug)

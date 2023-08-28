@@ -90,6 +90,24 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
 
         return self.sys_config.path_backup
 
+    def _change_stage(
+        self,
+        backup: Backup,
+        stage: BackupJobStage | RestoreJobStage,
+        restore: bool = False,
+    ):
+        """Change the stage of the current job during backup/restore.
+
+        Must be called from an existing backup/restore job.
+        """
+        _LOGGER.info(
+            "%s %s starting stage %s",
+            "Restore" if restore else "Backup",
+            backup.slug,
+            stage,
+        )
+        self.sys_jobs.current.stage = stage
+
     def _create_backup(
         self,
         name: str,
@@ -98,7 +116,10 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         compressed: bool = True,
         location: Mount | type[DEFAULT] | None = DEFAULT,
     ) -> Backup:
-        """Initialize a new backup object from name."""
+        """Initialize a new backup object from name.
+
+        Must be called from an existing backup job.
+        """
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
         tar_file = Path(self._get_base_path(location), f"{slug}.tar")
@@ -107,12 +128,13 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         backup = Backup(self.coresys, tar_file)
         backup.new(slug, name, date_str, sys_type, password, compressed)
 
-        backup.store_repositories()
-        backup.store_dockerconfig()
-
         # Add backup ID to job
-        if job := self.sys_jobs.get_job():
-            job.reference = backup.slug
+        self.sys_jobs.current.reference = backup.slug
+
+        self._change_stage(backup, BackupJobStage.ADDON_REPOSITORIES)
+        backup.store_repositories()
+        self._change_stage(backup, BackupJobStage.DOCKER_CONFIG)
+        backup.store_dockerconfig()
 
         return backup
 
@@ -194,15 +216,11 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         folder_list: list[str],
         homeassistant: bool,
     ) -> Backup | None:
-        """Create a backup."""
-        addon_start_tasks: list[Awaitable[None]] | None = None
-        job = self.sys_jobs.get_job()
+        """Create a backup.
 
-        def change_stage(stage: BackupJobStage) -> None:
-            """Change stage for job."""
-            _LOGGER.info("Backup %s starting stage %s", backup.slug, stage)
-            if job:
-                job.stage = stage
+        Must be called from an existing backup job.
+        """
+        addon_start_tasks: list[Awaitable[None]] | None = None
 
         try:
             self.sys_core.state = CoreState.FREEZE
@@ -210,20 +228,20 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             async with backup:
                 # Backup add-ons
                 if addon_list:
-                    change_stage(BackupJobStage.ADDONS)
+                    self._change_stage(backup, BackupJobStage.ADDONS)
                     addon_start_tasks = await backup.store_addons(addon_list)
 
                 # HomeAssistant Folder is for v1
                 if homeassistant:
-                    change_stage(BackupJobStage.HOME_ASSISTANT)
+                    self._change_stage(backup, BackupJobStage.HOME_ASSISTANT)
                     await backup.store_homeassistant()
 
                 # Backup folders
                 if folder_list:
-                    change_stage(BackupJobStage.FOLDERS)
+                    self._change_stage(backup, BackupJobStage.FOLDERS)
                     await backup.store_folders(folder_list)
 
-                change_stage(BackupJobStage.METADATA)
+                self._change_stage(backup, BackupJobStage.FINISHING_FILE)
 
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Backup %s error", backup.slug)
@@ -233,7 +251,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             self._backups[backup.slug] = backup
 
             if addon_start_tasks:
-                change_stage(BackupJobStage.AWAIT_ADDON_RESTARTS)
+                self._change_stage(backup, BackupJobStage.AWAIT_ADDON_RESTARTS)
                 # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
                 await asyncio.gather(*addon_start_tasks, return_exceptions=True)
 
@@ -329,35 +347,36 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         homeassistant: bool,
         replace: bool,
     ) -> bool:
-        addon_start_tasks: list[Awaitable[None]] | None = None
-        job = self.sys_jobs.get_job()
+        """Restore from a backup.
 
-        def change_stage(stage: RestoreJobStage):
-            """Change stage for job."""
-            _LOGGER.info("Restore from backup %s starting stage %s", backup.slug, stage)
-            if job:
-                job.stage = stage
+        Must be called from an existing restore job.
+        """
+        addon_start_tasks: list[Awaitable[None]] | None = None
 
         try:
             task_hass: asyncio.Task | None = None
             async with backup:
                 # Restore docker config
-                change_stage(RestoreJobStage.DOCKER_CONFIG)
+                self._change_stage(backup, RestoreJobStage.DOCKER_CONFIG, restore=True)
                 backup.restore_dockerconfig(replace)
 
                 # Process folders
                 if folder_list:
-                    change_stage(RestoreJobStage.FOLDERS)
+                    self._change_stage(backup, RestoreJobStage.FOLDERS, restore=True)
                     await backup.restore_folders(folder_list)
 
                 # Process Home-Assistant
                 if homeassistant:
-                    change_stage(RestoreJobStage.HOME_ASSISTANT)
+                    self._change_stage(
+                        backup, RestoreJobStage.HOME_ASSISTANT, restore=True
+                    )
                     task_hass = await backup.restore_homeassistant()
 
                 # Delete delta add-ons
                 if replace:
-                    change_stage(RestoreJobStage.REMOVE_DELTA_ADDONS)
+                    self._change_stage(
+                        backup, RestoreJobStage.REMOVE_DELTA_ADDONS, restore=True
+                    )
                     for addon in self.sys_addons.installed:
                         if addon.slug in backup.addon_list:
                             continue
@@ -370,15 +389,21 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
                             _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
 
                 if addon_list:
-                    change_stage(RestoreJobStage.ADDON_REPOSITORIES)
+                    self._change_stage(
+                        backup, RestoreJobStage.ADDON_REPOSITORIES, restore=True
+                    )
                     await backup.restore_repositories(replace)
 
-                    change_stage(RestoreJobStage.ADDONS)
+                    self._change_stage(backup, RestoreJobStage.ADDONS, restore=True)
                     addon_start_tasks = await backup.restore_addons(addon_list)
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
-                    change_stage(RestoreJobStage.AWAIT_HOME_ASSISTANT_RESTART)
+                    self._change_stage(
+                        backup,
+                        RestoreJobStage.AWAIT_HOME_ASSISTANT_RESTART,
+                        restore=True,
+                    )
                     await task_hass
 
         except Exception as err:  # pylint: disable=broad-except
@@ -387,7 +412,9 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
             return False
         else:
             if addon_start_tasks:
-                change_stage(RestoreJobStage.AWAIT_ADDON_RESTARTS)
+                self._change_stage(
+                    backup, RestoreJobStage.AWAIT_ADDON_RESTARTS, restore=True
+                )
                 # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
                 await asyncio.gather(*addon_start_tasks, return_exceptions=True)
 
@@ -395,7 +422,9 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
         finally:
             # Leave Home Assistant alone if it wasn't part of the restore
             if homeassistant:
-                change_stage(RestoreJobStage.CHECK_HOME_ASSISTANT)
+                self._change_stage(
+                    backup, RestoreJobStage.CHECK_HOME_ASSISTANT, restore=True
+                )
 
                 # Do we need start Home Assistant Core?
                 if not await self.sys_homeassistant.core.is_running():
@@ -421,8 +450,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
     ) -> bool:
         """Restore a backup."""
         # Add backup ID to job
-        if job := self.sys_jobs.get_job():
-            job.reference = backup.slug
+        self.sys_jobs.current.reference = backup.slug
 
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")
@@ -481,8 +509,7 @@ class BackupManager(FileConfiguration, CoreSysAttributes):
     ) -> bool:
         """Restore a backup."""
         # Add backup ID to job
-        if job := self.sys_jobs.get_job():
-            job.reference = backup.slug
+        self.sys_jobs.current.reference = backup.slug
 
         if self.lock.locked():
             _LOGGER.error("A backup/restore process is already running")

@@ -14,6 +14,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
+from ..utils.sentry import capture_exception
 from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
 from .validate import SCHEMA_JOBS_CONFIG
 
@@ -127,6 +128,23 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         """Set a list of ignored condition."""
         self._data[ATTR_IGNORE_CONDITIONS] = value
 
+    @property
+    def current(self) -> SupervisorJob:
+        """Return current job of the asyncio task.
+
+        Must be called from within a job. Raises RuntimeError if there is no current job.
+        """
+        try:
+            return self.get_job(_CURRENT_JOB.get())
+        except (LookupError, JobNotFound) as err:
+            capture_exception(err)
+            raise RuntimeError("No job for the current asyncio task!") from None
+
+    @property
+    def is_job(self) -> bool:
+        """Return true if there is an active job for the current asyncio task."""
+        return bool(_CURRENT_JOB.get(None))
+
     def _notify_on_job_change(
         self, job: SupervisorJob, attribute: Attribute, value: Any
     ) -> None:
@@ -148,15 +166,11 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         self._jobs[job.uuid] = job
         return job
 
-    def get_job(self, uuid: UUID | None = None) -> SupervisorJob | None:
-        """Return a job by uuid if it exists. Returns the current job of the asyncio task if uuid omitted."""
-        if uuid:
-            return self._jobs.get(uuid)
-
-        if uuid := _CURRENT_JOB.get(None):
-            return self._jobs.get(uuid)
-
-        return None
+    def get_job(self, uuid: UUID) -> SupervisorJob:
+        """Return a job by uuid. Raises if it does not exist."""
+        if uuid not in self._jobs:
+            raise JobNotFound(f"No job found with id {uuid}")
+        return self._jobs[uuid]
 
     def remove_job(self, job: SupervisorJob) -> None:
         """Remove a job by UUID."""

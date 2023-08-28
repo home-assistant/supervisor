@@ -42,8 +42,8 @@ class JobGroup(CoreSysAttributes):
         """Return true if current task has the lock on this job group."""
         return (
             self.active_job
-            and (task_job := self.sys_jobs.get_job())
-            and self.active_job == task_job
+            and self.sys_jobs.is_job
+            and self.active_job == self.sys_jobs.current
         )
 
     @property

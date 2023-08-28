@@ -885,12 +885,20 @@ async def test_backup_progress(
     assert messages == [
         _make_backup_message_for_assert(reference=None, stage=None),
         _make_backup_message_for_assert(reference=full_backup.slug, stage=None),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, stage="addon_repositories"
+        ),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, stage="docker_config"
+        ),
         _make_backup_message_for_assert(reference=full_backup.slug, stage="addons"),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="home_assistant"
         ),
         _make_backup_message_for_assert(reference=full_backup.slug, stage="folders"),
-        _make_backup_message_for_assert(reference=full_backup.slug, stage="metadata"),
+        _make_backup_message_for_assert(
+            reference=full_backup.slug, stage="finishing_file"
+        ),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="await_addon_restarts"
         ),
@@ -917,18 +925,24 @@ async def test_backup_progress(
             full=False, reference=partial_backup.slug, stage=None
         ),
         _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, stage="addon_repositories"
+        ),
+        _make_backup_message_for_assert(
+            full=False, reference=partial_backup.slug, stage="docker_config"
+        ),
+        _make_backup_message_for_assert(
             full=False, reference=partial_backup.slug, stage="addons"
         ),
         _make_backup_message_for_assert(
             full=False, reference=partial_backup.slug, stage="folders"
         ),
         _make_backup_message_for_assert(
-            full=False, reference=partial_backup.slug, stage="metadata"
+            full=False, reference=partial_backup.slug, stage="finishing_file"
         ),
         _make_backup_message_for_assert(
             full=False,
             reference=partial_backup.slug,
-            stage="metadata",
+            stage="finishing_file",
             done=True,
         ),
     ]

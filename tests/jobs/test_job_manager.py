@@ -34,13 +34,13 @@ async def test_job_done(coresys: CoreSys):
     """Test done set correctly with jobs."""
     job = coresys.jobs.new_job(TEST_JOB)
     assert not job.done
-    assert coresys.jobs.get_job() != job
+    assert coresys.jobs.current != job
 
     with job.start():
-        assert coresys.jobs.get_job() == job
+        assert coresys.jobs.current == job
         assert not job.done
 
-    assert coresys.jobs.get_job() != job
+    assert coresys.jobs.current != job
     assert job.done
 
     with pytest.raises(JobStartException):
@@ -59,7 +59,7 @@ async def test_job_start_bad_parent(coresys: CoreSys):
                 pass
 
     with job2.start():
-        assert coresys.jobs.get_job() == job2
+        assert coresys.jobs.current == job2
 
 
 async def test_update_job(coresys: CoreSys):
