@@ -65,6 +65,7 @@ class SupervisorJob:
     on_change: Callable[["SupervisorJob", Attribute, Any], None] | None = field(
         default=None, on_setattr=frozen
     )
+    internal: bool = field(default=False, on_setattr=frozen)
 
     def as_dict(self) -> dict[str, Any]:
         """Return dictionary representation."""
@@ -154,14 +155,19 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         )
 
     def new_job(
-        self, name: str, reference: str | None = None, initial_stage: str | None = None
+        self,
+        name: str,
+        reference: str | None = None,
+        initial_stage: str | None = None,
+        internal: bool = False,
     ) -> SupervisorJob:
         """Create a new job."""
         job = SupervisorJob(
             name,
             reference=reference,
             stage=initial_stage,
-            on_change=self._notify_on_job_change,
+            on_change=None if internal else self._notify_on_job_change,
+            internal=internal,
         )
         self._jobs[job.uuid] = job
         return job

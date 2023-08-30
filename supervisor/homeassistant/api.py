@@ -35,6 +35,7 @@ class HomeAssistantAPI(CoreSysAttributes):
     @Job(
         name="home_assistant_api_ensure_access_token",
         limit=JobExecutionLimit.SINGLE_WAIT,
+        internal=True,
     )
     async def ensure_access_token(self) -> None:
         """Ensure there is an access token."""

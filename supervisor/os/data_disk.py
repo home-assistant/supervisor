@@ -165,7 +165,7 @@ class DataDisk(CoreSysAttributes):
             if block.drive == drive.object_path
         ]
 
-    @Job(name="data_disk_load", conditions=[JobCondition.OS_AGENT])
+    @Job(name="data_disk_load", conditions=[JobCondition.OS_AGENT], internal=True)
     async def load(self) -> None:
         """Load DataDisk feature."""
         # Update datadisk details on OS-Agent

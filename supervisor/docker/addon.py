@@ -746,6 +746,7 @@ class DockerAddon(DockerInterface):
         name="docker_addon_hardware_events",
         conditions=[JobCondition.OS_AGENT],
         limit=JobExecutionLimit.SINGLE_WAIT,
+        internal=True,
     )
     async def _hardware_events(self, device: Device) -> None:
         """Process Hardware events for adjust device access."""

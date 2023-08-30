@@ -107,7 +107,11 @@ class NetworkManager(CoreSysAttributes):
 
         return Interface.from_dbus_interface(self.sys_dbus.network.get(inet_name))
 
-    @Job(name="network_manager_load", conditions=[JobCondition.HOST_NETWORK])
+    @Job(
+        name="network_manager_load",
+        conditions=[JobCondition.HOST_NETWORK],
+        internal=True,
+    )
     async def load(self):
         """Load network information and reapply defaults over dbus."""
         # Apply current settings on each interface so OS can update any out of date defaults

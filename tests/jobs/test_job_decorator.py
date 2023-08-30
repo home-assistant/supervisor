@@ -2,7 +2,7 @@
 # pylint: disable=protected-access,import-error
 import asyncio
 from datetime import timedelta
-from unittest.mock import AsyncMock, Mock, PropertyMock, patch
+from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp.client_exceptions import ClientError
@@ -940,3 +940,53 @@ async def test_execution_limit_group_throttle_rate_limit(
 
     assert test1.call == 3
     assert test2.call == 3
+
+
+async def test_internal_jobs_no_notify(coresys: CoreSys):
+    """Test internal jobs do not send any notifications."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name="test_internal_jobs_no_notify_internal", internal=True)
+        async def execute_internal(self) -> bool:
+            """Execute the class method."""
+            return True
+
+        @Job(name="test_internal_jobs_no_notify_default")
+        async def execute_default(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test1 = TestClass(coresys)
+    client = coresys.homeassistant.websocket._client
+    client.async_send_command.reset_mock()
+
+    await test1.execute_internal()
+    await asyncio.sleep(0)
+    client.async_send_command.assert_not_called()
+
+    await test1.execute_default()
+    await asyncio.sleep(0)
+    client.async_send_command.call_count == 2
+    client.async_send_command.assert_called_with(
+        {
+            "type": "supervisor/event",
+            "data": {
+                "event": "job",
+                "data": {
+                    "name": "test_internal_jobs_no_notify_default",
+                    "reference": None,
+                    "uuid": ANY,
+                    "progress": 0,
+                    "stage": None,
+                    "done": True,
+                    "parent_id": None,
+                },
+            },
+        }
+    )

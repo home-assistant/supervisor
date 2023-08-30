@@ -38,6 +38,7 @@ class Job(CoreSysAttributes):
         | Callable[[CoreSys, datetime, list[datetime] | None], timedelta]
         | None = None,
         throttle_max_calls: int | None = None,
+        internal: bool = False,
     ):
         """Initialize the Job class."""
         if name in _JOB_NAMES:
@@ -55,6 +56,7 @@ class Job(CoreSysAttributes):
         self._method = None
         self._last_call: dict[str | None, datetime] = {}
         self._rate_limited_calls: dict[str, list[datetime]] | None = None
+        self._internal = internal
 
         # Validate Options
         if (
@@ -186,7 +188,9 @@ class Job(CoreSysAttributes):
             job_group = self._post_init(obj)
             group_name: str | None = job_group.group_name if job_group else None
             job = self.sys_jobs.new_job(
-                self.name, job_group.job_reference if job_group else None
+                self.name,
+                job_group.job_reference if job_group else None,
+                internal=self._internal,
             )
 
             # Handle condition
