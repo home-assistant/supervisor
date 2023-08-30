@@ -202,6 +202,7 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_addon_ssh: Addon) -> N
 
 async def test_listener_attached_on_install(coresys: CoreSys, repository):
     """Test events listener attached on addon install."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     container_collection = MagicMock()
     container_collection.get.side_effect = DockerException()
     with patch(
@@ -217,7 +218,7 @@ async def test_listener_attached_on_install(coresys: CoreSys, repository):
         "supervisor.addons.model.AddonModel.with_ingress",
         new=PropertyMock(return_value=False),
     ):
-        await coresys.addons.install.__wrapped__(coresys.addons, TEST_ADDON_SLUG)
+        await coresys.addons.install(TEST_ADDON_SLUG)
 
     _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     await asyncio.sleep(0)

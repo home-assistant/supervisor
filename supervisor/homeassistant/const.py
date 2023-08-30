@@ -35,5 +35,6 @@ class WSEvent(str, Enum):
     HEALTH_CHANGED = "health_changed"
     ISSUE_CHANGED = "issue_changed"
     ISSUE_REMOVED = "issue_removed"
+    JOB = "job"
     SUPERVISOR_UPDATE = "supervisor_update"
     SUPPORTED_CHANGED = "supported_changed"

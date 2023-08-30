@@ -190,83 +190,81 @@ def _supervisor_event_message(event: str, data: dict[str, Any]) -> dict[str, Any
     }
 
 
-async def test_events_on_issue_changes(coresys: CoreSys):
+async def test_events_on_issue_changes(coresys: CoreSys, ha_ws_client: AsyncMock):
     """Test events fired when an issue changes."""
-    with patch.object(
-        type(coresys.homeassistant.websocket), "async_send_message"
-    ) as send_message:
-        # Creating an issue with a suggestion should fire exactly one issue changed event
-        assert coresys.resolution.issues == []
-        assert coresys.resolution.suggestions == []
-        coresys.resolution.create_issue(
-            IssueType.CORRUPT_REPOSITORY,
-            ContextType.STORE,
-            "test_repo",
-            [SuggestionType.EXECUTE_RESET],
-        )
-        await asyncio.sleep(0)
+    # Creating an issue with a suggestion should fire exactly one issue changed event
+    assert coresys.resolution.issues == []
+    assert coresys.resolution.suggestions == []
+    coresys.resolution.create_issue(
+        IssueType.CORRUPT_REPOSITORY,
+        ContextType.STORE,
+        "test_repo",
+        [SuggestionType.EXECUTE_RESET],
+    )
+    await asyncio.sleep(0)
 
-        assert len(coresys.resolution.issues) == 1
-        assert len(coresys.resolution.suggestions) == 1
-        issue = coresys.resolution.issues[0]
-        suggestion = coresys.resolution.suggestions[0]
-        issue_expected = {
-            "type": "corrupt_repository",
-            "context": "store",
-            "reference": "test_repo",
-            "uuid": issue.uuid,
-        }
-        suggestion_expected = {
-            "type": "execute_reset",
-            "context": "store",
-            "reference": "test_repo",
-            "uuid": suggestion.uuid,
-        }
-        send_message.assert_called_once_with(
-            _supervisor_event_message(
-                "issue_changed", issue_expected | {"suggestions": [suggestion_expected]}
-            )
-        )
+    assert len(coresys.resolution.issues) == 1
+    assert len(coresys.resolution.suggestions) == 1
+    issue = coresys.resolution.issues[0]
+    suggestion = coresys.resolution.suggestions[0]
+    issue_expected = {
+        "type": "corrupt_repository",
+        "context": "store",
+        "reference": "test_repo",
+        "uuid": issue.uuid,
+    }
+    suggestion_expected = {
+        "type": "execute_reset",
+        "context": "store",
+        "reference": "test_repo",
+        "uuid": suggestion.uuid,
+    }
+    assert _supervisor_event_message(
+        "issue_changed", issue_expected | {"suggestions": [suggestion_expected]}
+    ) in [call.args[0] for call in ha_ws_client.async_send_command.call_args_list]
 
-        # Adding a suggestion that fixes the issue changes it
-        send_message.reset_mock()
-        coresys.resolution.suggestions = execute_remove = Suggestion(
-            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
-        )
-        await asyncio.sleep(0)
-        send_message.assert_called_once()
-        sent_data = send_message.call_args.args[0]
-        assert sent_data["type"] == "supervisor/event"
-        assert sent_data["data"]["event"] == "issue_changed"
-        assert sent_data["data"]["data"].items() >= issue_expected.items()
-        assert len(sent_data["data"]["data"]["suggestions"]) == 2
-        assert suggestion_expected in sent_data["data"]["data"]["suggestions"]
-        assert {
-            "type": "execute_remove",
-            "context": "store",
-            "reference": "test_repo",
-            "uuid": execute_remove.uuid,
-        } in sent_data["data"]["data"]["suggestions"]
+    # Adding a suggestion that fixes the issue changes it
+    ha_ws_client.async_send_command.reset_mock()
+    coresys.resolution.suggestions = execute_remove = Suggestion(
+        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
+    )
+    await asyncio.sleep(0)
+    messages = [
+        call.args[0]
+        for call in ha_ws_client.async_send_command.call_args_list
+        if call.args[0].get("data", {}).get("event") == "issue_changed"
+    ]
+    assert len(messages) == 1
+    sent_data = messages[0]
+    assert sent_data["type"] == "supervisor/event"
+    assert sent_data["data"]["event"] == "issue_changed"
+    assert sent_data["data"]["data"].items() >= issue_expected.items()
+    assert len(sent_data["data"]["data"]["suggestions"]) == 2
+    assert suggestion_expected in sent_data["data"]["data"]["suggestions"]
+    assert {
+        "type": "execute_remove",
+        "context": "store",
+        "reference": "test_repo",
+        "uuid": execute_remove.uuid,
+    } in sent_data["data"]["data"]["suggestions"]
 
-        # Removing a suggestion that fixes the issue changes it again
-        send_message.reset_mock()
-        coresys.resolution.dismiss_suggestion(execute_remove)
-        await asyncio.sleep(0)
-        send_message.assert_called_once_with(
-            _supervisor_event_message(
-                "issue_changed", issue_expected | {"suggestions": [suggestion_expected]}
-            )
-        )
+    # Removing a suggestion that fixes the issue changes it again
+    ha_ws_client.async_send_command.reset_mock()
+    coresys.resolution.dismiss_suggestion(execute_remove)
+    await asyncio.sleep(0)
+    assert _supervisor_event_message(
+        "issue_changed", issue_expected | {"suggestions": [suggestion_expected]}
+    ) in [call.args[0] for call in ha_ws_client.async_send_command.call_args_list]
 
-        # Applying a suggestion should only fire an issue removed event
-        send_message.reset_mock()
-        with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
-            await coresys.resolution.apply_suggestion(suggestion)
+    # Applying a suggestion should only fire an issue removed event
+    ha_ws_client.async_send_command.reset_mock()
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
+        await coresys.resolution.apply_suggestion(suggestion)
 
-        await asyncio.sleep(0)
-        send_message.assert_called_once_with(
-            _supervisor_event_message("issue_removed", issue_expected)
-        )
+    await asyncio.sleep(0)
+    assert _supervisor_event_message("issue_removed", issue_expected) in [
+        call.args[0] for call in ha_ws_client.async_send_command.call_args_list
+    ]
 
 
 async def test_resolution_apply_suggestion_multiple_copies(coresys: CoreSys):

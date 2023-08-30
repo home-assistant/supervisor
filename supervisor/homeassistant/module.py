@@ -439,6 +439,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         name="home_assistant_get_users",
         limit=JobExecutionLimit.THROTTLE_WAIT,
         throttle_period=timedelta(minutes=5),
+        internal=True,
     )
     async def get_users(self) -> list[IngressSessionDataUser]:
         """Get list of all configured users."""

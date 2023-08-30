@@ -44,6 +44,7 @@ class HomeAssistantSecrets(CoreSysAttributes):
         name="home_assistant_secrets_read",
         limit=JobExecutionLimit.THROTTLE_WAIT,
         throttle_period=timedelta(seconds=60),
+        internal=True,
     )
     async def _read_secrets(self):
         """Read secrets.yaml into memory."""

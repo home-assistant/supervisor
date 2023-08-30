@@ -44,6 +44,10 @@ class JobNotFound(JobException):
     """Exception for job not found."""
 
 
+class JobInvalidUpdate(JobException):
+    """Exception for invalid update to a job."""
+
+
 class JobGroupExecutionLimitExceeded(JobException):
     """Exception when job group execution limit exceeded."""
 

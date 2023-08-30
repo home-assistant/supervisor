@@ -188,8 +188,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     async def create_mount(self, mount: Mount) -> None:
         """Add/update a mount."""
         # Add mount name to job
-        if job := self.sys_jobs.get_job():
-            job.reference = mount.name
+        self.sys_jobs.current.reference = mount.name
 
         if mount.name in self._mounts:
             _LOGGER.debug("Mount '%s' exists, unmounting then mounting from new config")
@@ -216,8 +215,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     async def remove_mount(self, name: str, *, retain_entry: bool = False) -> None:
         """Remove a mount."""
         # Add mount name to job
-        if job := self.sys_jobs.get_job():
-            job.reference = name
+        self.sys_jobs.current.reference = name
 
         if name not in self._mounts:
             raise MountNotFound(
@@ -247,8 +245,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     async def reload_mount(self, name: str) -> None:
         """Reload a mount to retry mounting with same config."""
         # Add mount name to job
-        if job := self.sys_jobs.get_job():
-            job.reference = name
+        self.sys_jobs.current.reference = name
 
         if name not in self._mounts:
             raise MountNotFound(

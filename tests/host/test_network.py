@@ -1,7 +1,7 @@
 """Test network manager."""
 import asyncio
 from ipaddress import IPv4Address, IPv6Address
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from dbus_fast import Variant
 import pytest
@@ -159,13 +159,11 @@ async def test_scan_wifi_with_failures(
 
 
 async def test_host_connectivity_changed(
-    coresys: CoreSys, network_manager_service: NetworkManagerService
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    ha_ws_client: AsyncMock,
 ):
     """Test host connectivity changed."""
-    # pylint: disable=protected-access
-    client = coresys.homeassistant.websocket._client
-    # pylint: enable=protected-access
-
     await coresys.host.load()
     assert coresys.host.network.connectivity is True
 
@@ -173,48 +171,42 @@ async def test_host_connectivity_changed(
     await network_manager_service.ping()
     assert coresys.host.network.connectivity is False
     await asyncio.sleep(0)
-    client.async_send_command.assert_called_once_with(
-        {
-            "type": WSType.SUPERVISOR_EVENT,
-            "data": {
-                "event": WSEvent.SUPERVISOR_UPDATE,
-                "update_key": "network",
-                "data": {"host_internet": False},
-            },
-        }
-    )
+    assert {
+        "type": WSType.SUPERVISOR_EVENT,
+        "data": {
+            "event": WSEvent.SUPERVISOR_UPDATE,
+            "update_key": "network",
+            "data": {"host_internet": False},
+        },
+    } in [call.args[0] for call in ha_ws_client.async_send_command.call_args_list]
 
-    client.async_send_command.reset_mock()
+    ha_ws_client.async_send_command.reset_mock()
     network_manager_service.emit_properties_changed({}, ["Connectivity"])
     await network_manager_service.ping()
     await network_manager_service.ping()
     assert coresys.host.network.connectivity is True
     await asyncio.sleep(0)
-    client.async_send_command.assert_called_once_with(
-        {
-            "type": WSType.SUPERVISOR_EVENT,
-            "data": {
-                "event": WSEvent.SUPERVISOR_UPDATE,
-                "update_key": "network",
-                "data": {"host_internet": True},
-            },
-        }
-    )
+    assert {
+        "type": WSType.SUPERVISOR_EVENT,
+        "data": {
+            "event": WSEvent.SUPERVISOR_UPDATE,
+            "update_key": "network",
+            "data": {"host_internet": True},
+        },
+    } in [call.args[0] for call in ha_ws_client.async_send_command.call_args_list]
 
 
 async def test_host_connectivity_disabled(
-    coresys: CoreSys, network_manager_service: NetworkManagerService
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    ha_ws_client: AsyncMock,
 ):
     """Test host connectivity check disabled."""
-    # pylint: disable=protected-access
-    client = coresys.homeassistant.websocket._client
-    # pylint: enable=protected-access
-
     await coresys.host.network.load()
 
     coresys.core.state = CoreState.RUNNING
     await asyncio.sleep(0)
-    client.async_send_command.reset_mock()
+    ha_ws_client.async_send_command.reset_mock()
 
     assert "connectivity_check" not in coresys.resolution.unsupported
     assert coresys.host.network.connectivity is True
@@ -223,7 +215,7 @@ async def test_host_connectivity_disabled(
     await network_manager_service.ping()
     assert coresys.host.network.connectivity is None
     await asyncio.sleep(0)
-    client.async_send_command.assert_any_call(
+    ha_ws_client.async_send_command.assert_any_call(
         {
             "type": WSType.SUPERVISOR_EVENT,
             "data": {
@@ -235,13 +227,13 @@ async def test_host_connectivity_disabled(
     )
     assert "connectivity_check" in coresys.resolution.unsupported
 
-    client.async_send_command.reset_mock()
+    ha_ws_client.async_send_command.reset_mock()
     network_manager_service.emit_properties_changed({"ConnectivityCheckEnabled": True})
     await network_manager_service.ping()
     await network_manager_service.ping()
     assert coresys.host.network.connectivity is True
     await asyncio.sleep(0)
-    client.async_send_command.assert_any_call(
+    ha_ws_client.async_send_command.assert_any_call(
         {
             "type": WSType.SUPERVISOR_EVENT,
             "data": {

@@ -372,6 +372,12 @@ async def coresys(
 
 
 @pytest.fixture
+def ha_ws_client(coresys: CoreSys) -> AsyncMock:
+    """Return HA WS client mock for assertions."""
+    return coresys.homeassistant.websocket._client
+
+
+@pytest.fixture
 async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
     """Patch supervisor data to be tmp_path."""
     with patch.object(
@@ -508,6 +514,18 @@ async def repository(coresys: CoreSys):
 def install_addon_ssh(coresys: CoreSys, repository):
     """Install local_ssh add-on."""
     store = coresys.addons.store[TEST_ADDON_SLUG]
+    coresys.addons.data.install(store)
+    coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
+
+    addon = Addon(coresys, store.slug)
+    coresys.addons.local[addon.slug] = addon
+    yield addon
+
+
+@pytest.fixture
+def install_addon_example(coresys: CoreSys, repository):
+    """Install local_example add-on."""
+    store = coresys.addons.store["local_example"]
     coresys.addons.data.install(store)
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 

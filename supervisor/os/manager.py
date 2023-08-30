@@ -227,7 +227,7 @@ class OSManager(CoreSysAttributes):
         )
         raise HassOSUpdateError()
 
-    @Job(name="os_manager_mark_healthy", conditions=[JobCondition.HAOS])
+    @Job(name="os_manager_mark_healthy", conditions=[JobCondition.HAOS], internal=True)
     async def mark_healthy(self) -> None:
         """Set booted partition as good for rauc."""
         try:
