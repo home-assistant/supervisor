@@ -135,10 +135,10 @@ class Core(CoreSysAttributes):
             self.sys_mounts.load(),
             # Load Docker manager
             self.sys_docker.load(),
-            # Load Plugins container
-            self.sys_plugins.load(),
             # load last available data
             self.sys_updater.load(),
+            # Load Plugins container
+            self.sys_plugins.load(),
             # Load Home Assistant
             self.sys_homeassistant.load(),
             # Load CPU/Arch
