@@ -72,7 +72,7 @@ class Job(CoreSysAttributes):
             and self._throttle_period is None
         ):
             raise RuntimeError(
-                f"Job {name} is using execution limit {limit.value} without a throttle period!"
+                f"Job {name} is using execution limit {limit} without a throttle period!"
             )
 
         if self.limit in (
@@ -81,7 +81,7 @@ class Job(CoreSysAttributes):
         ):
             if self.throttle_max_calls is None:
                 raise RuntimeError(
-                    f"Job {name} is using execution limit {limit.value} without throttle max calls!"
+                    f"Job {name} is using execution limit {limit} without throttle max calls!"
                 )
 
             self._rate_limited_calls = {}

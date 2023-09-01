@@ -1000,7 +1000,7 @@ class Addon(AddonModel):
                 _LOGGER.warning(
                     "Watchdog found addon %s is %s, restarting...",
                     self.name,
-                    state.value,
+                    state,
                 )
                 try:
                     if state == ContainerState.FAILED:

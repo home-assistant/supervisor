@@ -121,7 +121,7 @@ class NetworkConnection(DBusInterfaceProxy):
         self._state_flags = {
             flag
             for flag in ConnectionStateFlags
-            if flag.value & self.properties[DBUS_ATTR_STATE_FLAGS]
+            if flag & self.properties[DBUS_ATTR_STATE_FLAGS]
         } or {ConnectionStateFlags.NONE}
 
         # IPv4

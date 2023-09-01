@@ -94,7 +94,7 @@ class HardwareManager(CoreSysAttributes):
         udev_device: pyudev.Device = pyudev.Devices.from_sys_path(
             self._udev, str(device.sysfs)
         )
-        return udev_device.find_parent(subsystem.value) is not None
+        return udev_device.find_parent(subsystem) is not None
 
     def _import_devices(self) -> None:
         """Import fresh from udev database."""

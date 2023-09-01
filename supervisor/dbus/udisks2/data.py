@@ -167,10 +167,10 @@ class FormatOptions(UDisks2StandardOptions):
             )
             if self.encrypt_passpharase
             else None,
-            "encrypt.type": Variant("s", self.encrypt_type.value)
+            "encrypt.type": Variant("s", self.encrypt_type)
             if self.encrypt_type
             else None,
-            "erase": Variant("s", self.erase.value) if self.erase else None,
+            "erase": Variant("s", self.erase) if self.erase else None,
             "update-partition-type": _optional_variant("b", self.update_partition_type),
             "no-block": _optional_variant("b", self.no_block),
             "dry-run-first": _optional_variant("b", self.dry_run_first),

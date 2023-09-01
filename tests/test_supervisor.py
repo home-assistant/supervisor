@@ -104,7 +104,7 @@ async def test_update_apparmor(
         await coresys.supervisor.update_apparmor()
 
         get.assert_called_once_with(
-            f"https://version.home-assistant.io/apparmor_{channel.value}.txt",
+            f"https://version.home-assistant.io/apparmor_{channel}.txt",
             timeout=ClientTimeout(total=10),
         )
         load_profile.assert_called_once()

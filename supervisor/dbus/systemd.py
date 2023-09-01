@@ -122,25 +122,25 @@ class Systemd(DBusInterfaceProxy):
     @systemd_errors
     async def start_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Start a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_start_unit(unit, mode.value)
+        return await self.dbus.Manager.call_start_unit(unit, mode)
 
     @dbus_connected
     @systemd_errors
     async def stop_unit(self, unit: str, mode: StopUnitMode) -> str:
         """Stop a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_stop_unit(unit, mode.value)
+        return await self.dbus.Manager.call_stop_unit(unit, mode)
 
     @dbus_connected
     @systemd_errors
     async def reload_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Reload a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_reload_or_restart_unit(unit, mode.value)
+        return await self.dbus.Manager.call_reload_or_restart_unit(unit, mode)
 
     @dbus_connected
     @systemd_errors
     async def restart_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Restart a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_restart_unit(unit, mode.value)
+        return await self.dbus.Manager.call_restart_unit(unit, mode)
 
     @dbus_connected
     async def list_units(
@@ -155,7 +155,7 @@ class Systemd(DBusInterfaceProxy):
     ) -> str:
         """Start a transient unit which is released when stopped or on reboot. Returns object path of job."""
         return await self.dbus.Manager.call_start_transient_unit(
-            unit, mode.value, properties, []
+            unit, mode, properties, []
         )
 
     @dbus_connected

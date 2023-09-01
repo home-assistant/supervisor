@@ -81,7 +81,7 @@ class Mount(CoreSysAttributes, ABC):
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""
-        return MountData(name=self.name, type=self.type.value, usage=self.usage.value)
+        return MountData(name=self.name, type=self.type, usage=self.usage)
 
     @property
     def name(self) -> str:
@@ -120,7 +120,7 @@ class Mount(CoreSysAttributes, ABC):
     @property
     def description(self) -> str:
         """Description of mount."""
-        return f"Supervisor {self.type.value} mount: {self.name}"
+        return f"Supervisor {self.type} mount: {self.name}"
 
     @property
     def unit_name(self) -> str:
@@ -240,7 +240,7 @@ class Mount(CoreSysAttributes, ABC):
                 else []
             )
             if self.type != MountType.BIND:
-                options += [(DBUS_ATTR_TYPE, Variant("s", self.type.value))]
+                options += [(DBUS_ATTR_TYPE, Variant("s", self.type))]
 
             await self.sys_dbus.systemd.start_transient_unit(
                 self.unit_name,
@@ -469,7 +469,7 @@ class BindMount(Mount):
                 name=name,
                 type=MountType.BIND,
                 path=path.as_posix(),
-                usage=usage and usage.value,
+                usage=usage and usage,
             ),
             where=where,
         )
