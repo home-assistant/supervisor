@@ -1,9 +1,13 @@
 """Test plugin manager."""
 
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
+
+from awesomeversion import AwesomeVersion
 
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
+from supervisor.plugins.base import PluginBase
+from supervisor.supervisor import Supervisor
 
 
 def mock_awaitable_bool(value: bool):
@@ -29,3 +33,30 @@ async def test_repair(coresys: CoreSys):
             await coresys.plugins.repair()
 
         assert install.call_count == len(coresys.plugins.all_plugins)
+
+
+async def test_load(coresys: CoreSys):
+    """Test plugin manager load."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    await coresys.updater.load()
+
+    need_update = PropertyMock(return_value=True)
+    with patch.object(DockerInterface, "attach") as attach, patch.object(
+        DockerInterface, "update"
+    ) as update, patch.object(Supervisor, "need_update", new=need_update), patch.object(
+        PluginBase, "need_update", new=PropertyMock(return_value=True)
+    ), patch.object(
+        PluginBase,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("1970-01-01")),
+    ):
+        await coresys.plugins.load()
+
+        assert attach.call_count == 5
+        update.assert_not_called()
+
+        need_update.return_value = False
+        await coresys.plugins.load()
+
+        assert attach.call_count == 10
+        assert update.call_count == 5

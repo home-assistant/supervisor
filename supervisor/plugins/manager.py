@@ -75,8 +75,11 @@ class PluginManager(CoreSysAttributes):
                 )
                 capture_exception(err)
 
+        # Exit if supervisor out of date. Plugins can't update until then
+        if self.sys_supervisor.need_update:
+            return
+
         # Check requirements
-        await self.sys_updater.reload()
         for plugin in self.all_plugins:
             # Check if need an update
             if not plugin.need_update:
