@@ -102,25 +102,24 @@ class StoreData(CoreSysAttributes):
         """Initialize data holder."""
         self.coresys: CoreSys = coresys
         self.repositories: dict[str, Any] = {}
-        self.addons: dict[str, Any] = {}
+        self.addons: dict[str, dict[str, Any]] = {}
 
     async def update(self) -> None:
         """Read data from add-on repository."""
-        self.repositories.clear()
-        self.addons.clear()
-
         # read core repository
-        await self._read_addons_folder(
+        addons = await self._read_addons_folder(
             self.sys_config.path_addons_core, REPOSITORY_CORE
         )
 
         # read local repository
-        await self._read_addons_folder(
-            self.sys_config.path_addons_local, REPOSITORY_LOCAL
+        addons.update(
+            await self._read_addons_folder(
+                self.sys_config.path_addons_local, REPOSITORY_LOCAL
+            )
         )
 
         # add built-in repositories information
-        await self._set_builtin_repositories()
+        repositories = await self.sys_run_in_executor(self._get_builtin_repositories)
 
         # read custom git repositories
         def _read_git_repositories() -> list[ProcessedRepository]:
@@ -132,8 +131,11 @@ class StoreData(CoreSysAttributes):
             ]
 
         for repo in await self.sys_run_in_executor(_read_git_repositories):
-            self.repositories[repo.slug] = repo.config
-            await self._read_addons_folder(repo.path, repo.slug)
+            repositories[repo.slug] = repo.config
+            addons.update(await self._read_addons_folder(repo.path, repo.slug))
+
+        self.repositories = repositories
+        self.addons = addons
 
     async def _find_addons(self, path: Path, repository: dict) -> list[Path] | None:
         """Find add-ons in the path."""
@@ -169,7 +171,9 @@ class StoreData(CoreSysAttributes):
             return None
         return addon_list
 
-    async def _read_addons_folder(self, path: Path, repository: str) -> None:
+    async def _read_addons_folder(
+        self, path: Path, repository: str
+    ) -> dict[str, dict[str, Any]]:
         """Read data from add-ons folder."""
         if not (addon_list := await self._find_addons(path, repository)):
             return
@@ -205,23 +209,16 @@ class StoreData(CoreSysAttributes):
 
             return addons_config
 
-        self.addons.update(await self.sys_run_in_executor(_process_addons_config))
+        return await self.sys_run_in_executor(_process_addons_config)
 
-    async def _set_builtin_repositories(self):
-        """Add local built-in repository into dataset."""
+    def _get_builtin_repositories(self) -> dict[str, dict[str, str]]:
+        """Get local built-in repositories into dataset.
 
-        def _get_builtins() -> dict[str, dict[str, str]] | None:
-            try:
-                builtin_file = Path(__file__).parent.joinpath("built-in.json")
-                return read_json_file(builtin_file)
-            except ConfigurationFileError:
-                _LOGGER.warning("Can't read built-in json")
-                return None
-
-        builtin_data = await self.sys_run_in_executor(_get_builtins)
-        if builtin_data:
-            # core repository
-            self.repositories[REPOSITORY_CORE] = builtin_data[REPOSITORY_CORE]
-
-            # local repository
-            self.repositories[REPOSITORY_LOCAL] = builtin_data[REPOSITORY_LOCAL]
+        Need to run inside executor.
+        """
+        try:
+            builtin_file = Path(__file__).parent.joinpath("built-in.json")
+            return read_json_file(builtin_file)
+        except ConfigurationFileError:
+            _LOGGER.warning("Can't read built-in json")
+            return {}
