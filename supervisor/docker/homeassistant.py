@@ -66,10 +66,14 @@ class DockerHomeAssistant(DockerInterface):
     def cgroups_rules(self) -> list[str]:
         """Return a list of needed cgroups permission."""
         return (
-            self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART)
-            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO)
-            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO)
-            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB)
+            []
+            if self.sys_homeassistant.version == LANDINGPAGE
+            else (
+                self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART)
+                + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO)
+                + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO)
+                + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB)
+            )
         )
 
     @property
@@ -162,7 +166,7 @@ class DockerHomeAssistant(DockerInterface):
             name=self.name,
             hostname=self.name,
             detach=True,
-            privileged=True,
+            privileged=self.sys_homeassistant.version != LANDINGPAGE,
             init=False,
             security_opt=self.security_opt,
             network_mode="host",

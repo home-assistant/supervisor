@@ -29,6 +29,7 @@ async def test_homeassistant_start(
         assert run.call_args.kwargs["hostname"] == "homeassistant"
         assert run.call_args.kwargs["privileged"] is True
         assert run.call_args.kwargs["oom_score_adj"] == -300
+        assert run.call_args.kwargs["device_cgroup_rules"]
         assert run.call_args.kwargs["extra_hosts"] == {
             "supervisor": IPv4Address("172.30.32.2"),
             "observer": IPv4Address("172.30.32.6"),
@@ -112,8 +113,9 @@ async def test_landingpage_start(
         run.assert_called_once()
         assert run.call_args.kwargs["name"] == "homeassistant"
         assert run.call_args.kwargs["hostname"] == "homeassistant"
-        assert run.call_args.kwargs["privileged"] is True
+        assert run.call_args.kwargs["privileged"] is False
         assert run.call_args.kwargs["oom_score_adj"] == -300
+        assert not run.call_args.kwargs["device_cgroup_rules"]
         assert run.call_args.kwargs["extra_hosts"] == {
             "supervisor": IPv4Address("172.30.32.2"),
             "observer": IPv4Address("172.30.32.6"),
