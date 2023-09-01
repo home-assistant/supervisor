@@ -27,9 +27,9 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
         return MULTICAST_DOCKER_NAME
 
     @property
-    def capabilities(self) -> list[str]:
+    def capabilities(self) -> list[Capabilities]:
         """Generate needed capabilities."""
-        return [Capabilities.NET_ADMIN.value]
+        return [Capabilities.NET_ADMIN]
 
     @Job(
         name="docker_multicast_run",

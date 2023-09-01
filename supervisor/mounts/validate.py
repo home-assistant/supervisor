@@ -38,8 +38,8 @@ VALIDATE_SHARE = vol.Match(RE_PATH_PART)
 _SCHEMA_BASE_MOUNT_CONFIG = vol.Schema(
     {
         vol.Required(ATTR_NAME): VALIDATE_NAME,
-        vol.Required(ATTR_TYPE): vol.In([MountType.CIFS.value, MountType.NFS.value]),
-        vol.Required(ATTR_USAGE): vol.In([u.value for u in MountUsage]),
+        vol.Required(ATTR_TYPE): vol.In([MountType.CIFS, MountType.NFS]),
+        vol.Required(ATTR_USAGE): vol.Coerce(MountUsage),
     },
     extra=vol.REMOVE_EXTRA,
 )
@@ -53,7 +53,7 @@ _SCHEMA_MOUNT_NETWORK = _SCHEMA_BASE_MOUNT_CONFIG.extend(
 
 SCHEMA_MOUNT_CIFS = _SCHEMA_MOUNT_NETWORK.extend(
     {
-        vol.Required(ATTR_TYPE): MountType.CIFS.value,
+        vol.Required(ATTR_TYPE): MountType.CIFS,
         vol.Required(ATTR_SHARE): VALIDATE_SHARE,
         vol.Inclusive(ATTR_USERNAME, "basic_auth"): str,
         vol.Inclusive(ATTR_PASSWORD, "basic_auth"): str,
@@ -65,7 +65,7 @@ SCHEMA_MOUNT_CIFS = _SCHEMA_MOUNT_NETWORK.extend(
 
 SCHEMA_MOUNT_NFS = _SCHEMA_MOUNT_NETWORK.extend(
     {
-        vol.Required(ATTR_TYPE): MountType.NFS.value,
+        vol.Required(ATTR_TYPE): MountType.NFS,
         vol.Required(ATTR_PATH): str,
     }
 )

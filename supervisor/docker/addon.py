@@ -278,7 +278,7 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def capabilities(self) -> list[str] | None:
+    def capabilities(self) -> list[Capabilities] | None:
         """Generate needed capabilities."""
         capabilities: set[Capabilities] = set(self.addon.privileged)
 
@@ -292,7 +292,7 @@ class DockerAddon(DockerInterface):
 
         # Return None if no capabilities is present
         if capabilities:
-            return [cap.value for cap in capabilities]
+            return list(capabilities)
         return None
 
     @property
@@ -332,7 +332,7 @@ class DockerAddon(DockerInterface):
         mounts = [
             MOUNT_DEV,
             Mount(
-                type=MountType.BIND.value,
+                type=MountType.BIND,
                 source=self.addon.path_extern_data.as_posix(),
                 target="/data",
                 read_only=False,
@@ -343,7 +343,7 @@ class DockerAddon(DockerInterface):
         if MAP_CONFIG in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
                     target="/config",
                     read_only=addon_mapping[MAP_CONFIG],
@@ -353,7 +353,7 @@ class DockerAddon(DockerInterface):
         if MAP_SSL in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
                     target="/ssl",
                     read_only=addon_mapping[MAP_SSL],
@@ -363,7 +363,7 @@ class DockerAddon(DockerInterface):
         if MAP_ADDONS in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_addons_local.as_posix(),
                     target="/addons",
                     read_only=addon_mapping[MAP_ADDONS],
@@ -373,7 +373,7 @@ class DockerAddon(DockerInterface):
         if MAP_BACKUP in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_backup.as_posix(),
                     target="/backup",
                     read_only=addon_mapping[MAP_BACKUP],
@@ -383,22 +383,22 @@ class DockerAddon(DockerInterface):
         if MAP_SHARE in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
                     read_only=addon_mapping[MAP_SHARE],
-                    propagation=PropagationMode.RSLAVE.value,
+                    propagation=PropagationMode.RSLAVE,
                 )
             )
 
         if MAP_MEDIA in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_media.as_posix(),
                     target="/media",
                     read_only=addon_mapping[MAP_MEDIA],
-                    propagation=PropagationMode.RSLAVE.value,
+                    propagation=PropagationMode.RSLAVE,
                 )
             )
 
@@ -411,7 +411,7 @@ class DockerAddon(DockerInterface):
                     continue
                 mounts.append(
                     Mount(
-                        type=MountType.BIND.value,
+                        type=MountType.BIND,
                         source=gpio_path,
                         target=gpio_path,
                         read_only=False,
@@ -422,7 +422,7 @@ class DockerAddon(DockerInterface):
         if self.addon.with_devicetree:
             mounts.append(
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source="/sys/firmware/devicetree/base",
                     target="/device-tree",
                     read_only=True,
@@ -437,7 +437,7 @@ class DockerAddon(DockerInterface):
         if self.addon.with_kernel_modules:
             mounts.append(
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source="/lib/modules",
                     target="/lib/modules",
                     read_only=True,
@@ -456,19 +456,19 @@ class DockerAddon(DockerInterface):
         if self.addon.with_audio:
             mounts += [
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.addon.path_extern_pulse.as_posix(),
                     target="/etc/pulse/client.conf",
                     read_only=True,
                 ),
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
                     target="/run/audio",
                     read_only=True,
                 ),
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_plugins.audio.path_extern_asound.as_posix(),
                     target="/etc/asound.conf",
                     read_only=True,
@@ -479,13 +479,13 @@ class DockerAddon(DockerInterface):
         if self.addon.with_journald:
             mounts += [
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=SYSTEMD_JOURNAL_PERSISTENT.as_posix(),
                     target=SYSTEMD_JOURNAL_PERSISTENT.as_posix(),
                     read_only=True,
                 ),
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=SYSTEMD_JOURNAL_VOLATILE.as_posix(),
                     target=SYSTEMD_JOURNAL_VOLATILE.as_posix(),
                     read_only=True,

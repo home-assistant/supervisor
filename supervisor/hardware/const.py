@@ -1,8 +1,8 @@
 """Constants for hardware."""
-from enum import Enum
+from enum import StrEnum
 
 
-class UdevSubsystem(str, Enum):
+class UdevSubsystem(StrEnum):
     """Udev subsystem class."""
 
     SERIAL = "tty"
@@ -24,7 +24,7 @@ class UdevSubsystem(str, Enum):
     RPI_H264MEM = "rpivid-h264mem"
 
 
-class PolicyGroup(str, Enum):
+class PolicyGroup(StrEnum):
     """Policy groups backend."""
 
     UART = "uart"
@@ -35,14 +35,14 @@ class PolicyGroup(str, Enum):
     BLUETOOTH = "bluetooth"
 
 
-class HardwareAction(str, Enum):
+class HardwareAction(StrEnum):
     """Hardware device action."""
 
     ADD = "add"
     REMOVE = "remove"
 
 
-class UdevKernelAction(str, Enum):
+class UdevKernelAction(StrEnum):
     """Udev kernel device action."""
 
     ADD = "add"

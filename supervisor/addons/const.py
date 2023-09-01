@@ -1,11 +1,11 @@
 """Add-on static data."""
 from datetime import timedelta
-from enum import Enum
+from enum import StrEnum
 
 from ..jobs.const import JobCondition
 
 
-class AddonBackupMode(str, Enum):
+class AddonBackupMode(StrEnum):
     """Backup mode of an Add-on."""
 
     HOT = "hot"

@@ -1,5 +1,5 @@
 """Constants for DBUS."""
-from enum import Enum, IntEnum
+from enum import IntEnum, StrEnum
 from socket import AF_INET, AF_INET6
 
 DBUS_NAME_HAOS = "io.hass.os"
@@ -181,7 +181,7 @@ DBUS_ATTR_WWN = "WWN"
 DBUS_ERR_SYSTEMD_NO_SUCH_UNIT = "org.freedesktop.systemd1.NoSuchUnit"
 
 
-class RaucState(str, Enum):
+class RaucState(StrEnum):
     """Rauc slot states."""
 
     GOOD = "good"
@@ -189,7 +189,7 @@ class RaucState(str, Enum):
     ACTIVE = "active"
 
 
-class InterfaceMethod(str, Enum):
+class InterfaceMethod(StrEnum):
     """Interface method simple."""
 
     AUTO = "auto"
@@ -198,14 +198,14 @@ class InterfaceMethod(str, Enum):
     LINK_LOCAL = "link-local"
 
 
-class ConnectionType(str, Enum):
+class ConnectionType(StrEnum):
     """Connection type."""
 
     ETHERNET = "802-3-ethernet"
     WIRELESS = "802-11-wireless"
 
 
-class ConnectionStateType(int, Enum):
+class ConnectionStateType(IntEnum):
     """Connection states.
 
     https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActiveConnectionState
@@ -218,7 +218,7 @@ class ConnectionStateType(int, Enum):
     DEACTIVATED = 4
 
 
-class ConnectionStateFlags(int, Enum):
+class ConnectionStateFlags(IntEnum):
     """Connection state flags.
 
     https://developer-old.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActivationStateFlags
@@ -235,7 +235,7 @@ class ConnectionStateFlags(int, Enum):
     EXTERNAL = 0x80
 
 
-class ConnectivityState(int, Enum):
+class ConnectivityState(IntEnum):
     """Network connectvity.
 
     https://developer.gnome.org/NetworkManager/unstable/nm-dbus-types.html#NMConnectivityState
@@ -248,7 +248,7 @@ class ConnectivityState(int, Enum):
     CONNECTIVITY_FULL = 4
 
 
-class DeviceType(int, Enum):
+class DeviceType(IntEnum):
     """Device types.
 
     https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMDeviceType
@@ -263,7 +263,7 @@ class DeviceType(int, Enum):
     VETH = 20
 
 
-class WirelessMethodType(int, Enum):
+class WirelessMethodType(IntEnum):
     """Device Type."""
 
     UNKNOWN = 0
@@ -280,7 +280,7 @@ class DNSAddressFamily(IntEnum):
     INET6 = AF_INET6
 
 
-class MulticastProtocolEnabled(str, Enum):
+class MulticastProtocolEnabled(StrEnum):
     """Multicast protocol enabled or resolve."""
 
     YES = "yes"
@@ -288,7 +288,7 @@ class MulticastProtocolEnabled(str, Enum):
     RESOLVE = "resolve"
 
 
-class DNSOverTLSEnabled(str, Enum):
+class DNSOverTLSEnabled(StrEnum):
     """DNS over TLS enabled."""
 
     YES = "yes"
@@ -296,7 +296,7 @@ class DNSOverTLSEnabled(str, Enum):
     OPPORTUNISTIC = "opportunistic"
 
 
-class DNSSECValidation(str, Enum):
+class DNSSECValidation(StrEnum):
     """DNSSEC validation enforced."""
 
     YES = "yes"
@@ -304,7 +304,7 @@ class DNSSECValidation(str, Enum):
     ALLOW_DOWNGRADE = "allow-downgrade"
 
 
-class DNSStubListenerEnabled(str, Enum):
+class DNSStubListenerEnabled(StrEnum):
     """DNS stub listener enabled."""
 
     YES = "yes"
@@ -313,7 +313,7 @@ class DNSStubListenerEnabled(str, Enum):
     UDP_ONLY = "udp"
 
 
-class ResolvConfMode(str, Enum):
+class ResolvConfMode(StrEnum):
     """Resolv.conf management mode."""
 
     FOREIGN = "foreign"
@@ -323,7 +323,7 @@ class ResolvConfMode(str, Enum):
     UPLINK = "uplink"
 
 
-class StopUnitMode(str, Enum):
+class StopUnitMode(StrEnum):
     """Mode for stopping the unit."""
 
     REPLACE = "replace"
@@ -332,7 +332,7 @@ class StopUnitMode(str, Enum):
     IGNORE_REQUIREMENTS = "ignore-requirements"
 
 
-class StartUnitMode(str, Enum):
+class StartUnitMode(StrEnum):
     """Mode for starting the unit."""
 
     REPLACE = "replace"
@@ -342,7 +342,7 @@ class StartUnitMode(str, Enum):
     ISOLATE = "isolate"
 
 
-class UnitActiveState(str, Enum):
+class UnitActiveState(StrEnum):
     """Active state of a systemd unit."""
 
     ACTIVE = "active"

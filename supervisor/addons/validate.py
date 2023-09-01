@@ -212,9 +212,9 @@ def _migrate_addon_config(protocol=False):
                     name,
                 )
             if value == "before":
-                config[ATTR_STARTUP] = AddonStartup.SERVICES.value
+                config[ATTR_STARTUP] = AddonStartup.SERVICES
             elif value == "after":
-                config[ATTR_STARTUP] = AddonStartup.APPLICATION.value
+                config[ATTR_STARTUP] = AddonStartup.APPLICATION
 
         # UART 2021-01-20
         if "auto_uart" in config:

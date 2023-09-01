@@ -1,6 +1,6 @@
 """Constants for homeassistant."""
 from datetime import timedelta
-from enum import Enum
+from enum import StrEnum
 
 from awesomeversion import AwesomeVersion
 
@@ -19,7 +19,7 @@ CLOSING_STATES = [
 ]
 
 
-class WSType(str, Enum):
+class WSType(StrEnum):
     """Websocket types."""
 
     AUTH = "auth"
@@ -28,7 +28,7 @@ class WSType(str, Enum):
     BACKUP_END = "backup/end"
 
 
-class WSEvent(str, Enum):
+class WSEvent(StrEnum):
     """Websocket events."""
 
     ADDON = "addon"

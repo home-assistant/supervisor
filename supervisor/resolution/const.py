@@ -1,5 +1,5 @@
 """Constants for the resoulution manager."""
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from ..const import SUPERVISOR_DATA
@@ -15,7 +15,7 @@ DNS_CHECK_HOST = "_checkdns.home-assistant.io"
 DNS_ERROR_NO_DATA = 1
 
 
-class ContextType(str, Enum):
+class ContextType(StrEnum):
     """Place where somethings was happening."""
 
     ADDON = "addon"
@@ -29,7 +29,7 @@ class ContextType(str, Enum):
     SYSTEM = "system"
 
 
-class UnsupportedReason(str, Enum):
+class UnsupportedReason(StrEnum):
     """Reasons for unsupported status."""
 
     APPARMOR = "apparmor"
@@ -55,7 +55,7 @@ class UnsupportedReason(str, Enum):
     SYSTEMD_RESOLVED = "systemd_resolved"
 
 
-class UnhealthyReason(str, Enum):
+class UnhealthyReason(StrEnum):
     """Reasons for unsupported status."""
 
     DOCKER = "docker"
@@ -65,7 +65,7 @@ class UnhealthyReason(str, Enum):
     UNTRUSTED = "untrusted"
 
 
-class IssueType(str, Enum):
+class IssueType(StrEnum):
     """Issue type."""
 
     CORRUPT_DOCKER = "corrupt_docker"
@@ -91,7 +91,7 @@ class IssueType(str, Enum):
     UPDATE_ROLLBACK = "update_rollback"
 
 
-class SuggestionType(str, Enum):
+class SuggestionType(StrEnum):
     """Sugestion type."""
 
     CLEAR_FULL_BACKUP = "clear_full_backup"

@@ -467,7 +467,7 @@ class BindMount(Mount):
             coresys,
             MountData(
                 name=name,
-                type=MountType.BIND.value,
+                type=MountType.BIND,
                 path=path.as_posix(),
                 usage=usage and usage.value,
             ),

@@ -9,8 +9,8 @@ from .const import StoreType
 URL_COMMUNITY_ADDONS = "https://github.com/hassio-addons/repository"
 URL_ESPHOME = "https://github.com/esphome/home-assistant-addon"
 BUILTIN_REPOSITORIES = {
-    StoreType.CORE.value,
-    StoreType.LOCAL.value,
+    StoreType.CORE,
+    StoreType.LOCAL,
     URL_COMMUNITY_ADDONS,
     URL_ESPHOME,
 }
@@ -28,7 +28,7 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema(
 
 def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
-    if repository in [StoreType.CORE.value, StoreType.LOCAL.value]:
+    if repository in [StoreType.CORE, StoreType.LOCAL]:
         return repository
 
     data = RE_REPOSITORY.match(repository)

@@ -52,7 +52,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
             hostname=self.name.replace("_", "-"),
             detach=True,
             security_opt=self.security_opt,
-            restart_policy={"Name": RestartPolicy.ALWAYS.value},
+            restart_policy={"Name": RestartPolicy.ALWAYS},
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={
                 ENV_TIME: self.sys_timezone,
