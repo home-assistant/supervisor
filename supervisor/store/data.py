@@ -176,7 +176,7 @@ class StoreData(CoreSysAttributes):
     ) -> dict[str, dict[str, Any]]:
         """Read data from add-ons folder."""
         if not (addon_list := await self._find_addons(path, repository)):
-            return
+            return {}
 
         def _process_addons_config() -> dict[str, dict[str, Any]]:
             addons_config: dict[str, dict[str, Any]] = {}
