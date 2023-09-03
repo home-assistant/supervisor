@@ -334,11 +334,7 @@ class DockerInterface(JobGroup):
 
         return _container_state_from_model(docker_container)
 
-    @Job(
-        name="docker_interface_attach",
-        limit=JobExecutionLimit.GROUP_ONCE,
-        on_condition=DockerJobError,
-    )
+    @Job(name="docker_interface_attach", limit=JobExecutionLimit.GROUP_WAIT)
     async def attach(
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
@@ -454,11 +450,7 @@ class DockerInterface(JobGroup):
 
         return b""
 
-    @Job(
-        name="docker_interface_cleanup",
-        limit=JobExecutionLimit.GROUP_ONCE,
-        on_condition=DockerJobError,
-    )
+    @Job(name="docker_interface_cleanup", limit=JobExecutionLimit.GROUP_WAIT)
     def cleanup(self, old_image: str | None = None) -> Awaitable[None]:
         """Check if old version exists and cleanup."""
         return self.sys_run_in_executor(
