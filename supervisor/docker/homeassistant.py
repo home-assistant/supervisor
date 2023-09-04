@@ -66,10 +66,14 @@ class DockerHomeAssistant(DockerInterface):
     def cgroups_rules(self) -> list[str]:
         """Return a list of needed cgroups permission."""
         return (
-            self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART)
-            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO)
-            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO)
-            + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB)
+            []
+            if self.sys_homeassistant.version == LANDINGPAGE
+            else (
+                self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.UART)
+                + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.VIDEO)
+                + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.GPIO)
+                + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.USB)
+            )
         )
 
     @property
@@ -79,53 +83,61 @@ class DockerHomeAssistant(DockerInterface):
             MOUNT_DEV,
             MOUNT_DBUS,
             MOUNT_UDEV,
-            # Add folders
+            # HA config folder
             Mount(
                 type=MountType.BIND,
                 source=self.sys_config.path_extern_homeassistant.as_posix(),
                 target="/config",
                 read_only=False,
             ),
-            Mount(
-                type=MountType.BIND,
-                source=self.sys_config.path_extern_ssl.as_posix(),
-                target="/ssl",
-                read_only=True,
-            ),
-            Mount(
-                type=MountType.BIND,
-                source=self.sys_config.path_extern_share.as_posix(),
-                target="/share",
-                read_only=False,
-                propagation=PropagationMode.RSLAVE,
-            ),
-            Mount(
-                type=MountType.BIND,
-                source=self.sys_config.path_extern_media.as_posix(),
-                target="/media",
-                read_only=False,
-                propagation=PropagationMode.RSLAVE,
-            ),
-            # Configuration audio
-            Mount(
-                type=MountType.BIND,
-                source=self.sys_homeassistant.path_extern_pulse.as_posix(),
-                target="/etc/pulse/client.conf",
-                read_only=True,
-            ),
-            Mount(
-                type=MountType.BIND,
-                source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
-                target="/run/audio",
-                read_only=True,
-            ),
-            Mount(
-                type=MountType.BIND,
-                source=self.sys_plugins.audio.path_extern_asound.as_posix(),
-                target="/etc/asound.conf",
-                read_only=True,
-            ),
         ]
+
+        # Landingpage does not need all this access
+        if self.sys_homeassistant.version != LANDINGPAGE:
+            mounts.extend(
+                [
+                    # All other folders
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_config.path_extern_ssl.as_posix(),
+                        target="/ssl",
+                        read_only=True,
+                    ),
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_config.path_extern_share.as_posix(),
+                        target="/share",
+                        read_only=False,
+                        propagation=PropagationMode.RSLAVE.value,
+                    ),
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_config.path_extern_media.as_posix(),
+                        target="/media",
+                        read_only=False,
+                        propagation=PropagationMode.RSLAVE.value,
+                    ),
+                    # Configuration audio
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_homeassistant.path_extern_pulse.as_posix(),
+                        target="/etc/pulse/client.conf",
+                        read_only=True,
+                    ),
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
+                        target="/run/audio",
+                        read_only=True,
+                    ),
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_plugins.audio.path_extern_asound.as_posix(),
+                        target="/etc/asound.conf",
+                        read_only=True,
+                    ),
+                ]
+            )
 
         # Machine ID
         if MACHINE_ID.exists():
@@ -154,7 +166,7 @@ class DockerHomeAssistant(DockerInterface):
             name=self.name,
             hostname=self.name,
             detach=True,
-            privileged=True,
+            privileged=self.sys_homeassistant.version != LANDINGPAGE,
             init=False,
             security_opt=self.security_opt,
             network_mode="host",

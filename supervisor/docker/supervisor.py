@@ -8,8 +8,7 @@ from awesomeversion.awesomeversion import AwesomeVersion
 import docker
 import requests
 
-from ..coresys import CoreSysAttributes
-from ..exceptions import DockerError, DockerJobError
+from ..exceptions import DockerError
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from .const import PropagationMode
@@ -18,7 +17,7 @@ from .interface import DockerInterface
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class DockerSupervisor(DockerInterface, CoreSysAttributes):
+class DockerSupervisor(DockerInterface):
     """Docker Supervisor wrapper for Supervisor."""
 
     @property
@@ -45,11 +44,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             if mount.get("Destination") == "/data"
         )
 
-    @Job(
-        name="docker_supervisor_attach",
-        limit=JobExecutionLimit.GROUP_ONCE,
-        on_condition=DockerJobError,
-    )
+    @Job(name="docker_supervisor_attach", limit=JobExecutionLimit.GROUP_WAIT)
     async def attach(
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
@@ -81,6 +76,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
             ipv4=self.sys_docker.network.supervisor,
         )
 
+    @Job(name="docker_supervisor_retag", limit=JobExecutionLimit.GROUP_WAIT)
     def retag(self) -> Awaitable[None]:
         """Retag latest image to version."""
         return self.sys_run_in_executor(self._retag)
@@ -100,6 +96,7 @@ class DockerSupervisor(DockerInterface, CoreSysAttributes):
                 f"Can't retag Supervisor version: {err}", _LOGGER.error
             ) from err
 
+    @Job(name="docker_supervisor_update_start_tag", limit=JobExecutionLimit.GROUP_WAIT)
     def update_start_tag(self, image: str, version: AwesomeVersion) -> Awaitable[None]:
         """Update start tag to new version."""
         return self.sys_run_in_executor(self._update_start_tag, image, version)
