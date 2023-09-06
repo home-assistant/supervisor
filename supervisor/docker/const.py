@@ -1,12 +1,12 @@
 """Docker constants."""
-from enum import Enum
+from enum import StrEnum
 
 from docker.types import Mount
 
 from ..const import MACHINE_ID
 
 
-class Capabilities(str, Enum):
+class Capabilities(StrEnum):
     """Linux Capabilities."""
 
     BPF = "BPF"
@@ -24,7 +24,7 @@ class Capabilities(str, Enum):
     SYS_TIME = "SYS_TIME"
 
 
-class ContainerState(str, Enum):
+class ContainerState(StrEnum):
     """State of supervisor managed docker container."""
 
     FAILED = "failed"
@@ -35,7 +35,7 @@ class ContainerState(str, Enum):
     UNKNOWN = "unknown"
 
 
-class RestartPolicy(str, Enum):
+class RestartPolicy(StrEnum):
     """Restart policy of container."""
 
     NO = "no"
@@ -44,7 +44,7 @@ class RestartPolicy(str, Enum):
     ALWAYS = "always"
 
 
-class MountType(str, Enum):
+class MountType(StrEnum):
     """Mount type."""
 
     BIND = "bind"
@@ -53,7 +53,7 @@ class MountType(str, Enum):
     NPIPE = "npipe"
 
 
-class PropagationMode(str, Enum):
+class PropagationMode(StrEnum):
     """Propagataion mode, only for bind type mounts."""
 
     PRIVATE = "private"
@@ -71,23 +71,21 @@ ENV_TOKEN_OLD = "HASSIO_TOKEN"
 LABEL_MANAGED = "supervisor_managed"
 
 MOUNT_DBUS = Mount(
-    type=MountType.BIND.value, source="/run/dbus", target="/run/dbus", read_only=True
+    type=MountType.BIND, source="/run/dbus", target="/run/dbus", read_only=True
 )
-MOUNT_DEV = Mount(
-    type=MountType.BIND.value, source="/dev", target="/dev", read_only=True
-)
+MOUNT_DEV = Mount(type=MountType.BIND, source="/dev", target="/dev", read_only=True)
 MOUNT_DOCKER = Mount(
-    type=MountType.BIND.value,
+    type=MountType.BIND,
     source="/run/docker.sock",
     target="/run/docker.sock",
     read_only=True,
 )
 MOUNT_MACHINE_ID = Mount(
-    type=MountType.BIND.value,
+    type=MountType.BIND,
     source=MACHINE_ID.as_posix(),
     target=MACHINE_ID.as_posix(),
     read_only=True,
 )
 MOUNT_UDEV = Mount(
-    type=MountType.BIND.value, source="/run/udev", target="/run/udev", read_only=True
+    type=MountType.BIND, source="/run/udev", target="/run/udev", read_only=True
 )

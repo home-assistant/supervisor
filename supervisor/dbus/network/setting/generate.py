@@ -41,7 +41,7 @@ def get_connection_from_interface(
     elif interface.type == InterfaceType.WIRELESS:
         iftype = "802-11-wireless"
     else:
-        iftype = interface.type.value
+        iftype = interface.type
 
     # Generate UUID
     if not uuid:

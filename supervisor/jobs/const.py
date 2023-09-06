@@ -1,5 +1,5 @@
 """Jobs constants."""
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from ..const import SUPERVISOR_DATA
@@ -13,7 +13,7 @@ JOB_GROUP_DOCKER_INTERFACE = "container_{name}"
 JOB_GROUP_HOME_ASSISTANT_CORE = "home_assistant_core"
 
 
-class JobCondition(str, Enum):
+class JobCondition(StrEnum):
     """Job condition enum."""
 
     AUTO_UPDATE = "auto_update"
@@ -30,7 +30,7 @@ class JobCondition(str, Enum):
     SUPERVISOR_UPDATED = "supervisor_updated"
 
 
-class JobExecutionLimit(str, Enum):
+class JobExecutionLimit(StrEnum):
     """Job Execution limits."""
 
     ONCE = "once"

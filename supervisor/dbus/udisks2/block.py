@@ -263,6 +263,4 @@ class UDisks2Block(DBusInterfaceProxy):
     ) -> None:
         """Format block device."""
         options = options.to_dict() if options else {}
-        await self.dbus.Block.call_format(
-            type_.value, options | UDISKS2_DEFAULT_OPTIONS
-        )
+        await self.dbus.Block.call_format(type_, options | UDISKS2_DEFAULT_OPTIONS)

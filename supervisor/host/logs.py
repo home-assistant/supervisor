@@ -142,7 +142,7 @@ class LogsControl(CoreSysAttributes):
         async with ClientSession(
             connector=UnixConnector(path="/run/systemd-journal-gatewayd.sock")
         ) as session:
-            headers = {ACCEPT: accept.value}
+            headers = {ACCEPT: accept}
             if range_header:
                 headers[RANGE] = range_header
             async with session.get(

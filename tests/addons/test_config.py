@@ -41,13 +41,13 @@ def test_migration_startup():
 
     valid_config = vd.SCHEMA_ADDON_CONFIG(config)
 
-    assert valid_config["startup"].value == "services"
+    assert valid_config["startup"] == "services"
 
     config["startup"] = "after"
 
     valid_config = vd.SCHEMA_ADDON_CONFIG(config)
 
-    assert valid_config["startup"].value == "application"
+    assert valid_config["startup"] == "application"
 
 
 def test_migration_auto_uart():

@@ -115,7 +115,7 @@ class Supervisor(CoreSysAttributes):
 
     async def update_apparmor(self) -> None:
         """Fetch last version and update profile."""
-        url = URL_HASSIO_APPARMOR.format(channel=self.sys_updater.channel.value)
+        url = URL_HASSIO_APPARMOR.format(channel=self.sys_updater.channel)
 
         # Fetch
         try:

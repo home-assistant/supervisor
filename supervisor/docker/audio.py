@@ -45,7 +45,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         mounts = [
             MOUNT_DEV,
             Mount(
-                type=MountType.BIND.value,
+                type=MountType.BIND,
                 source=self.sys_config.path_extern_audio.as_posix(),
                 target="/data",
                 read_only=False,
@@ -68,9 +68,9 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         ) + self.sys_hardware.policy.get_cgroups_rules(PolicyGroup.BLUETOOTH)
 
     @property
-    def capabilities(self) -> list[str]:
+    def capabilities(self) -> list[Capabilities]:
         """Generate needed capabilities."""
-        return [cap.value for cap in (Capabilities.SYS_NICE, Capabilities.SYS_RESOURCE)]
+        return [Capabilities.SYS_NICE, Capabilities.SYS_RESOURCE]
 
     @property
     def ulimits(self) -> list[docker.types.Ulimit]:

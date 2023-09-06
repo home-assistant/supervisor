@@ -1,20 +1,20 @@
 """Constants for UDisks2."""
 
-from enum import Enum
+from enum import StrEnum
 
 from dbus_fast import Variant
 
 UDISKS2_DEFAULT_OPTIONS = {"auth.no_user_interaction": Variant("b", True)}
 
 
-class EncryptType(str, Enum):
+class EncryptType(StrEnum):
     """Encryption type."""
 
     LUKS1 = "luks1"
     LUKS2 = "luks2"
 
 
-class EraseMode(str, Enum):
+class EraseMode(StrEnum):
     """Erase mode."""
 
     ZERO = "zero"
@@ -22,7 +22,7 @@ class EraseMode(str, Enum):
     ATA_SECURE_ERASE_ENHANCED = "ata-secure-erase-enhanced"
 
 
-class FormatType(str, Enum):
+class FormatType(StrEnum):
     """Format type."""
 
     EMPTY = "empty"
@@ -31,7 +31,7 @@ class FormatType(str, Enum):
     GPT = "gpt"
 
 
-class PartitionTableType(str, Enum):
+class PartitionTableType(StrEnum):
     """Partition Table type."""
 
     DOS = "dos"

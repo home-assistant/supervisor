@@ -1,6 +1,6 @@
 """Constants for mount manager."""
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import PurePath
 
 FILE_CONFIG_MOUNTS = PurePath("mounts.json")
@@ -13,7 +13,7 @@ ATTR_SHARE = "share"
 ATTR_USAGE = "usage"
 
 
-class MountType(str, Enum):
+class MountType(StrEnum):
     """Mount type."""
 
     BIND = "bind"
@@ -21,7 +21,7 @@ class MountType(str, Enum):
     NFS = "nfs"
 
 
-class MountUsage(str, Enum):
+class MountUsage(StrEnum):
     """Mount usage."""
 
     BACKUP = "backup"
@@ -29,7 +29,7 @@ class MountUsage(str, Enum):
     SHARE = "share"
 
 
-class MountCifsVersion(str, Enum):
+class MountCifsVersion(StrEnum):
     """Mount CIFS version."""
 
     LEGACY_1_0 = "1.0"

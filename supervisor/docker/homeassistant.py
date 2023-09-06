@@ -85,7 +85,7 @@ class DockerHomeAssistant(DockerInterface):
             MOUNT_UDEV,
             # HA config folder
             Mount(
-                type=MountType.BIND.value,
+                type=MountType.BIND,
                 source=self.sys_config.path_extern_homeassistant.as_posix(),
                 target="/config",
                 read_only=False,
@@ -98,20 +98,20 @@ class DockerHomeAssistant(DockerInterface):
                 [
                     # All other folders
                     Mount(
-                        type=MountType.BIND.value,
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_ssl.as_posix(),
                         target="/ssl",
                         read_only=True,
                     ),
                     Mount(
-                        type=MountType.BIND.value,
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_share.as_posix(),
                         target="/share",
                         read_only=False,
                         propagation=PropagationMode.RSLAVE.value,
                     ),
                     Mount(
-                        type=MountType.BIND.value,
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_media.as_posix(),
                         target="/media",
                         read_only=False,
@@ -119,19 +119,19 @@ class DockerHomeAssistant(DockerInterface):
                     ),
                     # Configuration audio
                     Mount(
-                        type=MountType.BIND.value,
+                        type=MountType.BIND,
                         source=self.sys_homeassistant.path_extern_pulse.as_posix(),
                         target="/etc/pulse/client.conf",
                         read_only=True,
                     ),
                     Mount(
-                        type=MountType.BIND.value,
+                        type=MountType.BIND,
                         source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
                         target="/run/audio",
                         read_only=True,
                     ),
                     Mount(
-                        type=MountType.BIND.value,
+                        type=MountType.BIND,
                         source=self.sys_plugins.audio.path_extern_asound.as_posix(),
                         target="/etc/asound.conf",
                         read_only=True,
@@ -212,19 +212,19 @@ class DockerHomeAssistant(DockerInterface):
             stderr=True,
             mounts=[
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
                     target="/config",
                     read_only=False,
                 ),
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
                     target="/ssl",
                     read_only=True,
                 ),
                 Mount(
-                    type=MountType.BIND.value,
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
                     read_only=False,

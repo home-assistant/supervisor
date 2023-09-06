@@ -120,7 +120,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                 _LOGGER.warning(
                     "Watchdog found %s plugin %s, restarting...",
                     self.slug,
-                    state.value,
+                    state,
                 )
                 try:
                     if state == ContainerState.STOPPED and attempts == 0:

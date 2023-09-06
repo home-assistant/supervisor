@@ -1,12 +1,12 @@
 """Const for host."""
-from enum import Enum
+from enum import StrEnum
 
 PARAM_BOOT_ID = "_BOOT_ID"
 PARAM_FOLLOW = "follow"
 PARAM_SYSLOG_IDENTIFIER = "SYSLOG_IDENTIFIER"
 
 
-class InterfaceMethod(str, Enum):
+class InterfaceMethod(StrEnum):
     """Configuration of an interface."""
 
     DISABLED = "disabled"
@@ -14,7 +14,7 @@ class InterfaceMethod(str, Enum):
     AUTO = "auto"
 
 
-class InterfaceType(str, Enum):
+class InterfaceType(StrEnum):
     """Configuration of an interface."""
 
     ETHERNET = "ethernet"
@@ -22,7 +22,7 @@ class InterfaceType(str, Enum):
     VLAN = "vlan"
 
 
-class AuthMethod(str, Enum):
+class AuthMethod(StrEnum):
     """Authentication method."""
 
     OPEN = "open"
@@ -30,7 +30,7 @@ class AuthMethod(str, Enum):
     WPA_PSK = "wpa-psk"
 
 
-class WifiMode(str, Enum):
+class WifiMode(StrEnum):
     """Wifi mode."""
 
     INFRASTRUCTURE = "infrastructure"
@@ -39,7 +39,7 @@ class WifiMode(str, Enum):
     AP = "ap"
 
 
-class HostFeature(str, Enum):
+class HostFeature(StrEnum):
     """Host feature."""
 
     DISK = "disk"
@@ -56,7 +56,7 @@ class HostFeature(str, Enum):
     TIMEDATE = "timedate"
 
 
-class LogFormat(str, Enum):
+class LogFormat(StrEnum):
     """Log format."""
 
     JOURNAL = "application/vnd.fdo.journal"

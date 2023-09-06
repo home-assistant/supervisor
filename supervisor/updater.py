@@ -192,7 +192,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
         Is a coroutine.
         """
-        url = URL_HASSIO_VERSION.format(channel=self.channel.value)
+        url = URL_HASSIO_VERSION.format(channel=self.channel)
         machine = self.sys_machine or "default"
 
         # Get data

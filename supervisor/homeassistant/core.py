@@ -492,7 +492,7 @@ class HomeAssistantCore(JobGroup):
             # Don't interrupt a task in progress or if rollback is handling it
             if not (self.in_progress or self.error_state):
                 _LOGGER.warning(
-                    "Watchdog found Home Assistant %s, restarting...", state.value
+                    "Watchdog found Home Assistant %s, restarting...", state
                 )
                 if state == ContainerState.FAILED and attempts == 0:
                     try:

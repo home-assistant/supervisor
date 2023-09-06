@@ -1,10 +1,10 @@
 """Security constants."""
-from enum import Enum
+from enum import StrEnum
 
 import attr
 
 
-class ContentTrustResult(str, Enum):
+class ContentTrustResult(StrEnum):
     """Content trust result enum."""
 
     PASS = "pass"

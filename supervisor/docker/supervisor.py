@@ -39,7 +39,7 @@ class DockerSupervisor(DockerInterface):
     def host_mounts_available(self) -> bool:
         """Return True if container can see mounts on host within its data directory."""
         return self._meta and any(
-            mount.get("Propagation") == PropagationMode.SLAVE.value
+            mount.get("Propagation") == PropagationMode.SLAVE
             for mount in self.meta_mounts
             if mount.get("Destination") == "/data"
         )

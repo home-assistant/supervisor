@@ -9,8 +9,8 @@ def test_write_state(run_dir, coresys: CoreSys):
 
     coresys.core.state = CoreState.RUNNING
 
-    assert run_dir.read_text() == CoreState.RUNNING.value
+    assert run_dir.read_text() == CoreState.RUNNING
 
     coresys.core.state = CoreState.SHUTDOWN
 
-    assert run_dir.read_text() == CoreState.SHUTDOWN.value
+    assert run_dir.read_text() == CoreState.SHUTDOWN

@@ -153,7 +153,7 @@ class CoreConfig(FileConfiguration):
 
     def modify_log_level(self) -> None:
         """Change log level."""
-        lvl = getattr(logging, str(self.logging.value).upper())
+        lvl = getattr(logging, self.logging.value.upper())
         logging.getLogger("supervisor").setLevel(lvl)
 
     @property

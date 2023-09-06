@@ -1,6 +1,6 @@
 """Constants file for Supervisor."""
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from ipaddress import ip_network
 from pathlib import Path
 from sys import version_info as systemversion
@@ -374,14 +374,14 @@ ROLE_ADMIN = "admin"
 ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
 
 
-class AddonBoot(str, Enum):
+class AddonBoot(StrEnum):
     """Boot mode for the add-on."""
 
     AUTO = "auto"
     MANUAL = "manual"
 
 
-class AddonStartup(str, Enum):
+class AddonStartup(StrEnum):
     """Startup types of Add-on."""
 
     INITIALIZE = "initialize"
@@ -391,7 +391,7 @@ class AddonStartup(str, Enum):
     ONCE = "once"
 
 
-class AddonStage(str, Enum):
+class AddonStage(StrEnum):
     """Stage types of add-on."""
 
     STABLE = "stable"
@@ -399,7 +399,7 @@ class AddonStage(str, Enum):
     DEPRECATED = "deprecated"
 
 
-class AddonState(str, Enum):
+class AddonState(StrEnum):
     """State of add-on."""
 
     STARTUP = "startup"
@@ -409,7 +409,7 @@ class AddonState(str, Enum):
     ERROR = "error"
 
 
-class UpdateChannel(str, Enum):
+class UpdateChannel(StrEnum):
     """Core supported update channels."""
 
     STABLE = "stable"
@@ -417,7 +417,7 @@ class UpdateChannel(str, Enum):
     DEV = "dev"
 
 
-class CoreState(str, Enum):
+class CoreState(StrEnum):
     """Represent current loading state."""
 
     INITIALIZE = "initialize"
@@ -430,7 +430,7 @@ class CoreState(str, Enum):
     CLOSE = "close"
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     """Logging level of system."""
 
     DEBUG = "debug"
@@ -440,7 +440,7 @@ class LogLevel(str, Enum):
     CRITICAL = "critical"
 
 
-class HostFeature(str, Enum):
+class HostFeature(StrEnum):
     """Host feature."""
 
     HASSOS = "hassos"
@@ -452,7 +452,7 @@ class HostFeature(str, Enum):
     TIMEDATE = "timedate"
 
 
-class BusEvent(str, Enum):
+class BusEvent(StrEnum):
     """Bus event type."""
 
     HARDWARE_NEW_DEVICE = "hardware_new_device"
@@ -461,7 +461,7 @@ class BusEvent(str, Enum):
     SUPERVISOR_STATE_CHANGE = "supervisor_state_change"
 
 
-class CpuArch(str, Enum):
+class CpuArch(StrEnum):
     """Supported CPU architectures."""
 
     ARMV7 = "armv7"
