@@ -771,6 +771,43 @@ class Addon(AddonModel):
                 _LOGGER.error,
             ) from err
 
+    @Job(name="addon_begin_backup")
+    async def begin_backup(self) -> bool:
+        """Execute pre commands or stop addon if necessary.
+
+        Returns value of `is_running`. Caller should not call `end_backup` if return is false.
+        """
+        if not await self.is_running():
+            return False
+
+        if self.backup_mode == AddonBackupMode.COLD:
+            _LOGGER.info("Shutdown add-on %s for cold backup", self.slug)
+            try:
+                await self.instance.stop()
+            except DockerError as err:
+                raise AddonsError() from err
+
+        elif self.backup_pre is not None:
+            await self._backup_command(self.backup_pre)
+
+        return True
+
+    @Job(name="addon_end_backup")
+    async def end_backup(self) -> Awaitable[None] | None:
+        """Execute post commands or restart addon if necessary.
+
+        Returns a coroutine that completes when addon has state 'started' (see start)
+        for cold backup. Else nothing is returned.
+        """
+        if self.backup_mode is AddonBackupMode.COLD:
+            _LOGGER.info("Starting add-on %s again", self.slug)
+            return await self.start()
+
+        if self.backup_post is not None:
+            await self._backup_command(self.backup_post)
+        return None
+
+    @Job(name="addon_backup")
     async def backup(self, tar_file: tarfile.TarFile) -> Awaitable[None] | None:
         """Backup state of an add-on.
 
@@ -778,7 +815,6 @@ class Addon(AddonModel):
         for cold backup. Else nothing is returned.
         """
         wait_for_start: Awaitable[None] | None = None
-        is_running = await self.is_running()
 
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
             temp_path = Path(temp)
@@ -830,19 +866,7 @@ class Addon(AddonModel):
                         arcname="data",
                     )
 
-            if (
-                is_running
-                and self.backup_mode == AddonBackupMode.HOT
-                and self.backup_pre is not None
-            ):
-                await self._backup_command(self.backup_pre)
-            elif is_running and self.backup_mode == AddonBackupMode.COLD:
-                _LOGGER.info("Shutdown add-on %s for cold backup", self.slug)
-                try:
-                    await self.instance.stop()
-                except DockerError as err:
-                    raise AddonsError() from err
-
+            is_running = await self.begin_backup()
             try:
                 _LOGGER.info("Building backup for add-on %s", self.slug)
                 await self.sys_run_in_executor(_write_tarfile)
@@ -851,15 +875,8 @@ class Addon(AddonModel):
                     f"Can't write tarfile {tar_file}: {err}", _LOGGER.error
                 ) from err
             finally:
-                if (
-                    is_running
-                    and self.backup_mode == AddonBackupMode.HOT
-                    and self.backup_post is not None
-                ):
-                    await self._backup_command(self.backup_post)
-                elif is_running and self.backup_mode is AddonBackupMode.COLD:
-                    _LOGGER.info("Starting add-on %s again", self.slug)
-                    wait_for_start = await self.start()
+                if is_running:
+                    wait_for_start = await self.end_backup()
 
         _LOGGER.info("Finish backup for addon %s", self.slug)
         return wait_for_start

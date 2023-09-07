@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Coroutine
+from contextvars import Context, copy_context
 from datetime import datetime
 from functools import partial
 import logging
@@ -98,6 +99,9 @@ class CoreSys:
         self._websession._default_headers = MappingProxyType(
             {aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE}
         )
+
+        # Task factory attributes
+        self._set_task_context: list[Callable[[Context], Context]] = []
 
     @property
     def dev(self) -> bool:
@@ -520,6 +524,17 @@ class CoreSys:
         """Return now in local timezone."""
         return datetime.now(get_time_zone(self.timezone) or UTC)
 
+    def add_set_task_context_callback(
+        self, callback: Callable[[Context], Context]
+    ) -> None:
+        """Add callback used to modify context prior to creating a task.
+
+        Only used for tasks created via CoreSys.create_task. Callback can modify the provided
+        context using context.run (ex. `context.run(var.set, "new_value")`). Callback should
+        return the context to be provided to task.
+        """
+        self._set_task_context.append(callback)
+
     def run_in_executor(
         self, funct: Callable[..., T], *args: tuple[Any], **kwargs: dict[str, Any]
     ) -> Coroutine[Any, Any, T]:
@@ -531,7 +546,11 @@ class CoreSys:
 
     def create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""
-        return self.loop.create_task(coroutine)
+        context = copy_context()
+        for callback in self._set_task_context:
+            context = callback(context)
+
+        return self.loop.create_task(coroutine, context=context)
 
 
 class CoreSysAttributes:

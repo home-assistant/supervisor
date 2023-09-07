@@ -308,6 +308,14 @@ class Job(CoreSysAttributes):
             )
 
         if (
+            JobCondition.FROZEN in used_conditions
+            and self.sys_core.state != CoreState.FREEZE
+        ):
+            raise JobConditionException(
+                f"'{self._method.__qualname__}' blocked from execution, system is not frozen - {self.sys_core.state!s}"
+            )
+
+        if (
             JobCondition.FREE_SPACE in used_conditions
             and self.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
         ):

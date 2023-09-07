@@ -28,6 +28,7 @@ from ..const import (
     ATTR_SIZE,
     ATTR_SLUG,
     ATTR_SUPERVISOR_VERSION,
+    ATTR_TIMEOUT,
     ATTR_TYPE,
     ATTR_VERSION,
 )
@@ -77,6 +78,12 @@ SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_DAYS_UNTIL_STALE): days_until_stale,
+    }
+)
+
+SCHEMA_FREEZE = vol.Schema(
+    {
+        vol.Optional(ATTR_TIMEOUT): int,
     }
 )
 
@@ -142,7 +149,7 @@ class APIBackups(CoreSysAttributes):
         self.sys_backups.save_data()
 
     @api_process
-    async def reload(self, request):
+    async def reload(self, _):
         """Reload backup list."""
         await asyncio.shield(self.sys_backups.reload())
         return True
@@ -232,6 +239,17 @@ class APIBackups(CoreSysAttributes):
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
 
         return await asyncio.shield(self.sys_backups.do_restore_partial(backup, **body))
+
+    @api_process
+    async def freeze(self, request):
+        """Initiate manual freeze for external backup."""
+        body = await api_validate(SCHEMA_FREEZE, request)
+        await asyncio.shield(self.sys_backups.freeze_all(**body))
+
+    @api_process
+    async def thaw(self, request):
+        """Begin thaw after manual freeze."""
+        await self.sys_backups.thaw_all()
 
     @api_process
     async def remove(self, request):

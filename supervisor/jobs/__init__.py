@@ -1,7 +1,7 @@
 """Supervisor job manager."""
 from collections.abc import Callable
 from contextlib import contextmanager
-from contextvars import ContextVar, Token
+from contextvars import Context, ContextVar, Token
 import logging
 from typing import Any
 from uuid import UUID, uuid4
@@ -25,6 +25,12 @@ from .validate import SCHEMA_JOBS_CONFIG
 _CURRENT_JOB: ContextVar[UUID] = ContextVar("current_job")
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def _remove_current_job(context: Context) -> Context:
+    """Remove the current job from the context."""
+    context.run(_CURRENT_JOB.set, None)
+    return context
 
 
 def _invalid_if_done(instance: "SupervisorJob", *_) -> None:
@@ -113,6 +119,9 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         super().__init__(FILE_CONFIG_JOBS, SCHEMA_JOBS_CONFIG)
         self.coresys: CoreSys = coresys
         self._jobs: dict[str, SupervisorJob] = {}
+
+        # Ensure tasks created via CoreSys.create_task do not have a parent
+        self.coresys.add_set_task_context_callback(_remove_current_job)
 
     @property
     def jobs(self) -> list[SupervisorJob]:
