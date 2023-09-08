@@ -83,7 +83,7 @@ SCHEMA_OPTIONS = vol.Schema(
 
 SCHEMA_FREEZE = vol.Schema(
     {
-        vol.Optional(ATTR_TIMEOUT): int,
+        vol.Optional(ATTR_TIMEOUT): vol.All(int, vol.Range(min=1)),
     }
 )
 
