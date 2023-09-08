@@ -711,3 +711,27 @@ async def test_options(api_client: TestClient, coresys: CoreSys, mount):
 
     assert coresys.mounts.default_backup_mount is None
     assert coresys.mounts.save_data.call_count == 2
+
+
+async def test_api_create_mount_fails_special_chars(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test creating a mount via API fails with special characters."""
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "Überwachungskameras",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+            "version": "2.0",
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert "does not match regular expression" in result["message"]

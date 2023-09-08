@@ -27,7 +27,7 @@ from .const import (
     MountUsage,
 )
 
-RE_MOUNT_NAME = re.compile(r"^\w+$")
+RE_MOUNT_NAME = re.compile(r"^[A-Za-z0-9_]+$")
 RE_PATH_PART = re.compile(r"^[^\\\/]+")
 RE_MOUNT_OPTION = re.compile(r"^[^,=]+$")
 
