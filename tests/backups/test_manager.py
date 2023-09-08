@@ -20,7 +20,7 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsError, DockerError
+from supervisor.exceptions import AddonsError, BackupError, DockerError
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
@@ -1249,3 +1249,10 @@ async def test_freeze_thaw_timeout(
         for call in ha_ws_client.async_send_command.call_args_list
     )
     assert "Timeout waiting for signal to thaw after manual freeze" in caplog.text
+
+
+async def test_cannot_manually_thaw_normal_freeze(coresys: CoreSys):
+    """Test thaw_all cannot be used unless freeze was started by freeze_all method."""
+    coresys.core.state = CoreState.FREEZE
+    with pytest.raises(BackupError):
+        await coresys.backups.thaw_all()

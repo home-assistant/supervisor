@@ -14,7 +14,7 @@ from ..const import (
     CoreState,
 )
 from ..dbus.const import UnitActiveState
-from ..exceptions import AddonsError, BackupJobError
+from ..exceptions import AddonsError, BackupError, BackupJobError
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -616,6 +616,10 @@ class BackupManager(FileConfiguration, JobGroup):
     )
     async def thaw_all(self) -> None:
         """Signal thaw task to begin unfreezing the system."""
+        if not self._thaw_task:
+            raise BackupError(
+                "Freeze was not initiated by freeze API, cannot thaw this way"
+            )
+
         self._thaw_event.set()
-        if self._thaw_task:
-            await self._thaw_task
+        await self._thaw_task
