@@ -9,6 +9,7 @@ FILE_CONFIG_JOBS = Path(SUPERVISOR_DATA, "jobs.json")
 ATTR_IGNORE_CONDITIONS = "ignore_conditions"
 
 JOB_GROUP_ADDON = "addon_{slug}"
+JOB_GROUP_BACKUP_MANAGER = "backup_manager"
 JOB_GROUP_DOCKER_INTERFACE = "container_{name}"
 JOB_GROUP_HOME_ASSISTANT_CORE = "home_assistant_core"
 
@@ -18,6 +19,7 @@ class JobCondition(StrEnum):
 
     AUTO_UPDATE = "auto_update"
     FREE_SPACE = "free_space"
+    FROZEN = "frozen"
     HAOS = "haos"
     HEALTHY = "healthy"
     HOST_NETWORK = "host_network"

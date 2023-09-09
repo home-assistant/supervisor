@@ -2,6 +2,7 @@
 from enum import StrEnum
 
 BUF_SIZE = 2**20 * 4  # 4MB
+DEFAULT_FREEZE_TIMEOUT = 600
 
 
 class BackupType(StrEnum):

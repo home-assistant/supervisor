@@ -20,7 +20,7 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsError, DockerError
+from supervisor.exceptions import AddonsError, BackupError, DockerError
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
@@ -832,8 +832,7 @@ async def test_restore_with_healthcheck(
 
 def _make_backup_message_for_assert(
     *,
-    full: bool = True,
-    restore: bool = False,
+    action: str = "full_backup",
     reference: str,
     stage: str | None,
     done: bool = False,
@@ -844,7 +843,7 @@ def _make_backup_message_for_assert(
         "data": {
             "event": "job",
             "data": {
-                "name": f"backup_manager_{'full' if full else 'partial'}_{'restore' if restore else 'backup'}",
+                "name": f"backup_manager_{action}",
                 "reference": reference,
                 "uuid": ANY,
                 "progress": 0,
@@ -920,27 +919,35 @@ async def test_backup_progress(
         == "backup_manager_partial_backup"
     ]
     assert messages == [
-        _make_backup_message_for_assert(full=False, reference=None, stage=None),
         _make_backup_message_for_assert(
-            full=False, reference=partial_backup.slug, stage=None
+            action="partial_backup", reference=None, stage=None
         ),
         _make_backup_message_for_assert(
-            full=False, reference=partial_backup.slug, stage="addon_repositories"
+            action="partial_backup", reference=partial_backup.slug, stage=None
         ),
         _make_backup_message_for_assert(
-            full=False, reference=partial_backup.slug, stage="docker_config"
+            action="partial_backup",
+            reference=partial_backup.slug,
+            stage="addon_repositories",
         ),
         _make_backup_message_for_assert(
-            full=False, reference=partial_backup.slug, stage="addons"
+            action="partial_backup",
+            reference=partial_backup.slug,
+            stage="docker_config",
         ),
         _make_backup_message_for_assert(
-            full=False, reference=partial_backup.slug, stage="folders"
+            action="partial_backup", reference=partial_backup.slug, stage="addons"
         ),
         _make_backup_message_for_assert(
-            full=False, reference=partial_backup.slug, stage="finishing_file"
+            action="partial_backup", reference=partial_backup.slug, stage="folders"
         ),
         _make_backup_message_for_assert(
-            full=False,
+            action="partial_backup",
+            reference=partial_backup.slug,
+            stage="finishing_file",
+        ),
+        _make_backup_message_for_assert(
+            action="partial_backup",
             reference=partial_backup.slug,
             stage="finishing_file",
             done=True,
@@ -987,51 +994,53 @@ async def test_restore_progress(
         == "backup_manager_full_restore"
     ]
     assert messages == [
-        _make_backup_message_for_assert(restore=True, reference=None, stage=None),
         _make_backup_message_for_assert(
-            restore=True, reference=full_backup.slug, stage=None
+            action="full_restore", reference=None, stage=None
         ),
         _make_backup_message_for_assert(
-            restore=True, reference=full_backup.slug, stage="docker_config"
+            action="full_restore", reference=full_backup.slug, stage=None
         ),
         _make_backup_message_for_assert(
-            restore=True, reference=full_backup.slug, stage="folders"
+            action="full_restore", reference=full_backup.slug, stage="docker_config"
         ),
         _make_backup_message_for_assert(
-            restore=True,
+            action="full_restore", reference=full_backup.slug, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            action="full_restore",
             reference=full_backup.slug,
             stage="home_assistant",
         ),
         _make_backup_message_for_assert(
-            restore=True,
+            action="full_restore",
             reference=full_backup.slug,
             stage="remove_delta_addons",
         ),
         _make_backup_message_for_assert(
-            restore=True,
+            action="full_restore",
             reference=full_backup.slug,
             stage="addon_repositories",
         ),
         _make_backup_message_for_assert(
-            restore=True, reference=full_backup.slug, stage="addons"
+            action="full_restore", reference=full_backup.slug, stage="addons"
         ),
         _make_backup_message_for_assert(
-            restore=True,
+            action="full_restore",
             reference=full_backup.slug,
             stage="await_home_assistant_restart",
         ),
         _make_backup_message_for_assert(
-            restore=True,
+            action="full_restore",
             reference=full_backup.slug,
             stage="await_addon_restarts",
         ),
         _make_backup_message_for_assert(
-            restore=True,
+            action="full_restore",
             reference=full_backup.slug,
             stage="check_home_assistant",
         ),
         _make_backup_message_for_assert(
-            restore=True,
+            action="full_restore",
             reference=full_backup.slug,
             stage="check_home_assistant",
             done=True,
@@ -1055,29 +1064,25 @@ async def test_restore_progress(
     ]
     assert messages == [
         _make_backup_message_for_assert(
-            full=False, restore=True, reference=None, stage=None
+            action="partial_restore", reference=None, stage=None
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=folders_backup.slug,
             stage=None,
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=folders_backup.slug,
             stage="docker_config",
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=folders_backup.slug,
             stage="folders",
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=folders_backup.slug,
             stage="folders",
             done=True,
@@ -1103,37 +1108,151 @@ async def test_restore_progress(
     ]
     assert messages == [
         _make_backup_message_for_assert(
-            full=False, restore=True, reference=None, stage=None
+            action="partial_restore", reference=None, stage=None
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=addon_backup.slug,
             stage=None,
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=addon_backup.slug,
             stage="docker_config",
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=addon_backup.slug,
             stage="addon_repositories",
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=addon_backup.slug,
             stage="addons",
         ),
         _make_backup_message_for_assert(
-            full=False,
-            restore=True,
+            action="partial_restore",
             reference=addon_backup.slug,
             stage="addons",
             done=True,
         ),
     ]
+
+
+async def test_freeze_thaw(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    ha_ws_client: AsyncMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test manual freeze and thaw for external snapshots."""
+    container.status = "running"
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    container.exec_run.return_value = (0, None)
+    ha_ws_client.ha_version = AwesomeVersion("2022.1.0")
+
+    with patch.object(
+        AddonModel, "backup_pre", new=PropertyMock(return_value="pre_backup")
+    ), patch.object(
+        AddonModel, "backup_post", new=PropertyMock(return_value="post_backup")
+    ):
+        # Run the freeze
+        await coresys.backups.freeze_all()
+        container.exec_run.assert_called_once_with("pre_backup")
+        assert coresys.core.state == CoreState.FREEZE
+
+        await asyncio.sleep(0)
+        messages = [
+            call.args[0]
+            for call in ha_ws_client.async_send_command.call_args_list
+            if call.args[0]["type"] in ["backup/start", "backup/end"]
+            or call.args[0]["data"].get("data", {}).get("name")
+            in ["backup_manager_freeze_all", "backup_manager_thaw_all"]
+        ]
+        assert messages == [
+            _make_backup_message_for_assert(
+                action="freeze_all", reference=None, stage=None
+            ),
+            {"type": "backup/start"},
+            _make_backup_message_for_assert(
+                action="freeze_all", reference=None, stage="home_assistant"
+            ),
+            _make_backup_message_for_assert(
+                action="freeze_all", reference=None, stage="addons"
+            ),
+            _make_backup_message_for_assert(
+                action="thaw_all", reference=None, stage=None
+            ),
+            _make_backup_message_for_assert(
+                action="freeze_all", reference=None, stage="addons", done=True
+            ),
+        ]
+
+        # Release the thaw task
+        container.exec_run.reset_mock()
+        ha_ws_client.async_send_command.reset_mock()
+        await coresys.backups.thaw_all()
+        container.exec_run.assert_called_once_with("post_backup")
+        assert coresys.core.state == CoreState.RUNNING
+
+        await asyncio.sleep(0)
+        messages = [
+            call.args[0]
+            for call in ha_ws_client.async_send_command.call_args_list
+            if call.args[0]["type"] in ["backup/start", "backup/end"]
+            or call.args[0]["data"].get("data", {}).get("name")
+            in ["backup_manager_freeze_all", "backup_manager_thaw_all"]
+        ]
+        assert messages == [
+            {"type": "backup/end"},
+            _make_backup_message_for_assert(
+                action="thaw_all", reference=None, stage="home_assistant"
+            ),
+            _make_backup_message_for_assert(
+                action="thaw_all", reference=None, stage="addons"
+            ),
+            _make_backup_message_for_assert(
+                action="thaw_all", reference=None, stage="addons", done=True
+            ),
+        ]
+
+
+async def test_freeze_thaw_timeout(
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test manual freeze ends due to timeout expiration."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    ha_ws_client.ha_version = AwesomeVersion("2022.1.0")
+
+    await coresys.backups.freeze_all(timeout=0.01)
+    assert coresys.core.state == CoreState.FREEZE
+    await asyncio.sleep(0)
+    assert any(
+        call.args[0] == {"type": "backup/start"}
+        for call in ha_ws_client.async_send_command.call_args_list
+    )
+
+    ha_ws_client.async_send_command.reset_mock()
+    await asyncio.sleep(0.02)
+    assert coresys.core.state == CoreState.RUNNING
+    assert any(
+        call.args[0] == {"type": "backup/end"}
+        for call in ha_ws_client.async_send_command.call_args_list
+    )
+    assert "Timeout waiting for signal to thaw after manual freeze" in caplog.text
+
+
+async def test_cannot_manually_thaw_normal_freeze(coresys: CoreSys):
+    """Test thaw_all cannot be used unless freeze was started by freeze_all method."""
+    coresys.core.state = CoreState.FREEZE
+    with pytest.raises(BackupError):
+        await coresys.backups.thaw_all()

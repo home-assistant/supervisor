@@ -485,6 +485,8 @@ class RestAPI(CoreSysAttributes):
                 web.get("/backups/info", api_backups.info),
                 web.post("/backups/options", api_backups.options),
                 web.post("/backups/reload", api_backups.reload),
+                web.post("/backups/freeze", api_backups.freeze),
+                web.post("/backups/thaw", api_backups.thaw),
                 web.post("/backups/new/full", api_backups.backup_full),
                 web.post("/backups/new/partial", api_backups.backup_partial),
                 web.post("/backups/new/upload", api_backups.upload),

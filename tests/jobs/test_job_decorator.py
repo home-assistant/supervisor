@@ -990,3 +990,57 @@ async def test_internal_jobs_no_notify(coresys: CoreSys):
             },
         }
     )
+
+
+async def test_job_starting_separate_task(coresys: CoreSys):
+    """Test job that starts a job as a separate asyncio task."""
+
+    class TestClass(JobGroup):
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys) -> None:
+            super().__init__(coresys, "test_class_locking")
+            self.event = asyncio.Event()
+
+        @Job(
+            name="test_job_starting_separate_task_job_task",
+            limit=JobExecutionLimit.GROUP_ONCE,
+        )
+        async def job_task(self):
+            """Create a separate long running job task."""
+            self.sys_jobs.current.stage = "launch_task"
+            return self.sys_create_task(self.job_task_inner())
+
+        @Job(name="test_job_starting_separate_task_job_task_inner")
+        async def job_task_inner(self):
+            """Check & update job and wait for release."""
+            assert self.sys_jobs.current.parent_id is None
+            self.sys_jobs.current.stage = "start"
+            await self.event.wait()
+            self.sys_jobs.current.stage = "end"
+
+        @Job(name="test_job_starting_separate_task_release")
+        async def job_release(self):
+            """Release inner task."""
+            self.event.set()
+
+        @Job(
+            name="test_job_starting_separate_task_job_await",
+            limit=JobExecutionLimit.GROUP_ONCE,
+        )
+        async def job_await(self):
+            """Await a simple job in same group to confirm lock released."""
+            await self.job_await_inner()
+
+        @Job(name="test_job_starting_separate_task_job_await_inner")
+        async def job_await_inner(self):
+            """Confirm there is a parent this way."""
+            assert self.sys_jobs.current.parent_id is not None
+
+    test = TestClass(coresys)
+
+    task = await test.job_task()
+    await asyncio.sleep(0)
+    await test.job_await()
+    await test.job_release()
+    await task

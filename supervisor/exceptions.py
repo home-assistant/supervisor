@@ -581,6 +581,10 @@ class HomeAssistantBackupError(BackupError, HomeAssistantError):
     """Raise if an error during Home Assistant Core backup is happening."""
 
 
+class BackupJobError(BackupError, JobException):
+    """Raise on Backup job error."""
+
+
 # Security
 
 

@@ -1,9 +1,11 @@
 """Test backups API."""
 
+import asyncio
 from pathlib import Path, PurePath
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.backups.backup import Backup
@@ -135,3 +137,33 @@ async def test_backup_to_default(
     slug = result["data"]["slug"]
 
     assert (mount_dir / f"{slug}.tar").exists()
+
+
+async def test_api_freeze_thaw(
+    api_client: TestClient,
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test manual freeze and thaw for external backup via API."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    ha_ws_client.ha_version = AwesomeVersion("2022.1.0")
+
+    await api_client.post("/backups/freeze")
+    assert coresys.core.state == CoreState.FREEZE
+    await asyncio.sleep(0)
+    assert any(
+        call.args[0] == {"type": "backup/start"}
+        for call in ha_ws_client.async_send_command.call_args_list
+    )
+
+    ha_ws_client.async_send_command.reset_mock()
+    await api_client.post("/backups/thaw")
+    assert coresys.core.state == CoreState.RUNNING
+    await asyncio.sleep(0)
+    assert any(
+        call.args[0] == {"type": "backup/end"}
+        for call in ha_ws_client.async_send_command.call_args_list
+    )
