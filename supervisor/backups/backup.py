@@ -521,7 +521,7 @@ class Backup(CoreSysAttributes):
                 _LOGGER.warning("Can't restore folder %s: %s", folder, err)
 
     async def store_homeassistant(self):
-        """Backup Home Assitant Core configuration folder."""
+        """Backup Home Assistant Core configuration folder."""
         self._data[ATTR_HOMEASSISTANT] = {ATTR_VERSION: self.sys_homeassistant.version}
 
         # Backup Home Assistant Core config directory
@@ -538,7 +538,7 @@ class Backup(CoreSysAttributes):
         self.homeassistant[ATTR_SIZE] = homeassistant_file.size
 
     async def restore_homeassistant(self) -> Awaitable[None]:
-        """Restore Home Assitant Core configuration folder."""
+        """Restore Home Assistant Core configuration folder."""
         await self.sys_homeassistant.core.stop()
 
         # Restore Home Assistant Core config directory
