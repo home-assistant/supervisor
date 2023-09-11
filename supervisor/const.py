@@ -476,8 +476,8 @@ class IngressSessionDataUser:
     """Format of an IngressSessionDataUser object."""
 
     id: str
-    display_name: str
-    username: str
+    display_name: str | None = None
+    username: str | None = None
 
 
 @dataclass
