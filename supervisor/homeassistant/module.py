@@ -457,7 +457,9 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
         return [
             IngressSessionDataUser(
-                id=data["id"], username=data["username"], display_name=data["name"]
+                id=data["id"],
+                username=data.get("username"),
+                display_name=data.get("name"),
             )
             for data in list_of_users
         ]
