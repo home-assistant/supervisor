@@ -21,6 +21,7 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, BackupError, DockerError
+from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
@@ -1256,3 +1257,64 @@ async def test_cannot_manually_thaw_normal_freeze(coresys: CoreSys):
     coresys.core.state = CoreState.FREEZE
     with pytest.raises(BackupError):
         await coresys.backups.thaw_all()
+
+
+async def test_restore_only_reloads_ingress_on_change(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test restore only tells core to reload ingress when something has changed."""
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup_no_ingress: Backup = await coresys.backups.do_backup_partial(
+        addons=["local_ssh"]
+    )
+
+    install_addon_ssh.ingress_panel = True
+    install_addon_ssh.save_persist()
+    backup_with_ingress: Backup = await coresys.backups.do_backup_partial(
+        addons=["local_ssh"]
+    )
+
+    async def mock_is_running(*_) -> bool:
+        return True
+
+    with patch.object(
+        HomeAssistantCore, "is_running", new=mock_is_running
+    ), patch.object(AddonModel, "_validate_availability"), patch.object(
+        DockerAddon, "attach"
+    ), patch.object(
+        HomeAssistantAPI, "make_request"
+    ) as make_request:
+        make_request.return_value.__aenter__.return_value.status = 200
+
+        # Has ingress before and after - not called
+        await coresys.backups.do_restore_partial(
+            backup_with_ingress, addons=["local_ssh"]
+        )
+        make_request.assert_not_called()
+
+        # Restore removes ingress - tell Home Assistant
+        await coresys.backups.do_restore_partial(
+            backup_no_ingress, addons=["local_ssh"]
+        )
+        make_request.assert_called_once_with(
+            "delete", "api/hassio_push/panel/local_ssh"
+        )
+
+        # No ingress before or after - not called
+        make_request.reset_mock()
+        await coresys.backups.do_restore_partial(
+            backup_no_ingress, addons=["local_ssh"]
+        )
+        make_request.assert_not_called()
+
+        # Restore adds ingress - tell Home Assistant
+        await coresys.backups.do_restore_partial(
+            backup_with_ingress, addons=["local_ssh"]
+        )
+        make_request.assert_called_once_with("post", "api/hassio_push/panel/local_ssh")

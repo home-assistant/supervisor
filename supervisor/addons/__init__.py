@@ -393,6 +393,7 @@ class AddonManager(CoreSysAttributes):
             _LOGGER.debug("Add-on %s is local available for restore", slug)
             addon = self.local[slug]
 
+        had_ingress = addon.ingress_panel
         wait_for_start = await addon.restore(tar_file)
 
         # Check if new
@@ -401,7 +402,7 @@ class AddonManager(CoreSysAttributes):
             self.local[slug] = addon
 
         # Update ingress
-        if addon.with_ingress:
+        if had_ingress != addon.ingress_panel:
             await self.sys_ingress.reload()
             with suppress(HomeAssistantAPIError):
                 await self.sys_ingress.update_hass_panel(addon)
