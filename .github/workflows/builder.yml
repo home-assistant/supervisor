@@ -112,7 +112,7 @@ jobs:
           tag: musllinux_1_2
           arch: ${{ matrix.arch }}
           wheels-key: ${{ secrets.WHEELS_KEY }}
-          apk: "libffi-dev;openssl-dev"
+          apk: "libffi-dev;openssl-dev;yaml-dev"
           skip-binary: aiohttp
           env-file: true
           requirements: "requirements.txt"

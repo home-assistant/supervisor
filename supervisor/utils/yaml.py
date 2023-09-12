@@ -3,7 +3,12 @@ import logging
 from pathlib import Path
 
 from atomicwrites import atomic_write
-from yaml import Dumper, Loader, YAMLError, dump, load
+from yaml import YAMLError, dump, load
+
+try:
+    from yaml import CDumper as Dumper, CSafeLoader as SafeLoader
+except ImportError:
+    from yaml import SafeLoader, Dumper
 
 from ..exceptions import YamlFileError
 
@@ -14,7 +19,7 @@ def read_yaml_file(path: Path) -> dict:
     """Read YAML file from path."""
     try:
         with open(path, encoding="utf-8") as yaml_file:
-            return load(yaml_file, Loader=Loader) or {}
+            return load(yaml_file, Loader=SafeLoader) or {}
 
     except (YAMLError, AttributeError, OSError) as err:
         raise YamlFileError(
