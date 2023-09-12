@@ -30,6 +30,27 @@ async def test_dbus_board(dbus_session_bus: MessageBus):
 
     with pytest.raises(BoardInvalidError):
         assert not board.supervised
+    with pytest.raises(BoardInvalidError):
+        assert not board.green
+
+
+async def test_dbus_board_green(
+    boards_service: BoardsService, dbus_session_bus: MessageBus
+):
+    """Test DBus Board load with Green board."""
+    await mock_dbus_services({"agent_boards_green": None}, dbus_session_bus)
+    boards_service.board = "Green"
+
+    board = BoardManager()
+    await board.connect(dbus_session_bus)
+
+    assert board.board == "Green"
+    assert board.green.activity_led is True
+
+    with pytest.raises(BoardInvalidError):
+        assert not board.supervised
+    with pytest.raises(BoardInvalidError):
+        assert not board.yellow
 
 
 async def test_dbus_board_supervised(
@@ -47,6 +68,8 @@ async def test_dbus_board_supervised(
 
     with pytest.raises(BoardInvalidError):
         assert not board.yellow
+    with pytest.raises(BoardInvalidError):
+        assert not board.green
 
 
 async def test_dbus_board_other(
@@ -64,3 +87,5 @@ async def test_dbus_board_other(
         assert not board.yellow
     with pytest.raises(BoardInvalidError):
         assert not board.supervised
+    with pytest.raises(BoardInvalidError):
+        assert not board.green

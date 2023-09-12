@@ -24,6 +24,7 @@ from ..exceptions import BoardInvalidError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import version_tag
 from .const import (
+    ATTR_ACTIVITY_LED,
     ATTR_DATA_DISK,
     ATTR_DEV_PATH,
     ATTR_DEVICE,
@@ -32,16 +33,17 @@ from .const import (
     ATTR_HEARTBEAT_LED,
     ATTR_MODEL,
     ATTR_POWER_LED,
+    ATTR_USER_LED,
     ATTR_VENDOR,
 )
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
 SCHEMA_DISK = vol.Schema({vol.Required(ATTR_DEVICE): str})
 
-# pylint: disable=no-value-for-parameter
 SCHEMA_YELLOW_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_DISK_LED): vol.Boolean(),
@@ -49,6 +51,14 @@ SCHEMA_YELLOW_OPTIONS = vol.Schema(
         vol.Optional(ATTR_POWER_LED): vol.Boolean(),
     }
 )
+SCHEMA_GREEN_OPTIONS = vol.Schema(
+    {
+        vol.Optional(ATTR_ACTIVITY_LED): vol.Boolean(),
+        vol.Optional(ATTR_POWER_LED): vol.Boolean(),
+        vol.Optional(ATTR_USER_LED): vol.Boolean(),
+    }
+)
+# pylint: enable=no-value-for-parameter
 
 
 class APIOS(CoreSysAttributes):
@@ -105,6 +115,39 @@ class APIOS(CoreSysAttributes):
             ],
         }
 
+    def _require_reboot(self) -> None:
+        """Create issue requiring a reboot."""
+        self.sys_resolution.create_issue(
+            IssueType.REBOOT_REQUIRED,
+            ContextType.SYSTEM,
+            suggestions=[SuggestionType.EXECUTE_REBOOT],
+        )
+
+    @api_process
+    async def boards_green_info(self, request: web.Request) -> dict[str, Any]:
+        """Get green board settings."""
+        return {
+            ATTR_ACTIVITY_LED: self.sys_dbus.agent.board.green.activity_led,
+            ATTR_POWER_LED: self.sys_dbus.agent.board.green.power_led,
+            ATTR_USER_LED: self.sys_dbus.agent.board.green.user_led,
+        }
+
+    @api_process
+    async def boards_green_options(self, request: web.Request) -> None:
+        """Update green board settings."""
+        body = await api_validate(SCHEMA_GREEN_OPTIONS, request)
+
+        if ATTR_ACTIVITY_LED in body:
+            self.sys_dbus.agent.board.green.activity_led = body[ATTR_ACTIVITY_LED]
+
+        if ATTR_POWER_LED in body:
+            self.sys_dbus.agent.board.green.power_led = body[ATTR_POWER_LED]
+
+        if ATTR_USER_LED in body:
+            self.sys_dbus.agent.board.green.user_led = body[ATTR_USER_LED]
+
+        self._require_reboot()
+
     @api_process
     async def boards_yellow_info(self, request: web.Request) -> dict[str, Any]:
         """Get yellow board settings."""
@@ -128,11 +171,7 @@ class APIOS(CoreSysAttributes):
         if ATTR_POWER_LED in body:
             self.sys_dbus.agent.board.yellow.power_led = body[ATTR_POWER_LED]
 
-        self.sys_resolution.create_issue(
-            IssueType.REBOOT_REQUIRED,
-            ContextType.SYSTEM,
-            suggestions=[SuggestionType.EXECUTE_REBOOT],
-        )
+        self._require_reboot()
 
     @api_process
     async def boards_other_info(self, request: web.Request) -> dict[str, Any]:
