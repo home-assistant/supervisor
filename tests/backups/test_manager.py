@@ -1318,3 +1318,27 @@ async def test_restore_only_reloads_ingress_on_change(
             backup_with_ingress, addons=["local_ssh"]
         )
         make_request.assert_called_once_with("post", "api/hassio_push/panel/local_ssh")
+
+
+async def test_restore_new_addon(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test restore installing new addon."""
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
+    await coresys.addons.uninstall("local_ssh")
+    assert "local_ssh" not in coresys.addons.local
+
+    with patch.object(AddonModel, "_validate_availability"), patch.object(
+        DockerAddon, "attach"
+    ):
+        assert await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
+
+    assert "local_ssh" in coresys.addons.local
