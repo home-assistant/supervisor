@@ -433,6 +433,57 @@ async def test_backup_media_with_mounts(
     assert not mount_dir.exists()
 
 
+async def test_backup_media_with_mounts_retains_files(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test backing up media folder with mounts retains mount files."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.response_get_unit = [
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+
+    # Add a media mount
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "media_test",
+                "usage": "media",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
+        )
+    )
+
+    # Make a partial backup
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    backup: Backup = await coresys.backups.do_backup_partial("test", folders=["media"])
+
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.StartTransientUnit.calls.clear()
+    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+        await coresys.backups.do_restore_partial(backup, folders=["media"])
+
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-media_test.mount", "fail")
+    ]
+    assert systemd_service.StartTransientUnit.calls == [
+        ("mnt-data-supervisor-media-media_test.mount", "fail", ANY, [])
+    ]
+
+
 async def test_backup_share_with_mounts(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
