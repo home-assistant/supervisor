@@ -6,6 +6,7 @@ from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.dbus.agent.boards.interface import BoardProxy
 from supervisor.host.control import SystemControl
 from supervisor.os.manager import OSManager
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -139,11 +140,13 @@ async def test_api_board_yellow_options(
     assert coresys.dbus.agent.board.yellow.heartbeat_led is True
     assert coresys.dbus.agent.board.yellow.power_led is True
     assert len(coresys.resolution.issues) == 0
-    resp = await api_client.post(
-        "/os/boards/yellow",
-        json={"disk_led": False, "heartbeat_led": False, "power_led": False},
-    )
-    assert resp.status == 200
+    with patch.object(BoardProxy, "save_data") as save_data:
+        resp = await api_client.post(
+            "/os/boards/yellow",
+            json={"disk_led": False, "heartbeat_led": False, "power_led": False},
+        )
+        assert resp.status == 200
+        save_data.assert_called_once()
 
     await yellow_service.ping()
     assert coresys.dbus.agent.board.yellow.disk_led is False
@@ -197,25 +200,19 @@ async def test_api_board_green_options(
     assert coresys.dbus.agent.board.green.power_led is True
     assert coresys.dbus.agent.board.green.user_led is True
     assert len(coresys.resolution.issues) == 0
-    resp = await api_client.post(
-        "/os/boards/green",
-        json={"activity_led": False, "power_led": False, "user_led": False},
-    )
-    assert resp.status == 200
+    with patch.object(BoardProxy, "save_data") as save_data:
+        resp = await api_client.post(
+            "/os/boards/green",
+            json={"activity_led": False, "power_led": False, "user_led": False},
+        )
+        assert resp.status == 200
+        save_data.assert_called_once()
 
     await green_service.ping()
     assert coresys.dbus.agent.board.green.activity_led is False
     assert coresys.dbus.agent.board.green.power_led is False
     assert coresys.dbus.agent.board.green.user_led is False
-
-    assert (
-        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
-        in coresys.resolution.issues
-    )
-    assert (
-        Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
-        in coresys.resolution.suggestions
-    )
+    assert len(coresys.resolution.issues) == 0
 
 
 async def test_api_board_supervised_info(

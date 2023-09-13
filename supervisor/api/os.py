@@ -8,14 +8,19 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ACTIVITY_LED,
     ATTR_BOARD,
     ATTR_BOOT,
     ATTR_DEVICES,
+    ATTR_DISK_LED,
+    ATTR_HEARTBEAT_LED,
     ATTR_ID,
     ATTR_NAME,
+    ATTR_POWER_LED,
     ATTR_SERIAL,
     ATTR_SIZE,
     ATTR_UPDATE_AVAILABLE,
+    ATTR_USER_LED,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
 )
@@ -24,16 +29,11 @@ from ..exceptions import BoardInvalidError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import version_tag
 from .const import (
-    ATTR_ACTIVITY_LED,
     ATTR_DATA_DISK,
     ATTR_DEV_PATH,
     ATTR_DEVICE,
-    ATTR_DISK_LED,
     ATTR_DISKS,
-    ATTR_HEARTBEAT_LED,
     ATTR_MODEL,
-    ATTR_POWER_LED,
-    ATTR_USER_LED,
     ATTR_VENDOR,
 )
 from .utils import api_process, api_validate
@@ -115,14 +115,6 @@ class APIOS(CoreSysAttributes):
             ],
         }
 
-    def _require_reboot(self) -> None:
-        """Create issue requiring a reboot."""
-        self.sys_resolution.create_issue(
-            IssueType.REBOOT_REQUIRED,
-            ContextType.SYSTEM,
-            suggestions=[SuggestionType.EXECUTE_REBOOT],
-        )
-
     @api_process
     async def boards_green_info(self, request: web.Request) -> dict[str, Any]:
         """Get green board settings."""
@@ -146,7 +138,7 @@ class APIOS(CoreSysAttributes):
         if ATTR_USER_LED in body:
             self.sys_dbus.agent.board.green.user_led = body[ATTR_USER_LED]
 
-        self._require_reboot()
+        self.sys_dbus.agent.board.green.save_data()
 
     @api_process
     async def boards_yellow_info(self, request: web.Request) -> dict[str, Any]:
@@ -171,7 +163,12 @@ class APIOS(CoreSysAttributes):
         if ATTR_POWER_LED in body:
             self.sys_dbus.agent.board.yellow.power_led = body[ATTR_POWER_LED]
 
-        self._require_reboot()
+        self.sys_dbus.agent.board.yellow.save_data()
+        self.sys_resolution.create_issue(
+            IssueType.REBOOT_REQUIRED,
+            ContextType.SYSTEM,
+            suggestions=[SuggestionType.EXECUTE_REBOOT],
+        )
 
     @api_process
     async def boards_other_info(self, request: web.Request) -> dict[str, Any]:
