@@ -10,6 +10,7 @@ from ....const import (
     ATTR_USER_LED,
 )
 
+# pylint: disable=no-value-for-parameter
 SCHEMA_BASE_BOARD = vol.Schema({}, extra=vol.REMOVE_EXTRA)
 
 SCHEMA_GREEN_BOARD = vol.Schema(
