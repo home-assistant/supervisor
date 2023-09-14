@@ -272,7 +272,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     @Job(
         name="backup_manager_full_backup",
-        conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING],
+        conditions=[JobCondition.RUNNING],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
     )
@@ -284,6 +284,11 @@ class BackupManager(FileConfiguration, JobGroup):
         location: Mount | type[DEFAULT] | None = DEFAULT,
     ) -> Backup | None:
         """Create a full backup."""
+        if self._get_base_path(location) == self.sys_config.path_backup:
+            await Job.check_conditions(
+                self, {JobCondition.FREE_SPACE}, "BackupManager.do_backup_full"
+            )
+
         backup = self._create_backup(
             name, BackupType.FULL, password, compressed, location
         )
@@ -298,7 +303,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     @Job(
         name="backup_manager_partial_backup",
-        conditions=[JobCondition.FREE_SPACE, JobCondition.RUNNING],
+        conditions=[JobCondition.RUNNING],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
     )
@@ -313,6 +318,11 @@ class BackupManager(FileConfiguration, JobGroup):
         location: Mount | type[DEFAULT] | None = DEFAULT,
     ) -> Backup | None:
         """Create a partial backup."""
+        if self._get_base_path(location) == self.sys_config.path_backup:
+            await Job.check_conditions(
+                self, {JobCondition.FREE_SPACE}, "BackupManager.do_backup_partial"
+            )
+
         addons = addons or []
         folders = folders or []
 

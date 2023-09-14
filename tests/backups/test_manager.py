@@ -20,7 +20,7 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsError, BackupError, DockerError
+from supervisor.exceptions import AddonsError, BackupError, BackupJobError, DockerError
 from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
@@ -1393,3 +1393,51 @@ async def test_restore_new_addon(
         assert await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
 
     assert "local_ssh" in coresys.addons.local
+
+
+async def test_backup_to_mount_bypasses_free_space_condition(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test backing up to a mount bypasses the check on local free space."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda _: 0.1
+
+    # These fail due to lack of local free space
+    with pytest.raises(BackupJobError):
+        await coresys.backups.do_backup_full()
+    with pytest.raises(BackupJobError):
+        await coresys.backups.do_backup_partial(folders=["media"])
+
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.response_get_unit = [
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+
+    # Add a backup mount
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "backup_test",
+                "usage": "backup",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
+        )
+    )
+    mount = coresys.mounts.get("backup_test")
+
+    # These succeed because local free space does not matter when using a mount
+    await coresys.backups.do_backup_full(location=mount)
+    await coresys.backups.do_backup_partial(folders=["media"], location=mount)
