@@ -6,6 +6,7 @@ from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.dbus.agent.boards.interface import BoardProxy
 from supervisor.host.control import SystemControl
 from supervisor.os.manager import OSManager
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -13,6 +14,7 @@ from supervisor.resolution.data import Issue, Suggestion
 
 from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
+from tests.dbus_service_mocks.agent_boards_green import Green as GreenService
 from tests.dbus_service_mocks.agent_boards_yellow import Yellow as YellowService
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -121,6 +123,7 @@ async def test_api_board_yellow_info(api_client: TestClient, coresys: CoreSys):
     assert result["data"]["heartbeat_led"] is True
     assert result["data"]["power_led"] is True
 
+    assert (await api_client.get("/os/boards/green")).status == 400
     assert (await api_client.get("/os/boards/supervised")).status == 400
     assert (await api_client.get("/os/boards/not-real")).status == 400
 
@@ -137,11 +140,13 @@ async def test_api_board_yellow_options(
     assert coresys.dbus.agent.board.yellow.heartbeat_led is True
     assert coresys.dbus.agent.board.yellow.power_led is True
     assert len(coresys.resolution.issues) == 0
-    resp = await api_client.post(
-        "/os/boards/yellow",
-        json={"disk_led": False, "heartbeat_led": False, "power_led": False},
-    )
-    assert resp.status == 200
+    with patch.object(BoardProxy, "save_data") as save_data:
+        resp = await api_client.post(
+            "/os/boards/yellow",
+            json={"disk_led": False, "heartbeat_led": False, "power_led": False},
+        )
+        assert resp.status == 200
+        save_data.assert_called_once()
 
     await yellow_service.ping()
     assert coresys.dbus.agent.board.yellow.disk_led is False
@@ -158,13 +163,65 @@ async def test_api_board_yellow_options(
     )
 
 
+async def test_api_board_green_info(
+    api_client: TestClient, coresys: CoreSys, boards_service: BoardsService
+):
+    """Test green board info."""
+    await mock_dbus_services({"agent_boards_green": None}, coresys.dbus.bus)
+    boards_service.board = "Green"
+    await coresys.dbus.agent.board.connect(coresys.dbus.bus)
+
+    resp = await api_client.get("/os/boards/green")
+    assert resp.status == 200
+
+    result = await resp.json()
+    assert result["data"]["activity_led"] is True
+    assert result["data"]["power_led"] is True
+    assert result["data"]["user_led"] is True
+
+    assert (await api_client.get("/os/boards/yellow")).status == 400
+    assert (await api_client.get("/os/boards/supervised")).status == 400
+    assert (await api_client.get("/os/boards/not-real")).status == 400
+
+
+async def test_api_board_green_options(
+    api_client: TestClient,
+    coresys: CoreSys,
+    boards_service: BoardsService,
+):
+    """Test yellow board options."""
+    green_service: GreenService = (
+        await mock_dbus_services({"agent_boards_green": None}, coresys.dbus.bus)
+    )["agent_boards_green"]
+    boards_service.board = "Green"
+    await coresys.dbus.agent.board.connect(coresys.dbus.bus)
+
+    assert coresys.dbus.agent.board.green.activity_led is True
+    assert coresys.dbus.agent.board.green.power_led is True
+    assert coresys.dbus.agent.board.green.user_led is True
+    assert len(coresys.resolution.issues) == 0
+    with patch.object(BoardProxy, "save_data") as save_data:
+        resp = await api_client.post(
+            "/os/boards/green",
+            json={"activity_led": False, "power_led": False, "user_led": False},
+        )
+        assert resp.status == 200
+        save_data.assert_called_once()
+
+    await green_service.ping()
+    assert coresys.dbus.agent.board.green.activity_led is False
+    assert coresys.dbus.agent.board.green.power_led is False
+    assert coresys.dbus.agent.board.green.user_led is False
+    assert len(coresys.resolution.issues) == 0
+
+
 async def test_api_board_supervised_info(
     api_client: TestClient, coresys: CoreSys, boards_service: BoardsService
 ):
     """Test supervised board info."""
     await mock_dbus_services({"agent_boards_supervised": None}, coresys.dbus.bus)
     boards_service.board = "Supervised"
-    await coresys.dbus.agent.board.update()
+    await coresys.dbus.agent.board.connect(coresys.dbus.bus)
 
     with patch("supervisor.os.manager.CPE.get_product", return_value=["not-hassos"]):
         await coresys.os.load()
@@ -180,7 +237,7 @@ async def test_api_board_other_info(
 ):
     """Test info for other board without dbus object."""
     boards_service.board = "not-real"
-    await coresys.dbus.agent.board.update()
+    await coresys.dbus.agent.board.connect(coresys.dbus.bus)
 
     with patch.object(OSManager, "board", new=PropertyMock(return_value="not-real")):
         assert (await api_client.get("/os/boards/not-real")).status == 200

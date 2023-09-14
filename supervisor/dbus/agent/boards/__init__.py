@@ -11,7 +11,8 @@ from ...const import (
     DBUS_OBJECT_HAOS_BOARDS,
 )
 from ...interface import DBusInterfaceProxy, dbus_property
-from .const import BOARD_NAME_SUPERVISED, BOARD_NAME_YELLOW
+from .const import BOARD_NAME_GREEN, BOARD_NAME_SUPERVISED, BOARD_NAME_YELLOW
+from .green import Green
 from .interface import BoardProxy
 from .supervised import Supervised
 from .yellow import Yellow
@@ -40,6 +41,14 @@ class BoardManager(DBusInterfaceProxy):
         return self.properties[DBUS_ATTR_BOARD]
 
     @property
+    def green(self) -> Green:
+        """Get Green board."""
+        if self.board != BOARD_NAME_GREEN:
+            raise BoardInvalidError("Green board is not in use", _LOGGER.error)
+
+        return self._board_proxy
+
+    @property
     def supervised(self) -> Supervised:
         """Get Supervised board."""
         if self.board != BOARD_NAME_SUPERVISED:
@@ -61,6 +70,8 @@ class BoardManager(DBusInterfaceProxy):
 
         if self.board == BOARD_NAME_YELLOW:
             self._board_proxy = Yellow()
+        elif self.board == BOARD_NAME_GREEN:
+            self._board_proxy = Green()
         elif self.board == BOARD_NAME_SUPERVISED:
             self._board_proxy = Supervised()
 
