@@ -1,4 +1,5 @@
 """Representation of a backup file."""
+import asyncio
 from base64 import b64decode, b64encode
 from collections.abc import Awaitable
 from datetime import timedelta
@@ -490,6 +491,18 @@ class Backup(CoreSysAttributes):
                 _LOGGER.warning("Can't find restore folder %s", name)
                 return
 
+            # Unmount any mounts within folder
+            bind_mounts = [
+                bound.bind_mount
+                for bound in self.sys_mounts.bound_mounts
+                if bound.bind_mount.local_where
+                and bound.bind_mount.local_where.is_relative_to(origin_dir)
+            ]
+            if bind_mounts:
+                await asyncio.gather(
+                    *[bind_mount.unmount() for bind_mount in bind_mounts]
+                )
+
             # Clean old stuff
             if origin_dir.is_dir():
                 await remove_folder(origin_dir, content_only=True)
@@ -510,7 +523,13 @@ class Backup(CoreSysAttributes):
                 except (tarfile.TarError, OSError) as err:
                     _LOGGER.warning("Can't restore folder %s: %s", name, err)
 
-            await self.sys_run_in_executor(_restore)
+            try:
+                await self.sys_run_in_executor(_restore)
+            finally:
+                if bind_mounts:
+                    await asyncio.gather(
+                        *[bind_mount.mount() for bind_mount in bind_mounts]
+                    )
 
         # Restore folder sequential
         # avoid issue on slow IO

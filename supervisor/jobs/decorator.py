@@ -174,6 +174,14 @@ class Job(CoreSysAttributes):
             return obj
         return None
 
+    def _handle_job_condition_exception(self, err: JobConditionException) -> None:
+        """Handle a job condition failure."""
+        error_msg = str(err)
+        if self.on_condition is None:
+            _LOGGER.info(error_msg)
+            return
+        raise self.on_condition(error_msg, _LOGGER.warning) from None
+
     def __call__(self, method):
         """Call the wrapper logic."""
         self._method = method
@@ -196,13 +204,11 @@ class Job(CoreSysAttributes):
             # Handle condition
             if self.conditions:
                 try:
-                    await self._check_conditions()
+                    await Job.check_conditions(
+                        self, set(self.conditions), self._method.__qualname__
+                    )
                 except JobConditionException as err:
-                    error_msg = str(err)
-                    if self.on_condition is None:
-                        _LOGGER.info(error_msg)
-                        return
-                    raise self.on_condition(error_msg, _LOGGER.warning) from None
+                    return self._handle_job_condition_exception(err)
 
             # Handle exection limits
             if self.limit in (JobExecutionLimit.SINGLE_WAIT, JobExecutionLimit.ONCE):
@@ -266,6 +272,11 @@ class Job(CoreSysAttributes):
                         )
 
                     return await self._method(obj, *args, **kwargs)
+
+                # If a method has a conditional JobCondition, they must check it in the method
+                # These should be handled like normal JobConditions as much as possible
+                except JobConditionException as err:
+                    return self._handle_job_condition_exception(err)
                 except HassioError as err:
                     raise err
                 except Exception as err:
@@ -282,10 +293,13 @@ class Job(CoreSysAttributes):
 
         return wrapper
 
-    async def _check_conditions(self):
+    @staticmethod
+    async def check_conditions(
+        coresys: CoreSysAttributes, conditions: set[JobCondition], method_name: str
+    ):
         """Check conditions."""
-        used_conditions = set(self.conditions) - set(self.sys_jobs.ignore_conditions)
-        ignored_conditions = set(self.conditions) & set(self.sys_jobs.ignore_conditions)
+        used_conditions = set(conditions) - set(coresys.sys_jobs.ignore_conditions)
+        ignored_conditions = set(conditions) & set(coresys.sys_jobs.ignore_conditions)
 
         # Check if somethings is ignored
         if ignored_conditions:
@@ -294,93 +308,97 @@ class Job(CoreSysAttributes):
                 ignored_conditions,
             )
 
-        if JobCondition.HEALTHY in used_conditions and not self.sys_core.healthy:
+        if JobCondition.HEALTHY in used_conditions and not coresys.sys_core.healthy:
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, system is not healthy - {', '.join(self.sys_resolution.unhealthy)}"
+                f"'{method_name}' blocked from execution, system is not healthy - {', '.join(coresys.sys_resolution.unhealthy)}"
             )
 
         if (
             JobCondition.RUNNING in used_conditions
-            and self.sys_core.state != CoreState.RUNNING
+            and coresys.sys_core.state != CoreState.RUNNING
         ):
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, system is not running - {self.sys_core.state!s}"
+                f"'{method_name}' blocked from execution, system is not running - {coresys.sys_core.state!s}"
             )
 
         if (
             JobCondition.FROZEN in used_conditions
-            and self.sys_core.state != CoreState.FREEZE
+            and coresys.sys_core.state != CoreState.FREEZE
         ):
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, system is not frozen - {self.sys_core.state!s}"
+                f"'{method_name}' blocked from execution, system is not frozen - {coresys.sys_core.state!s}"
             )
 
         if (
             JobCondition.FREE_SPACE in used_conditions
-            and self.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
+            and coresys.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
         ):
-            self.sys_resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
+            coresys.sys_resolution.create_issue(
+                IssueType.FREE_SPACE, ContextType.SYSTEM
+            )
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, not enough free space ({self.sys_host.info.free_space}GB) left on the device"
+                f"'{method_name}' blocked from execution, not enough free space ({coresys.sys_host.info.free_space}GB) left on the device"
             )
 
         if JobCondition.INTERNET_SYSTEM in used_conditions:
-            await self.sys_supervisor.check_connectivity()
-            if not self.sys_supervisor.connectivity:
+            await coresys.sys_supervisor.check_connectivity()
+            if not coresys.sys_supervisor.connectivity:
                 raise JobConditionException(
-                    f"'{self._method.__qualname__}' blocked from execution, no supervisor internet connection"
+                    f"'{method_name}' blocked from execution, no supervisor internet connection"
                 )
 
         if JobCondition.INTERNET_HOST in used_conditions:
-            await self.sys_host.network.check_connectivity()
+            await coresys.sys_host.network.check_connectivity()
             if (
-                self.sys_host.network.connectivity is not None
-                and not self.sys_host.network.connectivity
+                coresys.sys_host.network.connectivity is not None
+                and not coresys.sys_host.network.connectivity
             ):
                 raise JobConditionException(
-                    f"'{self._method.__qualname__}' blocked from execution, no host internet connection"
+                    f"'{method_name}' blocked from execution, no host internet connection"
                 )
 
-        if JobCondition.HAOS in used_conditions and not self.sys_os.available:
+        if JobCondition.HAOS in used_conditions and not coresys.sys_os.available:
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, no Home Assistant OS available"
+                f"'{method_name}' blocked from execution, no Home Assistant OS available"
             )
 
         if (
             JobCondition.OS_AGENT in used_conditions
-            and HostFeature.OS_AGENT not in self.sys_host.features
+            and HostFeature.OS_AGENT not in coresys.sys_host.features
         ):
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, no Home Assistant OS-Agent available"
+                f"'{method_name}' blocked from execution, no Home Assistant OS-Agent available"
             )
 
         if (
             JobCondition.HOST_NETWORK in used_conditions
-            and not self.sys_dbus.network.is_connected
+            and not coresys.sys_dbus.network.is_connected
         ):
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, host Network Manager not available"
+                f"'{method_name}' blocked from execution, host Network Manager not available"
             )
 
         if (
             JobCondition.AUTO_UPDATE in used_conditions
-            and not self.sys_updater.auto_update
+            and not coresys.sys_updater.auto_update
         ):
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, supervisor auto updates disabled"
+                f"'{method_name}' blocked from execution, supervisor auto updates disabled"
             )
 
         if (
             JobCondition.SUPERVISOR_UPDATED in used_conditions
-            and self.sys_supervisor.need_update
+            and coresys.sys_supervisor.need_update
         ):
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, supervisor needs to be updated first"
+                f"'{method_name}' blocked from execution, supervisor needs to be updated first"
             )
 
         if JobCondition.PLUGINS_UPDATED in used_conditions and (
             out_of_date := [
-                plugin for plugin in self.sys_plugins.all_plugins if plugin.need_update
+                plugin
+                for plugin in coresys.sys_plugins.all_plugins
+                if plugin.need_update
             ]
         ):
             errors = await asyncio.gather(
@@ -391,15 +409,15 @@ class Job(CoreSysAttributes):
                 out_of_date[i].slug for i in range(len(errors)) if errors[i] is not None
             ]:
                 raise JobConditionException(
-                    f"'{self._method.__qualname__}' blocked from execution, was unable to update plugin(s) {', '.join(update_failures)} and all plugins must be up to date first"
+                    f"'{method_name}' blocked from execution, was unable to update plugin(s) {', '.join(update_failures)} and all plugins must be up to date first"
                 )
 
         if (
             JobCondition.MOUNT_AVAILABLE in used_conditions
-            and HostFeature.MOUNT not in self.sys_host.features
+            and HostFeature.MOUNT not in coresys.sys_host.features
         ):
             raise JobConditionException(
-                f"'{self._method.__qualname__}' blocked from execution, mounting not supported on system"
+                f"'{method_name}' blocked from execution, mounting not supported on system"
             )
 
     async def _acquire_exection_limit(self) -> None:
