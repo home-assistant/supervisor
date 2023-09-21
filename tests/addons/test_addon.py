@@ -532,10 +532,8 @@ async def test_restore(
     tarfile = SecureTarFile(get_fixture_path(f"backup_local_ssh_{status}.tar.gz"), "r")
     with patch.object(DockerAddon, "is_running", return_value=False), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
-    ), patch.object(Ingress, "update_hass_panel") as update_hass_panel:
+    ):
         start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
-
-        update_hass_panel.assert_called_once()
 
     assert bool(start_task) is (status == "running")
 

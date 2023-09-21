@@ -186,6 +186,8 @@ class RestAPI(CoreSysAttributes):
         # Boards endpoints
         self.webapp.add_routes(
             [
+                web.get("/os/boards/green", api_os.boards_green_info),
+                web.post("/os/boards/green", api_os.boards_green_options),
                 web.get("/os/boards/yellow", api_os.boards_yellow_info),
                 web.post("/os/boards/yellow", api_os.boards_yellow_options),
                 web.get("/os/boards/{board}", api_os.boards_other_info),

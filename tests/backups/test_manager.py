@@ -20,7 +20,8 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsError, BackupError, DockerError
+from supervisor.exceptions import AddonsError, BackupError, BackupJobError, DockerError
+from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
@@ -431,6 +432,57 @@ async def test_backup_media_with_mounts(
     assert test_dir.is_dir()
     assert test_file_2.exists()
     assert not mount_dir.exists()
+
+
+async def test_backup_media_with_mounts_retains_files(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test backing up media folder with mounts retains mount files."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.response_get_unit = [
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+
+    # Add a media mount
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "media_test",
+                "usage": "media",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
+        )
+    )
+
+    # Make a partial backup
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    backup: Backup = await coresys.backups.do_backup_partial("test", folders=["media"])
+
+    systemd_service.StopUnit.calls.clear()
+    systemd_service.StartTransientUnit.calls.clear()
+    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+        await coresys.backups.do_restore_partial(backup, folders=["media"])
+
+    assert systemd_service.StopUnit.calls == [
+        ("mnt-data-supervisor-media-media_test.mount", "fail")
+    ]
+    assert systemd_service.StartTransientUnit.calls == [
+        ("mnt-data-supervisor-media-media_test.mount", "fail", ANY, [])
+    ]
 
 
 async def test_backup_share_with_mounts(
@@ -1256,3 +1308,136 @@ async def test_cannot_manually_thaw_normal_freeze(coresys: CoreSys):
     coresys.core.state = CoreState.FREEZE
     with pytest.raises(BackupError):
         await coresys.backups.thaw_all()
+
+
+async def test_restore_only_reloads_ingress_on_change(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test restore only tells core to reload ingress when something has changed."""
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup_no_ingress: Backup = await coresys.backups.do_backup_partial(
+        addons=["local_ssh"]
+    )
+
+    install_addon_ssh.ingress_panel = True
+    install_addon_ssh.save_persist()
+    backup_with_ingress: Backup = await coresys.backups.do_backup_partial(
+        addons=["local_ssh"]
+    )
+
+    async def mock_is_running(*_) -> bool:
+        return True
+
+    with patch.object(
+        HomeAssistantCore, "is_running", new=mock_is_running
+    ), patch.object(AddonModel, "_validate_availability"), patch.object(
+        DockerAddon, "attach"
+    ), patch.object(
+        HomeAssistantAPI, "make_request"
+    ) as make_request:
+        make_request.return_value.__aenter__.return_value.status = 200
+
+        # Has ingress before and after - not called
+        await coresys.backups.do_restore_partial(
+            backup_with_ingress, addons=["local_ssh"]
+        )
+        make_request.assert_not_called()
+
+        # Restore removes ingress - tell Home Assistant
+        await coresys.backups.do_restore_partial(
+            backup_no_ingress, addons=["local_ssh"]
+        )
+        make_request.assert_called_once_with(
+            "delete", "api/hassio_push/panel/local_ssh"
+        )
+
+        # No ingress before or after - not called
+        make_request.reset_mock()
+        await coresys.backups.do_restore_partial(
+            backup_no_ingress, addons=["local_ssh"]
+        )
+        make_request.assert_not_called()
+
+        # Restore adds ingress - tell Home Assistant
+        await coresys.backups.do_restore_partial(
+            backup_with_ingress, addons=["local_ssh"]
+        )
+        make_request.assert_called_once_with("post", "api/hassio_push/panel/local_ssh")
+
+
+async def test_restore_new_addon(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test restore installing new addon."""
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
+    await coresys.addons.uninstall("local_ssh")
+    assert "local_ssh" not in coresys.addons.local
+
+    with patch.object(AddonModel, "_validate_availability"), patch.object(
+        DockerAddon, "attach"
+    ):
+        assert await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
+
+    assert "local_ssh" in coresys.addons.local
+
+
+async def test_backup_to_mount_bypasses_free_space_condition(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test backing up to a mount bypasses the check on local free space."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda _: 0.1
+
+    # These fail due to lack of local free space
+    with pytest.raises(BackupJobError):
+        await coresys.backups.do_backup_full()
+    with pytest.raises(BackupJobError):
+        await coresys.backups.do_backup_partial(folders=["media"])
+
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.response_get_unit = [
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+
+    # Add a backup mount
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "backup_test",
+                "usage": "backup",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
+        )
+    )
+    mount = coresys.mounts.get("backup_test")
+
+    # These succeed because local free space does not matter when using a mount
+    await coresys.backups.do_backup_full(location=mount)
+    await coresys.backups.do_backup_partial(folders=["media"], location=mount)
