@@ -20,7 +20,6 @@ from ..const import (
     ATTR_SERIAL,
     ATTR_SIZE,
     ATTR_UPDATE_AVAILABLE,
-    ATTR_USER_LED,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
 )
@@ -34,6 +33,7 @@ from .const import (
     ATTR_DEVICE,
     ATTR_DISKS,
     ATTR_MODEL,
+    ATTR_SYSTEM_HEALTH_LED,
     ATTR_VENDOR,
 )
 from .utils import api_process, api_validate
@@ -55,7 +55,7 @@ SCHEMA_GREEN_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_ACTIVITY_LED): vol.Boolean(),
         vol.Optional(ATTR_POWER_LED): vol.Boolean(),
-        vol.Optional(ATTR_USER_LED): vol.Boolean(),
+        vol.Optional(ATTR_SYSTEM_HEALTH_LED): vol.Boolean(),
     }
 )
 # pylint: enable=no-value-for-parameter
@@ -121,7 +121,7 @@ class APIOS(CoreSysAttributes):
         return {
             ATTR_ACTIVITY_LED: self.sys_dbus.agent.board.green.activity_led,
             ATTR_POWER_LED: self.sys_dbus.agent.board.green.power_led,
-            ATTR_USER_LED: self.sys_dbus.agent.board.green.user_led,
+            ATTR_SYSTEM_HEALTH_LED: self.sys_dbus.agent.board.green.user_led,
         }
 
     @api_process
@@ -135,8 +135,8 @@ class APIOS(CoreSysAttributes):
         if ATTR_POWER_LED in body:
             self.sys_dbus.agent.board.green.power_led = body[ATTR_POWER_LED]
 
-        if ATTR_USER_LED in body:
-            self.sys_dbus.agent.board.green.user_led = body[ATTR_USER_LED]
+        if ATTR_SYSTEM_HEALTH_LED in body:
+            self.sys_dbus.agent.board.green.user_led = body[ATTR_SYSTEM_HEALTH_LED]
 
         self.sys_dbus.agent.board.green.save_data()
 

@@ -177,7 +177,7 @@ async def test_api_board_green_info(
     result = await resp.json()
     assert result["data"]["activity_led"] is True
     assert result["data"]["power_led"] is True
-    assert result["data"]["user_led"] is True
+    assert result["data"]["system_health_led"] is True
 
     assert (await api_client.get("/os/boards/yellow")).status == 400
     assert (await api_client.get("/os/boards/supervised")).status == 400
@@ -203,7 +203,11 @@ async def test_api_board_green_options(
     with patch.object(BoardProxy, "save_data") as save_data:
         resp = await api_client.post(
             "/os/boards/green",
-            json={"activity_led": False, "power_led": False, "user_led": False},
+            json={
+                "activity_led": False,
+                "power_led": False,
+                "system_health_led": False,
+            },
         )
         assert resp.status == 200
         save_data.assert_called_once()
