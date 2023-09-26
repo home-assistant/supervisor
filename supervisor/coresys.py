@@ -725,7 +725,7 @@ class CoreSysAttributes:
     def sys_run_in_executor(
         self, funct: Callable[..., T], *args: tuple[Any], **kwargs: dict[str, Any]
     ) -> Coroutine[Any, Any, T]:
-        """Add an job to the executor pool."""
+        """Add a job to the executor pool."""
         return self.coresys.run_in_executor(funct, *args, **kwargs)
 
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
