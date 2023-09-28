@@ -7,6 +7,7 @@ from ..addons.const import ADDON_UPDATE_CONDITIONS
 from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError, HomeAssistantError, ObserverError
+from ..homeassistant.const import LANDINGPAGE
 from ..jobs.decorator import Job, JobCondition
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 from ..utils.sentry import capture_exception
@@ -141,6 +142,9 @@ class Tasks(CoreSysAttributes):
             return
         if self.sys_homeassistant.error_state:
             # Home Assistant is in an error state, this is handled by the rollback feature
+            return
+        if self.sys_homeassistant.version == LANDINGPAGE:
+            # Skip watchdog for landingpage
             return
         if not await self.sys_homeassistant.core.is_running():
             # The home assistant container is not running
