@@ -137,7 +137,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             self.sys_homeassistant.version is None
             or self.sys_homeassistant.version == LANDINGPAGE
         ):
-            return False
+            return True
 
         # Check if port is up
         if not await self.sys_run_in_executor(
