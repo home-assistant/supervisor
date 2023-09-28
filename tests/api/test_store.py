@@ -50,7 +50,7 @@ async def test_api_store_addons(api_client: TestClient, store_addon: AddonStore)
     result = await resp.json()
     print(result)
 
-    assert result["data"][-1]["slug"] == store_addon.slug
+    assert result["data"]["addons"][-1]["slug"] == store_addon.slug
 
 
 @pytest.mark.asyncio
