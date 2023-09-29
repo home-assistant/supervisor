@@ -186,12 +186,14 @@ class APIStore(CoreSysAttributes):
         }
 
     @api_process
-    async def addons_list(self, request: web.Request) -> list[dict[str, Any]]:
+    async def addons_list(self, request: web.Request) -> dict[str, Any]:
         """Return all store add-ons."""
-        return [
-            self._generate_addon_information(self.sys_addons.store[addon])
-            for addon in self.sys_addons.store
-        ]
+        return {
+            ATTR_ADDONS: [
+                self._generate_addon_information(self.sys_addons.store[addon])
+                for addon in self.sys_addons.store
+            ]
+        }
 
     @api_process
     def addons_addon_install(self, request: web.Request) -> Awaitable[None]:
