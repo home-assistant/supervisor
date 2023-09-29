@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import socket
+from tempfile import TemporaryDirectory
 from typing import Any
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -76,13 +77,31 @@ def get_message_from_exception_chain(err: Exception) -> str:
     return get_message_from_exception_chain(err.__context__)
 
 
-async def remove_folder(folder: Path, content_only: bool = False) -> None:
+async def remove_folder(
+    folder: Path,
+    content_only: bool = False,
+    excludes: list[str] | None = None,
+    tmp_dir: Path | None = None,
+) -> None:
     """Remove folder and reset privileged.
 
     Is needed to avoid issue with:
         - CAP_DAC_OVERRIDE
         - CAP_DAC_READ_SEARCH
     """
+    if excludes:
+        if not tmp_dir:
+            raise ValueError("tmp_dir is required if excludes are provided")
+        if not content_only:
+            raise ValueError("Cannot delete the folder if excludes are provided")
+
+        temp = TemporaryDirectory(dir=tmp_dir)
+        temp_path = Path(temp.name)
+        moved_files: list[Path] = []
+        for item in folder.iterdir():
+            if any(item.match(exclude) for exclude in excludes):
+                moved_files.append(item.rename(temp_path / item.name))
+
     del_folder = f"{folder}" + "/{,.[!.],..?}*" if content_only else f"{folder}"
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -99,6 +118,11 @@ async def remove_folder(folder: Path, content_only: bool = False) -> None:
     else:
         if proc.returncode == 0:
             return
+    finally:
+        if excludes:
+            for item in moved_files:
+                item.rename(folder / item.name)
+            temp.cleanup()
 
     _LOGGER.error("Can't remove folder %s: %s", folder, error_msg)
 

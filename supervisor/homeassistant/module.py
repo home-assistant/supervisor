@@ -18,6 +18,7 @@ from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT,
+    ATTR_BACKUPS_EXCLUDE_DATABASE,
     ATTR_BOOT,
     ATTR_IMAGE,
     ATTR_PORT,
@@ -61,6 +62,10 @@ HOMEASSISTANT_BACKUP_EXCLUDE = [
     "*.log",
     "*.log.*",
     "OZW_Log.txt",
+]
+HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE = [
+    "home-assistant_v?.db",
+    "home-assistant_v?.db-wal",
 ]
 
 
@@ -258,6 +263,16 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         except (AwesomeVersionException, TypeError):
             return False
 
+    @property
+    def backups_exclude_database(self) -> bool:
+        """Exclude database from core backups by default."""
+        return self._data[ATTR_BACKUPS_EXCLUDE_DATABASE]
+
+    @backups_exclude_database.setter
+    def backups_exclude_database(self, value: bool) -> None:
+        """Set whether backups should exclude database by default."""
+        self._data[ATTR_BACKUPS_EXCLUDE_DATABASE] = value
+
     async def load(self) -> None:
         """Prepare Home Assistant object."""
         await asyncio.wait(
@@ -327,7 +342,9 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             )
 
     @Job(name="home_assistant_module_backup")
-    async def backup(self, tar_file: tarfile.TarFile) -> None:
+    async def backup(
+        self, tar_file: tarfile.TarFile, exclude_database: bool = False
+    ) -> None:
         """Backup Home Assistant Core config/ directory."""
         await self.begin_backup()
         try:
@@ -351,11 +368,16 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                         # Backup metadata
                         backup.add(temp, arcname=".")
 
+                        # Set excludes
+                        excludes = HOMEASSISTANT_BACKUP_EXCLUDE
+                        if exclude_database:
+                            excludes += HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE
+
                         # Backup data
                         atomic_contents_add(
                             backup,
                             self.sys_config.path_homeassistant,
-                            excludes=HOMEASSISTANT_BACKUP_EXCLUDE,
+                            excludes=excludes,
                             arcname="data",
                         )
 
@@ -371,7 +393,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         finally:
             await self.end_backup()
 
-    async def restore(self, tar_file: tarfile.TarFile) -> None:
+    @Job(name="home_assistant_module_restore")
+    async def restore(
+        self, tar_file: tarfile.TarFile, exclude_database: bool = False
+    ) -> None:
         """Restore Home Assistant Core config/ directory."""
         with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
             temp_path = Path(temp)
@@ -399,11 +424,22 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             def _restore_data():
                 """Restore data."""
                 shutil.copytree(
-                    temp_data, self.sys_config.path_homeassistant, symlinks=True
+                    temp_data,
+                    self.sys_config.path_homeassistant,
+                    symlinks=True,
+                    dirs_exist_ok=bool(excludes),
                 )
 
             _LOGGER.info("Restore Home Assistant Core config folder")
-            await remove_folder(self.sys_config.path_homeassistant)
+            excludes = (
+                HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE if exclude_database else None
+            )
+            await remove_folder(
+                self.sys_config.path_homeassistant,
+                content_only=bool(excludes),
+                excludes=excludes,
+                tmp_dir=self.sys_config.path_tmp,
+            )
             try:
                 await self.sys_run_in_executor(_restore_data)
             except shutil.Error as err:

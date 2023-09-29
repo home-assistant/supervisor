@@ -7,6 +7,7 @@ from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT,
+    ATTR_BACKUPS_EXCLUDE_DATABASE,
     ATTR_BOOT,
     ATTR_IMAGE,
     ATTR_PORT,
@@ -32,6 +33,7 @@ SCHEMA_HASS_CONFIG = vol.Schema(
         vol.Optional(ATTR_WATCHDOG, default=True): vol.Boolean(),
         vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(str),
+        vol.Optional(ATTR_BACKUPS_EXCLUDE_DATABASE, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )

@@ -14,6 +14,7 @@ from ..const import (
     ATTR_DATE,
     ATTR_DAYS_UNTIL_STALE,
     ATTR_DOCKER,
+    ATTR_EXCLUDE_DATABASE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
@@ -103,6 +104,9 @@ SCHEMA_BACKUP = vol.Schema(
                     {
                         vol.Required(ATTR_VERSION): version_tag,
                         vol.Optional(ATTR_SIZE, default=0): vol.Coerce(float),
+                        vol.Optional(
+                            ATTR_EXCLUDE_DATABASE, default=False
+                        ): vol.Boolean(),
                     },
                     extra=vol.REMOVE_EXTRA,
                 )

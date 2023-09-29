@@ -26,6 +26,7 @@ from ..const import (
     ATTR_CRYPTO,
     ATTR_DATE,
     ATTR_DOCKER,
+    ATTR_EXCLUDE_DATABASE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
@@ -130,7 +131,14 @@ class Backup(CoreSysAttributes):
         """Return backup Home Assistant version."""
         if self.homeassistant is None:
             return None
-        return self._data[ATTR_HOMEASSISTANT][ATTR_VERSION]
+        return self.homeassistant[ATTR_VERSION]
+
+    @property
+    def homeassistant_exclude_database(self) -> bool:
+        """Return whether database was excluded from Home Assistant backup."""
+        if self.homeassistant is None:
+            return None
+        return self.homeassistant[ATTR_EXCLUDE_DATABASE]
 
     @property
     def homeassistant(self):
@@ -539,9 +547,12 @@ class Backup(CoreSysAttributes):
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore folder %s: %s", folder, err)
 
-    async def store_homeassistant(self):
+    async def store_homeassistant(self, exclude_database: bool = False):
         """Backup Home Assistant Core configuration folder."""
-        self._data[ATTR_HOMEASSISTANT] = {ATTR_VERSION: self.sys_homeassistant.version}
+        self._data[ATTR_HOMEASSISTANT] = {
+            ATTR_VERSION: self.sys_homeassistant.version,
+            ATTR_EXCLUDE_DATABASE: exclude_database,
+        }
 
         # Backup Home Assistant Core config directory
         tar_name = Path(
@@ -551,7 +562,7 @@ class Backup(CoreSysAttributes):
             tar_name, "w", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
         )
 
-        await self.sys_homeassistant.backup(homeassistant_file)
+        await self.sys_homeassistant.backup(homeassistant_file, exclude_database)
 
         # Store size
         self.homeassistant[ATTR_SIZE] = homeassistant_file.size
@@ -568,7 +579,9 @@ class Backup(CoreSysAttributes):
             tar_name, "r", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
         )
 
-        await self.sys_homeassistant.restore(homeassistant_file)
+        await self.sys_homeassistant.restore(
+            homeassistant_file, self.homeassistant_exclude_database
+        )
 
         # Generate restore task
         async def _core_update():

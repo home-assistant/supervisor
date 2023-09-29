@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path, PurePath
-from unittest.mock import AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, patch
 
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -11,6 +11,7 @@ import pytest
 from supervisor.backups.backup import Backup
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
 
 
@@ -167,3 +168,34 @@ async def test_api_freeze_thaw(
         call.args[0] == {"type": "backup/end"}
         for call in ha_ws_client.async_send_command.call_args_list
     )
+
+
+@pytest.mark.parametrize(
+    "partial_backup,exclude_db_setting",
+    [(False, True), (True, True), (False, False), (True, False)],
+)
+async def test_api_backup_exclude_database(
+    api_client: TestClient,
+    coresys: CoreSys,
+    partial_backup: bool,
+    exclude_db_setting: bool,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test backups exclude the database when specified."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2023.09.0")
+    coresys.homeassistant.backups_exclude_database = exclude_db_setting
+
+    json = {} if exclude_db_setting else {"homeassistant_exclude_database": True}
+    with patch.object(HomeAssistant, "backup") as backup:
+        if partial_backup:
+            resp = await api_client.post(
+                "/backups/new/partial", json={"homeassistant": True} | json
+            )
+        else:
+            resp = await api_client.post("/backups/new/full", json=json)
+
+        backup.assert_awaited_once_with(ANY, True)
+        assert resp.status == 200

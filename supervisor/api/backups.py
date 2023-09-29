@@ -20,6 +20,7 @@ from ..const import (
     ATTR_DAYS_UNTIL_STALE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
+    ATTR_HOMEASSISTANT_EXCLUDE_DATABASE,
     ATTR_LOCATON,
     ATTR_NAME,
     ATTR_PASSWORD,
@@ -64,6 +65,7 @@ SCHEMA_BACKUP_FULL = vol.Schema(
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_COMPRESSED): vol.Maybe(vol.Boolean()),
         vol.Optional(ATTR_LOCATON): vol.Maybe(str),
+        vol.Optional(ATTR_HOMEASSISTANT_EXCLUDE_DATABASE): vol.Boolean(),
     }
 )
 
@@ -184,6 +186,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_ADDONS: data_addons,
             ATTR_REPOSITORIES: backup.repositories,
             ATTR_FOLDERS: backup.folders,
+            ATTR_HOMEASSISTANT_EXCLUDE_DATABASE: backup.homeassistant_exclude_database,
         }
 
     def _location_to_mount(self, body: dict[str, Any]) -> dict[str, Any]:
