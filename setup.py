@@ -15,7 +15,6 @@ setup(
         "A maintainless private cloud operator system that"
         "setup a Home-Assistant instance. Based on HassOS"
     ),
-    classifiers=[],
     keywords=["docker", "home-assistant", "api"],
     zip_safe=False,
     platforms="any",
