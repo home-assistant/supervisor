@@ -23,6 +23,7 @@ from ..exceptions import (
     HomeAssistantCrashError,
     HomeAssistantError,
     HomeAssistantJobError,
+    HomeAssistantStartupTimeout,
     HomeAssistantUpdateError,
     JobException,
 )
@@ -441,7 +442,7 @@ class HomeAssistantCore(JobGroup):
         _LOGGER.info("Wait until Home Assistant is ready")
 
         start = datetime.now()
-        while not_timeout := datetime.now() < start + STARTUP_API_CHECK_TIMEOUT:
+        while not (timeout := datetime.now() >= start + STARTUP_API_CHECK_TIMEOUT):
             await asyncio.sleep(SECONDS_BETWEEN_API_CHECKS)
 
             # 1: Check if Container is is_running
@@ -455,12 +456,12 @@ class HomeAssistantCore(JobGroup):
                 self._error_state = False
                 return
 
-        if not not_timeout:
-            _LOGGER.error(
-                "No API response in 5 minutes, assuming core has had a fatal startup error"
-            )
-
         self._error_state = True
+        if timeout:
+            raise HomeAssistantStartupTimeout(
+                "No API response in 5 minutes, assuming core has had a fatal startup error",
+                _LOGGER.error,
+            )
         raise HomeAssistantCrashError()
 
     @Job(
