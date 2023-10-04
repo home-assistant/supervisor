@@ -58,7 +58,6 @@ class HomeAssistantCore(JobGroup):
         """Initialize Home Assistant object."""
         super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
-        self.lock: asyncio.Lock = asyncio.Lock()
         self._error_state: bool = False
 
     @property
@@ -402,7 +401,7 @@ class HomeAssistantCore(JobGroup):
     @property
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
-        return self.instance.in_progress or self.lock.locked()
+        return self.instance.in_progress or self.active_job
 
     async def check_config(self) -> ConfigResult:
         """Run Home Assistant config check."""

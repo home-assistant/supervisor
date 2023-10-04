@@ -1,7 +1,6 @@
 """Interface class for Supervisor Docker object."""
 from __future__ import annotations
 
-import asyncio
 from collections import defaultdict
 from collections.abc import Awaitable
 from contextlib import suppress
@@ -92,7 +91,6 @@ class DockerInterface(JobGroup):
         )
         self.coresys: CoreSys = coresys
         self._meta: dict[str, Any] | None = None
-        self.lock: asyncio.Lock = asyncio.Lock()
 
     @property
     def timeout(self) -> int:
@@ -153,7 +151,7 @@ class DockerInterface(JobGroup):
     @property
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
-        return self.lock.locked()
+        return self.active_job
 
     @property
     def restart_policy(self) -> RestartPolicy | None:
