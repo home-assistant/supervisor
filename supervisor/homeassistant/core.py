@@ -2,12 +2,14 @@
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 import logging
 import re
 import secrets
 import shutil
+from typing import Final
 
-import attr
 from awesomeversion import AwesomeVersion
 
 from ..const import ATTR_HOMEASSISTANT, BusEvent
@@ -21,6 +23,7 @@ from ..exceptions import (
     HomeAssistantCrashError,
     HomeAssistantError,
     HomeAssistantJobError,
+    HomeAssistantStartupTimeout,
     HomeAssistantUpdateError,
     JobException,
 )
@@ -40,15 +43,17 @@ from .const import (
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+SECONDS_BETWEEN_API_CHECKS: Final[int] = 5
+STARTUP_API_CHECK_TIMEOUT: Final[timedelta] = timedelta(minutes=5)
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
 
-@attr.s(frozen=True)
+@dataclass
 class ConfigResult:
     """Return object from config check."""
 
-    valid = attr.ib()
-    log = attr.ib()
+    valid: bool
+    log: str
 
 
 class HomeAssistantCore(JobGroup):
@@ -435,8 +440,9 @@ class HomeAssistantCore(JobGroup):
             return
         _LOGGER.info("Wait until Home Assistant is ready")
 
-        while True:
-            await asyncio.sleep(5)
+        start = datetime.now()
+        while not (timeout := datetime.now() >= start + STARTUP_API_CHECK_TIMEOUT):
+            await asyncio.sleep(SECONDS_BETWEEN_API_CHECKS)
 
             # 1: Check if Container is is_running
             if not await self.instance.is_running():
@@ -450,6 +456,11 @@ class HomeAssistantCore(JobGroup):
                 return
 
         self._error_state = True
+        if timeout:
+            raise HomeAssistantStartupTimeout(
+                "No API response in 5 minutes, assuming core has had a fatal startup error",
+                _LOGGER.error,
+            )
         raise HomeAssistantCrashError()
 
     @Job(

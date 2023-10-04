@@ -67,6 +67,10 @@ class HomeAssistantCrashError(HomeAssistantError):
     """Error on crash of a Home Assistant startup."""
 
 
+class HomeAssistantStartupTimeout(HomeAssistantCrashError):
+    """Timeout waiting for Home Assistant successful startup."""
+
+
 class HomeAssistantAPIError(HomeAssistantError):
     """Home Assistant API exception."""
 

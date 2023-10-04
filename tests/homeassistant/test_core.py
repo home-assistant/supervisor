@@ -1,9 +1,12 @@
 """Test Home Assistant core."""
+
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 from docker.errors import DockerException, ImageNotFound, NotFound
 import pytest
+from time_machine import travel
 
 from supervisor.const import CpuArch
 from supervisor.coresys import CoreSys
@@ -14,6 +17,7 @@ from supervisor.exceptions import (
     AudioUpdateError,
     CodeNotaryError,
     DockerError,
+    HomeAssistantCrashError,
     HomeAssistantError,
     HomeAssistantJobError,
 )
@@ -263,3 +267,35 @@ async def test_stats_failures(
 
     with pytest.raises(HomeAssistantError):
         await coresys.homeassistant.core.stats()
+
+
+async def test_api_check_timeout(
+    coresys: CoreSys, container: MagicMock, caplog: pytest.LogCaptureFixture
+):
+    """Test attempts to contact the API timeout."""
+    container.status = "stopped"
+    coresys.homeassistant.version = AwesomeVersion("2023.9.0")
+    coresys.homeassistant.api.check_api_state.return_value = False
+
+    async def mock_instance_start(*_):
+        container.status = "running"
+
+    with patch.object(
+        DockerHomeAssistant, "start", new=mock_instance_start
+    ), patch.object(DockerAPI, "container_is_initialized", return_value=True), travel(
+        datetime(2023, 10, 2, 0, 0, 0), tick=False
+    ) as traveller:
+
+        async def mock_sleep(*args):
+            traveller.shift(timedelta(minutes=1))
+
+        with patch(
+            "supervisor.homeassistant.core.asyncio.sleep", new=mock_sleep
+        ), pytest.raises(HomeAssistantCrashError):
+            await coresys.homeassistant.core.start()
+
+    assert coresys.homeassistant.api.check_api_state.call_count == 5
+    assert (
+        "No API response in 5 minutes, assuming core has had a fatal startup error"
+        in caplog.text
+    )
