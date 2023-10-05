@@ -6,7 +6,10 @@ import logging
 import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp.client_ws import ClientWebSocketResponse
 from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
+from aiohttp.http import WSMessage
+from aiohttp.http_websocket import WSMsgType
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 
 from ..coresys import CoreSysAttributes
@@ -114,7 +117,7 @@ class APIProxy(CoreSysAttributes):
                 body=data, status=client.status, content_type=client.content_type
             )
 
-    async def _websocket_client(self):
+    async def _websocket_client(self) -> ClientWebSocketResponse:
         """Initialize a WebSocket API connection."""
         url = f"{self.sys_homeassistant.api_url}/api/websocket"
 
@@ -167,6 +170,25 @@ class APIProxy(CoreSysAttributes):
 
         raise APIError()
 
+    async def _proxy_message(
+        self,
+        read_task: asyncio.Task,
+        target: web.WebSocketResponse | ClientWebSocketResponse,
+    ) -> None:
+        """Proxy a message from client to server or vice versa."""
+        if read_task.exception():
+            raise read_task.exception()
+
+        msg: WSMessage = read_task.result()
+        if msg.type == WSMsgType.TEXT:
+            return await target.send_str(msg.data)
+        if msg.type == WSMsgType.BINARY:
+            return await target.send_bytes(msg.data)
+
+        raise TypeError(
+            f"Cannot proxy websocket message of unsupported type: {msg.type}"
+        )
+
     async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""
         if not await self.sys_homeassistant.api.check_api_state():
@@ -214,13 +236,13 @@ class APIProxy(CoreSysAttributes):
 
         _LOGGER.info("Home Assistant WebSocket API request running")
         try:
-            client_read = None
-            server_read = None
+            client_read: asyncio.Task | None = None
+            server_read: asyncio.Task | None = None
             while not server.closed and not client.closed:
                 if not client_read:
-                    client_read = self.sys_create_task(client.receive_str())
+                    client_read = self.sys_create_task(client.receive())
                 if not server_read:
-                    server_read = self.sys_create_task(server.receive_str())
+                    server_read = self.sys_create_task(server.receive())
 
                 # wait until data need to be processed
                 await asyncio.wait(
@@ -229,14 +251,12 @@ class APIProxy(CoreSysAttributes):
 
                 # server
                 if server_read.done() and not client.closed:
-                    server_read.exception()
-                    await client.send_str(server_read.result())
+                    await self._proxy_message(server_read, client)
                     server_read = None
 
                 # client
                 if client_read.done() and not server.closed:
-                    client_read.exception()
-                    await server.send_str(client_read.result())
+                    await self._proxy_message(client_read, server)
                     client_read = None
 
         except asyncio.CancelledError:
@@ -246,9 +266,9 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.info("Home Assistant WebSocket API error: %s", err)
 
         finally:
-            if client_read:
+            if client_read and not client_read.done():
                 client_read.cancel()
-            if server_read:
+            if server_read and not server_read.done():
                 server_read.cancel()
 
             # close connections
