@@ -201,95 +201,115 @@ class Job(CoreSysAttributes):
                 internal=self._internal,
             )
 
-            # Handle condition
-            if self.conditions:
-                try:
-                    await Job.check_conditions(
-                        self, set(self.conditions), self._method.__qualname__
-                    )
-                except JobConditionException as err:
-                    return self._handle_job_condition_exception(err)
+            try:
+                # Handle condition
+                if self.conditions:
+                    try:
+                        await Job.check_conditions(
+                            self, set(self.conditions), self._method.__qualname__
+                        )
+                    except JobConditionException as err:
+                        return self._handle_job_condition_exception(err)
 
-            # Handle exection limits
-            if self.limit in (JobExecutionLimit.SINGLE_WAIT, JobExecutionLimit.ONCE):
-                await self._acquire_exection_limit()
-            elif self.limit in (
-                JobExecutionLimit.GROUP_ONCE,
-                JobExecutionLimit.GROUP_WAIT,
-            ):
-                try:
-                    await obj.acquire(job, self.limit == JobExecutionLimit.GROUP_WAIT)
-                except JobGroupExecutionLimitExceeded as err:
-                    if self.on_condition:
-                        raise self.on_condition(str(err)) from err
-                    raise err
-            elif self.limit in (
-                JobExecutionLimit.THROTTLE,
-                JobExecutionLimit.GROUP_THROTTLE,
-            ):
-                time_since_last_call = datetime.now() - self.last_call(group_name)
-                if time_since_last_call < self.throttle_period(group_name):
-                    return
-            elif self.limit in (
-                JobExecutionLimit.THROTTLE_WAIT,
-                JobExecutionLimit.GROUP_THROTTLE_WAIT,
-            ):
-                await self._acquire_exection_limit()
-                time_since_last_call = datetime.now() - self.last_call(group_name)
-                if time_since_last_call < self.throttle_period(group_name):
-                    self._release_exception_limits()
-                    return
-            elif self.limit in (
-                JobExecutionLimit.THROTTLE_RATE_LIMIT,
-                JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
-            ):
-                # Only reprocess array when necessary (at limit)
-                if len(self.rate_limited_calls(group_name)) >= self.throttle_max_calls:
-                    self.set_rate_limited_calls(
-                        [
-                            call
-                            for call in self.rate_limited_calls(group_name)
-                            if call > datetime.now() - self.throttle_period(group_name)
-                        ],
-                        group_name,
-                    )
-
-                if len(self.rate_limited_calls(group_name)) >= self.throttle_max_calls:
-                    on_condition = (
-                        JobException if self.on_condition is None else self.on_condition
-                    )
-                    raise on_condition(
-                        f"Rate limit exceeded, more then {self.throttle_max_calls} calls in {self.throttle_period(group_name)}",
-                    )
-
-            # Execute Job
-            with job.start(on_done=self.sys_jobs.remove_job if self.cleanup else None):
-                try:
-                    self.set_last_call(datetime.now(), group_name)
-                    if self.rate_limited_calls(group_name) is not None:
-                        self.add_rate_limited_call(
-                            self.last_call(group_name), group_name
+                # Handle exection limits
+                if self.limit in (
+                    JobExecutionLimit.SINGLE_WAIT,
+                    JobExecutionLimit.ONCE,
+                ):
+                    await self._acquire_exection_limit()
+                elif self.limit in (
+                    JobExecutionLimit.GROUP_ONCE,
+                    JobExecutionLimit.GROUP_WAIT,
+                ):
+                    try:
+                        await obj.acquire(
+                            job, self.limit == JobExecutionLimit.GROUP_WAIT
+                        )
+                    except JobGroupExecutionLimitExceeded as err:
+                        if self.on_condition:
+                            raise self.on_condition(str(err)) from err
+                        raise err
+                elif self.limit in (
+                    JobExecutionLimit.THROTTLE,
+                    JobExecutionLimit.GROUP_THROTTLE,
+                ):
+                    time_since_last_call = datetime.now() - self.last_call(group_name)
+                    if time_since_last_call < self.throttle_period(group_name):
+                        return
+                elif self.limit in (
+                    JobExecutionLimit.THROTTLE_WAIT,
+                    JobExecutionLimit.GROUP_THROTTLE_WAIT,
+                ):
+                    await self._acquire_exection_limit()
+                    time_since_last_call = datetime.now() - self.last_call(group_name)
+                    if time_since_last_call < self.throttle_period(group_name):
+                        self._release_exception_limits()
+                        return
+                elif self.limit in (
+                    JobExecutionLimit.THROTTLE_RATE_LIMIT,
+                    JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
+                ):
+                    # Only reprocess array when necessary (at limit)
+                    if (
+                        len(self.rate_limited_calls(group_name))
+                        >= self.throttle_max_calls
+                    ):
+                        self.set_rate_limited_calls(
+                            [
+                                call
+                                for call in self.rate_limited_calls(group_name)
+                                if call
+                                > datetime.now() - self.throttle_period(group_name)
+                            ],
+                            group_name,
                         )
 
-                    return await self._method(obj, *args, **kwargs)
-
-                # If a method has a conditional JobCondition, they must check it in the method
-                # These should be handled like normal JobConditions as much as possible
-                except JobConditionException as err:
-                    return self._handle_job_condition_exception(err)
-                except HassioError as err:
-                    raise err
-                except Exception as err:
-                    _LOGGER.exception("Unhandled exception: %s", err)
-                    capture_exception(err)
-                    raise JobException() from err
-                finally:
-                    self._release_exception_limits()
-                    if self.limit in (
-                        JobExecutionLimit.GROUP_ONCE,
-                        JobExecutionLimit.GROUP_WAIT,
+                    if (
+                        len(self.rate_limited_calls(group_name))
+                        >= self.throttle_max_calls
                     ):
-                        obj.release()
+                        on_condition = (
+                            JobException
+                            if self.on_condition is None
+                            else self.on_condition
+                        )
+                        raise on_condition(
+                            f"Rate limit exceeded, more then {self.throttle_max_calls} calls in {self.throttle_period(group_name)}",
+                        )
+
+                # Execute Job
+                with job.start():
+                    try:
+                        self.set_last_call(datetime.now(), group_name)
+                        if self.rate_limited_calls(group_name) is not None:
+                            self.add_rate_limited_call(
+                                self.last_call(group_name), group_name
+                            )
+
+                        return await self._method(obj, *args, **kwargs)
+
+                    # If a method has a conditional JobCondition, they must check it in the method
+                    # These should be handled like normal JobConditions as much as possible
+                    except JobConditionException as err:
+                        return self._handle_job_condition_exception(err)
+                    except HassioError as err:
+                        raise err
+                    except Exception as err:
+                        _LOGGER.exception("Unhandled exception: %s", err)
+                        capture_exception(err)
+                        raise JobException() from err
+                    finally:
+                        self._release_exception_limits()
+                        if self.limit in (
+                            JobExecutionLimit.GROUP_ONCE,
+                            JobExecutionLimit.GROUP_WAIT,
+                        ):
+                            obj.release()
+
+            # Jobs that weren't started are always cleaned up. Also clean up done jobs if required
+            finally:
+                if job.done is None or self.cleanup:
+                    self.sys_jobs.remove_job(job)
 
         return wrapper
 

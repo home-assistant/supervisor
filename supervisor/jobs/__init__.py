@@ -86,7 +86,7 @@ class SupervisorJob:
         }
 
     @contextmanager
-    def start(self, *, on_done: Callable[["SupervisorJob"], None] | None = None):
+    def start(self):
         """Start the job in the current task.
 
         This can only be called if the parent ID matches the job running in the current task.
@@ -107,8 +107,6 @@ class SupervisorJob:
             self.done = True
             if token:
                 _CURRENT_JOB.reset(token)
-            if on_done:
-                on_done(self)
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):

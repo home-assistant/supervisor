@@ -1044,3 +1044,61 @@ async def test_job_starting_separate_task(coresys: CoreSys):
     await test.job_await()
     await test.job_release()
     await task
+
+
+async def test_job_always_removed_on_check_failure(coresys: CoreSys):
+    """Test that the job instance is always removed if the condition or limit check fails."""
+
+    class TestClass:
+        """Test class."""
+
+        event = asyncio.Event()
+        limit_job: Job | None = None
+
+        def __init__(self, coresys: CoreSys) -> None:
+            """Initialize object."""
+            self.coresys = coresys
+
+        @Job(
+            name="test_job_always_removed_on_check_failure_condition",
+            conditions=[JobCondition.HAOS],
+            on_condition=JobException,
+            cleanup=False,
+        )
+        async def condition_check(self):
+            """Job that will fail a condition check."""
+            raise AssertionError("should not run")
+
+        @Job(
+            name="test_job_always_removed_on_check_failure_limit",
+            limit=JobExecutionLimit.ONCE,
+            cleanup=False,
+        )
+        async def limit_check(self):
+            """Job that can fail a limit check."""
+            self.limit_job = self.coresys.jobs.current
+            await self.event.wait()
+
+        def release_limit_check(self):
+            """Release the limit check job."""
+            self.event.set()
+
+    test = TestClass(coresys)
+
+    with pytest.raises(JobException):
+        await test.condition_check()
+    assert coresys.jobs.jobs == []
+
+    task = coresys.create_task(test.limit_check())
+    await asyncio.sleep(0)
+    assert (job := test.limit_job)
+
+    with pytest.raises(JobException):
+        await test.limit_check()
+    assert test.limit_job == job
+    assert coresys.jobs.jobs == [job]
+
+    test.release_limit_check()
+    await task
+    assert job.done
+    assert coresys.jobs.jobs == [job]
