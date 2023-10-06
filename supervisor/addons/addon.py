@@ -641,11 +641,7 @@ class Addon(AddonModel):
         )
 
         # create voluptuous
-        new_schema = vol.Schema(
-            vol.All(
-                dict, AddonOptions(self.coresys, new_raw_schema, self.name, self.slug)
-            )
-        )
+        new_schema = vol.Schema(vol.All(dict, AddonOptions(self, new_raw_schema)))
 
         # validate
         try:

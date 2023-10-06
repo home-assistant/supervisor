@@ -585,7 +585,7 @@ class AddonModel(JobGroup, ABC):
         if isinstance(raw_schema, bool):
             raw_schema = {}
 
-        return AddonOptions(self.coresys, raw_schema, self.name, self.slug)
+        return AddonOptions(self, raw_schema)
 
     @property
     def schema_ui(self) -> list[dict[any, any]] | None:

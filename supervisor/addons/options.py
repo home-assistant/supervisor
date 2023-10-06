@@ -3,15 +3,19 @@ import hashlib
 import logging
 from pathlib import Path
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 
+from ..const import ATTR_OPTIONS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
 from ..hardware.const import UdevSubsystem
 from ..hardware.data import Device
 from ..validate import network_port
+
+if TYPE_CHECKING:
+    from .model import AddonModel
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -58,16 +62,15 @@ _SCHEMA_LENGTH_PARTS = (
 class AddonOptions(CoreSysAttributes):
     """Validate Add-ons Options."""
 
-    def __init__(
-        self, coresys: CoreSys, raw_schema: dict[str, Any], name: str, slug: str
-    ):
+    def __init__(self, addon: "AddonModel", raw_schema: dict[str, Any]):
         """Validate schema."""
-        self.coresys: CoreSys = coresys
+        self.addon: "AddonModel" = addon
+        self.coresys: CoreSys = addon.coresys
         self.raw_schema: dict[str, Any] = raw_schema
         self.devices: set[Device] = set()
         self.pwned: set[str] = set()
-        self._name = name
-        self._slug = slug
+        self._name = addon.name
+        self._slug = addon.slug
 
     @property
     def validate(self) -> vol.Schema:
@@ -251,6 +254,14 @@ class AddonOptions(CoreSysAttributes):
             # If its a list then value in list decides if its optional like ["str?"]
             if isinstance(miss_schema, list) and len(miss_schema) > 0:
                 miss_schema = miss_schema[0]
+
+            # If its a dict that's missing and the dict is missing from add-on's
+            # options dict, then it's optional
+            if (
+                isinstance(miss_schema, dict)
+                and miss_opt not in self.addon.data[ATTR_OPTIONS]
+            ):
+                miss_schema = "dict?"
 
             if isinstance(miss_schema, str) and miss_schema.endswith("?"):
                 continue
