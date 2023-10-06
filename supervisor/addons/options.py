@@ -107,6 +107,12 @@ class AddonOptions(CoreSysAttributes):
                     f"Type error for option '{key}' in {self.addon.name} "
                     f"({self.addon.slug})"
                 ) from None
+            except vol.Invalid as err:
+                if key not in err.msg:
+                    raise vol.Invalid(
+                        f"Invalid value for option '{key}': {err}"
+                    ) from None
+                raise err
 
         self._check_missing_options(self.raw_schema, options, "root")
         return options
@@ -150,23 +156,23 @@ class AddonOptions(CoreSysAttributes):
             if typ.startswith(_PASSWORD) and value:
                 self.pwned.add(hashlib.sha1(str(value).encode()).hexdigest())
             return vol.All(str(value), vol.Range(**range_args))(value)
-        elif typ.startswith(_INT):
+        if typ.startswith(_INT):
             return vol.All(vol.Coerce(int), vol.Range(**range_args))(value)
-        elif typ.startswith(_FLOAT):
+        if typ.startswith(_FLOAT):
             return vol.All(vol.Coerce(float), vol.Range(**range_args))(value)
-        elif typ.startswith(_BOOL):
+        if typ.startswith(_BOOL):
             return vol.Boolean()(value)
-        elif typ.startswith(_EMAIL):
+        if typ.startswith(_EMAIL):
             return vol.Email()(value)
-        elif typ.startswith(_URL):
+        if typ.startswith(_URL):
             return vol.Url()(value)
-        elif typ.startswith(_PORT):
+        if typ.startswith(_PORT):
             return network_port(value)
-        elif typ.startswith(_MATCH):
+        if typ.startswith(_MATCH):
             return vol.Match(match.group("match"))(str(value))
-        elif typ.startswith(_LIST):
+        if typ.startswith(_LIST):
             return vol.In(match.group("list").split("|"))(str(value))
-        elif typ.startswith(_DEVICE):
+        if typ.startswith(_DEVICE):
             try:
                 device = self.sys_hardware.get_by_path(Path(value))
             except HardwareNotFound:
