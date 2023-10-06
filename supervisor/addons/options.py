@@ -69,8 +69,6 @@ class AddonOptions(CoreSysAttributes):
         self.raw_schema: dict[str, Any] = raw_schema
         self.devices: set[Device] = set()
         self.pwned: set[str] = set()
-        self._name = addon.name
-        self._slug = addon.slug
 
     @property
     def validate(self) -> vol.Schema:
@@ -88,8 +86,8 @@ class AddonOptions(CoreSysAttributes):
                 _LOGGER.warning(
                     "Option '%s' does not exist in the schema for %s (%s)",
                     key,
-                    self._name,
-                    self._slug,
+                    self.addon.name,
+                    self.addon.slug,
                 )
                 continue
 
@@ -106,7 +104,8 @@ class AddonOptions(CoreSysAttributes):
                     options[key] = self._single_validate(typ, value, key)
             except (IndexError, KeyError):
                 raise vol.Invalid(
-                    f"Type error for option '{key}' in {self._name} ({self._slug})"
+                    f"Type error for option '{key}' in {self.addon.name} "
+                    f"({self.addon.slug})"
                 ) from None
 
         self._check_missing_options(self.raw_schema, options, "root")
@@ -118,7 +117,8 @@ class AddonOptions(CoreSysAttributes):
         # if required argument
         if value is None:
             raise vol.Invalid(
-                f"Missing required option '{key}' in {self._name} ({self._slug})"
+                f"Missing required option '{key}' in {self.addon.name} "
+                f"({self.addon.slug})"
             ) from None
 
         # Lookup secret
@@ -127,7 +127,8 @@ class AddonOptions(CoreSysAttributes):
             value = self.sys_homeassistant.secrets.get(secret)
             if value is None:
                 raise vol.Invalid(
-                    f"Unknown secret '{secret}' in {self._name} ({self._slug})"
+                    f"Unknown secret '{secret}' in {self.addon.name} "
+                    f"({self.addon.slug})"
                 ) from None
 
         # parse extend data from type
@@ -135,7 +136,7 @@ class AddonOptions(CoreSysAttributes):
 
         if not match:
             raise vol.Invalid(
-                f"Unknown type '{typ}' in {self._name} ({self._slug})"
+                f"Unknown type '{typ}' in {self.addon.name} ({self.addon.slug})"
             ) from None
 
         # prepare range
@@ -170,7 +171,8 @@ class AddonOptions(CoreSysAttributes):
                 device = self.sys_hardware.get_by_path(Path(value))
             except HardwareNotFound:
                 raise vol.Invalid(
-                    f"Device '{value}' does not exist in {self._name} ({self._slug})"
+                    f"Device '{value}' does not exist in {self.addon.name} "
+                    f"({self.addon.slug})"
                 ) from None
 
             # Have filter
@@ -179,7 +181,8 @@ class AddonOptions(CoreSysAttributes):
                 device_filter = _create_device_filter(str_filter)
                 if device not in self.sys_hardware.filter_devices(**device_filter):
                     raise vol.Invalid(
-                        f"Device '{value}' don't match the filter {str_filter}! in {self._name} ({self._slug})"
+                        f"Device '{value}' don't match the filter {str_filter}! "
+                        f"in {self.addon.name} ({self.addon.slug})"
                     )
 
             # Device valid
@@ -187,7 +190,8 @@ class AddonOptions(CoreSysAttributes):
             return str(device.path)
 
         raise vol.Invalid(
-            f"Fatal error for option '{key}' with type '{typ}' in {self._name} ({self._slug})"
+            f"Fatal error for option '{key}' with type '{typ}' in {self.addon.name} "
+            f"({self.addon.slug})"
         ) from None
 
     def _nested_validate_list(self, typ: Any, data_list: list[Any], key: str):
@@ -197,7 +201,8 @@ class AddonOptions(CoreSysAttributes):
         # Make sure it is a list
         if not isinstance(data_list, list):
             raise vol.Invalid(
-                f"Invalid list for option '{key}' in {self._name} ({self._slug})"
+                f"Invalid list for option '{key}' in {self.addon.name} "
+                f"({self.addon.slug})"
             ) from None
 
         # Process list
@@ -220,7 +225,8 @@ class AddonOptions(CoreSysAttributes):
         # Make sure it is a dict
         if not isinstance(data_dict, dict):
             raise vol.Invalid(
-                f"Invalid dict for option '{key}' in {self._name} ({self._slug})"
+                f"Invalid dict for option '{key}' in {self.addon.name} "
+                f"({self.addon.slug})"
             ) from None
 
         # Process dict
@@ -228,7 +234,10 @@ class AddonOptions(CoreSysAttributes):
             # Ignore unknown options / remove from list
             if c_key not in typ:
                 _LOGGER.warning(
-                    "Unknown option '%s' for %s (%s)", c_key, self._name, self._slug
+                    "Unknown option '%s' for %s (%s)",
+                    c_key,
+                    self.addon.name,
+                    self.addon.slug,
                 )
                 continue
 
@@ -267,7 +276,8 @@ class AddonOptions(CoreSysAttributes):
                 continue
 
             raise vol.Invalid(
-                f"Missing option '{miss_opt}' in {root} in {self._name} ({self._slug})"
+                f"Missing option '{miss_opt}' in {root} in {self.addon.name} "
+                f"({self.addon.slug})"
             ) from None
 
 
