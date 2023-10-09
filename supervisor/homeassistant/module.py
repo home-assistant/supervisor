@@ -369,7 +369,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                         backup.add(temp, arcname=".")
 
                         # Set excludes
-                        excludes = HOMEASSISTANT_BACKUP_EXCLUDE
+                        excludes = HOMEASSISTANT_BACKUP_EXCLUDE.copy()
                         if exclude_database:
                             excludes += HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE
 
