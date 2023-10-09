@@ -154,7 +154,7 @@ class WSClient:
     @classmethod
     async def connect_with_auth(
         cls, session: aiohttp.ClientSession, loop, url: str, token: str
-    ) -> "WSClient":
+    ) -> WSClient:
         """Create an authenticated websocket client."""
         try:
             client = await session.ws_connect(url, ssl=False)
