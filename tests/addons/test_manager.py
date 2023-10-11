@@ -15,6 +15,7 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AddonConfigurationError,
@@ -23,6 +24,7 @@ from supervisor.exceptions import (
     DockerNotFound,
 )
 from supervisor.plugins.dns import PluginDns
+from supervisor.store.repository import Repository
 from supervisor.utils import check_exception_chain
 from supervisor.utils.common import write_json_file
 
@@ -364,3 +366,41 @@ async def test_repository_file_error(
         write_json_file(repo_file, {"invalid": "bad"})
         await coresys.store.data.update()
         assert f"Repository parse error {repo_dir.as_posix()}" in caplog.text
+
+
+async def test_store_data_changes_during_update(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test store data changing for an addon during an update does not cause errors."""
+    event = asyncio.Event()
+    coresys.store.data.addons["local_ssh"]["image"] = "test_image"
+    coresys.store.data.addons["local_ssh"]["version"] = AwesomeVersion("1.1.1")
+
+    async def simulate_update():
+        async def mock_update(_, version, image, *args, **kwargs):
+            assert version == AwesomeVersion("1.1.1")
+            assert image == "test_image"
+            await event.wait()
+
+        with patch.object(DockerAddon, "update", new=mock_update), patch.object(
+            DockerAPI, "cleanup_old_images"
+        ) as cleanup:
+            await coresys.addons.update("local_ssh")
+            cleanup.assert_called_once_with(
+                "test_image", AwesomeVersion("1.1.1"), {"local/amd64-addon-ssh"}
+            )
+
+    update_task = coresys.create_task(simulate_update())
+    await asyncio.sleep(0)
+
+    with patch.object(Repository, "update"):
+        await coresys.store.reload()
+
+    assert "image" not in coresys.store.data.addons["local_ssh"]
+    assert coresys.store.data.addons["local_ssh"]["version"] == AwesomeVersion("9.2.1")
+
+    event.set()
+    await update_task
+
+    assert install_addon_ssh.image == "test_image"
+    assert install_addon_ssh.version == AwesomeVersion("1.1.1")
