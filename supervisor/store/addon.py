@@ -3,6 +3,8 @@
 from copy import deepcopy
 import logging
 
+from supervisor.coresys import CoreSys
+
 from ..addons.model import AddonModel, Data
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -11,7 +13,10 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class AddonStore(AddonModel):
     """Hold data for add-on inside Supervisor."""
 
-    _data: Data | None = None
+    def __init__(self, coresys: CoreSys, slug: str, data: Data | None = None):
+        """Initialize object."""
+        super().__init__(coresys, slug)
+        self._data: Data | None = data
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -34,6 +39,4 @@ class AddonStore(AddonModel):
 
     def clone(self) -> "AddonStore":
         """Return a copy that includes data and does not use global store data."""
-        addon = AddonStore(self.coresys, self.slug)
-        addon._data = deepcopy(self.data)
-        return addon
+        return AddonStore(self.coresys, self.slug, deepcopy(self.data))
