@@ -2,10 +2,10 @@
 
 from copy import deepcopy
 import logging
-
-from supervisor.coresys import CoreSys
+from typing import Self
 
 from ..addons.model import AddonModel, Data
+from ..coresys import CoreSys
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -37,6 +37,6 @@ class AddonStore(AddonModel):
         """Return True if add-on is detached."""
         return False
 
-    def clone(self) -> "AddonStore":
+    def clone(self) -> Self:
         """Return a copy that includes data and does not use global store data."""
-        return AddonStore(self.coresys, self.slug, deepcopy(self.data))
+        return type(self)(self.coresys, self.slug, deepcopy(self.data))
