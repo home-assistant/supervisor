@@ -290,6 +290,8 @@ class AddonManager(CoreSysAttributes):
         # Update instance
         last_state: AddonState = addon.state
         old_image = addon.image
+        # Cache data to prevent races with other updates to global
+        store = store.clone()
         try:
             await addon.instance.update(store.version, store.image)
         except DockerError as err:
@@ -300,7 +302,9 @@ class AddonManager(CoreSysAttributes):
 
         # Cleanup
         with suppress(DockerError):
-            await addon.instance.cleanup(old_image=old_image)
+            await addon.instance.cleanup(
+                old_image=old_image, image=store.image, version=store.version
+            )
 
         # Setup/Fix AppArmor profile
         await addon.install_apparmor()

@@ -449,12 +449,17 @@ class DockerInterface(JobGroup):
         return b""
 
     @Job(name="docker_interface_cleanup", limit=JobExecutionLimit.GROUP_WAIT)
-    def cleanup(self, old_image: str | None = None) -> Awaitable[None]:
+    def cleanup(
+        self,
+        old_image: str | None = None,
+        image: str | None = None,
+        version: AwesomeVersion | None = None,
+    ) -> Awaitable[None]:
         """Check if old version exists and cleanup."""
         return self.sys_run_in_executor(
             self.sys_docker.cleanup_old_images,
-            self.image,
-            self.version,
+            image or self.image,
+            version or self.version,
             {old_image} if old_image else None,
         )
 
