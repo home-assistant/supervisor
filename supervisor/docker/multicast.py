@@ -38,16 +38,7 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
     )
     async def run(self) -> None:
         """Run Docker image."""
-        if await self.is_running():
-            return
-
-        # Cleanup
-        await self.stop()
-
-        # Create & Run container
-        docker_container = await self.sys_run_in_executor(
-            self.sys_docker.run,
-            self.image,
+        await self._run(
             tag=str(self.sys_plugins.multicast.version),
             init=False,
             name=self.name,
@@ -59,8 +50,6 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
             extra_hosts={"supervisor": self.sys_docker.network.supervisor},
             environment={ENV_TIME: self.sys_timezone},
         )
-
-        self._meta = docker_container.attrs
         _LOGGER.info(
             "Starting Multicast %s with version %s - Host", self.image, self.version
         )

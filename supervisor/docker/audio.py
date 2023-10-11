@@ -92,16 +92,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
     )
     async def run(self) -> None:
         """Run Docker image."""
-        if await self.is_running():
-            return
-
-        # Cleanup
-        await self.stop()
-
-        # Create & Run container
-        docker_container = await self.sys_run_in_executor(
-            self.sys_docker.run,
-            self.image,
+        await self._run(
             tag=str(self.sys_plugins.audio.version),
             init=False,
             ipv4=self.sys_docker.network.audio,
@@ -118,8 +109,6 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             },
             mounts=self.mounts,
         )
-
-        self._meta = docker_container.attrs
         _LOGGER.info(
             "Starting Audio %s with version %s - %s",
             self.image,

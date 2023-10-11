@@ -152,16 +152,7 @@ class DockerHomeAssistant(DockerInterface):
     )
     async def run(self) -> None:
         """Run Docker image."""
-        if await self.is_running():
-            return
-
-        # Cleanup
-        await self.stop()
-
-        # Create & Run container
-        docker_container = await self.sys_run_in_executor(
-            self.sys_docker.run,
-            self.image,
+        await self._run(
             tag=(self.sys_homeassistant.version),
             name=self.name,
             hostname=self.name,
@@ -186,8 +177,6 @@ class DockerHomeAssistant(DockerInterface):
             tmpfs={"/tmp": ""},
             oom_score_adj=-300,
         )
-
-        self._meta = docker_container.attrs
         _LOGGER.info(
             "Starting Home Assistant %s with version %s", self.image, self.version
         )
