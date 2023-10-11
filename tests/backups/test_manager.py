@@ -24,7 +24,9 @@ from supervisor.exceptions import AddonsError, BackupError, BackupJobError, Dock
 from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
+from supervisor.jobs.const import JobCondition
 from supervisor.mounts.mount import Mount
+from supervisor.utils.json import read_json_file, write_json_file
 
 from tests.const import TEST_ADDON_SLUG
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -1441,3 +1443,59 @@ async def test_backup_to_mount_bypasses_free_space_condition(
     # These succeed because local free space does not matter when using a mount
     await coresys.backups.do_backup_full(location=mount)
     await coresys.backups.do_backup_partial(folders=["media"], location=mount)
+
+
+@pytest.mark.parametrize(
+    "partial_backup,exclude_db_setting",
+    [(False, True), (True, True), (False, False), (True, False)],
+)
+async def test_skip_homeassistant_database(
+    coresys: CoreSys,
+    container: MagicMock,
+    partial_backup: bool,
+    exclude_db_setting: bool | None,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test exclude database option skips database in backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.jobs.ignore_conditions = [
+        JobCondition.INTERNET_HOST,
+        JobCondition.INTERNET_SYSTEM,
+    ]
+    coresys.homeassistant.version = AwesomeVersion("2023.09.0")
+    coresys.homeassistant.backups_exclude_database = exclude_db_setting
+
+    test_file = coresys.config.path_homeassistant / "configuration.yaml"
+    (test_db := coresys.config.path_homeassistant / "home-assistant_v2.db").touch()
+    (
+        test_db_wal := coresys.config.path_homeassistant / "home-assistant_v2.db-wal"
+    ).touch()
+    (
+        test_db_shm := coresys.config.path_homeassistant / "home-assistant_v2.db-shm"
+    ).touch()
+
+    write_json_file(test_file, {"default_config": {}})
+
+    kwargs = {} if exclude_db_setting else {"homeassistant_exclude_database": True}
+    if partial_backup:
+        backup: Backup = await coresys.backups.do_backup_partial(
+            homeassistant=True, **kwargs
+        )
+    else:
+        backup: Backup = await coresys.backups.do_backup_full(**kwargs)
+
+    test_file.unlink()
+    write_json_file(test_db, {"hello": "world"})
+    write_json_file(test_db_wal, {"hello": "world"})
+
+    with patch.object(HomeAssistantCore, "update"), patch.object(
+        HomeAssistantCore, "start"
+    ):
+        await coresys.backups.do_restore_partial(backup, homeassistant=True)
+
+    assert read_json_file(test_file) == {"default_config": {}}
+    assert read_json_file(test_db) == {"hello": "world"}
+    assert read_json_file(test_db_wal) == {"hello": "world"}
+    assert not test_db_shm.exists()

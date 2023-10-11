@@ -226,6 +226,7 @@ class BackupManager(FileConfiguration, JobGroup):
         addon_list: list[Addon],
         folder_list: list[str],
         homeassistant: bool,
+        homeassistant_exclude_database: bool | None,
     ) -> Backup | None:
         """Create a backup.
 
@@ -245,7 +246,11 @@ class BackupManager(FileConfiguration, JobGroup):
                 # HomeAssistant Folder is for v1
                 if homeassistant:
                     self._change_stage(BackupJobStage.HOME_ASSISTANT, backup)
-                    await backup.store_homeassistant()
+                    await backup.store_homeassistant(
+                        self.sys_homeassistant.backups_exclude_database
+                        if homeassistant_exclude_database is None
+                        else homeassistant_exclude_database
+                    )
 
                 # Backup folders
                 if folder_list:
@@ -282,6 +287,7 @@ class BackupManager(FileConfiguration, JobGroup):
         password: str | None = None,
         compressed: bool = True,
         location: Mount | type[DEFAULT] | None = DEFAULT,
+        homeassistant_exclude_database: bool | None = None,
     ) -> Backup | None:
         """Create a full backup."""
         if self._get_base_path(location) == self.sys_config.path_backup:
@@ -295,7 +301,11 @@ class BackupManager(FileConfiguration, JobGroup):
 
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
         backup = await self._do_backup(
-            backup, self.sys_addons.installed, ALL_FOLDERS, True
+            backup,
+            self.sys_addons.installed,
+            ALL_FOLDERS,
+            True,
+            homeassistant_exclude_database,
         )
         if backup:
             _LOGGER.info("Creating full backup with slug %s completed", backup.slug)
@@ -316,6 +326,7 @@ class BackupManager(FileConfiguration, JobGroup):
         homeassistant: bool = False,
         compressed: bool = True,
         location: Mount | type[DEFAULT] | None = DEFAULT,
+        homeassistant_exclude_database: bool | None = None,
     ) -> Backup | None:
         """Create a partial backup."""
         if self._get_base_path(location) == self.sys_config.path_backup:
@@ -347,7 +358,9 @@ class BackupManager(FileConfiguration, JobGroup):
                 continue
             _LOGGER.warning("Add-on %s not found/installed", addon_slug)
 
-        backup = await self._do_backup(backup, addon_list, folders, homeassistant)
+        backup = await self._do_backup(
+            backup, addon_list, folders, homeassistant, homeassistant_exclude_database
+        )
         if backup:
             _LOGGER.info("Creating partial backup with slug %s completed", backup.slug)
         return backup

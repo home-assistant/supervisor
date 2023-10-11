@@ -12,6 +12,7 @@ from ..const import (
     ATTR_AUDIO_INPUT,
     ATTR_AUDIO_OUTPUT,
     ATTR_BACKUP,
+    ATTR_BACKUPS_EXCLUDE_DATABASE,
     ATTR_BLK_READ,
     ATTR_BLK_WRITE,
     ATTR_BOOT,
@@ -51,6 +52,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_REFRESH_TOKEN): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_OUTPUT): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
+        vol.Optional(ATTR_BACKUPS_EXCLUDE_DATABASE): vol.Boolean(),
     }
 )
 
@@ -82,6 +84,7 @@ class APIHomeAssistant(CoreSysAttributes):
             ATTR_WATCHDOG: self.sys_homeassistant.watchdog,
             ATTR_AUDIO_INPUT: self.sys_homeassistant.audio_input,
             ATTR_AUDIO_OUTPUT: self.sys_homeassistant.audio_output,
+            ATTR_BACKUPS_EXCLUDE_DATABASE: self.sys_homeassistant.backups_exclude_database,
         }
 
     @api_process
@@ -112,6 +115,11 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_AUDIO_OUTPUT in body:
             self.sys_homeassistant.audio_output = body[ATTR_AUDIO_OUTPUT]
+
+        if ATTR_BACKUPS_EXCLUDE_DATABASE in body:
+            self.sys_homeassistant.backups_exclude_database = body[
+                ATTR_BACKUPS_EXCLUDE_DATABASE
+            ]
 
         self.sys_homeassistant.save_data()
 
