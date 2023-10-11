@@ -50,3 +50,4 @@ async def test_fixup(
     assert systemd_service.StopUnit.calls == [
         ("mnt-data-supervisor-mounts-test.mount", "fail")
     ]
+    coresys.mounts.save_data.assert_called_once()
