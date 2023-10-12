@@ -37,9 +37,12 @@ class MockHAServerWebSocket:
     """Mock of HA Websocket server."""
 
     closed: bool = False
-    outgoing: asyncio.Queue[WSMessage] = asyncio.Queue()
-    incoming: asyncio.Queue[WSMessage] = asyncio.Queue()
-    _id_generator = id_generator()
+
+    def __init__(self) -> None:
+        """Initialize object."""
+        self.outgoing: asyncio.Queue[WSMessage] = asyncio.Queue()
+        self.incoming: asyncio.Queue[WSMessage] = asyncio.Queue()
+        self._id_generator = id_generator()
 
     def receive(self) -> Awaitable[WSMessage]:
         """Receive next message."""
