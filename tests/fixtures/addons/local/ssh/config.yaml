@@ -17,6 +17,7 @@ panel_icon: "mdi:console"
 panel_title: Terminal
 hassio_api: true
 hassio_role: manager
+homeassistant_api: true
 audio: true
 uart: true
 ports:
