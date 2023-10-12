@@ -13,10 +13,9 @@ from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
 
-from supervisor.addons import AddonManager
 from supervisor.addons.addon import Addon
 from supervisor.api.proxy import APIProxy
-from supervisor.coresys import CoreSys
+from supervisor.const import ATTR_ACCESS_TOKEN
 
 
 def id_generator() -> Generator[int, None, None]:
@@ -76,20 +75,29 @@ class MockHAServerWebSocket:
 WebSocketGenerator = Callable[..., Coroutine[Any, Any, MockHAClientWebSocket]]
 
 
+@pytest.fixture(name="ha_ws_server")
+async def fixture_ha_ws_server() -> MockHAServerWebSocket:
+    """Mock HA WS server for testing."""
+    with patch.object(
+        APIProxy,
+        "_websocket_client",
+        return_value=(mock_server := MockHAServerWebSocket()),
+    ):
+        yield mock_server
+
+
 @pytest.fixture(name="proxy_ws_client")
-async def fixture_proxy_ws_client(
-    api_client: TestClient,
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
+def fixture_proxy_ws_client(
+    api_client: TestClient, ha_ws_server: MockHAServerWebSocket
 ) -> WebSocketGenerator:
     """Websocket client fixture connected to websocket server."""
 
-    async def create_client(coresys: CoreSys = coresys) -> MockHAClientWebSocket:
+    async def create_client(auth_token: str) -> MockHAClientWebSocket:
         """Create a websocket client."""
         websocket = await api_client.ws_connect("/core/websocket")
         auth_resp = await websocket.receive_json()
         assert auth_resp["type"] == "auth_required"
-        await websocket.send_json({"type": "auth", "access_token": "dummy"})
+        await websocket.send_json({"type": "auth", "access_token": auth_token})
 
         auth_ok = await websocket.receive_json()
         assert auth_ok["type"] == "auth_ok"
@@ -106,28 +114,19 @@ async def fixture_proxy_ws_client(
         wrapped_websocket.send_json_auto_id = _send_json_auto_id
         return wrapped_websocket
 
-    with patch.object(AddonManager, "from_token", return_value=install_addon_ssh):
-        yield create_client
-
-
-@pytest.fixture(name="ha_ws_server")
-async def fixture_ha_ws_server() -> MockHAServerWebSocket:
-    """Mock HA WS server for testing."""
-    with patch.object(
-        APIProxy,
-        "_websocket_client",
-        return_value=(mock_server := MockHAServerWebSocket()),
-    ):
-        yield mock_server
+    return create_client
 
 
 async def test_proxy_message(
     proxy_ws_client: WebSocketGenerator,
     ha_ws_server: MockHAServerWebSocket,
-    coresys: CoreSys,
+    install_addon_ssh: Addon,
 ):
     """Test proxy a message to and from Home Assistant."""
-    client: MockHAClientWebSocket = await proxy_ws_client(coresys)
+    install_addon_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_addon_ssh.supervisor_token
+    )
 
     await client.send_json_auto_id({"hello": "world"})
     proxied_msg = await ha_ws_server.incoming.get()
@@ -143,10 +142,13 @@ async def test_proxy_message(
 async def test_proxy_binary_message(
     proxy_ws_client: WebSocketGenerator,
     ha_ws_server: MockHAServerWebSocket,
-    coresys: CoreSys,
+    install_addon_ssh: Addon,
 ):
     """Test proxy a binary message to and from Home Assistant."""
-    client: MockHAClientWebSocket = await proxy_ws_client(coresys)
+    install_addon_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_addon_ssh.supervisor_token
+    )
 
     await client.send_bytes(b"hello world")
     proxied_msg = await ha_ws_server.incoming.get()
@@ -157,3 +159,19 @@ async def test_proxy_binary_message(
     assert await client.receive_bytes() == b"world received"
 
     assert await client.close()
+
+
+@pytest.mark.parametrize("auth_token", ["abc123", "bad"])
+async def test_proxy_invalid_auth(
+    api_client: TestClient, install_addon_example: Addon, auth_token: str
+):
+    """Test invalid access token or addon with no access."""
+    install_addon_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    websocket = await api_client.ws_connect("/core/websocket")
+    auth_resp = await websocket.receive_json()
+    assert auth_resp["type"] == "auth_required"
+    await websocket.send_json({"type": "auth", "access_token": auth_token})
+
+    auth_not_ok = await websocket.receive_json()
+    assert auth_not_ok["type"] == "auth_invalid"
+    assert auth_not_ok["message"] == "Invalid access"
