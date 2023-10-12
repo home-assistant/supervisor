@@ -68,6 +68,10 @@ class MockHAServerWebSocket:
         """Respond with binary."""
         return self.outgoing.put(WSMessage(WSMsgType.BINARY, data, None))
 
+    async def close(self) -> None:
+        """Close connection."""
+        self.closed = True
+
 
 WebSocketGenerator = Callable[..., Coroutine[Any, Any, MockHAClientWebSocket]]
 
@@ -133,6 +137,8 @@ async def test_proxy_message(
     await ha_ws_server.respond_json({"world": "received"})
     assert await client.receive_json() == {"world": "received", "id": 1}
 
+    assert await client.close()
+
 
 async def test_proxy_binary_message(
     proxy_ws_client: WebSocketGenerator,
@@ -149,3 +155,5 @@ async def test_proxy_binary_message(
 
     await ha_ws_server.respond_bytes(b"world received")
     assert await client.receive_bytes() == b"world received"
+
+    assert await client.close()
