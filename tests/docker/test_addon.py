@@ -184,7 +184,6 @@ def test_not_journald_addon(
 async def test_addon_run_docker_error(
     coresys: CoreSys,
     addonsdata_system: dict[str, Data],
-    capture_exception: Mock,
     os_environ,
 ):
     """Test docker error when addon is run."""
@@ -196,14 +195,13 @@ async def test_addon_run_docker_error(
 
     with patch.object(DockerAddon, "stop"), patch.object(
         AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
-    ), pytest.raises(DockerNotFound):
+    ), patch.object(DockerAddon, "install"), pytest.raises(DockerNotFound):
         await docker_addon.run()
 
     assert (
         Issue(IssueType.MISSING_IMAGE, ContextType.ADDON, reference="test_addon")
         in coresys.resolution.issues
     )
-    capture_exception.assert_not_called()
 
 
 async def test_addon_run_add_host_error(

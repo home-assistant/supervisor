@@ -242,5 +242,5 @@ async def test_run_missing_image(
         await install_addon_ssh.instance.run()
         install.assert_called_once_with(AwesomeVersion("9.2.1"), None, False, None)
 
-    coresys.docker.containers.create.call_count == 2
+    assert coresys.docker.containers.create.call_count == 2
     capture_exception.assert_called_once()
