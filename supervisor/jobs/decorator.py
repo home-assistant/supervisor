@@ -274,7 +274,7 @@ class Job(CoreSysAttributes):
                             else self.on_condition
                         )
                         raise on_condition(
-                            f"Rate limit exceeded, more then {self.throttle_max_calls} calls in {self.throttle_period(group_name)}",
+                            f"Rate limit exceeded, more than {self.throttle_max_calls} calls in {self.throttle_period(group_name)}",
                         )
 
                 # Execute Job

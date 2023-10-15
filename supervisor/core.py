@@ -250,7 +250,7 @@ class Core(CoreSysAttributes):
                 except HomeAssistantError as err:
                     capture_exception(err)
             else:
-                _LOGGER.info("Skiping start of Home Assistant")
+                _LOGGER.info("Skipping start of Home Assistant")
 
             # Core is not running
             if self.sys_homeassistant.core.error_state:

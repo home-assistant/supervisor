@@ -662,7 +662,7 @@ class Addon(AddonModel):
             await asyncio.wait_for(self._startup_task, STARTUP_TIMEOUT)
         except asyncio.TimeoutError:
             _LOGGER.warning(
-                "Timeout while waiting for addon %s to start, took more then %s seconds",
+                "Timeout while waiting for addon %s to start, took more than %s seconds",
                 self.name,
                 STARTUP_TIMEOUT,
             )
