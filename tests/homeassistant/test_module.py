@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -10,9 +10,10 @@ from supervisor.docker.interface import DockerInterface
 from supervisor.homeassistant.secrets import HomeAssistantSecrets
 
 
-async def test_load(coresys: CoreSys, tmp_supervisor_data: Path):
+async def test_load(
+    coresys: CoreSys, tmp_supervisor_data: Path, ha_ws_client: AsyncMock
+):
     """Test homeassistant module load."""
-    client = coresys.homeassistant.websocket._client  # pylint: disable=protected-access
     with open(tmp_supervisor_data / "homeassistant" / "secrets.yaml", "w") as secrets:
         secrets.write("hello: world\n")
 
@@ -30,8 +31,14 @@ async def test_load(coresys: CoreSys, tmp_supervisor_data: Path):
 
     coresys.core.state = CoreState.SETUP
     await coresys.homeassistant.websocket.async_send_message({"lorem": "ipsum"})
-    client.async_send_command.assert_not_called()
+    ha_ws_client.async_send_command.assert_not_called()
 
     coresys.core.state = CoreState.RUNNING
     await asyncio.sleep(0)
-    assert client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}
+    assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}
+
+
+async def test_get_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
+    """Test get users returning none does not fail."""
+    ha_ws_client.async_send_command.return_value = None
+    assert [] == await coresys.homeassistant.get_users()
