@@ -392,12 +392,8 @@ class DockerInterface(JobGroup):
             )
         except DockerNotFound as err:
             # If image is missing, capture the exception as this shouldn't happen
-            # Try to keep things working for user by pulling image and retrying once
             capture_exception(err)
-            await self.install(self.version)
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.run, self.image, **kwargs
-            )
+            raise
 
         # Store metadata
         self._meta = docker_container.attrs

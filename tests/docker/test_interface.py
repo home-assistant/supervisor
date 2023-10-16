@@ -16,7 +16,12 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import DockerAPIError, DockerError, DockerRequestError
+from supervisor.exceptions import (
+    DockerAPIError,
+    DockerError,
+    DockerNotFound,
+    DockerRequestError,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -233,14 +238,12 @@ async def test_run_missing_image(
     capture_exception: Mock,
     path_extern,
 ):
-    """Test run retries after a pull when the image is missing."""
+    """Test run captures the exception when image is missing."""
     coresys.docker.containers.create.side_effect = [NotFound("missing"), MagicMock()]
     container.status = "stopped"
     install_addon_ssh.data["image"] = "test_image"
 
-    with patch.object(DockerInterface, "install") as install:
+    with pytest.raises(DockerNotFound):
         await install_addon_ssh.instance.run()
-        install.assert_called_once_with(AwesomeVersion("9.2.1"), None, False, None)
 
-    assert coresys.docker.containers.create.call_count == 2
     capture_exception.assert_called_once()
