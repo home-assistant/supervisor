@@ -189,6 +189,7 @@ class NetworkManager(CoreSysAttributes):
             _LOGGER.debug("Updating existing configuration for %s", interface.name)
             settings = get_connection_from_interface(
                 interface,
+                self.sys_dbus.network,
                 name=inet.settings.connection.id,
                 uuid=inet.settings.connection.uuid,
             )
@@ -217,7 +218,7 @@ class NetworkManager(CoreSysAttributes):
         # Create new configuration and activate interface
         elif inet and interface.enabled:
             _LOGGER.debug("Create new configuration for %s", interface.name)
-            settings = get_connection_from_interface(interface)
+            settings = get_connection_from_interface(interface, self.sys_dbus.network)
 
             try:
                 settings, con = await self.sys_dbus.network.add_and_activate_connection(
@@ -244,7 +245,7 @@ class NetworkManager(CoreSysAttributes):
 
         # Create new interface (like vlan)
         elif not inet:
-            settings = get_connection_from_interface(interface)
+            settings = get_connection_from_interface(interface, self.sys_dbus.network)
 
             try:
                 await self.sys_dbus.network.settings.add_connection(settings)

@@ -1,5 +1,7 @@
 """Test Network Manager Connection object."""
 
+from unittest.mock import MagicMock
+
 from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.signature import Variant
 import pytest
@@ -42,6 +44,7 @@ async def test_update(
     interface = Interface.from_dbus_interface(dbus_interface)
     conn = get_connection_from_interface(
         interface,
+        MagicMock(),
         name=dbus_interface.settings.connection.id,
         uuid=dbus_interface.settings.connection.uuid,
     )
@@ -105,6 +108,7 @@ async def test_ipv6_disabled_is_link_local(dbus_interface: NetworkInterface):
     interface.ipv6.method = InterfaceMethod.DISABLED
     conn = get_connection_from_interface(
         interface,
+        MagicMock(),
         name=dbus_interface.settings.connection.id,
         uuid=dbus_interface.settings.connection.uuid,
     )
