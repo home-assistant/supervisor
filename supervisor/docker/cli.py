@@ -33,16 +33,7 @@ class DockerCli(DockerInterface, CoreSysAttributes):
     )
     async def run(self) -> None:
         """Run Docker image."""
-        if await self.is_running():
-            return
-
-        # Cleanup
-        await self.stop()
-
-        # Create & Run container
-        docker_container = await self.sys_run_in_executor(
-            self.sys_docker.run,
-            self.image,
+        await self._run(
             entrypoint=["/init"],
             tag=str(self.sys_plugins.cli.version),
             init=False,
@@ -60,8 +51,6 @@ class DockerCli(DockerInterface, CoreSysAttributes):
                 ENV_TOKEN: self.sys_plugins.cli.supervisor_token,
             },
         )
-
-        self._meta = docker_container.attrs
         _LOGGER.info(
             "Starting CLI %s with version %s - %s",
             self.image,

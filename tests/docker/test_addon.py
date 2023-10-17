@@ -39,13 +39,6 @@ def fixture_addonsdata_user() -> dict[str, Data]:
         yield mock
 
 
-@pytest.fixture(name="os_environ")
-def fixture_os_environ():
-    """Mock os.environ."""
-    with patch("supervisor.config.os.environ") as mock:
-        yield mock
-
-
 def get_docker_addon(
     coresys: CoreSys, addonsdata_system: dict[str, Data], config_file: str
 ):
@@ -60,7 +53,7 @@ def get_docker_addon(
 
 
 def test_base_volumes_included(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], os_environ
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
 ):
     """Dev and data volumes always included."""
     docker_addon = get_docker_addon(
@@ -86,7 +79,7 @@ def test_base_volumes_included(
 
 
 def test_addon_map_folder_defaults(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], os_environ
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
 ):
     """Validate defaults for mapped folders in addons."""
     docker_addon = get_docker_addon(
@@ -143,7 +136,7 @@ def test_addon_map_folder_defaults(
 
 
 def test_journald_addon(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], os_environ
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
 ):
     """Validate volume for journald option."""
     docker_addon = get_docker_addon(
@@ -171,7 +164,7 @@ def test_journald_addon(
 
 
 def test_not_journald_addon(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], os_environ
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
 ):
     """Validate journald option defaults off."""
     docker_addon = get_docker_addon(
@@ -182,10 +175,7 @@ def test_not_journald_addon(
 
 
 async def test_addon_run_docker_error(
-    coresys: CoreSys,
-    addonsdata_system: dict[str, Data],
-    capture_exception: Mock,
-    os_environ,
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
 ):
     """Test docker error when addon is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
@@ -203,14 +193,13 @@ async def test_addon_run_docker_error(
         Issue(IssueType.MISSING_IMAGE, ContextType.ADDON, reference="test_addon")
         in coresys.resolution.issues
     )
-    capture_exception.assert_not_called()
 
 
 async def test_addon_run_add_host_error(
     coresys: CoreSys,
     addonsdata_system: dict[str, Data],
     capture_exception: Mock,
-    os_environ,
+    path_extern,
 ):
     """Test error adding host when addon is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)

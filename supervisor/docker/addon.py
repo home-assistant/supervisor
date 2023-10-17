@@ -501,24 +501,16 @@ class DockerAddon(DockerInterface):
     )
     async def run(self) -> None:
         """Run Docker image."""
-        if await self.is_running():
-            return
-
         # Security check
         if not self.addon.protected:
             _LOGGER.warning("%s running with disabled protected mode!", self.addon.name)
-
-        # Cleanup
-        await self.stop()
 
         # Don't set a hostname if no separate UTS namespace is used
         hostname = None if self.uts_mode else self.addon.hostname
 
         # Create & Run container
         try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.run,
-                self.image,
+            await self._run(
                 tag=str(self.addon.version),
                 name=self.name,
                 hostname=hostname,
@@ -549,7 +541,6 @@ class DockerAddon(DockerInterface):
             )
             raise
 
-        self._meta = docker_container.attrs
         _LOGGER.info(
             "Starting Docker add-on %s with version %s", self.image, self.version
         )

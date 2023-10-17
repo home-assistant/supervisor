@@ -35,16 +35,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
     )
     async def run(self) -> None:
         """Run Docker image."""
-        if await self.is_running():
-            return
-
-        # Cleanup
-        await self.stop()
-
-        # Create & Run container
-        docker_container = await self.sys_run_in_executor(
-            self.sys_docker.run,
-            self.image,
+        await self._run(
             tag=str(self.sys_plugins.dns.version),
             init=False,
             dns=False,
@@ -65,8 +56,6 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             ],
             oom_score_adj=-300,
         )
-
-        self._meta = docker_container.attrs
         _LOGGER.info(
             "Starting DNS %s with version %s - %s",
             self.image,

@@ -377,6 +377,27 @@ class DockerInterface(JobGroup):
         """Run Docker image."""
         raise NotImplementedError()
 
+    async def _run(self, **kwargs) -> None:
+        """Run Docker image with retry inf necessary."""
+        if await self.is_running():
+            return
+
+        # Cleanup
+        await self.stop()
+
+        # Create & Run container
+        try:
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.run, self.image, **kwargs
+            )
+        except DockerNotFound as err:
+            # If image is missing, capture the exception as this shouldn't happen
+            capture_exception(err)
+            raise
+
+        # Store metadata
+        self._meta = docker_container.attrs
+
     @Job(
         name="docker_interface_stop",
         limit=JobExecutionLimit.GROUP_ONCE,
