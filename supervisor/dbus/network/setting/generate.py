@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import socket
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from dbus_fast import Variant
@@ -19,6 +19,7 @@ from . import (
     CONF_ATTR_PATH,
     CONF_ATTR_VLAN,
 )
+from .. import NetworkManager
 from ....host.const import InterfaceMethod, InterfaceType
 
 if TYPE_CHECKING:
@@ -26,8 +27,11 @@ if TYPE_CHECKING:
 
 
 def get_connection_from_interface(
-    interface: Interface, name: str | None = None, uuid: str | None = None
-) -> Any:
+    interface: Interface,
+    network_manager: NetworkManager,
+    name: str | None = None,
+    uuid: str | None = None,
+) -> dict[str, dict[str, Variant]]:
     """Generate message argument for network interface update."""
 
     # Generate/Update ID/name
@@ -121,9 +125,15 @@ def get_connection_from_interface(
     if interface.type == InterfaceType.ETHERNET:
         conn[CONF_ATTR_802_ETHERNET] = {ATTR_ASSIGNED_MAC: Variant("s", "preserve")}
     elif interface.type == "vlan":
+        parent = interface.vlan.interface
+        if parent in network_manager and (
+            parent_connection := network_manager.get(parent).connection
+        ):
+            parent = parent_connection.uuid
+
         conn[CONF_ATTR_VLAN] = {
             "id": Variant("u", interface.vlan.id),
-            "parent": Variant("s", interface.vlan.interface),
+            "parent": Variant("s", parent),
         }
     elif interface.type == InterfaceType.WIRELESS:
         wireless = {
