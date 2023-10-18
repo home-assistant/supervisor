@@ -515,6 +515,42 @@ async def test_backup_cold_mode(
     assert bool(start_task) is (status == "running")
 
 
+async def test_backup_cold_mode_with_watchdog(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test backing up an addon in cold mode with watchdog active."""
+    container.status = "running"
+    install_addon_ssh.watchdog = True
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    # Simulate stop firing the docker event for stopped container like it normally would
+    async def mock_stop(*args, **kwargs):
+        container.status = "stopped"
+        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
+
+    # Patching out the normal end of backup process leaves the container in a stopped state
+    # Watchdog should still not try to restart it though, it should remain this way
+    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    with patch.object(Addon, "start") as start, patch.object(
+        Addon, "restart"
+    ) as restart, patch.object(Addon, "end_backup"), patch.object(
+        DockerAddon, "stop", new=mock_stop
+    ), patch.object(
+        AddonModel,
+        "backup_mode",
+        new=PropertyMock(return_value=AddonBackupMode.COLD),
+    ):
+        await install_addon_ssh.backup(tarfile)
+        await asyncio.sleep(0)
+        start.assert_not_called()
+        restart.assert_not_called()
+
+
 @pytest.mark.parametrize("status", ["running", "stopped"])
 async def test_restore(
     coresys: CoreSys,
@@ -559,6 +595,41 @@ async def test_restore_while_running(
 
     assert bool(start_task) is False
     container.stop.assert_called_once()
+
+
+async def test_restore_while_running_with_watchdog(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test restore of a running addon with watchdog interference."""
+    container.status = "running"
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.path_data.mkdir()
+    install_addon_ssh.watchdog = True
+    await install_addon_ssh.load()
+
+    # Simulate stop firing the docker event for stopped container like it normally would
+    async def mock_stop(*args, **kwargs):
+        container.status = "stopped"
+        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
+
+    # We restore a stopped backup so restore will not restart it
+    # Watchdog will see it stop and should not attempt reanimation either
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
+    with patch.object(Addon, "start") as start, patch.object(
+        Addon, "restart"
+    ) as restart, patch.object(DockerAddon, "stop", new=mock_stop), patch.object(
+        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
+    ), patch.object(
+        Ingress, "update_hass_panel"
+    ):
+        await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
+        await asyncio.sleep(0)
+        start.assert_not_called()
+        restart.assert_not_called()
 
 
 async def test_start_when_running(

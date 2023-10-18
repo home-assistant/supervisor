@@ -98,7 +98,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         start.assert_not_called()
 
         rebuild.reset_mock()
-        # Plugins are restarted anytime they stop, not just on failure
+        # Stop should be ignored as it means an update or system shutdown, plugins don't stop otherwise
         current_state.return_value = ContainerState.STOPPED
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
@@ -111,9 +111,8 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         )
         await asyncio.sleep(0)
         rebuild.assert_not_called()
-        start.assert_called_once()
+        start.assert_not_called()
 
-        start.reset_mock()
         # Do not process event if container state has changed since fired
         current_state.return_value = ContainerState.HEALTHY
         coresys.bus.fire_event(

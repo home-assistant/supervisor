@@ -404,3 +404,40 @@ async def test_store_data_changes_during_update(
 
     assert install_addon_ssh.image == "test_image"
     assert install_addon_ssh.version == AwesomeVersion("1.1.1")
+
+
+async def test_watchdog_runs_during_update(
+    coresys: CoreSys, install_addon_ssh: Addon, container: MagicMock
+):
+    """Test watchdog running during a long update."""
+    container.status = "running"
+    install_addon_ssh.watchdog = True
+    coresys.store.data.addons["local_ssh"]["image"] = "test_image"
+    coresys.store.data.addons["local_ssh"]["version"] = AwesomeVersion("1.1.1")
+    await install_addon_ssh.load()
+
+    # Simulate stop firing the docker event for stopped container like it normally would
+    async def mock_stop(*args, **kwargs):
+        container.status = "stopped"
+        coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.STOPPED,
+                id="abc123",
+                time=1,
+            ),
+        )
+
+    # Mock update to just wait and let other tasks run as if it is long running
+    async def mock_update(*args, **kwargs):
+        await asyncio.sleep(0)
+
+    # Start should be called exactly once by update itself. Restart should never be called
+    with patch.object(DockerAddon, "stop", new=mock_stop), patch.object(
+        DockerAddon, "update", new=mock_update
+    ), patch.object(Addon, "start") as start, patch.object(Addon, "restart") as restart:
+        await coresys.addons.update("local_ssh")
+        await asyncio.sleep(0)
+        start.assert_called_once()
+        restart.assert_not_called()
