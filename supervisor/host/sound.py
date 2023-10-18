@@ -369,7 +369,7 @@ class SoundControl(CoreSysAttributes):
                     pulse.module_unload(udev_module.index)
                     # And now reload
                     pulse.module_load(PULSE_UDEV_MODULE)
-            except StopIteration as err:
+            except StopIteration:
                 _LOGGER.warning("Can't reload PulseAudio modules.")
             except PulseError as err:
                 _LOGGER.warning("Can't reload PulseAudio modules: %s", err)
