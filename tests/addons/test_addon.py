@@ -39,10 +39,6 @@ def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState):
     )
 
 
-async def mock_stop() -> None:
-    """Mock for stop method."""
-
-
 def test_options_merge(coresys: CoreSys, install_addon_ssh: Addon) -> None:
     """Test options merge."""
     addon = coresys.addons.get(TEST_ADDON_SLUG)
@@ -148,7 +144,7 @@ async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> Non
 
         # Rebuild if it failed
         current_state.return_value = ContainerState.FAILED
-        with patch.object(DockerAddon, "stop", return_value=mock_stop()) as stop:
+        with patch.object(DockerAddon, "stop") as stop:
             _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED)
             await asyncio.sleep(0)
             stop.assert_called_once_with(remove_container=True)
@@ -183,7 +179,7 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_addon_ssh: Addon) -> N
         DockerAddon,
         "current_state",
         return_value=ContainerState.STOPPED,
-    ), patch.object(DockerAddon, "stop", return_value=mock_stop()):
+    ), patch.object(DockerAddon, "stop"):
         # Do not restart when addon stopped by user
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
         await asyncio.sleep(0)

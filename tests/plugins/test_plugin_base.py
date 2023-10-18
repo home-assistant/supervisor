@@ -11,19 +11,13 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
-    AudioError,
     AudioJobError,
-    CliError,
     CliJobError,
     CodeNotaryUntrusted,
-    CoreDNSError,
     CoreDNSJobError,
     DockerError,
-    MulticastError,
     MulticastJobError,
-    ObserverError,
     ObserverJobError,
-    PluginError,
     PluginJobError,
 )
 from supervisor.plugins.audio import PluginAudio
@@ -141,54 +135,6 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         await asyncio.sleep(0)
         rebuild.assert_not_called()
         start.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    "plugin,error",
-    [
-        (PluginAudio, AudioError()),
-        (PluginCli, CliError()),
-        (PluginDns, CoreDNSError()),
-        (PluginMulticast, MulticastError()),
-        (PluginObserver, ObserverError()),
-    ],
-    indirect=["plugin"],
-)
-async def test_plugin_watchdog_rebuild_on_failure(
-    coresys: CoreSys, capture_exception: Mock, plugin: PluginBase, error: PluginError
-) -> None:
-    """Test plugin watchdog rebuilds if start fails."""
-    with patch.object(type(plugin.instance), "attach"), patch.object(
-        type(plugin.instance), "is_running", return_value=True
-    ):
-        await plugin.load()
-
-    with patch("supervisor.plugins.base.WATCHDOG_RETRY_SECONDS", 0), patch.object(
-        type(plugin), "rebuild"
-    ) as rebuild, patch.object(
-        type(plugin), "start", side_effect=error
-    ) as start, patch.object(
-        type(plugin.instance),
-        "current_state",
-        side_effect=[
-            ContainerState.STOPPED,
-            ContainerState.STOPPED,
-        ],
-    ):
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=plugin.instance.name,
-                state=ContainerState.STOPPED,
-                id="abc123",
-                time=1,
-            ),
-        )
-        await asyncio.sleep(0.1)
-        start.assert_called_once()
-        rebuild.assert_called_once()
-
-    capture_exception.assert_called_once_with(error)
 
 
 @pytest.mark.parametrize(

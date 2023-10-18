@@ -119,10 +119,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                     state,
                 )
                 try:
-                    if state == ContainerState.STOPPED and attempts == 0:
-                        await self.start()
-                    else:
-                        await self.rebuild()
+                    await self.rebuild()
                 except PluginError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of %s plugin failed!", self.slug)

@@ -315,12 +315,13 @@ class AddonManager(CoreSysAttributes):
             await addon.install_apparmor()
 
         finally:
-            # restore state
-            return (
+            # restore state. Return awaitable for caller if no exception
+            out = (
                 await addon.start()
                 if last_state in {AddonState.STARTED, AddonState.STARTUP}
                 else None
             )
+        return out
 
     @Job(
         name="addon_manager_rebuild",
