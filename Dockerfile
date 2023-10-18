@@ -31,15 +31,14 @@ RUN \
 COPY requirements.txt .
 RUN \
     export MAKEFLAGS="-j$(nproc)" \
-    && pip3 install --no-cache-dir --no-index --only-binary=:all: --find-links \
-        "https://wheels.home-assistant.io/musllinux/" \
+    && pip3 install --only-binary=:all: \
         -r ./requirements.txt \
     && rm -f requirements.txt
 
 # Install Home Assistant Supervisor
 COPY . supervisor
 RUN \
-    pip3 install --no-cache-dir -e ./supervisor \
+    pip3 install -e ./supervisor \
     && python3 -m compileall ./supervisor/supervisor
 
 
