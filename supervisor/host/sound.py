@@ -15,6 +15,9 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 PULSE_NAME = "supervisor"
 
+PULSE_ALSA_MODULE = "module-alsa-card"
+PULSE_UDEV_MODULE = "module-udev-detect"
+
 
 class StreamType(StrEnum):
     """INPUT/OUTPUT type of source."""
@@ -235,9 +238,9 @@ class SoundControl(CoreSysAttributes):
     @Job(
         name="sound_control_update",
         limit=JobExecutionLimit.THROTTLE_WAIT,
-        throttle_period=timedelta(seconds=10),
+        throttle_period=timedelta(seconds=2),
     )
-    async def update(self):
+    async def update(self, reload_pulse: bool = False):
         """Update properties over dbus."""
         _LOGGER.info("Updating PulseAudio information")
 
@@ -348,11 +351,32 @@ class SoundControl(CoreSysAttributes):
                     f"Error while processing pulse update: {err}", _LOGGER.error
                 ) from err
             except PulseError as err:
-                _LOGGER.debug("Can't update PulseAudio data: %s", err)
+                _LOGGER.warning("Can't update PulseAudio data: %s", err)
 
             return data
 
+        def _reload_pulse_modules():
+            try:
+                with Pulse(PULSE_NAME) as pulse:
+                    modules = pulse.module_list()
+                    for alsa_module in filter(
+                        lambda x: x.name == PULSE_ALSA_MODULE, modules
+                    ):
+                        pulse.module_unload(alsa_module.index)
+                    udev_module = next(
+                        filter(lambda x: x.name == PULSE_UDEV_MODULE, modules)
+                    )
+                    pulse.module_unload(udev_module.index)
+                    # And now reload
+                    pulse.module_load(PULSE_UDEV_MODULE)
+            except StopIteration as err:
+                _LOGGER.warning("Can't reload PulseAudio modules.")
+            except PulseError as err:
+                _LOGGER.warning("Can't reload PulseAudio modules: %s", err)
+
         # Update data from pulse server
+        if reload_pulse:
+            await self.sys_run_in_executor(_reload_pulse_modules)
         data: PulseData = await self.sys_run_in_executor(_get_pulse_data)
         self._applications = data.applications
         self._cards = data.cards
