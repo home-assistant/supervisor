@@ -22,12 +22,19 @@ async def test_add_job(coresys: CoreSys):
 async def test_remove_job_directly(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test removing jobs  from manager."""
     job = coresys.jobs.new_job(TEST_JOB)
-
     assert job in coresys.jobs.jobs
 
     coresys.jobs.remove_job(job)
     assert job not in coresys.jobs.jobs
-    assert f"Removing incomplete job {job.name}" in caplog.text
+    assert f"Removing incomplete job {job.name}" not in caplog.text
+
+    job = coresys.jobs.new_job(TEST_JOB)
+    assert job in coresys.jobs.jobs
+
+    with job.start():
+        coresys.jobs.remove_job(job)
+        assert job not in coresys.jobs.jobs
+        assert f"Removing incomplete job {job.name}" in caplog.text
 
 
 async def test_job_done(coresys: CoreSys):

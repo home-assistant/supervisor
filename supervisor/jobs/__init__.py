@@ -190,7 +190,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         if job.uuid not in self._jobs:
             raise JobNotFound(f"Could not find job {job.name}", _LOGGER.error)
 
-        if not job.done:
+        if job.done is False:
             _LOGGER.warning("Removing incomplete job %s from job manager", job.name)
 
         del self._jobs[job.uuid]
