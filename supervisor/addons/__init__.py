@@ -292,16 +292,16 @@ class AddonManager(CoreSysAttributes):
         # Cache data to prevent races with other updates to global
         store = store.clone()
 
+        try:
+            await addon.instance.update(store.version, store.image)
+        except DockerError as err:
+            raise AddonsError() from err
+
         # Stop the addon if running
         if (last_state := addon.state) in {AddonState.STARTED, AddonState.STARTUP}:
             await addon.stop()
 
         try:
-            try:
-                await addon.instance.update(store.version, store.image)
-            except DockerError as err:
-                raise AddonsError() from err
-
             _LOGGER.info("Add-on '%s' successfully updated", slug)
             self.data.update(store)
 

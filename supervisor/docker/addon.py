@@ -580,10 +580,6 @@ class DockerAddon(DockerInterface):
             version, image=image, latest=latest, need_build=self.addon.latest_need_build
         )
 
-        # Stop container & cleanup
-        with suppress(DockerError):
-            await self.stop()
-
     @Job(
         name="docker_addon_install",
         limit=JobExecutionLimit.GROUP_ONCE,
