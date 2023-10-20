@@ -105,11 +105,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         if not (event.name == self.instance.name):
             return
 
-        if event.state in [
-            ContainerState.FAILED,
-            ContainerState.STOPPED,
-            ContainerState.UNHEALTHY,
-        ]:
+        if event.state in {ContainerState.FAILED, ContainerState.UNHEALTHY}:
             await self._restart_after_problem(event.state)
 
     async def _restart_after_problem(self, state: ContainerState):
@@ -123,10 +119,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                     state,
                 )
                 try:
-                    if state == ContainerState.STOPPED and attempts == 0:
-                        await self.start()
-                    else:
-                        await self.rebuild()
+                    await self.rebuild()
                 except PluginError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of %s plugin failed!", self.slug)

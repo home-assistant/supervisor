@@ -288,33 +288,40 @@ class AddonManager(CoreSysAttributes):
             )
 
         # Update instance
-        last_state: AddonState = addon.state
         old_image = addon.image
         # Cache data to prevent races with other updates to global
         store = store.clone()
+
         try:
             await addon.instance.update(store.version, store.image)
         except DockerError as err:
             raise AddonsError() from err
 
-        _LOGGER.info("Add-on '%s' successfully updated", slug)
-        self.data.update(store)
+        # Stop the addon if running
+        if (last_state := addon.state) in {AddonState.STARTED, AddonState.STARTUP}:
+            await addon.stop()
 
-        # Cleanup
-        with suppress(DockerError):
-            await addon.instance.cleanup(
-                old_image=old_image, image=store.image, version=store.version
+        try:
+            _LOGGER.info("Add-on '%s' successfully updated", slug)
+            self.data.update(store)
+
+            # Cleanup
+            with suppress(DockerError):
+                await addon.instance.cleanup(
+                    old_image=old_image, image=store.image, version=store.version
+                )
+
+            # Setup/Fix AppArmor profile
+            await addon.install_apparmor()
+
+        finally:
+            # restore state. Return awaitable for caller if no exception
+            out = (
+                await addon.start()
+                if last_state in {AddonState.STARTED, AddonState.STARTUP}
+                else None
             )
-
-        # Setup/Fix AppArmor profile
-        await addon.install_apparmor()
-
-        # restore state
-        return (
-            await addon.start()
-            if last_state in [AddonState.STARTED, AddonState.STARTUP]
-            else None
-        )
+        return out
 
     @Job(
         name="addon_manager_rebuild",

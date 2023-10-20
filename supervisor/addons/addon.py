@@ -782,10 +782,7 @@ class Addon(AddonModel):
 
         if self.backup_mode == AddonBackupMode.COLD:
             _LOGGER.info("Shutdown add-on %s for cold backup", self.slug)
-            try:
-                await self.instance.stop()
-            except DockerError as err:
-                raise AddonsError() from err
+            await self.stop()
 
         elif self.backup_pre is not None:
             await self._backup_command(self.backup_pre)
@@ -933,64 +930,67 @@ class Addon(AddonModel):
 
             # Stop it first if its running
             if await self.instance.is_running():
-                with suppress(DockerError):
-                    await self.instance.stop()
+                await self.stop()
 
-            # Check version / restore image
-            version = data[ATTR_VERSION]
-            if not await self.instance.exists():
-                _LOGGER.info("Restore/Install of image for addon %s", self.slug)
-
-                image_file = Path(temp, "image.tar")
-                if image_file.is_file():
-                    with suppress(DockerError):
-                        await self.instance.import_image(image_file)
-                else:
-                    with suppress(DockerError):
-                        await self.instance.install(version, restore_image)
-                        await self.instance.cleanup()
-            elif self.instance.version != version or self.legacy:
-                _LOGGER.info("Restore/Update of image for addon %s", self.slug)
-                with suppress(DockerError):
-                    await self.instance.update(version, restore_image)
-
-            # Restore data
-            def _restore_data():
-                """Restore data."""
-                temp_data = Path(temp, "data")
-                if temp_data.is_dir():
-                    shutil.copytree(temp_data, self.path_data, symlinks=True)
-                else:
-                    self.path_data.mkdir()
-
-            _LOGGER.info("Restoring data for addon %s", self.slug)
-            if self.path_data.is_dir():
-                await remove_data(self.path_data)
             try:
-                await self.sys_run_in_executor(_restore_data)
-            except shutil.Error as err:
-                raise AddonsError(
-                    f"Can't restore origin data: {err}", _LOGGER.error
-                ) from err
+                # Check version / restore image
+                version = data[ATTR_VERSION]
+                if not await self.instance.exists():
+                    _LOGGER.info("Restore/Install of image for addon %s", self.slug)
 
-            # Restore AppArmor
-            profile_file = Path(temp, "apparmor.txt")
-            if profile_file.exists():
+                    image_file = Path(temp, "image.tar")
+                    if image_file.is_file():
+                        with suppress(DockerError):
+                            await self.instance.import_image(image_file)
+                    else:
+                        with suppress(DockerError):
+                            await self.instance.install(version, restore_image)
+                            await self.instance.cleanup()
+                elif self.instance.version != version or self.legacy:
+                    _LOGGER.info("Restore/Update of image for addon %s", self.slug)
+                    with suppress(DockerError):
+                        await self.instance.update(version, restore_image)
+
+                # Restore data
+                def _restore_data():
+                    """Restore data."""
+                    temp_data = Path(temp, "data")
+                    if temp_data.is_dir():
+                        shutil.copytree(temp_data, self.path_data, symlinks=True)
+                    else:
+                        self.path_data.mkdir()
+
+                _LOGGER.info("Restoring data for addon %s", self.slug)
+                if self.path_data.is_dir():
+                    await remove_data(self.path_data)
                 try:
-                    await self.sys_host.apparmor.load_profile(self.slug, profile_file)
-                except HostAppArmorError as err:
-                    _LOGGER.error(
-                        "Can't restore AppArmor profile for add-on %s", self.slug
-                    )
-                    raise AddonsError() from err
+                    await self.sys_run_in_executor(_restore_data)
+                except shutil.Error as err:
+                    raise AddonsError(
+                        f"Can't restore origin data: {err}", _LOGGER.error
+                    ) from err
 
-            # Is add-on loaded
-            if not self.loaded:
-                await self.load()
+                # Restore AppArmor
+                profile_file = Path(temp, "apparmor.txt")
+                if profile_file.exists():
+                    try:
+                        await self.sys_host.apparmor.load_profile(
+                            self.slug, profile_file
+                        )
+                    except HostAppArmorError as err:
+                        _LOGGER.error(
+                            "Can't restore AppArmor profile for add-on %s", self.slug
+                        )
+                        raise AddonsError() from err
 
-            # Run add-on
-            if data[ATTR_STATE] == AddonState.STARTED:
-                wait_for_start = await self.start()
+                # Is add-on loaded
+                if not self.loaded:
+                    await self.load()
+
+            finally:
+                # Run add-on
+                if data[ATTR_STATE] == AddonState.STARTED:
+                    wait_for_start = await self.start()
 
         _LOGGER.info("Finished restore for add-on %s", self.slug)
         return wait_for_start

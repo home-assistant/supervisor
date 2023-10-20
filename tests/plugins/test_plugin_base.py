@@ -1,6 +1,6 @@
 """Test base plugin functionality."""
 import asyncio
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -98,7 +98,7 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         start.assert_not_called()
 
         rebuild.reset_mock()
-        # Plugins are restarted anytime they stop, not just on failure
+        # Stop should be ignored as it means an update or system shutdown, plugins don't stop otherwise
         current_state.return_value = ContainerState.STOPPED
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
@@ -111,9 +111,8 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         )
         await asyncio.sleep(0)
         rebuild.assert_not_called()
-        start.assert_called_once()
+        start.assert_not_called()
 
-        start.reset_mock()
         # Do not process event if container state has changed since fired
         current_state.return_value = ContainerState.HEALTHY
         coresys.bus.fire_event(
@@ -155,41 +154,38 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
     ],
     indirect=["plugin"],
 )
-async def test_plugin_watchdog_rebuild_on_failure(
-    coresys: CoreSys, capture_exception: Mock, plugin: PluginBase, error: PluginError
+async def test_plugin_watchdog_max_failed_attempts(
+    coresys: CoreSys,
+    capture_exception: Mock,
+    plugin: PluginBase,
+    error: PluginError,
+    container: MagicMock,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Test plugin watchdog rebuilds if start fails."""
-    with patch.object(type(plugin.instance), "attach"), patch.object(
-        type(plugin.instance), "is_running", return_value=True
-    ):
+    """Test plugin watchdog gives up after max failed attempts."""
+    with patch.object(type(plugin.instance), "attach"):
         await plugin.load()
 
+    container.status = "stopped"
+    container.attrs = {"State": {"ExitCode": 1}}
     with patch("supervisor.plugins.base.WATCHDOG_RETRY_SECONDS", 0), patch.object(
-        type(plugin), "rebuild"
-    ) as rebuild, patch.object(
         type(plugin), "start", side_effect=error
-    ) as start, patch.object(
-        type(plugin.instance),
-        "current_state",
-        side_effect=[
-            ContainerState.STOPPED,
-            ContainerState.STOPPED,
-        ],
-    ):
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+    ) as start:
+        await plugin.watchdog_container(
             DockerContainerStateEvent(
                 name=plugin.instance.name,
-                state=ContainerState.STOPPED,
+                state=ContainerState.FAILED,
                 id="abc123",
                 time=1,
-            ),
+            )
         )
-        await asyncio.sleep(0.1)
-        start.assert_called_once()
-        rebuild.assert_called_once()
+        assert start.call_count == 5
 
-    capture_exception.assert_called_once_with(error)
+    capture_exception.assert_called_with(error)
+    assert (
+        f"Watchdog cannot restart {plugin.slug} plugin, failed all 5 attempts"
+        in caplog.text
+    )
 
 
 @pytest.mark.parametrize(
