@@ -1,6 +1,6 @@
 """Test base plugin functionality."""
 import asyncio
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -11,13 +11,19 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
+    AudioError,
     AudioJobError,
+    CliError,
     CliJobError,
     CodeNotaryUntrusted,
+    CoreDNSError,
     CoreDNSJobError,
     DockerError,
+    MulticastError,
     MulticastJobError,
+    ObserverError,
     ObserverJobError,
+    PluginError,
     PluginJobError,
 )
 from supervisor.plugins.audio import PluginAudio
@@ -135,6 +141,51 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         await asyncio.sleep(0)
         rebuild.assert_not_called()
         start.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "plugin,error",
+    [
+        (PluginAudio, AudioError()),
+        (PluginCli, CliError()),
+        (PluginDns, CoreDNSError()),
+        (PluginMulticast, MulticastError()),
+        (PluginObserver, ObserverError()),
+    ],
+    indirect=["plugin"],
+)
+async def test_plugin_watchdog_max_failed_attempts(
+    coresys: CoreSys,
+    capture_exception: Mock,
+    plugin: PluginBase,
+    error: PluginError,
+    container: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test plugin watchdog gives up after max failed attempts."""
+    with patch.object(type(plugin.instance), "attach"):
+        await plugin.load()
+
+    container.status = "stopped"
+    container.attrs = {"State": {"ExitCode": 1}}
+    with patch("supervisor.plugins.base.WATCHDOG_RETRY_SECONDS", 0), patch.object(
+        type(plugin), "start", side_effect=error
+    ) as start:
+        await plugin.watchdog_container(
+            DockerContainerStateEvent(
+                name=plugin.instance.name,
+                state=ContainerState.FAILED,
+                id="abc123",
+                time=1,
+            )
+        )
+        assert start.call_count == 5
+
+    capture_exception.assert_called_with(error)
+    assert (
+        f"Watchdog cannot restart {plugin.slug} plugin, failed all 5 attempts"
+        in caplog.text
+    )
 
 
 @pytest.mark.parametrize(
