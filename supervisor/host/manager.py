@@ -175,4 +175,4 @@ class HostManager(CoreSysAttributes):
     async def _hardware_events(self, device: Device) -> None:
         """Process hardware requests."""
         if self.sys_hardware.policy.is_match_cgroup(PolicyGroup.AUDIO, device):
-            await self.sound.update()
+            await self.sound.update(reload_pulse=True)
