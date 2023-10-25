@@ -375,11 +375,13 @@ class DockerAddon(DockerInterface):
                 )
 
         if MAP_ADDON_CONFIGS in addon_mapping:
-            Mount(
-                type=MountType.BIND,
-                source=self.sys_config.path_extern_addon_configs.as_posix(),
-                target="/addon_configs",
-                read_only=addon_mapping[MAP_ADDON_CONFIGS],
+            mounts.append(
+                Mount(
+                    type=MountType.BIND,
+                    source=self.sys_config.path_extern_addon_configs.as_posix(),
+                    target="/addon_configs",
+                    read_only=addon_mapping[MAP_ADDON_CONFIGS],
+                )
             )
 
         if MAP_SSL in addon_mapping:

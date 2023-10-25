@@ -41,7 +41,7 @@ def fixture_addonsdata_user() -> dict[str, Data]:
 
 def get_docker_addon(
     coresys: CoreSys, addonsdata_system: dict[str, Data], config_file: str
-):
+) -> DockerAddon:
     """Make and return docker addon object."""
     config = vd.SCHEMA_ADDON_CONFIG(load_json_fixture(config_file))
     slug = config.get("slug")
@@ -177,6 +177,26 @@ def test_addon_map_homeassistant_folder(
     assert (
         len([mount for mount in docker_addon.mounts if mount["Target"] == "/config"])
         == 1
+    )
+
+
+def test_addon_map_addon_configs_folder(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+):
+    """Test mounts for addon which maps addon configs folder."""
+    docker_addon = get_docker_addon(
+        coresys, addonsdata_system, "addon_configs-addon-config.json"
+    )
+
+    # Addon configs folder included
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_addon_configs.as_posix(),
+            target="/addon_configs",
+            read_only=True,
+        )
+        in docker_addon.mounts
     )
 
 
