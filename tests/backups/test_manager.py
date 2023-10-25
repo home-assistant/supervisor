@@ -758,6 +758,7 @@ async def test_backup_with_healthcheck(
     container.status = "running"
     container.attrs["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
+    install_addon_ssh.path_config.mkdir()
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await install_addon_ssh.load()
@@ -826,6 +827,7 @@ async def test_restore_with_healthcheck(
     container.status = "running"
     container.attrs["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
+    install_addon_ssh.path_config.mkdir()
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await install_addon_ssh.load()
@@ -920,6 +922,7 @@ async def test_backup_progress(
     """Test progress is tracked during backups."""
     container.status = "running"
     install_addon_ssh.path_data.mkdir()
+    install_addon_ssh.path_config.mkdir()
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
@@ -1021,6 +1024,7 @@ async def test_restore_progress(
     """Test progress is tracked during backups."""
     container.status = "running"
     install_addon_ssh.path_data.mkdir()
+    install_addon_ssh.path_config.mkdir()
     install_addon_ssh.state = AddonState.STARTED
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -1320,6 +1324,7 @@ async def test_restore_only_reloads_ingress_on_change(
 ):
     """Test restore only tells core to reload ingress when something has changed."""
     install_addon_ssh.path_data.mkdir()
+    install_addon_ssh.path_config.mkdir()
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
@@ -1381,9 +1386,11 @@ async def test_restore_new_addon(
     path_extern,
 ):
     """Test restore installing new addon."""
-    install_addon_ssh.path_data.mkdir()
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    assert not install_addon_ssh.path_data.exists()
+    assert not install_addon_ssh.path_config.exists()
 
     backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
     await coresys.addons.uninstall("local_ssh")
@@ -1395,6 +1402,38 @@ async def test_restore_new_addon(
         assert await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
 
     assert "local_ssh" in coresys.addons.local
+    assert install_addon_ssh.path_data.exists()
+    assert install_addon_ssh.path_config.exists()
+
+
+async def test_restore_preserves_data_config(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test restore preserves data and config."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    install_addon_ssh.path_data.mkdir()
+    (test_data := install_addon_ssh.path_data / "data.txt").touch()
+    install_addon_ssh.path_config.mkdir()
+    (test_config := install_addon_ssh.path_config / "config.yaml").touch()
+
+    backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
+    await coresys.addons.uninstall("local_ssh")
+    assert not install_addon_ssh.path_data.exists()
+    assert not install_addon_ssh.path_config.exists()
+
+    with patch.object(AddonModel, "_validate_availability"), patch.object(
+        DockerAddon, "attach"
+    ):
+        assert await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
+
+    assert test_data.exists()
+    assert test_config.exists()
 
 
 async def test_backup_to_mount_bypasses_free_space_condition(

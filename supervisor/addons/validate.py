@@ -114,7 +114,9 @@ from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-RE_VOLUME = re.compile(r"^(config|ssl|addons|backup|share|media)(?::(rw|ro))?$")
+RE_VOLUME = re.compile(
+    r"^(config|ssl|addons|backup|share|media|homeassistant)(?::(rw|ro))?$"
+)
 RE_SERVICE = re.compile(r"^(?P<service>mqtt|mysql):(?P<rights>provide|want|need)$")
 
 

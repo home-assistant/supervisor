@@ -18,9 +18,11 @@ from ..addons.build import AddonBuild
 from ..bus import EventListener
 from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
+    MAP_ADDON_CONFIGS,
     MAP_ADDONS,
     MAP_BACKUP,
     MAP_CONFIG,
+    MAP_HOMEASSISTANT,
     MAP_MEDIA,
     MAP_SHARE,
     MAP_SSL,
@@ -348,6 +350,36 @@ class DockerAddon(DockerInterface):
                     target="/config",
                     read_only=addon_mapping[MAP_CONFIG],
                 )
+            )
+
+        # Map addon's public config folder if not using deprecated config option
+        else:
+            mounts.append(
+                Mount(
+                    type=MountType.BIND,
+                    source=self.addon.path_extern_config.as_posix(),
+                    target="/config",
+                    read_only=False,
+                )
+            )
+
+            # Map Home Assistant config in new way if requested
+            if MAP_HOMEASSISTANT in addon_mapping:
+                mounts.append(
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_config.path_extern_homeassistant.as_posix(),
+                        target="/homeassistant",
+                        read_only=addon_mapping[MAP_HOMEASSISTANT],
+                    )
+                )
+
+        if MAP_ADDON_CONFIGS in addon_mapping:
+            Mount(
+                type=MountType.BIND,
+                source=self.sys_config.path_extern_addon_configs.as_posix(),
+                target="/addon_configs",
+                read_only=addon_mapping[MAP_ADDON_CONFIGS],
             )
 
         if MAP_SSL in addon_mapping:

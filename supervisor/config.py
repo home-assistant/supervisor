@@ -48,6 +48,7 @@ MEDIA_DATA = PurePath("media")
 MOUNTS_FOLDER = PurePath("mounts")
 MOUNTS_CREDENTIALS = PurePath(".mounts_credentials")
 EMERGENCY_DATA = PurePath("emergency")
+ADDON_CONFIGS = PurePath("addon_configs")
 
 DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
 
@@ -230,6 +231,16 @@ class CoreConfig(FileConfiguration):
     def path_extern_addons_data(self) -> PurePath:
         """Return root add-on data folder external for Docker."""
         return PurePath(self.path_extern_supervisor, ADDONS_DATA)
+
+    @property
+    def path_addon_configs(self) -> Path:
+        """Return root Add-on configs folder."""
+        return self.path_supervisor / ADDON_CONFIGS
+
+    @property
+    def path_extern_addon_configs(self) -> PurePath:
+        """Return root Add-on configs folder external for Docker."""
+        return PurePath(self.path_extern_supervisor, ADDON_CONFIGS)
 
     @property
     def path_audio(self) -> Path:

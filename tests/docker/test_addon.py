@@ -96,6 +96,14 @@ def test_addon_map_folder_defaults(
         in docker_addon.mounts
     )
 
+    # Mount for addon's specific config folder omitted since config in map field
+    assert (
+        len([mount for mount in docker_addon.mounts if mount["Target"] == "/config"])
+        == 1
+    )
+    # Home Assistant mount omitted since config in map field
+    assert "/homeassistant" not in [mount["Target"] for mount in docker_addon.mounts]
+
     # SSL added and defaults to ro
     assert (
         Mount(
@@ -133,6 +141,43 @@ def test_addon_map_folder_defaults(
 
     # Backup not added
     assert "/backup" not in [mount["Target"] for mount in docker_addon.mounts]
+
+
+def test_addon_map_homeassistant_folder(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+):
+    """Test mounts for addon which maps homeassistant folder."""
+    docker_addon = get_docker_addon(
+        coresys, addonsdata_system, "homeassistant-addon-config.json"
+    )
+
+    # Home Assistant config folder mounted to /homeassistant, not /config
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_homeassistant.as_posix(),
+            target="/homeassistant",
+            read_only=True,
+        )
+        in docker_addon.mounts
+    )
+
+    # Addon's config folder mounted to /config
+    assert (
+        Mount(
+            type="bind",
+            source=docker_addon.addon.path_extern_config.as_posix(),
+            target="/config",
+            read_only=False,
+        )
+        in docker_addon.mounts
+    )
+
+    # Home Assistant folder not mounted to config when using homeassistant map option
+    assert (
+        len([mount for mount in docker_addon.mounts if mount["Target"] == "/config"])
+        == 1
+    )
 
 
 def test_journald_addon(

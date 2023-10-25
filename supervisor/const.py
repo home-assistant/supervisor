@@ -350,6 +350,8 @@ MAP_ADDONS = "addons"
 MAP_BACKUP = "backup"
 MAP_SHARE = "share"
 MAP_MEDIA = "media"
+MAP_HOMEASSISTANT = "homeassistant"
+MAP_ADDON_CONFIGS = "addon_configs"
 
 ARCH_ARMHF = "armhf"
 ARCH_ARMV7 = "armv7"
