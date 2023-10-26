@@ -107,7 +107,7 @@ async def remove_folder(
         proc = await asyncio.create_subprocess_exec(
             "bash",
             "-c",
-            f"rm -rf {del_folder}",
+            f"rm -rf --one-file-system {del_folder}",
             stdout=asyncio.subprocess.DEVNULL,
             env=clean_env(),
         )
