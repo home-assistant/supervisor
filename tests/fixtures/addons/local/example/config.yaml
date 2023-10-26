@@ -13,6 +13,7 @@ arch:
 init: false
 map:
   - share:rw
+  - addon_config
 options:
   message: "Hello world..."
 schema:

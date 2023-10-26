@@ -91,6 +91,9 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
+    MAP_ADDON_CONFIG,
+    MAP_CONFIG,
+    MAP_HOMEASSISTANT_CONFIG,
     ROLE_ALL,
     ROLE_DEFAULT,
     AddonBoot,
@@ -115,7 +118,7 @@ from .options import RE_SCHEMA_ELEMENT
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(
-    r"^(config|ssl|addons|backup|share|media|homeassistant|addon_configs)(?::(rw|ro))?$"
+    r"^(config|ssl|addons|backup|share|media|homeassistant_config|all_addon_configs|addon_config)(?::(rw|ro))?$"
 )
 RE_SERVICE = re.compile(r"^(?P<service>mqtt|mysql):(?P<rights>provide|want|need)$")
 
@@ -259,6 +262,29 @@ def _migrate_addon_config(protocol=False):
                     "Add-on config '%s' is deprecated, '%s' should be used instead. Please report this to the maintainer of %s",
                     entry,
                     new_entry,
+                    name,
+                )
+
+        # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
+        volumes = [RE_VOLUME.match(entry) for entry in config.get(ATTR_MAP, [])]
+        if any(volume and volume.group(1) for volume in volumes):
+            if any(
+                volume
+                and volume.group(1) in {MAP_ADDON_CONFIG, MAP_HOMEASSISTANT_CONFIG}
+                for volume in volumes
+            ):
+                _LOGGER.warning(
+                    "Add-on config using incompatible map options, '%s' and '%s' are ignored if '%s' is included. Please report this to the maintainer of %s",
+                    MAP_ADDON_CONFIG,
+                    MAP_HOMEASSISTANT_CONFIG,
+                    MAP_CONFIG,
+                    name,
+                )
+            else:
+                _LOGGER.debug(
+                    "Add-on config using deprecated map option '%s' instead of '%s'. Please report this to the maintainer of %s",
+                    MAP_CONFIG,
+                    MAP_HOMEASSISTANT_CONFIG,
                     name,
                 )
 

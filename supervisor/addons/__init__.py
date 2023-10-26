@@ -179,7 +179,7 @@ class AddonManager(CoreSysAttributes):
             )
             addon.path_data.mkdir()
 
-        if not addon.path_config.is_dir():
+        if addon.addon_config_used and not addon.path_config.is_dir():
             _LOGGER.info(
                 "Creating Home Assistant add-on config folder %s", addon.path_config
             )

@@ -417,7 +417,6 @@ async def test_backup(
     """Test backing up an addon."""
     container.status = status
     install_addon_ssh.path_data.mkdir()
-    install_addon_ssh.path_config.mkdir()
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
@@ -435,7 +434,6 @@ async def test_backup_with_pre_post_command(
     container.status = "running"
     container.exec_run.return_value = (0, None)
     install_addon_ssh.path_data.mkdir()
-    install_addon_ssh.path_config.mkdir()
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
@@ -500,7 +498,6 @@ async def test_backup_cold_mode(
     """Test backing up an addon in cold mode."""
     container.status = status
     install_addon_ssh.path_data.mkdir()
-    install_addon_ssh.path_config.mkdir()
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
@@ -525,7 +522,6 @@ async def test_backup_cold_mode_with_watchdog(
     container.status = "running"
     install_addon_ssh.watchdog = True
     install_addon_ssh.path_data.mkdir()
-    install_addon_ssh.path_config.mkdir()
     await install_addon_ssh.load()
 
     # Simulate stop firing the docker event for stopped container like it normally would
@@ -563,7 +559,6 @@ async def test_restore(
     """Test restoring an addon."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.path_data.mkdir()
-    install_addon_ssh.path_config.mkdir()
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(get_fixture_path(f"backup_local_ssh_{status}.tar.gz"), "r")
@@ -586,7 +581,6 @@ async def test_restore_while_running(
     container.status = "running"
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.path_data.mkdir()
-    install_addon_ssh.path_config.mkdir()
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
@@ -610,7 +604,6 @@ async def test_restore_while_running_with_watchdog(
     container.status = "running"
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.path_data.mkdir()
-    install_addon_ssh.path_config.mkdir()
     install_addon_ssh.watchdog = True
     await install_addon_ssh.load()
 

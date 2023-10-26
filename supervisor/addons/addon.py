@@ -47,8 +47,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
-    MAP_CONFIG,
-    MAP_HOMEASSISTANT,
+    MAP_ADDON_CONFIG,
     AddonBoot,
     AddonStartup,
     AddonState,
@@ -172,15 +171,6 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
-        if MAP_CONFIG in self.map_volumes:
-            _LOGGER.warning(
-                "Add-on '%s' is using deprecated map option '%s' instead of '%s', please report an issue to the add-on developer at: %s",
-                self.name,
-                MAP_CONFIG,
-                MAP_HOMEASSISTANT,
-                self.url,
-            )
-
         self._listeners.append(
             self.sys_bus.register_event(
                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
@@ -463,6 +453,11 @@ class Addon(AddonModel):
     def path_extern_data(self) -> PurePath:
         """Return add-on data path external for Docker."""
         return PurePath(self.sys_config.path_extern_addons_data, self.slug)
+
+    @property
+    def addon_config_used(self) -> bool:
+        """Add-on is using its public config folder."""
+        return MAP_ADDON_CONFIG in self.map_volumes
 
     @property
     def path_config(self) -> Path:
@@ -887,12 +882,13 @@ class Addon(AddonModel):
                     )
 
                     # Backup config
-                    atomic_contents_add(
-                        backup,
-                        self.path_config,
-                        excludes=self.backup_exclude,
-                        arcname="config",
-                    )
+                    if self.addon_config_used:
+                        atomic_contents_add(
+                            backup,
+                            self.path_config,
+                            excludes=self.backup_exclude,
+                            arcname="config",
+                        )
 
             is_running = await self.begin_backup()
             try:
@@ -994,7 +990,7 @@ class Addon(AddonModel):
                     temp_config = Path(temp, "config")
                     if temp_config.is_dir():
                         shutil.copytree(temp_config, self.path_config, symlinks=True)
-                    else:
+                    elif self.addon_config_used:
                         self.path_config.mkdir()
 
                 _LOGGER.info("Restoring data and config for addon %s", self.slug)
