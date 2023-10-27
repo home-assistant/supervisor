@@ -436,7 +436,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             )
             await remove_folder(
                 self.sys_config.path_homeassistant,
-                content_only=bool(excludes),
+                content_only=True,
                 excludes=excludes,
                 tmp_dir=self.sys_config.path_tmp,
             )
