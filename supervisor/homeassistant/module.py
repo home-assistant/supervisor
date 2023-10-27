@@ -427,7 +427,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                     temp_data,
                     self.sys_config.path_homeassistant,
                     symlinks=True,
-                    dirs_exist_ok=bool(excludes),
+                    dirs_exist_ok=True,
                 )
 
             _LOGGER.info("Restore Home Assistant Core config folder")
