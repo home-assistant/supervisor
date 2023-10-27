@@ -1,5 +1,6 @@
 """Test docker addon setup."""
 from ipaddress import IPv4Address
+from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from docker.errors import NotFound
@@ -40,10 +41,15 @@ def fixture_addonsdata_user() -> dict[str, Data]:
 
 
 def get_docker_addon(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], config_file: str
-):
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    config_file: str | dict[str, Any],
+) -> DockerAddon:
     """Make and return docker addon object."""
-    config = vd.SCHEMA_ADDON_CONFIG(load_json_fixture(config_file))
+    config = (
+        load_json_fixture(config_file) if isinstance(config_file, str) else config_file
+    )
+    config = vd.SCHEMA_ADDON_CONFIG(config)
     slug = config.get("slug")
     addonsdata_system.return_value = {slug: config}
 
@@ -133,6 +139,94 @@ def test_addon_map_folder_defaults(
 
     # Backup not added
     assert "/backup" not in [mount["Target"] for mount in docker_addon.mounts]
+
+
+def test_addon_map_homeassistant_folder(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+):
+    """Test mounts for addon which maps homeassistant folder."""
+    config = load_json_fixture("addon-config-map-addon_config.json")
+    config["map"].append("homeassistant_config")
+    docker_addon = get_docker_addon(coresys, addonsdata_system, config)
+
+    # Home Assistant config folder mounted to /homeassistant, not /config
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_homeassistant.as_posix(),
+            target="/homeassistant",
+            read_only=True,
+        )
+        in docker_addon.mounts
+    )
+
+
+def test_addon_map_addon_configs_folder(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+):
+    """Test mounts for addon which maps addon configs folder."""
+    config = load_json_fixture("addon-config-map-addon_config.json")
+    config["map"].append("all_addon_configs")
+    docker_addon = get_docker_addon(coresys, addonsdata_system, config)
+
+    # Addon configs folder included
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_addon_configs.as_posix(),
+            target="/addon_configs",
+            read_only=True,
+        )
+        in docker_addon.mounts
+    )
+
+
+def test_addon_map_addon_config_folder(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+):
+    """Test mounts for addon which maps its own config folder."""
+    docker_addon = get_docker_addon(
+        coresys, addonsdata_system, "addon-config-map-addon_config.json"
+    )
+
+    # Addon config folder included
+    assert (
+        Mount(
+            type="bind",
+            source=docker_addon.addon.path_extern_config.as_posix(),
+            target="/config",
+            read_only=True,
+        )
+        in docker_addon.mounts
+    )
+
+
+def test_addon_ignore_on_config_map(
+    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+):
+    """Test mounts for addon don't include addon config or homeassistant when config included."""
+    config = load_json_fixture("basic-addon-config.json")
+    config["map"].extend(["addon_config", "homeassistant_config"])
+    docker_addon = get_docker_addon(coresys, addonsdata_system, config)
+
+    # Config added and is marked rw
+    assert (
+        Mount(
+            type="bind",
+            source=coresys.config.path_extern_homeassistant.as_posix(),
+            target="/config",
+            read_only=False,
+        )
+        in docker_addon.mounts
+    )
+
+    # Mount for addon's specific config folder omitted since config in map field
+    assert (
+        len([mount for mount in docker_addon.mounts if mount["Target"] == "/config"])
+        == 1
+    )
+    # Home Assistant mount omitted since config in map field
+    assert "/homeassistant" not in [mount["Target"] for mount in docker_addon.mounts]
 
 
 def test_journald_addon(

@@ -221,6 +221,14 @@ def initialize_system(coresys: CoreSys) -> None:
         )
         config.path_emergency.mkdir()
 
+    # Addon Configs folder
+    if not config.path_addon_configs.is_dir():
+        _LOGGER.debug(
+            "Creating Supervisor add-on configs folder at '%s'",
+            config.path_addon_configs,
+        )
+        config.path_addon_configs.mkdir()
+
 
 def migrate_system_env(coresys: CoreSys) -> None:
     """Cleanup some stuff after update."""

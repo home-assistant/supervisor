@@ -179,6 +179,12 @@ class AddonManager(CoreSysAttributes):
             )
             addon.path_data.mkdir()
 
+        if addon.addon_config_used and not addon.path_config.is_dir():
+            _LOGGER.info(
+                "Creating Home Assistant add-on config folder %s", addon.path_config
+            )
+            addon.path_config.mkdir()
+
         # Setup/Fix AppArmor profile
         await addon.install_apparmor()
 

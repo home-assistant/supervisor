@@ -47,6 +47,7 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
+    MAP_ADDON_CONFIG,
     AddonBoot,
     AddonStartup,
     AddonState,
@@ -454,6 +455,21 @@ class Addon(AddonModel):
         return PurePath(self.sys_config.path_extern_addons_data, self.slug)
 
     @property
+    def addon_config_used(self) -> bool:
+        """Add-on is using its public config folder."""
+        return MAP_ADDON_CONFIG in self.map_volumes
+
+    @property
+    def path_config(self) -> Path:
+        """Return add-on config path inside Supervisor."""
+        return Path(self.sys_config.path_addon_configs, self.slug)
+
+    @property
+    def path_extern_config(self) -> PurePath:
+        """Return add-on config path external for Docker."""
+        return PurePath(self.sys_config.path_extern_addon_configs, self.slug)
+
+    @property
     def path_options(self) -> Path:
         """Return path to add-on options."""
         return Path(self.path_data, "options.json")
@@ -570,11 +586,13 @@ class Addon(AddonModel):
         for listener in self._listeners:
             self.sys_bus.remove_listener(listener)
 
-        if not self.path_data.is_dir():
-            return
+        if self.path_data.is_dir():
+            _LOGGER.info("Removing add-on data folder %s", self.path_data)
+            await remove_data(self.path_data)
 
-        _LOGGER.info("Removing add-on data folder %s", self.path_data)
-        await remove_data(self.path_data)
+        if self.path_config.is_dir():
+            _LOGGER.info("Removing add-on config folder %s", self.path_config)
+            await remove_data(self.path_config)
 
     def write_pulse(self) -> None:
         """Write asound config to file and return True on success."""
@@ -863,6 +881,15 @@ class Addon(AddonModel):
                         arcname="data",
                     )
 
+                    # Backup config
+                    if self.addon_config_used:
+                        atomic_contents_add(
+                            backup,
+                            self.path_config,
+                            excludes=self.backup_exclude,
+                            arcname="config",
+                        )
+
             is_running = await self.begin_backup()
             try:
                 _LOGGER.info("Building backup for add-on %s", self.slug)
@@ -951,18 +978,27 @@ class Addon(AddonModel):
                     with suppress(DockerError):
                         await self.instance.update(version, restore_image)
 
-                # Restore data
+                # Restore data and config
                 def _restore_data():
-                    """Restore data."""
+                    """Restore data and config."""
                     temp_data = Path(temp, "data")
                     if temp_data.is_dir():
                         shutil.copytree(temp_data, self.path_data, symlinks=True)
                     else:
                         self.path_data.mkdir()
 
-                _LOGGER.info("Restoring data for addon %s", self.slug)
+                    temp_config = Path(temp, "config")
+                    if temp_config.is_dir():
+                        shutil.copytree(temp_config, self.path_config, symlinks=True)
+                    elif self.addon_config_used:
+                        self.path_config.mkdir()
+
+                _LOGGER.info("Restoring data and config for addon %s", self.slug)
                 if self.path_data.is_dir():
                     await remove_data(self.path_data)
+                if self.path_config.is_dir():
+                    await remove_data(self.path_config)
+
                 try:
                     await self.sys_run_in_executor(_restore_data)
                 except shutil.Error as err:

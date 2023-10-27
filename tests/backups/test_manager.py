@@ -1375,26 +1375,64 @@ async def test_restore_only_reloads_ingress_on_change(
 
 async def test_restore_new_addon(
     coresys: CoreSys,
-    install_addon_ssh: Addon,
+    install_addon_example: Addon,
     container: MagicMock,
     tmp_supervisor_data,
     path_extern,
 ):
     """Test restore installing new addon."""
-    install_addon_ssh.path_data.mkdir()
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
-    await coresys.addons.uninstall("local_ssh")
-    assert "local_ssh" not in coresys.addons.local
+    assert not install_addon_example.path_data.exists()
+    assert not install_addon_example.path_config.exists()
+
+    backup: Backup = await coresys.backups.do_backup_partial(addons=["local_example"])
+    await coresys.addons.uninstall("local_example")
+    assert "local_example" not in coresys.addons.local
 
     with patch.object(AddonModel, "_validate_availability"), patch.object(
         DockerAddon, "attach"
     ):
-        assert await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
+        assert await coresys.backups.do_restore_partial(
+            backup, addons=["local_example"]
+        )
 
-    assert "local_ssh" in coresys.addons.local
+    assert "local_example" in coresys.addons.local
+    assert install_addon_example.path_data.exists()
+    assert install_addon_example.path_config.exists()
+
+
+async def test_restore_preserves_data_config(
+    coresys: CoreSys,
+    install_addon_example: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test restore preserves data and config."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    install_addon_example.path_data.mkdir()
+    (test_data := install_addon_example.path_data / "data.txt").touch()
+    install_addon_example.path_config.mkdir()
+    (test_config := install_addon_example.path_config / "config.yaml").touch()
+
+    backup: Backup = await coresys.backups.do_backup_partial(addons=["local_example"])
+    await coresys.addons.uninstall("local_example")
+    assert not install_addon_example.path_data.exists()
+    assert not install_addon_example.path_config.exists()
+
+    with patch.object(AddonModel, "_validate_availability"), patch.object(
+        DockerAddon, "attach"
+    ):
+        assert await coresys.backups.do_restore_partial(
+            backup, addons=["local_example"]
+        )
+
+    assert test_data.exists()
+    assert test_config.exists()
 
 
 async def test_backup_to_mount_bypasses_free_space_condition(
