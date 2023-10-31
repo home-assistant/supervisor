@@ -275,7 +275,7 @@ async def test_api_check_timeout(
     """Test attempts to contact the API timeout."""
     container.status = "stopped"
     coresys.homeassistant.version = AwesomeVersion("2023.9.0")
-    coresys.homeassistant.api.check_api_state.return_value = False
+    coresys.homeassistant.api.get_api_state.return_value = None
 
     async def mock_instance_start(*_):
         container.status = "running"
@@ -294,8 +294,7 @@ async def test_api_check_timeout(
         ), pytest.raises(HomeAssistantCrashError):
             await coresys.homeassistant.core.start()
 
-    assert coresys.homeassistant.api.check_api_state.call_count == 5
+    assert coresys.homeassistant.api.get_api_state.call_count == 3
     assert (
-        "No API response in 5 minutes, assuming core has had a fatal startup error"
-        in caplog.text
+        "No Home Assistant Core response, assuming a fatal startup error" in caplog.text
     )

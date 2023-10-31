@@ -444,7 +444,7 @@ class HomeAssistantCore(JobGroup):
         _LOGGER.info("Wait until Home Assistant is ready")
 
         deadline = datetime.now() + STARTUP_API_RESPONSE_TIMEOUT
-        check_running = False
+        last_state = None
         while not (timeout := datetime.now() >= deadline):
             await asyncio.sleep(SECONDS_BETWEEN_API_CHECKS)
 
@@ -453,21 +453,21 @@ class HomeAssistantCore(JobGroup):
                 _LOGGER.error("Home Assistant has crashed!")
                 break
 
-            # 2: Check if API response
-            if await self.sys_homeassistant.api.check_api_state(
-                check_running=check_running
-            ):
-                if not check_running:
+            # 2: Check API response
+            if state := await self.sys_homeassistant.api.get_api_state():
+                if last_state is None:
                     # API initially available, move deadline up and check API
                     # state to be running now
-                    _LOGGER.info("Detect a Home Assistant instance")
                     deadline = datetime.now() + STARTUP_API_CHECK_RUNNING_TIMEOUT
-                    check_running = True
-                    continue
 
-                _LOGGER.info("Detect a running Home Assistant instance")
-                self._error_state = False
-                return
+                if last_state != state:
+                    _LOGGER.info("Home Assistant Core state changed to %s", state)
+                    last_state = state
+
+                if state == "RUNNING":
+                    _LOGGER.info("Detect a running Home Assistant instance")
+                    self._error_state = False
+                    return
 
         self._error_state = True
         if timeout:
