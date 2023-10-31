@@ -131,7 +131,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         return await self._get_json("api/core/state")
 
     async def get_api_state(self) -> str | None:
-        """Return True if Home Assistant Core is up and running."""
+        """Return state of Home Assistant Core or None."""
         # Skip check on landingpage
         if (
             self.sys_homeassistant.version is None
