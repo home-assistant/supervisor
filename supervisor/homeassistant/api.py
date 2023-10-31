@@ -130,7 +130,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         """Return Home Assistant core state."""
         return await self._get_json("api/core/state")
 
-    async def check_api_state(self) -> bool:
+    async def check_api_state(self, check_running: bool = True) -> bool:
         """Return True if Home Assistant up and running."""
         # Skip check on landingpage
         if (
@@ -157,7 +157,9 @@ class HomeAssistantAPI(CoreSysAttributes):
             else:
                 data = await self.get_config()
             # Older versions of home assistant does not expose the state
-            if data and data.get("state", "RUNNING") == "RUNNING":
+            if data:
+                if check_running:
+                    return data.get("state", "RUNNING") == "RUNNING"
                 return True
 
         return False

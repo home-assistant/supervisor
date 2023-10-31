@@ -450,7 +450,7 @@ class HomeAssistantCore(JobGroup):
                 break
 
             # 2: Check if API response
-            if await self.sys_homeassistant.api.check_api_state():
+            if await self.sys_homeassistant.api.check_api_state(check_running=False):
                 _LOGGER.info("Detect a running Home Assistant instance")
                 self._error_state = False
                 return
