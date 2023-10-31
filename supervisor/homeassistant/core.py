@@ -44,7 +44,10 @@ from .const import (
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SECONDS_BETWEEN_API_CHECKS: Final[int] = 5
-STARTUP_API_CHECK_TIMEOUT: Final[timedelta] = timedelta(minutes=5)
+# Core Stage 1 and some wiggle room
+STARTUP_API_RESPONSE_TIMEOUT: Final[timedelta] = timedelta(minutes=3)
+# All stages plus event start timeout and some wiggle rooom
+STARTUP_API_CHECK_RUNNING_TIMEOUT: Final[timedelta] = timedelta(minutes=15)
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
 
@@ -440,8 +443,9 @@ class HomeAssistantCore(JobGroup):
             return
         _LOGGER.info("Wait until Home Assistant is ready")
 
-        start = datetime.now()
-        while not (timeout := datetime.now() >= start + STARTUP_API_CHECK_TIMEOUT):
+        deadline = datetime.now() + STARTUP_API_RESPONSE_TIMEOUT
+        check_running = False
+        while not (timeout := datetime.now() >= deadline):
             await asyncio.sleep(SECONDS_BETWEEN_API_CHECKS)
 
             # 1: Check if Container is is_running
@@ -450,7 +454,17 @@ class HomeAssistantCore(JobGroup):
                 break
 
             # 2: Check if API response
-            if await self.sys_homeassistant.api.check_api_state(check_running=False):
+            if await self.sys_homeassistant.api.check_api_state(
+                check_running=check_running
+            ):
+                if not check_running:
+                    # API initially available, move deadline up and check API
+                    # state to be running now
+                    _LOGGER.info("Detect a Home Assistant instance")
+                    deadline = datetime.now() + STARTUP_API_CHECK_RUNNING_TIMEOUT
+                    check_running = True
+                    continue
+
                 _LOGGER.info("Detect a running Home Assistant instance")
                 self._error_state = False
                 return
@@ -458,7 +472,7 @@ class HomeAssistantCore(JobGroup):
         self._error_state = True
         if timeout:
             raise HomeAssistantStartupTimeout(
-                "No API response in 5 minutes, assuming core has had a fatal startup error",
+                "No Home Assistant Core response, assuming a fatal startup error",
                 _LOGGER.error,
             )
         raise HomeAssistantCrashError()
