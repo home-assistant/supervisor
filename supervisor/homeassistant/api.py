@@ -130,14 +130,14 @@ class HomeAssistantAPI(CoreSysAttributes):
         """Return Home Assistant core state."""
         return await self._get_json("api/core/state")
 
-    async def check_api_state(self) -> bool:
-        """Return True if Home Assistant up and running."""
+    async def get_api_state(self) -> str | None:
+        """Return state of Home Assistant Core or None."""
         # Skip check on landingpage
         if (
             self.sys_homeassistant.version is None
             or self.sys_homeassistant.version == LANDINGPAGE
         ):
-            return False
+            return None
 
         # Check if port is up
         if not await self.sys_run_in_executor(
@@ -145,7 +145,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             self.sys_homeassistant.ip_address,
             self.sys_homeassistant.api_port,
         ):
-            return False
+            return None
 
         # Check if API is up
         with suppress(HomeAssistantAPIError):
@@ -157,7 +157,13 @@ class HomeAssistantAPI(CoreSysAttributes):
             else:
                 data = await self.get_config()
             # Older versions of home assistant does not expose the state
-            if data and data.get("state", "RUNNING") == "RUNNING":
-                return True
+            if data:
+                return data.get("state", "RUNNING")
 
+        return None
+
+    async def check_api_state(self) -> bool:
+        """Return Home Assistant Core state if up."""
+        if state := self.get_api_state():
+            return state == "RUNNING"
         return False
