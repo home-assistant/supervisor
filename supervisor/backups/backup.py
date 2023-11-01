@@ -349,14 +349,14 @@ class Backup(CoreSysAttributes):
         finally:
             self._tmp.cleanup()
 
-    async def store_addons(self, addon_list: list[str]) -> list[Awaitable[None]]:
+    async def store_addons(self, addon_list: list[str]) -> list[asyncio.Task]:
         """Add a list of add-ons into backup.
 
-        For each addon that needs to be started after backup, returns a task which
+        For each addon that needs to be started after backup, returns a Task which
         completes when that addon has state 'started' (see addon.start).
         """
 
-        async def _addon_save(addon: Addon) -> Awaitable[None] | None:
+        async def _addon_save(addon: Addon) -> asyncio.Task | None:
             """Task to store an add-on into backup."""
             tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
@@ -388,7 +388,7 @@ class Backup(CoreSysAttributes):
 
         # Save Add-ons sequential
         # avoid issue on slow IO
-        start_tasks: list[Awaitable[None]] = []
+        start_tasks: list[asyncio.Task] = []
         for addon in addon_list:
             try:
                 if start_task := await _addon_save(addon):
@@ -398,10 +398,10 @@ class Backup(CoreSysAttributes):
 
         return start_tasks
 
-    async def restore_addons(self, addon_list: list[str]) -> list[Awaitable[None]]:
+    async def restore_addons(self, addon_list: list[str]) -> list[asyncio.Task]:
         """Restore a list add-on from backup."""
 
-        async def _addon_restore(addon_slug: str) -> Awaitable[None] | None:
+        async def _addon_restore(addon_slug: str) -> asyncio.Task | None:
             """Task to restore an add-on into backup."""
             tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
@@ -425,7 +425,7 @@ class Backup(CoreSysAttributes):
 
         # Save Add-ons sequential
         # avoid issue on slow IO
-        start_tasks: list[Awaitable[None]] = []
+        start_tasks: list[asyncio.Task] = []
         for slug in addon_list:
             try:
                 if start_task := await _addon_restore(slug):

@@ -388,7 +388,7 @@ class APIAddons(CoreSysAttributes):
     def uninstall(self, request: web.Request) -> Awaitable[None]:
         """Uninstall add-on."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.uninstall())
+        return asyncio.shield(self.sys_addons.uninstall(addon.slug))
 
     @api_process
     async def start(self, request: web.Request) -> None:
@@ -414,7 +414,7 @@ class APIAddons(CoreSysAttributes):
     async def rebuild(self, request: web.Request) -> None:
         """Rebuild local build add-on."""
         addon = self._extract_addon(request)
-        if start_task := await asyncio.shield(addon.rebuild()):
+        if start_task := await asyncio.shield(self.sys_addons.rebuild(addon.slug)):
             await start_task
 
     @api_process_raw(CONTENT_TYPE_BINARY)

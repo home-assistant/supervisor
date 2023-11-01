@@ -406,7 +406,7 @@ class BackupManager(FileConfiguration, JobGroup):
                         # Remove Add-on because it's not a part of the new env
                         # Do it sequential avoid issue on slow IO
                         try:
-                            await addon.uninstall()
+                            await self.sys_addons.uninstall(addon.slug)
                         except AddonsError:
                             _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
 
@@ -614,7 +614,7 @@ class BackupManager(FileConfiguration, JobGroup):
             await self.sys_homeassistant.end_backup()
 
             self._change_stage(BackupJobStage.ADDONS)
-            addon_start_tasks: list[Awaitable[None]] = [
+            addon_start_tasks: list[asyncio.Task] = [
                 task
                 for task in await asyncio.gather(
                     *[addon.end_backup() for addon in running_addons]

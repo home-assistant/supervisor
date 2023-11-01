@@ -199,7 +199,7 @@ class APIStore(CoreSysAttributes):
     def addons_addon_install(self, request: web.Request) -> Awaitable[None]:
         """Install add-on."""
         addon = self._extract_addon(request)
-        return asyncio.shield(addon.install())
+        return asyncio.shield(self.sys_addons.install(addon.slug))
 
     @api_process
     async def addons_addon_update(self, request: web.Request) -> None:
@@ -211,7 +211,7 @@ class APIStore(CoreSysAttributes):
         body = await api_validate(SCHEMA_UPDATE, request)
 
         if start_task := await asyncio.shield(
-            addon.update(backup=body.get(ATTR_BACKUP))
+            self.sys_addons.update(addon.slug, backup=body.get(ATTR_BACKUP))
         ):
             await start_task
 

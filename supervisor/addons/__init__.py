@@ -17,8 +17,8 @@ from ..exceptions import (
     DockerAPIError,
     DockerError,
     DockerNotFound,
+    HassioError,
     HomeAssistantAPIError,
-    HostAppArmorError,
 )
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
@@ -119,8 +119,8 @@ class AddonManager(CoreSysAttributes):
                 ):
                     addon.boot = AddonBoot.MANUAL
                     addon.save_persist()
-            except Exception as err:  # pylint: disable=broad-except
-                capture_exception(err)
+            except HassioError:
+                pass  # These are already handled
             else:
                 continue
 
@@ -169,36 +169,7 @@ class AddonManager(CoreSysAttributes):
 
         store.validate_availability()
 
-        self.data.install(store)
-        addon = Addon(self.coresys, slug)
-        await addon.load()
-
-        if not addon.path_data.is_dir():
-            _LOGGER.info(
-                "Creating Home Assistant add-on data folder %s", addon.path_data
-            )
-            addon.path_data.mkdir()
-
-        if addon.addon_config_used and not addon.path_config.is_dir():
-            _LOGGER.info(
-                "Creating Home Assistant add-on config folder %s", addon.path_config
-            )
-            addon.path_config.mkdir()
-
-        # Setup/Fix AppArmor profile
-        await addon.install_apparmor()
-
-        try:
-            await addon.instance.install(store.version, store.image, arch=addon.arch)
-        except DockerError as err:
-            self.data.uninstall(addon)
-            raise AddonsError() from err
-
-        self.local[slug] = addon
-
-        # Reload ingress tokens
-        if addon.with_ingress:
-            await self.sys_ingress.reload()
+        await Addon(self.coresys, slug).install()
 
         _LOGGER.info("Add-on '%s' successfully installed", slug)
 
@@ -207,51 +178,8 @@ class AddonManager(CoreSysAttributes):
         if slug not in self.local:
             _LOGGER.warning("Add-on %s is not installed", slug)
             return
-        addon = self.local[slug]
 
-        try:
-            await addon.instance.remove()
-        except DockerError as err:
-            raise AddonsError() from err
-
-        addon.state = AddonState.UNKNOWN
-
-        await addon.unload()
-
-        # Cleanup audio settings
-        if addon.path_pulse.exists():
-            with suppress(OSError):
-                addon.path_pulse.unlink()
-
-        # Cleanup AppArmor profile
-        with suppress(HostAppArmorError):
-            await addon.uninstall_apparmor()
-
-        # Cleanup Ingress panel from sidebar
-        if addon.ingress_panel:
-            addon.ingress_panel = False
-            with suppress(HomeAssistantAPIError):
-                await self.sys_ingress.update_hass_panel(addon)
-
-        # Cleanup Ingress dynamic port assignment
-        if addon.with_ingress:
-            self.sys_create_task(self.sys_ingress.reload())
-            self.sys_ingress.del_dynamic_port(slug)
-
-        # Cleanup discovery data
-        for message in self.sys_discovery.list_messages:
-            if message.addon != addon.slug:
-                continue
-            self.sys_discovery.remove(message)
-
-        # Cleanup services data
-        for service in self.sys_services.list_services:
-            if addon.slug not in service.active:
-                continue
-            service.del_service_data(addon)
-
-        self.data.uninstall(addon)
-        self.local.pop(slug)
+        await self.local[slug].uninstall()
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
@@ -262,10 +190,10 @@ class AddonManager(CoreSysAttributes):
     )
     async def update(
         self, slug: str, backup: bool | None = False
-    ) -> Awaitable[None] | None:
+    ) -> asyncio.Task | None:
         """Update add-on.
 
-        Returns a coroutine that completes when addon has state 'started' (see addon.start)
+        Returns a Task that completes when addon has state 'started' (see addon.start)
         if addon is started after update. Else nothing is returned.
         """
         self.sys_jobs.current.reference = slug
@@ -293,41 +221,7 @@ class AddonManager(CoreSysAttributes):
                 addons=[addon.slug],
             )
 
-        # Update instance
-        old_image = addon.image
-        # Cache data to prevent races with other updates to global
-        store = store.clone()
-
-        try:
-            await addon.instance.update(store.version, store.image)
-        except DockerError as err:
-            raise AddonsError() from err
-
-        # Stop the addon if running
-        if (last_state := addon.state) in {AddonState.STARTED, AddonState.STARTUP}:
-            await addon.stop()
-
-        try:
-            _LOGGER.info("Add-on '%s' successfully updated", slug)
-            self.data.update(store)
-
-            # Cleanup
-            with suppress(DockerError):
-                await addon.instance.cleanup(
-                    old_image=old_image, image=store.image, version=store.version
-                )
-
-            # Setup/Fix AppArmor profile
-            await addon.install_apparmor()
-
-        finally:
-            # restore state. Return awaitable for caller if no exception
-            out = (
-                await addon.start()
-                if last_state in {AddonState.STARTED, AddonState.STARTUP}
-                else None
-            )
-        return out
+        return await addon.update()
 
     @Job(
         name="addon_manager_rebuild",
@@ -338,10 +232,10 @@ class AddonManager(CoreSysAttributes):
         ],
         on_condition=AddonsJobError,
     )
-    async def rebuild(self, slug: str) -> Awaitable[None] | None:
+    async def rebuild(self, slug: str) -> asyncio.Task | None:
         """Perform a rebuild of local build add-on.
 
-        Returns a coroutine that completes when addon has state 'started' (see addon.start)
+        Returns a Task that completes when addon has state 'started' (see addon.start)
         if addon is started after rebuild. Else nothing is returned.
         """
         self.sys_jobs.current.reference = slug
@@ -366,23 +260,7 @@ class AddonManager(CoreSysAttributes):
                 "Can't rebuild a image based add-on", _LOGGER.error
             )
 
-        # remove docker container but not addon config
-        last_state: AddonState = addon.state
-        try:
-            await addon.instance.remove()
-            await addon.instance.install(addon.version)
-        except DockerError as err:
-            raise AddonsError() from err
-
-        self.data.update(store)
-        _LOGGER.info("Add-on '%s' successfully rebuilt", slug)
-
-        # restore state
-        return (
-            await addon.start()
-            if last_state in [AddonState.STARTED, AddonState.STARTUP]
-            else None
-        )
+        return await addon.rebuild()
 
     @Job(
         name="addon_manager_restore",
@@ -395,10 +273,10 @@ class AddonManager(CoreSysAttributes):
     )
     async def restore(
         self, slug: str, tar_file: tarfile.TarFile
-    ) -> Awaitable[None] | None:
+    ) -> asyncio.Task | None:
         """Restore state of an add-on.
 
-        Returns a coroutine that completes when addon has state 'started' (see addon.start)
+        Returns a Task that completes when addon has state 'started' (see addon.start)
         if addon is started after restore. Else nothing is returned.
         """
         self.sys_jobs.current.reference = slug

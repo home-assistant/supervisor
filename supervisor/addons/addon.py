@@ -65,12 +65,14 @@ from ..exceptions import (
     AddonsNotSupportedError,
     ConfigurationFileError,
     DockerError,
+    HomeAssistantAPIError,
     HostAppArmorError,
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
+from ..store.addon import AddonStore
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
@@ -199,6 +201,11 @@ class Addon(AddonModel):
     def data_store(self) -> Data:
         """Return add-on data from store."""
         return self.sys_store.data.addons.get(self.slug, self.data)
+
+    @property
+    def addon_store(self) -> AddonStore | None:
+        """Return store representation of addon."""
+        return self.sys_addons.store.get(self.slug)
 
     @property
     def persist(self) -> Data:
@@ -575,6 +582,11 @@ class Addon(AddonModel):
 
         raise AddonConfigurationError()
 
+    @Job(
+        name="addon_unload",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
     async def unload(self) -> None:
         """Unload add-on and remove data."""
         if self._startup_task:
@@ -593,6 +605,177 @@ class Addon(AddonModel):
         if self.path_config.is_dir():
             _LOGGER.info("Removing add-on config folder %s", self.path_config)
             await remove_data(self.path_config)
+
+    @Job(
+        name="addon_install",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def install(self) -> None:
+        """Install and setup this addon."""
+        self.sys_addons.data.install(self.addon_store)
+        await self.load()
+
+        if not self.path_data.is_dir():
+            _LOGGER.info(
+                "Creating Home Assistant add-on data folder %s", self.path_data
+            )
+            self.path_data.mkdir()
+
+        if self.addon_config_used and not self.path_config.is_dir():
+            _LOGGER.info(
+                "Creating Home Assistant add-on config folder %s", self.path_config
+            )
+            self.path_config.mkdir()
+
+        # Setup/Fix AppArmor profile
+        await self.install_apparmor()
+
+        # Install image
+        try:
+            await self.instance.install(
+                self.latest_version, self.addon_store.image, arch=self.arch
+            )
+        except DockerError as err:
+            self.sys_addons.data.uninstall(self)
+            raise AddonsError() from err
+
+        # Add to addon manager
+        self.sys_addons.local[self.slug] = self
+
+        # Reload ingress tokens
+        if self.with_ingress:
+            await self.sys_ingress.reload()
+
+    @Job(
+        name="addon_uninstall",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def uninstall(self) -> None:
+        """Uninstall and cleanup this addon."""
+        try:
+            await self.instance.remove()
+        except DockerError as err:
+            raise AddonsError() from err
+
+        self.state = AddonState.UNKNOWN
+
+        await self.unload()
+
+        # Cleanup audio settings
+        if self.path_pulse.exists():
+            with suppress(OSError):
+                self.path_pulse.unlink()
+
+        # Cleanup AppArmor profile
+        with suppress(HostAppArmorError):
+            await self.uninstall_apparmor()
+
+        # Cleanup Ingress panel from sidebar
+        if self.ingress_panel:
+            self.ingress_panel = False
+            with suppress(HomeAssistantAPIError):
+                await self.sys_ingress.update_hass_panel(self)
+
+        # Cleanup Ingress dynamic port assignment
+        if self.with_ingress:
+            self.sys_create_task(self.sys_ingress.reload())
+            self.sys_ingress.del_dynamic_port(self.slug)
+
+        # Cleanup discovery data
+        for message in self.sys_discovery.list_messages:
+            if message.addon != self.slug:
+                continue
+            self.sys_discovery.remove(message)
+
+        # Cleanup services data
+        for service in self.sys_services.list_services:
+            if self.slug not in service.active:
+                continue
+            service.del_service_data(self)
+
+        # Remove from addon manager
+        self.sys_addons.data.uninstall(self)
+        self.sys_addons.local.pop(self.slug)
+
+    @Job(
+        name="addon_update",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def update(self) -> asyncio.Task | None:
+        """Update this addon to latest version.
+
+        Returns a Task that completes when addon has state 'started' (see start)
+        if it was running. Else nothing is returned.
+        """
+        old_image = self.image
+        # Cache data to prevent races with other updates to global
+        store = self.addon_store.clone()
+
+        try:
+            await self.instance.update(store.version, store.image)
+        except DockerError as err:
+            raise AddonsError() from err
+
+        # Stop the addon if running
+        if (last_state := self.state) in {AddonState.STARTED, AddonState.STARTUP}:
+            await self.stop()
+
+        try:
+            _LOGGER.info("Add-on '%s' successfully updated", self.slug)
+            self.sys_addons.data.update(store)
+
+            # Cleanup
+            with suppress(DockerError):
+                await self.instance.cleanup(
+                    old_image=old_image, image=store.image, version=store.version
+                )
+
+            # Setup/Fix AppArmor profile
+            await self.install_apparmor()
+
+        finally:
+            # restore state. Return Task for caller if no exception
+            out = (
+                await self.start()
+                if last_state in {AddonState.STARTED, AddonState.STARTUP}
+                else None
+            )
+        return out
+
+    @Job(
+        name="addon_rebuild",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def rebuild(self) -> asyncio.Task | None:
+        """Rebuild this addons container and image.
+
+        Returns a Task that completes when addon has state 'started' (see start)
+        if it was running. Else nothing is returned.
+        """
+        last_state: AddonState = self.state
+        try:
+            # remove docker container but not addon config
+            try:
+                await self.instance.remove()
+                await self.instance.install(self.version)
+            except DockerError as err:
+                raise AddonsError() from err
+
+            self.sys_addons.data.update(self.addon_store)
+            _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
+
+        finally:
+            # restore state
+            out = (
+                await self.start()
+                if last_state in [AddonState.STARTED, AddonState.STARTUP]
+                else None
+            )
+        return out
 
     def write_pulse(self) -> None:
         """Write asound config to file and return True on success."""
@@ -689,16 +872,21 @@ class Addon(AddonModel):
         finally:
             self._startup_task = None
 
-    async def start(self) -> Awaitable[None]:
+    @Job(
+        name="addon_start",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def start(self) -> asyncio.Task:
         """Set options and start add-on.
 
-        Returns a coroutine that completes when addon has state 'started'.
+        Returns a Task that completes when addon has state 'started'.
         For addons with a healthcheck, that is when they become healthy or unhealthy.
         Addons without a healthcheck have state 'started' immediately.
         """
         if await self.instance.is_running():
             _LOGGER.warning("%s is already running!", self.slug)
-            return self._wait_for_startup()
+            return self.sys_create_task(self._wait_for_startup())
 
         # Access Token
         self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
@@ -719,8 +907,13 @@ class Addon(AddonModel):
             self.state = AddonState.ERROR
             raise AddonsError() from err
 
-        return self._wait_for_startup()
+        return self.sys_create_task(self._wait_for_startup())
 
+    @Job(
+        name="addon_stop",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
     async def stop(self) -> None:
         """Stop add-on."""
         self._manual_stop = True
@@ -730,10 +923,15 @@ class Addon(AddonModel):
             self.state = AddonState.ERROR
             raise AddonsError() from err
 
-    async def restart(self) -> Awaitable[None]:
+    @Job(
+        name="addon_restart",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def restart(self) -> asyncio.Task:
         """Restart add-on.
 
-        Returns a coroutine that completes when addon has state 'started' (see start).
+        Returns a Task that completes when addon has state 'started' (see start).
         """
         with suppress(AddonsError):
             await self.stop()
@@ -760,6 +958,11 @@ class Addon(AddonModel):
         except DockerError as err:
             raise AddonsError() from err
 
+    @Job(
+        name="addon_write_stdin",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
     async def write_stdin(self, data) -> None:
         """Write data to add-on stdin."""
         if not self.with_stdin:
@@ -789,7 +992,11 @@ class Addon(AddonModel):
                 _LOGGER.error,
             ) from err
 
-    @Job(name="addon_begin_backup")
+    @Job(
+        name="addon_begin_backup",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
     async def begin_backup(self) -> bool:
         """Execute pre commands or stop addon if necessary.
 
@@ -807,11 +1014,15 @@ class Addon(AddonModel):
 
         return True
 
-    @Job(name="addon_end_backup")
-    async def end_backup(self) -> Awaitable[None] | None:
+    @Job(
+        name="addon_end_backup",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def end_backup(self) -> asyncio.Task | None:
         """Execute post commands or restart addon if necessary.
 
-        Returns a coroutine that completes when addon has state 'started' (see start)
+        Returns a Task that completes when addon has state 'started' (see start)
         for cold backup. Else nothing is returned.
         """
         if self.backup_mode is AddonBackupMode.COLD:
@@ -822,11 +1033,15 @@ class Addon(AddonModel):
             await self._backup_command(self.backup_post)
         return None
 
-    @Job(name="addon_backup")
-    async def backup(self, tar_file: tarfile.TarFile) -> Awaitable[None] | None:
+    @Job(
+        name="addon_backup",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def backup(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
         """Backup state of an add-on.
 
-        Returns a coroutine that completes when addon has state 'started' (see start)
+        Returns a Task that completes when addon has state 'started' (see start)
         for cold backup. Else nothing is returned.
         """
         wait_for_start: Awaitable[None] | None = None
@@ -905,10 +1120,15 @@ class Addon(AddonModel):
         _LOGGER.info("Finish backup for addon %s", self.slug)
         return wait_for_start
 
-    async def restore(self, tar_file: tarfile.TarFile) -> Awaitable[None] | None:
+    @Job(
+        name="addon_restore",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=AddonsJobError,
+    )
+    async def restore(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
         """Restore state of an add-on.
 
-        Returns a coroutine that completes when addon has state 'started' (see start)
+        Returns a Task that completes when addon has state 'started' (see start)
         if addon is started after restore. Else nothing is returned.
         """
         wait_for_start: Awaitable[None] | None = None

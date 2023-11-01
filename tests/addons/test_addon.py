@@ -267,7 +267,7 @@ async def test_install_update_fails_if_out_of_date(
         with pytest.raises(AddonsJobError):
             await coresys.addons.install(TEST_ADDON_SLUG)
         with pytest.raises(AddonsJobError):
-            await install_addon_ssh.update()
+            await coresys.addons.update(TEST_ADDON_SLUG)
 
     with patch.object(
         type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
@@ -277,7 +277,7 @@ async def test_install_update_fails_if_out_of_date(
         with pytest.raises(AddonsJobError):
             await coresys.addons.install(TEST_ADDON_SLUG)
         with pytest.raises(AddonsJobError):
-            await install_addon_ssh.update()
+            await coresys.addons.update(TEST_ADDON_SLUG)
 
 
 async def test_listeners_removed_on_uninstall(
@@ -342,7 +342,7 @@ async def test_start_wait_healthcheck(
     await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
-    start_task = asyncio.create_task(await install_addon_ssh.start())
+    start_task = await install_addon_ssh.start()
     assert start_task
 
     _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
