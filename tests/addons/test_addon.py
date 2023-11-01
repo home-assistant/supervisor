@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import timedelta
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from docker.errors import DockerException, NotFound
@@ -646,3 +647,24 @@ async def test_start_when_running(
     await start_task
 
     assert "local_ssh is already running" in caplog.text
+
+
+async def test_install(
+    coresys: CoreSys, container: MagicMock, tmp_supervisor_data: Path, repository
+):
+    """Test install of an addon."""
+    assert not (
+        data_dir := tmp_supervisor_data / "addons" / "data" / "local_example"
+    ).exists()
+    assert not (
+        config_dir := tmp_supervisor_data / "addon_configs" / "local_example"
+    ).exists()
+
+    with patch.object(
+        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
+    ), patch.object(DockerAddon, "install") as install:
+        await coresys.addons.install("local_example")
+        install.assert_called_once()
+
+    assert data_dir.is_dir()
+    assert config_dir.is_dir()
