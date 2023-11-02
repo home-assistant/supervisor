@@ -7,34 +7,32 @@
   "appPort": ["9123:8123", "7357:4357"],
   "postCreateCommand": "bash devcontainer_bootstrap",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
-  "extensions": [
-    "ms-python.python",
-    "ms-python.vscode-pylance",
-    "visualstudioexptteam.vscodeintellicode",
-    "esbenp.prettier-vscode"
-  ],
-  "mounts": ["type=volume,target=/var/lib/docker"],
-  "settings": {
-    "terminal.integrated.profiles.linux": {
-      "zsh": {
-        "path": "/usr/bin/zsh"
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.pylint",
+        "ms-python.vscode-pylance",
+        "visualstudioexptteam.vscodeintellicode",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/usr/bin/zsh"
+          }
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "editor.formatOnPaste": false,
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "files.trimTrailingWhitespace": true,
+        "python.pythonPath": "/usr/local/bin/python3",
+        "python.formatting.provider": "black",
+        "python.formatting.blackArgs": ["--target-version", "py311"],
+        "python.formatting.blackPath": "/usr/local/bin/black"
       }
-    },
-    "terminal.integrated.defaultProfile.linux": "zsh",
-    "editor.formatOnPaste": false,
-    "editor.formatOnSave": true,
-    "editor.formatOnType": true,
-    "files.trimTrailingWhitespace": true,
-    "python.pythonPath": "/usr/local/bin/python3",
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true,
-    "python.formatting.provider": "black",
-    "python.formatting.blackArgs": ["--target-version", "py310"],
-    "python.formatting.blackPath": "/usr/local/bin/black",
-    "python.linting.banditPath": "/usr/local/bin/bandit",
-    "python.linting.flake8Path": "/usr/local/bin/flake8",
-    "python.linting.mypyPath": "/usr/local/bin/mypy",
-    "python.linting.pylintPath": "/usr/local/bin/pylint",
-    "python.linting.pydocstylePath": "/usr/local/bin/pydocstyle"
-  }
+    }
+  },
+  "mounts": ["type=volume,target=/var/lib/docker"]
 }
