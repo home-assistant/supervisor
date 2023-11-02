@@ -1,5 +1,4 @@
 """OS support on supervisor."""
-import asyncio
 from collections.abc import Awaitable
 import logging
 from pathlib import Path
@@ -114,7 +113,7 @@ class OSManager(CoreSysAttributes):
 
             _LOGGER.info("Completed download of OTA update file %s", raucb)
 
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             self.sys_supervisor.connectivity = False
             raise HassOSUpdateError(
                 f"Can't fetch OTA update from {url}: {err!s}", _LOGGER.error

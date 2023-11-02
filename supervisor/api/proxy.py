@@ -77,7 +77,7 @@ class APIProxy(CoreSysAttributes):
             _LOGGER.error("Error on API for request %s", path)
         except aiohttp.ClientError as err:
             _LOGGER.error("Client error on API %s request %s", path, err)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.error("Client timeout error on API request %s", path)
 
         raise HTTPBadGateway()

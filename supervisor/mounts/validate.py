@@ -1,9 +1,8 @@
 """Validation for mount manager."""
 
 import re
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
-from typing_extensions import NotRequired
 import voluptuous as vol
 
 from ..const import (

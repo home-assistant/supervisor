@@ -1,5 +1,4 @@
 """Small wrapper for haveibeenpwned.com API."""
-import asyncio
 import io
 import logging
 
@@ -40,7 +39,7 @@ async def check_pwned_password(websession: aiohttp.ClientSession, sha1_pw: str) 
             _CACHE.add(sha1_short)
             raise PwnedSecret()
 
-    except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+    except (aiohttp.ClientError, TimeoutError) as err:
         raise PwnedConnectivityError(
             f"Can't fetch HIBP data: {str(err) or 'Timeout'}", _LOGGER.warning
         ) from err

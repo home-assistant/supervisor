@@ -555,7 +555,7 @@ class Addon(AddonModel):
             ) as req:
                 if req.status < 300:
                     return True
-        except (asyncio.TimeoutError, aiohttp.ClientError):
+        except (TimeoutError, aiohttp.ClientError):
             pass
 
         return False
@@ -861,7 +861,7 @@ class Addon(AddonModel):
         try:
             self._startup_task = self.sys_create_task(self._startup_event.wait())
             await asyncio.wait_for(self._startup_task, STARTUP_TIMEOUT)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.warning(
                 "Timeout while waiting for addon %s to start, took more than %s seconds",
                 self.name,
