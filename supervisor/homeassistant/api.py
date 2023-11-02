@@ -164,6 +164,6 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     async def check_api_state(self) -> bool:
         """Return Home Assistant Core state if up."""
-        if state := self.get_api_state():
+        if state := await self.get_api_state():
             return state == "RUNNING"
         return False
