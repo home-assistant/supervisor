@@ -65,7 +65,7 @@ async def test_image_added_removed_on_update(
     with patch.object(DockerInterface, "install") as install, patch.object(
         DockerAddon, "_build"
     ) as build:
-        await install_addon_ssh.update()
+        await coresys.addons.update(TEST_ADDON_SLUG)
         build.assert_not_called()
         install.assert_called_once_with(
             AwesomeVersion("10.0.0"), "test/amd64-my-ssh-addon", False, None
@@ -85,7 +85,7 @@ async def test_image_added_removed_on_update(
     with patch.object(DockerInterface, "install") as install, patch.object(
         DockerAddon, "_build"
     ) as build:
-        await install_addon_ssh.update()
+        await coresys.addons.update(TEST_ADDON_SLUG)
         build.assert_called_once_with(AwesomeVersion("11.0.0"))
         install.assert_not_called()
 
@@ -299,7 +299,7 @@ async def test_start_wait_cancel_on_uninstall(
     await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
-    start_task = asyncio.create_task(await install_addon_ssh.start())
+    start_task = await install_addon_ssh.start()
     assert start_task
 
     coresys.bus.fire_event(

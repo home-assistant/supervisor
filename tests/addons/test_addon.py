@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import timedelta
+from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from docker.errors import DockerException, NotFound
@@ -267,7 +268,7 @@ async def test_install_update_fails_if_out_of_date(
         with pytest.raises(AddonsJobError):
             await coresys.addons.install(TEST_ADDON_SLUG)
         with pytest.raises(AddonsJobError):
-            await install_addon_ssh.update()
+            await coresys.addons.update(TEST_ADDON_SLUG)
 
     with patch.object(
         type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
@@ -277,7 +278,7 @@ async def test_install_update_fails_if_out_of_date(
         with pytest.raises(AddonsJobError):
             await coresys.addons.install(TEST_ADDON_SLUG)
         with pytest.raises(AddonsJobError):
-            await install_addon_ssh.update()
+            await coresys.addons.update(TEST_ADDON_SLUG)
 
 
 async def test_listeners_removed_on_uninstall(
@@ -342,7 +343,7 @@ async def test_start_wait_healthcheck(
     await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
 
-    start_task = asyncio.create_task(await install_addon_ssh.start())
+    start_task = await install_addon_ssh.start()
     assert start_task
 
     _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
@@ -646,3 +647,24 @@ async def test_start_when_running(
     await start_task
 
     assert "local_ssh is already running" in caplog.text
+
+
+async def test_install(
+    coresys: CoreSys, container: MagicMock, tmp_supervisor_data: Path, repository
+):
+    """Test install of an addon."""
+    assert not (
+        data_dir := tmp_supervisor_data / "addons" / "data" / "local_example"
+    ).exists()
+    assert not (
+        config_dir := tmp_supervisor_data / "addon_configs" / "local_example"
+    ).exists()
+
+    with patch.object(
+        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
+    ), patch.object(DockerAddon, "install") as install:
+        await coresys.addons.install("local_example")
+        install.assert_called_once()
+
+    assert data_dir.is_dir()
+    assert config_dir.is_dir()

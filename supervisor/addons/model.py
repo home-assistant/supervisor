@@ -1,7 +1,7 @@
 """Init file for Supervisor add-ons."""
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from contextlib import suppress
 import logging
 from pathlib import Path
@@ -669,19 +669,3 @@ class AddonModel(JobGroup, ABC):
 
         # local build
         return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default}-addon-{config[ATTR_SLUG]}"
-
-    def install(self) -> Awaitable[None]:
-        """Install this add-on."""
-        return self.sys_addons.install(self.slug)
-
-    def uninstall(self) -> Awaitable[None]:
-        """Uninstall this add-on."""
-        return self.sys_addons.uninstall(self.slug)
-
-    def update(self, backup: bool | None = False) -> Awaitable[Awaitable[None] | None]:
-        """Update this add-on."""
-        return self.sys_addons.update(self.slug, backup=backup)
-
-    def rebuild(self) -> Awaitable[Awaitable[None] | None]:
-        """Rebuild this add-on."""
-        return self.sys_addons.rebuild(self.slug)
