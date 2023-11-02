@@ -7,7 +7,7 @@ repos:
           - --safe
           - --quiet
           - --target-version
-          - py310
+          - py311
         files: ^((supervisor|tests)/.+)?[^/]+\.py$
   - repo: https://github.com/PyCQA/flake8
     rev: 6.0.0
@@ -31,4 +31,4 @@ repos:
     rev: v3.15.0
     hooks:
       - id: pyupgrade
-        args: [--py310-plus]
+        args: [--py311-plus]
