@@ -1,5 +1,4 @@
 """Fetch last versions from webserver."""
-import asyncio
 from contextlib import suppress
 from datetime import timedelta
 import json
@@ -207,7 +206,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
                     )
                 data = await request.read()
 
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             self.sys_supervisor.connectivity = False
             raise UpdaterError(
                 f"Can't fetch versions from {url}: {str(err) or 'Timeout'}",

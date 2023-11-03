@@ -605,7 +605,7 @@ class BackupManager(FileConfiguration, JobGroup):
         try:
             try:
                 await asyncio.wait_for(self._thaw_event.wait(), timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 _LOGGER.warning(
                     "Timeout waiting for signal to thaw after manual freeze, beginning thaw now"
                 )

@@ -69,7 +69,7 @@ async def cas_validate(
 
         async with async_timeout.timeout(15):
             data, error = await proc.communicate()
-    except asyncio.TimeoutError:
+    except TimeoutError:
         raise CodeNotaryBackendError(
             "Timeout while processing CodeNotary", _LOGGER.warning
         ) from None

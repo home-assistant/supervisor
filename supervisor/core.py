@@ -309,7 +309,7 @@ class Core(CoreSysAttributes):
                         )
                     ]
                 )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.warning("Stage 1: Force Shutdown!")
 
         # Stage 2
@@ -326,7 +326,7 @@ class Core(CoreSysAttributes):
                         )
                     ]
                 )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.warning("Stage 2: Force Shutdown!")
 
         self.state = CoreState.CLOSE

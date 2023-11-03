@@ -3,10 +3,9 @@
 from dataclasses import dataclass
 from inspect import get_annotations
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from dbus_fast import Variant
-from typing_extensions import NotRequired
 
 from .const import EncryptType, EraseMode
 

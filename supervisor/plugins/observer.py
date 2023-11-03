@@ -139,7 +139,7 @@ class PluginObserver(PluginBase):
             ) as request:
                 if request.status == 200:
                     return True
-        except (aiohttp.ClientError, asyncio.TimeoutError):
+        except (aiohttp.ClientError, TimeoutError):
             pass
 
         return False

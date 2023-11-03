@@ -115,5 +115,5 @@ class Scheduler(CoreSysAttributes):
         try:
             async with async_timeout.timeout(timeout):
                 await asyncio.wait(running)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.error("Timeout while waiting for jobs shutdown")

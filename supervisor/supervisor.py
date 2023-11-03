@@ -1,5 +1,4 @@
 """Home Assistant control object."""
-import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
@@ -129,7 +128,7 @@ class Supervisor(CoreSysAttributes):
                     )
                 data = await request.text()
 
-        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+        except (aiohttp.ClientError, TimeoutError) as err:
             self.sys_supervisor.connectivity = False
             raise SupervisorAppArmorError(
                 f"Can't fetch AppArmor profile {url}: {str(err) or 'Timeout'}",
@@ -270,7 +269,7 @@ class Supervisor(CoreSysAttributes):
             await self.sys_websession.head(
                 "https://checkonline.home-assistant.io/online.txt", timeout=timeout
             )
-        except (ClientError, asyncio.TimeoutError):
+        except (ClientError, TimeoutError):
             self.connectivity = False
         else:
             self.connectivity = True

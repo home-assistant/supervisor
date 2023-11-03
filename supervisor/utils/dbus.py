@@ -126,7 +126,7 @@ class DBus:
                 raise DBusParseError(
                     f"Can't parse introspect data: {err}", _LOGGER.error
                 ) from err
-            except (EOFError, asyncio.TimeoutError):
+            except (EOFError, TimeoutError):
                 _LOGGER.warning(
                     "Busy system at %s - %s", self.bus_name, self.object_path
                 )
