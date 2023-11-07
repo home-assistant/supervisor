@@ -40,7 +40,7 @@ def init_sentry(coresys: CoreSys) -> None:
                 DedupeIntegration(),
                 AtexitIntegration(),
                 ThreadingIntegration(),
-                LoggingIntegration(level=logging.WARNING, event_level=logging.CRITICAL),
+                LoggingIntegration(level=logging.INFO, event_level=logging.CRITICAL),
             ],
             release=SUPERVISOR_VERSION,
             max_breadcrumbs=30,
