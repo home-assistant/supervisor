@@ -1,5 +1,6 @@
 """Tools file for Supervisor."""
 import asyncio
+from functools import lru_cache
 from ipaddress import IPv4Address
 import logging
 import os
@@ -8,6 +9,8 @@ import re
 import socket
 from tempfile import TemporaryDirectory
 from typing import Any
+
+from awesomeversion import AwesomeVersion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -134,3 +137,11 @@ def clean_env() -> dict[str, str]:
         if value := os.environ.get(key):
             new_env[key] = value
     return new_env
+
+
+@lru_cache
+def version_is_new_enough(
+    version: AwesomeVersion, want_version: AwesomeVersion
+) -> bool:
+    """Return True if the given version is new enough."""
+    return version >= want_version

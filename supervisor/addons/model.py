@@ -85,6 +85,7 @@ from ..docker.const import Capabilities
 from ..exceptions import AddonsNotSupportedError
 from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
+from ..utils import version_is_new_enough
 from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE, RE_VOLUME
@@ -645,7 +646,9 @@ class AddonModel(JobGroup, ABC):
         # Home Assistant
         version: AwesomeVersion | None = config.get(ATTR_HOMEASSISTANT)
         with suppress(AwesomeVersionException, TypeError):
-            if self.sys_homeassistant.version < version:
+            if version and not version_is_new_enough(
+                self.sys_homeassistant.version, version
+            ):
                 raise AddonsNotSupportedError(
                     f"Add-on {self.slug} not supported on this system, requires Home Assistant version {version} or greater",
                     logger,
