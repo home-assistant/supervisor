@@ -103,6 +103,10 @@ class AddonModel(JobGroup, ABC):
             coresys, JOB_GROUP_ADDON.format_map(defaultdict(str, slug=slug)), slug
         )
         self.slug: str = slug
+        self._path_icon_exists: bool | None = None
+        self._path_logo_exists: bool | None = None
+        self._path_changelog_exists: bool | None = None
+        self._path_documentation_exists: bool | None = None
 
     @property
     @abstractmethod
@@ -491,22 +495,30 @@ class AddonModel(JobGroup, ABC):
     @property
     def with_icon(self) -> bool:
         """Return True if an icon exists."""
-        return self.path_icon.exists()
+        if self._path_icon_exists is None:
+            self._path_icon_exists = self.path_icon.exists()
+        return self._path_icon_exists
 
     @property
     def with_logo(self) -> bool:
         """Return True if a logo exists."""
-        return self.path_logo.exists()
+        if self._path_logo_exists is None:
+            self._path_logo_exists = self.path_logo.exists()
+        return self._path_logo_exists
 
     @property
     def with_changelog(self) -> bool:
         """Return True if a changelog exists."""
-        return self.path_changelog.exists()
+        if self._path_changelog_exists is None:
+            self._path_changelog_exists = self.path_changelog.exists()
+        return self._path_changelog_exists
 
     @property
     def with_documentation(self) -> bool:
         """Return True if a documentation exists."""
-        return self.path_documentation.exists()
+        if self._path_documentation_exists is None:
+            self._path_documentation_exists = self.path_documentation.exists()
+        return self._path_documentation_exists
 
     @property
     def supported_arch(self) -> list[str]:
