@@ -4,9 +4,9 @@ from enum import StrEnum
 from ipaddress import ip_network
 from pathlib import Path
 from sys import version_info as systemversion
+from typing import Self
 
 from aiohttp import __version__ as aiohttpversion
-from typing_extensions import Self
 
 SUPERVISOR_VERSION = "99.9.9dev"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"

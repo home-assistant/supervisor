@@ -3,11 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 from unittest.mock import ANY, patch
 
-from supervisor.const import (
-    ATTR_SESSION_DATA_USER_ID,
-    IngressSessionData,
-    IngressSessionDataUser,
-)
+from supervisor.const import IngressSessionData, IngressSessionDataUser
 from supervisor.coresys import CoreSys
 from supervisor.ingress import Ingress
 from supervisor.utils.dt import utc_from_timestamp
@@ -37,13 +33,13 @@ def test_session_handling(coresys: CoreSys):
 def test_session_handling_with_session_data(coresys: CoreSys):
     """Create and test session."""
     session = coresys.ingress.create_session(
-        dict([(ATTR_SESSION_DATA_USER_ID, "some-id")])
+        IngressSessionData(IngressSessionDataUser("some-id"))
     )
 
     assert session
 
     session_data = coresys.ingress.get_session_data(session)
-    assert session_data[ATTR_SESSION_DATA_USER_ID] == "some-id"
+    assert session_data.user.id == "some-id"
 
 
 async def test_save_on_unload(coresys: CoreSys):
