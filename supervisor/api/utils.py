@@ -1,4 +1,5 @@
 """Init file for Supervisor util for RESTful API."""
+from functools import lru_cache
 import json
 from typing import Any
 
@@ -6,6 +7,7 @@ from aiohttp import web
 from aiohttp.hdrs import AUTHORIZATION
 from aiohttp.web_exceptions import HTTPUnauthorized
 from aiohttp.web_request import Request
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -161,3 +163,11 @@ async def api_validate(
         data_validated[origin_value] = data[origin_value]
 
     return data_validated
+
+
+@lru_cache
+def version_is_new_enough(
+    version: AwesomeVersion, want_version: AwesomeVersion
+) -> bool:
+    """Return True if the given version is new enough."""
+    return version >= want_version

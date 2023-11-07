@@ -13,7 +13,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
-from ..utils import check_port
+from ..utils import check_port, version_is_new_enough
 from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -152,7 +152,9 @@ class HomeAssistantAPI(CoreSysAttributes):
             # get_core_state is available since 2023.8.0 and preferred
             # since it is significantly faster than get_config because
             # it does not require serializing the entire config
-            if self.sys_homeassistant.version >= GET_CORE_STATE_MIN_VERSION:
+            if version_is_new_enough(
+                self.sys_homeassistant.version, GET_CORE_STATE_MIN_VERSION
+            ):
                 data = await self.get_core_state()
             else:
                 data = await self.get_config()
