@@ -725,6 +725,7 @@ class Addon(AddonModel):
 
         try:
             _LOGGER.info("Add-on '%s' successfully updated", self.slug)
+            self._clear_cache()
             self.sys_addons.data.update(store)
 
             # Cleanup
@@ -765,6 +766,7 @@ class Addon(AddonModel):
             except DockerError as err:
                 raise AddonsError() from err
 
+            self._clear_cache()
             self.sys_addons.data.update(self.addon_store)
             _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
 

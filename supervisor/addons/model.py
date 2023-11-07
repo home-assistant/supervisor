@@ -108,6 +108,13 @@ class AddonModel(JobGroup, ABC):
         self._path_changelog_exists: bool | None = None
         self._path_documentation_exists: bool | None = None
 
+    def _clear_cache(self) -> None:
+        """Clear cache."""
+        self._path_icon_exists = None
+        self._path_logo_exists = None
+        self._path_changelog_exists = None
+        self._path_documentation_exists = None
+
     @property
     @abstractmethod
     def data(self) -> Data:
