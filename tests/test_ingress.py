@@ -1,11 +1,20 @@
 """Test ingress."""
 from datetime import timedelta
+from pathlib import Path
+from unittest.mock import ANY, patch
 
-from supervisor.const import ATTR_SESSION_DATA_USER_ID
+from supervisor.const import (
+    ATTR_SESSION_DATA_USER_ID,
+    IngressSessionData,
+    IngressSessionDataUser,
+)
+from supervisor.coresys import CoreSys
+from supervisor.ingress import Ingress
 from supervisor.utils.dt import utc_from_timestamp
+from supervisor.utils.json import read_json_file
 
 
-def test_session_handling(coresys):
+def test_session_handling(coresys: CoreSys):
     """Create and test session."""
     session = coresys.ingress.create_session()
     validate = coresys.ingress.sessions[session]
@@ -25,7 +34,7 @@ def test_session_handling(coresys):
     assert session_data is None
 
 
-def test_session_handling_with_session_data(coresys):
+def test_session_handling_with_session_data(coresys: CoreSys):
     """Create and test session."""
     session = coresys.ingress.create_session(
         dict([(ATTR_SESSION_DATA_USER_ID, "some-id")])
@@ -37,7 +46,7 @@ def test_session_handling_with_session_data(coresys):
     assert session_data[ATTR_SESSION_DATA_USER_ID] == "some-id"
 
 
-async def test_save_on_unload(coresys):
+async def test_save_on_unload(coresys: CoreSys):
     """Test called save on unload."""
     coresys.ingress.create_session()
     await coresys.ingress.unload()
@@ -45,7 +54,7 @@ async def test_save_on_unload(coresys):
     assert coresys.ingress.save_data.called
 
 
-def test_dynamic_ports(coresys):
+def test_dynamic_ports(coresys: CoreSys):
     """Test dyanmic port handling."""
     port_test1 = coresys.ingress.get_dynamic_port("test1")
 
@@ -62,3 +71,24 @@ def test_dynamic_ports(coresys):
     assert port_test2 < 65500
     assert port_test1 > 62000
     assert port_test1 < 65500
+
+
+async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
+    """Test saving ingress data to file."""
+    config_file = tmp_supervisor_data / "ingress.json"
+    with patch("supervisor.ingress.FILE_HASSIO_INGRESS", new=config_file):
+        ingress = Ingress(coresys)
+        session = ingress.create_session(
+            IngressSessionData(IngressSessionDataUser("123", "Test", "test"))
+        )
+        ingress.save_data()
+
+    assert config_file.exists()
+    data = read_json_file(config_file)
+    assert data == {
+        "session": {session: ANY},
+        "session_data": {
+            session: {"user": {"id": "123", "displayname": "Test", "username": "test"}}
+        },
+        "ports": {},
+    }

@@ -6,6 +6,7 @@ from pathlib import Path
 from sys import version_info as systemversion
 
 from aiohttp import __version__ as aiohttpversion
+from typing_extensions import Self
 
 SUPERVISOR_VERSION = "99.9.9dev"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
@@ -159,6 +160,7 @@ ATTR_DISK_LED = "disk_led"
 ATTR_DISK_LIFE_TIME = "disk_life_time"
 ATTR_DISK_TOTAL = "disk_total"
 ATTR_DISK_USED = "disk_used"
+ATTR_DISPLAYNAME = "displayname"
 ATTR_DNS = "dns"
 ATTR_DOCKER = "docker"
 ATTR_DOCKER_API = "docker_api"
@@ -491,12 +493,38 @@ class IngressSessionDataUser:
     display_name: str | None = None
     username: str | None = None
 
+    def to_dict(self) -> dict[str, str | None]:
+        """Get dictionary representation."""
+        return {
+            ATTR_ID: self.id,
+            ATTR_DISPLAYNAME: self.display_name,
+            ATTR_USERNAME: self.username,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, str | None]) -> Self:
+        """Return object from dictionary representation."""
+        return cls(
+            id=data[ATTR_ID],
+            display_name=data.get(ATTR_DISPLAYNAME),
+            username=data.get(ATTR_USERNAME),
+        )
+
 
 @dataclass
 class IngressSessionData:
     """Format of an IngressSessionData object."""
 
     user: IngressSessionDataUser
+
+    def to_dict(self) -> dict[str, dict[str, str | None]]:
+        """Get dictionary representation."""
+        return {ATTR_USER: self.user.to_dict()}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, dict[str, str | None]]) -> Self:
+        """Return object from dictionary representation."""
+        return cls(user=IngressSessionDataUser.from_dict(data[ATTR_USER]))
 
 
 STARTING_STATES = [
