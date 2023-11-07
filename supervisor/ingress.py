@@ -154,7 +154,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
         return True
 
-    def get_dynamic_port(self, addon_slug: str) -> int:
+    async def get_dynamic_port(self, addon_slug: str) -> int:
         """Get/Create a dynamic port from range."""
         if addon_slug in self.ports:
             return self.ports[addon_slug]
@@ -163,7 +163,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         while (
             port is None
             or port in self.ports.values()
-            or check_port(self.sys_docker.network.gateway, port)
+            or await check_port(self.sys_docker.network.gateway, port)
         ):
             port = random.randint(62000, 65500)
 

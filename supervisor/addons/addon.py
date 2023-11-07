@@ -387,15 +387,14 @@ class Addon(AddonModel):
 
         return f"{proto}://[HOST]:{port}{s_suffix}"
 
-    @property
-    def ingress_port(self) -> int | None:
+    async def get_ingress_port(self) -> int | None:
         """Return Ingress port."""
         if not self.with_ingress:
             return None
 
         port = self.data[ATTR_INGRESS_PORT]
         if port == 0:
-            return self.sys_ingress.get_dynamic_port(self.slug)
+            return await self.sys_ingress.get_dynamic_port(self.slug)
         return port
 
     @property
@@ -539,7 +538,7 @@ class Addon(AddonModel):
 
         # TCP monitoring
         if s_prefix == "tcp":
-            return await self.sys_run_in_executor(check_port, self.ip_address, port)
+            return await check_port(self.ip_address, port)
 
         # lookup the correct protocol from config
         if t_proto:

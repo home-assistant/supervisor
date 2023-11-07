@@ -92,9 +92,9 @@ class APIIngress(CoreSysAttributes):
 
         return addon
 
-    def _create_url(self, addon: Addon, path: str) -> str:
+    async def _create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
-        return f"http://{addon.ip_address}:{addon.ingress_port}/{path}"
+        return f"http://{addon.ip_address}:{await addon.get_ingress_port()}/{path}"
 
     @api_process
     async def panels(self, request: web.Request) -> dict[str, Any]:
@@ -190,7 +190,7 @@ class APIIngress(CoreSysAttributes):
         await ws_server.prepare(request)
 
         # Preparing
-        url = self._create_url(addon, path)
+        url = await self._create_url(addon, path)
         source_header = _init_header(request, addon, session_data)
 
         # Support GET query

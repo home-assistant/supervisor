@@ -250,7 +250,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_WEBUI: addon.webui,
             ATTR_INGRESS_ENTRY: addon.ingress_entry,
             ATTR_INGRESS_URL: addon.ingress_url,
-            ATTR_INGRESS_PORT: addon.ingress_port,
+            ATTR_INGRESS_PORT: await addon.get_ingress_port(),
             ATTR_INGRESS_PANEL: addon.ingress_panel,
             ATTR_AUDIO_INPUT: addon.audio_input,
             ATTR_AUDIO_OUTPUT: addon.audio_output,
