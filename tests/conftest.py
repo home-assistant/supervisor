@@ -695,3 +695,17 @@ async def container(docker: DockerAPI) -> MagicMock:
     addon.status = "stopped"
     addon.attrs = {"State": {"ExitCode": 0}}
     yield addon
+
+
+@pytest.fixture
+def mock_x86_64_arch_supported(coresys: CoreSys) -> None:
+    """Mock x86_64 arch as supported."""
+    with patch.object(coresys.arch, "_supported_set", {"x86_64"}):
+        yield
+
+
+@pytest.fixture
+def mock_aarch64_arch_supported(coresys: CoreSys) -> None:
+    """Mock aarch64 arch as supported."""
+    with patch.object(coresys.arch, "_supported_set", {"aarch64"}):
+        yield
