@@ -19,7 +19,8 @@ from ...const import (
     CoreState,
 )
 from ...coresys import CoreSys, CoreSysAttributes
-from ..utils import api_return_error, excract_supervisor_token, version_is_new_enough
+from ...utils import version_is_new_enough
+from ..utils import api_return_error, excract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _CORE_VERSION: Final = AwesomeVersion("2023.3.4")
