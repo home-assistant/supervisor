@@ -197,7 +197,7 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_addon_ssh: Addon) -> N
 
 
 async def test_listener_attached_on_install(
-    coresys: CoreSys, mock_x86_64_arch_supported: None, repository
+    coresys: CoreSys, mock_amd64_arch_supported: None, repository
 ):
     """Test events listener attached on addon install."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000

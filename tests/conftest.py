@@ -320,6 +320,7 @@ async def coresys(
 
     # Mock test client
     coresys_obj.arch._default_arch = "amd64"
+    coresys_obj.arch._supported_set = {"amd64"}
     coresys_obj._machine = "qemux86-64"
     coresys_obj._machine_id = uuid4()
 
@@ -698,9 +699,9 @@ async def container(docker: DockerAPI) -> MagicMock:
 
 
 @pytest.fixture
-def mock_x86_64_arch_supported(coresys: CoreSys) -> None:
-    """Mock x86_64 arch as supported."""
-    with patch.object(coresys.arch, "_supported_set", {"x86_64"}):
+def mock_amd64_arch_supported(coresys: CoreSys) -> None:
+    """Mock amd64 arch as supported."""
+    with patch.object(coresys.arch, "_supported_set", {"amd64"}):
         yield
 
 
