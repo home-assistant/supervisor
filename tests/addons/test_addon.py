@@ -202,14 +202,10 @@ async def test_listener_attached_on_install(coresys: CoreSys, repository):
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     container_collection = MagicMock()
     container_collection.get.side_effect = DockerException()
-    with patch(
-        "supervisor.arch.CpuArch.supported", new=PropertyMock(return_value=["amd64"])
-    ), patch(
+    with patch("supervisor.arch.CpuArch._supported_set", {"amd64"}), patch(
         "supervisor.docker.manager.DockerAPI.containers",
         new=PropertyMock(return_value=container_collection),
-    ), patch(
-        "pathlib.Path.is_dir", return_value=True
-    ), patch(
+    ), patch("pathlib.Path.is_dir", return_value=True), patch(
         "supervisor.addons.addon.Addon.need_build", new=PropertyMock(return_value=False)
     ), patch(
         "supervisor.addons.model.AddonModel.with_ingress",
