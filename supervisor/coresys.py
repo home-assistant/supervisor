@@ -62,6 +62,7 @@ class CoreSys:
 
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
+        self.loop = self._loop
         self._websession: aiohttp.ClientSession = aiohttp.ClientSession()
 
         # Global objects

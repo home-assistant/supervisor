@@ -73,7 +73,7 @@ from ..homeassistant.const import WSEvent, WSType
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..store.addon import AddonStore
-from ..utils import check_port
+from ..utils import async_check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from ..utils.sentry import capture_exception
@@ -133,6 +133,7 @@ class Addon(AddonModel):
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._startup_task: asyncio.Task | None = None
+        self._loop = asyncio.get_running_loop()
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -539,7 +540,7 @@ class Addon(AddonModel):
 
         # TCP monitoring
         if s_prefix == "tcp":
-            return await self.sys_run_in_executor(check_port, self.ip_address, port)
+            return await async_check_port(self.coresys.loop, self.ip_address, port)
 
         # lookup the correct protocol from config
         if t_proto:

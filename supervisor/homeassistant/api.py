@@ -13,7 +13,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
-from ..utils import check_port, version_is_new_enough
+from ..utils import async_check_port, version_is_new_enough
 from .const import LANDINGPAGE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -140,8 +140,8 @@ class HomeAssistantAPI(CoreSysAttributes):
             return None
 
         # Check if port is up
-        if not await self.sys_run_in_executor(
-            check_port,
+        if not await async_check_port(
+            self.coresys.loop,
             self.sys_homeassistant.ip_address,
             self.sys_homeassistant.api_port,
         ):

@@ -55,6 +55,23 @@ def check_port(address: IPv4Address, port: int) -> bool:
     return False
 
 
+async def async_check_port(
+    loop: asyncio.AbstractEventLoop, address: IPv4Address, port: int
+) -> bool:
+    """Check if port is mapped."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setblocking(False)
+    try:
+        async with asyncio.timeout(0.5):
+            await loop.sock_connect(sock, (str(address), port))
+    except (OSError, TimeoutError):
+        return False
+    finally:
+        if sock is not None:
+            sock.close()
+    return True
+
+
 def check_exception_chain(err: Exception, object_type: Any) -> bool:
     """Check if exception chain include sub exception.
 
