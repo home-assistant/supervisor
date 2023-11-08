@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 import re
+import socket
 from tempfile import TemporaryDirectory
 from typing import Any
 
@@ -38,14 +39,21 @@ def process_lock(method):
     return wrap_api
 
 
-async def check_port(address: IPv4Address, port: int) -> bool:
-    """Check if port is mapped asynchronously with a timeout."""
+async def async_check_port(
+    loop: asyncio.AbstractEventLoop, address: IPv4Address, port: int
+) -> bool:
+    """Check if port is mapped."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setblocking(False)
     try:
-        await asyncio.wait_for(asyncio.open_connection(str(address), port), 0.5)
-        return True
+        async with asyncio.timeout(0.5):
+            await loop.sock_connect(sock, (str(address), port))
     except (OSError, TimeoutError):
-        pass
-    return False
+        return False
+    finally:
+        if sock is not None:
+            sock.close()
+    return True
 
 
 def check_exception_chain(err: Exception, object_type: Any) -> bool:
