@@ -246,7 +246,7 @@ class APIIngress(CoreSysAttributes):
 
             try:
                 await response.prepare(request)
-                async for data in result.content.iter_chunks():
+                async for data, _ in result.content.iter_chunks():
                     await response.write(data)
 
             except (
