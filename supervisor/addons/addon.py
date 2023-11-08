@@ -133,7 +133,6 @@ class Addon(AddonModel):
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._startup_task: asyncio.Task | None = None
-        self._loop = asyncio.get_running_loop()
 
     def __repr__(self) -> str:
         """Return internal representation."""
