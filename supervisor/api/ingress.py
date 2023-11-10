@@ -92,7 +92,7 @@ class APIIngress(CoreSysAttributes):
 
         return addon
 
-    async def _create_url(self, addon: Addon, path: str) -> str:
+    async def _async_create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
         return f"http://{addon.ip_address}:{await addon.get_ingress_port()}/{path}"
 
@@ -190,7 +190,7 @@ class APIIngress(CoreSysAttributes):
         await ws_server.prepare(request)
 
         # Preparing
-        url = await self._create_url(addon, path)
+        url = await self._async_create_url(addon, path)
         source_header = _init_header(request, addon, session_data)
 
         # Support GET query
@@ -224,7 +224,7 @@ class APIIngress(CoreSysAttributes):
         session_data: IngressSessionData | None,
     ) -> web.Response | web.StreamResponse:
         """Ingress route for request."""
-        url = self._create_url(addon, path)
+        url = self._async_create_url(addon, path)
         source_header = _init_header(request, addon, session_data)
 
         # Passing the raw stream breaks requests for some webservers
