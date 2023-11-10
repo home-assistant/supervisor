@@ -18,6 +18,7 @@ from ..addons.build import AddonBuild
 from ..bus import EventListener
 from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
+    MAP_DATA,
     MAP_ADDON_CONFIG,
     MAP_ADDONS,
     MAP_ALL_ADDON_CONFIGS,
@@ -337,7 +338,7 @@ class DockerAddon(DockerInterface):
             Mount(
                 type=MountType.BIND,
                 source=self.addon.path_extern_data.as_posix(),
-                target="/data",
+                target=addon_mapping.get(MAP_DATA, {}).get("target", "/data"),
                 read_only=False,
             ),
         ]
@@ -348,8 +349,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
-                    target="/config",
-                    read_only=addon_mapping[MAP_CONFIG],
+                    target=addon_mapping[MAP_CONFIG].get("target", "/config"),
+                    read_only=addon_mapping[MAP_CONFIG]["read_only"],
                 )
             )
 
@@ -360,8 +361,8 @@ class DockerAddon(DockerInterface):
                     Mount(
                         type=MountType.BIND,
                         source=self.addon.path_extern_config.as_posix(),
-                        target="/config",
-                        read_only=addon_mapping[MAP_ADDON_CONFIG],
+                        target=addon_mapping[MAP_ADDON_CONFIG].get("target", "/config"),
+                        read_only=addon_mapping[MAP_ADDON_CONFIG]["read_only"],
                     )
                 )
 
@@ -372,7 +373,7 @@ class DockerAddon(DockerInterface):
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_homeassistant.as_posix(),
                         target="/homeassistant",
-                        read_only=addon_mapping[MAP_HOMEASSISTANT_CONFIG],
+                        read_only=addon_mapping[MAP_HOMEASSISTANT_CONFIG]["read_only"],
                     )
                 )
 
@@ -382,7 +383,7 @@ class DockerAddon(DockerInterface):
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_addon_configs.as_posix(),
                     target="/addon_configs",
-                    read_only=addon_mapping[MAP_ALL_ADDON_CONFIGS],
+                    read_only=addon_mapping[MAP_ALL_ADDON_CONFIGS]["read_only"],
                 )
             )
 
@@ -392,7 +393,7 @@ class DockerAddon(DockerInterface):
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
                     target="/ssl",
-                    read_only=addon_mapping[MAP_SSL],
+                    read_only=addon_mapping[MAP_SSL]["read_only"],
                 )
             )
 
@@ -402,7 +403,7 @@ class DockerAddon(DockerInterface):
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_addons_local.as_posix(),
                     target="/addons",
-                    read_only=addon_mapping[MAP_ADDONS],
+                    read_only=addon_mapping[MAP_ADDONS]["read_only"],
                 )
             )
 
@@ -412,7 +413,7 @@ class DockerAddon(DockerInterface):
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_backup.as_posix(),
                     target="/backup",
-                    read_only=addon_mapping[MAP_BACKUP],
+                    read_only=addon_mapping[MAP_BACKUP]["read_only"],
                 )
             )
 
@@ -422,7 +423,7 @@ class DockerAddon(DockerInterface):
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
-                    read_only=addon_mapping[MAP_SHARE],
+                    read_only=addon_mapping[MAP_SHARE]["read_only"],
                     propagation=PropagationMode.RSLAVE,
                 )
             )
@@ -433,7 +434,7 @@ class DockerAddon(DockerInterface):
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_media.as_posix(),
                     target="/media",
-                    read_only=addon_mapping[MAP_MEDIA],
+                    read_only=addon_mapping[MAP_MEDIA]["read_only"],
                     propagation=PropagationMode.RSLAVE,
                 )
             )

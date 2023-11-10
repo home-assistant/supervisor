@@ -118,7 +118,7 @@ from .options import RE_SCHEMA_ELEMENT
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(
-    r"^(config|ssl|addons|backup|share|media|homeassistant_config|all_addon_configs|addon_config)(?::(rw|ro))?$"
+    r"^(data|config|ssl|addons|backup|share|media|homeassistant_config|all_addon_configs|addon_config)(?::(rw|ro))?$"
 )
 RE_SERVICE = re.compile(r"^(?P<service>mqtt|mysql):(?P<rights>provide|want|need)$")
 
@@ -265,8 +265,22 @@ def _migrate_addon_config(protocol=False):
                     name,
                 )
 
+        # setup config mappings
+        if MAP_CONFIG in addon_mapping or next((m.get("name") == MAP_CONFIG for m in addon_mapping if type(m) is dict), False):
+            mounts.append(
+                Mount(
+                    type=MountType.BIND,
+                    source=self.sys_config.path_extern_homeassistant.as_posix(),
+                    target=next((m.get("target", "/config") for m in addon_mapping if type(m) is dict and m.get("name") == MAP_CONFIG)),
+                    read_only=next((m.get("read_only", addon_mapping[MAP_CONFIG]) for m in addon_mapping if type(m) is dict and m.get("name") == MAP_CONFIG))
+                )
+            )
+
+
         # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
-        volumes = [RE_VOLUME.match(entry) for entry in config.get(ATTR_MAP, [])]
+        volumes = [RE_VOLUME.match(entry) for entry in config.get(ATTR_MAP, []) if type(entry) is not dict]
+        volumes.extend([RE_VOLUME.match(entry.get("name")) for entry in config.get(ATTR_MAP, []) if type(entry) is dict])
+
         if any(volume and volume.group(1) == MAP_CONFIG for volume in volumes):
             if any(
                 volume
@@ -336,7 +350,17 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_DEVICES): [str],
         vol.Optional(ATTR_UDEV, default=False): vol.Boolean(),
         vol.Optional(ATTR_TMPFS, default=False): vol.Boolean(),
-        vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],
+        vol.Optional(ATTR_MAP, default=list): [
+            vol.Any(
+                vol.Match(RE_VOLUME),
+                vol.Schema(
+                    {
+                        vol.Required('name'): str,
+                        vol.Optional('target'): str
+                    }
+                )
+            )
+        ],
         vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): str},
         vol.Optional(ATTR_PRIVILEGED): [vol.Coerce(Capabilities)],
         vol.Optional(ATTR_APPARMOR, default=True): vol.Boolean(),
