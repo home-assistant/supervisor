@@ -267,7 +267,7 @@ def _migrate_addon_config(protocol=False):
 
         # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
         volumes = [RE_VOLUME.match(entry) for entry in config.get(ATTR_MAP, [])]
-        if any(volume and volume.group(1) for volume in volumes):
+        if any(volume and volume.group(1) == MAP_CONFIG for volume in volumes):
             if any(
                 volume
                 and volume.group(1) in {MAP_ADDON_CONFIG, MAP_HOMEASSISTANT_CONFIG}

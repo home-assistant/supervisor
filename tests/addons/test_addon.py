@@ -645,7 +645,7 @@ async def test_start_when_running(
     assert "local_ssh is already running" in caplog.text
 
 
-async def test_install(
+async def test_local_example_install(
     coresys: CoreSys,
     container: MagicMock,
     tmp_supervisor_data: Path,
@@ -656,13 +656,30 @@ async def test_install(
     assert not (
         data_dir := tmp_supervisor_data / "addons" / "data" / "local_example"
     ).exists()
-    assert not (
-        config_dir := tmp_supervisor_data / "addon_configs" / "local_example"
-    ).exists()
 
     with patch.object(DockerAddon, "install") as install:
         await coresys.addons.install("local_example")
         install.assert_called_once()
 
     assert data_dir.is_dir()
-    assert config_dir.is_dir()
+
+
+async def test_local_example_start(
+    coresys: CoreSys,
+    container: MagicMock,
+    tmp_supervisor_data: Path,
+    install_addon_example: Addon,
+):
+    """Test start of an addon."""
+    install_addon_example.path_data.mkdir()
+    await install_addon_example.load()
+    await asyncio.sleep(0)
+    assert install_addon_example.state == AddonState.STOPPED
+
+    assert not (
+        addon_config_dir := tmp_supervisor_data / "addon_configs" / "local_example"
+    ).exists()
+
+    await install_addon_example.start()
+
+    assert addon_config_dir.is_dir()

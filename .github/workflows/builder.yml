@@ -131,7 +131,7 @@ jobs:
 
       - name: Install Cosign
         if: needs.init.outputs.publish == 'true'
-        uses: sigstore/cosign-installer@v3.1.2
+        uses: sigstore/cosign-installer@v3.2.0
         with:
           cosign-release: "v2.0.2"
 

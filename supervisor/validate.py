@@ -15,10 +15,12 @@ from .const import (
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DIAGNOSTICS,
+    ATTR_DISPLAYNAME,
     ATTR_DNS,
     ATTR_FORCE_SECURITY,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
+    ATTR_ID,
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
@@ -186,9 +188,9 @@ SCHEMA_SESSION_DATA = vol.Schema(
             {
                 vol.Required(ATTR_SESSION_DATA_USER): vol.Schema(
                     {
-                        vol.Required("id"): str,
-                        vol.Required("username"): str,
-                        vol.Required("displayname"): str,
+                        vol.Required(ATTR_ID): str,
+                        vol.Required(ATTR_USERNAME, default=None): vol.Maybe(str),
+                        vol.Required(ATTR_DISPLAYNAME, default=None): vol.Maybe(str),
                     }
                 )
             }

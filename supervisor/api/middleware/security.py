@@ -19,6 +19,7 @@ from ...const import (
     CoreState,
 )
 from ...coresys import CoreSys, CoreSysAttributes
+from ...utils import version_is_new_enough
 from ..utils import api_return_error, excract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -273,9 +274,8 @@ class SecurityMiddleware(CoreSysAttributes):
     @middleware
     async def core_proxy(self, request: Request, handler: RequestHandler) -> Response:
         """Validate user from Core API proxy."""
-        if (
-            request[REQUEST_FROM] != self.sys_homeassistant
-            or self.sys_homeassistant.version >= _CORE_VERSION
+        if request[REQUEST_FROM] != self.sys_homeassistant or version_is_new_enough(
+            self.sys_homeassistant.version, _CORE_VERSION
         ):
             return await handler(request)
 

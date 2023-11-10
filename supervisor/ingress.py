@@ -38,7 +38,9 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
     def get_session_data(self, session_id: str) -> IngressSessionData | None:
         """Return complementary data of current session or None."""
-        return self.sessions_data.get(session_id)
+        if data := self.sessions_data.get(session_id):
+            return IngressSessionData.from_dict(data)
+        return None
 
     @property
     def sessions(self) -> dict[str, float]:
@@ -46,7 +48,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         return self._data[ATTR_SESSION]
 
     @property
-    def sessions_data(self) -> dict[str, IngressSessionData]:
+    def sessions_data(self) -> dict[str, dict[str, str | None]]:
         """Return sessions_data."""
         return self._data[ATTR_SESSION_DATA]
 
@@ -100,7 +102,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
             # Is valid
             sessions[session] = valid
-            sessions_data[session] = self.get_session_data(session)
+            sessions_data[session] = self.sessions_data.get(session)
 
         # Write back
         self.sessions.clear()
@@ -123,7 +125,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
         self.sessions[session] = valid.timestamp()
         if data is not None:
-            self.sessions_data[session] = data
+            self.sessions_data[session] = data.to_dict()
 
         return session
 

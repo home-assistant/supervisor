@@ -1,4 +1,4 @@
-black==23.10.1
+black==23.11.0
 coverage==7.3.2
 flake8-docstrings==1.7.0
 flake8==6.1.0

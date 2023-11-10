@@ -622,12 +622,6 @@ class Addon(AddonModel):
             )
             self.path_data.mkdir()
 
-        if self.addon_config_used and not self.path_config.is_dir():
-            _LOGGER.info(
-                "Creating Home Assistant add-on config folder %s", self.path_config
-            )
-            self.path_config.mkdir()
-
         # Setup/Fix AppArmor profile
         await self.install_apparmor()
 
@@ -898,6 +892,18 @@ class Addon(AddonModel):
         # Sound
         if self.with_audio:
             self.write_pulse()
+
+        def _check_addon_config_dir():
+            if self.path_config.is_dir():
+                return
+
+            _LOGGER.info(
+                "Creating Home Assistant add-on config folder %s", self.path_config
+            )
+            self.path_config.mkdir()
+
+        if self.addon_config_used:
+            await self.sys_run_in_executor(_check_addon_config_dir)
 
         # Start Add-on
         self._startup_event.clear()

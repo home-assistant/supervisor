@@ -225,7 +225,11 @@ class APIIngress(CoreSysAttributes):
             skip_auto_headers={hdrs.CONTENT_TYPE},
         ) as result:
             headers = _response_header(result)
-
+            # Avoid parsing content_type in simple cases for better performance
+            if maybe_content_type := result.headers.get(hdrs.CONTENT_TYPE):
+                content_type = (maybe_content_type.partition(";"))[0].strip()
+            else:
+                content_type = result.content_type
             # Simple request
             if (
                 hdrs.CONTENT_LENGTH in result.headers
@@ -236,13 +240,13 @@ class APIIngress(CoreSysAttributes):
                 return web.Response(
                     headers=headers,
                     status=result.status,
-                    content_type=result.content_type,
+                    content_type=content_type,
                     body=body,
                 )
 
             # Stream response
             response = web.StreamResponse(status=result.status, headers=headers)
-            response.content_type = result.content_type
+            response.content_type = content_type
 
             try:
                 await response.prepare(request)
