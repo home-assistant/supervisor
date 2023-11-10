@@ -538,15 +538,22 @@ class AddonModel(JobGroup, ABC):
         return ATTR_IMAGE not in self.data
 
     @property
-    def map_volumes(self) -> dict[str, bool]:
-        """Return a dict of {volume: read-only} from add-on."""
+    def map_volumes(self) -> dict[str, dict]:
+        """Return a dict of {volume: dict} from add-on."""
         volumes = {}
         for volume in self.data[ATTR_MAP]:
-            result = RE_VOLUME.match(volume)
-            if not result:
-                continue
-            volumes[result.group(1)] = result.group(2) != "rw"
-
+            if type(volume) is dict:
+                result = RE_VOLUME.match(volume.get("name"))
+                if not result:
+                    continue
+                volumes[result.group(1)]["read_only"] = result.group(2) != "rw"
+                volumes[result.group(1)]["target"] = volume.get("target")
+            else:
+                result = RE_VOLUME.match(volume)
+                if not result:
+                    continue
+                volumes[result.group(1)]["read_only"] = result.group(2) != "rw"
+            
         return volumes
 
     @property
