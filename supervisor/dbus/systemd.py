@@ -151,7 +151,7 @@ class Systemd(DBusInterfaceProxy):
 
     @dbus_connected
     async def start_transient_unit(
-        self, unit: str, mode: StartUnitMode, properties: list[tuple[str, Variant]]
+        self, unit: str, mode: StartUnitMode, properties: list[list[str, Variant]]
     ) -> str:
         """Start a transient unit which is released when stopped or on reboot. Returns object path of job."""
         return await self.dbus.Manager.call_start_transient_unit(

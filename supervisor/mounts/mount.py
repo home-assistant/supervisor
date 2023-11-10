@@ -235,20 +235,20 @@ class Mount(CoreSysAttributes, ABC):
 
         try:
             options = (
-                [(DBUS_ATTR_OPTIONS, Variant("s", ",".join(self.options)))]
+                [[DBUS_ATTR_OPTIONS, Variant("s", ",".join(self.options))]]
                 if self.options
                 else []
             )
             if self.type != MountType.BIND:
-                options += [(DBUS_ATTR_TYPE, Variant("s", self.type))]
+                options += [[DBUS_ATTR_TYPE, Variant("s", self.type)]]
 
             await self.sys_dbus.systemd.start_transient_unit(
                 self.unit_name,
                 StartUnitMode.FAIL,
                 options
                 + [
-                    (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
-                    (DBUS_ATTR_WHAT, Variant("s", self.what)),
+                    [DBUS_ATTR_DESCRIPTION, Variant("s", self.description)],
+                    [DBUS_ATTR_WHAT, Variant("s", self.what)],
                 ],
             )
         except DBusError as err:
