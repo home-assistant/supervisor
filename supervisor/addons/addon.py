@@ -903,7 +903,7 @@ class Addon(AddonModel):
             self.path_config.mkdir()
 
         if self.addon_config_used:
-            self.sys_run_in_executor(_check_addon_config_dir)
+            await self.sys_run_in_executor(_check_addon_config_dir)
 
         # Start Add-on
         self._startup_event.clear()
