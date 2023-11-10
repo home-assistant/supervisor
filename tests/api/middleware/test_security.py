@@ -1,4 +1,5 @@
 """Test API security layer."""
+import asyncio
 from http import HTTPStatus
 from unittest.mock import patch
 
@@ -109,7 +110,7 @@ async def test_bad_requests(
     fail_on_query_string,
     api_system,
     caplog: pytest.LogCaptureFixture,
-    loop,
+    event_loop: asyncio.BaseEventLoop,
 ) -> None:
     """Test request paths that should be filtered."""
 
@@ -121,7 +122,7 @@ async def test_bad_requests(
         man_params = ""
 
     http = urllib3.PoolManager()
-    resp = await loop.run_in_executor(
+    resp = await event_loop.run_in_executor(
         None,
         http.request,
         "GET",
