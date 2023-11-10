@@ -224,7 +224,7 @@ class APIIngress(CoreSysAttributes):
         session_data: IngressSessionData | None,
     ) -> web.Response | web.StreamResponse:
         """Ingress route for request."""
-        url = self._async_create_url(addon, path)
+        url = await self._async_create_url(addon, path)
         source_header = _init_header(request, addon, session_data)
 
         # Passing the raw stream breaks requests for some webservers
