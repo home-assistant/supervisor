@@ -346,6 +346,7 @@ NEED_SERVICE = "need"
 WANT_SERVICE = "want"
 
 
+MAP_DATA = "data"
 MAP_CONFIG = "config"
 MAP_SSL = "ssl"
 MAP_ADDONS = "addons"
