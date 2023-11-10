@@ -281,7 +281,7 @@ def _migrate_addon_config(protocol=False):
         volumes = [RE_VOLUME.match(entry) for entry in config.get(ATTR_MAP, []) if type(entry) is not dict]
         volumes.extend([RE_VOLUME.match(entry.get("name")) for entry in config.get(ATTR_MAP, []) if type(entry) is dict])
 
-        if any(volume and volume.group(1) for volume in volumes):
+        if any(volume and volume.group(1) == MAP_CONFIG for volume in volumes):
             if any(
                 volume
                 and volume.group(1) in {MAP_ADDON_CONFIG, MAP_HOMEASSISTANT_CONFIG}
