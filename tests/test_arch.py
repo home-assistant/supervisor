@@ -111,6 +111,10 @@ async def test_yellow_arch(coresys, sys_machine, sys_supervisor):
 
     assert coresys.arch.default == "aarch64"
     assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
+    assert coresys.arch.is_supported(["aarch64"]) is True
+    assert coresys.arch.is_supported(["armv7"]) is True
+    assert coresys.arch.is_supported(["armhf"]) is True
+    assert coresys.arch.is_supported(["x86_64", "i386"]) is False
 
 
 async def test_green_arch(coresys, sys_machine, sys_supervisor):
