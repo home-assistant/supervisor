@@ -360,7 +360,7 @@ class DockerAddon(DockerInterface):
                     Mount(
                         type=MountType.BIND,
                         source=self.addon.path_extern_config.as_posix(),
-                        target="/config",
+                        target="/addon_config",
                         read_only=addon_mapping[MAP_ADDON_CONFIG],
                     )
                 )
@@ -371,7 +371,7 @@ class DockerAddon(DockerInterface):
                     Mount(
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_homeassistant.as_posix(),
-                        target="/homeassistant",
+                        target="/config",
                         read_only=addon_mapping[MAP_HOMEASSISTANT_CONFIG],
                     )
                 )
