@@ -365,7 +365,7 @@ class DockerAddon(DockerInterface):
                     )
                 )
 
-            # Map Home Assistant config in new way
+            # Map Home Assistant config using the new mapping to /config still
             if MAP_HOMEASSISTANT_CONFIG in addon_mapping:
                 mounts.append(
                     Mount(
