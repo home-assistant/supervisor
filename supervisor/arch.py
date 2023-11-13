@@ -28,6 +28,7 @@ class CpuArch(CoreSysAttributes):
         """Initialize CPU Architecture handler."""
         self.coresys = coresys
         self._supported_arch: list[str] = []
+        self._supported_set: set[str] = set()
         self._default_arch: str
 
     @property
@@ -70,9 +71,11 @@ class CpuArch(CoreSysAttributes):
         if native_support not in self._supported_arch:
             self._supported_arch.append(native_support)
 
+        self._supported_set = set(self._supported_arch)
+
     def is_supported(self, arch_list: list[str]) -> bool:
         """Return True if there is a supported arch by this platform."""
-        return not set(self.supported).isdisjoint(set(arch_list))
+        return not self._supported_set.isdisjoint(arch_list)
 
     def match(self, arch_list: list[str]) -> str:
         """Return best match for this CPU/Platform."""

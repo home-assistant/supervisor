@@ -602,10 +602,6 @@ class Addon(AddonModel):
             _LOGGER.info("Removing add-on data folder %s", self.path_data)
             await remove_data(self.path_data)
 
-        if self.path_config.is_dir():
-            _LOGGER.info("Removing add-on config folder %s", self.path_config)
-            await remove_data(self.path_config)
-
     @Job(
         name="addon_install",
         limit=JobExecutionLimit.GROUP_ONCE,

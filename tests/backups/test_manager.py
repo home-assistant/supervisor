@@ -1420,9 +1420,12 @@ async def test_restore_preserves_data_config(
     (test_config := install_addon_example.path_config / "config.yaml").touch()
 
     backup: Backup = await coresys.backups.do_backup_partial(addons=["local_example"])
+    (test_config2 := install_addon_example.path_config / "config2.yaml").touch()
+
     await coresys.addons.uninstall("local_example")
     assert not install_addon_example.path_data.exists()
-    assert not install_addon_example.path_config.exists()
+    assert install_addon_example.path_config.exists()
+    assert test_config2.exists()
 
     with patch.object(AddonModel, "_validate_availability"), patch.object(
         DockerAddon, "attach"
@@ -1433,6 +1436,7 @@ async def test_restore_preserves_data_config(
 
     assert test_data.exists()
     assert test_config.exists()
+    assert not test_config2.exists()
 
 
 async def test_backup_to_mount_bypasses_free_space_condition(

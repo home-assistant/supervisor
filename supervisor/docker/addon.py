@@ -361,12 +361,12 @@ class DockerAddon(DockerInterface):
                     Mount(
                         type=MountType.BIND,
                         source=self.addon.path_extern_config.as_posix(),
-                        target=addon_mapping[MAP_ADDON_CONFIG].get("target", "/config"),
+                        target=addon_mapping[MAP_ADDON_CONFIG].get("target", "/addon_config"),
                         read_only=addon_mapping[MAP_ADDON_CONFIG]["read_only"],
                     )
                 )
 
-            # Map Home Assistant config in new way
+            # Map Home Assistant config using the new mapping to /config still
             if MAP_HOMEASSISTANT_CONFIG in addon_mapping:
                 mounts.append(
                     Mount(

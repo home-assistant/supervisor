@@ -12,7 +12,6 @@ from securetar import SecureTarFile
 from supervisor.addons.addon import Addon
 from supervisor.addons.const import AddonBackupMode
 from supervisor.addons.model import AddonModel
-from supervisor.arch import CpuArch
 from supervisor.const import AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
@@ -197,19 +196,17 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_addon_ssh: Addon) -> N
         restart.assert_called_once()
 
 
-async def test_listener_attached_on_install(coresys: CoreSys, repository):
+async def test_listener_attached_on_install(
+    coresys: CoreSys, mock_amd64_arch_supported: None, repository
+):
     """Test events listener attached on addon install."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     container_collection = MagicMock()
     container_collection.get.side_effect = DockerException()
     with patch(
-        "supervisor.arch.CpuArch.supported", new=PropertyMock(return_value=["amd64"])
-    ), patch(
         "supervisor.docker.manager.DockerAPI.containers",
         new=PropertyMock(return_value=container_collection),
-    ), patch(
-        "pathlib.Path.is_dir", return_value=True
-    ), patch(
+    ), patch("pathlib.Path.is_dir", return_value=True), patch(
         "supervisor.addons.addon.Addon.need_build", new=PropertyMock(return_value=False)
     ), patch(
         "supervisor.addons.model.AddonModel.with_ingress",
@@ -556,6 +553,7 @@ async def test_restore(
     status: str,
     tmp_supervisor_data,
     path_extern,
+    mock_aarch64_arch_supported: None,
 ) -> None:
     """Test restoring an addon."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -563,9 +561,7 @@ async def test_restore(
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(get_fixture_path(f"backup_local_ssh_{status}.tar.gz"), "r")
-    with patch.object(DockerAddon, "is_running", return_value=False), patch.object(
-        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
-    ):
+    with patch.object(DockerAddon, "is_running", return_value=False):
         start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
 
     assert bool(start_task) is (status == "running")
@@ -577,6 +573,7 @@ async def test_restore_while_running(
     container: MagicMock,
     tmp_supervisor_data,
     path_extern,
+    mock_aarch64_arch_supported: None,
 ):
     """Test restore of a running addon."""
     container.status = "running"
@@ -586,8 +583,8 @@ async def test_restore_while_running(
 
     tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
     with patch.object(DockerAddon, "is_running", return_value=True), patch.object(
-        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
-    ), patch.object(Ingress, "update_hass_panel"):
+        Ingress, "update_hass_panel"
+    ):
         start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
 
     assert bool(start_task) is False
@@ -600,6 +597,7 @@ async def test_restore_while_running_with_watchdog(
     container: MagicMock,
     tmp_supervisor_data,
     path_extern,
+    mock_aarch64_arch_supported: None,
 ):
     """Test restore of a running addon with watchdog interference."""
     container.status = "running"
@@ -619,8 +617,6 @@ async def test_restore_while_running_with_watchdog(
     with patch.object(Addon, "start") as start, patch.object(
         Addon, "restart"
     ) as restart, patch.object(DockerAddon, "stop", new=mock_stop), patch.object(
-        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
-    ), patch.object(
         Ingress, "update_hass_panel"
     ):
         await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
@@ -650,16 +646,18 @@ async def test_start_when_running(
 
 
 async def test_local_example_install(
-    coresys: CoreSys, container: MagicMock, tmp_supervisor_data: Path, repository
+    coresys: CoreSys,
+    container: MagicMock,
+    tmp_supervisor_data: Path,
+    repository,
+    mock_aarch64_arch_supported: None,
 ):
     """Test install of an addon."""
     assert not (
         data_dir := tmp_supervisor_data / "addons" / "data" / "local_example"
     ).exists()
 
-    with patch.object(
-        CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])
-    ), patch.object(DockerAddon, "install") as install:
+    with patch.object(DockerAddon, "install") as install:
         await coresys.addons.install("local_example")
         install.assert_called_once()
 
