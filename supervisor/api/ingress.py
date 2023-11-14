@@ -231,21 +231,35 @@ class APIIngress(CoreSysAttributes):
             else:
                 content_type = result.content_type
             # Simple request
+            upper_method = request.method.upper()
+            code = result.status
             if (
-                hdrs.CONTENT_LENGTH in result.headers
-                and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
+                (
+                    hdrs.CONTENT_LENGTH in result.headers
+                    and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
+                )
+                # empty body responses should not be streamed,
+                # otherwise aiohttp < 3.9.0 will generate
+                # a invalid "0\r\n\r\n" chunk instead of an empty response.
+                #
+                # The below is from
+                # https://github.com/aio-libs/aiohttp/blob/8ae650bee4add9f131d49b96a0a150311ea58cd1/aiohttp/helpers.py#L1061
+                or code in (204, 304)
+                or 100 <= code < 200
+                or upper_method == hdrs.METH_HEAD
+                or (200 <= code < 300 and upper_method == hdrs.METH_CONNECT)
             ):
                 # Return Response
                 body = await result.read()
                 return web.Response(
                     headers=headers,
-                    status=result.status,
+                    status=code,
                     content_type=content_type,
                     body=body,
                 )
 
             # Stream response
-            response = web.StreamResponse(status=result.status, headers=headers)
+            response = web.StreamResponse(status=code, headers=headers)
             response.content_type = content_type
 
             try:
