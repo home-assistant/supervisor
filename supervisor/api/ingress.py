@@ -256,17 +256,15 @@ class APIIngress(CoreSysAttributes):
             # Simple request
             code = result.status
             if (
-                (
-                    hdrs.CONTENT_LENGTH in result.headers
-                    and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
-                )
                 # empty body responses should not be streamed,
                 # otherwise aiohttp < 3.9.0 may generate
                 # an invalid "0\r\n\r\n" chunk instead of an empty response.
                 #
                 # The below is from
                 # https://github.com/aio-libs/aiohttp/blob/8ae650bee4add9f131d49b96a0a150311ea58cd1/aiohttp/helpers.py#L1061
-                or must_be_empty_body(request.method, code)
+                must_be_empty_body(request.method, code)
+                or hdrs.CONTENT_LENGTH in result.headers
+                and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
             ):
                 # Return Response
                 body = await result.read()
