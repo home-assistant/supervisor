@@ -254,7 +254,6 @@ class APIIngress(CoreSysAttributes):
             else:
                 content_type = result.content_type
             # Simple request
-            code = result.status
             if (
                 # empty body responses should not be streamed,
                 # otherwise aiohttp < 3.9.0 may generate
@@ -262,7 +261,7 @@ class APIIngress(CoreSysAttributes):
                 #
                 # The below is from
                 # https://github.com/aio-libs/aiohttp/blob/8ae650bee4add9f131d49b96a0a150311ea58cd1/aiohttp/helpers.py#L1061
-                must_be_empty_body(request.method, code)
+                must_be_empty_body(request.method, result.status)
                 or hdrs.CONTENT_LENGTH in result.headers
                 and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
             ):
@@ -270,13 +269,13 @@ class APIIngress(CoreSysAttributes):
                 body = await result.read()
                 return web.Response(
                     headers=headers,
-                    status=code,
+                    status=result.status,
                     content_type=content_type,
                     body=body,
                 )
 
             # Stream response
-            response = web.StreamResponse(status=code, headers=headers)
+            response = web.StreamResponse(status=result.status, headers=headers)
             response.content_type = content_type
 
             try:
