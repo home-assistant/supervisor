@@ -91,15 +91,13 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
-    MAP_ADDON_CONFIG,
-    MAP_CONFIG,
-    MAP_HOMEASSISTANT_CONFIG,
     ROLE_ALL,
     ROLE_DEFAULT,
     AddonBoot,
     AddonStage,
     AddonStartup,
     AddonState,
+    MappingType,
 )
 from ..discovery.validate import valid_discovery_service
 from ..docker.const import Capabilities
@@ -112,6 +110,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
+from .configuration import FolderMapping
 from .const import ATTR_BACKUP, ATTR_CODENOTARY, RE_SLUG, AddonBackupMode
 from .options import RE_SCHEMA_ELEMENT
 
@@ -265,28 +264,51 @@ def _migrate_addon_config(protocol=False):
                     name,
                 )
 
-        # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
-        volumes = [RE_VOLUME.match(entry) for entry in config.get(ATTR_MAP, []) if type(entry) is not dict]
-        volumes.extend([RE_VOLUME.match(entry.get("name")) for entry in config.get(ATTR_MAP, []) if type(entry) is dict])
+        # 2023-11 "map" entries can also be dict to allow path configuration
+        volumes = []
+        for entry in [
+            entry for entry in config.get(ATTR_MAP, []) if isinstance(entry, dict)
+        ]:
+            if not entry.get("type") in set(MappingType):
+                continue
+            volumes.append(
+                FolderMapping(
+                    entry.get("path"),
+                    entry.get("read_only", True),
+                    MappingType(entry.get("type")),
+                )
+            )
 
-        if any(volume and volume.group(1) == MAP_CONFIG for volume in volumes):
+        for entry in [
+            RE_VOLUME.match(entry)
+            for entry in config.get(ATTR_MAP, [])
+            if isinstance(entry, str)
+        ]:
+            volumes.append(FolderMapping(None, entry.group(2) != "rw", entry.group(1)))
+
+        if volumes:
+            config[ATTR_MAP] = volumes
+
+        # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
+        if any(volume and volume.type == MappingType.CONFIG for volume in volumes):
             if any(
                 volume
-                and volume.group(1) in {MAP_ADDON_CONFIG, MAP_HOMEASSISTANT_CONFIG}
+                and volume.type
+                in {MappingType.ADDON_CONFIG, MappingType.HOMEASSISTANT_CONFIG}
                 for volume in volumes
             ):
                 _LOGGER.warning(
                     "Add-on config using incompatible map options, '%s' and '%s' are ignored if '%s' is included. Please report this to the maintainer of %s",
-                    MAP_ADDON_CONFIG,
-                    MAP_HOMEASSISTANT_CONFIG,
-                    MAP_CONFIG,
+                    MappingType.ADDON_CONFIG,
+                    MappingType.HOMEASSISTANT_CONFIG,
+                    MappingType.CONFIG,
                     name,
                 )
             else:
                 _LOGGER.debug(
                     "Add-on config using deprecated map option '%s' instead of '%s'. Please report this to the maintainer of %s",
-                    MAP_CONFIG,
-                    MAP_HOMEASSISTANT_CONFIG,
+                    MappingType.CONFIG,
+                    MappingType.HOMEASSISTANT_CONFIG,
                     name,
                 )
 
@@ -338,17 +360,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_DEVICES): [str],
         vol.Optional(ATTR_UDEV, default=False): vol.Boolean(),
         vol.Optional(ATTR_TMPFS, default=False): vol.Boolean(),
-        vol.Optional(ATTR_MAP, default=list): [
-            vol.Any(
-                vol.Match(RE_VOLUME),
-                vol.Schema(
-                    {
-                        vol.Required('name'): str,
-                        vol.Optional('target'): str
-                    }
-                )
-            )
-        ],
+        vol.Optional(ATTR_MAP, default=list): [FolderMapping],
         vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): str},
         vol.Optional(ATTR_PRIVILEGED): [vol.Coerce(Capabilities)],
         vol.Optional(ATTR_APPARMOR, default=True): vol.Boolean(),

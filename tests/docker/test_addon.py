@@ -207,7 +207,9 @@ def test_addon_map_addon_config_folder_with_custom_target(
     """Test mounts for addon which maps its own config folder and sets target path."""
     config = load_json_fixture("addon-config-map-addon_config.json")
     config["map"].remove("addon_config")
-    config["map"].append({ "name":"addon_config:rw", "target":"/custom/target/path" })
+    config["map"].append(
+        {"type": "addon_config", "read_only": False, "path": "/custom/config/path"}
+    )
     docker_addon = get_docker_addon(coresys, addonsdata_system, config)
 
     # Addon config folder included
@@ -227,7 +229,7 @@ def test_addon_map_data_folder_with_custom_target(
 ):
     """Test mounts for addon which sets target path for data folder."""
     config = load_json_fixture("addon-config-map-addon_config.json")
-    config["map"].append({ "name":"data", "target":"/custom/data/path" })
+    config["map"].append({"type": "data", "path": "/custom/data/path"})
     docker_addon = get_docker_addon(coresys, addonsdata_system, config)
 
     # Addon config folder included
@@ -236,27 +238,6 @@ def test_addon_map_data_folder_with_custom_target(
             type="bind",
             source=docker_addon.addon.path_extern_data.as_posix(),
             target="/custom/data/path",
-            read_only=False,
-        )
-        in docker_addon.mounts
-    )
-
-
-def test_addon_map_addon_config_folder_with_custom_target(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
-):
-    """Test mounts for addon which maps its own config folder and sets target path."""
-    config = load_json_fixture("addon-config-map-addon_config.json")
-    config["map"].remove("addon_config")
-    config["map"].append({ "name":"addon_config:rw", "target":"/custom/config/path" })
-    docker_addon = get_docker_addon(coresys, addonsdata_system, config)
-
-    # Addon config folder included
-    assert (
-        Mount(
-            type="bind",
-            source=docker_addon.addon.path_extern_config.as_posix(),
-            target="/custom/config/path",
             read_only=False,
         )
         in docker_addon.mounts

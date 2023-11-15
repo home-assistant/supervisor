@@ -79,6 +79,7 @@ from ..const import (
     AddonBoot,
     AddonStage,
     AddonStartup,
+    MappingType,
 )
 from ..coresys import CoreSys
 from ..docker.const import Capabilities
@@ -86,9 +87,10 @@ from ..exceptions import AddonsNotSupportedError
 from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
+from .configuration import FolderMapping
 from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
 from .options import AddonOptions, UiOptions
-from .validate import RE_SERVICE, RE_VOLUME
+from .validate import RE_SERVICE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -538,22 +540,12 @@ class AddonModel(JobGroup, ABC):
         return ATTR_IMAGE not in self.data
 
     @property
-    def map_volumes(self) -> dict[str, dict]:
-        """Return a dict of {volume: dict} from add-on."""
+    def map_volumes(self) -> dict[MappingType, FolderMapping]:
+        """Return a dict of {MappingType: FolderMapping} from add-on."""
         volumes = {}
         for volume in self.data[ATTR_MAP]:
-            if type(volume) is dict:
-                result = RE_VOLUME.match(volume.get("name"))
-                if not result:
-                    continue
-                volumes[result.group(1)]["read_only"] = result.group(2) != "rw"
-                volumes[result.group(1)]["target"] = volume.get("target")
-            else:
-                result = RE_VOLUME.match(volume)
-                if not result:
-                    continue
-                volumes[result.group(1)]["read_only"] = result.group(2) != "rw"
-            
+            volumes[volume.type] = volume
+
         return volumes
 
     @property

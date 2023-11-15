@@ -18,22 +18,13 @@ from ..addons.build import AddonBuild
 from ..bus import EventListener
 from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
-    MAP_DATA,
-    MAP_ADDON_CONFIG,
-    MAP_ADDONS,
-    MAP_ALL_ADDON_CONFIGS,
-    MAP_BACKUP,
-    MAP_CONFIG,
-    MAP_HOMEASSISTANT_CONFIG,
-    MAP_MEDIA,
-    MAP_SHARE,
-    MAP_SSL,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
     SYSTEMD_JOURNAL_PERSISTENT,
     SYSTEMD_JOURNAL_VOLATILE,
     BusEvent,
     CpuArch,
+    MappingType,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -338,19 +329,19 @@ class DockerAddon(DockerInterface):
             Mount(
                 type=MountType.BIND,
                 source=self.addon.path_extern_data.as_posix(),
-                target=addon_mapping.get(MAP_DATA, {}).get("target", "/data"),
+                target=addon_mapping[MappingType.DATA].path or "/data",
                 read_only=False,
             ),
         ]
 
         # setup config mappings
-        if MAP_CONFIG in addon_mapping:
+        if MappingType.CONFIG in addon_mapping:
             mounts.append(
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
-                    target=addon_mapping[MAP_CONFIG].get("target", "/config"),
-                    read_only=addon_mapping[MAP_CONFIG]["read_only"],
+                    target=addon_mapping[MappingType.CONFIG].path or "/config",
+                    read_only=addon_mapping[MappingType.CONFIG].read_only,
                 )
             )
 
@@ -361,80 +352,85 @@ class DockerAddon(DockerInterface):
                     Mount(
                         type=MountType.BIND,
                         source=self.addon.path_extern_config.as_posix(),
-                        target=addon_mapping[MAP_ADDON_CONFIG].get("target", "/config"),
-                        read_only=addon_mapping[MAP_ADDON_CONFIG]["read_only"],
+                        target=addon_mapping[MappingType.ADDON_CONFIG].path
+                        or "/config",
+                        read_only=addon_mapping[MappingType.ADDON_CONFIG].read_only,
                     )
                 )
 
             # Map Home Assistant config in new way
-            if MAP_HOMEASSISTANT_CONFIG in addon_mapping:
+            if MappingType.HOMEASSISTANT_CONFIG in addon_mapping:
                 mounts.append(
                     Mount(
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_homeassistant.as_posix(),
-                        target="/homeassistant",
-                        read_only=addon_mapping[MAP_HOMEASSISTANT_CONFIG],
+                        target=addon_mapping[MappingType.HOMEASSISTANT_CONFIG].path
+                        or "/homeassistant",
+                        read_only=addon_mapping[
+                            MappingType.HOMEASSISTANT_CONFIG
+                        ].read_only,
                     )
                 )
 
-        if MAP_ALL_ADDON_CONFIGS in addon_mapping:
+        if MappingType.ALL_ADDON_CONFIGS in addon_mapping:
             mounts.append(
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_addon_configs.as_posix(),
-                    target="/addon_configs",
-                    read_only=addon_mapping[MAP_ALL_ADDON_CONFIGS]["read_only"],
+                    target=addon_mapping[MappingType.ALL_ADDON_CONFIGS].path
+                    or "/addon_configs",
+                    read_only=addon_mapping[MappingType.ALL_ADDON_CONFIGS].read_only,
                 )
             )
 
-        if MAP_SSL in addon_mapping:
+        if MappingType.SSL in addon_mapping:
             mounts.append(
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
-                    target="/ssl",
-                    read_only=addon_mapping[MAP_SSL]["read_only"],
+                    target=addon_mapping[MappingType.SSL].path or "/ssl",
+                    read_only=addon_mapping[MappingType.SSL].read_only,
                 )
             )
 
-        if MAP_ADDONS in addon_mapping:
+        if MappingType.ADDONS in addon_mapping:
             mounts.append(
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_addons_local.as_posix(),
-                    target="/addons",
-                    read_only=addon_mapping[MAP_ADDONS]["read_only"],
+                    target=addon_mapping[MappingType.ADDONS].path or "/addons",
+                    read_only=addon_mapping[MappingType.ADDONS].read_only,
                 )
             )
 
-        if MAP_BACKUP in addon_mapping:
+        if MappingType.BACKUP in addon_mapping:
             mounts.append(
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_backup.as_posix(),
-                    target="/backup",
-                    read_only=addon_mapping[MAP_BACKUP]["read_only"],
+                    target=addon_mapping[MappingType.BACKUP].path or "/backup",
+                    read_only=addon_mapping[MappingType.BACKUP].read_only,
                 )
             )
 
-        if MAP_SHARE in addon_mapping:
+        if MappingType.SHARE in addon_mapping:
             mounts.append(
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
-                    target="/share",
-                    read_only=addon_mapping[MAP_SHARE]["read_only"],
+                    target=addon_mapping[MappingType.SHARE].path or "/share",
+                    read_only=addon_mapping[MappingType.SHARE].read_only,
                     propagation=PropagationMode.RSLAVE,
                 )
             )
 
-        if MAP_MEDIA in addon_mapping:
+        if MappingType.MEDIA in addon_mapping:
             mounts.append(
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_media.as_posix(),
-                    target="/media",
-                    read_only=addon_mapping[MAP_MEDIA]["read_only"],
+                    target=addon_mapping[MappingType.MEDIA].path or "/media",
+                    read_only=addon_mapping[MappingType.MEDIA].read_only,
                     propagation=PropagationMode.RSLAVE,
                 )
             )
