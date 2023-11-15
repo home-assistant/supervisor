@@ -149,12 +149,12 @@ def test_addon_map_homeassistant_folder(
     config["map"].append("homeassistant_config")
     docker_addon = get_docker_addon(coresys, addonsdata_system, config)
 
-    # Home Assistant config folder still mounted to /config
+    # Home Assistant config folder mounted to /homeassistant, not /config
     assert (
         Mount(
             type="bind",
             source=coresys.config.path_extern_homeassistant.as_posix(),
-            target="/config",
+            target="/homeassistant",
             read_only=True,
         )
         in docker_addon.mounts
@@ -194,7 +194,7 @@ def test_addon_map_addon_config_folder(
         Mount(
             type="bind",
             source=docker_addon.addon.path_extern_config.as_posix(),
-            target="/addon_config",
+            target="/config",
             read_only=True,
         )
         in docker_addon.mounts

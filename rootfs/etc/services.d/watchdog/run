@@ -15,7 +15,7 @@ do
     if [[ "${supervisor_state}" = "running"  ]]; then
 
         # Check API
-        if bashio::supervisor.ping; then
+        if bashio::supervisor.ping > /dev/null; then
             failed_count=0
         else
             bashio::log.warning "Maybe found an issue on API healthy"

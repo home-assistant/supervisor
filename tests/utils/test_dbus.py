@@ -17,6 +17,7 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 class TestInterface(DBusServiceMock):
     """Test interface."""
 
+    __test__ = False
     interface = "service.test.TestInterface"
     object_path = DBUS_OBJECT_BASE
 
