@@ -275,7 +275,7 @@ async def test_exception_conditions(coresys: CoreSys):
 
 
 async def test_execution_limit_single_wait(
-    coresys: CoreSys, loop: asyncio.BaseEventLoop
+    coresys: CoreSys, event_loop: asyncio.BaseEventLoop
 ):
     """Test the single wait job execution limit."""
 
@@ -303,7 +303,7 @@ async def test_execution_limit_single_wait(
 
 
 async def test_execution_limit_throttle_wait(
-    coresys: CoreSys, loop: asyncio.BaseEventLoop
+    coresys: CoreSys, event_loop: asyncio.BaseEventLoop
 ):
     """Test the throttle wait job execution limit."""
 
@@ -339,7 +339,7 @@ async def test_execution_limit_throttle_wait(
 
 @pytest.mark.parametrize("error", [None, PluginJobError])
 async def test_execution_limit_throttle_rate_limit(
-    coresys: CoreSys, loop: asyncio.BaseEventLoop, error: JobException | None
+    coresys: CoreSys, event_loop: asyncio.BaseEventLoop, error: JobException | None
 ):
     """Test the throttle wait job execution limit."""
 
@@ -379,7 +379,9 @@ async def test_execution_limit_throttle_rate_limit(
     assert test.call == 3
 
 
-async def test_execution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+async def test_execution_limit_throttle(
+    coresys: CoreSys, event_loop: asyncio.BaseEventLoop
+):
     """Test the ignore conditions decorator."""
 
     class TestClass:
@@ -412,7 +414,9 @@ async def test_execution_limit_throttle(coresys: CoreSys, loop: asyncio.BaseEven
     assert test.call == 1
 
 
-async def test_execution_limit_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+async def test_execution_limit_once(
+    coresys: CoreSys, event_loop: asyncio.BaseEventLoop
+):
     """Test the ignore conditions decorator."""
 
     class TestClass:
@@ -435,7 +439,7 @@ async def test_execution_limit_once(coresys: CoreSys, loop: asyncio.BaseEventLoo
                 await asyncio.sleep(sleep)
 
     test = TestClass(coresys)
-    run_task = loop.create_task(test.execute(0.3))
+    run_task = event_loop.create_task(test.execute(0.3))
 
     await asyncio.sleep(0.1)
     with pytest.raises(JobException):
@@ -591,7 +595,7 @@ async def test_host_network(coresys: CoreSys):
     assert await test.execute()
 
 
-async def test_job_group_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+async def test_job_group_once(coresys: CoreSys, event_loop: asyncio.BaseEventLoop):
     """Test job group once execution limitation."""
 
     class TestClass(JobGroup):
@@ -640,7 +644,7 @@ async def test_job_group_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             return True
 
     test = TestClass(coresys)
-    run_task = loop.create_task(test.execute())
+    run_task = event_loop.create_task(test.execute())
     await asyncio.sleep(0)
 
     # All methods with group limits should be locked
@@ -660,7 +664,7 @@ async def test_job_group_once(coresys: CoreSys, loop: asyncio.BaseEventLoop):
     assert await run_task
 
 
-async def test_job_group_wait(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+async def test_job_group_wait(coresys: CoreSys, event_loop: asyncio.BaseEventLoop):
     """Test job group wait execution limitation."""
 
     class TestClass(JobGroup):
@@ -702,11 +706,11 @@ async def test_job_group_wait(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             self.other_count += 1
 
     test = TestClass(coresys)
-    run_task = loop.create_task(test.execute())
+    run_task = event_loop.create_task(test.execute())
     await asyncio.sleep(0)
 
-    repeat_task = loop.create_task(test.execute())
-    other_task = loop.create_task(test.separate_execute())
+    repeat_task = event_loop.create_task(test.execute())
+    other_task = event_loop.create_task(test.separate_execute())
     await asyncio.sleep(0)
 
     assert test.execute_count == 1
@@ -721,7 +725,7 @@ async def test_job_group_wait(coresys: CoreSys, loop: asyncio.BaseEventLoop):
     assert test.other_count == 1
 
 
-async def test_job_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+async def test_job_cleanup(coresys: CoreSys, event_loop: asyncio.BaseEventLoop):
     """Test job is cleaned up."""
 
     class TestClass:
@@ -741,7 +745,7 @@ async def test_job_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             return True
 
     test = TestClass(coresys)
-    run_task = loop.create_task(test.execute())
+    run_task = event_loop.create_task(test.execute())
     await asyncio.sleep(0)
 
     assert coresys.jobs.jobs == [test.job]
@@ -754,7 +758,7 @@ async def test_job_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
     assert test.job.done
 
 
-async def test_job_skip_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
+async def test_job_skip_cleanup(coresys: CoreSys, event_loop: asyncio.BaseEventLoop):
     """Test job is left in job manager when cleanup is false."""
 
     class TestClass:
@@ -778,7 +782,7 @@ async def test_job_skip_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
             return True
 
     test = TestClass(coresys)
-    run_task = loop.create_task(test.execute())
+    run_task = event_loop.create_task(test.execute())
     await asyncio.sleep(0)
 
     assert coresys.jobs.jobs == [test.job]
@@ -792,7 +796,7 @@ async def test_job_skip_cleanup(coresys: CoreSys, loop: asyncio.BaseEventLoop):
 
 
 async def test_execution_limit_group_throttle(
-    coresys: CoreSys, loop: asyncio.BaseEventLoop
+    coresys: CoreSys, event_loop: asyncio.BaseEventLoop
 ):
     """Test the group throttle execution limit."""
 
@@ -841,7 +845,7 @@ async def test_execution_limit_group_throttle(
 
 
 async def test_execution_limit_group_throttle_wait(
-    coresys: CoreSys, loop: asyncio.BaseEventLoop
+    coresys: CoreSys, event_loop: asyncio.BaseEventLoop
 ):
     """Test the group throttle wait job execution limit."""
 
@@ -893,7 +897,7 @@ async def test_execution_limit_group_throttle_wait(
 
 @pytest.mark.parametrize("error", [None, PluginJobError])
 async def test_execution_limit_group_throttle_rate_limit(
-    coresys: CoreSys, loop: asyncio.BaseEventLoop, error: JobException | None
+    coresys: CoreSys, event_loop: asyncio.BaseEventLoop, error: JobException | None
 ):
     """Test the group throttle rate limit job execution limit."""
 
