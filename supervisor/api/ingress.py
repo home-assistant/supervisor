@@ -48,6 +48,29 @@ SCHEMA_INGRESS_CREATE_SESSION_DATA = vol.Schema(
 )
 
 
+# from https://github.com/aio-libs/aiohttp/blob/8ae650bee4add9f131d49b96a0a150311ea58cd1/aiohttp/helpers.py#L1059C1-L1079C1
+def must_be_empty_body(method: str, code: int) -> bool:
+    """Check if a request must return an empty body."""
+    return (
+        status_code_must_be_empty_body(code)
+        or method_must_be_empty_body(method)
+        or (200 <= code < 300 and method.upper() == hdrs.METH_CONNECT)
+    )
+
+
+def method_must_be_empty_body(method: str) -> bool:
+    """Check if a method must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
+    return method.upper() == hdrs.METH_HEAD
+
+
+def status_code_must_be_empty_body(code: int) -> bool:
+    """Check if a status code must return an empty body."""
+    # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
+    return code in {204, 304} or 100 <= code < 200
+
+
 class APIIngress(CoreSysAttributes):
     """Ingress view to handle add-on webui routing."""
 
@@ -232,7 +255,11 @@ class APIIngress(CoreSysAttributes):
                 content_type = result.content_type
             # Simple request
             if (
-                hdrs.CONTENT_LENGTH in result.headers
+                # empty body responses should not be streamed,
+                # otherwise aiohttp < 3.9.0 may generate
+                # an invalid "0\r\n\r\n" chunk instead of an empty response.
+                must_be_empty_body(request.method, result.status)
+                or hdrs.CONTENT_LENGTH in result.headers
                 and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
             ):
                 # Return Response
