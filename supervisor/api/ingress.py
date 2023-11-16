@@ -94,7 +94,7 @@ class APIIngress(CoreSysAttributes):
 
     async def _async_create_url(self, addon: Addon, path: str) -> str:
         """Create URL to container."""
-        return f"http://{addon.ip_address}:{await addon.get_ingress_port()}/{path}"
+        return f"http://{addon.ip_address}:{addon.ingress_port}/{path}"
 
     @api_process
     async def panels(self, request: web.Request) -> dict[str, Any]:

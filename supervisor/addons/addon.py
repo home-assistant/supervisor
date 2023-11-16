@@ -387,14 +387,15 @@ class Addon(AddonModel):
 
         return f"{proto}://[HOST]:{port}{s_suffix}"
 
-    async def get_ingress_port(self) -> int | None:
+    @property
+    def ingress_port(self) -> int | None:
         """Return Ingress port."""
         if not self.with_ingress:
             return None
 
         port = self.data[ATTR_INGRESS_PORT]
         if port == 0:
-            return await self.sys_ingress.get_dynamic_port(self.slug)
+            _LOGGER.critical("No port set for add-on %s", self.slug)
         return port
 
     @property
@@ -601,6 +602,16 @@ class Addon(AddonModel):
             _LOGGER.info("Removing add-on data folder %s", self.path_data)
             await remove_data(self.path_data)
 
+    async def _check_ingress_port(self):
+        """Assign a ingress port if dynamic port selection is used."""
+        if not self.with_ingress:
+            return
+
+        if self.data[ATTR_INGRESS_PORT] == 0:
+            self.data[ATTR_INGRESS_PORT] = await self.sys_ingress.get_dynamic_port(
+                self.slug
+            )
+
     @Job(
         name="addon_install",
         limit=JobExecutionLimit.GROUP_ONCE,
@@ -628,6 +639,8 @@ class Addon(AddonModel):
         except DockerError as err:
             self.sys_addons.data.uninstall(self)
             raise AddonsError() from err
+
+        await self._check_ingress_port()
 
         # Add to addon manager
         self.sys_addons.local[self.slug] = self
@@ -715,6 +728,7 @@ class Addon(AddonModel):
         try:
             _LOGGER.info("Add-on '%s' successfully updated", self.slug)
             self.sys_addons.data.update(store)
+            await self._check_ingress_port()
 
             # Cleanup
             with suppress(DockerError):
@@ -755,6 +769,7 @@ class Addon(AddonModel):
                 raise AddonsError() from err
 
             self.sys_addons.data.update(self.addon_store)
+            await self._check_ingress_port()
             _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
 
         finally:
