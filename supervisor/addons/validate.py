@@ -284,6 +284,8 @@ def _migrate_addon_config(protocol=False):
             for entry in config.get(ATTR_MAP, [])
             if isinstance(entry, str)
         ]:
+            if not entry:
+                continue
             volumes.append(FolderMapping(None, entry.group(2) != "rw", entry.group(1)))
 
         if volumes:
