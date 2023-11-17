@@ -286,11 +286,6 @@ def _migrate_addon_config(protocol=False):
         if volumes:
             config[ATTR_MAP] = volumes
 
-        _LOGGER.warning(
-            "Volumes: '%s'",
-            volumes,
-        )
-
         # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
         if any(
             volume and volume.get("type") == MappingType.CONFIG for volume in volumes
