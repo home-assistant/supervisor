@@ -79,7 +79,6 @@ from ..const import (
     AddonBoot,
     AddonStage,
     AddonStartup,
-    MappingType,
 )
 from ..coresys import CoreSys
 from ..docker.const import Capabilities
@@ -88,7 +87,7 @@ from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
 from .configuration import FolderMapping
-from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
+from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode, MappingType
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE
 
@@ -544,7 +543,9 @@ class AddonModel(JobGroup, ABC):
         """Return a dict of {MappingType: FolderMapping} from add-on."""
         volumes = {}
         for volume in self.data[ATTR_MAP]:
-            volumes[volume.type] = volume
+            volumes[MappingType(volume.get("type"))] = FolderMapping(
+                volume.get("path"), volume.get("read_only")
+            )
 
         return volumes
 

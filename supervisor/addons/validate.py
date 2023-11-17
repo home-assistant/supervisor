@@ -97,7 +97,6 @@ from ..const import (
     AddonStage,
     AddonStartup,
     AddonState,
-    MappingType,
 )
 from ..discovery.validate import valid_discovery_service
 from ..docker.const import Capabilities
@@ -110,8 +109,7 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
-from .configuration import FolderMapping
-from .const import ATTR_BACKUP, ATTR_CODENOTARY, RE_SLUG, AddonBackupMode
+from .const import ATTR_BACKUP, ATTR_CODENOTARY, RE_SLUG, AddonBackupMode, MappingType
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -269,15 +267,10 @@ def _migrate_addon_config(protocol=False):
         for entry in [
             entry for entry in config.get(ATTR_MAP, []) if isinstance(entry, dict)
         ]:
-            if not entry.get("type") in set(MappingType):
+            result = RE_VOLUME.match(entry.get("type"))
+            if not result:
                 continue
-            volumes.append(
-                FolderMapping(
-                    entry.get("path"),
-                    entry.get("read_only", True),
-                    MappingType(entry.get("type")),
-                )
-            )
+            volumes.append(entry)
 
         for entry in [
             RE_VOLUME.match(entry)
@@ -286,16 +279,25 @@ def _migrate_addon_config(protocol=False):
         ]:
             if not entry:
                 continue
-            volumes.append(FolderMapping(None, entry.group(2) != "rw", entry.group(1)))
+            volumes.append(
+                {"type": entry.group(1), "read_only": entry.group(2) != "rw"}
+            )
 
         if volumes:
             config[ATTR_MAP] = volumes
 
+        _LOGGER.warning(
+            "Volumes: '%s'",
+            volumes,
+        )
+
         # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
-        if any(volume and volume.type == MappingType.CONFIG for volume in volumes):
+        if any(
+            volume and volume.get("type") == MappingType.CONFIG for volume in volumes
+        ):
             if any(
                 volume
-                and volume.type
+                and volume.get("type")
                 in {MappingType.ADDON_CONFIG, MappingType.HOMEASSISTANT_CONFIG}
                 for volume in volumes
             ):
@@ -362,7 +364,15 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_DEVICES): [str],
         vol.Optional(ATTR_UDEV, default=False): vol.Boolean(),
         vol.Optional(ATTR_TMPFS, default=False): vol.Boolean(),
-        vol.Optional(ATTR_MAP, default=list): [FolderMapping],
+        vol.Optional(ATTR_MAP, default=list): [
+            vol.Schema(
+                {
+                    vol.Required("type"): str,
+                    vol.Optional("read_only"): bool,
+                    vol.Optional("path"): str,
+                }
+            )
+        ],
         vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): str},
         vol.Optional(ATTR_PRIVILEGED): [vol.Coerce(Capabilities)],
         vol.Optional(ATTR_APPARMOR, default=True): vol.Boolean(),

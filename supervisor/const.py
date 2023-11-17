@@ -412,21 +412,6 @@ class AddonState(StrEnum):
     ERROR = "error"
 
 
-class MappingType(StrEnum):
-    """Mapping type of an Add-on Folder."""
-
-    DATA = "data"
-    CONFIG = "config"
-    SSL = "ssl"
-    ADDONS = "addons"
-    BACKUP = "backup"
-    SHARE = "share"
-    MEDIA = "media"
-    HOMEASSISTANT_CONFIG = "homeassistant_config"
-    ALL_ADDON_CONFIGS = "all_addon_configs"
-    ADDON_CONFIG = "addon_config"
-
-
 class UpdateChannel(StrEnum):
     """Core supported update channels."""
 

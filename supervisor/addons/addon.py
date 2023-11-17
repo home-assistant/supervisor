@@ -47,7 +47,6 @@ from ..const import (
     ATTR_VERSION,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
-    MAP_ADDON_CONFIG,
     AddonBoot,
     AddonStartup,
     AddonState,
@@ -83,6 +82,7 @@ from .const import (
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
     AddonBackupMode,
+    MappingType,
 )
 from .model import AddonModel, Data
 from .options import AddonOptions
@@ -464,7 +464,7 @@ class Addon(AddonModel):
     @property
     def addon_config_used(self) -> bool:
         """Add-on is using its public config folder."""
-        return MAP_ADDON_CONFIG in self.map_volumes
+        return self.map_volumes.get(MappingType.ADDON_CONFIG) is not None
 
     @property
     def path_config(self) -> Path:

@@ -15,6 +15,7 @@ from docker.types import Mount
 import requests
 
 from ..addons.build import AddonBuild
+from ..addons.const import MappingType
 from ..bus import EventListener
 from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
@@ -24,7 +25,6 @@ from ..const import (
     SYSTEMD_JOURNAL_VOLATILE,
     BusEvent,
     CpuArch,
-    MappingType,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -324,12 +324,16 @@ class DockerAddon(DockerInterface):
         """Return mounts for container."""
         addon_mapping = self.addon.map_volumes
 
+        target_data_path = "/data"
+        if MappingType.DATA in addon_mapping:
+            target_data_path = addon_mapping[MappingType.DATA].path
+
         mounts = [
             MOUNT_DEV,
             Mount(
                 type=MountType.BIND,
                 source=self.addon.path_extern_data.as_posix(),
-                target=addon_mapping[MappingType.DATA].path or "/data",
+                target=target_data_path,
                 read_only=False,
             ),
         ]

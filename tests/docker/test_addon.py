@@ -208,7 +208,7 @@ def test_addon_map_addon_config_folder_with_custom_target(
     config = load_json_fixture("addon-config-map-addon_config.json")
     config["map"].remove("addon_config")
     config["map"].append(
-        {"type": "addon_config", "read_only": False, "path": "/custom/config/path"}
+        {"type": "addon_config", "read_only": False, "path": "/custom/target/path"}
     )
     docker_addon = get_docker_addon(coresys, addonsdata_system, config)
 
