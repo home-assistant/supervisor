@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from aiohttp import web
+from aiohttp_fast_url_dispatcher import FastUrlDispatcher, attach_fast_url_dispatcher
 
 from ..const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
@@ -64,6 +65,7 @@ class RestAPI(CoreSysAttributes):
                 "max_field_size": MAX_LINE_SIZE,
             },
         )
+        attach_fast_url_dispatcher(self.webapp, FastUrlDispatcher())
 
         # service stuff
         self._runner: web.AppRunner = web.AppRunner(self.webapp)
