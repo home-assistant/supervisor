@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 from supervisor import bootstrap
+from supervisor.utils.logging import activate_log_queue_handler
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ if __name__ == "__main__":
     # init executor pool
     executor = ThreadPoolExecutor(thread_name_prefix="SyncWorker")
     loop.set_default_executor(executor)
+
+    activate_log_queue_handler()
 
     _LOGGER.info("Initializing Supervisor setup")
     coresys = loop.run_until_complete(bootstrap.initialize_coresys())
