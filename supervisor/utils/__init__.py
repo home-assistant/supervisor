@@ -39,7 +39,7 @@ def process_lock(method):
     return wrap_api
 
 
-async def async_check_port(
+async def check_port(
     loop: asyncio.AbstractEventLoop, address: IPv4Address, port: int
 ) -> bool:
     """Check if port is mapped."""

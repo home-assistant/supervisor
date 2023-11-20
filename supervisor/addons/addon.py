@@ -73,7 +73,7 @@ from ..homeassistant.const import WSEvent, WSType
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..store.addon import AddonStore
-from ..utils import async_check_port
+from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
 from ..utils.sentry import capture_exception
@@ -539,7 +539,7 @@ class Addon(AddonModel):
 
         # TCP monitoring
         if s_prefix == "tcp":
-            return await async_check_port(self.coresys.loop, self.ip_address, port)
+            return await check_port(self.coresys.loop, self.ip_address, port)
 
         # lookup the correct protocol from config
         if t_proto:

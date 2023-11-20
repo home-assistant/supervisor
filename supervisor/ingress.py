@@ -13,7 +13,7 @@ from .const import (
     IngressSessionData,
 )
 from .coresys import CoreSys, CoreSysAttributes
-from .utils import async_check_port
+from .utils import check_port
 from .utils.common import FileConfiguration
 from .utils.dt import utc_from_timestamp, utcnow
 from .validate import SCHEMA_INGRESS_CONFIG
@@ -163,7 +163,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         while (
             port is None
             or port in self.ports.values()
-            or await async_check_port(
+            or await check_port(
                 self.coresys.loop, self.sys_docker.network.gateway, port
             )
         ):
