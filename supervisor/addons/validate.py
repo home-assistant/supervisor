@@ -292,7 +292,7 @@ def _migrate_addon_config(protocol=False):
         ):
             if any(
                 volume
-                and volume.get("type")
+                and volume[ATTR_TYPE]
                 in {MappingType.ADDON_CONFIG, MappingType.HOMEASSISTANT_CONFIG}
                 for volume in volumes
             ):
