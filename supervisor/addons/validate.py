@@ -363,7 +363,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
             vol.Schema(
                 {
                     vol.Required(ATTR_TYPE): vol.Coerce(MappingType),
-                    vol.Optional("read_only"): bool,
+                    vol.Optional(ATTR_READ_ONLY, default=True): bool,
                     vol.Optional("path"): str,
                 }
             )
