@@ -215,11 +215,10 @@ class NetworkManager(DBusInterfaceProxy):
                 except (
                     DBusNoReplyError,
                     DBusServiceUnkownError,
-                ) as err:  # pylint: disable=broad-except
-                    # This typically means that NetworkManager disappeared.
-                    # Give up immeaditly.
-                    _LOGGER.exception(
-                        "NetworkManager not respondiing while processing %s: %s. Giving up.",
+                ) as err:
+                    # This typically means that NetworkManager disappeared. Give up immeaditly.
+                    _LOGGER.error(
+                        "NetworkManager not responding while processing %s: %s. Giving up.",
                         device,
                         err,
                     )
