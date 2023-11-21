@@ -15,10 +15,11 @@ from dbus_fast import (
 )
 from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
-from dbus_fast.errors import DBusError
+from dbus_fast.errors import DBusError as DBusFastDBusError
 from dbus_fast.introspection import Node
 
 from ..exceptions import (
+    DBusError,
     DBusFatalError,
     DBusInterfaceError,
     DBusInterfaceMethodError,
@@ -64,7 +65,7 @@ class DBus:
         return self
 
     @staticmethod
-    def from_dbus_error(err: DBusError) -> HassioNotSupportedError | DBusError:
+    def from_dbus_error(err: DBusFastDBusError) -> HassioNotSupportedError | DBusError:
         """Return correct dbus error based on type."""
         if err.type == ErrorType.SERVICE_UNKNOWN.value:
             return DBusServiceUnkownError(err.text)
@@ -111,7 +112,7 @@ class DBus:
                     *args, unpack_variants=True
                 )
             return await getattr(proxy_interface, method)(*args)
-        except DBusError as err:
+        except DBusFastDBusError as err:
             raise DBus.from_dbus_error(err)
         except Exception as err:  # pylint: disable=broad-except
             capture_exception(err)
@@ -135,7 +136,7 @@ class DBus:
                 raise DBusParseError(
                     f"Can't parse introspect data: {err}", _LOGGER.error
                 ) from err
-            except DBusError as err:
+            except DBusFastDBusError as err:
                 raise DBus.from_dbus_error(err)
             except (EOFError, TimeoutError):
                 _LOGGER.warning(
