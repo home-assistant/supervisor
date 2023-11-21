@@ -7,5 +7,5 @@ from dataclasses import dataclass
 class FolderMapping:
     """Represent folder mapping configuration."""
 
-    path: str
+    path: str | None
     read_only: bool
