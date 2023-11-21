@@ -280,7 +280,7 @@ def _migrate_addon_config(protocol=False):
             if not entry:
                 continue
             volumes.append(
-                {"type": entry.group(1), "read_only": entry.group(2) != "rw"}
+                {ATTR_TYPE: entry.group(1), ATTR_READ_ONLY: entry.group(2) != "rw"}
             )
 
         if volumes:
