@@ -464,7 +464,7 @@ class Addon(AddonModel):
     @property
     def addon_config_used(self) -> bool:
         """Add-on is using its public config folder."""
-        return self.map_volumes.get(MappingType.ADDON_CONFIG) is not None
+        return MappingType.ADDON_CONFIG in self.map_volumes
 
     @property
     def path_config(self) -> Path:
