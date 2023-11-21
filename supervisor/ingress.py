@@ -88,7 +88,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         now = utcnow()
 
         sessions = {}
-        sessions_data: dict[str, IngressSessionData] = {}
+        sessions_data: dict[str, dict[str, str | None]] = {}
         for session, valid in self.sessions.items():
             # check if timestamp valid, to avoid crash on malformed timestamp
             try:
@@ -102,7 +102,8 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
             # Is valid
             sessions[session] = valid
-            sessions_data[session] = self.sessions_data.get(session)
+            if session_data := self.sessions_data.get(session):
+                sessions_data[session] = session_data
 
         # Write back
         self.sessions.clear()
