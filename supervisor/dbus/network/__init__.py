@@ -263,7 +263,6 @@ class NetworkManager(DBusInterfaceProxy):
             curr_devices[device].shutdown()
 
         self._interfaces = interfaces
-        DBusServiceUnkownError
 
     def shutdown(self) -> None:
         """Shutdown the object and disconnect from D-Bus.
