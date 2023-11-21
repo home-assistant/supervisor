@@ -543,8 +543,8 @@ class AddonModel(JobGroup, ABC):
         """Return a dict of {MappingType: FolderMapping} from add-on."""
         volumes = {}
         for volume in self.data[ATTR_MAP]:
-            volumes[MappingType(volume.get("type"))] = FolderMapping(
-                volume.get("path"), volume.get("read_only")
+            volumes[MappingType(volume[ATTR_TYPE)] = FolderMapping(
+                volume.get(ATTR_PATH), volume[ATTR_READ_ONLY]
             )
 
         return volumes
