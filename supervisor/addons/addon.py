@@ -1213,6 +1213,7 @@ class Addon(AddonModel):
                     _LOGGER.info("Restore/Update of image for addon %s", self.slug)
                     with suppress(DockerError):
                         await self.instance.update(version, restore_image)
+                self._check_ingress_port()
 
                 # Restore data and config
                 def _restore_data():
