@@ -161,7 +161,7 @@ async def test_handling_bad_devices(
         await network_manager.update(
             {"Devices": [device := "/org/freedesktop/NetworkManager/Devices/102"]}
         )
-        assert f"Error while processing {device}" in caplog.text
+        assert f"Unkown error while processing {device}" in caplog.text
         capture_exception.assert_called_once_with(err)
 
     # We should be able to debug these situations if necessary
