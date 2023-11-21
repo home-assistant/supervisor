@@ -3,7 +3,7 @@ import logging
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ..exceptions import DBusError, DBusInterfaceError
+from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
 from .const import (
     DBUS_ATTR_CHASSIS,
     DBUS_ATTR_DEPLOYMENT,
@@ -39,7 +39,7 @@ class Hostname(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-hostname")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "No hostname support on the host. Hostname functions have been disabled."
             )

@@ -24,9 +24,11 @@ from ..exceptions import (
     DBusInterfaceMethodError,
     DBusInterfacePropertyError,
     DBusInterfaceSignalError,
+    DBusNoReplyError,
     DBusNotConnectedError,
     DBusObjectError,
     DBusParseError,
+    DBusServiceUnkownError,
     DBusTimeoutError,
     HassioNotSupportedError,
 )
@@ -64,7 +66,9 @@ class DBus:
     @staticmethod
     def from_dbus_error(err: DBusError) -> HassioNotSupportedError | DBusError:
         """Return correct dbus error based on type."""
-        if err.type in {ErrorType.SERVICE_UNKNOWN, ErrorType.UNKNOWN_INTERFACE}:
+        if err.type == ErrorType.SERVICE_UNKNOWN:
+            return DBusServiceUnkownError(err.text)
+        if err.type == ErrorType.UNKNOWN_INTERFACE:
             return DBusInterfaceError(err.text)
         if err.type in {
             ErrorType.UNKNOWN_METHOD,
@@ -80,6 +84,8 @@ class DBus:
             return DBusNotConnectedError(err.text)
         if err.type == ErrorType.TIMEOUT:
             return DBusTimeoutError(err.text)
+        if err.type == ErrorType.NO_REPLY:
+            return DBusNoReplyError(err.text)
         return DBusFatalError(err.text, type_=err.type)
 
     @staticmethod
@@ -126,6 +132,8 @@ class DBus:
                 raise DBusParseError(
                     f"Can't parse introspect data: {err}", _LOGGER.error
                 ) from err
+            except DBusError as err:
+                raise DBus.from_dbus_error(err)
             except (EOFError, TimeoutError):
                 _LOGGER.warning(
                     "Busy system at %s - %s", self.bus_name, self.object_path

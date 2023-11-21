@@ -4,7 +4,7 @@ from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ...exceptions import DBusError, DBusInterfaceError
+from ...exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
 from ..const import DBUS_NAME_NM, DBUS_OBJECT_SETTINGS
 from ..interface import DBusInterface
 from ..network.setting import NetworkSetting
@@ -28,7 +28,7 @@ class NetworkManagerSettings(DBusInterface):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to Network Manager Settings")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "No Network Manager Settings support on the host. Local network functions have been disabled."
             )

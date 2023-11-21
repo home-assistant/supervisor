@@ -9,6 +9,8 @@ from ...exceptions import (
     DBusError,
     DBusFatalError,
     DBusInterfaceError,
+    DBusNoReplyError,
+    DBusServiceUnkownError,
     HostNotSupportedError,
     NetworkInterfaceNotFound,
 )
@@ -143,7 +145,7 @@ class NetworkManager(DBusInterfaceProxy):
             await self.settings.connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to Network Manager")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "No Network Manager support on the host. Local network functions have been disabled."
             )
@@ -210,8 +212,23 @@ class NetworkManager(DBusInterfaceProxy):
                     # try to query it. Ignore those cases.
                     _LOGGER.debug("Can't process %s: %s", device, err)
                     continue
+                except (
+                    DBusNoReplyError,
+                    DBusServiceUnkownError,
+                ) as err:  # pylint: disable=broad-except
+                    # This typically means that NetworkManager disappeared.
+                    # Give up immeaditly.
+                    _LOGGER.exception(
+                        "NetworkManager not respondiing while processing %s: %s. Giving up.",
+                        device,
+                        err,
+                    )
+                    capture_exception(err)
+                    return
                 except Exception as err:  # pylint: disable=broad-except
-                    _LOGGER.exception("Error while processing %s: %s", device, err)
+                    _LOGGER.exception(
+                        "Unkown error while processing %s: %s", device, err
+                    )
                     capture_exception(err)
                     continue
 
@@ -246,6 +263,7 @@ class NetworkManager(DBusInterfaceProxy):
             curr_devices[device].shutdown()
 
         self._interfaces = interfaces
+        DBusServiceUnkownError
 
     def shutdown(self) -> None:
         """Shutdown the object and disconnect from D-Bus.

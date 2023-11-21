@@ -12,7 +12,7 @@ from ...const import (
     ATTR_PRIORITY,
     ATTR_VPN,
 )
-from ...exceptions import DBusError, DBusInterfaceError
+from ...exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
 from ..const import (
     DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_MODE,
@@ -67,7 +67,7 @@ class NetworkManagerDNS(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to DnsManager")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "No DnsManager support on the host. Local DNS functions have been disabled."
             )

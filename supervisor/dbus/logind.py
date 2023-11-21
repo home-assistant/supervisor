@@ -3,7 +3,7 @@ import logging
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ..exceptions import DBusError, DBusInterfaceError
+from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
 from .const import DBUS_NAME_LOGIND, DBUS_OBJECT_LOGIND
 from .interface import DBusInterface
 from .utils import dbus_connected
@@ -28,7 +28,7 @@ class Logind(DBusInterface):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-logind")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.info("No systemd-logind support on the host.")
 
     @dbus_connected
