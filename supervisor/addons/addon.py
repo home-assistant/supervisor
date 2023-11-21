@@ -395,7 +395,7 @@ class Addon(AddonModel):
 
         port = self.data[ATTR_INGRESS_PORT]
         if port == 0:
-            _LOGGER.critical("No port set for add-on %s", self.slug)
+            raise RuntimeError(f"No port set for add-on {self.slug}")
         return port
 
     @property
