@@ -29,6 +29,8 @@ class MappingType(StrEnum):
 
 ATTR_BACKUP = "backup"
 ATTR_CODENOTARY = "codenotary"
+ATTR_READ_ONLY = "read_only"
+ATTR_PATH = "path"
 WATCHDOG_RETRY_SECONDS = 10
 WATCHDOG_MAX_ATTEMPTS = 5
 WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)

@@ -81,6 +81,7 @@ from ..const import (
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
+    ATTR_TYPE,
     ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
@@ -109,7 +110,14 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
-from .const import ATTR_BACKUP, ATTR_CODENOTARY, RE_SLUG, AddonBackupMode, MappingType
+from .const import (
+    ATTR_BACKUP,
+    ATTR_CODENOTARY,
+    ATTR_READ_ONLY,
+    RE_SLUG,
+    AddonBackupMode,
+    MappingType,
+)
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -287,9 +295,7 @@ def _migrate_addon_config(protocol=False):
             config[ATTR_MAP] = volumes
 
         # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
-        if any(
-            volume[ATTR_TYPE] == MappingType.CONFIG for volume in volumes
-        ):
+        if any(volume[ATTR_TYPE] == MappingType.CONFIG for volume in volumes):
             if any(
                 volume
                 and volume[ATTR_TYPE]
