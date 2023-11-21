@@ -88,3 +88,14 @@ async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
         },
         "ports": {},
     }
+
+
+async def test_ingress_reload_ignore_none_data(coresys: CoreSys):
+    """Test reloading ingress does not add None for session data and create errors."""
+    session = coresys.ingress.create_session()
+    assert session in coresys.ingress.sessions
+    assert session not in coresys.ingress.sessions_data
+
+    await coresys.ingress.reload()
+    assert session in coresys.ingress.sessions
+    assert session not in coresys.ingress.sessions_data
