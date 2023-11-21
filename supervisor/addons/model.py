@@ -65,6 +65,7 @@ from ..const import (
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
+    ATTR_TYPE,
     ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
@@ -87,7 +88,14 @@ from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
 from .configuration import FolderMapping
-from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode, MappingType
+from .const import (
+    ATTR_BACKUP,
+    ATTR_CODENOTARY,
+    ATTR_PATH,
+    ATTR_READ_ONLY,
+    AddonBackupMode,
+    MappingType,
+)
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE
 
@@ -543,7 +551,7 @@ class AddonModel(JobGroup, ABC):
         """Return a dict of {MappingType: FolderMapping} from add-on."""
         volumes = {}
         for volume in self.data[ATTR_MAP]:
-            volumes[MappingType(volume[ATTR_TYPE)] = FolderMapping(
+            volumes[MappingType(volume[ATTR_TYPE])] = FolderMapping(
                 volume.get(ATTR_PATH), volume[ATTR_READ_ONLY]
             )
 
