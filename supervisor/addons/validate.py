@@ -288,7 +288,7 @@ def _migrate_addon_config(protocol=False):
 
         # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
         if any(
-            volume and volume.get("type") == MappingType.CONFIG for volume in volumes
+            volume[ATTR_TYPE] == MappingType.CONFIG for volume in volumes
         ):
             if any(
                 volume
