@@ -39,15 +39,13 @@ def process_lock(method):
     return wrap_api
 
 
-async def check_port(
-    loop: asyncio.AbstractEventLoop, address: IPv4Address, port: int
-) -> bool:
+async def check_port(address: IPv4Address, port: int) -> bool:
     """Check if port is mapped."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setblocking(False)
     try:
         async with asyncio.timeout(0.5):
-            await loop.sock_connect(sock, (str(address), port))
+            await asyncio.get_running_loop().sock_connect(sock, (str(address), port))
     except (OSError, TimeoutError):
         return False
     finally:

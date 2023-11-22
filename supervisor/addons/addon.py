@@ -539,7 +539,7 @@ class Addon(AddonModel):
 
         # TCP monitoring
         if s_prefix == "tcp":
-            return await check_port(self.coresys.loop, self.ip_address, port)
+            return await check_port(self.ip_address, port)
 
         # lookup the correct protocol from config
         if t_proto:

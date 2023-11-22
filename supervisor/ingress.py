@@ -163,9 +163,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         while (
             port is None
             or port in self.ports.values()
-            or await check_port(
-                self.coresys.loop, self.sys_docker.network.gateway, port
-            )
+            or await check_port(self.sys_docker.network.gateway, port)
         ):
             port = random.randint(62000, 65500)
 

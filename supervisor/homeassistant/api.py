@@ -141,7 +141,6 @@ class HomeAssistantAPI(CoreSysAttributes):
 
         # Check if port is up
         if not await check_port(
-            self.coresys.loop,
             self.sys_homeassistant.ip_address,
             self.sys_homeassistant.api_port,
         ):
