@@ -68,7 +68,7 @@ class RestAPI(CoreSysAttributes):
         attach_fast_url_dispatcher(self.webapp, FastUrlDispatcher())
 
         # service stuff
-        self._runner: web.AppRunner = web.AppRunner(self.webapp, shutdown_timeout=5)
+        self._runner: web.AppRunner = web.AppRunner(self.webapp)
         self._site: web.TCPSite | None = None
 
     async def load(self) -> None:
@@ -673,7 +673,9 @@ class RestAPI(CoreSysAttributes):
     async def start(self) -> None:
         """Run RESTful API webserver."""
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, host="0.0.0.0", port=80)
+        self._site = web.TCPSite(
+            self._runner, host="0.0.0.0", port=80, shutdown_timeout=5
+        )
 
         try:
             await self._site.start()
