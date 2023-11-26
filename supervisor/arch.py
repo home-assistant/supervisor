@@ -13,6 +13,7 @@ ARCH_JSON: Path = Path(__file__).parent.joinpath("data/arch.json")
 
 MAP_CPU = {
     "armv7": "armv7",
+    "armv7l": "armv7",
     "armv6": "armhf",
     "armv8": "aarch64",
     "aarch64": "aarch64",
