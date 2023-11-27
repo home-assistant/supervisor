@@ -192,7 +192,7 @@ class Mount(CoreSysAttributes, ABC):
             capture_exception(err)
             raise MountError(f"Could not get mount unit due to: {err!s}") from err
 
-        self.update_state()
+        await self.update_state()
 
         # If active, dismiss corresponding failed mount issue if found
         if (
