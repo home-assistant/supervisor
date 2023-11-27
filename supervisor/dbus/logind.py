@@ -29,7 +29,7 @@ class Logind(DBusInterface):
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-logind")
         except (DBusServiceUnkownError, DBusInterfaceError):
-            _LOGGER.info("No systemd-logind support on the host.")
+            _LOGGER.warning("No systemd-logind support on the host.")
 
     @dbus_connected
     async def reboot(self) -> None:

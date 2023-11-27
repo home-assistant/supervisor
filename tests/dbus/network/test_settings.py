@@ -11,7 +11,7 @@ from tests.dbus_service_mocks.network_connection_settings import SETTINGS_FIXTUR
 from tests.dbus_service_mocks.network_settings import Settings as SettingsService
 
 
-@pytest.fixture(name="settings_service", autouse=True)
+@pytest.fixture(name="settings_service")
 async def fixture_settings_service(dbus_session_bus: MessageBus) -> SettingsService:
     """Mock Settings service."""
     yield (
@@ -55,3 +55,12 @@ async def test_reload_connections(
 
     assert await settings.reload_connections() is True
     assert settings_service.ReloadConnections.calls == [tuple()]
+
+
+async def test_dbus_network_settings_connect_error(
+    dbus_session_bus: MessageBus, caplog: pytest.LogCaptureFixture
+):
+    """Test connecting to network settings error."""
+    settings = NetworkManagerSettings()
+    await settings.connect(dbus_session_bus)
+    assert "No Network Manager Settings support on the host" in caplog.text

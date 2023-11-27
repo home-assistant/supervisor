@@ -11,7 +11,7 @@ from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.rauc import Rauc as RaucService
 
 
-@pytest.fixture(name="rauc_service", autouse=True)
+@pytest.fixture(name="rauc_service")
 async def fixture_rauc_service(dbus_session_bus: MessageBus) -> RaucService:
     """Mock rauc dbus service."""
     yield (await mock_dbus_services({"rauc": None}, dbus_session_bus))["rauc"]
@@ -41,7 +41,7 @@ async def test_rauc_info(rauc_service: RaucService, dbus_session_bus: MessageBus
     assert rauc.last_error == ""
 
 
-async def test_install(dbus_session_bus: MessageBus):
+async def test_install(rauc_service: RaucService, dbus_session_bus: MessageBus):
     """Test install."""
     rauc = Rauc()
 
@@ -55,7 +55,7 @@ async def test_install(dbus_session_bus: MessageBus):
         assert await signal.wait_for_signal() == [0]
 
 
-async def test_get_slot_status(dbus_session_bus: MessageBus):
+async def test_get_slot_status(rauc_service: RaucService, dbus_session_bus: MessageBus):
     """Test get slot status."""
     rauc = Rauc()
 
@@ -76,7 +76,7 @@ async def test_get_slot_status(dbus_session_bus: MessageBus):
     assert slot_status[4][1]["bootname"] == "B"
 
 
-async def test_mark(dbus_session_bus: MessageBus):
+async def test_mark(rauc_service: RaucService, dbus_session_bus: MessageBus):
     """Test mark."""
     rauc = Rauc()
 
@@ -88,3 +88,12 @@ async def test_mark(dbus_session_bus: MessageBus):
     mark = await rauc.mark(RaucState.GOOD, "booted")
     assert mark[0] == "kernel.1"
     assert mark[1] == "marked slot kernel.1 as good"
+
+
+async def test_dbus_rauc_connect_error(
+    dbus_session_bus: MessageBus, caplog: pytest.LogCaptureFixture
+):
+    """Test connecting to rauc error."""
+    rauc = Rauc()
+    await rauc.connect(dbus_session_bus)
+    assert "Host has no rauc support" in caplog.text

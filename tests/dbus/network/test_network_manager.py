@@ -9,7 +9,12 @@ import pytest
 from supervisor.dbus.const import ConnectionStateType
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
-from supervisor.exceptions import DBusFatalError, DBusParseError, HostNotSupportedError
+from supervisor.exceptions import (
+    DBusFatalError,
+    DBusParseError,
+    DBusServiceUnkownError,
+    HostNotSupportedError,
+)
 from supervisor.utils.dbus import DBus
 
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
@@ -20,7 +25,7 @@ from tests.dbus_service_mocks.network_manager import (
 )
 
 
-@pytest.fixture(name="network_manager_service", autouse=True)
+@pytest.fixture(name="network_manager_service")
 async def fixture_network_manager_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> NetworkManagerService:
@@ -134,6 +139,7 @@ async def test_removed_devices_disconnect(
 
 
 async def test_handling_bad_devices(
+    network_manager_service: NetworkManagerService,
     network_manager: NetworkManager,
     caplog: pytest.LogCaptureFixture,
     capture_exception: Mock,
@@ -207,3 +213,37 @@ async def test_ignore_veth_only_changes(
         )
         await network_manager_service.ping()
         connect.assert_called_once()
+
+
+async def test_network_manager_stopped(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    network_manager: NetworkManager,
+    dbus_session_bus: MessageBus,
+    caplog: pytest.LogCaptureFixture,
+    capture_exception: Mock,
+):
+    """Test network manager stopped and dbus service no longer accessible."""
+    services = list(network_manager_services.values())
+    while services:
+        service = services.pop(0)
+        if isinstance(service, dict):
+            services.extend(service.values())
+        else:
+            dbus_session_bus.unexport(service.object_path, service)
+    await dbus_session_bus.release_name("org.freedesktop.NetworkManager")
+
+    assert network_manager.is_connected is True
+    await network_manager.update(
+        {
+            "Devices": [
+                "/org/freedesktop/NetworkManager/Devices/9",
+                "/org/freedesktop/NetworkManager/Devices/15",
+                "/org/freedesktop/NetworkManager/Devices/20",
+                "/org/freedesktop/NetworkManager/Devices/35",
+            ]
+        }
+    )
+
+    capture_exception.assert_called_once()
+    assert isinstance(capture_exception.call_args.args[0], DBusServiceUnkownError)
+    assert "NetworkManager not responding" in caplog.text
