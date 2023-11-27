@@ -6,10 +6,8 @@ from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.fixups.mount_execute_remove import FixupMountExecuteRemove
 
 from tests.dbus_service_mocks.base import DBusServiceMock
-from tests.dbus_service_mocks.systemd import (
-    Systemd as SystemdService,
-    SystemdUnit as SystemdUnitService,
-)
+from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
 
 
 async def test_fixup(

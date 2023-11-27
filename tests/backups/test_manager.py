@@ -30,10 +30,8 @@ from supervisor.utils.json import read_json_file, write_json_file
 
 from tests.const import TEST_ADDON_SLUG
 from tests.dbus_service_mocks.base import DBusServiceMock
-from tests.dbus_service_mocks.systemd import (
-    Systemd as SystemdService,
-    SystemdUnit as SystemdUnitService,
-)
+from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
 
 
 async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
