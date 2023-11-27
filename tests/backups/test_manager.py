@@ -30,7 +30,10 @@ from supervisor.utils.json import read_json_file, write_json_file
 
 from tests.const import TEST_ADDON_SLUG
 from tests.dbus_service_mocks.base import DBusServiceMock
-from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+from tests.dbus_service_mocks.systemd import (
+    Systemd as SystemdService,
+    SystemdUnit as SystemdUnitService,
+)
 
 
 async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
@@ -386,6 +389,7 @@ async def test_backup_media_with_mounts(
 ):
     """Test backing up media folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
@@ -422,6 +426,7 @@ async def test_backup_media_with_mounts(
     backup: Backup = await coresys.backups.do_backup_partial("test", folders=["media"])
 
     # Remove the mount and wipe the media folder
+    systemd_unit_service.active_state = "inactive"
     await coresys.mounts.remove_mount("media_test")
     rmtree(coresys.config.path_media)
     coresys.config.path_media.mkdir()
@@ -445,6 +450,8 @@ async def test_backup_media_with_mounts_retains_files(
 ):
     """Test backing up media folder with mounts retains mount files."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_unit_service.active_state = ["active", "active", "active", "inactive"]
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
@@ -496,6 +503,15 @@ async def test_backup_share_with_mounts(
 ):
     """Test backing up share folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_unit_service.active_state = [
+        "active",
+        "active",
+        "active",
+        "inactive",
+        "active",
+        "inactive",
+    ]
     systemd_service.response_get_unit = [
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
