@@ -12,7 +12,7 @@ from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.timedate import TimeDate as TimeDateService
 
 
-@pytest.fixture(name="timedate_service", autouse=True)
+@pytest.fixture(name="timedate_service")
 async def fixture_timedate_service(dbus_session_bus: MessageBus) -> TimeDateService:
     """Mock timedate dbus service."""
     yield (await mock_dbus_services({"timedate": None}, dbus_session_bus))["timedate"]
@@ -81,3 +81,12 @@ async def test_dbus_setntp(
     assert timedate_service.SetNTP.calls == [(False, False)]
     await timedate_service.ping()
     assert timedate.ntp is False
+
+
+async def test_dbus_timedate_connect_error(
+    dbus_session_bus: MessageBus, caplog: pytest.LogCaptureFixture
+):
+    """Test connecting to timedate error."""
+    timedate = TimeDate()
+    await timedate.connect(dbus_session_bus)
+    assert "No timedate support on the host" in caplog.text

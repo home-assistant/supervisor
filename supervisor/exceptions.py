@@ -335,6 +335,10 @@ class DBusNotConnectedError(HostNotSupportedError):
     """D-Bus is not connected and call a method."""
 
 
+class DBusServiceUnkownError(HassioNotSupportedError):
+    """D-Bus service was not available."""
+
+
 class DBusInterfaceError(HassioNotSupportedError):
     """D-Bus interface not connected."""
 
@@ -361,6 +365,10 @@ class DBusParseError(DBusError):
 
 class DBusTimeoutError(DBusError):
     """D-Bus call timed out."""
+
+
+class DBusNoReplyError(DBusError):
+    """D-Bus remote didn't reply/disconnected."""
 
 
 class DBusFatalError(DBusError):

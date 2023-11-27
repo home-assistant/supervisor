@@ -4,7 +4,7 @@ from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ..exceptions import DBusError, DBusInterfaceError
+from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
 from ..utils.dbus import DBusSignalWrapper
 from .const import (
     DBUS_ATTR_BOOT_SLOT,
@@ -49,7 +49,7 @@ class Rauc(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to rauc")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning("Host has no rauc support. OTA updates have been disabled.")
 
     @property

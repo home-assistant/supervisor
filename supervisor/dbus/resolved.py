@@ -5,7 +5,7 @@ import logging
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ..exceptions import DBusError, DBusInterfaceError
+from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
 from .const import (
     DBUS_ATTR_CACHE_STATISTICS,
     DBUS_ATTR_CURRENT_DNS_SERVER,
@@ -59,7 +59,7 @@ class Resolved(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-resolved.")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "Host has no systemd-resolved support. DNS will not work correctly."
             )

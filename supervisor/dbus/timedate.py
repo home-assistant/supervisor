@@ -4,7 +4,7 @@ import logging
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ..exceptions import DBusError, DBusInterfaceError
+from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
 from ..utils.dt import utc_from_timestamp
 from .const import (
     DBUS_ATTR_NTP,
@@ -63,7 +63,7 @@ class TimeDate(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-timedate")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "No timedate support on the host. Time/Date functions have been disabled."
             )
