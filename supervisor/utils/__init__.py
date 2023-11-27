@@ -122,17 +122,16 @@ async def remove_folder(
 
         _, error_msg = await proc.communicate()
     except OSError as err:
-        error_msg = str(err)
+        _LOGGER.exception("Can't remove folder %s: %s", folder, err)
     else:
         if proc.returncode == 0:
             return
+        _LOGGER.error("Can't remove folder %s: %s", folder, error_msg.decode("utf-8"))
     finally:
         if excludes:
             for item in moved_files:
                 item.rename(folder / item.name)
             temp.cleanup()
-
-    _LOGGER.error("Can't remove folder %s: %s", folder, error_msg)
 
 
 def clean_env() -> dict[str, str]:
