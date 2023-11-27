@@ -15,7 +15,7 @@ WORKDIR /usr/src
 RUN \
     set -x \
     && apk add --no-cache \
-        coreutils \
+        findutils \
         eudev \
         eudev-libs \
         git \

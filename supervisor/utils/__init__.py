@@ -105,29 +105,35 @@ async def remove_folder(
             if any(item.match(exclude) for exclude in excludes):
                 moved_files.append(item.rename(temp_path / item.name))
 
-    del_folder = f"{folder}" + "/{,.[!.],..?}*" if content_only else f"{folder}"
+    find_args = []
+    if content_only:
+        find_args.extend(["-mindepth", "1"])
     try:
         proc = await asyncio.create_subprocess_exec(
-            "bash",
-            "-c",
-            f"rm -rf --one-file-system {del_folder}",
+            "/usr/bin/find",
+            folder,
+            "-xdev",
+            *find_args,
+            "-delete",
             stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
             env=clean_env(),
         )
 
         _, error_msg = await proc.communicate()
     except OSError as err:
-        error_msg = str(err)
+        _LOGGER.exception("Can't remove folder %s: %s", folder, err)
     else:
         if proc.returncode == 0:
             return
+        _LOGGER.error(
+            "Can't remove folder %s: %s", folder, error_msg.decode("utf-8").strip()
+        )
     finally:
         if excludes:
             for item in moved_files:
                 item.rename(folder / item.name)
             temp.cleanup()
-
-    _LOGGER.error("Can't remove folder %s: %s", folder, error_msg)
 
 
 def clean_env() -> dict[str, str]:
