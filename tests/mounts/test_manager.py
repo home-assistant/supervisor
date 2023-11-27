@@ -584,6 +584,15 @@ async def test_reload_mounts(
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
+    systemd_unit_service.active_state = [
+        "active",
+        "active",
+        "inactive",
+        "active",
+        "failed",
+        "failed",
+        "active",
+    ]
 
     await coresys.mounts.load()
 
