@@ -105,10 +105,12 @@ async def remove_folder(
             if any(item.match(exclude) for exclude in excludes):
                 moved_files.append(item.rename(temp_path / item.name))
 
-    del_depth = "-mindepth 1" if content_only else ""
+    find_args = ["/usr/bin/find", folder, "-xdev", "-delete"]
+    if content_only:
+        find_args.extend(["-mindepth", "1"])
     try:
         proc = await asyncio.create_subprocess_exec(
-            f"find {folder} -xdev -delete {del_depth}",
+            *find_args,
             stdout=asyncio.subprocess.DEVNULL,
             env=clean_env(),
         )
