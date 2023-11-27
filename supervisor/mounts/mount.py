@@ -201,7 +201,7 @@ class Mount(CoreSysAttributes, ABC):
         ):
             self.sys_resolution.dismiss_issue(self.failed_issue)
 
-    async def _update_state_await_deactivated(self, expected_state: UnitActiveState):
+    async def _update_state_await(self, expected_state: UnitActiveState) -> None:
         """Update state info about mount from dbus. Wait up to 30 seconds for the state to appear."""
         for i in range(5):
             await self.update_state()
