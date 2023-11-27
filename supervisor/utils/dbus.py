@@ -67,28 +67,25 @@ class DBus:
     @staticmethod
     def from_dbus_error(err: DBusFastDBusError) -> HassioNotSupportedError | DBusError:
         """Return correct dbus error based on type."""
-        if err.type == ErrorType.SERVICE_UNKNOWN.value:
+        if err.type == ErrorType.SERVICE_UNKNOWN:
             return DBusServiceUnkownError(err.text)
-        if err.type == ErrorType.UNKNOWN_INTERFACE.value:
+        if err.type == ErrorType.UNKNOWN_INTERFACE:
             return DBusInterfaceError(err.text)
         if err.type in {
-            ErrorType.UNKNOWN_METHOD.value,
-            ErrorType.INVALID_SIGNATURE.value,
-            ErrorType.INVALID_ARGS.value,
+            ErrorType.UNKNOWN_METHOD,
+            ErrorType.INVALID_SIGNATURE,
+            ErrorType.INVALID_ARGS,
         }:
             return DBusInterfaceMethodError(err.text)
-        if err.type == ErrorType.UNKNOWN_OBJECT.value:
+        if err.type == ErrorType.UNKNOWN_OBJECT:
             return DBusObjectError(err.text)
-        if err.type in {
-            ErrorType.UNKNOWN_PROPERTY.value,
-            ErrorType.PROPERTY_READ_ONLY.value,
-        }:
+        if err.type in {ErrorType.UNKNOWN_PROPERTY, ErrorType.PROPERTY_READ_ONLY}:
             return DBusInterfacePropertyError(err.text)
-        if err.type == ErrorType.DISCONNECTED.value:
+        if err.type == ErrorType.DISCONNECTED:
             return DBusNotConnectedError(err.text)
-        if err.type == ErrorType.TIMEOUT.value:
+        if err.type == ErrorType.TIMEOUT:
             return DBusTimeoutError(err.text)
-        if err.type == ErrorType.NO_REPLY.value:
+        if err.type == ErrorType.NO_REPLY:
             return DBusNoReplyError(err.text)
         return DBusFatalError(err.text, type_=err.type)
 
