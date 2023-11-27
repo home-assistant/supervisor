@@ -126,7 +126,9 @@ async def remove_folder(
     else:
         if proc.returncode == 0:
             return
-        _LOGGER.error("Can't remove folder %s: %s", folder, error_msg.decode("utf-8"))
+        _LOGGER.error(
+            "Can't remove folder %s: %s", folder, error_msg.decode("utf-8").strip()
+        )
     finally:
         if excludes:
             for item in moved_files:
