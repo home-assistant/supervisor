@@ -218,7 +218,7 @@ async def test_stop(coresys: CoreSys, exists: bool):
     coresys.docker.containers.get.return_value.remove.assert_not_called()
     if exists:
         coresys.docker.containers.get.return_value.stop.assert_called_once_with(
-            timeout=240
+            timeout=260
         )
     else:
         coresys.docker.containers.get.return_value.stop.assert_not_called()
@@ -231,7 +231,7 @@ async def test_restart(coresys: CoreSys):
         block_till_run.assert_called_once()
 
     coresys.docker.containers.get.return_value.restart.assert_called_once_with(
-        timeout=240
+        timeout=260
     )
     coresys.docker.containers.get.return_value.stop.assert_not_called()
 
