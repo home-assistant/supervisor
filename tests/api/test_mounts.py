@@ -226,8 +226,9 @@ async def test_api_update_mount(
     mount,
 ):
     """Test updating a mount via API."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_unit_service.active_state = ["active", "inactive", "active"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
     resp = await api_client.put(
         "/mounts/backup_test",
         json={
@@ -406,8 +407,9 @@ async def test_api_delete_mount(
     mount,
 ):
     """Test deleting a mount via API."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_unit_service.active_state = ["active", "inactive"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
     resp = await api_client.delete("/mounts/backup_test")
     result = await resp.json()
     assert result["result"] == "ok"
@@ -483,17 +485,8 @@ async def test_update_backup_mount_changes_default(
 ):
     """Test updating a backup mount may unset the default."""
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_unit_service.active_state = [
-        "active",
-        "active",
-        "inactive",
-        "active",
-        "active",
-        "active",
-        "inactive",
-        "active",
-        "active",
-    ]
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
 
     # Make another backup mount for testing
     resp = await api_client.post(
@@ -546,13 +539,8 @@ async def test_delete_backup_mount_changes_default(
 ):
     """Test deleting a backup mount may unset the default."""
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_unit_service.active_state = [
-        "active",
-        "active",
-        "inactive",
-        "active",
-        "inactive",
-    ]
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
 
     # Make another backup mount for testing
     resp = await api_client.post(
@@ -591,28 +579,8 @@ async def test_backup_mounts_reload_backups(
 ):
     """Test actions on a backup mount reload backups."""
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_unit_service.active_state = [
-        "active",
-        "active",
-        "active",
-        "active",
-        "inactive",
-        "active",
-        "inactive",
-        "active",
-        "active",
-        "active",
-        "inactive",
-        "active",
-        "active",
-        "active",
-        "active",
-        "inactive",
-        "active",
-        "inactive",
-        "active",
-        "inactive",
-    ]
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
     await coresys.mounts.load()
 
     with patch.object(BackupManager, "reload") as reload:
