@@ -201,11 +201,11 @@ class Mount(CoreSysAttributes, ABC):
         ):
             self.sys_resolution.dismiss_issue(self.failed_issue)
 
-    async def _update_state_await(self, expected_state: UnitActiveState) -> None:
+    async def _update_state_await(self, expected_states: list[UnitActiveState]) -> None:
         """Update state info about mount from dbus. Wait up to 30 seconds for the state to appear."""
         for i in range(5):
             await self.update_state()
-            if self.state == expected_state:
+            if self.state in expected_states:
                 return
             await asyncio.sleep(i**2)
 
@@ -287,12 +287,15 @@ class Mount(CoreSysAttributes, ABC):
         await self.update()
 
         try:
-            if self.state == UnitActiveState.FAILED:
-                await self.sys_dbus.systemd.reset_failed_unit(self.unit_name)
-            else:
+            if self.state != UnitActiveState.FAILED:
                 await self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL)
 
-            await self._update_state_await(UnitActiveState.INACTIVE)
+            await self._update_state_await(
+                [UnitActiveState.INACTIVE, UnitActiveState.FAILED]
+            )
+
+            if self.state == UnitActiveState.FAILED:
+                await self.sys_dbus.systemd.reset_failed_unit(self.unit_name)
         except DBusSystemdNoSuchUnit:
             _LOGGER.info("Mount %s is not mounted, skipping unmount", self.name)
         except DBusError as err:

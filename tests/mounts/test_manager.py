@@ -560,7 +560,7 @@ async def test_create_mount_activation_failure(
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
-    systemd_unit_service.active_state = ["failed", "failed", "inactive"]
+    systemd_unit_service.active_state = ["failed", "failed", "failed"]
 
     await coresys.mounts.load()
 
