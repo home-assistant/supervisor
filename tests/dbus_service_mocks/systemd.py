@@ -4,6 +4,7 @@ from dbus_fast import DBusError
 from dbus_fast.service import PropertyAccess, dbus_property
 
 from .base import DBusServiceMock, dbus_method
+from .systemd_unit import SystemdUnit
 
 BUS_NAME = "org.freedesktop.systemd1"
 
@@ -40,6 +41,7 @@ class Systemd(DBusServiceMock):
     response_start_transient_unit: str | DBusError = (
         "/org/freedesktop/systemd1/job/7623"
     )
+    mock_systemd_unit: SystemdUnit | None = None
 
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> "s":
@@ -658,6 +660,8 @@ class Systemd(DBusServiceMock):
     @dbus_method()
     def StartUnit(self, name: "s", mode: "s") -> "o":
         """Start a service unit."""
+        if self.mock_systemd_unit:
+            self.mock_systemd_unit.active_state = "active"
         return "/org/freedesktop/systemd1/job/7623"
 
     @dbus_method()
@@ -665,6 +669,8 @@ class Systemd(DBusServiceMock):
         """Stop a service unit."""
         if isinstance(self.response_stop_unit, DBusError):
             raise self.response_stop_unit
+        if self.mock_systemd_unit:
+            self.mock_systemd_unit.active_state = "inactive"
         return self.response_stop_unit
 
     @dbus_method()
@@ -672,11 +678,15 @@ class Systemd(DBusServiceMock):
         """Reload or restart a service unit."""
         if isinstance(self.response_reload_or_restart_unit, DBusError):
             raise self.response_reload_or_restart_unit
+        if self.mock_systemd_unit:
+            self.mock_systemd_unit.active_state = "active"
         return self.response_reload_or_restart_unit
 
     @dbus_method()
     def RestartUnit(self, name: "s", mode: "s") -> "o":
         """Restart a service unit."""
+        if self.mock_systemd_unit:
+            self.mock_systemd_unit.active_state = "active"
         return "/org/freedesktop/systemd1/job/7623"
 
     @dbus_method()
@@ -686,11 +696,15 @@ class Systemd(DBusServiceMock):
         """Start a transient service unit."""
         if isinstance(self.response_start_transient_unit, DBusError):
             raise self.response_start_transient_unit
+        if self.mock_systemd_unit:
+            self.mock_systemd_unit.active_state = "active"
         return self.response_start_transient_unit
 
     @dbus_method()
     def ResetFailedUnit(self, name: "s") -> None:
         """Reset a failed unit."""
+        if self.mock_systemd_unit:
+            self.mock_systemd_unit.active_state = "inactive"
 
     @dbus_method()
     def GetUnit(self, name: "s") -> "s":

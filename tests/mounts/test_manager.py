@@ -371,6 +371,8 @@ async def test_update_mount(
 ):
     """Test updating a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
     systemd_service.StartTransientUnit.calls.clear()
     systemd_service.StopUnit.calls.clear()
 
@@ -429,6 +431,8 @@ async def test_remove_mount(
 ):
     """Test removing a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_unit_service.active_state = ["active", "inactive", "active", "inactive"]
     systemd_service.StopUnit.calls.clear()
 
     # Remove the mount
@@ -549,7 +553,7 @@ async def test_create_mount_activation_failure(
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
-    systemd_unit_service.active_state = "failed"
+    systemd_unit_service.active_state = ["failed", "failed", "failed"]
 
     await coresys.mounts.load()
 
@@ -573,8 +577,6 @@ async def test_reload_mounts(
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
-
-    await coresys.mounts.load()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.failed_issue not in coresys.resolution.issues
