@@ -372,14 +372,7 @@ async def test_update_mount(
     """Test updating a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_unit_service.active_state = [
-        "active",
-        "inactive",
-        "active",
-        "inactive",
-        "active",
-        "active",
-    ]
+    systemd_service.mock_systemd_unit = systemd_unit_service
     systemd_service.StartTransientUnit.calls.clear()
     systemd_service.StopUnit.calls.clear()
 
@@ -584,17 +577,6 @@ async def test_reload_mounts(
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
-    systemd_unit_service.active_state = [
-        "active",
-        "active",
-        "inactive",
-        "active",
-        "failed",
-        "failed",
-        "active",
-    ]
-
-    await coresys.mounts.load()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.failed_issue not in coresys.resolution.issues
