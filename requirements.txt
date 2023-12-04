@@ -7,7 +7,7 @@ attrs==23.1.0
 awesomeversion==23.11.0
 brotli==1.1.0
 ciso8601==2.3.1
-colorlog==6.7.0
+colorlog==6.8.0
 cpe==1.2.1
 cryptography==41.0.7
 debugpy==1.8.0
