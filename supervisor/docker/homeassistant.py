@@ -53,9 +53,10 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def timeout(self) -> int:
         """Return timeout for Docker actions."""
-        # Synchronized homeassistant's S6_SERVICES_GRACETIME
-        # to avoid killing Home Assistant Core
-        return 220 + 20
+        # Synchronized with the homeassistant core container's S6_SERVICES_GRACETIME
+        # to avoid killing Home Assistant Core, see
+        # https://github.com/home-assistant/core/tree/dev/Dockerfile
+        return 240 + 20
 
     @property
     def ip_address(self) -> IPv4Address:

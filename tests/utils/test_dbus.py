@@ -2,12 +2,18 @@
 
 from unittest.mock import AsyncMock, Mock, patch
 
+from dbus_fast import ErrorType
 from dbus_fast.aio.message_bus import MessageBus
+from dbus_fast.errors import DBusError as DBusFastDBusError
 from dbus_fast.service import method, signal
 import pytest
 
 from supervisor.dbus.const import DBUS_OBJECT_BASE
-from supervisor.exceptions import DBusFatalError, DBusInterfaceError
+from supervisor.exceptions import (
+    DBusFatalError,
+    DBusInterfaceError,
+    DBusServiceUnkownError,
+)
 from supervisor.utils.dbus import DBus
 
 from tests.common import load_fixture
@@ -172,3 +178,12 @@ async def test_init_proxy(test_service: TestInterface, dbus_session_bus: Message
     test_service.signal_test()
     await test_service.ping()
     assert callback_count == 0
+
+
+def test_from_dbus_error():
+    """Test converting DBus fast errors to Supervisor specific errors."""
+    dbus_fast_error = DBusFastDBusError(
+        ErrorType.SERVICE_UNKNOWN, "The name is not activatable"
+    )
+
+    assert type(DBus.from_dbus_error(dbus_fast_error)) is DBusServiceUnkownError

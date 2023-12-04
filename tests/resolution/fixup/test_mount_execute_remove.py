@@ -7,6 +7,7 @@ from supervisor.resolution.fixups.mount_execute_remove import FixupMountExecuteR
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
 
 
 async def test_fixup(
@@ -17,6 +18,7 @@ async def test_fixup(
 ):
     """Test fixup."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service.StopUnit.calls.clear()
 
     mount_execute_remove = FixupMountExecuteRemove(coresys)
@@ -42,6 +44,8 @@ async def test_fixup(
         reference="test",
         suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
     )
+
+    systemd_unit_service.active_state = ["active", "inactive"]
     await mount_execute_remove()
 
     assert coresys.resolution.issues == []

@@ -10,7 +10,7 @@ from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.hostname import Hostname as HostnameService
 
 
-@pytest.fixture(name="hostname_service", autouse=True)
+@pytest.fixture(name="hostname_service")
 async def fixture_hostname_service(dbus_session_bus: MessageBus) -> HostnameService:
     """Mock hostname dbus service."""
     yield (await mock_dbus_services({"hostname": None}, dbus_session_bus))["hostname"]
@@ -61,3 +61,12 @@ async def test_dbus_sethostname(
     assert hostname_service.SetStaticHostname.calls == [("StarWars", False)]
     await hostname_service.ping()
     assert hostname.hostname == "StarWars"
+
+
+async def test_dbus_hostname_connect_error(
+    dbus_session_bus: MessageBus, caplog: pytest.LogCaptureFixture
+):
+    """Test connecting to hostname error."""
+    hostname = Hostname()
+    await hostname.connect(dbus_session_bus)
+    assert "No hostname support on the host" in caplog.text

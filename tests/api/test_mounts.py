@@ -142,7 +142,7 @@ async def test_api_create_dbus_error_mount_not_added(
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
     systemd_service.response_start_transient_unit = "/org/freedesktop/systemd1/job/7623"
-    systemd_unit_service.active_state = "failed"
+    systemd_unit_service.active_state = ["failed", "failed", "inactive"]
 
     resp = await api_client.post(
         "/mounts",
@@ -219,8 +219,16 @@ async def test_api_create_mount_fails_missing_mount_propagation(
     )
 
 
-async def test_api_update_mount(api_client: TestClient, coresys: CoreSys, mount):
+async def test_api_update_mount(
+    api_client: TestClient,
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount,
+):
     """Test updating a mount via API."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
     resp = await api_client.put(
         "/mounts/backup_test",
         json={
@@ -280,6 +288,7 @@ async def test_api_update_dbus_error_mount_remains(
     """Test mount remains in list with unsuccessful state if dbus error occurs during update."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_unit_service.active_state = ["failed", "inactive"]
     systemd_service.response_get_unit = [
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
@@ -321,7 +330,13 @@ async def test_api_update_dbus_error_mount_remains(
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
     systemd_service.response_start_transient_unit = "/org/freedesktop/systemd1/job/7623"
-    systemd_unit_service.active_state = "failed"
+    systemd_unit_service.active_state = [
+        "failed",
+        "inactive",
+        "inactive",
+        "failed",
+        "inactive",
+    ]
 
     resp = await api_client.put(
         "/mounts/backup_test",
@@ -385,8 +400,16 @@ async def test_api_reload_error_mount_missing(
     )
 
 
-async def test_api_delete_mount(api_client: TestClient, coresys: CoreSys, mount):
+async def test_api_delete_mount(
+    api_client: TestClient,
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount,
+):
     """Test deleting a mount via API."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
     resp = await api_client.delete("/mounts/backup_test")
     result = await resp.json()
     assert result["result"] == "ok"
@@ -455,9 +478,16 @@ async def test_api_create_backup_mount_sets_default(
 
 
 async def test_update_backup_mount_changes_default(
-    api_client: TestClient, coresys: CoreSys, mount
+    api_client: TestClient,
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount,
 ):
     """Test updating a backup mount may unset the default."""
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
+
     # Make another backup mount for testing
     resp = await api_client.post(
         "/mounts",
@@ -502,9 +532,16 @@ async def test_update_backup_mount_changes_default(
 
 
 async def test_delete_backup_mount_changes_default(
-    api_client: TestClient, coresys: CoreSys, mount
+    api_client: TestClient,
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount,
 ):
     """Test deleting a backup mount may unset the default."""
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
+
     # Make another backup mount for testing
     resp = await api_client.post(
         "/mounts",
@@ -535,11 +572,15 @@ async def test_delete_backup_mount_changes_default(
 async def test_backup_mounts_reload_backups(
     api_client: TestClient,
     coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
 ):
     """Test actions on a backup mount reload backups."""
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.mock_systemd_unit = systemd_unit_service
     await coresys.mounts.load()
 
     with patch.object(BackupManager, "reload") as reload:

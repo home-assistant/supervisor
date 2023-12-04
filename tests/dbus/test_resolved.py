@@ -19,7 +19,7 @@ from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.resolved import Resolved as ResolvedService
 
 
-@pytest.fixture(name="resolved_service", autouse=True)
+@pytest.fixture(name="resolved_service")
 async def fixture_resolved_service(dbus_session_bus: MessageBus) -> ResolvedService:
     """Mock resolved dbus service."""
     yield (await mock_dbus_services({"resolved": None}, dbus_session_bus))["resolved"]
@@ -102,3 +102,12 @@ async def test_dbus_resolved_info(
     await resolved_service.ping()
     await resolved_service.ping()  # To process the follow-up get all properties call
     assert resolved.llmnr_hostname == "homeassistant"
+
+
+async def test_dbus_resolved_connect_error(
+    dbus_session_bus: MessageBus, caplog: pytest.LogCaptureFixture
+):
+    """Test connecting to resolved error."""
+    resolved = Resolved()
+    await resolved.connect(dbus_session_bus)
+    assert "Host has no systemd-resolved support" in caplog.text

@@ -52,6 +52,7 @@ async def test_cifs_mount(
 ):
     """Test CIFS mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service.StartTransientUnit.calls.clear()
 
     mount_data = {
@@ -130,6 +131,7 @@ async def test_cifs_mount(
     assert not cred_stat.st_mode & stat.S_IRGRP
     assert not cred_stat.st_mode & stat.S_IROTH
 
+    systemd_unit_service.active_state = ["active", "inactive"]
     await mount.unmount()
     assert not mount.path_credentials.exists()
 
@@ -289,6 +291,7 @@ async def test_unmount(
 ):
     """Test unmounting."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service.StopUnit.calls.clear()
 
     mount: CIFSMount = Mount.from_dict(
@@ -306,6 +309,7 @@ async def test_unmount(
     assert mount.unit is not None
     assert mount.state == UnitActiveState.ACTIVE
 
+    systemd_unit_service.active_state = ["active", "inactive"]
     await mount.unmount()
 
     assert mount.unit is None

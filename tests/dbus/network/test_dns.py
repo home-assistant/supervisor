@@ -12,7 +12,7 @@ from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.network_dns_manager import DnsManager as DnsManagerService
 
 
-@pytest.fixture(name="dns_manager_service", autouse=True)
+@pytest.fixture(name="dns_manager_service")
 async def fixture_dns_manager_service(
     dbus_session_bus: MessageBus,
 ) -> DnsManagerService:
@@ -49,3 +49,12 @@ async def test_dns(
     await dns_manager_service.ping()
     await dns_manager_service.ping()
     assert dns_manager.mode == "default"
+
+
+async def test_dbus_dns_connect_error(
+    dbus_session_bus: MessageBus, caplog: pytest.LogCaptureFixture
+):
+    """Test connecting to dns error."""
+    dns_manager = NetworkManagerDNS()
+    await dns_manager.connect(dbus_session_bus)
+    assert "No DnsManager support on the host" in caplog.text

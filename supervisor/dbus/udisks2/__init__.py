@@ -6,7 +6,12 @@ from typing import Any
 from awesomeversion import AwesomeVersion
 from dbus_fast.aio import MessageBus
 
-from ...exceptions import DBusError, DBusInterfaceError, DBusObjectError
+from ...exceptions import (
+    DBusError,
+    DBusInterfaceError,
+    DBusObjectError,
+    DBusServiceUnkownError,
+)
 from ..const import (
     DBUS_ATTR_SUPPORTED_FILESYSTEMS,
     DBUS_ATTR_VERSION,
@@ -45,7 +50,7 @@ class UDisks2(DBusInterfaceProxy):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to udisks2")
-        except DBusInterfaceError:
+        except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "No udisks2 support on the host. Host control has been disabled."
             )
