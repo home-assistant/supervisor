@@ -50,15 +50,15 @@ async def test_save_on_unload(coresys: CoreSys):
     assert coresys.ingress.save_data.called
 
 
-def test_dynamic_ports(coresys: CoreSys):
+async def test_dynamic_ports(coresys: CoreSys):
     """Test dyanmic port handling."""
-    port_test1 = coresys.ingress.get_dynamic_port("test1")
+    port_test1 = await coresys.ingress.get_dynamic_port("test1")
 
     assert port_test1
     assert coresys.ingress.save_data.called
-    assert port_test1 == coresys.ingress.get_dynamic_port("test1")
+    assert port_test1 == await coresys.ingress.get_dynamic_port("test1")
 
-    port_test2 = coresys.ingress.get_dynamic_port("test2")
+    port_test2 = await coresys.ingress.get_dynamic_port("test2")
 
     assert port_test2
     assert port_test2 != port_test1
