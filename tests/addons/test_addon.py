@@ -683,3 +683,16 @@ async def test_local_example_start(
     await install_addon_example.start()
 
     assert addon_config_dir.is_dir()
+
+
+async def test_local_example_ingress_port_set(
+    coresys: CoreSys,
+    container: MagicMock,
+    tmp_supervisor_data: Path,
+    install_addon_example: Addon,
+):
+    """Test start of an addon."""
+    install_addon_example.path_data.mkdir()
+    await install_addon_example.load()
+
+    assert install_addon_example.ingress_port != 0
