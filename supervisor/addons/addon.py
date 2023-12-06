@@ -184,6 +184,7 @@ class Addon(AddonModel):
             )
         )
 
+        await self._check_ingress_port()
         with suppress(DockerError):
             await self.instance.attach(version=self.version)
 
@@ -640,8 +641,6 @@ class Addon(AddonModel):
             self.sys_addons.data.uninstall(self)
             raise AddonsError() from err
 
-        await self._check_ingress_port()
-
         # Add to addon manager
         self.sys_addons.local[self.slug] = self
 
@@ -769,7 +768,6 @@ class Addon(AddonModel):
                 raise AddonsError() from err
 
             self.sys_addons.data.update(self.addon_store)
-            await self._check_ingress_port()
             _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
 
         finally:
