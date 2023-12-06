@@ -33,7 +33,7 @@ jobs:
 
           echo Current version:    $latest
           echo New target version: $datepre.$newpost
-          echo "::set-output name=version::$datepre.$newpost"
+          echo "version=$datepre.$newpost" >> "$GITHUB_OUTPUT"
 
       - name: Run Release Drafter
         uses: release-drafter/release-drafter@v5.25.0
