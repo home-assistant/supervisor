@@ -70,7 +70,7 @@ jobs:
       - name: Get changed files
         id: changed_files
         if: steps.version.outputs.publish == 'false'
-        uses: jitterbit/get-changed-files@v1
+        uses: masesgroup/retrieve-changed-files@v3.0.0
 
       - name: Check if requirements files changed
         id: requirements
