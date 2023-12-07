@@ -3,7 +3,7 @@ from pathlib import Path
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ..const import UnsupportedReason
+from ..const import UnhealthyReason, UnsupportedReason
 from .base import EvaluateBase
 
 _APPARMOR_KERNEL = Path("/sys/module/apparmor/parameters/enabled")
@@ -36,5 +36,7 @@ class EvaluateAppArmor(EvaluateBase):
         """Run evaluation."""
         try:
             return _APPARMOR_KERNEL.read_text(encoding="utf-8").strip().upper() != "Y"
-        except OSError:
+        except OSError as err:
+            if err.errno == 74:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             return True

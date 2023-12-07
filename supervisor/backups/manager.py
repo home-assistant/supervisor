@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Iterable
+import errno
 import logging
 from pathlib import Path
 
@@ -19,6 +20,8 @@ from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLim
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..mounts.mount import Mount
+from ..resolution.const import UnhealthyReason
+from ..resolution.module import ResolutionManager
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
 from ..utils.sentinel import DEFAULT
@@ -31,13 +34,15 @@ from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def _list_backup_files(path: Path) -> Iterable[Path]:
+def _list_backup_files(path: Path, resolution: ResolutionManager) -> Iterable[Path]:
     """Return iterable of backup files, suppress and log OSError for network mounts."""
     try:
         # is_dir does a stat syscall which raises if the mount is down
         if path.is_dir():
             return path.glob("*.tar")
     except OSError as err:
+        if err.errno == errno.EBADMSG:
+            resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
         _LOGGER.error("Could not list backups from %s: %s", path.as_posix(), err)
 
     return []
@@ -169,7 +174,7 @@ class BackupManager(FileConfiguration, JobGroup):
         tasks = [
             self.sys_create_task(_load_backup(tar_file))
             for path in self.backup_locations
-            for tar_file in _list_backup_files(path)
+            for tar_file in _list_backup_files(path, self.sys_resolution)
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))
@@ -184,6 +189,8 @@ class BackupManager(FileConfiguration, JobGroup):
             _LOGGER.info("Removed backup file %s", backup.slug)
 
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.error("Can't remove backup %s: %s", backup.slug, err)
             return False
 
@@ -208,6 +215,8 @@ class BackupManager(FileConfiguration, JobGroup):
             backup.tarfile.rename(tar_origin)
 
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.error("Can't move backup file to storage: %s", err)
             return None
 

@@ -42,6 +42,7 @@ from ..exceptions import (
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from ..jobs.decorator import Job, JobExecutionLimit
+from ..resolution.const import UnhealthyReason
 from ..utils import remove_folder
 from ..utils.common import FileConfiguration
 from ..utils.json import read_json_file, write_json_file
@@ -300,6 +301,8 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         try:
             self.path_pulse.write_text(pulse_config, encoding="utf-8")
         except OSError as err:
+            if err.errno == 74:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.error("Home Assistant can't write pulse/client.config: %s", err)
         else:
             _LOGGER.info("Update pulse/client.config: %s", self.path_pulse)

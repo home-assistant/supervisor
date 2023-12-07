@@ -1,5 +1,6 @@
 """Backups RESTful API."""
 import asyncio
+import errno
 import logging
 from pathlib import Path
 import re
@@ -36,6 +37,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..mounts.const import MountUsage
+from ..resolution.const import UnhealthyReason
 from .const import CONTENT_TYPE_TAR
 from .utils import api_process, api_validate
 
@@ -288,6 +290,8 @@ class APIBackups(CoreSysAttributes):
                         backup.write(chunk)
 
             except OSError as err:
+                if err.errno == errno.EBADMSG:
+                    self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
                 _LOGGER.error("Can't write new backup file: %s", err)
                 return False
 

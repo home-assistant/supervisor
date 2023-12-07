@@ -3,6 +3,11 @@
 import datetime
 from unittest.mock import AsyncMock, PropertyMock, patch
 
+import errno
+from unittest.mock import patch
+
+from pytest import LogCaptureFixture
+
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import WhoamiSSLError
@@ -14,7 +19,6 @@ from supervisor.utils.whoami import WhoamiData
 
 def test_write_state(run_dir, coresys: CoreSys):
     """Test write corestate to /run/supervisor."""
-
     coresys.core.state = CoreState.RUNNING
 
     assert run_dir.read_text() == CoreState.RUNNING
@@ -77,3 +81,23 @@ async def test_adjust_system_datetime_if_time_behind(coresys: CoreSys):
         mock_retrieve_whoami.assert_called_once()
         mock_set_datetime.assert_called_once()
         mock_check_connectivity.assert_called_once()
+
+
+def test_write_state_failure(run_dir, coresys: CoreSys, caplog: LogCaptureFixture):
+    """Test failure to write corestate to /run/supervisor."""
+    with patch(
+        "supervisor.core.RUN_SUPERVISOR_STATE.write_text",
+        side_effect=(err := OSError()),
+    ):
+        err.errno = errno.EBUSY
+        coresys.core.state = CoreState.SETUP
+
+        assert "Can't update the Supervisor state" in caplog.text
+        assert coresys.core.healthy is True
+
+        caplog.clear()
+        err.errno = errno.EBADMSG
+        coresys.core.state = CoreState.RUNNING
+
+        assert "Can't update the Supervisor state" in caplog.text
+        assert coresys.core.healthy is False

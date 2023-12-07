@@ -29,7 +29,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..utils.json import write_json_file
 from ..utils.sentry import capture_exception
 from ..validate import dns_url
@@ -146,12 +146,16 @@ class PluginDns(PluginBase):
                 RESOLV_TMPL.read_text(encoding="utf-8")
             )
         except OSError as err:
+            if err.errno == 74:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
         try:
             self.hosts_template = jinja2.Template(
                 HOSTS_TMPL.read_text(encoding="utf-8")
             )
         except OSError as err:
+            if err.errno == 74:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         await self._init_hosts()
@@ -364,6 +368,8 @@ class PluginDns(PluginBase):
                 self.hosts.write_text, data, encoding="utf-8"
             )
         except OSError as err:
+            if err.errno == 74:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
     async def add_host(
@@ -445,6 +451,8 @@ class PluginDns(PluginBase):
         try:
             resolv_conf.write_text(data)
         except OSError as err:
+            if err.errno == 74:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.warning("Can't write/update %s: %s", resolv_conf, err)
             return
 

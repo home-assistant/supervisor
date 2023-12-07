@@ -1,6 +1,7 @@
 """Test BackupManager class."""
 
 import asyncio
+import errno
 from shutil import rmtree
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 
@@ -1555,3 +1556,35 @@ async def test_skip_homeassistant_database(
     assert read_json_file(test_db) == {"hello": "world"}
     assert read_json_file(test_db_wal) == {"hello": "world"}
     assert not test_db_shm.exists()
+
+
+def test_backup_remove_error(coresys: CoreSys, full_backup_mock: Backup):
+    """Test removing a backup error."""
+    full_backup_mock.tarfile.unlink.side_effect = (err := OSError())
+
+    err.errno = errno.EBUSY
+    assert coresys.backups.remove(full_backup_mock) is False
+    assert coresys.core.healthy is True
+
+    err.errno = errno.EBADMSG
+    assert coresys.backups.remove(full_backup_mock) is False
+    assert coresys.core.healthy is False
+
+
+async def test_reload_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
+    """Test error during reload."""
+    with patch(
+        "supervisor.backups.manager.Path.is_dir", side_effect=(err := OSError())
+    ):
+        err.errno = errno.EBUSY
+        await coresys.backups.reload()
+
+        assert "Could not list backups" in caplog.text
+        assert coresys.core.healthy is True
+
+        caplog.clear()
+        err.errno = errno.EBADMSG
+        await coresys.backups.reload()
+
+        assert "Could not list backups" in caplog.text
+        assert coresys.core.healthy is False

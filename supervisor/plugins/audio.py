@@ -25,6 +25,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
+from ..resolution.const import UnhealthyReason
 from ..utils.json import write_json_file
 from ..utils.sentry import capture_exception
 from .base import PluginBase
@@ -83,6 +84,9 @@ class PluginAudio(PluginBase):
                 PULSE_CLIENT_TMPL.read_text(encoding="utf-8")
             )
         except OSError as err:
+            if err.errno == 74:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
 
         await super().load()
@@ -93,6 +97,8 @@ class PluginAudio(PluginBase):
             try:
                 shutil.copy(ASOUND_TMPL, asound)
             except OSError as err:
+                if err.errno == 74:
+                    self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
                 _LOGGER.error("Can't create default asound: %s", err)
 
     async def install(self) -> None:

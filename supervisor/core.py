@@ -3,6 +3,7 @@ import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
+import errno
 import logging
 
 import async_timeout
@@ -65,6 +66,8 @@ class Core(CoreSysAttributes):
         try:
             RUN_SUPERVISOR_STATE.write_text(new_state, encoding="utf-8")
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.warning(
                 "Can't update the Supervisor state to %s: %s", new_state, err
             )
