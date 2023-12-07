@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4.1.1
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
@@ -69,7 +69,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -113,7 +113,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -157,7 +157,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -189,7 +189,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -230,7 +230,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -274,7 +274,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -306,7 +306,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -347,7 +347,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -405,7 +405,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.8.0
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
