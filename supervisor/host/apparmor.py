@@ -82,7 +82,7 @@ class AppArmorControl(CoreSysAttributes):
             await self.sys_run_in_executor(shutil.copyfile, profile_file, dest_profile)
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             raise HostAppArmorError(
                 f"Can't copy {profile_file}: {err}", _LOGGER.error
             ) from err
@@ -107,7 +107,7 @@ class AppArmorControl(CoreSysAttributes):
             await self.sys_run_in_executor(profile_file.unlink)
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             raise HostAppArmorError(
                 f"Can't remove profile: {err}", _LOGGER.error
             ) from err
@@ -123,7 +123,7 @@ class AppArmorControl(CoreSysAttributes):
             await self.sys_run_in_executor(shutil.copy, profile_file, backup_file)
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             raise HostAppArmorError(
                 f"Can't backup profile {profile_name}: {err}", _LOGGER.error
             ) from err

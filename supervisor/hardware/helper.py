@@ -49,7 +49,7 @@ class HwHelper(CoreSysAttributes):
             stats: str = _PROC_STAT.read_text(encoding="utf-8")
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't read stat data: %s", err)
             return None
 

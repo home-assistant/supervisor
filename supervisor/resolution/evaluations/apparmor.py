@@ -39,5 +39,5 @@ class EvaluateAppArmor(EvaluateBase):
             return _APPARMOR_KERNEL.read_text(encoding="utf-8").strip().upper() != "Y"
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             return True

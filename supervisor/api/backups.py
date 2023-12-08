@@ -291,7 +291,7 @@ class APIBackups(CoreSysAttributes):
 
             except OSError as err:
                 if err.errno == errno.EBADMSG:
-                    self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
                 _LOGGER.error("Can't write new backup file: %s", err)
                 return False
 

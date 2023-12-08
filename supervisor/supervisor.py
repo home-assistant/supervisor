@@ -157,7 +157,7 @@ class Supervisor(CoreSysAttributes):
                 profile_file.write_text(data, encoding="utf-8")
             except OSError as err:
                 if err.errno == errno.EBADMSG:
-                    self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
                 raise SupervisorAppArmorError(
                     f"Can't write temporary profile: {err!s}", _LOGGER.error
                 ) from err

@@ -67,7 +67,7 @@ class Core(CoreSysAttributes):
             RUN_SUPERVISOR_STATE.write_text(new_state, encoding="utf-8")
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.warning(
                 "Can't update the Supervisor state to %s: %s", new_state, err
             )

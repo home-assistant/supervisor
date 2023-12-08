@@ -148,7 +148,7 @@ class PluginDns(PluginBase):
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
         try:
             self.hosts_template = jinja2.Template(
@@ -156,7 +156,7 @@ class PluginDns(PluginBase):
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         await self._init_hosts()
@@ -370,7 +370,7 @@ class PluginDns(PluginBase):
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
     async def add_host(
@@ -459,7 +459,7 @@ class PluginDns(PluginBase):
             resolv_conf.write_text(data)
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.warning("Can't write/update %s: %s", resolv_conf, err)
             return
 

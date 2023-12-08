@@ -42,7 +42,7 @@ def _list_backup_files(path: Path, resolution: ResolutionManager) -> Iterable[Pa
             return path.glob("*.tar")
     except OSError as err:
         if err.errno == errno.EBADMSG:
-            resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+            resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
         _LOGGER.error("Could not list backups from %s: %s", path.as_posix(), err)
 
     return []
@@ -190,7 +190,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't remove backup %s: %s", backup.slug, err)
             return False
 
@@ -216,7 +216,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't move backup file to storage: %s", err)
             return None
 

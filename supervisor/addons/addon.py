@@ -796,7 +796,7 @@ class Addon(AddonModel):
             self.path_pulse.write_text(pulse_config, encoding="utf-8")
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error(
                 "Add-on %s can't write pulse/client.config: %s", self.slug, err
             )
