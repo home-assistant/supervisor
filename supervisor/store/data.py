@@ -1,5 +1,6 @@
 """Init file for Supervisor add-on data."""
 from dataclasses import dataclass
+import errno
 import logging
 from pathlib import Path
 from typing import Any
@@ -157,7 +158,7 @@ class StoreData(CoreSysAttributes):
             addon_list = await self.sys_run_in_executor(_get_addons_list)
         except OSError as err:
             suggestion = None
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             elif path.stem != StoreType.LOCAL:
                 suggestion = [SuggestionType.EXECUTE_RESET]

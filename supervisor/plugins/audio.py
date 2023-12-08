@@ -4,6 +4,7 @@ Code: https://github.com/home-assistant/plugin-audio
 """
 import asyncio
 from contextlib import suppress
+import errno
 import logging
 from pathlib import Path, PurePath
 import shutil
@@ -84,7 +85,7 @@ class PluginAudio(PluginBase):
                 PULSE_CLIENT_TMPL.read_text(encoding="utf-8")
             )
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
 
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
@@ -97,7 +98,7 @@ class PluginAudio(PluginBase):
             try:
                 shutil.copy(ASOUND_TMPL, asound)
             except OSError as err:
-                if err.errno == 74:
+                if err.errno == errno.EBADMSG:
                     self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
                 _LOGGER.error("Can't create default asound: %s", err)
 

@@ -1,5 +1,6 @@
 """Test evaluation base."""
 # pylint: disable=import-error,protected-access
+import errno
 from unittest.mock import patch
 
 from supervisor.const import CoreState
@@ -50,3 +51,25 @@ async def test_did_run(coresys: CoreSys):
             await apparmor()
             evaluate.assert_not_called()
             evaluate.reset_mock()
+
+
+async def test_evaluation_error(coresys: CoreSys):
+    """Test error reading file during evaluation."""
+    apparmor = EvaluateAppArmor(coresys)
+    coresys.core.state = CoreState.INITIALIZE
+
+    assert apparmor.reason not in coresys.resolution.unsupported
+
+    with patch(
+        "supervisor.resolution.evaluations.apparmor.Path.read_text",
+        side_effect=(err := OSError()),
+    ):
+        err.errno = errno.EBUSY
+        await apparmor()
+        assert apparmor.reason in coresys.resolution.unsupported
+        assert coresys.core.healthy is True
+
+        err.errno = errno.EBADMSG
+        await apparmor()
+        assert apparmor.reason in coresys.resolution.unsupported
+        assert coresys.core.healthy is False

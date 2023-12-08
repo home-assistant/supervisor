@@ -1,6 +1,7 @@
 """AppArmor control for host."""
 from __future__ import annotations
 
+import errno
 import logging
 from pathlib import Path
 import shutil
@@ -80,7 +81,7 @@ class AppArmorControl(CoreSysAttributes):
         try:
             await self.sys_run_in_executor(shutil.copyfile, profile_file, dest_profile)
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             raise HostAppArmorError(
                 f"Can't copy {profile_file}: {err}", _LOGGER.error
@@ -105,7 +106,7 @@ class AppArmorControl(CoreSysAttributes):
         try:
             await self.sys_run_in_executor(profile_file.unlink)
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             raise HostAppArmorError(
                 f"Can't remove profile: {err}", _LOGGER.error
@@ -121,7 +122,7 @@ class AppArmorControl(CoreSysAttributes):
         try:
             await self.sys_run_in_executor(shutil.copy, profile_file, backup_file)
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             raise HostAppArmorError(
                 f"Can't backup profile {profile_name}: {err}", _LOGGER.error

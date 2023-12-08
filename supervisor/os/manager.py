@@ -1,5 +1,6 @@
 """OS support on supervisor."""
 from collections.abc import Awaitable
+import errno
 import logging
 from pathlib import Path
 
@@ -121,7 +122,7 @@ class OSManager(CoreSysAttributes):
             ) from err
 
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             raise HassOSUpdateError(
                 f"Can't write OTA file: {err!s}", _LOGGER.error

@@ -4,6 +4,7 @@ Code: https://github.com/home-assistant/plugin-dns
 """
 import asyncio
 from contextlib import suppress
+import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
@@ -146,7 +147,7 @@ class PluginDns(PluginBase):
                 RESOLV_TMPL.read_text(encoding="utf-8")
             )
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
         try:
@@ -154,7 +155,7 @@ class PluginDns(PluginBase):
                 HOSTS_TMPL.read_text(encoding="utf-8")
             )
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
@@ -368,7 +369,7 @@ class PluginDns(PluginBase):
                 self.hosts.write_text, data, encoding="utf-8"
             )
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
@@ -442,6 +443,12 @@ class PluginDns(PluginBase):
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""
+        if not self.resolv_template:
+            _LOGGER.warning(
+                "Resolv template is missing, cannot write/update %s", resolv_conf
+            )
+            return
+
         nameservers = [str(self.sys_docker.network.dns), "127.0.0.11"]
 
         # Read resolv config
@@ -451,7 +458,7 @@ class PluginDns(PluginBase):
         try:
             resolv_conf.write_text(data)
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.warning("Can't write/update %s: %s", resolv_conf, err)
             return

@@ -1,6 +1,7 @@
 """Home Assistant control object."""
 import asyncio
 from datetime import timedelta
+import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path, PurePath
@@ -301,7 +302,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         try:
             self.path_pulse.write_text(pulse_config, encoding="utf-8")
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
             _LOGGER.error("Home Assistant can't write pulse/client.config: %s", err)
         else:

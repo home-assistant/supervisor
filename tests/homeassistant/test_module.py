@@ -1,8 +1,11 @@
 """Test Homeassistant module."""
 
 import asyncio
+import errno
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
+
+from pytest import LogCaptureFixture
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -44,3 +47,23 @@ async def test_get_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
     assert [] == await coresys.homeassistant.get_users.__wrapped__(
         coresys.homeassistant
     )
+
+
+def test_write_pulse_error(coresys: CoreSys, caplog: LogCaptureFixture):
+    """Test errors writing pulse config."""
+    with patch(
+        "supervisor.homeassistant.module.Path.write_text",
+        side_effect=(err := OSError()),
+    ):
+        err.errno = errno.EBUSY
+        coresys.homeassistant.write_pulse()
+
+        assert "can't write pulse/client.config" in caplog.text
+        assert coresys.core.healthy is True
+
+        caplog.clear()
+        err.errno = errno.EBADMSG
+        coresys.homeassistant.write_pulse()
+
+        assert "can't write pulse/client.config" in caplog.text
+        assert coresys.core.healthy is False

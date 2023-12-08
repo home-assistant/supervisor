@@ -1,4 +1,5 @@
 """Evaluation class for Content Trust."""
+import errno
 import logging
 from pathlib import Path
 
@@ -48,7 +49,7 @@ class EvaluateSourceMods(EvaluateBase):
                 calc_checksum_path_sourcecode, _SUPERVISOR_SOURCE
             )
         except OSError as err:
-            if err.errno == 74:
+            if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.BAD_MESSAGE
 
             self.sys_resolution.create_issue(
