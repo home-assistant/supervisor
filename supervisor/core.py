@@ -28,7 +28,7 @@ from .homeassistant.core import LANDINGPAGE
 from .resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from .utils.dt import utcnow
 from .utils.sentry import capture_exception
-from .utils.whoami import retrieve_whoami
+from .utils.whoami import WhoamiData, retrieve_whoami
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -363,6 +363,13 @@ class Core(CoreSysAttributes):
         self.sys_config.last_boot = self.sys_hardware.helper.last_boot
         self.sys_config.save_data()
 
+    async def _retrieve_whoami(self, with_ssl: bool) -> WhoamiData | None:
+        try:
+            return await retrieve_whoami(self.sys_websession, with_ssl)
+        except WhoamiSSLError:
+            _LOGGER.info("Whoami service SSL error")
+            return None
+
     async def _adjust_system_datetime(self):
         """Adjust system time/date on startup."""
         # If no timezone is detect or set
@@ -375,20 +382,14 @@ class Core(CoreSysAttributes):
 
         # Get Timezone data
         try:
-            data = await retrieve_whoami(self.sys_websession)
-        except WhoamiSSLError:
-            pass
+            data = await self._retrieve_whoami(True)
+
+            # SSL Date Issue & possible time drift
+            if not data:
+                data = await self._retrieve_whoami(False)
         except WhoamiError as err:
             _LOGGER.warning("Can't adjust Time/Date settings: %s", err)
             return
-
-        # SSL Date Issue & possible time drift
-        if not data:
-            try:
-                data = await retrieve_whoami(self.sys_websession, with_ssl=False)
-            except WhoamiError as err:
-                _LOGGER.error("Can't adjust Time/Date settings: %s", err)
-                return
 
         self.sys_config.timezone = self.sys_config.timezone or data.timezone
 
