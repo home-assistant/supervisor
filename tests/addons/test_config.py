@@ -176,6 +176,7 @@ def test_valid_machine():
         "raspberrypi3",
         "raspberrypi4-64",
         "raspberrypi4",
+        "raspberrypi5-64",
         "tinker",
     ]
 
@@ -196,6 +197,7 @@ def test_valid_machine():
         "!raspberrypi3",
         "!raspberrypi4-64",
         "!raspberrypi4",
+        "!raspberrypi5-64",
         "!tinker",
     ]
 
@@ -211,6 +213,7 @@ def test_valid_machine():
         "raspberrypi",
         "raspberrypi4-64",
         "raspberrypi4",
+        "raspberrypi5-64",
         "!tinker",
     ]
 
