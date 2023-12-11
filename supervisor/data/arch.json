@@ -5,6 +5,7 @@
   "raspberrypi3-64": ["aarch64", "armv7", "armhf"],
   "raspberrypi4": ["armv7", "armhf"],
   "raspberrypi4-64": ["aarch64", "armv7", "armhf"],
+  "raspberrypi5-64": ["aarch64", "armv7", "armhf"],
   "yellow": ["aarch64", "armv7", "armhf"],
   "green": ["aarch64", "armv7", "armhf"],
   "tinker": ["armv7", "armhf"],

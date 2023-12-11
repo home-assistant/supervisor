@@ -153,6 +153,7 @@ RE_MACHINE = re.compile(
     r"|raspberrypi3"
     r"|raspberrypi4-64"
     r"|raspberrypi4"
+    r"|raspberrypi5-64"
     r"|yellow"
     r"|green"
     r"|tinker"

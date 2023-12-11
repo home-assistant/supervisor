@@ -18,3 +18,5 @@ options:
   message: "Hello world..."
 schema:
   message: "str?"
+ingress: true
+ingress_port: 0

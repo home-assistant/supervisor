@@ -140,8 +140,7 @@ class HomeAssistantAPI(CoreSysAttributes):
             return None
 
         # Check if port is up
-        if not await self.sys_run_in_executor(
-            check_port,
+        if not await check_port(
             self.sys_homeassistant.ip_address,
             self.sys_homeassistant.api_port,
         ):

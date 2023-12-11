@@ -9,7 +9,7 @@ on:
 
 env:
   DEFAULT_PYTHON: "3.11"
-  PRE_COMMIT_HOME: ~/.cache/pre-commit
+  PRE_COMMIT_CACHE: ~/.cache/pre-commit
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4.1.1
       - name: Set up Python
         id: python
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
@@ -49,7 +49,8 @@ jobs:
         id: cache-precommit
         uses: actions/cache@v3.3.2
         with:
-          path: ${{ env.PRE_COMMIT_HOME }}
+          path: ${{ env.PRE_COMMIT_CACHE }}
+          lookup-only: true
           key: |
             ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
@@ -68,7 +69,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -112,7 +113,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -132,7 +133,7 @@ jobs:
         id: cache-precommit
         uses: actions/cache@v3.3.2
         with:
-          path: ${{ env.PRE_COMMIT_HOME }}
+          path: ${{ env.PRE_COMMIT_CACHE }}
           key: |
             ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Fail job if cache restore failed
@@ -156,7 +157,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -188,7 +189,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -208,7 +209,7 @@ jobs:
         id: cache-precommit
         uses: actions/cache@v3.3.2
         with:
-          path: ${{ env.PRE_COMMIT_HOME }}
+          path: ${{ env.PRE_COMMIT_CACHE }}
           key: |
             ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Fail job if cache restore failed
@@ -229,7 +230,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -249,7 +250,7 @@ jobs:
         id: cache-precommit
         uses: actions/cache@v3.3.2
         with:
-          path: ${{ env.PRE_COMMIT_HOME }}
+          path: ${{ env.PRE_COMMIT_CACHE }}
           key: |
             ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Fail job if cache restore failed
@@ -273,7 +274,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -305,7 +306,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -325,7 +326,7 @@ jobs:
         id: cache-precommit
         uses: actions/cache@v3.3.2
         with:
-          path: ${{ env.PRE_COMMIT_HOME }}
+          path: ${{ env.PRE_COMMIT_CACHE }}
           key: |
             ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
       - name: Fail job if cache restore failed
@@ -346,7 +347,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -404,7 +405,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@v4.1.1
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}

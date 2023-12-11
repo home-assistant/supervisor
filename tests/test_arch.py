@@ -103,6 +103,16 @@ async def test_raspberrypi4_64_arch(coresys, sys_machine, sys_supervisor):
     assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
 
 
+async def test_raspberrypi5_64_arch(coresys, sys_machine, sys_supervisor):
+    """Test arch for raspberrypi5_64."""
+    sys_machine.return_value = "raspberrypi5-64"
+    sys_supervisor.arch = "aarch64"
+    await coresys.arch.load()
+
+    assert coresys.arch.default == "aarch64"
+    assert coresys.arch.supported == ["aarch64", "armv7", "armhf"]
+
+
 async def test_yellow_arch(coresys, sys_machine, sys_supervisor):
     """Test arch for yellow."""
     sys_machine.return_value = "yellow"

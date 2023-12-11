@@ -184,6 +184,7 @@ class Addon(AddonModel):
             )
         )
 
+        await self._check_ingress_port()
         with suppress(DockerError):
             await self.instance.attach(version=self.version)
 
@@ -395,7 +396,7 @@ class Addon(AddonModel):
 
         port = self.data[ATTR_INGRESS_PORT]
         if port == 0:
-            return self.sys_ingress.get_dynamic_port(self.slug)
+            raise RuntimeError(f"No port set for add-on {self.slug}")
         return port
 
     @property
@@ -539,7 +540,7 @@ class Addon(AddonModel):
 
         # TCP monitoring
         if s_prefix == "tcp":
-            return await self.sys_run_in_executor(check_port, self.ip_address, port)
+            return await check_port(self.ip_address, port)
 
         # lookup the correct protocol from config
         if t_proto:
@@ -601,6 +602,16 @@ class Addon(AddonModel):
         if self.path_data.is_dir():
             _LOGGER.info("Removing add-on data folder %s", self.path_data)
             await remove_data(self.path_data)
+
+    async def _check_ingress_port(self):
+        """Assign a ingress port if dynamic port selection is used."""
+        if not self.with_ingress:
+            return
+
+        if self.data[ATTR_INGRESS_PORT] == 0:
+            self.data[ATTR_INGRESS_PORT] = await self.sys_ingress.get_dynamic_port(
+                self.slug
+            )
 
     @Job(
         name="addon_install",
@@ -716,6 +727,7 @@ class Addon(AddonModel):
         try:
             _LOGGER.info("Add-on '%s' successfully updated", self.slug)
             self.sys_addons.data.update(store)
+            await self._check_ingress_port()
 
             # Cleanup
             with suppress(DockerError):
@@ -1199,6 +1211,7 @@ class Addon(AddonModel):
                     _LOGGER.info("Restore/Update of image for addon %s", self.slug)
                     with suppress(DockerError):
                         await self.instance.update(version, restore_image)
+                self._check_ingress_port()
 
                 # Restore data and config
                 def _restore_data():

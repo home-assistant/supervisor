@@ -70,13 +70,13 @@ jobs:
       - name: Get changed files
         id: changed_files
         if: steps.version.outputs.publish == 'false'
-        uses: jitterbit/get-changed-files@v1
+        uses: masesgroup/retrieve-changed-files@v3.0.0
 
       - name: Check if requirements files changed
         id: requirements
         run: |
           if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements.txt|build.json) ]]; then
-            echo "::set-output name=changed::true"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
   build:
@@ -125,7 +125,7 @@ jobs:
 
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         if: needs.init.outputs.publish == 'true'
-        uses: actions/setup-python@v4.7.1
+        uses: actions/setup-python@v5.0.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
@@ -324,7 +324,7 @@ jobs:
           if [ "$(echo $test | jq -r '.result')" != "ok" ]; then
             exit 1
           fi
-          echo "::set-output name=slug::$(echo $test | jq -r '.data.slug')"
+          echo "slug=$(echo $test | jq -r '.data.slug')" >> "$GITHUB_OUTPUT"
 
       - name: Uninstall SSH add-on
         run: |
