@@ -273,24 +273,19 @@ def _migrate_addon_config(protocol=False):
 
         # 2023-11 "map" entries can also be dict to allow path configuration
         volumes = []
-        for entry in [
-            entry for entry in config.get(ATTR_MAP, []) if isinstance(entry, dict)
-        ]:
-            result = RE_VOLUME.match(entry.get("type"))
-            if not result:
-                continue
-            volumes.append(entry)
-
-        for entry in [
-            RE_VOLUME.match(entry)
-            for entry in config.get(ATTR_MAP, [])
-            if isinstance(entry, str)
-        ]:
-            if not entry:
-                continue
-            volumes.append(
-                {ATTR_TYPE: entry.group(1), ATTR_READ_ONLY: entry.group(2) != "rw"}
-            )
+        for entry in config.get(ATTR_MAP, []):
+            if isinstance(entry, dict):
+                volumes.append(entry)
+            if isinstance(entry, str):
+                result = RE_VOLUME.match(entry)
+                if not result:
+                    continue
+                volumes.append(
+                    {
+                        ATTR_TYPE: result.group(1),
+                        ATTR_READ_ONLY: result.group(2) != "rw",
+                    }
+                )
 
         if volumes:
             config[ATTR_MAP] = volumes
