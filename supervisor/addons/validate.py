@@ -113,6 +113,7 @@ from ..validate import (
 from .const import (
     ATTR_BACKUP,
     ATTR_CODENOTARY,
+    ATTR_PATH,
     ATTR_READ_ONLY,
     RE_SLUG,
     AddonBackupMode,
