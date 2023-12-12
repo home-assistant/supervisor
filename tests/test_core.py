@@ -1,5 +1,5 @@
 """Testing handling with CoreState."""
-
+# pylint: disable=W0212
 import datetime
 from unittest.mock import AsyncMock, patch
 
