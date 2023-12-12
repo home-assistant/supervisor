@@ -18,7 +18,7 @@ from .const import ENV_SUPERVISOR_DEV, SERVER_SOFTWARE
 from .utils.dt import UTC, get_time_zone
 
 if TYPE_CHECKING:
-    from .addons import AddonManager
+    from .addons.manager import AddonManager
     from .api import RestAPI
     from .arch import CpuArch
     from .auth import Auth
