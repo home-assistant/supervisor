@@ -1,10 +1,9 @@
 """Evaluation class for AppArmor."""
-import errno
 from pathlib import Path
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ..const import UnhealthyReason, UnsupportedReason
+from ..const import UnsupportedReason
 from .base import EvaluateBase
 
 _APPARMOR_KERNEL = Path("/sys/module/apparmor/parameters/enabled")
@@ -37,7 +36,5 @@ class EvaluateAppArmor(EvaluateBase):
         """Run evaluation."""
         try:
             return _APPARMOR_KERNEL.read_text(encoding="utf-8").strip().upper() != "Y"
-        except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+        except OSError:
             return True

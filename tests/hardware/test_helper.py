@@ -91,15 +91,8 @@ def test_last_boot_error(coresys: CoreSys, caplog: LogCaptureFixture):
     with patch(
         "supervisor.hardware.helper.Path.read_text", side_effect=(err := OSError())
     ):
-        err.errno = errno.EBUSY
-        assert coresys.hardware.helper.last_boot is None
-
-        assert coresys.core.healthy is True
-        assert "Can't read stat data" in caplog.text
-
-        caplog.clear()
         err.errno = errno.EBADMSG
         assert coresys.hardware.helper.last_boot is None
 
-        assert coresys.core.healthy is False
+        assert coresys.core.healthy is True
         assert "Can't read stat data" in caplog.text

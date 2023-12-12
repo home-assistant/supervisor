@@ -64,12 +64,7 @@ async def test_evaluation_error(coresys: CoreSys):
         "supervisor.resolution.evaluations.apparmor.Path.read_text",
         side_effect=(err := OSError()),
     ):
-        err.errno = errno.EBUSY
-        await apparmor()
-        assert apparmor.reason in coresys.resolution.unsupported
-        assert coresys.core.healthy is True
-
         err.errno = errno.EBADMSG
         await apparmor()
         assert apparmor.reason in coresys.resolution.unsupported
-        assert coresys.core.healthy is False
+        assert coresys.core.healthy is True

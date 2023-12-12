@@ -21,7 +21,6 @@ from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..mounts.mount import Mount
 from ..resolution.const import UnhealthyReason
-from ..resolution.module import ResolutionManager
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
 from ..utils.sentinel import DEFAULT
@@ -32,20 +31,6 @@ from .utils import create_slug
 from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-
-def _list_backup_files(path: Path, resolution: ResolutionManager) -> Iterable[Path]:
-    """Return iterable of backup files, suppress and log OSError for network mounts."""
-    try:
-        # is_dir does a stat syscall which raises if the mount is down
-        if path.is_dir():
-            return path.glob("*.tar")
-    except OSError as err:
-        if err.errno == errno.EBADMSG:
-            resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-        _LOGGER.error("Could not list backups from %s: %s", path.as_posix(), err)
-
-    return []
 
 
 class BackupManager(FileConfiguration, JobGroup):
@@ -124,6 +109,19 @@ class BackupManager(FileConfiguration, JobGroup):
         )
         self.sys_jobs.current.stage = stage
 
+    def _list_backup_files(self, path: Path) -> Iterable[Path]:
+        """Return iterable of backup files, suppress and log OSError for network mounts."""
+        try:
+            # is_dir does a stat syscall which raises if the mount is down
+            if path.is_dir():
+                return path.glob("*.tar")
+        except OSError as err:
+            if err.errno == errno.EBADMSG and path == self.sys_config.path_backup:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+            _LOGGER.error("Could not list backups from %s: %s", path.as_posix(), err)
+
+        return []
+
     def _create_backup(
         self,
         name: str,
@@ -174,7 +172,7 @@ class BackupManager(FileConfiguration, JobGroup):
         tasks = [
             self.sys_create_task(_load_backup(tar_file))
             for path in self.backup_locations
-            for tar_file in _list_backup_files(path, self.sys_resolution)
+            for tar_file in self._list_backup_files(path)
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))
@@ -189,7 +187,10 @@ class BackupManager(FileConfiguration, JobGroup):
             _LOGGER.info("Removed backup file %s", backup.slug)
 
         except OSError as err:
-            if err.errno == errno.EBADMSG:
+            if (
+                err.errno == errno.EBADMSG
+                and backup.tarfile.parent == self.sys_config.path_backup
+            ):
                 self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't remove backup %s: %s", backup.slug, err)
             return False

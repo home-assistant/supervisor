@@ -1,10 +1,8 @@
 """Testing handling with CoreState."""
 # pylint: disable=W0212
 import datetime
-from unittest.mock import AsyncMock, PropertyMock, patch
-
 import errno
-from unittest.mock import patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 from pytest import LogCaptureFixture
 
@@ -89,15 +87,8 @@ def test_write_state_failure(run_dir, coresys: CoreSys, caplog: LogCaptureFixtur
         "supervisor.core.RUN_SUPERVISOR_STATE.write_text",
         side_effect=(err := OSError()),
     ):
-        err.errno = errno.EBUSY
-        coresys.core.state = CoreState.SETUP
-
-        assert "Can't update the Supervisor state" in caplog.text
-        assert coresys.core.healthy is True
-
-        caplog.clear()
         err.errno = errno.EBADMSG
         coresys.core.state = CoreState.RUNNING
 
         assert "Can't update the Supervisor state" in caplog.text
-        assert coresys.core.healthy is False
+        assert coresys.core.healthy is True

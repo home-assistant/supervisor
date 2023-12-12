@@ -2,6 +2,7 @@
 
 import asyncio
 import errno
+from pathlib import Path
 from shutil import rmtree
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 
@@ -1558,9 +1559,22 @@ async def test_skip_homeassistant_database(
     assert not test_db_shm.exists()
 
 
-def test_backup_remove_error(coresys: CoreSys, full_backup_mock: Backup):
+@pytest.mark.parametrize(
+    "tar_parent,healthy_expected",
+    [
+        (Path("/data/mounts/test"), True),
+        (Path("/data/backup"), False),
+    ],
+)
+def test_backup_remove_error(
+    coresys: CoreSys,
+    full_backup_mock: Backup,
+    tar_parent: Path,
+    healthy_expected: bool,
+):
     """Test removing a backup error."""
     full_backup_mock.tarfile.unlink.side_effect = (err := OSError())
+    full_backup_mock.tarfile.parent = tar_parent
 
     err.errno = errno.EBUSY
     assert coresys.backups.remove(full_backup_mock) is False
@@ -1568,13 +1582,47 @@ def test_backup_remove_error(coresys: CoreSys, full_backup_mock: Backup):
 
     err.errno = errno.EBADMSG
     assert coresys.backups.remove(full_backup_mock) is False
-    assert coresys.core.healthy is False
+    assert coresys.core.healthy is healthy_expected
 
 
-async def test_reload_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
+@pytest.mark.parametrize(
+    "error_path,healthy_expected",
+    [(Path("/data/backup"), False), (Path("/data/mounts/backup_test"), True)],
+)
+async def test_reload_error(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    error_path: Path,
+    healthy_expected: bool,
+    path_extern,
+    mount_propagation,
+):
     """Test error during reload."""
-    with patch(
-        "supervisor.backups.manager.Path.is_dir", side_effect=(err := OSError())
+    err = OSError()
+
+    def mock_is_dir(path: Path) -> bool:
+        """Mock of is_dir."""
+        if path == error_path:
+            raise err
+        return True
+
+    # Add a backup mount
+    await coresys.mounts.load()
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "backup_test",
+                "usage": "backup",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
+        )
+    )
+
+    with patch("supervisor.backups.manager.Path.is_dir", new=mock_is_dir), patch(
+        "supervisor.backups.manager.Path.glob", return_value=[]
     ):
         err.errno = errno.EBUSY
         await coresys.backups.reload()
@@ -1587,4 +1635,4 @@ async def test_reload_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
         await coresys.backups.reload()
 
         assert "Could not list backups" in caplog.text
-        assert coresys.core.healthy is False
+        assert coresys.core.healthy is healthy_expected
