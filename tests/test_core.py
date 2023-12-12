@@ -8,6 +8,7 @@ from supervisor.coresys import CoreSys
 from supervisor.exceptions import WhoamiSSLError
 from supervisor.host.control import SystemControl
 from supervisor.host.info import InfoCenter
+from supervisor.supervisor import Supervisor
 from supervisor.utils.whoami import WhoamiData
 
 
@@ -41,7 +42,7 @@ async def test_adjust_system_datetime(coresys: CoreSys):
         mock_retrieve_whoami.assert_not_called()
 
 
-async def test_adjust_system_datetime_without_ssl(run_dir, coresys: CoreSys):
+async def test_adjust_system_datetime_without_ssl(coresys: CoreSys):
     """Test _adjust_system_datetime method when retrieve_whoami raises WhoamiSSLError."""
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC)
     with patch(
@@ -56,7 +57,7 @@ async def test_adjust_system_datetime_without_ssl(run_dir, coresys: CoreSys):
         assert coresys.core.sys_config.timezone == "Europe/Zurich"
 
 
-async def test_adjust_system_datetime_if_time_behind(run_dir, coresys: CoreSys):
+async def test_adjust_system_datetime_if_time_behind(coresys: CoreSys):
     """Test _adjust_system_datetime method when current time is ahead more than 3 days."""
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC) + datetime.timedelta(
         days=4
@@ -69,7 +70,10 @@ async def test_adjust_system_datetime_if_time_behind(run_dir, coresys: CoreSys):
         SystemControl, "set_datetime"
     ) as mock_set_datetime, patch.object(
         InfoCenter, "dt_synchronized", new=PropertyMock(return_value=False)
-    ):
+    ), patch.object(
+        Supervisor, "check_connectivity"
+    ) as mock_check_connectivity:
         await coresys.core._adjust_system_datetime()
         mock_retrieve_whoami.assert_called_once()
         mock_set_datetime.assert_called_once()
+        mock_check_connectivity.assert_called_once()
