@@ -10,7 +10,7 @@ from docker.models.images import Image
 import pytest
 from requests import RequestException
 
-from supervisor.addons import Addon
+from supervisor.addons.manager import Addon
 from supervisor.const import BusEvent, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState

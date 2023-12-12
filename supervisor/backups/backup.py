@@ -19,7 +19,7 @@ from securetar import SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons import Addon
+from ..addons.manager import Addon
 from ..const import (
     ATTR_ADDONS,
     ATTR_COMPRESSED,

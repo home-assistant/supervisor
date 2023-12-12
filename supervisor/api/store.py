@@ -6,7 +6,7 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
-from ..addons import AnyAddon
+from ..addons.manager import AnyAddon
 from ..addons.utils import rating_security
 from ..api.const import ATTR_SIGNED
 from ..api.utils import api_process, api_process_raw, api_validate

@@ -6,7 +6,7 @@ import signal
 
 from colorlog import ColoredFormatter
 
-from .addons import AddonManager
+from .addons.manager import AddonManager
 from .api import RestAPI
 from .arch import CpuArch
 from .auth import Auth

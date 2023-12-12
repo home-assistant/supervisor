@@ -8,8 +8,8 @@ from aiohttp import web
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons import AnyAddon
 from ..addons.addon import Addon
+from ..addons.manager import AnyAddon
 from ..addons.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
