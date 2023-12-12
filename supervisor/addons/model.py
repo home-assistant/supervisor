@@ -87,7 +87,6 @@ from ..exceptions import AddonsNotSupportedError
 from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
-from .configuration import FolderMapping
 from .const import (
     ATTR_BACKUP,
     ATTR_CODENOTARY,
@@ -96,6 +95,7 @@ from .const import (
     AddonBackupMode,
     MappingType,
 )
+from .data import FolderMapping
 from .options import AddonOptions, UiOptions
 from .validate import RE_SERVICE
 
