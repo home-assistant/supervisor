@@ -324,7 +324,7 @@ class DockerAddon(DockerInterface):
         """Return mounts for container."""
         addon_mapping = self.addon.map_volumes
 
-        target_data_path = "/data"
+        target_data_path = ""
         if MappingType.DATA in addon_mapping:
             target_data_path = addon_mapping[MappingType.DATA].path
 
@@ -333,7 +333,7 @@ class DockerAddon(DockerInterface):
             Mount(
                 type=MountType.BIND,
                 source=self.addon.path_extern_data.as_posix(),
-                target=target_data_path,
+                target=target_data_path or "/data",
                 read_only=False,
             ),
         ]
