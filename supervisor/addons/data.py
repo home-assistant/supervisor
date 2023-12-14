@@ -1,6 +1,5 @@
 """Init file for Supervisor add-on data."""
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any
 
 from ..const import (
@@ -18,14 +17,6 @@ from .addon import Addon
 from .validate import SCHEMA_ADDONS_FILE
 
 Config = dict[str, Any]
-
-
-@dataclass(slots=True)
-class FolderMapping:
-    """Represent folder mapping configuration."""
-
-    path: str | None
-    read_only: bool
 
 
 class AddonsData(FileConfiguration, CoreSysAttributes):
