@@ -17,7 +17,7 @@ async def test_evaluation(coresys: CoreSys):
 
     assert operating_system.reason not in coresys.resolution.unsupported
 
-    coresys.host._info = MagicMock(operating_system="unsupported")
+    coresys.host._info = MagicMock(operating_system="unsupported", timezone=None)
     await operating_system()
     assert operating_system.reason in coresys.resolution.unsupported
 
@@ -26,7 +26,7 @@ async def test_evaluation(coresys: CoreSys):
     assert operating_system.reason not in coresys.resolution.unsupported
     coresys.os._available = False
 
-    coresys.host._info = MagicMock(operating_system=SUPPORTED_OS[0])
+    coresys.host._info = MagicMock(operating_system=SUPPORTED_OS[0], timezone=None)
     await operating_system()
     assert operating_system.reason not in coresys.resolution.unsupported
 
