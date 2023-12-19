@@ -148,8 +148,8 @@ def get_connection_from_interface(
             wireless["security"] = Variant("s", CONF_ATTR_802_WIRELESS_SECURITY)
             wireless_security = {}
             if interface.wifi.auth == "wep":
-                wireless_security["auth-alg"] = Variant("s", "none")
-                wireless_security["key-mgmt"] = Variant("s", "open")
+                wireless_security["auth-alg"] = Variant("s", "open")
+                wireless_security["key-mgmt"] = Variant("s", "none")
             elif interface.wifi.auth == "wpa-psk":
                 wireless_security["auth-alg"] = Variant("s", "open")
                 wireless_security["key-mgmt"] = Variant("s", "wpa-psk")
