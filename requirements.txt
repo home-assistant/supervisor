@@ -11,7 +11,7 @@ colorlog==6.8.0
 cpe==1.2.1
 cryptography==41.0.7
 debugpy==1.8.0
-deepmerge==1.1.0
+deepmerge==1.1.1
 dirhash==0.2.1
 docker==7.0.0
 faust-cchardet==2.1.19
