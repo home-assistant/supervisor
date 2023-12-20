@@ -175,7 +175,7 @@ class PluginDns(PluginBase):
                         self.latest_version, image=self.sys_updater.image_dns
                     )
                     break
-            _LOGGER.warning("Error on install CoreDNS plugin. Retry in 30sec")
+            _LOGGER.warning("Error on install CoreDNS plugin. Retrying in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("CoreDNS plugin now installed")

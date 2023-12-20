@@ -70,7 +70,7 @@ class PluginObserver(PluginBase):
                         self.latest_version, image=self.sys_updater.image_observer
                     )
                     break
-            _LOGGER.warning("Error on install observer plugin. Retry in 30sec")
+            _LOGGER.warning("Error on install observer plugin. Retrying in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("observer plugin now installed")
