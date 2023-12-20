@@ -62,7 +62,7 @@ class PluginMulticast(PluginBase):
                         self.latest_version, image=self.sys_updater.image_multicast
                     )
                     break
-            _LOGGER.warning("Error on install Multicast plugin. Retry in 30sec")
+            _LOGGER.warning("Error on install Multicast plugin. Retrying in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("Multicast plugin is now installed")

@@ -129,7 +129,7 @@ class HomeAssistantCore(JobGroup):
         while True:
             if not self.sys_updater.image_homeassistant:
                 _LOGGER.warning(
-                    "Found no information about Home Assistant. Retry in 30sec"
+                    "Found no information about Home Assistant. Retrying in 30sec"
                 )
                 await asyncio.sleep(30)
                 await self.sys_updater.reload()
@@ -145,7 +145,7 @@ class HomeAssistantCore(JobGroup):
             except Exception as err:  # pylint: disable=broad-except
                 capture_exception(err)
 
-            _LOGGER.warning("Fails install landingpage, retry after 30sec")
+            _LOGGER.warning("Failed to install landingpage, retrying after 30sec")
             await asyncio.sleep(30)
 
         self.sys_homeassistant.version = LANDINGPAGE
@@ -177,7 +177,7 @@ class HomeAssistantCore(JobGroup):
                 except Exception as err:  # pylint: disable=broad-except
                     capture_exception(err)
 
-            _LOGGER.warning("Error on Home Assistant installation. Retry in 30sec")
+            _LOGGER.warning("Error on Home Assistant installation. Retrying in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("Home Assistant docker now installed")

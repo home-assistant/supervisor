@@ -66,7 +66,7 @@ class PluginCli(PluginBase):
                         image=self.sys_updater.image_cli,
                     )
                     break
-            _LOGGER.warning("Error on install cli plugin. Retry in 30sec")
+            _LOGGER.warning("Error on install cli plugin. Retrying in 30sec")
             await asyncio.sleep(30)
 
         _LOGGER.info("CLI plugin is now installed")
