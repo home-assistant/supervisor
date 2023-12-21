@@ -718,7 +718,7 @@ class Addon(AddonModel):
         store = self.addon_store.clone()
 
         try:
-            await self.instance.update(store.version, store.image)
+            await self.instance.update(store.version, store.image, arch=self.arch)
         except DockerError as err:
             raise AddonsError() from err
 
