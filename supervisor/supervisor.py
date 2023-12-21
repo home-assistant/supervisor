@@ -2,6 +2,7 @@
 from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
+import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
@@ -27,7 +28,7 @@ from .exceptions import (
 )
 from .jobs.const import JobCondition, JobExecutionLimit
 from .jobs.decorator import Job
-from .resolution.const import ContextType, IssueType
+from .resolution.const import ContextType, IssueType, UnhealthyReason
 from .utils.codenotary import calc_checksum
 from .utils.sentry import capture_exception
 
@@ -155,6 +156,8 @@ class Supervisor(CoreSysAttributes):
             try:
                 profile_file.write_text(data, encoding="utf-8")
             except OSError as err:
+                if err.errno == errno.EBADMSG:
+                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
                 raise SupervisorAppArmorError(
                     f"Can't write temporary profile: {err!s}", _LOGGER.error
                 ) from err

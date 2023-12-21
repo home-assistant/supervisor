@@ -1,6 +1,7 @@
 """Test supervisor object."""
 
 from datetime import timedelta
+import errno
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
 from aiohttp import ClientTimeout
@@ -11,7 +12,11 @@ import pytest
 from supervisor.const import UpdateChannel
 from supervisor.coresys import CoreSys
 from supervisor.docker.supervisor import DockerSupervisor
-from supervisor.exceptions import DockerError, SupervisorUpdateError
+from supervisor.exceptions import (
+    DockerError,
+    SupervisorAppArmorError,
+    SupervisorUpdateError,
+)
 from supervisor.host.apparmor import AppArmorControl
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
@@ -108,3 +113,22 @@ async def test_update_apparmor(
             timeout=ClientTimeout(total=10),
         )
         load_profile.assert_called_once()
+
+
+async def test_update_apparmor_error(coresys: CoreSys, tmp_supervisor_data):
+    """Test error updating apparmor profile."""
+    with patch("supervisor.coresys.aiohttp.ClientSession.get") as get, patch.object(
+        AppArmorControl, "load_profile"
+    ), patch("supervisor.supervisor.Path.write_text", side_effect=(err := OSError())):
+        get.return_value.__aenter__.return_value.status = 200
+        get.return_value.__aenter__.return_value.text = AsyncMock(return_value="")
+
+        err.errno = errno.EBUSY
+        with pytest.raises(SupervisorAppArmorError):
+            await coresys.supervisor.update_apparmor()
+        assert coresys.core.healthy is True
+
+        err.errno = errno.EBADMSG
+        with pytest.raises(SupervisorAppArmorError):
+            await coresys.supervisor.update_apparmor()
+        assert coresys.core.healthy is False

@@ -4,6 +4,7 @@ Code: https://github.com/home-assistant/plugin-dns
 """
 import asyncio
 from contextlib import suppress
+import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
@@ -29,7 +30,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..utils.json import write_json_file
 from ..utils.sentry import capture_exception
 from ..validate import dns_url
@@ -146,12 +147,16 @@ class PluginDns(PluginBase):
                 RESOLV_TMPL.read_text(encoding="utf-8")
             )
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
         try:
             self.hosts_template = jinja2.Template(
                 HOSTS_TMPL.read_text(encoding="utf-8")
             )
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         await self._init_hosts()
@@ -364,6 +369,8 @@ class PluginDns(PluginBase):
                 self.hosts.write_text, data, encoding="utf-8"
             )
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
     async def add_host(
@@ -436,6 +443,12 @@ class PluginDns(PluginBase):
 
     def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""
+        if not self.resolv_template:
+            _LOGGER.warning(
+                "Resolv template is missing, cannot write/update %s", resolv_conf
+            )
+            return
+
         nameservers = [str(self.sys_docker.network.dns), "127.0.0.11"]
 
         # Read resolv config
@@ -445,6 +458,8 @@ class PluginDns(PluginBase):
         try:
             resolv_conf.write_text(data)
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.warning("Can't write/update %s: %s", resolv_conf, err)
             return
 

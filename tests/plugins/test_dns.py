@@ -1,5 +1,6 @@
 """Test DNS plugin."""
 import asyncio
+import errno
 from ipaddress import IPv4Address
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
@@ -183,3 +184,49 @@ async def test_loop_detection_on_failure(coresys: CoreSys):
             Suggestion(SuggestionType.EXECUTE_RESET, ContextType.PLUGIN, "dns")
         ]
         rebuild.assert_called_once()
+
+
+async def test_load_error(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, container
+):
+    """Test error reading config files during load."""
+    with patch(
+        "supervisor.plugins.dns.Path.read_text", side_effect=(err := OSError())
+    ), patch("supervisor.plugins.dns.Path.write_text", side_effect=err):
+        err.errno = errno.EBUSY
+        await coresys.plugins.dns.load()
+
+        assert "Can't read resolve.tmpl" in caplog.text
+        assert "Can't read hosts.tmpl" in caplog.text
+        assert "Resolv template is missing" in caplog.text
+        assert coresys.core.healthy is True
+
+        caplog.clear()
+        err.errno = errno.EBADMSG
+        await coresys.plugins.dns.load()
+
+        assert "Can't read resolve.tmpl" in caplog.text
+        assert "Can't read hosts.tmpl" in caplog.text
+        assert "Resolv template is missing" in caplog.text
+        assert coresys.core.healthy is False
+
+
+async def test_load_error_writing_resolv(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, container
+):
+    """Test error writing resolv during load."""
+    with patch(
+        "supervisor.plugins.dns.Path.write_text", side_effect=(err := OSError())
+    ):
+        err.errno = errno.EBUSY
+        await coresys.plugins.dns.load()
+
+        assert "Can't write/update /etc/resolv.conf" in caplog.text
+        assert coresys.core.healthy is True
+
+        caplog.clear()
+        err.errno = errno.EBADMSG
+        await coresys.plugins.dns.load()
+
+        assert "Can't write/update /etc/resolv.conf" in caplog.text
+        assert coresys.core.healthy is False

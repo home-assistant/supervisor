@@ -3,6 +3,7 @@ import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 from copy import deepcopy
+import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path, PurePath
@@ -72,6 +73,7 @@ from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
+from ..resolution.const import UnhealthyReason
 from ..store.addon import AddonStore
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
@@ -793,6 +795,8 @@ class Addon(AddonModel):
         try:
             self.path_pulse.write_text(pulse_config, encoding="utf-8")
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error(
                 "Add-on %s can't write pulse/client.config: %s", self.slug, err
             )

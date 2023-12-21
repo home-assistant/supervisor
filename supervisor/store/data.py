@@ -1,5 +1,6 @@
 """Init file for Supervisor add-on data."""
 from dataclasses import dataclass
+import errno
 import logging
 from pathlib import Path
 from typing import Any
@@ -19,7 +20,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError
-from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..utils.common import find_one_filetype, read_json_or_yaml_file
 from ..utils.json import read_json_file
 from .const import StoreType
@@ -157,7 +158,9 @@ class StoreData(CoreSysAttributes):
             addon_list = await self.sys_run_in_executor(_get_addons_list)
         except OSError as err:
             suggestion = None
-            if path.stem != StoreType.LOCAL:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+            elif path.stem != StoreType.LOCAL:
                 suggestion = [SuggestionType.EXECUTE_RESET]
             self.sys_resolution.create_issue(
                 IssueType.CORRUPT_REPOSITORY,

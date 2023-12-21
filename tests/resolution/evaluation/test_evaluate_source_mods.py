@@ -1,5 +1,6 @@
 """Test evaluation base."""
 # pylint: disable=import-error,protected-access
+import errno
 import os
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -7,6 +8,8 @@ from unittest.mock import AsyncMock, patch
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import CodeNotaryError, CodeNotaryUntrusted
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 from supervisor.resolution.evaluations.source_mods import EvaluateSourceMods
 
 
@@ -56,3 +59,30 @@ async def test_did_run(coresys: CoreSys):
             await sourcemods()
             evaluate.assert_not_called()
             evaluate.reset_mock()
+
+
+async def test_evaluation_error(coresys: CoreSys):
+    """Test error reading file during evaluation."""
+    sourcemods = EvaluateSourceMods(coresys)
+    coresys.core.state = CoreState.RUNNING
+    corrupt_fs = Issue(IssueType.CORRUPT_FILESYSTEM, ContextType.SYSTEM)
+
+    assert sourcemods.reason not in coresys.resolution.unsupported
+    assert corrupt_fs not in coresys.resolution.issues
+
+    with patch(
+        "supervisor.utils.codenotary.dirhash",
+        side_effect=(err := OSError()),
+    ):
+        err.errno = errno.EBUSY
+        await sourcemods()
+        assert sourcemods.reason not in coresys.resolution.unsupported
+        assert corrupt_fs in coresys.resolution.issues
+        assert coresys.core.healthy is True
+
+        coresys.resolution.dismiss_issue(corrupt_fs)
+        err.errno = errno.EBADMSG
+        await sourcemods()
+        assert sourcemods.reason not in coresys.resolution.unsupported
+        assert corrupt_fs in coresys.resolution.issues
+        assert coresys.core.healthy is False
