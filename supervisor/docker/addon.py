@@ -602,7 +602,11 @@ class DockerAddon(DockerInterface):
         on_condition=DockerJobError,
     )
     async def update(
-        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
+        self,
+        version: AwesomeVersion,
+        image: str | None = None,
+        latest: bool = False,
+        arch: CpuArch | None = None,
     ) -> None:
         """Update a docker image."""
         image = image or self.image
@@ -613,7 +617,11 @@ class DockerAddon(DockerInterface):
 
         # Update docker image
         await self.install(
-            version, image=image, latest=latest, need_build=self.addon.latest_need_build
+            version,
+            image=image,
+            latest=latest,
+            arch=arch,
+            need_build=self.addon.latest_need_build,
         )
 
     @Job(
