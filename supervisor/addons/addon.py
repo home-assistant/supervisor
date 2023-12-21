@@ -1209,12 +1209,14 @@ class Addon(AddonModel):
                             await self.instance.import_image(image_file)
                     else:
                         with suppress(DockerError):
-                            await self.instance.install(version, restore_image)
+                            await self.instance.install(
+                                version, restore_image, self.arch
+                            )
                             await self.instance.cleanup()
                 elif self.instance.version != version or self.legacy:
                     _LOGGER.info("Restore/Update of image for addon %s", self.slug)
                     with suppress(DockerError):
-                        await self.instance.update(version, restore_image)
+                        await self.instance.update(version, restore_image, self.arch)
                 self._check_ingress_port()
 
                 # Restore data and config
