@@ -65,7 +65,7 @@ async def test_install_landingpage_docker_error(
         await coresys.homeassistant.core.install_landingpage()
         sleep.assert_awaited_once_with(30)
 
-    assert "Fails install landingpage, retry after 30sec" in caplog.text
+    assert "Failed to install landingpage, retrying after 30sec" in caplog.text
     capture_exception.assert_not_called()
 
 
@@ -87,7 +87,7 @@ async def test_install_landingpage_other_error(
         await coresys.homeassistant.core.install_landingpage()
         sleep.assert_awaited_once_with(30)
 
-    assert "Fails install landingpage, retry after 30sec" in caplog.text
+    assert "Failed to install landingpage, retrying after 30sec" in caplog.text
     capture_exception.assert_called_once_with(err)
 
 
@@ -113,7 +113,7 @@ async def test_install_docker_error(
         await coresys.homeassistant.core.install()
         sleep.assert_awaited_once_with(30)
 
-    assert "Error on Home Assistant installation. Retry in 30sec" in caplog.text
+    assert "Error on Home Assistant installation. Retrying in 30sec" in caplog.text
     capture_exception.assert_not_called()
 
 
@@ -137,7 +137,7 @@ async def test_install_other_error(
         await coresys.homeassistant.core.install()
         sleep.assert_awaited_once_with(30)
 
-    assert "Error on Home Assistant installation. Retry in 30sec" in caplog.text
+    assert "Error on Home Assistant installation. Retrying in 30sec" in caplog.text
     capture_exception.assert_called_once_with(err)
 
 

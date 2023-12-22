@@ -3,6 +3,7 @@ import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 from copy import deepcopy
+import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path, PurePath
@@ -71,6 +72,7 @@ from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
+from ..resolution.const import UnhealthyReason
 from ..store.addon import AddonStore
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
@@ -716,7 +718,7 @@ class Addon(AddonModel):
         store = self.addon_store.clone()
 
         try:
-            await self.instance.update(store.version, store.image)
+            await self.instance.update(store.version, store.image, arch=self.arch)
         except DockerError as err:
             raise AddonsError() from err
 
@@ -793,6 +795,8 @@ class Addon(AddonModel):
         try:
             self.path_pulse.write_text(pulse_config, encoding="utf-8")
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error(
                 "Add-on %s can't write pulse/client.config: %s", self.slug, err
             )
@@ -1205,12 +1209,14 @@ class Addon(AddonModel):
                             await self.instance.import_image(image_file)
                     else:
                         with suppress(DockerError):
-                            await self.instance.install(version, restore_image)
+                            await self.instance.install(
+                                version, restore_image, self.arch
+                            )
                             await self.instance.cleanup()
                 elif self.instance.version != version or self.legacy:
                     _LOGGER.info("Restore/Update of image for addon %s", self.slug)
                     with suppress(DockerError):
-                        await self.instance.update(version, restore_image)
+                        await self.instance.update(version, restore_image, self.arch)
                 self._check_ingress_port()
 
                 # Restore data and config

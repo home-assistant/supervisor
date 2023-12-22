@@ -1,5 +1,6 @@
 """OS support on supervisor."""
 from collections.abc import Awaitable
+import errno
 import logging
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from ..dbus.rauc import RaucState
 from ..exceptions import DBusError, HassOSJobError, HassOSUpdateError
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
+from ..resolution.const import UnhealthyReason
 from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -120,6 +122,8 @@ class OSManager(CoreSysAttributes):
             ) from err
 
         except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             raise HassOSUpdateError(
                 f"Can't write OTA file: {err!s}", _LOGGER.error
             ) from err

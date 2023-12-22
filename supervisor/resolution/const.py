@@ -59,9 +59,10 @@ class UnhealthyReason(StrEnum):
     """Reasons for unsupported status."""
 
     DOCKER = "docker"
+    OSERROR_BAD_MESSAGE = "oserror_bad_message"
+    PRIVILEGED = "privileged"
     SUPERVISOR = "supervisor"
     SETUP = "setup"
-    PRIVILEGED = "privileged"
     UNTRUSTED = "untrusted"
 
 

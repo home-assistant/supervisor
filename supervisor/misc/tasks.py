@@ -15,6 +15,8 @@ from ..utils.sentry import capture_exception
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 HASS_WATCHDOG_API = "HASS_WATCHDOG_API"
+HASS_WATCHDOG_REANIMATE_FAILURES = "HASS_WATCHDOG_REANIMATE_FAILURES"
+HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS = 5
 
 RUN_UPDATE_SUPERVISOR = 29100
 RUN_UPDATE_ADDONS = 57600
@@ -154,6 +156,18 @@ class Tasks(CoreSysAttributes):
             return
         if await self.sys_homeassistant.api.check_api_state():
             # Home Assistant is running properly
+            self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = 0
+            return
+
+        # Give up after 5 reanimation failures in a row. Supervisor cannot fix this issue.
+        reanimate_fails = self._cache.get(HASS_WATCHDOG_REANIMATE_FAILURES, 0)
+        if reanimate_fails >= HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
+            if reanimate_fails == HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
+                _LOGGER.critical(
+                    "Watchdog cannot reanimate Home Assistant, failed all %s attempts.",
+                    reanimate_fails,
+                )
+                self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] += 1
             return
 
         # Init cache data
@@ -171,7 +185,11 @@ class Tasks(CoreSysAttributes):
             await self.sys_homeassistant.core.restart()
         except HomeAssistantError as err:
             _LOGGER.error("Home Assistant watchdog reanimation failed!")
-            capture_exception(err)
+            if reanimate_fails == 0:
+                capture_exception(err)
+            self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = reanimate_fails + 1
+        else:
+            self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = 0
         finally:
             self._cache[HASS_WATCHDOG_API] = 0
 
