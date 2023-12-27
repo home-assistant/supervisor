@@ -65,6 +65,7 @@ from ..const import (
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
+    ATTR_TYPE,
     ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
@@ -86,9 +87,17 @@ from ..exceptions import AddonsNotSupportedError
 from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
-from .const import ATTR_BACKUP, ATTR_CODENOTARY, AddonBackupMode
+from .configuration import FolderMapping
+from .const import (
+    ATTR_BACKUP,
+    ATTR_CODENOTARY,
+    ATTR_PATH,
+    ATTR_READ_ONLY,
+    AddonBackupMode,
+    MappingType,
+)
 from .options import AddonOptions, UiOptions
-from .validate import RE_SERVICE, RE_VOLUME
+from .validate import RE_SERVICE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -538,14 +547,13 @@ class AddonModel(JobGroup, ABC):
         return ATTR_IMAGE not in self.data
 
     @property
-    def map_volumes(self) -> dict[str, bool]:
-        """Return a dict of {volume: read-only} from add-on."""
+    def map_volumes(self) -> dict[MappingType, FolderMapping]:
+        """Return a dict of {MappingType: FolderMapping} from add-on."""
         volumes = {}
         for volume in self.data[ATTR_MAP]:
-            result = RE_VOLUME.match(volume)
-            if not result:
-                continue
-            volumes[result.group(1)] = result.group(2) != "rw"
+            volumes[MappingType(volume[ATTR_TYPE])] = FolderMapping(
+                volume.get(ATTR_PATH), volume[ATTR_READ_ONLY]
+            )
 
         return volumes
 

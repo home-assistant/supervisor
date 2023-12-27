@@ -345,17 +345,6 @@ PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
 WANT_SERVICE = "want"
 
-
-MAP_CONFIG = "config"
-MAP_SSL = "ssl"
-MAP_ADDONS = "addons"
-MAP_BACKUP = "backup"
-MAP_SHARE = "share"
-MAP_MEDIA = "media"
-MAP_HOMEASSISTANT_CONFIG = "homeassistant_config"
-MAP_ALL_ADDON_CONFIGS = "all_addon_configs"
-MAP_ADDON_CONFIG = "addon_config"
-
 ARCH_ARMHF = "armhf"
 ARCH_ARMV7 = "armv7"
 ARCH_AARCH64 = "aarch64"

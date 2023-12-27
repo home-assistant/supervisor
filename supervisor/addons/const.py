@@ -12,8 +12,25 @@ class AddonBackupMode(StrEnum):
     COLD = "cold"
 
 
+class MappingType(StrEnum):
+    """Mapping type of an Add-on Folder."""
+
+    DATA = "data"
+    CONFIG = "config"
+    SSL = "ssl"
+    ADDONS = "addons"
+    BACKUP = "backup"
+    SHARE = "share"
+    MEDIA = "media"
+    HOMEASSISTANT_CONFIG = "homeassistant_config"
+    ALL_ADDON_CONFIGS = "all_addon_configs"
+    ADDON_CONFIG = "addon_config"
+
+
 ATTR_BACKUP = "backup"
 ATTR_CODENOTARY = "codenotary"
+ATTR_READ_ONLY = "read_only"
+ATTR_PATH = "path"
 WATCHDOG_RETRY_SECONDS = 10
 WATCHDOG_MAX_ATTEMPTS = 5
 WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)

@@ -81,6 +81,7 @@ from ..const import (
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
+    ATTR_TYPE,
     ATTR_UART,
     ATTR_UDEV,
     ATTR_URL,
@@ -91,9 +92,6 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
-    MAP_ADDON_CONFIG,
-    MAP_CONFIG,
-    MAP_HOMEASSISTANT_CONFIG,
     ROLE_ALL,
     ROLE_DEFAULT,
     AddonBoot,
@@ -112,13 +110,21 @@ from ..validate import (
     uuid_match,
     version_tag,
 )
-from .const import ATTR_BACKUP, ATTR_CODENOTARY, RE_SLUG, AddonBackupMode
+from .const import (
+    ATTR_BACKUP,
+    ATTR_CODENOTARY,
+    ATTR_PATH,
+    ATTR_READ_ONLY,
+    RE_SLUG,
+    AddonBackupMode,
+    MappingType,
+)
 from .options import RE_SCHEMA_ELEMENT
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_VOLUME = re.compile(
-    r"^(config|ssl|addons|backup|share|media|homeassistant_config|all_addon_configs|addon_config)(?::(rw|ro))?$"
+    r"^(data|config|ssl|addons|backup|share|media|homeassistant_config|all_addon_configs|addon_config)(?::(rw|ro))?$"
 )
 RE_SERVICE = re.compile(r"^(?P<service>mqtt|mysql):(?P<rights>provide|want|need)$")
 
@@ -266,26 +272,45 @@ def _migrate_addon_config(protocol=False):
                     name,
                 )
 
+        # 2023-11 "map" entries can also be dict to allow path configuration
+        volumes = []
+        for entry in config.get(ATTR_MAP, []):
+            if isinstance(entry, dict):
+                volumes.append(entry)
+            if isinstance(entry, str):
+                result = RE_VOLUME.match(entry)
+                if not result:
+                    continue
+                volumes.append(
+                    {
+                        ATTR_TYPE: result.group(1),
+                        ATTR_READ_ONLY: result.group(2) != "rw",
+                    }
+                )
+
+        if volumes:
+            config[ATTR_MAP] = volumes
+
         # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
-        volumes = [RE_VOLUME.match(entry) for entry in config.get(ATTR_MAP, [])]
-        if any(volume and volume.group(1) == MAP_CONFIG for volume in volumes):
+        if any(volume[ATTR_TYPE] == MappingType.CONFIG for volume in volumes):
             if any(
                 volume
-                and volume.group(1) in {MAP_ADDON_CONFIG, MAP_HOMEASSISTANT_CONFIG}
+                and volume[ATTR_TYPE]
+                in {MappingType.ADDON_CONFIG, MappingType.HOMEASSISTANT_CONFIG}
                 for volume in volumes
             ):
                 _LOGGER.warning(
                     "Add-on config using incompatible map options, '%s' and '%s' are ignored if '%s' is included. Please report this to the maintainer of %s",
-                    MAP_ADDON_CONFIG,
-                    MAP_HOMEASSISTANT_CONFIG,
-                    MAP_CONFIG,
+                    MappingType.ADDON_CONFIG,
+                    MappingType.HOMEASSISTANT_CONFIG,
+                    MappingType.CONFIG,
                     name,
                 )
             else:
                 _LOGGER.debug(
                     "Add-on config using deprecated map option '%s' instead of '%s'. Please report this to the maintainer of %s",
-                    MAP_CONFIG,
-                    MAP_HOMEASSISTANT_CONFIG,
+                    MappingType.CONFIG,
+                    MappingType.HOMEASSISTANT_CONFIG,
                     name,
                 )
 
@@ -337,7 +362,15 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_DEVICES): [str],
         vol.Optional(ATTR_UDEV, default=False): vol.Boolean(),
         vol.Optional(ATTR_TMPFS, default=False): vol.Boolean(),
-        vol.Optional(ATTR_MAP, default=list): [vol.Match(RE_VOLUME)],
+        vol.Optional(ATTR_MAP, default=list): [
+            vol.Schema(
+                {
+                    vol.Required(ATTR_TYPE): vol.Coerce(MappingType),
+                    vol.Optional(ATTR_READ_ONLY, default=True): bool,
+                    vol.Optional(ATTR_PATH): str,
+                }
+            )
+        ],
         vol.Optional(ATTR_ENVIRONMENT): {vol.Match(r"\w*"): str},
         vol.Optional(ATTR_PRIVILEGED): [vol.Coerce(Capabilities)],
         vol.Optional(ATTR_APPARMOR, default=True): vol.Boolean(),
