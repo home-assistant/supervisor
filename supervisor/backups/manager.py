@@ -15,7 +15,7 @@ from ..const import (
     CoreState,
 )
 from ..dbus.const import UnitActiveState
-from ..exceptions import AddonsError, BackupError, BackupJobError
+from ..exceptions import AddonsError, BackupError, BackupInvalidError, BackupJobError
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -388,6 +388,7 @@ class BackupManager(FileConfiguration, JobGroup):
         Must be called from an existing restore job.
         """
         addon_start_tasks: list[Awaitable[None]] | None = None
+        success = True
 
         try:
             task_hass: asyncio.Task | None = None
@@ -399,7 +400,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 # Process folders
                 if folder_list:
                     self._change_stage(RestoreJobStage.FOLDERS, backup)
-                    await backup.restore_folders(folder_list)
+                    success = await backup.restore_folders(folder_list)
 
                 # Process Home-Assistant
                 if homeassistant:
@@ -419,13 +420,17 @@ class BackupManager(FileConfiguration, JobGroup):
                             await self.sys_addons.uninstall(addon.slug)
                         except AddonsError:
                             _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
+                            success = False
 
                 if addon_list:
                     self._change_stage(RestoreJobStage.ADDON_REPOSITORIES, backup)
                     await backup.restore_repositories(replace)
 
                     self._change_stage(RestoreJobStage.ADDONS, backup)
-                    addon_start_tasks = await backup.restore_addons(addon_list)
+                    restore_success, addon_start_tasks = await backup.restore_addons(
+                        addon_list
+                    )
+                    success = success and restore_success
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
@@ -433,18 +438,24 @@ class BackupManager(FileConfiguration, JobGroup):
                         RestoreJobStage.AWAIT_HOME_ASSISTANT_RESTART, backup
                     )
                     await task_hass
-
+        except BackupError:
+            raise
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", backup.slug)
             capture_exception(err)
-            return False
+            raise BackupError(
+                f"Restore {backup.slug} error, check logs for details"
+            ) from err
         else:
             if addon_start_tasks:
                 self._change_stage(RestoreJobStage.AWAIT_ADDON_RESTARTS, backup)
-                # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
-                await asyncio.gather(*addon_start_tasks, return_exceptions=True)
+                # Failure to resume addons post restore is still a restore failure
+                if any(
+                    await asyncio.gather(*addon_start_tasks, return_exceptions=True)
+                ):
+                    return False
 
-            return True
+            return success
         finally:
             # Leave Home Assistant alone if it wasn't part of the restore
             if homeassistant:
@@ -479,32 +490,34 @@ class BackupManager(FileConfiguration, JobGroup):
         self.sys_jobs.current.reference = backup.slug
 
         if backup.sys_type != BackupType.FULL:
-            _LOGGER.error("%s is only a partial backup!", backup.slug)
-            return False
+            raise BackupInvalidError(
+                f"{backup.slug} is only a partial backup!", _LOGGER.error
+            )
 
         if backup.protected and not backup.set_password(password):
-            _LOGGER.error("Invalid password for backup %s", backup.slug)
-            return False
+            raise BackupInvalidError(
+                f"Invalid password for backup {backup.slug}", _LOGGER.error
+            )
 
         if backup.supervisor_version > self.sys_supervisor.version:
-            _LOGGER.error(
-                "Backup was made on supervisor version %s, can't restore on %s. Must update supervisor first.",
-                backup.supervisor_version,
-                self.sys_supervisor.version,
+            raise BackupInvalidError(
+                f"Backup was made on supervisor version {backup.supervisor_version}, "
+                f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
+                _LOGGER.error,
             )
-            return False
 
         _LOGGER.info("Full-Restore %s start", backup.slug)
         self.sys_core.state = CoreState.FREEZE
 
-        # Stop Home-Assistant / Add-ons
-        await self.sys_core.shutdown()
+        try:
+            # Stop Home-Assistant / Add-ons
+            await self.sys_core.shutdown()
 
-        success = await self._do_restore(
-            backup, backup.addon_list, backup.folders, True, True
-        )
-
-        self.sys_core.state = CoreState.RUNNING
+            success = await self._do_restore(
+                backup, backup.addon_list, backup.folders, True, True
+            )
+        finally:
+            self.sys_core.state = CoreState.RUNNING
 
         if success:
             _LOGGER.info("Full-Restore %s done", backup.slug)
@@ -543,29 +556,31 @@ class BackupManager(FileConfiguration, JobGroup):
             homeassistant = True
 
         if backup.protected and not backup.set_password(password):
-            _LOGGER.error("Invalid password for backup %s", backup.slug)
-            return False
+            raise BackupInvalidError(
+                f"Invalid password for backup {backup.slug}", _LOGGER.error
+            )
 
         if backup.homeassistant is None and homeassistant:
-            _LOGGER.error("No Home Assistant Core data inside the backup")
-            return False
+            raise BackupInvalidError(
+                "No Home Assistant Core data inside the backup", _LOGGER.error
+            )
 
         if backup.supervisor_version > self.sys_supervisor.version:
-            _LOGGER.error(
-                "Backup was made on supervisor version %s, can't restore on %s. Must update supervisor first.",
-                backup.supervisor_version,
-                self.sys_supervisor.version,
+            raise BackupInvalidError(
+                f"Backup was made on supervisor version {backup.supervisor_version}, "
+                f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
+                _LOGGER.error,
             )
-            return False
 
         _LOGGER.info("Partial-Restore %s start", backup.slug)
         self.sys_core.state = CoreState.FREEZE
 
-        success = await self._do_restore(
-            backup, addon_list, folder_list, homeassistant, False
-        )
-
-        self.sys_core.state = CoreState.RUNNING
+        try:
+            success = await self._do_restore(
+                backup, addon_list, folder_list, homeassistant, False
+            )
+        finally:
+            self.sys_core.state = CoreState.RUNNING
 
         if success:
             _LOGGER.info("Partial-Restore %s done", backup.slug)

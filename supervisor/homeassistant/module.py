@@ -481,7 +481,8 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 ATTR_REFRESH_TOKEN,
                 ATTR_WATCHDOG,
             ):
-                self._data[attr] = data[attr]
+                if attr in data:
+                    self._data[attr] = data[attr]
 
     @Job(
         name="home_assistant_get_users",
