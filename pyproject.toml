@@ -1,0 +1,112 @@
+[build-system]
+requires = ["setuptools~=68.0.0", "wheel~=0.40.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Supervisor"
+dynamic = ["version", "dependencies"]
+license = { text = "Apache-2.0" }
+description = "Open-source private cloud os for Home-Assistant based on HassOS"
+readme = "README.md"
+authors = [
+    { name = "The Home Assistant Authors", email = "hello@home-assistant.io" },
+]
+keywords = ["docker", "home-assistant", "api"]
+requires-python = ">=3.11.0"
+
+[project.urls]
+"Homepage" = "https://www.home-assistant.io/"
+"Source Code" = "https://github.com/home-assistant/supervisor"
+"Bug Reports" = "https://github.com/home-assistant/supervisor/issues"
+"Docs: Dev" = "https://developers.home-assistant.io/"
+"Discord" = "https://www.home-assistant.io/join-chat/"
+"Forum" = "https://community.home-assistant.io/"
+
+[tool.setuptools]
+platforms = ["any"]
+zip-safe = false
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["supervisor*"]
+
+[tool.pylint.MAIN]
+py-version = "3.11"
+# Use a conservative default here; 2 should speed up most setups and not hurt
+# any too bad. Override on command line as appropriate.
+jobs = 2
+persistent = false
+extension-pkg-allow-list = ["ciso8601"]
+
+[tool.pylint.BASIC]
+class-const-naming-style = "any"
+good-names = ["id", "i", "j", "k", "ex", "Run", "_", "fp", "T", "os"]
+
+[tool.pylint."MESSAGES CONTROL"]
+# Reasons disabled:
+# format - handled by black
+# abstract-method - with intro of async there are always methods missing
+# cyclic-import - doesn't test if both import on load
+# duplicate-code - unavoidable
+# locally-disabled - it spams too much
+# too-many-* - are not enforced for the sake of readability
+# too-few-* - same as too-many-*
+# unused-argument - generic callbacks and setup methods create a lot of warnings
+disable = [
+    "format",
+    "abstract-method",
+    "cyclic-import",
+    "duplicate-code",
+    "locally-disabled",
+    "no-else-return",
+    "not-context-manager",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-branches",
+    "too-many-instance-attributes",
+    "too-many-lines",
+    "too-many-locals",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-statements",
+    "unused-argument",
+    "consider-using-with",
+]
+
+[tool.pylint.REPORTS]
+score = false
+
+[tool.pylint.TYPECHECK]
+ignored-modules = ["distutils"]
+
+[tool.pylint.FORMAT]
+expected-line-ending-format = "LF"
+
+[tool.pylint.EXCEPTIONS]
+overgeneral-exceptions = ["builtins.BaseException", "builtins.Exception"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [".git"]
+log_format = "%(asctime)s.%(msecs)03d %(levelname)-8s %(threadName)s %(name)s:%(filename)s:%(lineno)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
+asyncio_mode = "auto"
+filterwarnings = [
+    "error",
+    "ignore:pkg_resources is deprecated as an API:DeprecationWarning:dirhash",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+line_length = 88
+indent = "    "
+force_sort_within_sections = true
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+default_section = "THIRDPARTY"
+forced_separate = "tests"
+combine_as_imports = true
+use_parentheses = true
+known_first_party = ["supervisor", "tests"]

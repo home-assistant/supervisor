@@ -1,48 +1,27 @@
 """Home Assistant Supervisor setup."""
+from pathlib import Path
+import re
+
 from setuptools import setup
 
-from supervisor.const import SUPERVISOR_VERSION
+RE_SUPERVISOR_VERSION = re.compile(r"^SUPERVISOR_VERSION =\s*(.+)$")
+
+SUPERVISOR_DIR = Path(__file__).parent
+REQUIREMENTS_FILE = SUPERVISOR_DIR / "requirements.txt"
+CONST_FILE = SUPERVISOR_DIR / "supervisor/const.py"
+
+REQUIREMENTS = REQUIREMENTS_FILE.read_text(encoding="utf-8")
+CONSTANTS = CONST_FILE.read_text(encoding="utf-8")
+
+
+def _get_supervisor_version():
+    for line in CONSTANTS.split("/n"):
+        if match := RE_SUPERVISOR_VERSION.match(line):
+            return match.group(1)
+    return "99.9.9dev"
+
 
 setup(
-    name="Supervisor",
-    version=SUPERVISOR_VERSION,
-    license="BSD License",
-    author="The Home Assistant Authors",
-    author_email="hello@home-assistant.io",
-    url="https://home-assistant.io/",
-    description=("Open-source private cloud os for Home-Assistant" " based on HassOS"),
-    long_description=(
-        "A maintainless private cloud operator system that"
-        "setup a Home-Assistant instance. Based on HassOS"
-    ),
-    keywords=["docker", "home-assistant", "api"],
-    zip_safe=False,
-    platforms="any",
-    packages=[
-        "supervisor.addons",
-        "supervisor.api",
-        "supervisor.backups",
-        "supervisor.dbus.network",
-        "supervisor.dbus.network.setting",
-        "supervisor.dbus",
-        "supervisor.discovery.services",
-        "supervisor.discovery",
-        "supervisor.docker",
-        "supervisor.homeassistant",
-        "supervisor.host",
-        "supervisor.jobs",
-        "supervisor.misc",
-        "supervisor.plugins",
-        "supervisor.resolution.checks",
-        "supervisor.resolution.evaluations",
-        "supervisor.resolution.fixups",
-        "supervisor.resolution",
-        "supervisor.security",
-        "supervisor.services.modules",
-        "supervisor.services",
-        "supervisor.store",
-        "supervisor.utils",
-        "supervisor",
-    ],
-    include_package_data=True,
+    version=_get_supervisor_version(),
+    dependencies=REQUIREMENTS.split("/n"),
 )
