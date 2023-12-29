@@ -22,7 +22,13 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsError, BackupError, BackupJobError, DockerError
+from supervisor.exceptions import (
+    AddonsError,
+    BackupError,
+    BackupInvalidError,
+    BackupJobError,
+    DockerError,
+)
 from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
@@ -200,7 +206,7 @@ async def test_do_restore_full(coresys: CoreSys, full_backup_mock, install_addon
     manager = BackupManager(coresys)
 
     backup_instance = full_backup_mock.return_value
-    await manager.do_restore_full(backup_instance)
+    assert await manager.do_restore_full(backup_instance)
 
     backup_instance.restore_homeassistant.assert_called_once()
     backup_instance.restore_repositories.assert_called_once()
@@ -229,7 +235,7 @@ async def test_do_restore_full_different_addon(
 
     backup_instance = full_backup_mock.return_value
     backup_instance.addon_list = ["differentslug"]
-    await manager.do_restore_full(backup_instance)
+    assert await manager.do_restore_full(backup_instance)
 
     backup_instance.restore_homeassistant.assert_called_once()
     backup_instance.restore_repositories.assert_called_once()
@@ -256,7 +262,7 @@ async def test_do_restore_partial_minimal(
     manager = BackupManager(coresys)
 
     backup_instance = partial_backup_mock.return_value
-    await manager.do_restore_partial(backup_instance, homeassistant=False)
+    assert await manager.do_restore_partial(backup_instance, homeassistant=False)
 
     backup_instance.restore_homeassistant.assert_not_called()
     backup_instance.restore_repositories.assert_not_called()
@@ -280,7 +286,7 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
     manager = BackupManager(coresys)
 
     backup_instance = partial_backup_mock.return_value
-    await manager.do_restore_partial(
+    assert await manager.do_restore_partial(
         backup_instance,
         addons=[TEST_ADDON_SLUG],
         folders=[FOLDER_SHARE, FOLDER_HOMEASSISTANT],
@@ -299,25 +305,31 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
     assert coresys.core.state == CoreState.RUNNING
 
 
-async def test_fail_invalid_full_backup(coresys: CoreSys, full_backup_mock: MagicMock):
+async def test_fail_invalid_full_backup(
+    coresys: CoreSys, full_backup_mock: MagicMock, partial_backup_mock: MagicMock
+):
     """Test restore fails with invalid backup."""
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     manager = BackupManager(coresys)
 
+    with pytest.raises(BackupInvalidError):
+        await manager.do_restore_full(partial_backup_mock.return_value)
+
     backup_instance = full_backup_mock.return_value
     backup_instance.protected = True
     backup_instance.set_password.return_value = False
 
-    assert await manager.do_restore_full(backup_instance) is False
+    with pytest.raises(BackupInvalidError):
+        await manager.do_restore_full(backup_instance)
 
     backup_instance.protected = False
     backup_instance.supervisor_version = "2022.08.4"
     with patch.object(
         type(coresys.supervisor), "version", new=PropertyMock(return_value="2022.08.3")
-    ):
-        assert await manager.do_restore_full(backup_instance) is False
+    ), pytest.raises(BackupInvalidError):
+        await manager.do_restore_full(backup_instance)
 
 
 async def test_fail_invalid_partial_backup(
@@ -333,20 +345,20 @@ async def test_fail_invalid_partial_backup(
     backup_instance.protected = True
     backup_instance.set_password.return_value = False
 
-    assert await manager.do_restore_partial(backup_instance) is False
+    with pytest.raises(BackupInvalidError):
+        await manager.do_restore_partial(backup_instance)
 
     backup_instance.protected = False
     backup_instance.homeassistant = None
 
-    assert (
-        await manager.do_restore_partial(backup_instance, homeassistant=True) is False
-    )
+    with pytest.raises(BackupInvalidError):
+        await manager.do_restore_partial(backup_instance, homeassistant=True)
 
     backup_instance.supervisor_version = "2022.08.4"
     with patch.object(
         type(coresys.supervisor), "version", new=PropertyMock(return_value="2022.08.3")
-    ):
-        assert await manager.do_restore_partial(backup_instance) is False
+    ), pytest.raises(BackupInvalidError):
+        await manager.do_restore_partial(backup_instance)
 
 
 async def test_backup_error(
@@ -368,15 +380,20 @@ async def test_backup_error(
 async def test_restore_error(
     coresys: CoreSys, full_backup_mock: MagicMock, capture_exception: Mock
 ):
-    """Test restoring full Backup."""
+    """Test restoring full Backup with errors."""
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.core.start = AsyncMock(return_value=None)
 
     backup_instance = full_backup_mock.return_value
-    backup_instance.restore_dockerconfig.side_effect = (err := DockerError())
-    await coresys.backups.do_restore_full(backup_instance)
+    backup_instance.restore_dockerconfig.side_effect = BackupError()
+    with pytest.raises(BackupError):
+        await coresys.backups.do_restore_full(backup_instance)
+    capture_exception.assert_not_called()
 
+    backup_instance.restore_dockerconfig.side_effect = (err := DockerError())
+    with pytest.raises(BackupError):
+        await coresys.backups.do_restore_full(backup_instance)
     capture_exception.assert_called_once_with(err)
 
 
@@ -641,17 +658,17 @@ async def test_partial_backup_to_mount(
             "test", homeassistant=True, location=mount
         )
 
-    assert (mount_dir / f"{backup.slug}.tar").exists()
+        assert (mount_dir / f"{backup.slug}.tar").exists()
 
-    # Reload and check that backups in mounts are listed
-    await coresys.backups.reload()
-    assert coresys.backups.get(backup.slug)
+        # Reload and check that backups in mounts are listed
+        await coresys.backups.reload()
+        assert coresys.backups.get(backup.slug)
 
-    # Remove marker file and restore. Confirm it comes back
-    marker.unlink()
+        # Remove marker file and restore. Confirm it comes back
+        marker.unlink()
 
-    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
-        await coresys.backups.do_restore_partial(backup, homeassistant=True)
+        with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+            await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
     assert marker.exists()
 

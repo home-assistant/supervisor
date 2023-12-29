@@ -398,10 +398,12 @@ class Backup(CoreSysAttributes):
 
         return start_tasks
 
-    async def restore_addons(self, addon_list: list[str]) -> list[asyncio.Task]:
+    async def restore_addons(
+        self, addon_list: list[str]
+    ) -> tuple[bool, list[asyncio.Task]]:
         """Restore a list add-on from backup."""
 
-        async def _addon_restore(addon_slug: str) -> asyncio.Task | None:
+        async def _addon_restore(addon_slug: str) -> tuple[bool, asyncio.Task | None]:
             """Task to restore an add-on into backup."""
             tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
             addon_file = SecureTarFile(
@@ -415,25 +417,31 @@ class Backup(CoreSysAttributes):
             # If exists inside backup
             if not addon_file.path.exists():
                 _LOGGER.error("Can't find backup %s", addon_slug)
-                return
+                return (False, None)
 
             # Perform a restore
             try:
-                return await self.sys_addons.restore(addon_slug, addon_file)
+                return (True, await self.sys_addons.restore(addon_slug, addon_file))
             except AddonsError:
                 _LOGGER.error("Can't restore backup %s", addon_slug)
+                return (False, None)
 
         # Save Add-ons sequential
         # avoid issue on slow IO
         start_tasks: list[asyncio.Task] = []
+        success = True
         for slug in addon_list:
             try:
-                if start_task := await _addon_restore(slug):
-                    start_tasks.append(start_task)
+                addon_success, start_task = await _addon_restore(slug)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore Add-on %s: %s", slug, err)
+                success = False
+            else:
+                success = success and addon_success
+                if start_task:
+                    start_tasks.append(start_task)
 
-        return start_tasks
+        return (success, start_tasks)
 
     async def store_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
@@ -483,10 +491,11 @@ class Backup(CoreSysAttributes):
                     f"Can't backup folder {folder}: {str(err)}", _LOGGER.error
                 ) from err
 
-    async def restore_folders(self, folder_list: list[str]):
+    async def restore_folders(self, folder_list: list[str]) -> bool:
         """Backup Supervisor data into backup."""
+        success = True
 
-        async def _folder_restore(name: str) -> None:
+        async def _folder_restore(name: str) -> bool:
             """Intenal function to restore a folder."""
             slug_name = name.replace("/", "_")
             tar_name = Path(
@@ -497,7 +506,7 @@ class Backup(CoreSysAttributes):
             # Check if exists inside backup
             if not tar_name.exists():
                 _LOGGER.warning("Can't find restore folder %s", name)
-                return
+                return False
 
             # Unmount any mounts within folder
             bind_mounts = [
@@ -516,7 +525,7 @@ class Backup(CoreSysAttributes):
                 await remove_folder(origin_dir, content_only=True)
 
             # Perform a restore
-            def _restore() -> None:
+            def _restore() -> bool:
                 try:
                     _LOGGER.info("Restore folder %s", name)
                     with SecureTarFile(
@@ -530,9 +539,11 @@ class Backup(CoreSysAttributes):
                     _LOGGER.info("Restore folder %s done", name)
                 except (tarfile.TarError, OSError) as err:
                     _LOGGER.warning("Can't restore folder %s: %s", name, err)
+                    return False
+                return True
 
             try:
-                await self.sys_run_in_executor(_restore)
+                return await self.sys_run_in_executor(_restore)
             finally:
                 if bind_mounts:
                     await asyncio.gather(
@@ -543,9 +554,11 @@ class Backup(CoreSysAttributes):
         # avoid issue on slow IO
         for folder in folder_list:
             try:
-                await _folder_restore(folder)
+                success = success and await _folder_restore(folder)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore folder %s: %s", folder, err)
+                success = False
+        return success
 
     async def store_homeassistant(self, exclude_database: bool = False):
         """Backup Home Assistant Core configuration folder."""
@@ -604,12 +617,12 @@ class Backup(CoreSysAttributes):
         """Store repository list into backup."""
         self.repositories = self.sys_store.repository_urls
 
-    async def restore_repositories(self, replace: bool = False):
+    def restore_repositories(self, replace: bool = False) -> Awaitable[None]:
         """Restore repositories from backup.
 
         Return a coroutine.
         """
-        await self.sys_store.update_repositories(
+        return self.sys_store.update_repositories(
             self.repositories, add_with_errors=True, replace=replace
         )
 
