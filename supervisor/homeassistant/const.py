@@ -6,7 +6,7 @@ from awesomeversion import AwesomeVersion
 
 from ..const import CoreState
 
-LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
+LANDINGPAGE: AwesomeVersion = AwesomeVersion("latest")
 WATCHDOG_RETRY_SECONDS = 10
 WATCHDOG_MAX_ATTEMPTS = 5
 WATCHDOG_THROTTLE_PERIOD = timedelta(minutes=30)
