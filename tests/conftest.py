@@ -538,8 +538,8 @@ def install_addon_example(coresys: CoreSys, repository):
 @pytest.fixture
 async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a full backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"))
-    mock_backup.new("test", "Test", utcnow().isoformat(), BackupType.FULL)
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test")
+    mock_backup.new("Test", utcnow().isoformat(), BackupType.FULL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
     mock_backup._data[ATTR_ADDONS] = [
@@ -562,8 +562,8 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
 @pytest.fixture
 async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a partial backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"))
-    mock_backup.new("test", "Test", utcnow().isoformat(), BackupType.PARTIAL)
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test")
+    mock_backup.new("Test", utcnow().isoformat(), BackupType.PARTIAL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
     mock_backup._data[ATTR_ADDONS] = [
@@ -593,7 +593,7 @@ async def backups(
         temp_tar = Path(tmp_path, f"{slug}.tar")
         with SecureTarFile(temp_tar, "w"):
             pass
-        backup = Backup(coresys, temp_tar)
+        backup = Backup(coresys, temp_tar, slug)
         backup._data = {  # pylint: disable=protected-access
             ATTR_SLUG: slug,
             ATTR_DATE: utcnow().isoformat(),

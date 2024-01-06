@@ -11,7 +11,7 @@ from attrs.setters import convert as attr_convert, frozen, validate as attr_vali
 from attrs.validators import ge, le
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import JobNotFound, JobStartException
+from ..exceptions import HassioError, JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from ..utils.sentry import capture_exception
@@ -49,6 +49,18 @@ def _on_change(instance: "SupervisorJob", attribute: Attribute, value: Any) -> A
 
 
 @define
+class SupervisorJobError:
+    """Representation of an error occurring during a supervisor job."""
+
+    type_: type[HassioError] = HassioError
+    message: str = "Unknown error, see supervisor logs"
+
+    def as_dict(self) -> dict[str, str]:
+        """Return dictionary representation."""
+        return {"type": self.type_.__name__, "message": self.message}
+
+
+@define
 class SupervisorJob:
     """Representation of a job running in supervisor."""
 
@@ -72,6 +84,9 @@ class SupervisorJob:
         default=None, on_setattr=frozen
     )
     internal: bool = field(default=False, on_setattr=frozen)
+    errors: list[SupervisorJobError] = field(
+        init=False, factory=list, on_setattr=_on_change
+    )
 
     def as_dict(self) -> dict[str, Any]:
         """Return dictionary representation."""
@@ -83,7 +98,16 @@ class SupervisorJob:
             "stage": self.stage,
             "done": self.done,
             "parent_id": self.parent_id,
+            "errors": [err.as_dict() for err in self.errors],
         }
+
+    def capture_error(self, err: HassioError | None = None) -> None:
+        """Capture an error or record that an unknown error has occurred."""
+        if err:
+            new_error = SupervisorJobError(type(err), str(err))
+        else:
+            new_error = SupervisorJobError()
+        self.errors += [new_error]
 
     @contextmanager
     def start(self):

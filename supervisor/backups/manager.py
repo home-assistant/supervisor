@@ -139,8 +139,8 @@ class BackupManager(FileConfiguration, JobGroup):
         tar_file = Path(self._get_base_path(location), f"{slug}.tar")
 
         # init object
-        backup = Backup(self.coresys, tar_file)
-        backup.new(slug, name, date_str, sys_type, password, compressed)
+        backup = Backup(self.coresys, tar_file, slug)
+        backup.new(name, date_str, sys_type, password, compressed)
 
         # Add backup ID to job
         self.sys_jobs.current.reference = backup.slug
@@ -165,9 +165,11 @@ class BackupManager(FileConfiguration, JobGroup):
 
         async def _load_backup(tar_file):
             """Load the backup."""
-            backup = Backup(self.coresys, tar_file)
+            backup = Backup(self.coresys, tar_file, "temp")
             if await backup.load():
-                self._backups[backup.slug] = backup
+                self._backups[backup.slug] = Backup(
+                    self.coresys, tar_file, backup.slug, backup.data
+                )
 
         tasks = [
             self.sys_create_task(_load_backup(tar_file))
@@ -199,7 +201,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     async def import_backup(self, tar_file: Path) -> Backup | None:
         """Check backup tarfile and import it."""
-        backup = Backup(self.coresys, tar_file)
+        backup = Backup(self.coresys, tar_file, "temp")
 
         # Read meta data
         if not await backup.load():
@@ -222,7 +224,7 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
 
         # Load new backup
-        backup = Backup(self.coresys, tar_origin)
+        backup = Backup(self.coresys, tar_origin, backup.slug, backup.data)
         if not await backup.load():
             return None
         _LOGGER.info("Successfully imported %s", backup.slug)
@@ -269,9 +271,15 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
+        except BackupError as err:
+            self.sys_jobs.current.capture_error(err)
+            return None
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Backup %s error", backup.slug)
             capture_exception(err)
+            self.sys_jobs.current.capture_error(
+                BackupError(f"Backup {backup.slug} error, see supervisor logs")
+            )
             return None
         else:
             self._backups[backup.slug] = backup
@@ -444,7 +452,7 @@ class BackupManager(FileConfiguration, JobGroup):
             _LOGGER.exception("Restore %s error", backup.slug)
             capture_exception(err)
             raise BackupError(
-                f"Restore {backup.slug} error, check logs for details"
+                f"Restore {backup.slug} error, see supervisor logs"
             ) from err
         else:
             if addon_start_tasks:

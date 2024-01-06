@@ -293,9 +293,11 @@ class Job(CoreSysAttributes):
                     except JobConditionException as err:
                         return self._handle_job_condition_exception(err)
                     except HassioError as err:
+                        job.capture_error(err)
                         raise err
                     except Exception as err:
                         _LOGGER.exception("Unhandled exception: %s", err)
+                        job.capture_error()
                         capture_exception(err)
                         raise JobException() from err
                     finally:

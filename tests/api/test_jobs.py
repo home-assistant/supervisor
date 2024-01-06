@@ -107,6 +107,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "progress": 50,
             "stage": None,
             "done": False,
+            "errors": [],
             "child_jobs": [
                 {
                     "name": "test_jobs_tree_inner",
@@ -116,6 +117,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
                     "stage": None,
                     "done": False,
                     "child_jobs": [],
+                    "errors": [],
                 },
             ],
         },
@@ -127,6 +129,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "stage": "init",
             "done": False,
             "child_jobs": [],
+            "errors": [],
         },
     ]
 
@@ -144,5 +147,6 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "stage": "end",
             "done": True,
             "child_jobs": [],
+            "errors": [],
         },
     ]

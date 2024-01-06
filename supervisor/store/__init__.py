@@ -207,6 +207,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             await self.data.update()
             self._read_addons()
 
+    @Job(name="store_manager_update_repositories")
     async def update_repositories(
         self,
         list_repositories: list[str],

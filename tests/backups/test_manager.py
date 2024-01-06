@@ -23,7 +23,6 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
-    AddonsError,
     BackupError,
     BackupInvalidError,
     BackupJobError,
@@ -53,9 +52,9 @@ async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
     backup_instance: MagicMock = await manager.do_backup_full()
 
     # Check Backup has been created without password
-    assert backup_instance.new.call_args[0][3] == BackupType.FULL
-    assert backup_instance.new.call_args[0][4] is None
-    assert backup_instance.new.call_args[0][5] is True
+    assert backup_instance.new.call_args[0][2] == BackupType.FULL
+    assert backup_instance.new.call_args[0][3] is None
+    assert backup_instance.new.call_args[0][4] is True
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
@@ -83,9 +82,9 @@ async def test_do_backup_full_uncompressed(
     backup_instance: MagicMock = await manager.do_backup_full(compressed=False)
 
     # Check Backup has been created without password
-    assert backup_instance.new.call_args[0][3] == BackupType.FULL
-    assert backup_instance.new.call_args[0][4] is None
-    assert backup_instance.new.call_args[0][5] is False
+    assert backup_instance.new.call_args[0][2] == BackupType.FULL
+    assert backup_instance.new.call_args[0][3] is None
+    assert backup_instance.new.call_args[0][4] is False
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
@@ -114,9 +113,9 @@ async def test_do_backup_partial_minimal(
     backup_instance: MagicMock = await manager.do_backup_partial(homeassistant=False)
 
     # Check Backup has been created without password
-    assert backup_instance.new.call_args[0][3] == BackupType.PARTIAL
-    assert backup_instance.new.call_args[0][4] is None
-    assert backup_instance.new.call_args[0][5] is True
+    assert backup_instance.new.call_args[0][2] == BackupType.PARTIAL
+    assert backup_instance.new.call_args[0][3] is None
+    assert backup_instance.new.call_args[0][4] is True
 
     backup_instance.store_homeassistant.assert_not_called()
     backup_instance.store_repositories.assert_called_once()
@@ -144,9 +143,9 @@ async def test_do_backup_partial_minimal_uncompressed(
     )
 
     # Check Backup has been created without password
-    assert backup_instance.new.call_args[0][3] == BackupType.PARTIAL
-    assert backup_instance.new.call_args[0][4] is None
-    assert backup_instance.new.call_args[0][5] is False
+    assert backup_instance.new.call_args[0][2] == BackupType.PARTIAL
+    assert backup_instance.new.call_args[0][3] is None
+    assert backup_instance.new.call_args[0][4] is False
 
     backup_instance.store_homeassistant.assert_not_called()
     backup_instance.store_repositories.assert_called_once()
@@ -176,9 +175,9 @@ async def test_do_backup_partial_maximal(
     )
 
     # Check Backup has been created without password
-    assert backup_instance.new.call_args[0][3] == BackupType.PARTIAL
-    assert backup_instance.new.call_args[0][4] is None
-    assert backup_instance.new.call_args[0][5] is True
+    assert backup_instance.new.call_args[0][2] == BackupType.PARTIAL
+    assert backup_instance.new.call_args[0][3] is None
+    assert backup_instance.new.call_args[0][4] is True
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
@@ -371,7 +370,7 @@ async def test_backup_error(
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    backup_mock.return_value.store_addons.side_effect = (err := AddonsError())
+    backup_mock.return_value.store_folders.side_effect = (err := OSError())
     await coresys.backups.do_backup_full()
 
     capture_exception.assert_called_once_with(err)
@@ -937,6 +936,7 @@ def _make_backup_message_for_assert(
                 "stage": stage,
                 "done": done,
                 "parent_id": None,
+                "errors": [],
             },
         },
     }
