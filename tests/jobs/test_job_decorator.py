@@ -979,6 +979,7 @@ async def test_internal_jobs_no_notify(coresys: CoreSys):
                     "stage": None,
                     "done": True,
                     "parent_id": None,
+                    "errors": [],
                 },
             },
         }

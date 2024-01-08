@@ -106,6 +106,7 @@ async def test_notify_on_change(coresys: CoreSys):
                     "stage": None,
                     "done": None,
                     "parent_id": None,
+                    "errors": [],
                 },
             },
         }
@@ -126,6 +127,7 @@ async def test_notify_on_change(coresys: CoreSys):
                     "stage": "test",
                     "done": None,
                     "parent_id": None,
+                    "errors": [],
                 },
             },
         }
@@ -146,6 +148,7 @@ async def test_notify_on_change(coresys: CoreSys):
                     "stage": "test",
                     "done": None,
                     "parent_id": None,
+                    "errors": [],
                 },
             },
         }
@@ -166,6 +169,7 @@ async def test_notify_on_change(coresys: CoreSys):
                         "stage": "test",
                         "done": False,
                         "parent_id": None,
+                        "errors": [],
                     },
                 },
             }
@@ -185,6 +189,7 @@ async def test_notify_on_change(coresys: CoreSys):
                     "stage": "test",
                     "done": True,
                     "parent_id": None,
+                    "errors": [],
                 },
             },
         }
