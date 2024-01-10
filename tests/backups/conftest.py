@@ -25,6 +25,7 @@ def fixture_backup_mock():
         backup_instance.restore_homeassistant = AsyncMock(return_value=None)
         backup_instance.restore_addons = AsyncMock(return_value=(True, []))
         backup_instance.restore_repositories = AsyncMock(return_value=None)
+        backup_instance.remove_delta_addons = AsyncMock(return_value=True)
 
         yield backup_mock
 

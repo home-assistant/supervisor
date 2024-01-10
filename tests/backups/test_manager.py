@@ -2,6 +2,7 @@
 
 import asyncio
 import errno
+from functools import partial
 from pathlib import Path
 from shutil import rmtree
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
@@ -205,6 +206,10 @@ async def test_do_restore_full(coresys: CoreSys, full_backup_mock, install_addon
     manager = BackupManager(coresys)
 
     backup_instance = full_backup_mock.return_value
+    backup_instance.sys_addons = coresys.addons
+    backup_instance.remove_delta_addons = partial(
+        Backup.remove_delta_addons, backup_instance
+    )
     assert await manager.do_restore_full(backup_instance)
 
     backup_instance.restore_homeassistant.assert_called_once()
@@ -234,6 +239,10 @@ async def test_do_restore_full_different_addon(
 
     backup_instance = full_backup_mock.return_value
     backup_instance.addon_list = ["differentslug"]
+    backup_instance.sys_addons = coresys.addons
+    backup_instance.remove_delta_addons = partial(
+        Backup.remove_delta_addons, backup_instance
+    )
     assert await manager.do_restore_full(backup_instance)
 
     backup_instance.restore_homeassistant.assert_called_once()

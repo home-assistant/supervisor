@@ -218,3 +218,8 @@ class JobManager(FileConfiguration, CoreSysAttributes):
             _LOGGER.warning("Removing incomplete job %s from job manager", job.name)
 
         del self._jobs[job.uuid]
+
+        # Clean up any completed sub jobs of this one
+        for sub_job in self.jobs:
+            if sub_job.parent_id == job.uuid and job.done:
+                self.remove_job(sub_job)

@@ -15,7 +15,7 @@ from ..const import (
     CoreState,
 )
 from ..dbus.const import UnitActiveState
-from ..exceptions import AddonsError, BackupError, BackupInvalidError, BackupJobError
+from ..exceptions import BackupError, BackupInvalidError, BackupJobError
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -298,6 +298,7 @@ class BackupManager(FileConfiguration, JobGroup):
         conditions=[JobCondition.RUNNING],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        cleanup=False,
     )
     async def do_backup_full(
         self,
@@ -334,6 +335,7 @@ class BackupManager(FileConfiguration, JobGroup):
         conditions=[JobCondition.RUNNING],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        cleanup=False,
     )
     async def do_backup_partial(
         self,
@@ -418,17 +420,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 # Delete delta add-ons
                 if replace:
                     self._change_stage(RestoreJobStage.REMOVE_DELTA_ADDONS, backup)
-                    for addon in self.sys_addons.installed:
-                        if addon.slug in backup.addon_list:
-                            continue
-
-                        # Remove Add-on because it's not a part of the new env
-                        # Do it sequential avoid issue on slow IO
-                        try:
-                            await self.sys_addons.uninstall(addon.slug)
-                        except AddonsError:
-                            _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
-                            success = False
+                    success = success and await backup.remove_delta_addons()
 
                 if addon_list:
                     self._change_stage(RestoreJobStage.ADDON_REPOSITORIES, backup)
@@ -471,12 +463,16 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 # Do we need start Home Assistant Core?
                 if not await self.sys_homeassistant.core.is_running():
-                    await self.sys_homeassistant.core.start()
+                    await self.sys_homeassistant.core.start(
+                        _job_override__cleanup=False
+                    )
 
                 # Check If we can access to API / otherwise restart
                 if not await self.sys_homeassistant.api.check_api_state():
                     _LOGGER.warning("Need restart HomeAssistant for API")
-                    await self.sys_homeassistant.core.restart()
+                    await self.sys_homeassistant.core.restart(
+                        _job_override__cleanup=False
+                    )
 
     @Job(
         name="backup_manager_full_restore",
@@ -489,6 +485,7 @@ class BackupManager(FileConfiguration, JobGroup):
         ],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        cleanup=False,
     )
     async def do_restore_full(
         self, backup: Backup, password: str | None = None
@@ -542,6 +539,7 @@ class BackupManager(FileConfiguration, JobGroup):
         ],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        cleanup=False,
     )
     async def do_restore_partial(
         self,

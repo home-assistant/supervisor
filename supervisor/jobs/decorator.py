@@ -157,22 +157,23 @@ class Job(CoreSysAttributes):
             self._lock = asyncio.Semaphore()
 
         # Job groups
-        if self.limit in (
+        try:
+            is_job_group = obj.acquire and obj.release
+        except AttributeError:
+            is_job_group = False
+
+        if not is_job_group and self.limit in (
             JobExecutionLimit.GROUP_ONCE,
             JobExecutionLimit.GROUP_WAIT,
             JobExecutionLimit.GROUP_THROTTLE,
             JobExecutionLimit.GROUP_THROTTLE_WAIT,
             JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
         ):
-            try:
-                _ = obj.acquire and obj.release
-            except AttributeError:
-                raise RuntimeError(
-                    f"Job on {self.name} need to be a JobGroup to use group based limits!"
-                ) from None
+            raise RuntimeError(
+                f"Job on {self.name} need to be a JobGroup to use group based limits!"
+            ) from None
 
-            return obj
-        return None
+        return obj if is_job_group else None
 
     def _handle_job_condition_exception(self, err: JobConditionException) -> None:
         """Handle a job condition failure."""
@@ -187,7 +188,12 @@ class Job(CoreSysAttributes):
         self._method = method
 
         @wraps(method)
-        async def wrapper(obj: JobGroup | CoreSysAttributes, *args, **kwargs) -> Any:
+        async def wrapper(
+            obj: JobGroup | CoreSysAttributes,
+            *args,
+            _job_override__cleanup: bool | None = None,
+            **kwargs,
+        ) -> Any:
             """Wrap the method.
 
             This method must be on an instance of CoreSysAttributes. If a JOB_GROUP limit
@@ -310,7 +316,12 @@ class Job(CoreSysAttributes):
 
             # Jobs that weren't started are always cleaned up. Also clean up done jobs if required
             finally:
-                if job.done is None or self.cleanup:
+                if (
+                    job.done is None
+                    or _job_override__cleanup
+                    or _job_override__cleanup is None
+                    and self.cleanup
+                ):
                     self.sys_jobs.remove_job(job)
 
         return wrapper

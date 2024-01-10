@@ -41,7 +41,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..mounts.const import MountUsage
 from ..resolution.const import UnhealthyReason
-from .const import ATTR_BACKGROUND, CONTENT_TYPE_TAR
+from .const import ATTR_BACKGROUND, ATTR_JOB_ID, CONTENT_TYPE_TAR
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -53,19 +53,18 @@ RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 _ALL_FOLDERS = ALL_FOLDERS + [FOLDER_HOMEASSISTANT]
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_RESTORE_PARTIAL = vol.Schema(
-    {
-        vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
-        vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
-        vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
-        vol.Optional(ATTR_FOLDERS): vol.All([vol.In(_ALL_FOLDERS)], vol.Unique()),
-    }
-)
-
 SCHEMA_RESTORE_FULL = vol.Schema(
     {
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_BACKGROUND): vol.Maybe(vol.Boolean()),
+    }
+)
+
+SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
+    {
+        vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
+        vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
+        vol.Optional(ATTR_FOLDERS): vol.All([vol.In(_ALL_FOLDERS)], vol.Unique()),
     }
 )
 
@@ -215,7 +214,7 @@ class APIBackups(CoreSysAttributes):
 
     async def _background_backup_task(
         self, backup_method: Callable, *args, **kwargs
-    ) -> str | bool:
+    ) -> dict[str, str] | bool:
         """Start backup task in  background and return result."""
         event = asyncio.Event()
 
@@ -227,9 +226,7 @@ class APIBackups(CoreSysAttributes):
             BusEvent.SUPERVISOR_STATE_CHANGE, release_on_freeze
         )
         try:
-            backup_task = self.sys_create_task(
-                asyncio.shield(backup_method(self.sys_backups, *args, **kwargs))
-            )
+            backup_task = self.sys_create_task(backup_method(*args, **kwargs))
             await asyncio.wait(
                 (
                     backup_task,
@@ -238,7 +235,7 @@ class APIBackups(CoreSysAttributes):
                 return_when=asyncio.FIRST_COMPLETED,
             )
             if self.sys_backups.active_job:
-                return self.sys_backups.active_job.uuid
+                return {ATTR_JOB_ID: self.sys_backups.active_job.uuid}
             return False
         finally:
             self.sys_bus.remove_listener(listener)
@@ -254,7 +251,9 @@ class APIBackups(CoreSysAttributes):
             )
 
         backup = await asyncio.shield(
-            self.sys_backups.do_backup_full(**self._location_to_mount(body))
+            self.sys_backups.do_backup_full(
+                _job_override__cleanup=True, **self._location_to_mount(body)
+            )
         )
 
         if backup:
@@ -272,7 +271,9 @@ class APIBackups(CoreSysAttributes):
             )
 
         backup = await asyncio.shield(
-            self.sys_backups.do_backup_partial(**self._location_to_mount(body))
+            self.sys_backups.do_backup_partial(
+                _job_override__cleanup=True, **self._location_to_mount(body)
+            )
         )
 
         if backup:
@@ -287,10 +288,14 @@ class APIBackups(CoreSysAttributes):
 
         if body.pop(ATTR_BACKGROUND, False):
             return await self._background_backup_task(
-                self.sys_backups.do_restore_full, **body
+                self.sys_backups.do_restore_full, backup, **body
             )
 
-        return await asyncio.shield(self.sys_backups.do_restore_full(backup, **body))
+        return await asyncio.shield(
+            self.sys_backups.do_restore_full(
+                backup, _job_override__cleanup=True, **body
+            )
+        )
 
     @api_process
     async def restore_partial(self, request):
@@ -300,10 +305,14 @@ class APIBackups(CoreSysAttributes):
 
         if body.pop(ATTR_BACKGROUND, False):
             return await self._background_backup_task(
-                self.sys_backups.do_restore_full, **body
+                self.sys_backups.do_restore_partial, backup, **body
             )
 
-        return await asyncio.shield(self.sys_backups.do_restore_partial(backup, **body))
+        return await asyncio.shield(
+            self.sys_backups.do_restore_partial(
+                backup, _job_override__cleanup=True, **body
+            )
+        )
 
     @api_process
     async def freeze(self, request):

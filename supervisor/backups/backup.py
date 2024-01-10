@@ -370,7 +370,7 @@ class Backup(JobGroup):
         finally:
             self._tmp.cleanup()
 
-    @Job(name="backup_addon_save")
+    @Job(name="backup_addon_save", cleanup=False)
     async def _addon_save(self, addon: Addon) -> asyncio.Task | None:
         """Store an add-on into backup."""
         self.sys_jobs.current.reference = addon.slug
@@ -404,7 +404,7 @@ class Backup(JobGroup):
 
         return start_task
 
-    @Job(name="backup_store_addons")
+    @Job(name="backup_store_addons", cleanup=False)
     async def store_addons(self, addon_list: list[str]) -> list[asyncio.Task]:
         """Add a list of add-ons into backup.
 
@@ -422,7 +422,7 @@ class Backup(JobGroup):
 
         return start_tasks
 
-    @Job(name="backup_addon_restore")
+    @Job(name="backup_addon_restore", cleanup=False)
     async def _addon_restore(self, addon_slug: str) -> asyncio.Task | None:
         """Restore an add-on from backup."""
         self.sys_jobs.current.reference = addon_slug
@@ -448,7 +448,7 @@ class Backup(JobGroup):
                 f"Can't restore backup {addon_slug}", _LOGGER.error
             ) from err
 
-    @Job(name="backup_restore_addons")
+    @Job(name="backup_restore_addons", cleanup=False)
     async def restore_addons(
         self, addon_list: list[str]
     ) -> tuple[bool, list[asyncio.Task]]:
@@ -468,7 +468,26 @@ class Backup(JobGroup):
 
         return (success, start_tasks)
 
-    @Job(name="backup_folder_save")
+    @Job(name="backup_remove_delta_addons", cleanup=False)
+    async def remove_delta_addons(self) -> bool:
+        """Remove addons which are not in this backup."""
+        success = True
+        for addon in self.sys_addons.installed:
+            if addon.slug in self.addon_list:
+                continue
+
+            # Remove Add-on because it's not a part of the new env
+            # Do it sequential avoid issue on slow IO
+            try:
+                await self.sys_addons.uninstall(addon.slug)
+            except AddonsError as err:
+                self.sys_jobs.current.capture_error(err)
+                _LOGGER.warning("Can't uninstall Add-on %s: %s", addon.slug, err)
+                success = False
+
+        return success
+
+    @Job(name="backup_folder_save", cleanup=False)
     async def _folder_save(self, name: str):
         """Take backup of a folder."""
         self.sys_jobs.current.reference = name
@@ -512,14 +531,14 @@ class Backup(JobGroup):
 
         self._data[ATTR_FOLDERS].append(name)
 
-    @Job(name="backup_store_folders")
+    @Job(name="backup_store_folders", cleanup=False)
     async def store_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
         # Save folder sequential avoid issue on slow IO
         for folder in folder_list:
             await self._folder_save(folder)
 
-    @Job(name="backup_folder_restore")
+    @Job(name="backup_folder_restore", cleanup=False)
     async def _folder_restore(self, name: str) -> None:
         """Restore a folder."""
         self.sys_jobs.current.reference = name
@@ -577,7 +596,7 @@ class Backup(JobGroup):
                     *[bind_mount.mount() for bind_mount in bind_mounts]
                 )
 
-    @Job(name="backup_restore_folders")
+    @Job(name="backup_restore_folders", cleanup=False)
     async def restore_folders(self, folder_list: list[str]) -> bool:
         """Backup Supervisor data into backup."""
         success = True
@@ -648,6 +667,7 @@ class Backup(JobGroup):
                 success = False
         return success
 
+    @Job(name="backup_store_homeassistant", cleanup=False)
     async def store_homeassistant(self, exclude_database: bool = False):
         """Backup Home Assistant Core configuration folder."""
         self._data[ATTR_HOMEASSISTANT] = {
@@ -668,6 +688,7 @@ class Backup(JobGroup):
         # Store size
         self.homeassistant[ATTR_SIZE] = homeassistant_file.size
 
+    @Job(name="backup_restore_homeassistant", cleanup=False)
     async def restore_homeassistant(self) -> Awaitable[None]:
         """Restore Home Assistant Core configuration folder."""
         await self.sys_homeassistant.core.stop()
