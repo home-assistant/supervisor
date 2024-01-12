@@ -75,7 +75,7 @@ jobs:
       - name: Check if requirements files changed
         id: requirements
         run: |
-          if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements.txt|build.json) ]]; then
+          if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements.txt|build.yaml) ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
