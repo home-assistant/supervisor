@@ -1,5 +1,5 @@
 """Bootstrap Supervisor."""
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 import os
 from pathlib import Path, PurePath
@@ -50,7 +50,7 @@ MOUNTS_CREDENTIALS = PurePath(".mounts_credentials")
 EMERGENCY_DATA = PurePath("emergency")
 ADDON_CONFIGS = PurePath("addon_configs")
 
-DEFAULT_BOOT_TIME = datetime.utcfromtimestamp(0).isoformat()
+DEFAULT_BOOT_TIME = datetime.fromtimestamp(0, UTC).isoformat()
 
 # We filter out UTC because it's the system default fallback
 # Core also not respect the cotnainer timezone and reset timezones
@@ -164,7 +164,7 @@ class CoreConfig(FileConfiguration):
 
         boot_time = parse_datetime(boot_str)
         if not boot_time:
-            return datetime.utcfromtimestamp(1)
+            return datetime.fromtimestamp(1, UTC)
         return boot_time
 
     @last_boot.setter

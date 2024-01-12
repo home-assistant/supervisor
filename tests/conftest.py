@@ -293,7 +293,6 @@ async def fixture_all_dbus_services(
 
 @pytest.fixture
 async def coresys(
-    event_loop,
     docker,
     dbus_session_bus,
     all_dbus_services,

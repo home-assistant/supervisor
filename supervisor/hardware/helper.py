@@ -1,5 +1,5 @@
 """Read hardware info from system."""
-from datetime import datetime
+from datetime import UTC, datetime
 import logging
 from pathlib import Path
 import re
@@ -55,7 +55,7 @@ class HwHelper(CoreSysAttributes):
             _LOGGER.error("Can't found last boot time!")
             return None
 
-        return datetime.utcfromtimestamp(int(found.group(1)))
+        return datetime.fromtimestamp(int(found.group(1)), UTC)
 
     def hide_virtual_device(self, udev_device: pyudev.Device) -> bool:
         """Small helper to hide not needed Devices."""
