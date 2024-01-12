@@ -5,7 +5,12 @@ from typing import NamedTuple
 
 import pytest
 
-from supervisor.utils.json import json_dumps, json_loads, write_json_file
+from supervisor.utils.json import (
+    json_dumps,
+    json_loads,
+    read_json_file,
+    write_json_file,
+)
 
 
 def test_file_permissions(tmp_path):
@@ -24,6 +29,15 @@ def test_new_file_permissions(tmp_path):
 
     write_json_file(tempfile, {"test": "data"})
     assert oct(tempfile.stat().st_mode)[-3:] == "600"
+
+
+def test_file_round_trip(tmp_path):
+    """Test file permissions."""
+    tempfile = tmp_path / "test.json"
+    write_json_file(tempfile, {"test": "data"})
+    assert tempfile.is_file()
+    assert oct(tempfile.stat().st_mode)[-3:] == "600"
+    assert read_json_file(tempfile) == {"test": "data"}
 
 
 async def test_loading_derived_class():
