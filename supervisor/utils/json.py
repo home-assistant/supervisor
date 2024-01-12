@@ -35,12 +35,15 @@ if TYPE_CHECKING:
 
 else:
     json_bytes = partial(
-        orjson.dumps, option=orjson.OPT_NON_STR_KEYS, default=json_encoder_default
+        orjson.dumps,  # pylint: disable=no-member
+        option=orjson.OPT_NON_STR_KEYS,  # pylint: disable=no-member
+        default=json_encoder_default,
     )
     """Dump json bytes."""
 
 
-json_loads = orjson.loads
+# pylint - https://github.com/ijl/orjson/issues/248
+json_loads = orjson.loads  # pylint: disable=no-member
 
 
 def write_json_file(jsonfile: Path, data: Any) -> None:
@@ -48,9 +51,10 @@ def write_json_file(jsonfile: Path, data: Any) -> None:
     try:
         with atomic_write(jsonfile, overwrite=True) as fp:
             fp.write(
-                orjson.dumps(
+                orjson.dumps(  # pylint: disable=no-member
                     data,
-                    option=orjson.OPT_INDENT_2 | orjson.OPT_NON_STR_KEYS,
+                    option=orjson.OPT_INDENT_2
+                    | orjson.OPT_NON_STR_KEYS,  # pylint: disable=no-member
                     default=json_encoder_default,
                 ).decode("utf-8")
             )
