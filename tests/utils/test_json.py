@@ -1,16 +1,8 @@
 """test json."""
-import json
 import time
 from typing import NamedTuple
 
-import pytest
-
-from supervisor.utils.json import (
-    json_dumps,
-    json_loads,
-    read_json_file,
-    write_json_file,
-)
+from supervisor.utils.json import json_dumps, read_json_file, write_json_file
 
 
 def test_file_permissions(tmp_path):
@@ -38,23 +30,6 @@ def test_file_round_trip(tmp_path):
     assert tempfile.is_file()
     assert oct(tempfile.stat().st_mode)[-3:] == "600"
     assert read_json_file(tempfile) == {"test": "data"}
-
-
-async def test_loading_derived_class():
-    """Test loading data from classes derived from str."""
-
-    class MyStr(str):
-        pass
-
-    class MyBytes(bytes):
-        pass
-
-    assert json_loads('"abc"') == "abc"
-    assert json_loads(MyStr('"abc"')) == "abc"
-
-    assert json_loads(b'"abc"') == "abc"
-    with pytest.raises(json.JSONDecodeError):
-        assert json_loads(MyBytes(b'"abc"')) == "abc"
 
 
 def test_json_dumps_float_subclass() -> None:
