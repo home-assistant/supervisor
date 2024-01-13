@@ -29,7 +29,7 @@
         "files.trimTrailingWhitespace": true,
         "python.pythonPath": "/usr/local/bin/python3",
         "python.formatting.provider": "black",
-        "python.formatting.blackArgs": ["--target-version", "py311"],
+        "python.formatting.blackArgs": ["--target-version", "py312"],
         "python.formatting.blackPath": "/usr/local/bin/black"
       }
     }

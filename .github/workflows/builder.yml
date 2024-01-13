@@ -33,7 +33,7 @@ on:
       - setup.py
 
 env:
-  DEFAULT_PYTHON: "3.11"
+  DEFAULT_PYTHON: "3.12"
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
 
@@ -75,7 +75,7 @@ jobs:
       - name: Check if requirements files changed
         id: requirements
         run: |
-          if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements.txt|build.json) ]]; then
+          if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements.txt|build.yaml) ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -108,7 +108,7 @@ jobs:
         if: needs.init.outputs.requirements == 'true'
         uses: home-assistant/wheels@2024.01.0
         with:
-          abi: cp311
+          abi: cp312
           tag: musllinux_1_2
           arch: ${{ matrix.arch }}
           wheels-key: ${{ secrets.WHEELS_KEY }}

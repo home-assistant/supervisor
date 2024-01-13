@@ -1,14 +1,11 @@
 """Tools file for Supervisor."""
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone, tzinfo
+from datetime import UTC, datetime, timedelta, timezone, tzinfo
 import re
 from typing import Any
 import zoneinfo
 
 import ciso8601
-
-UTC = timezone.utc
-
 
 # Copyright (c) Django Software Foundation and individual contributors.
 # All rights reserved.
@@ -67,7 +64,7 @@ def utcnow() -> datetime:
 
 def utc_from_timestamp(timestamp: float) -> datetime:
     """Return a UTC time from a timestamp."""
-    return datetime.utcfromtimestamp(timestamp).replace(tzinfo=UTC)
+    return datetime.fromtimestamp(timestamp, UTC).replace(tzinfo=UTC)
 
 
 def get_time_zone(time_zone_str: str) -> tzinfo | None:

@@ -1155,7 +1155,11 @@ class Addon(AddonModel):
             def _extract_tarfile():
                 """Extract tar backup."""
                 with tar_file as backup:
-                    backup.extractall(path=Path(temp), members=secure_path(backup))
+                    backup.extractall(
+                        path=Path(temp),
+                        members=secure_path(backup),
+                        filter="fully_trusted",
+                    )
 
             try:
                 await self.sys_run_in_executor(_extract_tarfile)
