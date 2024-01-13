@@ -1,40 +1,63 @@
 """Tools file for Supervisor."""
-from datetime import datetime
-import json
+from functools import partial
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from atomicwrites import atomic_write
+import orjson
 
 from ..exceptions import JsonFileError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class JSONEncoder(json.JSONEncoder):
-    """JSONEncoder that supports Supervisor objects."""
+def json_dumps(data: Any) -> str:
+    """Dump json string."""
+    return json_bytes(data).decode("utf-8")
 
-    def default(self, o: Any) -> Any:
-        """Convert Supervisor special objects.
 
-        Hand other objects to the original method.
-        """
-        if isinstance(o, datetime):
-            return o.isoformat()
-        if isinstance(o, set):
-            return list(o)
-        if isinstance(o, Path):
-            return o.as_posix()
+def json_encoder_default(obj: Any) -> Any:
+    """Convert Supervisor special objects."""
+    if isinstance(obj, (set, tuple)):
+        return list(obj)
+    if isinstance(obj, float):
+        return float(obj)
+    if isinstance(obj, Path):
+        return obj.as_posix()
+    raise TypeError
 
-        return super().default(o)
+
+if TYPE_CHECKING:
+
+    def json_bytes(obj: Any) -> bytes:
+        """Dump json bytes."""
+
+else:
+    json_bytes = partial(
+        orjson.dumps,  # pylint: disable=no-member
+        option=orjson.OPT_NON_STR_KEYS,  # pylint: disable=no-member
+        default=json_encoder_default,
+    )
+    """Dump json bytes."""
+
+
+# pylint - https://github.com/ijl/orjson/issues/248
+json_loads = orjson.loads  # pylint: disable=no-member
 
 
 def write_json_file(jsonfile: Path, data: Any) -> None:
     """Write a JSON file."""
     try:
         with atomic_write(jsonfile, overwrite=True) as fp:
-            fp.write(json.dumps(data, indent=2, cls=JSONEncoder))
+            fp.write(
+                orjson.dumps(  # pylint: disable=no-member
+                    data,
+                    option=orjson.OPT_INDENT_2  # pylint: disable=no-member
+                    | orjson.OPT_NON_STR_KEYS,  # pylint: disable=no-member
+                    default=json_encoder_default,
+                ).decode("utf-8")
+            )
         jsonfile.chmod(0o600)
     except (OSError, ValueError, TypeError) as err:
         raise JsonFileError(
@@ -45,7 +68,7 @@ def write_json_file(jsonfile: Path, data: Any) -> None:
 def read_json_file(jsonfile: Path) -> Any:
     """Read a JSON file and return a dict."""
     try:
-        return json.loads(jsonfile.read_text())
+        return json_loads(jsonfile.read_bytes())
     except (OSError, ValueError, TypeError, UnicodeDecodeError) as err:
         raise JsonFileError(
             f"Can't read json from {jsonfile!s}: {err!s}", _LOGGER.error

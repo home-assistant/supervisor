@@ -22,7 +22,7 @@ from ..const import (
 from ..coresys import CoreSys
 from ..exceptions import APIError, APIForbidden, DockerAPIError, HassioError
 from ..utils import check_exception_chain, get_message_from_exception_chain
-from ..utils.json import JSONEncoder
+from ..utils.json import json_dumps, json_loads as json_loads_util
 from ..utils.log_format import format_message
 from .const import CONTENT_TYPE_BINARY
 
@@ -48,7 +48,7 @@ def json_loads(data: Any) -> dict[str, Any]:
     if not data:
         return {}
     try:
-        return json.loads(data)
+        return json_loads_util(data)
     except json.JSONDecodeError as err:
         raise APIError("Invalid json") from err
 
@@ -130,7 +130,7 @@ def api_return_error(
             JSON_MESSAGE: message or "Unknown error, see supervisor",
         },
         status=400,
-        dumps=lambda x: json.dumps(x, cls=JSONEncoder),
+        dumps=json_dumps,
     )
 
 
@@ -138,7 +138,7 @@ def api_return_ok(data: dict[str, Any] | None = None) -> web.Response:
     """Return an API ok answer."""
     return web.json_response(
         {JSON_RESULT: RESULT_OK, JSON_DATA: data or {}},
-        dumps=lambda x: json.dumps(x, cls=JSONEncoder),
+        dumps=json_dumps,
     )
 
 
