@@ -293,7 +293,6 @@ async def fixture_all_dbus_services(
 
 @pytest.fixture
 async def coresys(
-    event_loop,
     docker,
     dbus_session_bus,
     all_dbus_services,
@@ -590,7 +589,7 @@ async def backups(
 ) -> list[Backup]:
     """Create and return mock backups."""
     for i in range(request.param if hasattr(request, "param") else 5):
-        slug = f"sn{i+1}"
+        slug = f"sn{i + 1}"
         temp_tar = Path(tmp_path, f"{slug}.tar")
         with SecureTarFile(temp_tar, "w"):
             pass
