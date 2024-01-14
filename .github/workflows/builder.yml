@@ -138,7 +138,7 @@ jobs:
       - name: Install dirhash and calc hash
         if: needs.init.outputs.publish == 'true'
         run: |
-          pip3 install dirhash
+          pip3 install setuptools dirhash
           dir_hash="$(dirhash "${{ github.workspace }}/supervisor" -a sha256 --match "*.py")"
           echo "${dir_hash}" > rootfs/supervisor.sha256
 
