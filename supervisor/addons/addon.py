@@ -770,6 +770,7 @@ class Addon(AddonModel):
                 raise AddonsError() from err
 
             self.sys_addons.data.update(self.addon_store)
+            await self._check_ingress_port()
             _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
 
         finally:
@@ -1221,7 +1222,7 @@ class Addon(AddonModel):
                     _LOGGER.info("Restore/Update of image for addon %s", self.slug)
                     with suppress(DockerError):
                         await self.instance.update(version, restore_image, self.arch)
-                self._check_ingress_port()
+                await self._check_ingress_port()
 
                 # Restore data and config
                 def _restore_data():
