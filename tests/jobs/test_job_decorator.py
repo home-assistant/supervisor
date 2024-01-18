@@ -1,7 +1,7 @@
 """Test the condition decorators."""
 # pylint: disable=protected-access,import-error
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
@@ -9,7 +9,7 @@ from aiohttp.client_exceptions import ClientError
 import pytest
 import time_machine
 
-from supervisor.const import CoreState
+from supervisor.const import BusEvent, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     AudioUpdateError,
@@ -19,7 +19,7 @@ from supervisor.exceptions import (
 )
 from supervisor.host.const import HostFeature
 from supervisor.host.manager import HostManager
-from supervisor.jobs import SupervisorJob
+from supervisor.jobs import JobSchedulerOptions, SupervisorJob
 from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.jobs.job_group import JobGroup
@@ -1096,3 +1096,104 @@ async def test_job_always_removed_on_check_failure(coresys: CoreSys):
     await task
     assert job.done
     assert coresys.jobs.jobs == [job]
+
+
+async def test_job_scheduled_delay(coresys: CoreSys):
+    """Test job that schedules a job to start after delay."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys) -> None:
+            """Initialize object."""
+            self.coresys = coresys
+
+        @Job(name="test_job_scheduled_delay_job_scheduler")
+        async def job_scheduler(self) -> tuple[SupervisorJob, asyncio.TimerHandle]:
+            """Schedule a job to run after delay."""
+            return self.coresys.jobs.schedule_job(
+                self.job_task, JobSchedulerOptions(delayed_start=0.1)
+            )
+
+        @Job(name="test_job_scheduled_delay_job_task")
+        async def job_task(self) -> None:
+            """Do scheduled work."""
+            self.coresys.jobs.current.stage = "work"
+
+    test = TestClass(coresys)
+
+    job, _ = await test.job_scheduler()
+    started = False
+    ended = False
+
+    async def start_listener(job_id: str):
+        nonlocal started
+        started = started or job_id == job.uuid
+
+    async def end_listener(job_id: str):
+        nonlocal ended
+        ended = ended or job_id == job.uuid
+
+    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_START, start_listener)
+    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, end_listener)
+
+    await asyncio.sleep(0.2)
+
+    assert started
+    assert ended
+    assert job.done
+    assert job.name == "test_job_scheduled_delay_job_task"
+    assert job.stage == "work"
+    assert job.parent_id is None
+
+
+async def test_job_scheduled_at(coresys: CoreSys):
+    """Test job that schedules a job to start at a specified time."""
+    dt = datetime.now()
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys) -> None:
+            """Initialize object."""
+            self.coresys = coresys
+
+        @Job(name="test_job_scheduled_at_job_scheduler")
+        async def job_scheduler(self) -> tuple[SupervisorJob, asyncio.TimerHandle]:
+            """Schedule a job to run at specified time."""
+            return self.coresys.jobs.schedule_job(
+                self.job_task, JobSchedulerOptions(start_at=dt + timedelta(seconds=0.1))
+            )
+
+        @Job(name="test_job_scheduled_at_job_task")
+        async def job_task(self) -> None:
+            """Do scheduled work."""
+            self.coresys.jobs.current.stage = "work"
+
+    test = TestClass(coresys)
+
+    with time_machine.travel(dt):
+        job, _ = await test.job_scheduler()
+
+    started = False
+    ended = False
+
+    async def start_listener(job_id: str):
+        nonlocal started
+        started = started or job_id == job.uuid
+
+    async def end_listener(job_id: str):
+        nonlocal ended
+        ended = ended or job_id == job.uuid
+
+    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_START, start_listener)
+    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, end_listener)
+
+    await asyncio.sleep(0.2)
+
+    assert started
+    assert ended
+    assert job.done
+    assert job.name == "test_job_scheduled_at_job_task"
+    assert job.stage == "work"
+    assert job.parent_id is None

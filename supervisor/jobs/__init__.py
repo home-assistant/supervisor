@@ -5,6 +5,7 @@ from collections.abc import Awaitable, Callable
 from contextlib import contextmanager
 from contextvars import Context, ContextVar, Token
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 from typing import Any
 from uuid import UUID, uuid4
@@ -35,7 +36,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class JobSchedulerOptions:
     """Options for scheduling a job."""
 
-    delayed_start: float = 0
+    start_at: datetime | None = None
+    delayed_start: float = 0  # Ignored if start_at is set
 
 
 def _remove_current_job(context: Context) -> Context:
@@ -94,7 +96,7 @@ class SupervisorJob:
     )
     uuid: UUID = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
     parent_id: UUID | None = field(
-        init=False, factory=lambda: _CURRENT_JOB.get(None), on_setattr=frozen
+        factory=lambda: _CURRENT_JOB.get(None), on_setattr=frozen
     )
     done: bool | None = field(init=False, default=None, on_setattr=_on_change)
     on_change: Callable[["SupervisorJob", Attribute, Any], None] | None = field(
@@ -215,6 +217,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         reference: str | None = None,
         initial_stage: str | None = None,
         internal: bool = False,
+        no_parent: bool = False,
     ) -> SupervisorJob:
         """Create a new job."""
         job = SupervisorJob(
@@ -223,6 +226,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
             stage=initial_stage,
             on_change=None if internal else self._notify_on_job_change,
             internal=internal,
+            **({"parent_id": None} if no_parent else {}),
         )
         self._jobs[job.uuid] = job
         return job
@@ -255,22 +259,17 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         *args,
         **kwargs,
     ) -> tuple[SupervisorJob, asyncio.Task | asyncio.TimerHandle]:
-        """Schedule a job to run later and return it."""
-        job = self.new_job()
+        """Schedule a job to run later and return job and task or timer handle."""
+        job = self.new_job(no_parent=True)
 
-        if options.delayed_start:
-            return (
-                job,
-                self.sys_run_later(
-                    job_method,
-                    options.delayed_start,
-                    *args,
-                    _job__use_existing=job,
-                    **kwargs,
-                ),
+        def _wrap_task() -> asyncio.Task:
+            return self.sys_create_task(
+                job_method(*args, _job__use_existing=job, **kwargs)
             )
 
-        return (
-            job,
-            self.sys_create_task(job_method(*args, _job__use_existing=job, **kwargs)),
-        )
+        if options.start_at:
+            return (job, self.sys_call_at(_wrap_task, options.start_at))
+        if options.delayed_start:
+            return (job, self.sys_call_later(_wrap_task, options.delayed_start))
+
+        return (job, _wrap_task())
