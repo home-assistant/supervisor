@@ -6,6 +6,7 @@ from functools import wraps
 import logging
 from typing import Any
 
+from . import SupervisorJob
 from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -191,6 +192,7 @@ class Job(CoreSysAttributes):
         async def wrapper(
             obj: JobGroup | CoreSysAttributes,
             *args,
+            _job__use_existing: SupervisorJob | None = None,
             _job_override__cleanup: bool | None = None,
             **kwargs,
         ) -> Any:
@@ -201,11 +203,18 @@ class Job(CoreSysAttributes):
             """
             job_group = self._post_init(obj)
             group_name: str | None = job_group.group_name if job_group else None
-            job = self.sys_jobs.new_job(
-                self.name,
-                job_group.job_reference if job_group else None,
-                internal=self._internal,
-            )
+            if _job__use_existing:
+                job = _job__use_existing
+                job.name = self.name
+                job.internal = self._internal
+                if job_group:
+                    job.reference = job_group.job_reference
+            else:
+                job = self.sys_jobs.new_job(
+                    self.name,
+                    job_group.job_reference if job_group else None,
+                    internal=self._internal,
+                )
 
             try:
                 # Handle condition

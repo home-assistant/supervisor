@@ -150,3 +150,67 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "errors": [],
         },
     ]
+
+
+async def test_job_manual_cleanup(api_client: TestClient, coresys: CoreSys):
+    """Test manually cleaning up a job via API."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.event = asyncio.Event()
+            self.job_id: str | None = None
+
+        @Job(name="test_job_manual_cleanup", cleanup=False)
+        async def test_job_manual_cleanup(self) -> None:
+            """Job that requires manual cleanup."""
+            self.job_id = coresys.jobs.current.uuid
+            await self.event.wait()
+
+    test = TestClass(coresys)
+    task = asyncio.create_task(test.test_job_manual_cleanup())
+    await asyncio.sleep(0)
+
+    # Check the job details
+    resp = await api_client.get(f"/jobs/{test.job_id}")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"] == {
+        "name": "test_job_manual_cleanup",
+        "reference": None,
+        "uuid": test.job_id,
+        "progress": 0,
+        "stage": None,
+        "done": False,
+        "child_jobs": [],
+        "errors": [],
+    }
+
+    # Only done jobs can be deleted via API
+    resp = await api_client.delete(f"/jobs/{test.job_id}")
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["message"] == f"Job {test.job_id} is not done!"
+
+    # Let the job finish
+    test.event.set()
+    await task
+
+    # Check that it is now done
+    resp = await api_client.get(f"/jobs/{test.job_id}")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["done"] is True
+
+    # Delete it
+    resp = await api_client.delete(f"/jobs/{test.job_id}")
+    assert resp.status == 200
+
+    # Confirm it no longer exists
+    resp = await api_client.get(f"/jobs/{test.job_id}")
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["message"] == f"No job found with id {test.job_id}"

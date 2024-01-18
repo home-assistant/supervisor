@@ -12,6 +12,7 @@ from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
+from ..backups.backup import Backup
 from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT, days_until_stale
 from ..const import (
     ATTR_ADDONS,
@@ -39,6 +40,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
+from ..jobs import JobSchedulerOptions
 from ..mounts.const import MountUsage
 from ..resolution.const import UnhealthyReason
 from .const import ATTR_BACKGROUND, ATTR_JOB_ID, CONTENT_TYPE_TAR
@@ -214,19 +216,23 @@ class APIBackups(CoreSysAttributes):
 
     async def _background_backup_task(
         self, backup_method: Callable, *args, **kwargs
-    ) -> dict[str, str] | bool:
-        """Start backup task in  background and return result."""
+    ) -> tuple[asyncio.Task, str]:
+        """Start backup task in  background and return task and job ID."""
         event = asyncio.Event()
+        job, backup_task = self.sys_jobs.schedule_job(
+            backup_method, JobSchedulerOptions(), *args, **kwargs
+        )
 
         async def release_on_freeze(new_state: CoreState):
             if new_state == CoreState.FREEZE:
                 event.set()
 
+        # Wait for system to get into freeze state before returning
+        # If the backup fails validation it will raise before getting there
         listener = self.sys_bus.register_event(
             BusEvent.SUPERVISOR_STATE_CHANGE, release_on_freeze
         )
         try:
-            backup_task = self.sys_create_task(backup_method(*args, **kwargs))
             await asyncio.wait(
                 (
                     backup_task,
@@ -234,9 +240,7 @@ class APIBackups(CoreSysAttributes):
                 ),
                 return_when=asyncio.FIRST_COMPLETED,
             )
-            if self.sys_backups.active_job:
-                return {ATTR_JOB_ID: self.sys_backups.active_job.uuid}
-            return False
+            return (backup_task, job.uuid)
         finally:
             self.sys_bus.remove_listener(listener)
 
@@ -244,57 +248,57 @@ class APIBackups(CoreSysAttributes):
     async def backup_full(self, request):
         """Create full backup."""
         body = await api_validate(SCHEMA_BACKUP_FULL, request)
-
-        if body.pop(ATTR_BACKGROUND, False):
-            return await self._background_backup_task(
-                self.sys_backups.do_backup_full, **self._location_to_mount(body)
-            )
-
-        backup = await asyncio.shield(
-            self.sys_backups.do_backup_full(
-                _job_override__cleanup=True, **self._location_to_mount(body)
-            )
+        background = body.pop(ATTR_BACKGROUND, False)
+        backup_task, job_id = await self._background_backup_task(
+            self.sys_backups.do_backup_full, **self._location_to_mount(body)
         )
 
+        if background:
+            return {ATTR_JOB_ID: job_id}
+
+        backup: Backup = await backup_task
         if backup:
-            return {ATTR_SLUG: backup.slug}
-        return False
+            return {ATTR_JOB_ID: job_id, ATTR_SLUG: backup.slug}
+        raise APIError(
+            f"An error occurred while making backup, check job '{job_id}' or supervisor logs for details",
+            job_id=job_id,
+        )
 
     @api_process
     async def backup_partial(self, request):
         """Create a partial backup."""
         body = await api_validate(SCHEMA_BACKUP_PARTIAL, request)
-
-        if body.pop(ATTR_BACKGROUND, False):
-            return await self._background_backup_task(
-                self.sys_backups.do_backup_partial, **self._location_to_mount(body)
-            )
-
-        backup = await asyncio.shield(
-            self.sys_backups.do_backup_partial(
-                _job_override__cleanup=True, **self._location_to_mount(body)
-            )
+        background = body.pop(ATTR_BACKGROUND, False)
+        backup_task, job_id = await self._background_backup_task(
+            self.sys_backups.do_backup_partial, **self._location_to_mount(body)
         )
 
+        if background:
+            return {ATTR_JOB_ID: job_id}
+
+        backup: Backup = await backup_task
         if backup:
-            return {ATTR_SLUG: backup.slug}
-        return False
+            return {ATTR_JOB_ID: job_id, ATTR_SLUG: backup.slug}
+        raise APIError(
+            f"An error occurred while making backup, check job '{job_id}' or supervisor logs for details",
+            job_id=job_id,
+        )
 
     @api_process
     async def restore_full(self, request):
         """Full restore of a backup."""
         backup = self._extract_slug(request)
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
+        background = body.pop(ATTR_BACKGROUND, False)
+        restore_task, job_id = await self._background_backup_task(
+            self.sys_backups.do_restore_full, backup, **body
+        )
 
-        if body.pop(ATTR_BACKGROUND, False):
-            return await self._background_backup_task(
-                self.sys_backups.do_restore_full, backup, **body
-            )
-
-        return await asyncio.shield(
-            self.sys_backups.do_restore_full(
-                backup, _job_override__cleanup=True, **body
-            )
+        if background or await restore_task:
+            return {ATTR_JOB_ID: job_id}
+        raise APIError(
+            f"An error occurred during restore of {backup.slug}, check job '{job_id}' or supervisor logs for details",
+            job_id=job_id,
         )
 
     @api_process
@@ -302,16 +306,16 @@ class APIBackups(CoreSysAttributes):
         """Partial restore a backup."""
         backup = self._extract_slug(request)
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
+        background = body.pop(ATTR_BACKGROUND, False)
+        restore_task, job_id = await self._background_backup_task(
+            self.sys_backups.do_restore_partial, backup, **body
+        )
 
-        if body.pop(ATTR_BACKGROUND, False):
-            return await self._background_backup_task(
-                self.sys_backups.do_restore_partial, backup, **body
-            )
-
-        return await asyncio.shield(
-            self.sys_backups.do_restore_partial(
-                backup, _job_override__cleanup=True, **body
-            )
+        if background or await restore_task:
+            return {ATTR_JOB_ID: job_id}
+        raise APIError(
+            f"An error occurred during restore of {backup.slug}, check job '{job_id}' or supervisor logs for details",
+            job_id=job_id,
         )
 
     @api_process

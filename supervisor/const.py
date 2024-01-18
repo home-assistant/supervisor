@@ -68,6 +68,7 @@ META_SUPERVISOR = "supervisor"
 JSON_DATA = "data"
 JSON_MESSAGE = "message"
 JSON_RESULT = "result"
+JSON_JOB_ID = "job_id"
 
 RESULT_ERROR = "error"
 RESULT_OK = "ok"
@@ -458,9 +459,11 @@ class HostFeature(StrEnum):
 class BusEvent(StrEnum):
     """Bus event type."""
 
+    DOCKER_CONTAINER_STATE_CHANGE = "docker_container_state_change"
     HARDWARE_NEW_DEVICE = "hardware_new_device"
     HARDWARE_REMOVE_DEVICE = "hardware_remove_device"
-    DOCKER_CONTAINER_STATE_CHANGE = "docker_container_state_change"
+    SUPERVISOR_JOB_END = "supervisor_job_end"
+    SUPERVISOR_JOB_START = "supervisor_job_start"
     SUPERVISOR_STATE_CHANGE = "supervisor_state_change"
 
 

@@ -544,13 +544,29 @@ class CoreSys:
 
         return self.loop.run_in_executor(None, funct, *args)
 
-    def create_task(self, coroutine: Coroutine) -> asyncio.Task:
-        """Create an async task."""
+    def _create_context(self) -> Context:
+        """Create a new context for a task."""
         context = copy_context()
         for callback in self._set_task_context:
             context = callback(context)
+        return context
 
-        return self.loop.create_task(coroutine, context=context)
+    def create_task(self, coroutine: Coroutine) -> asyncio.Task:
+        """Create an async task."""
+        return self.loop.create_task(coroutine, context=self._create_context())
+
+    def run_later(
+        self,
+        funct: Callable[..., Coroutine[Any, Any, T]],
+        delay: float,
+        *args: tuple[Any],
+        **kwargs: dict[str, Any],
+    ) -> asyncio.TimerHandle:
+        """Start a task after a delay."""
+        if kwargs:
+            funct = partial(funct, **kwargs)
+
+        return self.loop.call_later(delay, funct, *args, context=self._create_context())
 
 
 class CoreSysAttributes:
@@ -731,3 +747,13 @@ class CoreSysAttributes:
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""
         return self.coresys.create_task(coroutine)
+
+    def sys_run_later(
+        self,
+        funct: Callable[..., Coroutine[Any, Any, T]],
+        delay: float,
+        *args: tuple[Any],
+        **kwargs: dict[str, Any],
+    ) -> asyncio.TimerHandle:
+        """Start a task after a delay."""
+        return self.coresys.run_later(funct, delay, *args, **kwargs)

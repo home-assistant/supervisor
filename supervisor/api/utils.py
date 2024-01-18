@@ -13,6 +13,7 @@ from ..const import (
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
     JSON_DATA,
+    JSON_JOB_ID,
     JSON_MESSAGE,
     JSON_RESULT,
     REQUEST_FROM,
@@ -124,11 +125,15 @@ def api_return_error(
         if check_exception_chain(error, DockerAPIError):
             message = format_message(message)
 
+    result = {
+        JSON_RESULT: RESULT_ERROR,
+        JSON_MESSAGE: message or "Unknown error, see supervisor",
+    }
+    if isinstance(error, APIError) and error.job_id:
+        result[JSON_JOB_ID] = error.job_id
+
     return web.json_response(
-        {
-            JSON_RESULT: RESULT_ERROR,
-            JSON_MESSAGE: message or "Unknown error, see supervisor",
-        },
+        result,
         status=400,
         dumps=json_dumps,
     )

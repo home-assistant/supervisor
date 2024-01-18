@@ -580,7 +580,9 @@ class Backup(JobGroup):
                     gzip=self.compressed,
                     bufsize=BUF_SIZE,
                 ) as tar_file:
-                    tar_file.extractall(path=origin_dir, members=tar_file)
+                    tar_file.extractall(
+                        path=origin_dir, members=tar_file, filter="fully_trusted"
+                    )
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
                 raise BackupError(

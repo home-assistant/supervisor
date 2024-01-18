@@ -1,7 +1,10 @@
 """Supervisor job manager."""
-from collections.abc import Callable
+
+import asyncio
+from collections.abc import Awaitable, Callable
 from contextlib import contextmanager
 from contextvars import Context, ContextVar, Token
+from dataclasses import dataclass
 import logging
 from typing import Any
 from uuid import UUID, uuid4
@@ -10,6 +13,7 @@ from attrs import Attribute, define, field
 from attrs.setters import convert as attr_convert, frozen, validate as attr_validate
 from attrs.validators import ge, le
 
+from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
@@ -25,6 +29,13 @@ from .validate import SCHEMA_JOBS_CONFIG
 _CURRENT_JOB: ContextVar[UUID] = ContextVar("current_job")
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass
+class JobSchedulerOptions:
+    """Options for scheduling a job."""
+
+    delayed_start: float = 0
 
 
 def _remove_current_job(context: Context) -> Context:
@@ -48,6 +59,12 @@ def _on_change(instance: "SupervisorJob", attribute: Attribute, value: Any) -> A
     return value
 
 
+def _invalid_if_started(instance: "SupervisorJob", *_) -> None:
+    """Validate that job has not been started."""
+    if instance.done is not None:
+        raise ValueError("Field cannot be updated once job has started")
+
+
 @define
 class SupervisorJobError:
     """Representation of an error occurring during a supervisor job."""
@@ -64,7 +81,7 @@ class SupervisorJobError:
 class SupervisorJob:
     """Representation of a job running in supervisor."""
 
-    name: str = field(on_setattr=frozen)
+    name: str | None = field(default=None, validator=[_invalid_if_started])
     reference: str | None = field(default=None, on_setattr=_on_change)
     progress: float = field(
         default=0,
@@ -83,10 +100,11 @@ class SupervisorJob:
     on_change: Callable[["SupervisorJob", Attribute, Any], None] | None = field(
         default=None, on_setattr=frozen
     )
-    internal: bool = field(default=False, on_setattr=frozen)
+    internal: bool = field(default=False)
     errors: list[SupervisorJobError] = field(
         init=False, factory=list, on_setattr=_on_change
     )
+    release_event: asyncio.Event | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Return dictionary representation."""
@@ -180,14 +198,20 @@ class JobManager(FileConfiguration, CoreSysAttributes):
     def _notify_on_job_change(
         self, job: SupervisorJob, attribute: Attribute, value: Any
     ) -> None:
-        """Notify Home Assistant of a change to a job."""
+        """Notify Home Assistant of a change to a job and bus on job start/end."""
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.JOB, job.as_dict() | {attribute.alias: value}
         )
 
+        if attribute.name == "done":
+            if value is False:
+                self.sys_bus.fire_event(BusEvent.SUPERVISOR_JOB_START, job.uuid)
+            if value is True:
+                self.sys_bus.fire_event(BusEvent.SUPERVISOR_JOB_END, job.uuid)
+
     def new_job(
         self,
-        name: str,
+        name: str | None = None,
         reference: str | None = None,
         initial_stage: str | None = None,
         internal: bool = False,
@@ -223,3 +247,30 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         for sub_job in self.jobs:
             if sub_job.parent_id == job.uuid and job.done:
                 self.remove_job(sub_job)
+
+    def schedule_job(
+        self,
+        job_method: Callable[..., Awaitable[Any]],
+        options: JobSchedulerOptions,
+        *args,
+        **kwargs,
+    ) -> tuple[SupervisorJob, asyncio.Task | asyncio.TimerHandle]:
+        """Schedule a job to run later and return it."""
+        job = self.new_job()
+
+        if options.delayed_start:
+            return (
+                job,
+                self.sys_run_later(
+                    job_method,
+                    options.delayed_start,
+                    *args,
+                    _job__use_existing=job,
+                    **kwargs,
+                ),
+            )
+
+        return (
+            job,
+            self.sys_create_task(job_method(*args, _job__use_existing=job, **kwargs)),
+        )

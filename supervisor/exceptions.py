@@ -304,6 +304,16 @@ class HostLogError(HostError):
 class APIError(HassioError, RuntimeError):
     """API errors."""
 
+    def __init__(
+        self,
+        message: str | None = None,
+        logger: Callable[..., None] | None = None,
+        job_id: str | None = None,
+    ) -> None:
+        """Raise & log, optionally with job."""
+        super().__init__(message, logger)
+        self.job_id = job_id
+
 
 class APIForbidden(APIError):
     """API forbidden error."""
