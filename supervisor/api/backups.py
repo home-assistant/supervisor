@@ -253,7 +253,7 @@ class APIBackups(CoreSysAttributes):
             self.sys_backups.do_backup_full, **self._location_to_mount(body)
         )
 
-        if background:
+        if background and not backup_task.done():
             return {ATTR_JOB_ID: job_id}
 
         backup: Backup = await backup_task
@@ -273,7 +273,7 @@ class APIBackups(CoreSysAttributes):
             self.sys_backups.do_backup_partial, **self._location_to_mount(body)
         )
 
-        if background:
+        if background and not backup_task.done():
             return {ATTR_JOB_ID: job_id}
 
         backup: Backup = await backup_task
@@ -294,7 +294,7 @@ class APIBackups(CoreSysAttributes):
             self.sys_backups.do_restore_full, backup, **body
         )
 
-        if background or await restore_task:
+        if background and not restore_task.done() or await restore_task:
             return {ATTR_JOB_ID: job_id}
         raise APIError(
             f"An error occurred during restore of {backup.slug}, check job '{job_id}' or supervisor logs for details",
@@ -311,7 +311,7 @@ class APIBackups(CoreSysAttributes):
             self.sys_backups.do_restore_partial, backup, **body
         )
 
-        if background or await restore_task:
+        if background and not restore_task.done() or await restore_task:
             return {ATTR_JOB_ID: job_id}
         raise APIError(
             f"An error occurred during restore of {backup.slug}, check job '{job_id}' or supervisor logs for details",

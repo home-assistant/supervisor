@@ -3,7 +3,7 @@
 import asyncio
 from pathlib import Path, PurePath
 from typing import Any
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import ANY, AsyncMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -17,6 +17,7 @@ from supervisor.exceptions import AddonsError, HomeAssistantBackupError
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
+from supervisor.supervisor import Supervisor
 
 
 async def test_info(api_client, coresys: CoreSys, mock_full_backup: Backup):
@@ -385,3 +386,74 @@ async def test_api_backup_errors(
     assert job["child_jobs"][1]["name"] == "backup_store_homeassistant"
     assert job["child_jobs"][1]["errors"] == err
     assert len(job["child_jobs"]) == 2
+
+
+async def test_backup_immediate_errors(api_client: TestClient, coresys: CoreSys):
+    """Test backup errors that return immediately even in background mode."""
+    coresys.core.state = CoreState.FREEZE
+    resp = await api_client.post(
+        "/backups/new/full",
+        json={"name": "Test", "background": True},
+    )
+    assert resp.status == 400
+    assert "freeze" in (await resp.json())["message"]
+
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 0.5
+    resp = await api_client.post(
+        "/backups/new/partial",
+        json={"name": "Test", "homeassistant": True, "background": True},
+    )
+    assert resp.status == 400
+    assert "not enough free space" in (await resp.json())["message"]
+
+
+async def test_restore_immediate_errors(
+    request: pytest.FixtureRequest,
+    api_client: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """Test restore errors that return immediately even in background mode."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    resp = await api_client.post(
+        f"/backups/{mock_partial_backup.slug}/restore/full", json={"background": True}
+    )
+    assert resp.status == 400
+    assert "only a partial backup" in (await resp.json())["message"]
+
+    with patch.object(
+        Backup,
+        "supervisor_version",
+        new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+    ), patch.object(
+        Supervisor,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2023.12.0")),
+    ):
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"background": True, "homeassistant": True},
+        )
+    assert resp.status == 400
+    assert "Must update supervisor" in (await resp.json())["message"]
+
+    with patch.object(
+        Backup, "protected", new=PropertyMock(return_value=True)
+    ), patch.object(Backup, "set_password", return_value=False):
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"background": True, "homeassistant": True},
+        )
+    assert resp.status == 400
+    assert "Invalid password" in (await resp.json())["message"]
+
+    with patch.object(Backup, "homeassistant", new=PropertyMock(return_value=None)):
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"background": True, "homeassistant": True},
+        )
+    assert resp.status == 400
+    assert "No Home Assistant" in (await resp.json())["message"]
