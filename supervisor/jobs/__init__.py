@@ -268,8 +268,8 @@ class JobManager(FileConfiguration, CoreSysAttributes):
             )
 
         if options.start_at:
-            return (job, self.sys_call_at(_wrap_task, options.start_at))
+            return (job, self.sys_call_at(options.start_at, _wrap_task))
         if options.delayed_start:
-            return (job, self.sys_call_later(_wrap_task, options.delayed_start))
+            return (job, self.sys_call_later(options.delayed_start, _wrap_task))
 
         return (job, _wrap_task())
