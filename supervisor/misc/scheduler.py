@@ -74,7 +74,7 @@ class Scheduler(CoreSysAttributes):
     def _schedule_task(self, task: _Task) -> None:
         """Schedule a task on loop."""
         if isinstance(task.interval, (int, float)):
-            task.next = self.sys_loop.call_later(task.interval, self._run_task, task)
+            task.next = self.sys_call_later(task.interval, self._run_task, task)
         elif isinstance(task.interval, time):
             today = datetime.combine(date.today(), task.interval)
             tomorrow = datetime.combine(date.today() + timedelta(days=1), task.interval)
@@ -85,7 +85,7 @@ class Scheduler(CoreSysAttributes):
             else:
                 calc = tomorrow
 
-            task.next = self.sys_loop.call_at(calc.timestamp(), self._run_task, task)
+            task.next = self.sys_call_at(calc, self._run_task, task)
         else:
             _LOGGER.critical(
                 "Unknown interval %s (type: %s) for scheduler %s",

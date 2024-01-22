@@ -1,7 +1,9 @@
 """Representation of a backup file."""
 import asyncio
 from base64 import b64decode, b64encode
+from collections import defaultdict
 from collections.abc import Awaitable
+from copy import deepcopy
 from datetime import timedelta
 from functools import cached_property
 import json
@@ -42,8 +44,11 @@ from ..const import (
     ATTR_VERSION,
     CRYPTO_AES128,
 )
-from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import AddonsError, BackupError
+from ..coresys import CoreSys
+from ..exceptions import AddonsError, BackupError, BackupInvalidError
+from ..jobs.const import JOB_GROUP_BACKUP
+from ..jobs.decorator import Job
+from ..jobs.job_group import JobGroup
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import write_json_file
@@ -54,14 +59,22 @@ from .validate import SCHEMA_BACKUP
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Backup(CoreSysAttributes):
+class Backup(JobGroup):
     """A single Supervisor backup."""
 
-    def __init__(self, coresys: CoreSys, tar_file: Path):
+    def __init__(
+        self,
+        coresys: CoreSys,
+        tar_file: Path,
+        slug: str,
+        data: dict[str, Any] | None = None,
+    ):
         """Initialize a backup."""
-        self.coresys: CoreSys = coresys
+        super().__init__(
+            coresys, JOB_GROUP_BACKUP.format_map(defaultdict(str, slug=slug)), slug
+        )
         self._tarfile: Path = tar_file
-        self._data: dict[str, Any] = {}
+        self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
         self._tmp = None
         self._key: bytes | None = None
         self._aes: Cipher | None = None
@@ -87,7 +100,7 @@ class Backup(CoreSysAttributes):
         return self._data[ATTR_NAME]
 
     @property
-    def date(self):
+    def date(self) -> str:
         """Return backup date."""
         return self._data[ATTR_DATE]
 
@@ -102,32 +115,32 @@ class Backup(CoreSysAttributes):
         return self._data[ATTR_COMPRESSED]
 
     @property
-    def addons(self):
+    def addons(self) -> list[dict[str, Any]]:
         """Return backup date."""
         return self._data[ATTR_ADDONS]
 
     @property
-    def addon_list(self):
+    def addon_list(self) -> list[str]:
         """Return a list of add-ons slugs."""
         return [addon_data[ATTR_SLUG] for addon_data in self.addons]
 
     @property
-    def folders(self):
+    def folders(self) -> list[str]:
         """Return list of saved folders."""
         return self._data[ATTR_FOLDERS]
 
     @property
-    def repositories(self):
+    def repositories(self) -> list[str]:
         """Return backup date."""
         return self._data[ATTR_REPOSITORIES]
 
     @repositories.setter
-    def repositories(self, value):
+    def repositories(self, value: list[str]) -> None:
         """Set backup date."""
         self._data[ATTR_REPOSITORIES] = value
 
     @property
-    def homeassistant_version(self):
+    def homeassistant_version(self) -> AwesomeVersion:
         """Return backup Home Assistant version."""
         if self.homeassistant is None:
             return None
@@ -141,7 +154,7 @@ class Backup(CoreSysAttributes):
         return self.homeassistant[ATTR_EXCLUDE_DATABASE]
 
     @property
-    def homeassistant(self):
+    def homeassistant(self) -> dict[str, Any]:
         """Return backup Home Assistant data."""
         return self._data[ATTR_HOMEASSISTANT]
 
@@ -151,12 +164,12 @@ class Backup(CoreSysAttributes):
         return self._data[ATTR_SUPERVISOR_VERSION]
 
     @property
-    def docker(self):
+    def docker(self) -> dict[str, Any]:
         """Return backup Docker config data."""
         return self._data.get(ATTR_DOCKER, {})
 
     @docker.setter
-    def docker(self, value):
+    def docker(self, value: dict[str, Any]) -> None:
         """Set the Docker config data."""
         self._data[ATTR_DOCKER] = value
 
@@ -169,32 +182,36 @@ class Backup(CoreSysAttributes):
         return None
 
     @property
-    def size(self):
+    def size(self) -> float:
         """Return backup size."""
         if not self.tarfile.is_file():
             return 0
         return round(self.tarfile.stat().st_size / 1048576, 2)  # calc mbyte
 
     @property
-    def is_new(self):
+    def is_new(self) -> bool:
         """Return True if there is new."""
         return not self.tarfile.exists()
 
     @property
-    def tarfile(self):
+    def tarfile(self) -> Path:
         """Return path to backup tarfile."""
         return self._tarfile
 
     @property
-    def is_current(self):
+    def is_current(self) -> bool:
         """Return true if backup is current, false if stale."""
         return parse_datetime(self.date) >= utcnow() - timedelta(
             days=self.sys_backups.days_until_stale
         )
 
+    @property
+    def data(self) -> dict[str, Any]:
+        """Returns a copy of the data."""
+        return deepcopy(self._data)
+
     def new(
         self,
-        slug: str,
         name: str,
         date: str,
         sys_type: BackupType,
@@ -204,7 +221,6 @@ class Backup(CoreSysAttributes):
         """Initialize a new backup."""
         # Init metadata
         self._data[ATTR_VERSION] = 2
-        self._data[ATTR_SLUG] = slug
         self._data[ATTR_NAME] = name
         self._data[ATTR_DATE] = date
         self._data[ATTR_TYPE] = sys_type
@@ -349,152 +365,240 @@ class Backup(CoreSysAttributes):
             write_json_file(Path(self._tmp.name, "backup.json"), self._data)
             await self.sys_run_in_executor(_create_backup)
         except (OSError, json.JSONDecodeError) as err:
+            self.sys_jobs.current.capture_error(BackupError("Can't write backup"))
             _LOGGER.error("Can't write backup: %s", err)
         finally:
             self._tmp.cleanup()
 
+    @Job(name="backup_addon_save", cleanup=False)
+    async def _addon_save(self, addon: Addon) -> asyncio.Task | None:
+        """Store an add-on into backup."""
+        self.sys_jobs.current.reference = addon.slug
+
+        tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
+        addon_file = SecureTarFile(
+            Path(self._tmp.name, tar_name),
+            "w",
+            key=self._key,
+            gzip=self.compressed,
+            bufsize=BUF_SIZE,
+        )
+
+        # Take backup
+        try:
+            start_task = await addon.backup(addon_file)
+        except AddonsError as err:
+            raise BackupError(
+                f"Can't create backup for {addon.slug}", _LOGGER.error
+            ) from err
+
+        # Store to config
+        self._data[ATTR_ADDONS].append(
+            {
+                ATTR_SLUG: addon.slug,
+                ATTR_NAME: addon.name,
+                ATTR_VERSION: addon.version,
+                ATTR_SIZE: addon_file.size,
+            }
+        )
+
+        return start_task
+
+    @Job(name="backup_store_addons", cleanup=False)
     async def store_addons(self, addon_list: list[str]) -> list[asyncio.Task]:
         """Add a list of add-ons into backup.
 
         For each addon that needs to be started after backup, returns a Task which
         completes when that addon has state 'started' (see addon.start).
         """
-
-        async def _addon_save(addon: Addon) -> asyncio.Task | None:
-            """Task to store an add-on into backup."""
-            tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
-            addon_file = SecureTarFile(
-                Path(self._tmp.name, tar_name),
-                "w",
-                key=self._key,
-                gzip=self.compressed,
-                bufsize=BUF_SIZE,
-            )
-
-            # Take backup
-            try:
-                start_task = await addon.backup(addon_file)
-            except AddonsError:
-                _LOGGER.error("Can't create backup for %s", addon.slug)
-                return
-
-            # Store to config
-            self._data[ATTR_ADDONS].append(
-                {
-                    ATTR_SLUG: addon.slug,
-                    ATTR_NAME: addon.name,
-                    ATTR_VERSION: addon.version,
-                    ATTR_SIZE: addon_file.size,
-                }
-            )
-
-            return start_task
-
-        # Save Add-ons sequential
-        # avoid issue on slow IO
+        # Save Add-ons sequential avoid issue on slow IO
         start_tasks: list[asyncio.Task] = []
         for addon in addon_list:
             try:
-                if start_task := await _addon_save(addon):
+                if start_task := await self._addon_save(addon):
                     start_tasks.append(start_task)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
 
         return start_tasks
 
+    @Job(name="backup_addon_restore", cleanup=False)
+    async def _addon_restore(self, addon_slug: str) -> asyncio.Task | None:
+        """Restore an add-on from backup."""
+        self.sys_jobs.current.reference = addon_slug
+
+        tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
+        addon_file = SecureTarFile(
+            Path(self._tmp.name, tar_name),
+            "r",
+            key=self._key,
+            gzip=self.compressed,
+            bufsize=BUF_SIZE,
+        )
+
+        # If exists inside backup
+        if not addon_file.path.exists():
+            raise BackupError(f"Can't find backup {addon_slug}", _LOGGER.error)
+
+        # Perform a restore
+        try:
+            return await self.sys_addons.restore(addon_slug, addon_file)
+        except AddonsError as err:
+            raise BackupError(
+                f"Can't restore backup {addon_slug}", _LOGGER.error
+            ) from err
+
+    @Job(name="backup_restore_addons", cleanup=False)
     async def restore_addons(
         self, addon_list: list[str]
     ) -> tuple[bool, list[asyncio.Task]]:
         """Restore a list add-on from backup."""
-
-        async def _addon_restore(addon_slug: str) -> tuple[bool, asyncio.Task | None]:
-            """Task to restore an add-on into backup."""
-            tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
-            addon_file = SecureTarFile(
-                Path(self._tmp.name, tar_name),
-                "r",
-                key=self._key,
-                gzip=self.compressed,
-                bufsize=BUF_SIZE,
-            )
-
-            # If exists inside backup
-            if not addon_file.path.exists():
-                _LOGGER.error("Can't find backup %s", addon_slug)
-                return (False, None)
-
-            # Perform a restore
-            try:
-                return (True, await self.sys_addons.restore(addon_slug, addon_file))
-            except AddonsError:
-                _LOGGER.error("Can't restore backup %s", addon_slug)
-                return (False, None)
-
-        # Save Add-ons sequential
-        # avoid issue on slow IO
+        # Save Add-ons sequential avoid issue on slow IO
         start_tasks: list[asyncio.Task] = []
         success = True
         for slug in addon_list:
             try:
-                addon_success, start_task = await _addon_restore(slug)
+                start_task = await self._addon_restore(slug)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore Add-on %s: %s", slug, err)
                 success = False
             else:
-                success = success and addon_success
                 if start_task:
                     start_tasks.append(start_task)
 
         return (success, start_tasks)
 
+    @Job(name="backup_remove_delta_addons", cleanup=False)
+    async def remove_delta_addons(self) -> bool:
+        """Remove addons which are not in this backup."""
+        success = True
+        for addon in self.sys_addons.installed:
+            if addon.slug in self.addon_list:
+                continue
+
+            # Remove Add-on because it's not a part of the new env
+            # Do it sequential avoid issue on slow IO
+            try:
+                await self.sys_addons.uninstall(addon.slug)
+            except AddonsError as err:
+                self.sys_jobs.current.capture_error(err)
+                _LOGGER.warning("Can't uninstall Add-on %s: %s", addon.slug, err)
+                success = False
+
+        return success
+
+    @Job(name="backup_folder_save", cleanup=False)
+    async def _folder_save(self, name: str):
+        """Take backup of a folder."""
+        self.sys_jobs.current.reference = name
+
+        slug_name = name.replace("/", "_")
+        tar_name = Path(
+            self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
+        )
+        origin_dir = Path(self.sys_config.path_supervisor, name)
+
+        # Check if exists
+        if not origin_dir.is_dir():
+            _LOGGER.warning("Can't find backup folder %s", name)
+            return
+
+        def _save() -> None:
+            # Take backup
+            _LOGGER.info("Backing up folder %s", name)
+            with SecureTarFile(
+                tar_name, "w", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
+            ) as tar_file:
+                atomic_contents_add(
+                    tar_file,
+                    origin_dir,
+                    excludes=[
+                        bound.bind_mount.local_where.as_posix()
+                        for bound in self.sys_mounts.bound_mounts
+                        if bound.bind_mount.local_where
+                    ],
+                    arcname=".",
+                )
+
+            _LOGGER.info("Backup folder %s done", name)
+
+        try:
+            await self.sys_run_in_executor(_save)
+        except (tarfile.TarError, OSError) as err:
+            raise BackupError(
+                f"Can't backup folder {name}: {str(err)}", _LOGGER.error
+            ) from err
+
+        self._data[ATTR_FOLDERS].append(name)
+
+    @Job(name="backup_store_folders", cleanup=False)
     async def store_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
-
-        async def _folder_save(name: str):
-            """Take backup of a folder."""
-            slug_name = name.replace("/", "_")
-            tar_name = Path(
-                self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
-            )
-            origin_dir = Path(self.sys_config.path_supervisor, name)
-
-            # Check if exists
-            if not origin_dir.is_dir():
-                _LOGGER.warning("Can't find backup folder %s", name)
-                return
-
-            def _save() -> None:
-                # Take backup
-                _LOGGER.info("Backing up folder %s", name)
-                with SecureTarFile(
-                    tar_name, "w", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
-                ) as tar_file:
-                    atomic_contents_add(
-                        tar_file,
-                        origin_dir,
-                        excludes=[
-                            bound.bind_mount.local_where.as_posix()
-                            for bound in self.sys_mounts.bound_mounts
-                            if bound.bind_mount.local_where
-                        ],
-                        arcname=".",
-                    )
-
-                _LOGGER.info("Backup folder %s done", name)
-
-            await self.sys_run_in_executor(_save)
-            self._data[ATTR_FOLDERS].append(name)
-
-        # Save folder sequential
-        # avoid issue on slow IO
+        # Save folder sequential avoid issue on slow IO
         for folder in folder_list:
+            await self._folder_save(folder)
+
+    @Job(name="backup_folder_restore", cleanup=False)
+    async def _folder_restore(self, name: str) -> None:
+        """Restore a folder."""
+        self.sys_jobs.current.reference = name
+
+        slug_name = name.replace("/", "_")
+        tar_name = Path(
+            self._tmp.name, f"{slug_name}.tar{'.gz' if self.compressed else ''}"
+        )
+        origin_dir = Path(self.sys_config.path_supervisor, name)
+
+        # Check if exists inside backup
+        if not tar_name.exists():
+            raise BackupInvalidError(
+                f"Can't find restore folder {name}", _LOGGER.warning
+            )
+
+        # Unmount any mounts within folder
+        bind_mounts = [
+            bound.bind_mount
+            for bound in self.sys_mounts.bound_mounts
+            if bound.bind_mount.local_where
+            and bound.bind_mount.local_where.is_relative_to(origin_dir)
+        ]
+        if bind_mounts:
+            await asyncio.gather(*[bind_mount.unmount() for bind_mount in bind_mounts])
+
+        # Clean old stuff
+        if origin_dir.is_dir():
+            await remove_folder(origin_dir, content_only=True)
+
+        # Perform a restore
+        def _restore() -> bool:
             try:
-                await _folder_save(folder)
+                _LOGGER.info("Restore folder %s", name)
+                with SecureTarFile(
+                    tar_name,
+                    "r",
+                    key=self._key,
+                    gzip=self.compressed,
+                    bufsize=BUF_SIZE,
+                ) as tar_file:
+                    tar_file.extractall(
+                        path=origin_dir, members=tar_file, filter="fully_trusted"
+                    )
+                _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
                 raise BackupError(
-                    f"Can't backup folder {folder}: {str(err)}", _LOGGER.error
+                    f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
+            return True
 
+        try:
+            return await self.sys_run_in_executor(_restore)
+        finally:
+            if bind_mounts:
+                await asyncio.gather(
+                    *[bind_mount.mount() for bind_mount in bind_mounts]
+                )
+
+    @Job(name="backup_restore_folders", cleanup=False)
     async def restore_folders(self, folder_list: list[str]) -> bool:
         """Backup Supervisor data into backup."""
         success = True
@@ -556,16 +660,16 @@ class Backup(CoreSysAttributes):
                         *[bind_mount.mount() for bind_mount in bind_mounts]
                     )
 
-        # Restore folder sequential
-        # avoid issue on slow IO
+        # Restore folder sequential avoid issue on slow IO
         for folder in folder_list:
             try:
-                success = success and await _folder_restore(folder)
+                await self._folder_restore(folder)
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't restore folder %s: %s", folder, err)
                 success = False
         return success
 
+    @Job(name="backup_store_homeassistant", cleanup=False)
     async def store_homeassistant(self, exclude_database: bool = False):
         """Backup Home Assistant Core configuration folder."""
         self._data[ATTR_HOMEASSISTANT] = {
@@ -586,6 +690,7 @@ class Backup(CoreSysAttributes):
         # Store size
         self.homeassistant[ATTR_SIZE] = homeassistant_file.size
 
+    @Job(name="backup_restore_homeassistant", cleanup=False)
     async def restore_homeassistant(self) -> Awaitable[None]:
         """Restore Home Assistant Core configuration folder."""
         await self.sys_homeassistant.core.stop()
@@ -619,7 +724,7 @@ class Backup(CoreSysAttributes):
 
         return self.sys_create_task(_core_update())
 
-    def store_repositories(self):
+    def store_repositories(self) -> None:
         """Store repository list into backup."""
         self.repositories = self.sys_store.repository_urls
 

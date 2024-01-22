@@ -159,23 +159,36 @@ async def test_attach_existing_container(
     ):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
         await asyncio.sleep(0)
-        fire_event.assert_called_once_with(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent("homeassistant", expected, "abc123", 1),
-        )
+        assert [
+            event
+            for event in fire_event.call_args_list
+            if event.args[0] == BusEvent.DOCKER_CONTAINER_STATE_CHANGE
+        ] == [
+            call(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                DockerContainerStateEvent("homeassistant", expected, "abc123", 1),
+            )
+        ]
 
         fire_event.reset_mock()
         await coresys.homeassistant.core.instance.attach(
             AwesomeVersion("2022.7.3"), skip_state_event_if_down=True
         )
         await asyncio.sleep(0)
+        docker_events = [
+            event
+            for event in fire_event.call_args_list
+            if event.args[0] == BusEvent.DOCKER_CONTAINER_STATE_CHANGE
+        ]
         if fired_when_skip_down:
-            fire_event.assert_called_once_with(
-                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-                DockerContainerStateEvent("homeassistant", expected, "abc123", 1),
-            )
+            assert docker_events == [
+                call(
+                    BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                    DockerContainerStateEvent("homeassistant", expected, "abc123", 1),
+                )
+            ]
         else:
-            fire_event.assert_not_called()
+            assert not docker_events
 
 
 async def test_attach_container_failure(coresys: CoreSys):
@@ -195,7 +208,11 @@ async def test_attach_container_failure(coresys: CoreSys):
         type(coresys.bus), "fire_event"
     ) as fire_event:
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
-        fire_event.assert_not_called()
+        assert not [
+            event
+            for event in fire_event.call_args_list
+            if event.args[0] == BusEvent.DOCKER_CONTAINER_STATE_CHANGE
+        ]
         assert coresys.homeassistant.core.instance.meta_config == image_config
 
 

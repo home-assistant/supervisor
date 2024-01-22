@@ -544,13 +544,44 @@ class CoreSys:
 
         return self.loop.run_in_executor(None, funct, *args)
 
-    def create_task(self, coroutine: Coroutine) -> asyncio.Task:
-        """Create an async task."""
+    def _create_context(self) -> Context:
+        """Create a new context for a task."""
         context = copy_context()
         for callback in self._set_task_context:
             context = callback(context)
+        return context
 
-        return self.loop.create_task(coroutine, context=context)
+    def create_task(self, coroutine: Coroutine) -> asyncio.Task:
+        """Create an async task."""
+        return self.loop.create_task(coroutine, context=self._create_context())
+
+    def call_later(
+        self,
+        delay: float,
+        funct: Callable[..., Coroutine[Any, Any, T]],
+        *args: tuple[Any],
+        **kwargs: dict[str, Any],
+    ) -> asyncio.TimerHandle:
+        """Start a task after a delay."""
+        if kwargs:
+            funct = partial(funct, **kwargs)
+
+        return self.loop.call_later(delay, funct, *args, context=self._create_context())
+
+    def call_at(
+        self,
+        when: datetime,
+        funct: Callable[..., Coroutine[Any, Any, T]],
+        *args: tuple[Any],
+        **kwargs: dict[str, Any],
+    ) -> asyncio.TimerHandle:
+        """Start a task at the specified datetime."""
+        if kwargs:
+            funct = partial(funct, **kwargs)
+
+        return self.loop.call_at(
+            when.timestamp(), funct, *args, context=self._create_context()
+        )
 
 
 class CoreSysAttributes:
@@ -731,3 +762,23 @@ class CoreSysAttributes:
     def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
         """Create an async task."""
         return self.coresys.create_task(coroutine)
+
+    def sys_call_later(
+        self,
+        delay: float,
+        funct: Callable[..., Coroutine[Any, Any, T]],
+        *args: tuple[Any],
+        **kwargs: dict[str, Any],
+    ) -> asyncio.TimerHandle:
+        """Start a task after a delay."""
+        return self.coresys.call_later(delay, funct, *args, **kwargs)
+
+    def sys_call_at(
+        self,
+        when: datetime,
+        funct: Callable[..., Coroutine[Any, Any, T]],
+        *args: tuple[Any],
+        **kwargs: dict[str, Any],
+    ) -> asyncio.TimerHandle:
+        """Start a task at the specified datetime."""
+        return self.coresys.call_at(when, funct, *args, **kwargs)

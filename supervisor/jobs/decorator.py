@@ -6,6 +6,7 @@ from functools import wraps
 import logging
 from typing import Any
 
+from . import SupervisorJob
 from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -157,22 +158,23 @@ class Job(CoreSysAttributes):
             self._lock = asyncio.Semaphore()
 
         # Job groups
-        if self.limit in (
+        try:
+            is_job_group = obj.acquire and obj.release
+        except AttributeError:
+            is_job_group = False
+
+        if not is_job_group and self.limit in (
             JobExecutionLimit.GROUP_ONCE,
             JobExecutionLimit.GROUP_WAIT,
             JobExecutionLimit.GROUP_THROTTLE,
             JobExecutionLimit.GROUP_THROTTLE_WAIT,
             JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
         ):
-            try:
-                _ = obj.acquire and obj.release
-            except AttributeError:
-                raise RuntimeError(
-                    f"Job on {self.name} need to be a JobGroup to use group based limits!"
-                ) from None
+            raise RuntimeError(
+                f"Job on {self.name} need to be a JobGroup to use group based limits!"
+            ) from None
 
-            return obj
-        return None
+        return obj if is_job_group else None
 
     def _handle_job_condition_exception(self, err: JobConditionException) -> None:
         """Handle a job condition failure."""
@@ -187,7 +189,13 @@ class Job(CoreSysAttributes):
         self._method = method
 
         @wraps(method)
-        async def wrapper(obj: JobGroup | CoreSysAttributes, *args, **kwargs) -> Any:
+        async def wrapper(
+            obj: JobGroup | CoreSysAttributes,
+            *args,
+            _job__use_existing: SupervisorJob | None = None,
+            _job_override__cleanup: bool | None = None,
+            **kwargs,
+        ) -> Any:
             """Wrap the method.
 
             This method must be on an instance of CoreSysAttributes. If a JOB_GROUP limit
@@ -195,11 +203,18 @@ class Job(CoreSysAttributes):
             """
             job_group = self._post_init(obj)
             group_name: str | None = job_group.group_name if job_group else None
-            job = self.sys_jobs.new_job(
-                self.name,
-                job_group.job_reference if job_group else None,
-                internal=self._internal,
-            )
+            if _job__use_existing:
+                job = _job__use_existing
+                job.name = self.name
+                job.internal = self._internal
+                if job_group:
+                    job.reference = job_group.job_reference
+            else:
+                job = self.sys_jobs.new_job(
+                    self.name,
+                    job_group.job_reference if job_group else None,
+                    internal=self._internal,
+                )
 
             try:
                 # Handle condition
@@ -293,9 +308,11 @@ class Job(CoreSysAttributes):
                     except JobConditionException as err:
                         return self._handle_job_condition_exception(err)
                     except HassioError as err:
+                        job.capture_error(err)
                         raise err
                     except Exception as err:
                         _LOGGER.exception("Unhandled exception: %s", err)
+                        job.capture_error()
                         capture_exception(err)
                         raise JobException() from err
                     finally:
@@ -308,7 +325,12 @@ class Job(CoreSysAttributes):
 
             # Jobs that weren't started are always cleaned up. Also clean up done jobs if required
             finally:
-                if job.done is None or self.cleanup:
+                if (
+                    job.done is None
+                    or _job_override__cleanup
+                    or _job_override__cleanup is None
+                    and self.cleanup
+                ):
                     self.sys_jobs.remove_job(job)
 
         return wrapper

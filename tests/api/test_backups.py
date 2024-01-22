@@ -2,17 +2,22 @@
 
 import asyncio
 from pathlib import Path, PurePath
-from unittest.mock import ANY, AsyncMock, patch
+from typing import Any
+from unittest.mock import ANY, AsyncMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import AddonsError, HomeAssistantBackupError
+from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
+from supervisor.supervisor import Supervisor
 
 
 async def test_info(api_client, coresys: CoreSys, mock_full_backup: Backup):
@@ -199,3 +204,256 @@ async def test_api_backup_exclude_database(
 
         backup.assert_awaited_once_with(ANY, True)
         assert resp.status == 200
+
+
+async def _get_job_info(api_client: TestClient, job_id: str) -> dict[str, Any]:
+    """Test background job progress and block until it is done."""
+    resp = await api_client.get(f"/jobs/{job_id}")
+    assert resp.status == 200
+    result = await resp.json()
+    return result["data"]
+
+
+@pytest.mark.parametrize(
+    "backup_type,options",
+    [
+        ("full", {}),
+        (
+            "partial",
+            {
+                "homeassistant": True,
+                "folders": ["addons/local", "media", "share", "ssl"],
+            },
+        ),
+    ],
+)
+async def test_api_backup_restore_background(
+    api_client: TestClient,
+    coresys: CoreSys,
+    backup_type: str,
+    options: dict[str, Any],
+    tmp_supervisor_data: Path,
+    path_extern,
+):
+    """Test background option on backup/restore APIs."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2023.09.0")
+    (tmp_supervisor_data / "addons/local").mkdir(parents=True)
+
+    assert coresys.jobs.jobs == []
+
+    resp = await api_client.post(
+        f"/backups/new/{backup_type}",
+        json={"background": True, "name": f"{backup_type} backup"} | options,
+    )
+    assert resp.status == 200
+    result = await resp.json()
+    job_id = result["data"]["job_id"]
+    assert (await _get_job_info(api_client, job_id))["done"] is False
+
+    while not (job := (await _get_job_info(api_client, job_id)))["done"]:
+        await asyncio.sleep(0)
+
+    assert job["name"] == f"backup_manager_{backup_type}_backup"
+    assert (backup_slug := job["reference"])
+    assert job["child_jobs"][0]["name"] == "backup_store_homeassistant"
+    assert job["child_jobs"][0]["reference"] == backup_slug
+    assert job["child_jobs"][1]["name"] == "backup_store_folders"
+    assert job["child_jobs"][1]["reference"] == backup_slug
+    assert {j["reference"] for j in job["child_jobs"][1]["child_jobs"]} == {
+        "addons/local",
+        "media",
+        "share",
+        "ssl",
+    }
+
+    with patch.object(HomeAssistantCore, "start"):
+        resp = await api_client.post(
+            f"/backups/{backup_slug}/restore/{backup_type}",
+            json={"background": True} | options,
+        )
+        assert resp.status == 200
+        result = await resp.json()
+        job_id = result["data"]["job_id"]
+        assert (await _get_job_info(api_client, job_id))["done"] is False
+
+        while not (job := (await _get_job_info(api_client, job_id)))["done"]:
+            await asyncio.sleep(0)
+
+    assert job["name"] == f"backup_manager_{backup_type}_restore"
+    assert job["reference"] == backup_slug
+    assert job["child_jobs"][0]["name"] == "backup_restore_folders"
+    assert job["child_jobs"][0]["reference"] == backup_slug
+    assert {j["reference"] for j in job["child_jobs"][0]["child_jobs"]} == {
+        "addons/local",
+        "media",
+        "share",
+        "ssl",
+    }
+    assert job["child_jobs"][1]["name"] == "backup_restore_homeassistant"
+    assert job["child_jobs"][1]["reference"] == backup_slug
+
+    if backup_type == "full":
+        assert job["child_jobs"][2]["name"] == "backup_remove_delta_addons"
+        assert job["child_jobs"][2]["reference"] == backup_slug
+
+
+@pytest.mark.parametrize(
+    "backup_type,options",
+    [
+        ("full", {}),
+        (
+            "partial",
+            {
+                "homeassistant": True,
+                "folders": ["addons/local", "media", "share", "ssl"],
+                "addons": ["local_ssh"],
+            },
+        ),
+    ],
+)
+async def test_api_backup_errors(
+    api_client: TestClient,
+    coresys: CoreSys,
+    backup_type: str,
+    options: dict[str, Any],
+    tmp_supervisor_data: Path,
+    install_addon_ssh,
+    path_extern,
+):
+    """Test error reporting in backup job."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2023.09.0")
+    (tmp_supervisor_data / "addons/local").mkdir(parents=True)
+
+    assert coresys.jobs.jobs == []
+
+    with patch.object(Addon, "backup", side_effect=AddonsError("Backup error")):
+        resp = await api_client.post(
+            f"/backups/new/{backup_type}",
+            json={"name": f"{backup_type} backup"} | options,
+        )
+
+    assert resp.status == 200
+    result = await resp.json()
+    job_id = result["data"]["job_id"]
+    slug = result["data"]["slug"]
+    job = await _get_job_info(api_client, job_id)
+
+    assert job["name"] == f"backup_manager_{backup_type}_backup"
+    assert job["done"] is True
+    assert job["reference"] == slug
+    assert job["errors"] == []
+    assert job["child_jobs"][0]["name"] == "backup_store_addons"
+    assert job["child_jobs"][0]["reference"] == slug
+    assert job["child_jobs"][0]["child_jobs"][0]["name"] == "backup_addon_save"
+    assert job["child_jobs"][0]["child_jobs"][0]["reference"] == "local_ssh"
+    assert job["child_jobs"][0]["child_jobs"][0]["errors"] == [
+        {"type": "BackupError", "message": "Can't create backup for local_ssh"}
+    ]
+    assert job["child_jobs"][1]["name"] == "backup_store_homeassistant"
+    assert job["child_jobs"][1]["reference"] == slug
+    assert job["child_jobs"][2]["name"] == "backup_store_folders"
+    assert job["child_jobs"][2]["reference"] == slug
+    assert {j["reference"] for j in job["child_jobs"][2]["child_jobs"]} == {
+        "addons/local",
+        "media",
+        "share",
+        "ssl",
+    }
+
+    with patch.object(
+        HomeAssistant, "backup", side_effect=HomeAssistantBackupError("Backup error")
+    ), patch.object(Addon, "backup"):
+        resp = await api_client.post(
+            f"/backups/new/{backup_type}",
+            json={"name": f"{backup_type} backup"} | options,
+        )
+
+    assert resp.status == 400
+    result = await resp.json()
+    job_id = result["job_id"]
+    job = await _get_job_info(api_client, job_id)
+
+    assert job["name"] == f"backup_manager_{backup_type}_backup"
+    assert job["done"] is True
+    assert job["errors"] == (
+        err := [{"type": "HomeAssistantBackupError", "message": "Backup error"}]
+    )
+    assert job["child_jobs"][0]["name"] == "backup_store_addons"
+    assert job["child_jobs"][1]["name"] == "backup_store_homeassistant"
+    assert job["child_jobs"][1]["errors"] == err
+    assert len(job["child_jobs"]) == 2
+
+
+async def test_backup_immediate_errors(api_client: TestClient, coresys: CoreSys):
+    """Test backup errors that return immediately even in background mode."""
+    coresys.core.state = CoreState.FREEZE
+    resp = await api_client.post(
+        "/backups/new/full",
+        json={"name": "Test", "background": True},
+    )
+    assert resp.status == 400
+    assert "freeze" in (await resp.json())["message"]
+
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 0.5
+    resp = await api_client.post(
+        "/backups/new/partial",
+        json={"name": "Test", "homeassistant": True, "background": True},
+    )
+    assert resp.status == 400
+    assert "not enough free space" in (await resp.json())["message"]
+
+
+async def test_restore_immediate_errors(
+    request: pytest.FixtureRequest,
+    api_client: TestClient,
+    coresys: CoreSys,
+    mock_partial_backup: Backup,
+):
+    """Test restore errors that return immediately even in background mode."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    resp = await api_client.post(
+        f"/backups/{mock_partial_backup.slug}/restore/full", json={"background": True}
+    )
+    assert resp.status == 400
+    assert "only a partial backup" in (await resp.json())["message"]
+
+    with patch.object(
+        Backup,
+        "supervisor_version",
+        new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+    ), patch.object(
+        Supervisor,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2023.12.0")),
+    ):
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"background": True, "homeassistant": True},
+        )
+    assert resp.status == 400
+    assert "Must update supervisor" in (await resp.json())["message"]
+
+    with patch.object(
+        Backup, "protected", new=PropertyMock(return_value=True)
+    ), patch.object(Backup, "set_password", return_value=False):
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"background": True, "homeassistant": True},
+        )
+    assert resp.status == 400
+    assert "Invalid password" in (await resp.json())["message"]
+
+    with patch.object(Backup, "homeassistant", new=PropertyMock(return_value=None)):
+        resp = await api_client.post(
+            f"/backups/{mock_partial_backup.slug}/restore/partial",
+            json={"background": True, "homeassistant": True},
+        )
+    assert resp.status == 400
+    assert "No Home Assistant" in (await resp.json())["message"]

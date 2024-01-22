@@ -15,7 +15,7 @@ from ..const import (
     CoreState,
 )
 from ..dbus.const import UnitActiveState
-from ..exceptions import AddonsError, BackupError, BackupInvalidError, BackupJobError
+from ..exceptions import BackupError, BackupInvalidError, BackupJobError
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -139,8 +139,8 @@ class BackupManager(FileConfiguration, JobGroup):
         tar_file = Path(self._get_base_path(location), f"{slug}.tar")
 
         # init object
-        backup = Backup(self.coresys, tar_file)
-        backup.new(slug, name, date_str, sys_type, password, compressed)
+        backup = Backup(self.coresys, tar_file, slug)
+        backup.new(name, date_str, sys_type, password, compressed)
 
         # Add backup ID to job
         self.sys_jobs.current.reference = backup.slug
@@ -165,9 +165,11 @@ class BackupManager(FileConfiguration, JobGroup):
 
         async def _load_backup(tar_file):
             """Load the backup."""
-            backup = Backup(self.coresys, tar_file)
+            backup = Backup(self.coresys, tar_file, "temp")
             if await backup.load():
-                self._backups[backup.slug] = backup
+                self._backups[backup.slug] = Backup(
+                    self.coresys, tar_file, backup.slug, backup.data
+                )
 
         tasks = [
             self.sys_create_task(_load_backup(tar_file))
@@ -199,7 +201,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     async def import_backup(self, tar_file: Path) -> Backup | None:
         """Check backup tarfile and import it."""
-        backup = Backup(self.coresys, tar_file)
+        backup = Backup(self.coresys, tar_file, "temp")
 
         # Read meta data
         if not await backup.load():
@@ -222,7 +224,7 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
 
         # Load new backup
-        backup = Backup(self.coresys, tar_origin)
+        backup = Backup(self.coresys, tar_origin, backup.slug, backup.data)
         if not await backup.load():
             return None
         _LOGGER.info("Successfully imported %s", backup.slug)
@@ -269,9 +271,15 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
+        except BackupError as err:
+            self.sys_jobs.current.capture_error(err)
+            return None
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Backup %s error", backup.slug)
             capture_exception(err)
+            self.sys_jobs.current.capture_error(
+                BackupError(f"Backup {backup.slug} error, see supervisor logs")
+            )
             return None
         else:
             self._backups[backup.slug] = backup
@@ -290,6 +298,7 @@ class BackupManager(FileConfiguration, JobGroup):
         conditions=[JobCondition.RUNNING],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        cleanup=False,
     )
     async def do_backup_full(
         self,
@@ -326,6 +335,7 @@ class BackupManager(FileConfiguration, JobGroup):
         conditions=[JobCondition.RUNNING],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        cleanup=False,
     )
     async def do_backup_partial(
         self,
@@ -410,17 +420,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 # Delete delta add-ons
                 if replace:
                     self._change_stage(RestoreJobStage.REMOVE_DELTA_ADDONS, backup)
-                    for addon in self.sys_addons.installed:
-                        if addon.slug in backup.addon_list:
-                            continue
-
-                        # Remove Add-on because it's not a part of the new env
-                        # Do it sequential avoid issue on slow IO
-                        try:
-                            await self.sys_addons.uninstall(addon.slug)
-                        except AddonsError:
-                            _LOGGER.warning("Can't uninstall Add-on %s", addon.slug)
-                            success = False
+                    success = success and await backup.remove_delta_addons()
 
                 if addon_list:
                     self._change_stage(RestoreJobStage.ADDON_REPOSITORIES, backup)
@@ -444,7 +444,7 @@ class BackupManager(FileConfiguration, JobGroup):
             _LOGGER.exception("Restore %s error", backup.slug)
             capture_exception(err)
             raise BackupError(
-                f"Restore {backup.slug} error, check logs for details"
+                f"Restore {backup.slug} error, see supervisor logs"
             ) from err
         else:
             if addon_start_tasks:
@@ -463,12 +463,16 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 # Do we need start Home Assistant Core?
                 if not await self.sys_homeassistant.core.is_running():
-                    await self.sys_homeassistant.core.start()
+                    await self.sys_homeassistant.core.start(
+                        _job_override__cleanup=False
+                    )
 
                 # Check If we can access to API / otherwise restart
                 if not await self.sys_homeassistant.api.check_api_state():
                     _LOGGER.warning("Need restart HomeAssistant for API")
-                    await self.sys_homeassistant.core.restart()
+                    await self.sys_homeassistant.core.restart(
+                        _job_override__cleanup=False
+                    )
 
     @Job(
         name="backup_manager_full_restore",
@@ -481,6 +485,7 @@ class BackupManager(FileConfiguration, JobGroup):
         ],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        cleanup=False,
     )
     async def do_restore_full(
         self, backup: Backup, password: str | None = None
@@ -534,6 +539,7 @@ class BackupManager(FileConfiguration, JobGroup):
         ],
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        cleanup=False,
     )
     async def do_restore_partial(
         self,

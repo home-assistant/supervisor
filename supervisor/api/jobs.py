@@ -6,6 +6,7 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..coresys import CoreSysAttributes
+from ..exceptions import APIError
 from ..jobs import SupervisorJob
 from ..jobs.const import ATTR_IGNORE_CONDITIONS, JobCondition
 from .const import ATTR_JOBS
@@ -21,7 +22,7 @@ SCHEMA_OPTIONS = vol.Schema(
 class APIJobs(CoreSysAttributes):
     """Handle RESTful API for OS functions."""
 
-    def _list_jobs(self) -> list[dict[str, Any]]:
+    def _list_jobs(self, start: SupervisorJob | None = None) -> list[dict[str, Any]]:
         """Return current job tree."""
         jobs_by_parent: dict[str | None, list[SupervisorJob]] = {}
         for job in self.sys_jobs.jobs:
@@ -34,9 +35,11 @@ class APIJobs(CoreSysAttributes):
                 jobs_by_parent[job.parent_id].append(job)
 
         job_list: list[dict[str, Any]] = []
-        queue: list[tuple[list[dict[str, Any]], SupervisorJob]] = [
-            (job_list, job) for job in jobs_by_parent.get(None, [])
-        ]
+        queue: list[tuple[list[dict[str, Any]], SupervisorJob]] = (
+            [(job_list, start)]
+            if start
+            else [(job_list, job) for job in jobs_by_parent.get(None, [])]
+        )
 
         while queue:
             (current_list, current_job) = queue.pop(0)
@@ -78,3 +81,19 @@ class APIJobs(CoreSysAttributes):
     async def reset(self, request: web.Request) -> None:
         """Reset options for JobManager."""
         self.sys_jobs.reset_data()
+
+    @api_process
+    async def job_info(self, request: web.Request) -> dict[str, Any]:
+        """Get details of a job by ID."""
+        job = self.sys_jobs.get_job(request.match_info.get("uuid"))
+        return self._list_jobs(job)[0]
+
+    @api_process
+    async def remove_job(self, request: web.Request) -> None:
+        """Remove a completed job."""
+        job = self.sys_jobs.get_job(request.match_info.get("uuid"))
+
+        if not job.done:
+            raise APIError(f"Job {job.uuid} is not done!")
+
+        self.sys_jobs.remove_job(job)

@@ -219,6 +219,8 @@ class RestAPI(CoreSysAttributes):
                 web.get("/jobs/info", api_jobs.info),
                 web.post("/jobs/options", api_jobs.options),
                 web.post("/jobs/reset", api_jobs.reset),
+                web.get("/jobs/{uuid}", api_jobs.job_info),
+                web.delete("/jobs/{uuid}", api_jobs.remove_job),
             ]
         )
 
