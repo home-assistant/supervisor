@@ -248,7 +248,7 @@ class APIBackups(CoreSysAttributes):
     async def backup_full(self, request):
         """Create full backup."""
         body = await api_validate(SCHEMA_BACKUP_FULL, request)
-        background = body[ATTR_BACKGROUND]
+        background = body.pop(ATTR_BACKGROUND)
         backup_task, job_id = await self._background_backup_task(
             self.sys_backups.do_backup_full, **self._location_to_mount(body)
         )
@@ -268,7 +268,7 @@ class APIBackups(CoreSysAttributes):
     async def backup_partial(self, request):
         """Create a partial backup."""
         body = await api_validate(SCHEMA_BACKUP_PARTIAL, request)
-        background = body[ATTR_BACKGROUND]
+        background = body.pop(ATTR_BACKGROUND)
         backup_task, job_id = await self._background_backup_task(
             self.sys_backups.do_backup_partial, **self._location_to_mount(body)
         )
@@ -289,7 +289,7 @@ class APIBackups(CoreSysAttributes):
         """Full restore of a backup."""
         backup = self._extract_slug(request)
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
-        background = body[ATTR_BACKGROUND]
+        background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await self._background_backup_task(
             self.sys_backups.do_restore_full, backup, **body
         )
@@ -306,7 +306,7 @@ class APIBackups(CoreSysAttributes):
         """Partial restore a backup."""
         backup = self._extract_slug(request)
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
-        background = body[ATTR_BACKGROUND]
+        background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await self._background_backup_task(
             self.sys_backups.do_restore_partial, backup, **body
         )
