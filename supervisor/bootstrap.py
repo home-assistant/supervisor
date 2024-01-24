@@ -115,7 +115,7 @@ async def initialize_coresys() -> CoreSys:
         _LOGGER.warning(
             "Missing SUPERVISOR_MACHINE environment variable. Fallback to deprecated extraction!"
         )
-    _LOGGER.info("Seting up coresys for machine: %s", coresys.machine)
+    _LOGGER.info("Setting up coresys for machine: %s", coresys.machine)
 
     return coresys
 
