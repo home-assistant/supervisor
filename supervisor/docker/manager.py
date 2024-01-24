@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Final
 
 import attr
-from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
+from awesomeversion import AwesomeVersion
 from docker import errors as docker_errors
 from docker.api.client import APIClient
 from docker.client import DockerClient
@@ -35,8 +35,6 @@ from .monitor import DockerMonitor
 from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-MIN_SUPPORTED_DOCKER: Final = AwesomeVersion("20.10.1")
 DOCKER_NETWORK_HOST: Final = "host"
 
 
@@ -66,14 +64,6 @@ class DockerInfo:
             data.get("LoggingDriver", "unknown"),
             data.get("CgroupVersion", "1"),
         )
-
-    @property
-    def supported_version(self) -> bool:
-        """Return true, if docker version is supported."""
-        try:
-            return self.version >= MIN_SUPPORTED_DOCKER
-        except AwesomeVersionCompareException:
-            return False
 
     @property
     def support_cpu_realtime(self) -> bool:
