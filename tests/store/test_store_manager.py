@@ -243,3 +243,18 @@ async def test_reload(coresys: CoreSys):
         await coresys.store.reload()
 
         assert git_pull.call_count == 3
+
+
+async def test_addon_version_timestamp(coresys: CoreSys, install_addon_example: Addon):
+    """Test timestamp tracked for addon's version."""
+    # When unset, version timestamp set to utcnow on store load
+    assert (timestamp := install_addon_example.latest_version_timestamp)
+
+    # Reload of the store does not change timestamp unless version changes
+    await coresys.store.reload()
+    assert timestamp == install_addon_example.latest_version_timestamp
+
+    # If a new version is seen processing repo, reset to utc now
+    install_addon_example.data_store["version"] = "1.1.0"
+    await coresys.store.reload()
+    assert timestamp < install_addon_example.latest_version_timestamp
