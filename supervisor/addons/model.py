@@ -90,6 +90,7 @@ from ..utils import version_is_new_enough
 from .configuration import FolderMapping
 from .const import (
     ATTR_BACKUP,
+    ATTR_BREAKING_VERSIONS,
     ATTR_CODENOTARY,
     ATTR_PATH,
     ATTR_READ_ONLY,
@@ -619,6 +620,11 @@ class AddonModel(JobGroup, ABC):
     def codenotary(self) -> str | None:
         """Return Signer email address for CAS."""
         return self.data.get(ATTR_CODENOTARY)
+
+    @property
+    def breaking_versions(self) -> list[AwesomeVersion]:
+        """Return breaking versions of addon."""
+        return self.data[ATTR_BREAKING_VERSIONS]
 
     def validate_availability(self) -> None:
         """Validate if addon is available for current system."""

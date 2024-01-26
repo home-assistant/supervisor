@@ -15,6 +15,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Final
 
 import aiohttp
+from awesomeversion import AwesomeVersionCompareException
 from deepmerge import Merger
 from securetar import atomic_contents_add, secure_path
 import voluptuous as vol
@@ -278,6 +279,28 @@ class Addon(AddonModel):
     def auto_update(self, value: bool) -> None:
         """Set auto update."""
         self.persist[ATTR_AUTO_UPDATE] = value
+
+    @property
+    def auto_update_available(self) -> bool:
+        """Return if it is safe to auto update addon."""
+        if not self.need_update or not self.auto_update:
+            return False
+
+        for version in self.breaking_versions:
+            try:
+                # Must update to latest so if true update crosses a breaking version
+                if self.version < version:
+                    return False
+            except AwesomeVersionCompareException:
+                # If version scheme changed, we may get compare exception
+                # If latest version >= breaking version then assume update will
+                # cross it as the version scheme changes
+                # If both versions have compare exception, ignore as its in the past
+                with suppress(AwesomeVersionCompareException):
+                    if self.latest_version >= version:
+                        return False
+
+        return True
 
     @property
     def watchdog(self) -> bool:

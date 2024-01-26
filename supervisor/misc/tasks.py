@@ -95,6 +95,14 @@ class Tasks(CoreSysAttributes):
             # Evaluate available updates
             if not addon.need_update:
                 continue
+            if not addon.auto_update_available:
+                _LOGGER.debug(
+                    "Not updating add-on %s from %s to %s as that would cross a known breaking version",
+                    addon.slug,
+                    addon.version,
+                    addon.latest_version,
+                )
+                continue
             if not addon.test_update_schema():
                 _LOGGER.warning(
                     "Add-on %s will be ignored, schema tests failed", addon.slug

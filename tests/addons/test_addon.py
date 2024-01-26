@@ -6,6 +6,7 @@ import errno
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from awesomeversion import AwesomeVersion
 from docker.errors import DockerException, NotFound
 import pytest
 from securetar import SecureTarFile
@@ -721,3 +722,29 @@ def test_addon_pulse_error(
 
         assert "can't write pulse/client.config" in caplog.text
         assert coresys.core.healthy is False
+
+
+def test_auto_update_available(coresys: CoreSys, install_addon_example: Addon):
+    """Test auto update availability based on versions."""
+    assert install_addon_example.auto_update is False
+    assert install_addon_example.need_update is False
+    assert install_addon_example.auto_update_available is False
+
+    with patch.object(
+        Addon, "version", new=PropertyMock(return_value=AwesomeVersion("1.0"))
+    ):
+        assert install_addon_example.need_update is True
+        assert install_addon_example.auto_update_available is False
+
+        install_addon_example.auto_update = True
+        assert install_addon_example.auto_update_available is True
+
+    with patch.object(
+        Addon, "version", new=PropertyMock(return_value=AwesomeVersion("0.9"))
+    ):
+        assert install_addon_example.auto_update_available is False
+
+    with patch.object(
+        Addon, "version", new=PropertyMock(return_value=AwesomeVersion("test"))
+    ):
+        assert install_addon_example.auto_update_available is False

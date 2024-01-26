@@ -20,3 +20,6 @@ schema:
   message: "str?"
 ingress: true
 ingress_port: 0
+breaking_versions:
+  - test
+  - 1.0

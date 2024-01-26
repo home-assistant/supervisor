@@ -112,6 +112,7 @@ from ..validate import (
 )
 from .const import (
     ATTR_BACKUP,
+    ATTR_BREAKING_VERSIONS,
     ATTR_CODENOTARY,
     ATTR_PATH,
     ATTR_READ_ONLY,
@@ -422,6 +423,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
             vol.Coerce(int), vol.Range(min=10, max=300)
         ),
         vol.Optional(ATTR_JOURNALD, default=False): vol.Boolean(),
+        vol.Optional(ATTR_BREAKING_VERSIONS, default=list): [version_tag],
     },
     extra=vol.REMOVE_EXTRA,
 )
