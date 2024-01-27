@@ -5,8 +5,13 @@ import logging
 from pathlib import Path
 import sys
 
-from supervisor import bootstrap
-from supervisor.utils.logging import activate_log_queue_handler
+import zlib_fast
+
+# Enable fast zlib before importing supervisor
+zlib_fast.enable()
+
+from supervisor import bootstrap  # noqa: E402
+from supervisor.utils.logging import activate_log_queue_handler  # noqa: E402
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
