@@ -27,3 +27,4 @@ setuptools==69.0.3
 voluptuous==0.14.1
 dbus-fast==2.21.1
 typing_extensions==4.9.0
+zlib-fast==0.1.0
