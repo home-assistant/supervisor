@@ -506,8 +506,8 @@ class BackupManager(FileConfiguration, JobGroup):
 
         if backup.supervisor_version > self.sys_supervisor.version:
             raise BackupInvalidError(
-                f"Backup was made on supervisor version {backup.supervisor_version}, "
-                f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
+                f"Backup was created with newer Supervisor than the one currently installed ({self.sys_supervisor.version})."
+                f"Update Supervisor to at least {backup.supervisor_version}, then try restore the backup again.",
                 _LOGGER.error,
             )
 
@@ -573,8 +573,8 @@ class BackupManager(FileConfiguration, JobGroup):
 
         if backup.supervisor_version > self.sys_supervisor.version:
             raise BackupInvalidError(
-                f"Backup was made on supervisor version {backup.supervisor_version}, "
-                f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
+                f"Backup was created with newer Supervisor than the one currently installed ({self.sys_supervisor.version})."
+                f"Update Supervisor to at least {backup.supervisor_version}, then try restore the backup again.",
                 _LOGGER.error,
             )
 
