@@ -14,6 +14,7 @@ from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
+from ..utils.json import json_dumps
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -145,7 +146,8 @@ class APIProxy(CoreSysAttributes):
                 {
                     "type": "auth",
                     "access_token": self.sys_homeassistant.api.access_token,
-                }
+                },
+                dumps=json_dumps,
             )
 
             data = await client.receive_json()
@@ -202,7 +204,8 @@ class APIProxy(CoreSysAttributes):
         # handle authentication
         try:
             await server.send_json(
-                {"type": "auth_required", "ha_version": self.sys_homeassistant.version}
+                {"type": "auth_required", "ha_version": self.sys_homeassistant.version},
+                dumps=json_dumps,
             )
 
             # Check API access
@@ -215,14 +218,16 @@ class APIProxy(CoreSysAttributes):
             if not addon or not addon.access_homeassistant_api:
                 _LOGGER.warning("Unauthorized WebSocket access!")
                 await server.send_json(
-                    {"type": "auth_invalid", "message": "Invalid access"}
+                    {"type": "auth_invalid", "message": "Invalid access"},
+                    dumps=json_dumps,
                 )
                 return server
 
             _LOGGER.info("WebSocket access from %s", addon.slug)
 
             await server.send_json(
-                {"type": "auth_ok", "ha_version": self.sys_homeassistant.version}
+                {"type": "auth_ok", "ha_version": self.sys_homeassistant.version},
+                dumps=json_dumps,
             )
         except (RuntimeError, ValueError) as err:
             _LOGGER.error("Can't initialize handshake: %s", err)

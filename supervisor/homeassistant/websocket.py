@@ -26,6 +26,7 @@ from ..exceptions import (
     HomeAssistantWSError,
     HomeAssistantWSNotSupported,
 )
+from ..utils.json import json_dumps
 from .const import CLOSING_STATES, WSEvent, WSType
 
 MIN_VERSION = {
@@ -74,7 +75,7 @@ class WSClient:
         self._message_id += 1
         _LOGGER.debug("Sending: %s", message)
         try:
-            await self._client.send_json(message)
+            await self._client.send_json(message, dumps=json_dumps)
         except ConnectionError as err:
             raise HomeAssistantWSConnectionError(err) from err
 
@@ -85,7 +86,7 @@ class WSClient:
         self._futures[message["id"]] = self._loop.create_future()
         _LOGGER.debug("Sending: %s", message)
         try:
-            await self._client.send_json(message)
+            await self._client.send_json(message, dumps=json_dumps)
         except ConnectionError as err:
             raise HomeAssistantWSConnectionError(err) from err
 
@@ -163,7 +164,9 @@ class WSClient:
 
         hello_message = await client.receive_json()
 
-        await client.send_json({ATTR_TYPE: WSType.AUTH, ATTR_ACCESS_TOKEN: token})
+        await client.send_json(
+            {ATTR_TYPE: WSType.AUTH, ATTR_ACCESS_TOKEN: token}, dumps=json_dumps
+        )
 
         auth_ok_message = await client.receive_json()
 
