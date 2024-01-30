@@ -175,7 +175,7 @@ class DockerHomeAssistant(DockerInterface):
                 ENV_TOKEN: self.sys_homeassistant.supervisor_token,
                 ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
             },
-            tmpfs={"/tmp": ""},
+            tmpfs={"/tmp": ""},  # noqa: S108
             oom_score_adj=-300,
         )
         _LOGGER.info(

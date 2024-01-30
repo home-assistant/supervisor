@@ -5,8 +5,6 @@ from contextlib import suppress
 from datetime import timedelta
 import logging
 
-import async_timeout
-
 from .const import (
     ATTR_STARTUP,
     RUN_SUPERVISOR_STATE,
@@ -298,7 +296,7 @@ class Core(CoreSysAttributes):
 
         # Stage 1
         try:
-            async with async_timeout.timeout(10):
+            async with asyncio.timeout(10):
                 await asyncio.wait(
                     [
                         self.sys_create_task(coro)
@@ -314,7 +312,7 @@ class Core(CoreSysAttributes):
 
         # Stage 2
         try:
-            async with async_timeout.timeout(10):
+            async with asyncio.timeout(10):
                 await asyncio.wait(
                     [
                         self.sys_create_task(coro)

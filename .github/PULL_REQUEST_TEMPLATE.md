@@ -52,7 +52,7 @@
 - [ ] Local tests pass. **Your PR cannot be merged unless tests pass**
 - [ ] There is no commented out code in this PR.
 - [ ] I have followed the [development checklist][dev-checklist]
-- [ ] The code has been formatted using Black (`black --fast supervisor tests`)
+- [ ] The code has been formatted using Ruff (`ruff format supervisor tests`)
 - [ ] Tests have been added to verify that the new code works.
 
 If API endpoints of add-on configuration are added/changed:

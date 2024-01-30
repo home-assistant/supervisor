@@ -39,9 +39,7 @@ async def test_update_fails_if_out_of_date(coresys: CoreSys):
         type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
     ), patch.object(
         type(coresys.plugins.audio), "update", side_effect=AudioUpdateError
-    ), pytest.raises(
-        HomeAssistantJobError
-    ):
+    ), pytest.raises(HomeAssistantJobError):
         await coresys.homeassistant.core.update()
 
 
@@ -56,9 +54,7 @@ async def test_install_landingpage_docker_error(
         Updater, "image_homeassistant", new=PropertyMock(return_value="homeassistant")
     ), patch.object(
         DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
-    ), patch(
-        "supervisor.homeassistant.core.asyncio.sleep"
-    ) as sleep, patch(
+    ), patch("supervisor.homeassistant.core.asyncio.sleep") as sleep, patch(
         "supervisor.security.module.cas_validate",
         side_effect=[CodeNotaryError, None],
     ):
@@ -81,9 +77,7 @@ async def test_install_landingpage_other_error(
         Updater, "image_homeassistant", new=PropertyMock(return_value="homeassistant")
     ), patch.object(
         DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
-    ), patch(
-        "supervisor.homeassistant.core.asyncio.sleep"
-    ) as sleep:
+    ), patch("supervisor.homeassistant.core.asyncio.sleep") as sleep:
         await coresys.homeassistant.core.install_landingpage()
         sleep.assert_awaited_once_with(30)
 
@@ -104,9 +98,7 @@ async def test_install_docker_error(
         Updater, "version_homeassistant", new=PropertyMock(return_value="2022.7.3")
     ), patch.object(
         DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
-    ), patch(
-        "supervisor.homeassistant.core.asyncio.sleep"
-    ) as sleep, patch(
+    ), patch("supervisor.homeassistant.core.asyncio.sleep") as sleep, patch(
         "supervisor.security.module.cas_validate",
         side_effect=[CodeNotaryError, None],
     ):
@@ -131,9 +123,7 @@ async def test_install_other_error(
         Updater, "version_homeassistant", new=PropertyMock(return_value="2022.7.3")
     ), patch.object(
         DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
-    ), patch(
-        "supervisor.homeassistant.core.asyncio.sleep"
-    ) as sleep:
+    ), patch("supervisor.homeassistant.core.asyncio.sleep") as sleep:
         await coresys.homeassistant.core.install()
         sleep.assert_awaited_once_with(30)
 

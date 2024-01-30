@@ -806,6 +806,7 @@ async def test_backup_with_healthcheck(
     assert install_addon_ssh.state == AddonState.STARTUP
 
     state_changes: list[AddonState] = []
+    _container_events_task: asyncio.Task | None = None
 
     async def container_events():
         nonlocal state_changes
@@ -841,7 +842,8 @@ async def test_backup_with_healthcheck(
         )
 
     async def container_events_task(*args, **kwargs):
-        asyncio.create_task(container_events())
+        nonlocal _container_events_task
+        _container_events_task = asyncio.create_task(container_events())
 
     with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
         AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
@@ -854,6 +856,8 @@ async def test_backup_with_healthcheck(
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
     assert coresys.core.state == CoreState.RUNNING
+
+    await _container_events_task
 
 
 async def test_restore_with_healthcheck(
@@ -877,6 +881,7 @@ async def test_restore_with_healthcheck(
         homeassistant=False, addons=["local_ssh"]
     )
     state_changes: list[AddonState] = []
+    _container_events_task: asyncio.Task | None = None
 
     async def container_events():
         nonlocal state_changes
@@ -911,7 +916,8 @@ async def test_restore_with_healthcheck(
         )
 
     async def container_events_task(*args, **kwargs):
-        asyncio.create_task(container_events())
+        nonlocal _container_events_task
+        _container_events_task = asyncio.create_task(container_events())
 
     with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
         DockerAddon, "is_running", return_value=False
@@ -923,6 +929,8 @@ async def test_restore_with_healthcheck(
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
     assert coresys.core.state == CoreState.RUNNING
+
+    await _container_events_task
 
 
 def _make_backup_message_for_assert(
@@ -1077,9 +1085,7 @@ async def test_restore_progress(
         HomeAssistant, "restore"
     ), patch.object(HomeAssistantCore, "update"), patch.object(
         AddonModel, "_validate_availability"
-    ), patch.object(
-        AddonModel, "with_ingress", new=PropertyMock(return_value=False)
-    ):
+    ), patch.object(AddonModel, "with_ingress", new=PropertyMock(return_value=False)):
         await coresys.backups.do_restore_full(full_backup)
     await asyncio.sleep(0)
 
@@ -1382,9 +1388,7 @@ async def test_restore_only_reloads_ingress_on_change(
         HomeAssistantCore, "is_running", new=mock_is_running
     ), patch.object(AddonModel, "_validate_availability"), patch.object(
         DockerAddon, "attach"
-    ), patch.object(
-        HomeAssistantAPI, "make_request"
-    ) as make_request:
+    ), patch.object(HomeAssistantAPI, "make_request") as make_request:
         make_request.return_value.__aenter__.return_value.status = 200
 
         # Has ingress before and after - not called

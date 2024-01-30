@@ -1,6 +1,6 @@
 """Test TimeDate dbus interface."""
 # pylint: disable=import-error
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
@@ -29,9 +29,7 @@ async def test_timedate_info(
 
     await timedate.connect(dbus_session_bus)
 
-    assert timedate.dt_utc == datetime(
-        2021, 5, 19, 8, 36, 54, 405718, tzinfo=timezone.utc
-    )
+    assert timedate.dt_utc == datetime(2021, 5, 19, 8, 36, 54, 405718, tzinfo=UTC)
     assert timedate.ntp is True
 
     assert timedate.dt_utc.isoformat() == "2021-05-19T08:36:54.405718+00:00"
@@ -53,7 +51,7 @@ async def test_dbus_settime(
     timedate_service.SetTime.calls.clear()
     timedate = TimeDate()
 
-    test_dt = datetime(2021, 5, 19, 8, 36, 54, 405718, tzinfo=timezone.utc)
+    test_dt = datetime(2021, 5, 19, 8, 36, 54, 405718, tzinfo=UTC)
 
     with pytest.raises(DBusNotConnectedError):
         await timedate.set_time(test_dt)

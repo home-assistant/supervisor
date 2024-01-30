@@ -58,9 +58,23 @@
       "problemMatcher": []
     },
     {
-      "label": "Flake8",
+      "label": "Ruff Check",
       "type": "shell",
-      "command": "flake8 supervisor tests",
+      "command": "ruff check --fix supervisor tests",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Ruff Format",
+      "type": "shell",
+      "command": "ruff format supervisor tests",
       "group": {
         "kind": "test",
         "isDefault": true

@@ -98,9 +98,7 @@ async def docker() -> DockerAPI:
     ), patch(
         "supervisor.docker.manager.DockerConfig",
         return_value=MagicMock(),
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.unload"
-    ):
+    ), patch("supervisor.docker.manager.DockerAPI.unload"):
         docker_obj = DockerAPI(MagicMock())
         with patch("supervisor.docker.monitor.DockerMonitor.load"):
             await docker_obj.load()
@@ -184,7 +182,7 @@ async def network_manager(
 
 @pytest.fixture
 async def network_manager_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> NetworkManagerService:
     """Return Network Manager service mock."""
     yield network_manager_services["network_manager"]
@@ -192,7 +190,7 @@ async def network_manager_service(
 
 @pytest.fixture(name="connection_settings_service")
 async def fixture_connection_settings_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ConnectionSettingsService:
     """Return mock connection settings service."""
     yield network_manager_services["network_connection_settings"]
@@ -276,19 +274,24 @@ async def fixture_all_dbus_services(
 ) -> dict[str, DBusServiceMock | dict[str, DBusServiceMock]]:
     """Mock all dbus services supervisor uses."""
     yield (
-        await mock_dbus_services(
-            {
-                "hostname": None,
-                "logind": None,
-                "rauc": None,
-                "resolved": None,
-                "systemd": None,
-                "systemd_unit": None,
-                "timedate": None,
-            },
-            dbus_session_bus,
+        (
+            await mock_dbus_services(
+                {
+                    "hostname": None,
+                    "logind": None,
+                    "rauc": None,
+                    "resolved": None,
+                    "systemd": None,
+                    "systemd_unit": None,
+                    "timedate": None,
+                },
+                dbus_session_bus,
+            )
         )
-    ) | network_manager_services | udisks2_services | os_agent_services
+        | network_manager_services
+        | udisks2_services
+        | os_agent_services
+    )
 
 
 @pytest.fixture
@@ -599,7 +602,7 @@ async def backups(
             ATTR_SLUG: slug,
             ATTR_DATE: utcnow().isoformat(),
             ATTR_TYPE: BackupType.PARTIAL
-            if "1" == slug[-1] or "5" == slug[-1]
+            if slug[-1] == "1" or slug[-1] == "5"
             else BackupType.FULL,
         }
         coresys.backups._backups[backup.slug] = backup
@@ -618,9 +621,7 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
         LogsControl,
         "get_identifiers",
         return_value=["hassio_supervisor", "hassos-config", "kernel"],
-    ), patch.object(
-        LogsControl, "journald_logs", new=MagicMock()
-    ) as logs:
+    ), patch.object(LogsControl, "journald_logs", new=MagicMock()) as logs:
         await coresys.host.logs.load()
         yield logs
 

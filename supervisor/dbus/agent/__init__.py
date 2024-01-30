@@ -42,6 +42,7 @@ class OSAgent(DBusInterfaceProxy):
         self._cgroup: CGroup = CGroup()
         self._datadisk: DataDisk = DataDisk()
         self._system: System = System()
+        self._diagnostic_task: asyncio.Task | None = None
 
     @property
     def cgroup(self) -> CGroup:
@@ -84,7 +85,7 @@ class OSAgent(DBusInterfaceProxy):
     @dbus_property
     def diagnostics(self, value: bool) -> None:
         """Enable or disable OS-Agent diagnostics."""
-        asyncio.create_task(self.dbus.set_diagnostics(value))
+        self._diagnostic_task = asyncio.create_task(self.dbus.set_diagnostics(value))
 
     @property
     def all(self) -> list[DBusInterface]:

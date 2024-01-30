@@ -14,7 +14,7 @@ from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 @pytest.fixture(name="systemd_service")
 async def fixture_systemd_service(
-    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> SystemdService:
     """Return systemd service mock."""
     yield all_dbus_services["systemd"]
@@ -39,7 +39,7 @@ async def test_load(coresys: CoreSys, systemd_service: SystemdService):
 
         sound_update.assert_called_once()
 
-    assert systemd_service.ListUnits.calls == [tuple()]
+    assert systemd_service.ListUnits.calls == [()]
 
 
 async def test_reload(coresys: CoreSys, systemd_service: SystemdService):
@@ -55,4 +55,4 @@ async def test_reload(coresys: CoreSys, systemd_service: SystemdService):
         connect.assert_not_called()
         sound_update.assert_called_once()
 
-    assert systemd_service.ListUnits.calls == [tuple()]
+    assert systemd_service.ListUnits.calls == [()]

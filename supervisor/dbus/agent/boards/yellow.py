@@ -18,6 +18,9 @@ class Yellow(BoardProxy):
     def __init__(self) -> None:
         """Initialize properties."""
         super().__init__(BOARD_NAME_YELLOW, SCHEMA_YELLOW_BOARD)
+        self._heartbeat_led_task: asyncio.Task | None = None
+        self._power_led_task: asyncio.Task | None = None
+        self._disk_led_task: asyncio.Task | None = None
 
     @property
     @dbus_property
@@ -29,7 +32,9 @@ class Yellow(BoardProxy):
     def heartbeat_led(self, enabled: bool) -> None:
         """Enable/disable heartbeat LED."""
         self._data[ATTR_HEARTBEAT_LED] = enabled
-        asyncio.create_task(self.dbus.Boards.Yellow.set_heartbeat_led(enabled))
+        self._heartbeat_led_task = asyncio.create_task(
+            self.dbus.Boards.Yellow.set_heartbeat_led(enabled)
+        )
 
     @property
     @dbus_property
@@ -41,7 +46,9 @@ class Yellow(BoardProxy):
     def power_led(self, enabled: bool) -> None:
         """Enable/disable power LED."""
         self._data[ATTR_POWER_LED] = enabled
-        asyncio.create_task(self.dbus.Boards.Yellow.set_power_led(enabled))
+        self._power_led_task = asyncio.create_task(
+            self.dbus.Boards.Yellow.set_power_led(enabled)
+        )
 
     @property
     @dbus_property
@@ -53,7 +60,9 @@ class Yellow(BoardProxy):
     def disk_led(self, enabled: bool) -> None:
         """Enable/disable disk LED."""
         self._data[ATTR_DISK_LED] = enabled
-        asyncio.create_task(self.dbus.Boards.Yellow.set_disk_led(enabled))
+        self._disk_led_task = asyncio.create_task(
+            self.dbus.Boards.Yellow.set_disk_led(enabled)
+        )
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""

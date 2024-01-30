@@ -1,34 +1,15 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 23.12.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.14
     hooks:
-      - id: black
+      - id: ruff
         args:
-          - --safe
-          - --quiet
-          - --target-version
-          - py312
+          - --fix
+      - id: ruff-format
         files: ^((supervisor|tests)/.+)?[^/]+\.py$
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.0.0
-    hooks:
-      - id: flake8
-        additional_dependencies:
-          - flake8-docstrings==1.7.0
-          - pydocstyle==6.3.0
-        files: ^(supervisor|script|tests)/.+\.py$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
       - id: check-executables-have-shebangs
         stages: [manual]
       - id: check-json
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.0
-    hooks:
-      - id: pyupgrade
-        args: [--py312-plus]

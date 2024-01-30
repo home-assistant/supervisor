@@ -87,9 +87,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return ConnectionSettings(object_path if object_path else DEFAULT_OBJECT_PATH)
 
 
-# pylint: disable=invalid-name
-
-
 class ConnectionSettings(DBusServiceMock):
     """Connection Settings mock.
 

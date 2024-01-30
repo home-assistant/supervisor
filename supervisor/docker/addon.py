@@ -233,10 +233,10 @@ class DockerAddon(DockerInterface):
         tmpfs = {}
 
         if self.addon.with_tmpfs:
-            tmpfs["/tmp"] = ""
+            tmpfs["/tmp"] = ""  # noqa: S108
 
         if not self.addon.host_ipc:
-            tmpfs["/dev/shm"] = ""
+            tmpfs["/dev/shm"] = ""  # noqa: S108
 
         # Return None if no tmpfs is present
         if tmpfs:

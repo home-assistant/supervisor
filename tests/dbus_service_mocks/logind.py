@@ -10,9 +10,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Logind()
 
 
-# pylint: disable=invalid-name,missing-function-docstring
-
-
 class Logind(DBusServiceMock):
     """Logind mock.
 

@@ -60,6 +60,7 @@ async def test_network_manager_version(
     network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Test if version validate work."""
+    # pylint: disable=protected-access
     await network_manager._validate_version()
     assert network_manager.version == "1.22.10"
 
@@ -67,6 +68,7 @@ async def test_network_manager_version(
     with pytest.raises(HostNotSupportedError):
         await network_manager._validate_version()
     assert network_manager.version == "1.13.9"
+    # pylint: enable=protected-access
 
 
 async def test_check_connectivity(
@@ -79,7 +81,7 @@ async def test_check_connectivity(
     assert network_manager_service.CheckConnectivity.calls == []
 
     assert await network_manager.check_connectivity(force=True) == 4
-    assert network_manager_service.CheckConnectivity.calls == [tuple()]
+    assert network_manager_service.CheckConnectivity.calls == [()]
 
 
 async def test_activate_connection(

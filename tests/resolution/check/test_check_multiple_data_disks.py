@@ -17,7 +17,7 @@ from tests.dbus_service_mocks.udisks2_block import Block as BlockService
 
 @pytest.fixture(name="sda1_block_service")
 async def fixture_sda1_block_service(
-    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> BlockService:
     """Return sda1 block service."""
     yield udisks2_services["udisks2_block"][

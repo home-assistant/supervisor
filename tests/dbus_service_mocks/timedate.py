@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return TimeDate()
 
 
-# pylint: disable=invalid-name
-
-
 class TimeDate(DBusServiceMock):
     """TimeDate mock.
 

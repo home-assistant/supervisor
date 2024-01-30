@@ -202,17 +202,13 @@ async def test_plugin_load_running_container(
         type(coresys.bus), "register_event"
     ) as register_event, patch.object(
         type(plugin.instance), "attach"
-    ) as attach, patch.object(
-        type(plugin), "install"
-    ) as install, patch.object(
+    ) as attach, patch.object(type(plugin), "install") as install, patch.object(
         type(plugin), "start"
     ) as start, patch.object(
         type(plugin.instance),
         "get_latest_version",
         return_value=test_version,
-    ), patch.object(
-        type(plugin.instance), "is_running", return_value=True
-    ):
+    ), patch.object(type(plugin.instance), "is_running", return_value=True):
         await plugin.load()
         register_event.assert_any_call(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
@@ -238,17 +234,13 @@ async def test_plugin_load_stopped_container(
         type(coresys.bus), "register_event"
     ) as register_event, patch.object(
         type(plugin.instance), "attach"
-    ) as attach, patch.object(
-        type(plugin), "install"
-    ) as install, patch.object(
+    ) as attach, patch.object(type(plugin), "install") as install, patch.object(
         type(plugin), "start"
     ) as start, patch.object(
         type(plugin.instance),
         "get_latest_version",
         return_value=test_version,
-    ), patch.object(
-        type(plugin.instance), "is_running", return_value=False
-    ):
+    ), patch.object(type(plugin.instance), "is_running", return_value=False):
         await plugin.load()
         register_event.assert_any_call(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
@@ -274,17 +266,13 @@ async def test_plugin_load_missing_container(
         type(coresys.bus), "register_event"
     ) as register_event, patch.object(
         type(plugin.instance), "attach", side_effect=DockerError()
-    ) as attach, patch.object(
-        type(plugin), "install"
-    ) as install, patch.object(
+    ) as attach, patch.object(type(plugin), "install") as install, patch.object(
         type(plugin), "start"
     ) as start, patch.object(
         type(plugin.instance),
         "get_latest_version",
         return_value=test_version,
-    ), patch.object(
-        type(plugin.instance), "is_running", return_value=False
-    ):
+    ), patch.object(type(plugin.instance), "is_running", return_value=False):
         await plugin.load()
         register_event.assert_any_call(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container

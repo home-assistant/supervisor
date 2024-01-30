@@ -31,7 +31,7 @@ from tests.dbus_service_mocks.network_manager import (
 
 @pytest.fixture(name="active_connection_service")
 async def fixture_active_connection_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ActiveConnectionService:
     """Return mock active connection service."""
     yield network_manager_services["network_active_connection"]
@@ -39,7 +39,7 @@ async def fixture_active_connection_service(
 
 @pytest.fixture(name="wireless_service")
 async def fixture_wireless_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> DeviceWirelessService:
     """Return mock device wireless service."""
     yield network_manager_services["network_device_wireless"]

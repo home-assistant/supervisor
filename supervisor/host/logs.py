@@ -69,8 +69,7 @@ class LogsControl(CoreSysAttributes):
             )
 
     async def get_boot_id(self, offset: int = 0) -> str:
-        """
-        Get ID of a boot by offset.
+        """Get ID of a boot by offset.
 
         Current boot is offset = 0, negative numbers go that many in the past.
         Positive numbers count up from the oldest boot.

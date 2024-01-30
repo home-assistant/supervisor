@@ -93,8 +93,8 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             await self.event.wait()
 
     test = TestClass(coresys)
-    asyncio.create_task(test.test_jobs_tree_outer())
-    asyncio.create_task(test.test_jobs_tree_alt())
+    outer_task = asyncio.create_task(test.test_jobs_tree_outer())
+    alt_task = asyncio.create_task(test.test_jobs_tree_alt())
     await asyncio.sleep(0)
 
     resp = await api_client.get("/jobs/info")
@@ -150,6 +150,8 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "errors": [],
         },
     ]
+    await outer_task
+    await alt_task
 
 
 async def test_job_manual_cleanup(api_client: TestClient, coresys: CoreSys):

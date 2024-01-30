@@ -12,7 +12,7 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 
 @pytest.fixture(name="cgroup_service", autouse=True)
 async def fixture_cgroup_service(
-    os_agent_services: dict[str, DBusServiceMock]
+    os_agent_services: dict[str, DBusServiceMock],
 ) -> CGroupService:
     """Mock CGroup dbus service."""
     yield os_agent_services["agent_cgroup"]

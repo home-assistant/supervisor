@@ -1,6 +1,7 @@
 """AppArmor control for host."""
 from __future__ import annotations
 
+from contextlib import suppress
 import errno
 import logging
 from pathlib import Path
@@ -62,10 +63,8 @@ class AppArmorControl(CoreSysAttributes):
         # Load profiles
         if self.available:
             for profile_name in self._profiles:
-                try:
+                with suppress(HostAppArmorError):
                     await self._load_profile(profile_name)
-                except HostAppArmorError:
-                    pass
         else:
             _LOGGER.warning("AppArmor is not enabled on host")
 

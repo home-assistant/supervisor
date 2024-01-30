@@ -13,9 +13,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return IP4Config()
 
 
-# pylint: disable=invalid-name
-
-
 class IP4Config(DBusServiceMock):
     """IP4Config mock.
 

@@ -55,9 +55,8 @@ async def test_force_content_trust(coresys: CoreSys):
     with patch(
         "supervisor.security.module.cas_validate",
         AsyncMock(side_effect=CodeNotaryError),
-    ) as cas_validate:
-        with pytest.raises(CodeNotaryError):
-            await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
+    ) as cas_validate, pytest.raises(CodeNotaryError):
+        await coresys.security.verify_content("test@mail.com", "ffffffffffffff")
 
 
 async def test_integrity_check_disabled(coresys: CoreSys):

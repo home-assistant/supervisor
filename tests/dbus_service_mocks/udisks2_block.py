@@ -17,9 +17,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Block(object_path if object_path else DEFAULT_OBJECT_PATH)
 
 
-# pylint: disable=invalid-name
-
-
 @dataclass(slots=True)
 class BlockFixture:
     """Block fixture."""

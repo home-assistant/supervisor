@@ -69,9 +69,7 @@ async def test_api_supervisor_options_repositories_skipped_on_error(
         "supervisor.store.repository.Repository.load", side_effect=git_error
     ), patch(
         "supervisor.store.repository.Repository.validate", return_value=False
-    ), patch(
-        "supervisor.store.repository.Repository.remove"
-    ):
+    ), patch("supervisor.store.repository.Repository.remove"):
         response = await api_client.post(
             "/supervisor/options", json={"addons_repositories": [REPO_URL]}
         )

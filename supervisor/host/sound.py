@@ -155,11 +155,10 @@ class SoundControl(CoreSysAttributes):
                             stream = pulse.source_output_info(index)
                         else:
                             stream = pulse.source_info(index)
+                    elif application:
+                        stream = pulse.sink_input_info(index)
                     else:
-                        if application:
-                            stream = pulse.sink_input_info(index)
-                        else:
-                            stream = pulse.sink_info(index)
+                        stream = pulse.sink_info(index)
 
                     # Set volume
                     pulse.volume_set_all_chans(stream, volume)
@@ -190,11 +189,10 @@ class SoundControl(CoreSysAttributes):
                             stream = pulse.source_output_info(index)
                         else:
                             stream = pulse.source_info(index)
+                    elif application:
+                        stream = pulse.sink_input_info(index)
                     else:
-                        if application:
-                            stream = pulse.sink_input_info(index)
-                        else:
-                            stream = pulse.sink_info(index)
+                        stream = pulse.sink_info(index)
 
                     # Mute stream
                     pulse.mute(stream, mute)

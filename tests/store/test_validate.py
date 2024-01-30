@@ -23,12 +23,15 @@ async def test_default_config(config: dict[Any]):
     assert "core" in conf[ATTR_REPOSITORIES]
     assert "local" in conf[ATTR_REPOSITORIES]
     assert "https://github.com/hassio-addons/repository" in conf[ATTR_REPOSITORIES]
-    assert 1 == len(
-        [
-            repo
-            for repo in conf[ATTR_REPOSITORIES]
-            if repo == "https://github.com/esphome/home-assistant-addon"
-        ]
+    assert (
+        len(
+            [
+                repo
+                for repo in conf[ATTR_REPOSITORIES]
+                if repo == "https://github.com/esphome/home-assistant-addon"
+            ]
+        )
+        == 1
     )
 
 

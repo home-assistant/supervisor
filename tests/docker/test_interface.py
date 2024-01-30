@@ -204,9 +204,7 @@ async def test_attach_container_failure(coresys: CoreSys):
     ), patch(
         "supervisor.docker.manager.DockerAPI.images",
         new=PropertyMock(return_value=image_collection),
-    ), patch.object(
-        type(coresys.bus), "fire_event"
-    ) as fire_event:
+    ), patch.object(type(coresys.bus), "fire_event") as fire_event:
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
         assert not [
             event
@@ -228,9 +226,7 @@ async def test_attach_total_failure(coresys: CoreSys):
     ), patch(
         "supervisor.docker.manager.DockerAPI.images",
         new=PropertyMock(return_value=image_collection),
-    ), pytest.raises(
-        DockerError
-    ):
+    ), pytest.raises(DockerError):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
 
 

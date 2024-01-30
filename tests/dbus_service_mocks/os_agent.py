@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return OSAgent()
 
 
-# pylint: disable=invalid-name
-
-
 class OSAgent(DBusServiceMock):
     """OS-agent mock.
 

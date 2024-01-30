@@ -54,7 +54,7 @@ async def test_reload_connections(
     await settings.connect(dbus_session_bus)
 
     assert await settings.reload_connections() is True
-    assert settings_service.ReloadConnections.calls == [tuple()]
+    assert settings_service.ReloadConnections.calls == [()]
 
 
 async def test_dbus_network_settings_connect_error(

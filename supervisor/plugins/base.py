@@ -102,7 +102,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in plugin container and restart if necessary."""
-        if not (event.name == self.instance.name):
+        if event.name != self.instance.name:
             return
 
         if event.state in {ContainerState.FAILED, ContainerState.UNHEALTHY}:

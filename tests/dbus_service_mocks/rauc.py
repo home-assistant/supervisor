@@ -13,9 +13,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Rauc()
 
 
-# pylint: disable=invalid-name
-
-
 class Rauc(DBusServiceMock):
     """Rauc mock.
 

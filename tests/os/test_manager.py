@@ -68,9 +68,7 @@ async def test_update_fails_if_out_of_date(coresys: CoreSys) -> None:
         type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
     ), patch.object(
         type(coresys.os), "available", new=PropertyMock(return_value=True)
-    ), pytest.raises(
-        HassOSJobError
-    ):
+    ), pytest.raises(HassOSJobError):
         await coresys.os.update()
 
 

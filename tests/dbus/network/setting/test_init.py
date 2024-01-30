@@ -2,8 +2,8 @@
 
 from unittest.mock import MagicMock
 
+from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
-from dbus_fast.signature import Variant
 import pytest
 
 from supervisor.dbus.network.interface import NetworkInterface
@@ -20,7 +20,7 @@ from tests.dbus_service_mocks.network_connection_settings import (
 
 @pytest.fixture(name="connection_settings_service", autouse=True)
 async def fixture_connection_settings_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ConnectionSettingsService:
     """Mock Connection Settings service."""
     yield network_manager_services["network_connection_settings"]
@@ -125,9 +125,9 @@ async def test_watching_updated_signal(
     settings = NetworkSetting("/org/freedesktop/NetworkManager/Settings/1")
     await settings.connect(dbus_session_bus)
 
-    connection_settings_service.GetSettings.calls == [tuple()]
+    assert connection_settings_service.GetSettings.calls == [()]
 
     connection_settings_service.Updated()
     await connection_settings_service.ping()
     await connection_settings_service.ping()
-    assert connection_settings_service.GetSettings.calls == [tuple(), tuple()]
+    assert connection_settings_service.GetSettings.calls == [(), ()]

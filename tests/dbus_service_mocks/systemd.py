@@ -14,9 +14,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Systemd()
 
 
-# pylint: disable=invalid-name,missing-function-docstring,raising-bad-type
-
-
 class Systemd(DBusServiceMock):
     """Systemd mock.
 

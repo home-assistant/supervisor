@@ -1,4 +1,5 @@
 """Common utils."""
+from contextlib import suppress
 import logging
 from pathlib import Path
 from typing import Any
@@ -101,7 +102,5 @@ class FileConfiguration:
             self.read_data()
         else:
             # write
-            try:
+            with suppress(ConfigurationFileError):
                 write_json_or_yaml_file(self._file, self._data)
-            except ConfigurationFileError:
-                pass

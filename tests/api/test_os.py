@@ -22,7 +22,7 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 
 @pytest.fixture(name="boards_service")
 async def fixture_boards_service(
-    os_agent_services: dict[str, DBusServiceMock]
+    os_agent_services: dict[str, DBusServiceMock],
 ) -> BoardsService:
     """Return mock Boards service."""
     yield os_agent_services["agent_boards"]

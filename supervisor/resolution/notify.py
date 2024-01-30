@@ -1,5 +1,4 @@
-"""
-Helper to notify Core about issues.
+"""Helper to notify Core about issues.
 
 This helper creates persistant notification in the Core UI.
 In the future we want to remove this in favour of a "center" in the UI.

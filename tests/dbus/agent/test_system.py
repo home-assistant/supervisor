@@ -1,5 +1,5 @@
 """Test System/Agent dbus interface."""
-# pylint: disable=import-error
+
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
@@ -12,7 +12,7 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 
 @pytest.fixture(name="system_service", autouse=True)
 async def fixture_system_service(
-    os_agent_services: dict[str, DBusServiceMock]
+    os_agent_services: dict[str, DBusServiceMock],
 ) -> SystemService:
     """Mock System dbus service."""
     yield os_agent_services["agent_system"]
@@ -31,4 +31,4 @@ async def test_dbus_osagent_system_wipe(
     await os_agent.connect(dbus_session_bus)
 
     assert await os_agent.system.schedule_wipe_device() is None
-    assert system_service.ScheduleWipeDevice.calls == [tuple()]
+    assert system_service.ScheduleWipeDevice.calls == [()]

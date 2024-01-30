@@ -10,9 +10,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return CGroup()
 
 
-# pylint: disable=invalid-name
-
-
 class CGroup(DBusServiceMock):
     """CGroup mock.
 

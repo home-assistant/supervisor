@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return DeviceWireless()
 
 
-# pylint: disable=invalid-name
-
-
 class DeviceWireless(DBusServiceMock):
     """Device Wireless mock.
 

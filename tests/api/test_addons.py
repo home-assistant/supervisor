@@ -96,6 +96,7 @@ async def test_api_addon_start_healthcheck(
     assert install_addon_ssh.state == AddonState.STOPPED
 
     state_changes: list[AddonState] = []
+    _container_events_task: asyncio.Task | None = None
 
     async def container_events():
         nonlocal state_changes
@@ -111,7 +112,8 @@ async def test_api_addon_start_healthcheck(
         )
 
     async def container_events_task(*args, **kwargs):
-        asyncio.create_task(container_events())
+        nonlocal _container_events_task
+        _container_events_task = asyncio.create_task(container_events())
 
     with patch.object(DockerAddon, "run", new=container_events_task):
         resp = await api_client.post("/addons/local_ssh/start")
@@ -137,6 +139,7 @@ async def test_api_addon_restart_healthcheck(
     assert install_addon_ssh.state == AddonState.STOPPED
 
     state_changes: list[AddonState] = []
+    _container_events_task: asyncio.Task | None = None
 
     async def container_events():
         nonlocal state_changes
@@ -152,7 +155,8 @@ async def test_api_addon_restart_healthcheck(
         )
 
     async def container_events_task(*args, **kwargs):
-        asyncio.create_task(container_events())
+        nonlocal _container_events_task
+        _container_events_task = asyncio.create_task(container_events())
 
     with patch.object(DockerAddon, "run", new=container_events_task):
         resp = await api_client.post("/addons/local_ssh/restart")
@@ -180,6 +184,7 @@ async def test_api_addon_rebuild_healthcheck(
     assert install_addon_ssh.state == AddonState.STARTUP
 
     state_changes: list[AddonState] = []
+    _container_events_task: asyncio.Task | None = None
 
     async def container_events():
         nonlocal state_changes
@@ -200,7 +205,8 @@ async def test_api_addon_rebuild_healthcheck(
         )
 
     async def container_events_task(*args, **kwargs):
-        asyncio.create_task(container_events())
+        nonlocal _container_events_task
+        _container_events_task = asyncio.create_task(container_events())
 
     with patch.object(
         AddonBuild, "is_valid", new=PropertyMock(return_value=True)
@@ -208,9 +214,7 @@ async def test_api_addon_rebuild_healthcheck(
         Addon, "need_build", new=PropertyMock(return_value=True)
     ), patch.object(
         CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
-    ), patch.object(
-        DockerAddon, "run", new=container_events_task
-    ):
+    ), patch.object(DockerAddon, "run", new=container_events_task):
         resp = await api_client.post("/addons/local_ssh/rebuild")
 
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]

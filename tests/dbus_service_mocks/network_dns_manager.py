@@ -13,9 +13,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return DnsManager()
 
 
-# pylint: disable=invalid-name
-
-
 class DnsManager(DBusServiceMock):
     """DNS Manager mock.
 

@@ -15,7 +15,7 @@ from tests.dbus_service_mocks.network_device_wireless import (
 
 @pytest.fixture(name="device_wireless_service", autouse=True)
 async def fixture_device_wireless_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> DeviceWirelessService:
     """Mock Device Wireless service."""
     yield network_manager_services["network_device_wireless"]

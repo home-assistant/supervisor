@@ -7,6 +7,8 @@ from uuid import uuid4
 
 from dbus_fast import Variant
 
+from ....host.const import InterfaceMethod, InterfaceType
+from .. import NetworkManager
 from . import (
     ATTR_ASSIGNED_MAC,
     CONF_ATTR_802_ETHERNET,
@@ -19,8 +21,6 @@ from . import (
     CONF_ATTR_PATH,
     CONF_ATTR_VLAN,
 )
-from .. import NetworkManager
-from ....host.const import InterfaceMethod, InterfaceType
 
 if TYPE_CHECKING:
     from ....host.configuration import Interface

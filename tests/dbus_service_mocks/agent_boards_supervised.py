@@ -10,9 +10,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Supervised()
 
 
-# pylint: disable=invalid-name
-
-
 class Supervised(DBusServiceMock):
     """Supervised mock.
 

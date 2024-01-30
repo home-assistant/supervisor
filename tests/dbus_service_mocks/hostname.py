@@ -14,9 +14,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Hostname()
 
 
-# pylint: disable=invalid-name
-
-
 class Hostname(DBusServiceMock):
     """Hostname mock.
 
