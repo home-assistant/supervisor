@@ -48,8 +48,7 @@ async def test_dbus_yellow_set_disk_led(
     yellow = Yellow()
     await yellow.connect(dbus_session_bus)
 
-    yellow.disk_led = False
-    await asyncio.sleep(0)  # Set property via dbus is separate async task
+    await yellow.set_disk_led(False)
     await yellow_service.ping()
     assert yellow.disk_led is False
 
@@ -61,8 +60,7 @@ async def test_dbus_yellow_set_heartbeat_led(
     yellow = Yellow()
     await yellow.connect(dbus_session_bus)
 
-    yellow.heartbeat_led = False
-    await asyncio.sleep(0)  # Set property via dbus is separate async task
+    await yellow.set_heartbeat_led(False)
     await yellow_service.ping()
     assert yellow.heartbeat_led is False
 
@@ -74,7 +72,6 @@ async def test_dbus_yellow_set_power_led(
     yellow = Yellow()
     await yellow.connect(dbus_session_bus)
 
-    yellow.power_led = False
-    await asyncio.sleep(0)  # Set property via dbus is separate async task
+    await yellow.set_power_led(False)
     await yellow_service.ping()
     assert yellow.power_led is False

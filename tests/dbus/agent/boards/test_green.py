@@ -49,8 +49,7 @@ async def test_dbus_green_set_activity_led(
     green = Green()
     await green.connect(dbus_session_bus)
 
-    green.activity_led = False
-    await asyncio.sleep(0)  # Set property via dbus is separate async task
+    await green.set_activity_led(False)
     await green_service.ping()
     assert green.activity_led is False
 
@@ -62,8 +61,7 @@ async def test_dbus_green_set_power_led(
     green = Green()
     await green.connect(dbus_session_bus)
 
-    green.power_led = False
-    await asyncio.sleep(0)  # Set property via dbus is separate async task
+    await green.set_power_led(False)
     await green_service.ping()
     assert green.power_led is False
 
@@ -75,7 +73,6 @@ async def test_dbus_green_set_user_led(
     green = Green()
     await green.connect(dbus_session_bus)
 
-    green.user_led = False
-    await asyncio.sleep(0)  # Set property via dbus is separate async task
+    await green.set_user_led(False)
     await green_service.ping()
     assert green.user_led is False

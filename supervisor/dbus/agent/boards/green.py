@@ -1,6 +1,7 @@
 """Green board management."""
 
 import asyncio
+from collections.abc import Awaitable
 
 from dbus_fast.aio.message_bus import MessageBus
 
@@ -18,9 +19,6 @@ class Green(BoardProxy):
     def __init__(self) -> None:
         """Initialize properties."""
         super().__init__(BOARD_NAME_GREEN, SCHEMA_GREEN_BOARD)
-        self._activity_led_task: asyncio.Task | None = None
-        self._power_led_task: asyncio.Task | None = None
-        self._user_led_task: asyncio.Task | None = None
 
     @property
     @dbus_property
@@ -28,13 +26,10 @@ class Green(BoardProxy):
         """Get activity LED enabled."""
         return self.properties[DBUS_ATTR_ACTIVITY_LED]
 
-    @activity_led.setter
-    def activity_led(self, enabled: bool) -> None:
+    def set_activity_led(self, enabled: bool) -> Awaitable[None]:
         """Enable/disable activity LED."""
         self._data[ATTR_ACTIVITY_LED] = enabled
-        self._activity_led_task = asyncio.create_task(
-            self.dbus.Boards.Green.set_activity_led(enabled)
-        )
+        return self.dbus.Boards.Green.set_activity_led(enabled)
 
     @property
     @dbus_property
@@ -42,13 +37,10 @@ class Green(BoardProxy):
         """Get power LED enabled."""
         return self.properties[DBUS_ATTR_POWER_LED]
 
-    @power_led.setter
-    def power_led(self, enabled: bool) -> None:
+    def set_power_led(self, enabled: bool) -> Awaitable[None]:
         """Enable/disable power LED."""
         self._data[ATTR_POWER_LED] = enabled
-        self._power_led_task = asyncio.create_task(
-            self.dbus.Boards.Green.set_power_led(enabled)
-        )
+        return self.dbus.Boards.Green.set_power_led(enabled)
 
     @property
     @dbus_property
@@ -56,19 +48,18 @@ class Green(BoardProxy):
         """Get user LED enabled."""
         return self.properties[DBUS_ATTR_USER_LED]
 
-    @user_led.setter
-    def user_led(self, enabled: bool) -> None:
+    def set_user_led(self, enabled: bool) -> Awaitable[None]:
         """Enable/disable disk LED."""
         self._data[ATTR_USER_LED] = enabled
-        self._user_led_task = asyncio.create_task(
-            self.dbus.Boards.Green.set_user_led(enabled)
-        )
+        return self.dbus.Boards.Green.set_user_led(enabled)
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to D-Bus."""
         await super().connect(bus)
 
         # Set LEDs based on settings on connect
-        self.activity_led = self._data[ATTR_ACTIVITY_LED]
-        self.power_led = self._data[ATTR_POWER_LED]
-        self.user_led = self._data[ATTR_USER_LED]
+        await asyncio.gather(
+            self.set_activity_led(self._data[ATTR_ACTIVITY_LED]),
+            self.set_power_led(self._data[ATTR_POWER_LED]),
+            self.set_user_led(self._data[ATTR_USER_LED]),
+        )

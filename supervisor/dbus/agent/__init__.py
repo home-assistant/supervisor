@@ -1,5 +1,6 @@
 """OS-Agent implementation for DBUS."""
 import asyncio
+from collections.abc import Awaitable
 import logging
 from typing import Any
 
@@ -42,7 +43,6 @@ class OSAgent(DBusInterfaceProxy):
         self._cgroup: CGroup = CGroup()
         self._datadisk: DataDisk = DataDisk()
         self._system: System = System()
-        self._diagnostic_task: asyncio.Task | None = None
 
     @property
     def cgroup(self) -> CGroup:
@@ -81,11 +81,9 @@ class OSAgent(DBusInterfaceProxy):
         """Return if diagnostics is enabled on OS-Agent."""
         return self.properties[DBUS_ATTR_DIAGNOSTICS]
 
-    @diagnostics.setter
-    @dbus_property
-    def diagnostics(self, value: bool) -> None:
+    def set_diagnostics(self, value: bool) -> Awaitable[None]:
         """Enable or disable OS-Agent diagnostics."""
-        self._diagnostic_task = asyncio.create_task(self.dbus.set_diagnostics(value))
+        return self.dbus.set_diagnostics(value)
 
     @property
     def all(self) -> list[DBusInterface]:
