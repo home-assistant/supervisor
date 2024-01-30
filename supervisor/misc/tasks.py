@@ -1,6 +1,7 @@
 """A collection of tasks."""
 import asyncio
 from collections.abc import Awaitable
+from datetime import timedelta
 import logging
 
 from ..addons.const import ADDON_UPDATE_CONDITIONS
@@ -10,6 +11,7 @@ from ..exceptions import AddonsError, HomeAssistantError, ObserverError
 from ..homeassistant.const import LANDINGPAGE
 from ..jobs.decorator import Job, JobCondition
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
+from ..utils.dt import utcnow
 from ..utils.sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -102,6 +104,8 @@ class Tasks(CoreSysAttributes):
                     addon.version,
                     addon.latest_version,
                 )
+            # Delay auto-updates for a day in case of issues
+            if utcnow() + timedelta(days=1) > addon.latest_version_timestamp:
                 continue
             if not addon.test_update_schema():
                 _LOGGER.warning(

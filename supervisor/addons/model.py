@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable
 from contextlib import suppress
+from datetime import datetime
 import logging
 from pathlib import Path
 from typing import Any
@@ -71,6 +72,7 @@ from ..const import (
     ATTR_URL,
     ATTR_USB,
     ATTR_VERSION,
+    ATTR_VERSION_TIMESTAMP,
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
@@ -221,6 +223,11 @@ class AddonModel(JobGroup, ABC):
     def latest_version(self) -> AwesomeVersion:
         """Return latest version of add-on."""
         return self.data[ATTR_VERSION]
+
+    @property
+    def latest_version_timestamp(self) -> datetime:
+        """Return when latest version was first seen."""
+        return datetime.fromtimestamp(self.data[ATTR_VERSION_TIMESTAMP])
 
     @property
     def version(self) -> AwesomeVersion:

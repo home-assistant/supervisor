@@ -3,6 +3,7 @@ import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 from copy import deepcopy
+from datetime import datetime
 import errno
 from ipaddress import IPv4Address
 import logging
@@ -47,6 +48,7 @@ from ..const import (
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
+    ATTR_VERSION_TIMESTAMP,
     ATTR_WATCHDOG,
     DNS_SUFFIX,
     AddonBoot,
@@ -343,6 +345,11 @@ class Addon(AddonModel):
     def latest_version(self) -> str:
         """Return version of add-on."""
         return self.data_store[ATTR_VERSION]
+
+    @property
+    def latest_version_timestamp(self) -> datetime:
+        """Return when latest version was first seen."""
+        return datetime.fromtimestamp(self.data_store[ATTR_VERSION_TIMESTAMP])
 
     @property
     def protected(self) -> bool:

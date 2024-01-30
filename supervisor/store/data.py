@@ -14,6 +14,8 @@ from ..const import (
     ATTR_REPOSITORY,
     ATTR_SLUG,
     ATTR_TRANSLATIONS,
+    ATTR_VERSION,
+    ATTR_VERSION_TIMESTAMP,
     FILE_SUFFIX_CONFIGURATION,
     REPOSITORY_CORE,
     REPOSITORY_LOCAL,
@@ -22,6 +24,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError
 from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..utils.common import find_one_filetype, read_json_or_yaml_file
+from ..utils.dt import utcnow
 from ..utils.json import read_json_file
 from .const import StoreType
 from .utils import extract_hash_from_path
@@ -134,6 +137,19 @@ class StoreData(CoreSysAttributes):
         for repo in await self.sys_run_in_executor(_read_git_repositories):
             repositories[repo.slug] = repo.config
             addons.update(await self._read_addons_folder(repo.path, repo.slug))
+
+        # Add a timestamp when we first see a new version
+        for slug, config in addons.items():
+            old_config = self.addons.get(slug)
+
+            if (
+                not old_config
+                or ATTR_VERSION_TIMESTAMP not in old_config
+                or old_config.get(ATTR_VERSION) != config.get(ATTR_VERSION)
+            ):
+                config[ATTR_VERSION_TIMESTAMP] = utcnow().timestamp()
+            else:
+                config[ATTR_VERSION_TIMESTAMP] = old_config[ATTR_VERSION_TIMESTAMP]
 
         self.repositories = repositories
         self.addons = addons
