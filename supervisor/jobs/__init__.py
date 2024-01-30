@@ -201,8 +201,11 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         self, job: SupervisorJob, attribute: Attribute, value: Any
     ) -> None:
         """Notify Home Assistant of a change to a job and bus on job start/end."""
+        if attribute.name == "errors":
+            value = [err.as_dict() for err in value]
+
         self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.JOB, job.as_dict() | {attribute.alias: value}
+            WSEvent.JOB, job.as_dict() | {attribute.name: value}
         )
 
         if attribute.name == "done":

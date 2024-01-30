@@ -175,6 +175,32 @@ async def test_notify_on_change(coresys: CoreSys):
             }
         )
 
+        job.capture_error()
+        await asyncio.sleep(0)
+        coresys.homeassistant.websocket._client.async_send_command.assert_called_with(
+            {
+                "type": "supervisor/event",
+                "data": {
+                    "event": "job",
+                    "data": {
+                        "name": TEST_JOB,
+                        "reference": "test",
+                        "uuid": ANY,
+                        "progress": 50,
+                        "stage": "test",
+                        "done": False,
+                        "parent_id": None,
+                        "errors": [
+                            {
+                                "type": "HassioError",
+                                "message": "Unknown error, see supervisor logs",
+                            }
+                        ],
+                    },
+                },
+            }
+        )
+
     await asyncio.sleep(0)
     coresys.homeassistant.websocket._client.async_send_command.assert_called_with(
         {
@@ -189,7 +215,12 @@ async def test_notify_on_change(coresys: CoreSys):
                     "stage": "test",
                     "done": True,
                     "parent_id": None,
-                    "errors": [],
+                    "errors": [
+                        {
+                            "type": "HassioError",
+                            "message": "Unknown error, see supervisor logs",
+                        }
+                    ],
                 },
             },
         }
