@@ -107,7 +107,10 @@ class HomeAssistantAPI(CoreSysAttributes):
                         continue
                     yield resp
                     return
-            except (TimeoutError, aiohttp.ClientError) as err:
+            except TimeoutError:
+                _LOGGER.error("Timeout on call %s.", url)
+                break
+            except aiohttp.ClientError as err:
                 _LOGGER.error("Error on call %s: %s", url, err)
                 break
 
