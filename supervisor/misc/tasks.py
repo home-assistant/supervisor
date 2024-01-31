@@ -16,8 +16,9 @@ from ..utils.sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-HASS_WATCHDOG_API = "HASS_WATCHDOG_API"
+HASS_WATCHDOG_API_FAILURES = "HASS_WATCHDOG_API_FAILURES"
 HASS_WATCHDOG_REANIMATE_FAILURES = "HASS_WATCHDOG_REANIMATE_FAILURES"
+HASS_WATCHDOG_MAX_API_ATTEMPTS = 2
 HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS = 5
 
 RUN_UPDATE_SUPERVISOR = 29100
@@ -169,6 +170,7 @@ class Tasks(CoreSysAttributes):
         if await self.sys_homeassistant.api.check_api_state():
             # Home Assistant is running properly
             self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = 0
+            self._cache[HASS_WATCHDOG_API_FAILURES] = 0
             return
 
         # Give up after 5 reanimation failures in a row. Supervisor cannot fix this issue.
@@ -176,23 +178,26 @@ class Tasks(CoreSysAttributes):
         if reanimate_fails >= HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
             if reanimate_fails == HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
                 _LOGGER.critical(
-                    "Watchdog cannot reanimate Home Assistant, failed all %s attempts.",
+                    "Watchdog cannot reanimate Home Assistant Core, failed all %s attempts.",
                     reanimate_fails,
                 )
                 self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] += 1
             return
 
         # Init cache data
-        retry_scan = self._cache.get(HASS_WATCHDOG_API, 0)
+        api_fails = self._cache.get(HASS_WATCHDOG_API_FAILURES, 0)
 
         # Look like we run into a problem
-        retry_scan += 1
-        if retry_scan == 1:
-            self._cache[HASS_WATCHDOG_API] = retry_scan
-            _LOGGER.warning("Watchdog miss API response from Home Assistant")
+        api_fails += 1
+        if api_fails < HASS_WATCHDOG_MAX_API_ATTEMPTS:
+            self._cache[HASS_WATCHDOG_API_FAILURES] = api_fails
+            _LOGGER.warning("Watchdog missed an Home Assistant Core API response.")
             return
 
-        _LOGGER.error("Watchdog found a problem with Home Assistant API!")
+        _LOGGER.error(
+            "Watchdog missed %s Home Assistant Core API responses in a row. Restarting Home Assistant Core API!",
+            HASS_WATCHDOG_MAX_API_ATTEMPTS,
+        )
         try:
             await self.sys_homeassistant.core.restart()
         except HomeAssistantError as err:
@@ -203,7 +208,7 @@ class Tasks(CoreSysAttributes):
         else:
             self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = 0
         finally:
-            self._cache[HASS_WATCHDOG_API] = 0
+            self._cache[HASS_WATCHDOG_API_FAILURES] = 0
 
     @Job(name="tasks_update_cli", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_cli(self):
