@@ -34,15 +34,21 @@ async def test_watchdog_homeassistant_api(
         await tasks._watchdog_homeassistant_api()
 
         restart.assert_not_called()
-        assert "Watchdog miss API response from Home Assistant" in caplog.text
-        assert "Watchdog found a problem with Home Assistant API!" not in caplog.text
+        assert "Watchdog missed an Home Assistant Core API response." in caplog.text
+        assert (
+            "Watchdog missed 2 Home Assistant Core API responses in a row. Restarting Home Assistant Core API!"
+            not in caplog.text
+        )
 
         caplog.clear()
         await tasks._watchdog_homeassistant_api()
 
         restart.assert_called_once()
-        assert "Watchdog miss API response from Home Assistant" not in caplog.text
-        assert "Watchdog found a problem with Home Assistant API!" in caplog.text
+        assert "Watchdog missed an Home Assistant Core API response." not in caplog.text
+        assert (
+            "Watchdog missed 2 Home Assistant Core API responses in a row. Restarting Home Assistant Core API!"
+            in caplog.text
+        )
 
 
 async def test_watchdog_homeassistant_api_off(tasks: Tasks, coresys: CoreSys):
@@ -120,10 +126,10 @@ async def test_watchdog_homeassistant_api_reanimation_limit(
         await tasks._watchdog_homeassistant_api()
 
         restart.assert_not_called()
-        assert "Watchdog miss API response from Home Assistant" not in caplog.text
+        assert "Watchdog missed an Home Assistant Core API response." not in caplog.text
         assert "Watchdog found a problem with Home Assistant API!" not in caplog.text
         assert (
-            "Watchdog cannot reanimate Home Assistant, failed all 5 attempts."
+            "Watchdog cannot reanimate Home Assistant Core, failed all 5 attempts."
             in caplog.text
         )
 
