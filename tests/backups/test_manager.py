@@ -27,6 +27,7 @@ from supervisor.exceptions import (
     BackupError,
     BackupInvalidError,
     BackupJobError,
+    BackupMountDownError,
     DockerError,
 )
 from supervisor.homeassistant.api import HomeAssistantAPI
@@ -612,7 +613,8 @@ async def test_full_backup_to_mount(
     # Make a backup and add it to mounts. Confirm it exists in the right place
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    backup: Backup = await coresys.backups.do_backup_full("test", location=mount)
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        backup: Backup = await coresys.backups.do_backup_full("test", location=mount)
     assert (mount_dir / f"{backup.slug}.tar").exists()
 
     # Reload and check that backups in mounts are listed
@@ -661,7 +663,7 @@ async def test_partial_backup_to_mount(
         HomeAssistant,
         "version",
         new=PropertyMock(return_value=AwesomeVersion("2023.1.1")),
-    ):
+    ), patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
         backup: Backup = await coresys.backups.do_backup_partial(
             "test", homeassistant=True, location=mount
         )
@@ -679,6 +681,37 @@ async def test_partial_backup_to_mount(
             await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
     assert marker.exists()
+
+
+async def test_backup_to_down_mount_error(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+):
+    """Test backup to mount when down raises error."""
+    # Add a backup mount
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    assert mount_dir in coresys.backups.backup_locations
+
+    # Attempt to make a backup which fails because is_mount on directory is false
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    with pytest.raises(BackupMountDownError):
+        await coresys.backups.do_backup_full("test", location=mount)
+    with pytest.raises(BackupMountDownError):
+        await coresys.backups.do_backup_partial(
+            "test", location=mount, homeassistant=True
+        )
 
 
 async def test_backup_to_local_with_default(
@@ -747,12 +780,40 @@ async def test_backup_to_default(
         HomeAssistant,
         "version",
         new=PropertyMock(return_value=AwesomeVersion("2023.1.1")),
-    ):
+    ), patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
         backup: Backup = await coresys.backups.do_backup_partial(
             "test", homeassistant=True
         )
 
     assert (mount_dir / f"{backup.slug}.tar").exists()
+
+
+async def test_backup_to_default_mount_down_error(
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+):
+    """Test making backup to default mount when it is down."""
+    # Add a default backup mount
+    (coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    coresys.mounts.default_backup_mount = mount
+
+    # Attempt to make a backup which fails because is_mount on directory is false
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with pytest.raises(BackupMountDownError):
+        await coresys.backups.do_backup_partial("test", homeassistant=True)
 
 
 async def test_load_network_error(
@@ -1529,8 +1590,9 @@ async def test_backup_to_mount_bypasses_free_space_condition(
     mount = coresys.mounts.get("backup_test")
 
     # These succeed because local free space does not matter when using a mount
-    await coresys.backups.do_backup_full(location=mount)
-    await coresys.backups.do_backup_partial(folders=["media"], location=mount)
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        await coresys.backups.do_backup_full(location=mount)
+        await coresys.backups.do_backup_partial(folders=["media"], location=mount)
 
 
 @pytest.mark.parametrize(

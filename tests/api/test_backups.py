@@ -90,13 +90,14 @@ async def test_backup_to_location(
 
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    resp = await api_client.post(
-        "/backups/new/full",
-        json={
-            "name": "Mount test",
-            "location": location,
-        },
-    )
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        resp = await api_client.post(
+            "/backups/new/full",
+            json={
+                "name": "Mount test",
+                "location": location,
+            },
+        )
     result = await resp.json()
     assert result["result"] == "ok"
     slug = result["data"]["slug"]
@@ -134,10 +135,11 @@ async def test_backup_to_default(
 
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    resp = await api_client.post(
-        "/backups/new/full",
-        json={"name": "Mount test"},
-    )
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        resp = await api_client.post(
+            "/backups/new/full",
+            json={"name": "Mount test"},
+        )
     result = await resp.json()
     assert result["result"] == "ok"
     slug = result["data"]["slug"]

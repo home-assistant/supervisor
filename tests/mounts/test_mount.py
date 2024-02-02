@@ -64,6 +64,7 @@ async def test_cifs_mount(
         "version": None,
         "username": "admin",
         "password": "password",
+        "read_only": False,
         **additional_data,
     }
     mount: CIFSMount = Mount.from_dict(coresys, mount_data)
@@ -75,6 +76,7 @@ async def test_cifs_mount(
     assert mount.port is None
     assert mount.state is None
     assert mount.unit is None
+    assert mount.read_only is False
 
     assert mount.what == "//test.local/camera"
     assert mount.where == Path("/mnt/data/supervisor/mounts/test")
@@ -136,6 +138,51 @@ async def test_cifs_mount(
     assert not mount.path_credentials.exists()
 
 
+async def test_cifs_mount_read_only(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+):
+    """Test a read-only cifs mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount_data = {
+        "name": "test",
+        "usage": "media",
+        "type": "cifs",
+        "server": "test.local",
+        "share": "camera",
+        "version": None,
+        "read_only": True,
+    }
+    mount: CIFSMount = Mount.from_dict(coresys, mount_data)
+
+    assert isinstance(mount, CIFSMount)
+    assert mount.read_only is True
+
+    await mount.mount()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert mount.local_where.exists()
+    assert mount.local_where.is_dir()
+
+    assert systemd_service.StartTransientUnit.calls == [
+        (
+            "mnt-data-supervisor-mounts-test.mount",
+            "fail",
+            [
+                ["Options", Variant("s", "ro,noserverino,guest")],
+                ["Type", Variant("s", "cifs")],
+                ["Description", Variant("s", "Supervisor cifs mount: test")],
+                ["What", Variant("s", "//test.local/camera")],
+            ],
+            [],
+        )
+    ]
+
+
 async def test_nfs_mount(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
@@ -153,6 +200,7 @@ async def test_nfs_mount(
         "server": "test.local",
         "path": "/media/camera",
         "port": 1234,
+        "read_only": False,
     }
     mount: NFSMount = Mount.from_dict(coresys, mount_data)
 
@@ -163,6 +211,7 @@ async def test_nfs_mount(
     assert mount.port == 1234
     assert mount.state is None
     assert mount.unit is None
+    assert mount.read_only is False
 
     assert mount.what == "test.local:/media/camera"
     assert mount.where == Path("/mnt/data/supervisor/mounts/test")
@@ -184,6 +233,51 @@ async def test_nfs_mount(
             "fail",
             [
                 ["Options", Variant("s", "port=1234,soft,timeo=200")],
+                ["Type", Variant("s", "nfs")],
+                ["Description", Variant("s", "Supervisor nfs mount: test")],
+                ["What", Variant("s", "test.local:/media/camera")],
+            ],
+            [],
+        )
+    ]
+
+
+async def test_nfs_mount_read_only(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    tmp_supervisor_data: Path,
+    path_extern,
+):
+    """Test NFS mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+
+    mount_data = {
+        "name": "test",
+        "usage": "media",
+        "type": "nfs",
+        "server": "test.local",
+        "path": "/media/camera",
+        "port": 1234,
+        "read_only": True,
+    }
+    mount: NFSMount = Mount.from_dict(coresys, mount_data)
+
+    assert isinstance(mount, NFSMount)
+    assert mount.read_only is True
+
+    await mount.mount()
+
+    assert mount.state == UnitActiveState.ACTIVE
+    assert mount.local_where.exists()
+    assert mount.local_where.is_dir()
+
+    assert systemd_service.StartTransientUnit.calls == [
+        (
+            "mnt-data-supervisor-mounts-test.mount",
+            "fail",
+            [
+                ["Options", Variant("s", "ro,port=1234,soft,timeo=200")],
                 ["Type", Variant("s", "nfs")],
                 ["Description", Variant("s", "Supervisor nfs mount: test")],
                 ["What", Variant("s", "test.local:/media/camera")],

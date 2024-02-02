@@ -311,7 +311,7 @@ async def test_mount_failed_during_load(
         "mnt-data-supervisor-media-media_test.mount",
         "fail",
         [
-            ["Options", Variant("s", "bind")],
+            ["Options", Variant("s", "ro,bind")],
             [
                 "Description",
                 Variant("s", "Supervisor bind mount: emergency_media_test"),
@@ -498,6 +498,7 @@ async def test_save_data(
                 "share": "backups",
                 "username": "admin",
                 "password": "password",
+                "read_only": False,
             }
         ]
 

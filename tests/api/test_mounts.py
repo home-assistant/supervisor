@@ -79,6 +79,7 @@ async def test_api_create_mount(
             "server": "backup.local",
             "share": "backups",
             "state": "active",
+            "read_only": False,
         }
     ]
     coresys.mounts.save_data.assert_called_once()
@@ -253,6 +254,7 @@ async def test_api_update_mount(
             "server": "backup.local",
             "share": "new_backups",
             "state": "active",
+            "read_only": False,
         }
     ]
     coresys.mounts.save_data.assert_called_once()
@@ -320,6 +322,7 @@ async def test_api_update_dbus_error_mount_remains(
             "server": "backup.local",
             "share": "backups",
             "state": None,
+            "read_only": False,
         }
     ]
 
@@ -366,6 +369,7 @@ async def test_api_update_dbus_error_mount_remains(
             "server": "backup.local",
             "share": "backups",
             "state": None,
+            "read_only": False,
         }
     ]
 
@@ -776,3 +780,109 @@ async def test_api_create_mount_fails_special_chars(
     result = await resp.json()
     assert result["result"] == "error"
     assert "does not match regular expression" in result["message"]
+
+
+async def test_api_create_read_only_cifs_mount(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test creating a read-only cifs mount via API."""
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "media_test",
+            "type": "cifs",
+            "usage": "media",
+            "server": "media.local",
+            "share": "media",
+            "version": "2.0",
+            "read_only": True,
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    resp = await api_client.get("/mounts")
+    result = await resp.json()
+
+    assert result["data"]["mounts"] == [
+        {
+            "version": "2.0",
+            "name": "media_test",
+            "type": "cifs",
+            "usage": "media",
+            "server": "media.local",
+            "share": "media",
+            "state": "active",
+            "read_only": True,
+        }
+    ]
+    coresys.mounts.save_data.assert_called_once()
+
+
+async def test_api_create_read_only_nfs_mount(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test creating a read-only nfs mount via API."""
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "media_test",
+            "type": "nfs",
+            "usage": "media",
+            "server": "media.local",
+            "path": "/media/camera",
+            "read_only": True,
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+
+    resp = await api_client.get("/mounts")
+    result = await resp.json()
+
+    assert result["data"]["mounts"] == [
+        {
+            "name": "media_test",
+            "type": "nfs",
+            "usage": "media",
+            "server": "media.local",
+            "path": "/media/camera",
+            "state": "active",
+            "read_only": True,
+        }
+    ]
+    coresys.mounts.save_data.assert_called_once()
+
+
+async def test_api_read_only_backup_mount_invalid(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+):
+    """Test cannot create a read-only backup mount."""
+    resp = await api_client.post(
+        "/mounts",
+        json={
+            "name": "backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backup",
+            "version": "2.0",
+            "read_only": True,
+        },
+    )
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert "Backup mounts cannot be read only" in result["message"]
