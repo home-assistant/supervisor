@@ -158,7 +158,7 @@ async def test_datadisk_migrate_mark_data_move(
         shutdown.assert_called_once()
 
     assert datadisk_service.ChangeDevice.calls == []
-    assert datadisk_service.MarkDataMove.calls == [tuple()]
+    assert datadisk_service.MarkDataMove.calls == [()]
     assert block_service.Format.calls == [
         ("gpt", {"auth.no_user_interaction": Variant("b", True)})
     ]
@@ -266,7 +266,7 @@ async def test_datadisk_migrate_between_external_renames(
 
     await coresys.os.datadisk.migrate_disk("Generic-Flash-Disk-61BCDDB6")
 
-    assert datadisk_service.MarkDataMove.calls == [tuple()]
+    assert datadisk_service.MarkDataMove.calls == [()]
     assert sdb1_partition_service.SetName.calls == [
         ("hassos-data-external-old", {"auth.no_user_interaction": Variant("b", True)})
     ]

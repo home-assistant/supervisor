@@ -1,4 +1,6 @@
 """Supervisor docker monitor based on events."""
+
+from contextlib import suppress
 from dataclasses import dataclass
 import logging
 from threading import Thread
@@ -47,10 +49,8 @@ class DockerMonitor(CoreSysAttributes, Thread):
     async def unload(self):
         """Stop docker events monitor."""
         self._events.close()
-        try:
+        with suppress(RuntimeError):
             self.join(timeout=5)
-        except RuntimeError:
-            pass
 
         _LOGGER.info("Stopped docker events monitor")
 

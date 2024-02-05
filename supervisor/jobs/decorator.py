@@ -1,12 +1,12 @@
 """Job decorator."""
 import asyncio
 from collections.abc import Callable
+from contextlib import suppress
 from datetime import datetime, timedelta
 from functools import wraps
 import logging
 from typing import Any
 
-from . import SupervisorJob
 from ..const import CoreState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -18,6 +18,7 @@ from ..exceptions import (
 from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 from ..utils.sentry import capture_exception
+from . import SupervisorJob
 from .const import JobCondition, JobExecutionLimit
 from .job_group import JobGroup
 
@@ -146,10 +147,8 @@ class Job(CoreSysAttributes):
     def _post_init(self, obj: JobGroup | CoreSysAttributes) -> JobGroup | None:
         """Runtime init."""
         # Coresys
-        try:
+        with suppress(AttributeError):
             self.coresys = obj.coresys
-        except AttributeError:
-            pass
         if not self.coresys:
             raise RuntimeError(f"Job on {self.name} need to be an coresys object!")
 

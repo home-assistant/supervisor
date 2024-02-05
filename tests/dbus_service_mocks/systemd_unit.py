@@ -13,9 +13,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return SystemdUnit(object_path or DEFAULT_OBJECT_PATH)
 
 
-# pylint: disable=invalid-name,missing-function-docstring
-
-
 class SystemdUnit(DBusServiceMock):
     """Systemd Unit mock.
 
@@ -196,7 +193,7 @@ class SystemdUnit(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def RequiresMountsFor(self) -> "as":
         """Get RequiresMountsFor."""
-        return ["/tmp"]
+        return ["/tmp"]  # noqa: S108
 
     @dbus_property(access=PropertyAccess.READ)
     def Documentation(self) -> "as":
@@ -206,7 +203,7 @@ class SystemdUnit(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def Description(self) -> "s":
         """Get Description."""
-        return "/tmp/yellow"
+        return "/tmp/yellow"  # noqa: S108
 
     @dbus_property(access=PropertyAccess.READ)
     def AccessSELinuxContext(self) -> "s":

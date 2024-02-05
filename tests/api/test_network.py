@@ -128,7 +128,7 @@ async def test_api_network_interface_update(
     )
     result = await resp.json()
     assert result["result"] == "ok"
-    assert network_manager_service.CheckConnectivity.calls == [tuple()]
+    assert network_manager_service.CheckConnectivity.calls == [()]
     assert len(connection_settings_service.Update.calls) == 1
 
     await connection_settings_service.ping()
@@ -221,7 +221,7 @@ async def test_api_network_reload(
 
     assert result["result"] == "ok"
     # Check that we forced NM to do an immediate connectivity check
-    assert network_manager_service.CheckConnectivity.calls == [tuple()]
+    assert network_manager_service.CheckConnectivity.calls == [()]
 
 
 async def test_api_network_vlan(

@@ -1,5 +1,5 @@
 """Test Datadisk/Agent dbus interface."""
-# pylint: disable=import-error
+
 from pathlib import Path
 
 from dbus_fast.aio.message_bus import MessageBus
@@ -14,7 +14,7 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 
 @pytest.fixture(name="datadisk_service", autouse=True)
 async def fixture_datadisk_service(
-    os_agent_services: dict[str, DBusServiceMock]
+    os_agent_services: dict[str, DBusServiceMock],
 ) -> DataDiskService:
     """Mock DataDisk dbus service."""
     yield os_agent_services["agent_datadisk"]
@@ -71,7 +71,7 @@ async def test_dbus_osagent_datadisk_reload_device(
     await os_agent.connect(dbus_session_bus)
 
     assert await os_agent.datadisk.reload_device() is None
-    assert datadisk_service.ReloadDevice.calls == [tuple()]
+    assert datadisk_service.ReloadDevice.calls == [()]
 
 
 async def test_dbus_osagent_datadisk_mark_data_move(
@@ -87,4 +87,4 @@ async def test_dbus_osagent_datadisk_mark_data_move(
     await os_agent.connect(dbus_session_bus)
 
     assert await os_agent.datadisk.mark_data_move() is None
-    assert datadisk_service.MarkDataMove.calls == [tuple()]
+    assert datadisk_service.MarkDataMove.calls == [()]

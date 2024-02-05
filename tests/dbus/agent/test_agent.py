@@ -12,7 +12,7 @@ from tests.dbus_service_mocks.os_agent import OSAgent as OSAgentService
 
 @pytest.fixture(name="os_agent_service")
 async def fixture_os_agent_service(
-    os_agent_services: dict[str, DBusServiceMock]
+    os_agent_services: dict[str, DBusServiceMock],
 ) -> OSAgentService:
     """Mock OS Agent dbus service."""
     yield os_agent_services["os_agent"]

@@ -5,7 +5,6 @@ from unittest.mock import ANY
 
 import pytest
 
-# pylint: disable=protected-access,import-error
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import JobStartException
 
@@ -51,9 +50,8 @@ async def test_job_done(coresys: CoreSys):
     assert not coresys.jobs.is_job
     assert job.done
 
-    with pytest.raises(JobStartException):
-        with job.start():
-            pass
+    with pytest.raises(JobStartException), job.start():
+        pass
 
 
 async def test_job_start_bad_parent(coresys: CoreSys):
@@ -61,10 +59,8 @@ async def test_job_start_bad_parent(coresys: CoreSys):
     job = coresys.jobs.new_job(TEST_JOB)
     job2 = coresys.jobs.new_job(f"{TEST_JOB}_2")
 
-    with job.start():
-        with pytest.raises(JobStartException):
-            with job2.start():
-                pass
+    with job.start(), pytest.raises(JobStartException), job2.start():
+        pass
 
     with job2.start():
         assert coresys.jobs.current == job2
@@ -93,6 +89,7 @@ async def test_notify_on_change(coresys: CoreSys):
 
     job.progress = 50
     await asyncio.sleep(0)
+    # pylint: disable=protected-access
     coresys.homeassistant.websocket._client.async_send_command.assert_called_with(
         {
             "type": "supervisor/event",
@@ -225,3 +222,4 @@ async def test_notify_on_change(coresys: CoreSys):
             },
         }
     )
+    # pylint: enable=protected-access

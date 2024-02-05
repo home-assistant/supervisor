@@ -14,9 +14,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Systemd()
 
 
-# pylint: disable=invalid-name,missing-function-docstring,raising-bad-type
-
-
 class Systemd(DBusServiceMock):
     """Systemd mock.
 
@@ -668,7 +665,7 @@ class Systemd(DBusServiceMock):
     def StopUnit(self, name: "s", mode: "s") -> "o":
         """Stop a service unit."""
         if isinstance(self.response_stop_unit, DBusError):
-            raise self.response_stop_unit
+            raise self.response_stop_unit  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "inactive"
         return self.response_stop_unit
@@ -677,7 +674,7 @@ class Systemd(DBusServiceMock):
     def ReloadOrRestartUnit(self, name: "s", mode: "s") -> "o":
         """Reload or restart a service unit."""
         if isinstance(self.response_reload_or_restart_unit, DBusError):
-            raise self.response_reload_or_restart_unit
+            raise self.response_reload_or_restart_unit  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "active"
         return self.response_reload_or_restart_unit
@@ -695,7 +692,7 @@ class Systemd(DBusServiceMock):
     ) -> "o":
         """Start a transient service unit."""
         if isinstance(self.response_start_transient_unit, DBusError):
-            raise self.response_start_transient_unit
+            raise self.response_start_transient_unit  # pylint: disable=raising-bad-type
         if self.mock_systemd_unit:
             self.mock_systemd_unit.active_state = "active"
         return self.response_start_transient_unit

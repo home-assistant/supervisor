@@ -1,9 +1,9 @@
 """Home Assistant control object."""
 import asyncio
-from contextlib import asynccontextmanager, suppress
-from datetime import datetime, timedelta
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
+from datetime import UTC, datetime, timedelta
 import logging
-from typing import Any, AsyncContextManager
+from typing import Any
 
 import aiohttp
 from aiohttp import hdrs
@@ -39,9 +39,8 @@ class HomeAssistantAPI(CoreSysAttributes):
     )
     async def ensure_access_token(self) -> None:
         """Ensure there is an access token."""
-        if (
-            self.access_token is not None
-            and self._access_token_expires > datetime.utcnow()
+        if self.access_token is not None and self._access_token_expires > datetime.now(
+            tz=UTC
         ):
             return
 
@@ -63,7 +62,7 @@ class HomeAssistantAPI(CoreSysAttributes):
                 _LOGGER.info("Updated Home Assistant API token")
                 tokens = await resp.json()
                 self.access_token = tokens["access_token"]
-                self._access_token_expires = datetime.utcnow() + timedelta(
+                self._access_token_expires = datetime.now(tz=UTC) + timedelta(
                     seconds=tokens["expires_in"]
                 )
 
@@ -78,7 +77,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         timeout: int = 30,
         params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> AsyncContextManager[aiohttp.ClientResponse]:
+    ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
         """Async context manager to make a request with right auth."""
         url = f"{self.sys_homeassistant.api_url}/{path}"
         headers = headers or {}

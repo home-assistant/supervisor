@@ -42,9 +42,7 @@ def systemd_errors(func):
             return await func(*args, **kwds)
         except DBusFatalError as err:
             if err.type == DBUS_ERR_SYSTEMD_NO_SUCH_UNIT:
-                # pylint: disable=raise-missing-from
-                raise DBusSystemdNoSuchUnit(str(err))
-                # pylint: enable=raise-missing-from
+                raise DBusSystemdNoSuchUnit(str(err)) from None
             raise err
 
     return wrapper

@@ -110,7 +110,7 @@ class DBus:
                 )
             return await getattr(proxy_interface, method)(*args)
         except DBusFastDBusError as err:
-            raise DBus.from_dbus_error(err)
+            raise DBus.from_dbus_error(err) from None
         except Exception as err:  # pylint: disable=broad-except
             capture_exception(err)
             raise DBusFatalError(str(err)) from err
@@ -134,7 +134,7 @@ class DBus:
                     f"Can't parse introspect data: {err}", _LOGGER.error
                 ) from err
             except DBusFastDBusError as err:
-                raise DBus.from_dbus_error(err)
+                raise DBus.from_dbus_error(err) from None
             except (EOFError, TimeoutError):
                 _LOGGER.warning(
                     "Busy system at %s - %s", self.bus_name, self.object_path

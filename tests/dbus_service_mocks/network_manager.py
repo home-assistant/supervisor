@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return NetworkManager()
 
 
-# pylint: disable=invalid-name
-
-
 class NetworkManager(DBusServiceMock):
     """Network Manager mock.
 

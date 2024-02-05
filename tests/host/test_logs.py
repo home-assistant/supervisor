@@ -51,22 +51,22 @@ async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
         return_value=load_fixture("logs_boot_ids.txt")
     )
 
-    assert TEST_BOOT_IDS == await coresys.host.logs.get_boot_ids()
+    assert await coresys.host.logs.get_boot_ids() == TEST_BOOT_IDS
 
     # Boot ID query should not be run again, mock a failure for it to ensure
     journald_gateway.side_effect = TimeoutError()
-    assert TEST_BOOT_IDS == await coresys.host.logs.get_boot_ids()
+    assert await coresys.host.logs.get_boot_ids() == TEST_BOOT_IDS
 
-    assert "b1c386a144fd44db8f855d7e907256f8" == await coresys.host.logs.get_boot_id(0)
+    assert await coresys.host.logs.get_boot_id(0) == "b1c386a144fd44db8f855d7e907256f8"
 
     # -1 is previous boot. We have 2 boots so -2 is too far
-    assert "b2aca10d5ca54fb1b6fb35c85a0efca9" == await coresys.host.logs.get_boot_id(-1)
+    assert await coresys.host.logs.get_boot_id(-1) == "b2aca10d5ca54fb1b6fb35c85a0efca9"
     with pytest.raises(ValueError):
         await coresys.host.logs.get_boot_id(-2)
 
     # 1 is oldest boot and count up from there. We have 2 boots so 3 is too far
-    assert "b2aca10d5ca54fb1b6fb35c85a0efca9" == await coresys.host.logs.get_boot_id(1)
-    assert "b1c386a144fd44db8f855d7e907256f8" == await coresys.host.logs.get_boot_id(2)
+    assert await coresys.host.logs.get_boot_id(1) == "b2aca10d5ca54fb1b6fb35c85a0efca9"
+    assert await coresys.host.logs.get_boot_id(2) == "b1c386a144fd44db8f855d7e907256f8"
     with pytest.raises(ValueError):
         await coresys.host.logs.get_boot_id(3)
 

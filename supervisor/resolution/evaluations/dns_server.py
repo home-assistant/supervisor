@@ -31,10 +31,14 @@ class EvaluateDNSServer(EvaluateBase):
 
     async def evaluate(self) -> None:
         """Run evaluation."""
-        return not self.sys_plugins.dns.fallback and 0 < len(
-            [
-                issue
-                for issue in self.sys_resolution.issues
-                if issue.context == ContextType.DNS_SERVER
-            ]
+        return (
+            not self.sys_plugins.dns.fallback
+            and len(
+                [
+                    issue
+                    for issue in self.sys_resolution.issues
+                    if issue.context == ContextType.DNS_SERVER
+                ]
+            )
+            > 0
         )

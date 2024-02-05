@@ -5,7 +5,6 @@ from datetime import date, datetime, time, timedelta
 import logging
 from uuid import UUID, uuid4
 
-import async_timeout
 import attr
 
 from ..const import CoreState
@@ -113,7 +112,7 @@ class Scheduler(CoreSysAttributes):
 
         # Wait until all are shutdown
         try:
-            async with async_timeout.timeout(timeout):
+            async with asyncio.timeout(timeout):
                 await asyncio.wait(running)
         except TimeoutError:
             _LOGGER.error("Timeout while waiting for jobs shutdown")

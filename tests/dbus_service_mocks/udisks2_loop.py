@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Loop()
 
 
-# pylint: disable=invalid-name
-
-
 class Loop(DBusServiceMock):
     """Loop mock.
 

@@ -45,10 +45,8 @@ async def test_api_store(
 @pytest.mark.asyncio
 async def test_api_store_addons(api_client: TestClient, store_addon: AddonStore):
     """Test /store/addons REST API."""
-    print("test")
     resp = await api_client.get("/store/addons")
     result = await resp.json()
-    print(result)
 
     assert result["data"]["addons"][-1]["slug"] == store_addon.slug
 
@@ -139,6 +137,7 @@ async def test_api_store_update_healthcheck(
     assert install_addon_ssh.need_update is True
 
     state_changes: list[AddonState] = []
+    _container_events_task: asyncio.Task | None = None
 
     async def container_events():
         nonlocal state_changes
@@ -174,7 +173,8 @@ async def test_api_store_update_healthcheck(
         )
 
     async def container_events_task(*args, **kwargs):
-        asyncio.create_task(container_events())
+        nonlocal _container_events_task
+        _container_events_task = asyncio.create_task(container_events())
 
     with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
         DockerInterface, "install"
@@ -186,3 +186,5 @@ async def test_api_store_update_healthcheck(
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
     assert resp.status == 200
+
+    await _container_events_task

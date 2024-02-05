@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Yellow()
 
 
-# pylint: disable=invalid-name
-
-
 class Yellow(DBusServiceMock):
     """Yellow mock.
 

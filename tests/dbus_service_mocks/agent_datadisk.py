@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return DataDisk()
 
 
-# pylint: disable=invalid-name
-
-
 class DataDisk(DBusServiceMock):
     """DataDisk mock.
 

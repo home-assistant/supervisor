@@ -1,5 +1,4 @@
 """Test the condition decorators."""
-# pylint: disable=protected-access,import-error
 import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, patch
@@ -23,6 +22,7 @@ from supervisor.jobs import JobSchedulerOptions, SupervisorJob
 from supervisor.jobs.const import JobExecutionLimit
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.jobs.job_group import JobGroup
+from supervisor.os.manager import OSManager
 from supervisor.plugins.audio import PluginAudio
 from supervisor.resolution.const import UnhealthyReason
 from supervisor.utils.dt import utcnow
@@ -159,11 +159,11 @@ async def test_haos(coresys: CoreSys):
             return True
 
     test = TestClass(coresys)
-    coresys.os._available = True
-    assert await test.execute()
+    with patch.object(OSManager, "available", new=PropertyMock(return_value=True)):
+        assert await test.execute()
 
-    coresys.os._available = False
-    assert not await test.execute()
+    with patch.object(OSManager, "available", new=PropertyMock(return_value=False)):
+        assert not await test.execute()
 
     coresys.jobs.ignore_conditions = [JobCondition.HAOS]
     assert await test.execute()
@@ -490,8 +490,15 @@ async def test_plugins_updated(coresys: CoreSys):
             return True
 
     test = TestClass(coresys)
-    assert 0 == len(
-        [plugin.slug for plugin in coresys.plugins.all_plugins if plugin.need_update]
+    assert (
+        len(
+            [
+                plugin.slug
+                for plugin in coresys.plugins.all_plugins
+                if plugin.need_update
+            ]
+        )
+        == 0
     )
     assert await test.execute()
 
@@ -956,6 +963,7 @@ async def test_internal_jobs_no_notify(coresys: CoreSys):
             return True
 
     test1 = TestClass(coresys)
+    # pylint: disable-next=protected-access
     client = coresys.homeassistant.websocket._client
     client.async_send_command.reset_mock()
 
@@ -965,7 +973,7 @@ async def test_internal_jobs_no_notify(coresys: CoreSys):
 
     await test1.execute_default()
     await asyncio.sleep(0)
-    client.async_send_command.call_count == 2
+    assert client.async_send_command.call_count == 2
     client.async_send_command.assert_called_with(
         {
             "type": "supervisor/event",

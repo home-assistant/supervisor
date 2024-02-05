@@ -40,7 +40,5 @@ def test_custom_user_agent(coresys: CoreSys):
     """Test custom useragent."""
     assert (
         "HomeAssistantSupervisor/99.9.9dev"
-        in coresys.websession._default_headers[  # pylint: disable=protected-access
-            USER_AGENT
-        ]
+        in coresys.websession._default_headers[USER_AGENT]  # pylint: disable=protected-access
     )

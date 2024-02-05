@@ -40,7 +40,7 @@ async def test_resolution_dismiss_suggestion(coresys: CoreSys):
         SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
     )
 
-    assert SuggestionType.CLEAR_FULL_BACKUP == coresys.resolution.suggestions[-1].type
+    assert coresys.resolution.suggestions[-1].type == SuggestionType.CLEAR_FULL_BACKUP
     coresys.resolution.dismiss_suggestion(clear_backup)
     assert clear_backup not in coresys.resolution.suggestions
 
@@ -83,7 +83,7 @@ async def test_resolution_dismiss_issue(coresys: CoreSys):
         IssueType.UPDATE_FAILED, ContextType.SYSTEM
     )
 
-    assert IssueType.UPDATE_FAILED == coresys.resolution.issues[-1].type
+    assert coresys.resolution.issues[-1].type == IssueType.UPDATE_FAILED
     coresys.resolution.dismiss_issue(updated_failed)
     assert updated_failed not in coresys.resolution.issues
 
@@ -101,12 +101,12 @@ async def test_resolution_create_issue_suggestion(coresys: CoreSys):
         [SuggestionType.EXECUTE_REPAIR],
     )
 
-    assert IssueType.UPDATE_ROLLBACK == coresys.resolution.issues[-1].type
-    assert ContextType.CORE == coresys.resolution.issues[-1].context
+    assert coresys.resolution.issues[-1].type == IssueType.UPDATE_ROLLBACK
+    assert coresys.resolution.issues[-1].context == ContextType.CORE
     assert coresys.resolution.issues[-1].reference == "slug"
 
-    assert SuggestionType.EXECUTE_REPAIR == coresys.resolution.suggestions[-1].type
-    assert ContextType.CORE == coresys.resolution.suggestions[-1].context
+    assert coresys.resolution.suggestions[-1].type == SuggestionType.EXECUTE_REPAIR
+    assert coresys.resolution.suggestions[-1].context == ContextType.CORE
 
 
 @pytest.mark.asyncio

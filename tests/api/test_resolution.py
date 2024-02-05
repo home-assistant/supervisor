@@ -35,9 +35,9 @@ async def test_api_resolution_base(coresys: CoreSys, api_client):
     result = await resp.json()
     assert UnsupportedReason.OS in result["data"][ATTR_UNSUPPORTED]
     assert (
-        SuggestionType.CLEAR_FULL_BACKUP == result["data"][ATTR_SUGGESTIONS][-1]["type"]
+        result["data"][ATTR_SUGGESTIONS][-1]["type"] == SuggestionType.CLEAR_FULL_BACKUP
     )
-    assert IssueType.FREE_SPACE == result["data"][ATTR_ISSUES][-1]["type"]
+    assert result["data"][ATTR_ISSUES][-1]["type"] == IssueType.FREE_SPACE
 
 
 @pytest.mark.asyncio
@@ -47,7 +47,7 @@ async def test_api_resolution_dismiss_suggestion(coresys: CoreSys, api_client):
         SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
     )
 
-    assert SuggestionType.CLEAR_FULL_BACKUP == coresys.resolution.suggestions[-1].type
+    assert coresys.resolution.suggestions[-1].type == SuggestionType.CLEAR_FULL_BACKUP
     await api_client.delete(f"/resolution/suggestion/{clear_backup.uuid}")
     assert clear_backup not in coresys.resolution.suggestions
 
@@ -87,7 +87,7 @@ async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client):
         IssueType.UPDATE_FAILED, ContextType.SYSTEM
     )
 
-    assert IssueType.UPDATE_FAILED == coresys.resolution.issues[-1].type
+    assert coresys.resolution.issues[-1].type == IssueType.UPDATE_FAILED
     await api_client.delete(f"/resolution/issue/{updated_failed.uuid}")
     assert updated_failed not in coresys.resolution.issues
 
@@ -99,7 +99,7 @@ async def test_api_resolution_unhealthy(coresys: CoreSys, api_client):
 
     resp = await api_client.get("/resolution/info")
     result = await resp.json()
-    assert UnhealthyReason.DOCKER == result["data"][ATTR_UNHEALTHY][-1]
+    assert result["data"][ATTR_UNHEALTHY][-1] == UnhealthyReason.DOCKER
 
 
 @pytest.mark.asyncio

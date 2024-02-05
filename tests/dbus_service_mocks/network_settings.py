@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Settings()
 
 
-# pylint: disable=invalid-name
-
-
 class Settings(DBusServiceMock):
     """Settings mock.
 

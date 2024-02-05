@@ -36,7 +36,7 @@ async def test_connectivity_connected(
 
     await coresys.host.network.check_connectivity(force=True)
     assert coresys.host.network.connectivity
-    assert network_manager_service.CheckConnectivity.calls == [tuple()]
+    assert network_manager_service.CheckConnectivity.calls == [()]
 
 
 @pytest.mark.parametrize("force", [True, False])

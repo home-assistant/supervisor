@@ -5,8 +5,6 @@ from contextlib import suppress
 from datetime import timedelta
 import logging
 
-import async_timeout
-
 from .const import (
     ATTR_STARTUP,
     RUN_SUPERVISOR_STATE,
@@ -179,7 +177,15 @@ class Core(CoreSysAttributes):
             and not self.sys_dev
             and self.supported
         ):
-            self.sys_dbus.agent.diagnostics = self.sys_config.diagnostics
+            try:
+                await self.sys_dbus.agent.set_diagnostics(self.sys_config.diagnostics)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning(
+                    "Could not set diagnostics to %s due to %s",
+                    self.sys_config.diagnostics,
+                    err,
+                )
+                capture_exception(err)
 
         # Evaluate the system
         await self.sys_resolution.evaluate.evaluate_system()
@@ -298,7 +304,7 @@ class Core(CoreSysAttributes):
 
         # Stage 1
         try:
-            async with async_timeout.timeout(10):
+            async with asyncio.timeout(10):
                 await asyncio.wait(
                     [
                         self.sys_create_task(coro)
@@ -314,7 +320,7 @@ class Core(CoreSysAttributes):
 
         # Stage 2
         try:
-            async with async_timeout.timeout(10):
+            async with asyncio.timeout(10):
                 await asyncio.wait(
                     [
                         self.sys_create_task(coro)

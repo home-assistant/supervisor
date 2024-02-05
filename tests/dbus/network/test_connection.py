@@ -16,7 +16,7 @@ from tests.dbus_service_mocks.network_active_connection import (
 
 @pytest.fixture(name="active_connection_service", autouse=True)
 async def fixture_active_connection_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ActiveConnectionService:
     """Mock Active Connection service."""
     yield network_manager_services["network_active_connection"]

@@ -14,7 +14,7 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 
 @pytest.fixture(name="apparmor_service", autouse=True)
 async def fixture_apparmor_service(
-    os_agent_services: dict[str, DBusServiceMock]
+    os_agent_services: dict[str, DBusServiceMock],
 ) -> AppArmorService:
     """Mock AppArmor dbus service."""
     yield os_agent_services["agent_apparmor"]

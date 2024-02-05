@@ -26,12 +26,15 @@ class CheckFreeSpace(CheckBase):
             return
 
         suggestions: list[SuggestionType] = []
-        if MINIMUM_FULL_BACKUPS < len(
-            [
-                backup
-                for backup in self.sys_backups.list_backups
-                if backup.sys_type == BackupType.FULL
-            ]
+        if (
+            len(
+                [
+                    backup
+                    for backup in self.sys_backups.list_backups
+                    if backup.sys_type == BackupType.FULL
+                ]
+            )
+            > MINIMUM_FULL_BACKUPS
         ):
             suggestions.append(SuggestionType.CLEAR_FULL_BACKUP)
 

@@ -21,7 +21,7 @@ from tests.dbus_service_mocks.udisks2_manager import (
 
 @pytest.fixture(name="udisks2_manager_service")
 async def fixture_udisks2_manager_service(
-    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> UDisks2ManagerService:
     """Mock UDisks2 Manager service."""
     yield udisks2_services["udisks2_manager"]
@@ -76,7 +76,9 @@ async def test_udisks2_manager_info(
     udisks2_manager_service.emit_properties_changed({}, ["SupportedFilesystems"])
     await udisks2_manager_service.ping()
     await udisks2_manager_service.ping()
-    await udisks2_manager_service.ping()  # Three pings: signal, get all properties and get block devices
+    await (
+        udisks2_manager_service.ping()
+    )  # Three pings: signal, get all properties and get block devices
     assert udisks2.supported_filesystems == [
         "ext4",
         "vfat",

@@ -2,9 +2,9 @@
 
 from asyncio import Lock
 
-from . import SupervisorJob
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JobException, JobGroupExecutionLimitExceeded
+from . import SupervisorJob
 
 
 class JobGroup(CoreSysAttributes):

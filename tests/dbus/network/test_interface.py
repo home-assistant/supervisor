@@ -17,7 +17,7 @@ from tests.dbus_service_mocks.network_device import Device as DeviceService
 
 @pytest.fixture(name="device_eth0_service")
 async def fixture_device_eth0_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> DeviceService:
     """Mock Device eth0 service."""
     yield network_manager_services["network_device"][
@@ -27,7 +27,7 @@ async def fixture_device_eth0_service(
 
 @pytest.fixture(name="device_wlan0_service")
 async def fixture_device_wlan0_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> DeviceService:
     """Mock Device wlan0 service."""
     yield network_manager_services["network_device"][

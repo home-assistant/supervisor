@@ -10,11 +10,13 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-python.python",
+        "charliermarsh.ruff",
         "ms-python.pylint",
         "ms-python.vscode-pylance",
         "visualstudioexptteam.vscodeintellicode",
-        "esbenp.prettier-vscode"
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode",
+        "GitHub.vscode-pull-request-github"
       ],
       "settings": {
         "terminal.integrated.profiles.linux": {
@@ -28,9 +30,9 @@
         "editor.formatOnType": true,
         "files.trimTrailingWhitespace": true,
         "python.pythonPath": "/usr/local/bin/python3",
-        "python.formatting.provider": "black",
-        "python.formatting.blackArgs": ["--target-version", "py312"],
-        "python.formatting.blackPath": "/usr/local/bin/black"
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
       }
     }
   },

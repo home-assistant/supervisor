@@ -1,6 +1,6 @@
 """Interface to UDisks2 Drive over D-Bus."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dbus_fast.aio import MessageBus
 
@@ -95,7 +95,7 @@ class UDisks2Drive(DBusInterfaceProxy):
         """Return time drive first detected."""
         return datetime.fromtimestamp(
             self.properties[DBUS_ATTR_TIME_DETECTED] * 10**-6
-        ).astimezone(timezone.utc)
+        ).astimezone(UTC)
 
     @property
     @dbus_property

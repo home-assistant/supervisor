@@ -22,7 +22,7 @@ from tests.dbus_service_mocks.udisks2_block import Block as BlockService
 
 @pytest.fixture(name="block_sda_service")
 async def fixture_block_sda_service(
-    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> BlockService:
     """Mock sda Block service."""
     yield udisks2_services["udisks2_block"][
@@ -32,7 +32,7 @@ async def fixture_block_sda_service(
 
 @pytest.fixture(name="block_sda1_service")
 async def fixture_block_sda1_service(
-    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> BlockService:
     """Mock sda1 Block service."""
     yield udisks2_services["udisks2_block"][

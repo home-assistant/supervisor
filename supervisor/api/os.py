@@ -130,13 +130,17 @@ class APIOS(CoreSysAttributes):
         body = await api_validate(SCHEMA_GREEN_OPTIONS, request)
 
         if ATTR_ACTIVITY_LED in body:
-            self.sys_dbus.agent.board.green.activity_led = body[ATTR_ACTIVITY_LED]
+            await self.sys_dbus.agent.board.green.set_activity_led(
+                body[ATTR_ACTIVITY_LED]
+            )
 
         if ATTR_POWER_LED in body:
-            self.sys_dbus.agent.board.green.power_led = body[ATTR_POWER_LED]
+            await self.sys_dbus.agent.board.green.set_power_led(body[ATTR_POWER_LED])
 
         if ATTR_SYSTEM_HEALTH_LED in body:
-            self.sys_dbus.agent.board.green.user_led = body[ATTR_SYSTEM_HEALTH_LED]
+            await self.sys_dbus.agent.board.green.set_user_led(
+                body[ATTR_SYSTEM_HEALTH_LED]
+            )
 
         self.sys_dbus.agent.board.green.save_data()
 
@@ -155,13 +159,15 @@ class APIOS(CoreSysAttributes):
         body = await api_validate(SCHEMA_YELLOW_OPTIONS, request)
 
         if ATTR_DISK_LED in body:
-            self.sys_dbus.agent.board.yellow.disk_led = body[ATTR_DISK_LED]
+            await self.sys_dbus.agent.board.yellow.set_disk_led(body[ATTR_DISK_LED])
 
         if ATTR_HEARTBEAT_LED in body:
-            self.sys_dbus.agent.board.yellow.heartbeat_led = body[ATTR_HEARTBEAT_LED]
+            await self.sys_dbus.agent.board.yellow.set_heartbeat_led(
+                body[ATTR_HEARTBEAT_LED]
+            )
 
         if ATTR_POWER_LED in body:
-            self.sys_dbus.agent.board.yellow.power_led = body[ATTR_POWER_LED]
+            await self.sys_dbus.agent.board.yellow.set_power_led(body[ATTR_POWER_LED])
 
         self.sys_dbus.agent.board.yellow.save_data()
         self.sys_resolution.create_issue(

@@ -140,7 +140,7 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_DIAGNOSTICS in body:
             self.sys_config.diagnostics = body[ATTR_DIAGNOSTICS]
-            self.sys_dbus.agent.diagnostics = body[ATTR_DIAGNOSTICS]
+            await self.sys_dbus.agent.set_diagnostics(body[ATTR_DIAGNOSTICS])
 
             if body[ATTR_DIAGNOSTICS]:
                 init_sentry(self.coresys)

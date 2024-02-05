@@ -8,7 +8,7 @@ from yaml import YAMLError, dump, load
 try:
     from yaml import CDumper as Dumper, CSafeLoader as SafeLoader
 except ImportError:
-    from yaml import SafeLoader, Dumper
+    from yaml import Dumper, SafeLoader
 
 from ..exceptions import YamlFileError
 

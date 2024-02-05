@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return Boards()
 
 
-# pylint: disable=invalid-name
-
-
 class Boards(DBusServiceMock):
     """Boards mock.
 

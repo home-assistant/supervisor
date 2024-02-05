@@ -23,7 +23,7 @@ class FixupSystemClearFullBackup(FixupBase):
             x for x in self.sys_backups.list_backups if x.sys_type == BackupType.FULL
         ]
 
-        if MINIMUM_FULL_BACKUPS >= len(full_backups):
+        if len(full_backups) <= MINIMUM_FULL_BACKUPS:
             return
 
         _LOGGER.info("Starting removal of old full backups")

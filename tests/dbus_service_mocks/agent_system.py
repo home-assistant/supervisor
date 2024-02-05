@@ -10,9 +10,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return System()
 
 
-# pylint: disable=invalid-name
-
-
 class System(DBusServiceMock):
     """System mock.
 

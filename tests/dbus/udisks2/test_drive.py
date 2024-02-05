@@ -1,6 +1,6 @@
 """Test UDisks2 Drive."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
@@ -59,7 +59,7 @@ async def test_drive_info(
     assert ssk.vendor == "SSK"
     assert ssk.model == "SSK Storage"
     assert ssk.size == 250059350016
-    assert ssk.time_detected == datetime(2023, 2, 8, 23, 1, 44, 240492, timezone.utc)
+    assert ssk.time_detected == datetime(2023, 2, 8, 23, 1, 44, 240492, UTC)
     assert ssk.ejectable is False
 
     drive_ssk_storage_service.emit_properties_changed({"Ejectable": True})

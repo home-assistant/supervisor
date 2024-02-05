@@ -12,9 +12,6 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
     return AppArmor()
 
 
-# pylint: disable=invalid-name
-
-
 class AppArmor(DBusServiceMock):
     """AppArmor mock.
 

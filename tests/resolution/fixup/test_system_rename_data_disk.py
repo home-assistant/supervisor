@@ -19,7 +19,7 @@ from tests.dbus_service_mocks.udisks2_manager import (
 
 @pytest.fixture(name="sda1_filesystem_service")
 async def fixture_sda1_filesystem_service(
-    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> FilesystemService:
     """Return sda1 filesystem service."""
     return udisks2_services["udisks2_filesystem"][
@@ -29,7 +29,7 @@ async def fixture_sda1_filesystem_service(
 
 @pytest.fixture(name="udisks2_service")
 async def fixture_udisks2_service(
-    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]]
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> UDisks2ManagerService:
     """Return udisks2 manager service."""
     return udisks2_services["udisks2_manager"]

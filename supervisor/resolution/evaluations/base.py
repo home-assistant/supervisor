@@ -28,10 +28,9 @@ class EvaluateBase(ABC, CoreSysAttributes):
                     self.on_failure,
                     self.reason,
                 )
-        else:
-            if self.reason in self.sys_resolution.unsupported:
-                _LOGGER.info("Clearing %s as reason for unsupported", self.reason)
-                self.sys_resolution.dismiss_unsupported(self.reason)
+        elif self.reason in self.sys_resolution.unsupported:
+            _LOGGER.info("Clearing %s as reason for unsupported", self.reason)
+            self.sys_resolution.dismiss_unsupported(self.reason)
 
     @abstractmethod
     async def evaluate(self) -> bool:

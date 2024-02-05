@@ -245,9 +245,7 @@ async def test_error_adding_duplicate(
         "supervisor.store.repository.Repository.validate", return_value=True
     ), patch(
         "supervisor.store.repository.Repository.load", return_value=None
-    ), pytest.raises(
-        StoreError
-    ):
+    ), pytest.raises(StoreError):
         await store_manager.add_repository(repository.source)
 
 

@@ -53,7 +53,7 @@ def unique_addons(addons_list):
 
 
 def v1_homeassistant(
-    homeassistant_data: dict[str, Any] | None
+    homeassistant_data: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     """Cleanup homeassistant artefacts from v1."""
     if not homeassistant_data:

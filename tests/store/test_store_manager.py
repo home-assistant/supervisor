@@ -29,9 +29,7 @@ async def test_default_load(coresys: CoreSys):
         "supervisor.store.repository.Repository.load", return_value=None
     ), patch.object(
         type(coresys.config), "addons_repositories", return_value=[]
-    ), patch(
-        "pathlib.Path.exists", return_value=True
-    ):
+    ), patch("pathlib.Path.exists", return_value=True):
         await store_manager.load()
 
     assert len(store_manager.all) == 4
@@ -62,9 +60,7 @@ async def test_load_with_custom_repository(coresys: CoreSys):
         type(coresys.config), "addons_repositories", return_value=[]
     ), patch(
         "supervisor.store.repository.Repository.validate", return_value=True
-    ), patch(
-        "pathlib.Path.exists", return_value=True
-    ):
+    ), patch("pathlib.Path.exists", return_value=True):
         await store_manager.load()
 
     assert len(store_manager.all) == 5
@@ -168,9 +164,7 @@ async def test_update_unavailable_addon(
         HomeAssistant,
         "version",
         new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
-    ), patch(
-        "shutil.disk_usage", return_value=(42, 42, (1024.0**3))
-    ):
+    ), patch("shutil.disk_usage", return_value=(42, 42, (1024.0**3))):
         with pytest.raises(AddonsNotSupportedError):
             await coresys.addons.update("local_ssh", backup=True)
 
@@ -224,9 +218,7 @@ async def test_install_unavailable_addon(
         HomeAssistant,
         "version",
         new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
-    ), patch(
-        "shutil.disk_usage", return_value=(42, 42, (1024.0**3))
-    ), pytest.raises(
+    ), patch("shutil.disk_usage", return_value=(42, 42, (1024.0**3))), pytest.raises(
         AddonsNotSupportedError
     ):
         await coresys.addons.install("local_ssh")
