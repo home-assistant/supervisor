@@ -1,7 +1,7 @@
 """Validation for mount manager."""
 
 import re
-from typing import NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 import voluptuous as vol
 
@@ -18,6 +18,7 @@ from .const import (
     ATTR_DEFAULT_BACKUP_MOUNT,
     ATTR_MOUNTS,
     ATTR_PATH,
+    ATTR_READ_ONLY,
     ATTR_SERVER,
     ATTR_SHARE,
     ATTR_USAGE,
@@ -25,6 +26,18 @@ from .const import (
     MountType,
     MountUsage,
 )
+
+
+def usage_specific_validation(config: dict[str, Any]) -> dict[str, Any]:
+    """Validate config based on usage."""
+    # Backup mounts cannot be read only
+    if config[ATTR_USAGE] == MountUsage.BACKUP and config[ATTR_READ_ONLY]:
+        raise vol.Invalid("Backup mounts cannot be read only")
+
+    return config
+
+
+# pylint: disable=no-value-for-parameter
 
 RE_MOUNT_NAME = re.compile(r"^[A-Za-z0-9_]+$")
 RE_PATH_PART = re.compile(r"^[^\\\/]+")
@@ -41,6 +54,7 @@ _SCHEMA_BASE_MOUNT_CONFIG = vol.Schema(
             vol.In([MountType.CIFS.value, MountType.NFS.value]), vol.Coerce(MountType)
         ),
         vol.Required(ATTR_USAGE): vol.Coerce(MountUsage),
+        vol.Optional(ATTR_READ_ONLY, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )
@@ -71,7 +85,9 @@ SCHEMA_MOUNT_NFS = _SCHEMA_MOUNT_NETWORK.extend(
     }
 )
 
-SCHEMA_MOUNT_CONFIG = vol.Any(SCHEMA_MOUNT_CIFS, SCHEMA_MOUNT_NFS)
+SCHEMA_MOUNT_CONFIG = vol.All(
+    vol.Any(SCHEMA_MOUNT_CIFS, SCHEMA_MOUNT_NFS), usage_specific_validation
+)
 
 SCHEMA_MOUNTS_CONFIG = vol.Schema(
     {
@@ -86,6 +102,7 @@ class MountData(TypedDict):
 
     name: str
     type: str
+    read_only: bool
     usage: NotRequired[str]
 
     # CIFS and NFS fields

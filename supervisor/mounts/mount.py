@@ -39,6 +39,7 @@ from ..resolution.data import Issue
 from ..utils.sentry import capture_exception
 from .const import (
     ATTR_PATH,
+    ATTR_READ_ONLY,
     ATTR_SERVER,
     ATTR_SHARE,
     ATTR_USAGE,
@@ -81,7 +82,9 @@ class Mount(CoreSysAttributes, ABC):
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""
-        return MountData(name=self.name, type=self.type, usage=self.usage)
+        return MountData(
+            name=self.name, type=self.type, usage=self.usage, read_only=self.read_only
+        )
 
     @property
     def name(self) -> str:
@@ -103,6 +106,11 @@ class Mount(CoreSysAttributes, ABC):
         )
 
     @property
+    def read_only(self) -> bool:
+        """Is mount read-only."""
+        return self._data.get(ATTR_READ_ONLY, False)
+
+    @property
     @abstractmethod
     def what(self) -> str:
         """What to mount."""
@@ -113,9 +121,9 @@ class Mount(CoreSysAttributes, ABC):
         """Where to mount (on host)."""
 
     @property
-    @abstractmethod
     def options(self) -> list[str]:
         """List of options to use to mount."""
+        return ["ro"] if self.read_only else []
 
     @property
     def description(self) -> str:
@@ -358,7 +366,10 @@ class NetworkMount(Mount, ABC):
     @property
     def options(self) -> list[str]:
         """Options to use to mount."""
-        return [f"port={self.port}"] if self.port else []
+        options = super().options
+        if self.port:
+            options.append(f"port={self.port}")
+        return options
 
 
 class CIFSMount(NetworkMount):
@@ -484,6 +495,7 @@ class BindMount(Mount):
         path: Path,
         usage: MountUsage | None = None,
         where: PurePath | None = None,
+        read_only: bool = False,
     ) -> "BindMount":
         """Create a new bind mount instance."""
         return BindMount(
@@ -493,6 +505,7 @@ class BindMount(Mount):
                 type=MountType.BIND,
                 path=path.as_posix(),
                 usage=usage and usage,
+                read_only=read_only,
             ),
             where=where,
         )
@@ -523,4 +536,4 @@ class BindMount(Mount):
     @property
     def options(self) -> list[str]:
         """List of options to use to mount."""
-        return ["bind"]
+        return super().options + ["bind"]

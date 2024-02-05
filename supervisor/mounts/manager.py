@@ -297,6 +297,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 name=f"{'emergency' if emergency else 'bind'}_{mount.name}",
                 path=path,
                 where=where,
+                read_only=emergency,
             ),
             emergency=emergency,
         )

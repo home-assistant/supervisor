@@ -607,6 +607,10 @@ class BackupInvalidError(BackupError):
     """Raise if backup or password provided is invalid."""
 
 
+class BackupMountDownError(BackupError):
+    """Raise if mount specified for backup is down."""
+
+
 class BackupJobError(BackupError, JobException):
     """Raise on Backup job error."""
 

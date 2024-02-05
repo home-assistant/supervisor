@@ -8,6 +8,7 @@ FILE_CONFIG_MOUNTS = PurePath("mounts.json")
 ATTR_DEFAULT_BACKUP_MOUNT = "default_backup_mount"
 ATTR_MOUNTS = "mounts"
 ATTR_PATH = "path"
+ATTR_READ_ONLY = "read_only"
 ATTR_SERVER = "server"
 ATTR_SHARE = "share"
 ATTR_USAGE = "usage"

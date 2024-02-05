@@ -15,7 +15,12 @@ from ..const import (
     CoreState,
 )
 from ..dbus.const import UnitActiveState
-from ..exceptions import BackupError, BackupInvalidError, BackupJobError
+from ..exceptions import (
+    BackupError,
+    BackupInvalidError,
+    BackupJobError,
+    BackupMountDownError,
+)
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -74,11 +79,15 @@ class BackupManager(FileConfiguration, JobGroup):
 
     def _get_base_path(self, location: Mount | type[DEFAULT] | None = DEFAULT) -> Path:
         """Get base path for backup using location or default location."""
-        if location:
-            return location.local_where
-
         if location == DEFAULT and self.sys_mounts.default_backup_mount:
-            return self.sys_mounts.default_backup_mount.local_where
+            location = self.sys_mounts.default_backup_mount
+
+        if location:
+            if not location.local_where.is_mount():
+                raise BackupMountDownError(
+                    f"{location.name} is down, cannot back-up to it", _LOGGER.error
+                )
+            return location.local_where
 
         return self.sys_config.path_backup
 
