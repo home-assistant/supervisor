@@ -963,9 +963,8 @@ async def test_internal_jobs_no_notify(coresys: CoreSys):
             return True
 
     test1 = TestClass(coresys)
-    # pylint: disable=protected-access
+    # pylint: disable-next=protected-access
     client = coresys.homeassistant.websocket._client
-    # pylint: enable=protected-access
     client.async_send_command.reset_mock()
 
     await test1.execute_internal()
