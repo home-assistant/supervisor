@@ -1,6 +1,6 @@
 """Test fixup mount reload."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -20,6 +20,7 @@ async def test_fixup(
     all_dbus_services: dict[str, DBusServiceMock],
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test fixup."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -29,27 +30,26 @@ async def test_fixup(
 
     assert mount_execute_reload.auto is False
 
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await coresys.mounts.create_mount(
-            Mount.from_dict(
-                coresys,
-                {
-                    "name": "test",
-                    "usage": "backup",
-                    "type": "cifs",
-                    "server": "test.local",
-                    "share": "test",
-                },
-            )
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "test",
+                "usage": "backup",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
         )
+    )
 
-        coresys.resolution.create_issue(
-            IssueType.MOUNT_FAILED,
-            ContextType.MOUNT,
-            reference="test",
-            suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
-        )
-        await mount_execute_reload()
+    coresys.resolution.create_issue(
+        IssueType.MOUNT_FAILED,
+        ContextType.MOUNT,
+        reference="test",
+        suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
+    )
+    await mount_execute_reload()
 
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
@@ -62,24 +62,24 @@ async def test_fixup(
 async def test_fixup_error_after_reload(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
+    mock_is_mount: MagicMock,
     path_extern,
     mount_propagation,
 ):
     """Test fixup."""
     mount_execute_reload = FixupMountExecuteReload(coresys)
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await coresys.mounts.create_mount(
-            Mount.from_dict(
-                coresys,
-                {
-                    "name": "test",
-                    "usage": "backup",
-                    "type": "cifs",
-                    "server": "test.local",
-                    "share": "test",
-                },
-            )
+    await coresys.mounts.create_mount(
+        Mount.from_dict(
+            coresys,
+            {
+                "name": "test",
+                "usage": "backup",
+                "type": "cifs",
+                "server": "test.local",
+                "share": "test",
+            },
         )
+    )
 
     coresys.resolution.create_issue(
         IssueType.MOUNT_FAILED,
@@ -87,9 +87,8 @@ async def test_fixup_error_after_reload(
         reference="test",
         suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
     )
-    with patch(
-        "supervisor.mounts.mount.Path.is_mount", return_value=False
-    ), pytest.raises(MountActivationError):
+    mock_is_mount.return_value = False
+    with pytest.raises(MountActivationError):
         await mount_execute_reload()
 
     # Since is_mount is false, issue remains

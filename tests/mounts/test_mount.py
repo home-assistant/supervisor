@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import stat
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 from dbus_fast import DBusError, ErrorType, Variant
 import pytest
@@ -50,6 +50,7 @@ async def test_cifs_mount(
     path_extern,
     additional_data: dict[str, Any],
     expected_options: list[str],
+    mock_is_mount,
 ):
     """Test CIFS mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -92,8 +93,7 @@ async def test_cifs_mount(
         k: v for k, v in mount_data.items() if k not in ["username", "password"]
     }
 
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await mount.mount()
+    await mount.mount()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.local_where.exists()
@@ -145,6 +145,7 @@ async def test_cifs_mount_read_only(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data: Path,
     path_extern,
+    mock_is_mount,
 ):
     """Test a read-only cifs mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -164,8 +165,7 @@ async def test_cifs_mount_read_only(
     assert isinstance(mount, CIFSMount)
     assert mount.read_only is True
 
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await mount.mount()
+    await mount.mount()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.local_where.exists()
@@ -191,6 +191,7 @@ async def test_nfs_mount(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data: Path,
     path_extern,
+    mock_is_mount,
 ):
     """Test NFS mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -224,8 +225,7 @@ async def test_nfs_mount(
     assert not mount.local_where.exists()
     assert mount.to_dict() == mount_data
 
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await mount.mount()
+    await mount.mount()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.local_where.exists()
@@ -251,6 +251,7 @@ async def test_nfs_mount_read_only(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data: Path,
     path_extern,
+    mock_is_mount,
 ):
     """Test NFS mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -270,8 +271,7 @@ async def test_nfs_mount_read_only(
     assert isinstance(mount, NFSMount)
     assert mount.read_only is True
 
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await mount.mount()
+    await mount.mount()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.local_where.exists()
@@ -297,6 +297,7 @@ async def test_load(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mock_is_mount,
 ):
     """Test mount loading."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -318,8 +319,7 @@ async def test_load(
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
     mount = Mount.from_dict(coresys, mount_data)
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await mount.load()
+    await mount.load()
 
     assert (
         mount.unit.object_path == "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
@@ -346,8 +346,7 @@ async def test_load(
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
     )
     mount = Mount.from_dict(coresys, mount_data)
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await mount.load()
+    await mount.load()
 
     assert (
         mount.unit.object_path == "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
@@ -359,8 +358,7 @@ async def test_load(
     # Load restarts the unit if it finds it in a failed state
     systemd_unit_service.active_state = ["failed", "active"]
     mount = Mount.from_dict(coresys, mount_data)
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await mount.load()
+    await mount.load()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert systemd_service.StartTransientUnit.calls == []
@@ -373,11 +371,7 @@ async def test_load(
     systemd_unit_service.active_state = "activating"
     mount = Mount.from_dict(coresys, mount_data)
 
-    async def loader():
-        with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-            await mount.load()
-
-    load_task = asyncio.create_task(loader())
+    load_task = asyncio.create_task(mount.load())
     await asyncio.sleep(0.1)
     systemd_unit_service.emit_properties_changed({"ActiveState": "failed"})
     await asyncio.sleep(0.1)
@@ -392,7 +386,10 @@ async def test_load(
 
 
 async def test_unmount(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], path_extern
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    path_extern,
+    mock_is_mount,
 ):
     """Test unmounting."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -429,6 +426,7 @@ async def test_mount_failure(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mock_is_mount,
 ):
     """Test failure to mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -472,16 +470,11 @@ async def test_mount_failure(
     systemd_service.GetUnit.calls.clear()
     systemd_unit_service.active_state = "activating"
 
-    async def loader():
-        with patch(
-            "supervisor.mounts.mount.Path.is_mount", return_value=True
-        ), pytest.raises(MountError):
-            await mount.mount()
-
-    load_task = asyncio.create_task(loader())
+    load_task = asyncio.create_task(mount.mount())
     await asyncio.sleep(0.1)
     systemd_unit_service.emit_properties_changed({"ActiveState": "failed"})
-    await load_task
+    with pytest.raises(MountError):
+        await load_task
 
     assert mount.state == UnitActiveState.FAILED
     assert len(systemd_service.StartTransientUnit.calls) == 1
@@ -525,6 +518,7 @@ async def test_reload_failure(
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
+    mock_is_mount,
 ):
     """Test failure to reload."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -574,8 +568,7 @@ async def test_reload_failure(
     systemd_service.response_reload_or_restart_unit = ERROR_NO_UNIT
     systemd_unit_service.active_state = "active"
 
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await mount.reload()
+    await mount.reload()
 
     assert mount.state == UnitActiveState.ACTIVE
     assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
@@ -624,7 +617,7 @@ async def test_mount_local_where_invalid(
     assert systemd_service.StartTransientUnit.calls == []
 
 
-async def test_update_clears_issue(coresys: CoreSys, path_extern):
+async def test_update_clears_issue(coresys: CoreSys, path_extern, mock_is_mount):
     """Test updating mount data clears corresponding failed mount issue if active."""
     mount = Mount.from_dict(
         coresys,
@@ -649,15 +642,16 @@ async def test_update_clears_issue(coresys: CoreSys, path_extern):
     assert mount.failed_issue in coresys.resolution.issues
     assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
 
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        assert await mount.update() is True
+    assert await mount.update() is True
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.failed_issue not in coresys.resolution.issues
     assert not coresys.resolution.suggestions_for_issue(mount.failed_issue)
 
 
-async def test_update_leaves_issue_if_down(coresys: CoreSys, path_extern):
+async def test_update_leaves_issue_if_down(
+    coresys: CoreSys, mock_is_mount: MagicMock, path_extern
+):
     """Test issue is left if system is down after update (is_mount is false)."""
     mount = Mount.from_dict(
         coresys,
@@ -682,8 +676,8 @@ async def test_update_leaves_issue_if_down(coresys: CoreSys, path_extern):
     assert mount.failed_issue in coresys.resolution.issues
     assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
 
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=False):
-        assert (await mount.update()) is False
+    mock_is_mount.return_value = False
+    assert (await mount.update()) is False
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount.failed_issue in coresys.resolution.issues
@@ -694,6 +688,7 @@ async def test_mount_fails_if_down(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data: Path,
+    mock_is_mount: MagicMock,
     path_extern,
 ):
     """Test mount fails if system is down (is_mount is false)."""
@@ -711,9 +706,8 @@ async def test_mount_fails_if_down(
     }
     mount: NFSMount = Mount.from_dict(coresys, mount_data)
 
-    with patch(
-        "supervisor.mounts.mount.Path.is_mount", return_value=False
-    ), pytest.raises(MountActivationError):
+    mock_is_mount.return_value = False
+    with pytest.raises(MountActivationError):
         await mount.mount()
 
     assert mount.state == UnitActiveState.ACTIVE
