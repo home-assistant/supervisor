@@ -145,16 +145,17 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         if not self.mounts:
             return
 
-        await asyncio.wait(
-            [self.sys_create_task(mount.update()) for mount in self.mounts]
+        mounts = self.mounts.copy()
+        results = await asyncio.gather(
+            *[mount.update() for mount in mounts], return_exceptions=True
         )
 
         # Try to reload any newly failed mounts and report issues if failure persists
         new_failures = [
-            mount
-            for mount in self.mounts
-            if mount.state != UnitActiveState.ACTIVE
-            and mount.failed_issue not in self.sys_resolution.issues
+            mounts[i]
+            for i in range(len(mounts))
+            if results[i] is not True
+            and mounts[i].failed_issue not in self.sys_resolution.issues
         ]
         await self._mount_errors_to_issues(
             new_failures, [mount.reload() for mount in new_failures]

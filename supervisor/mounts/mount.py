@@ -18,10 +18,12 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
+    DBUS_ATTR_ACTIVE_STATE,
     DBUS_ATTR_DESCRIPTION,
     DBUS_ATTR_OPTIONS,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_WHAT,
+    DBUS_IFACE_SYSTEMD_UNIT,
     StartUnitMode,
     StopUnitMode,
     UnitActiveState,
@@ -162,23 +164,28 @@ class Mount(CoreSysAttributes, ABC):
         """Get issue used if this mount has failed."""
         return Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference=self.name)
 
+    async def is_mounted(self) -> bool:
+        """Return true if successfully mounted and available."""
+        return self.state == UnitActiveState.ACTIVE
+
     def __eq__(self, other):
         """Return true if mounts are the same."""
         return isinstance(other, Mount) and self.name == other.name
 
     async def load(self) -> None:
         """Initialize object."""
-        await self._update_await_activating()
-
         # If there's no mount unit, mount it to make one
-        if not self.unit:
+        if not await self._update_unit():
             await self.mount()
+            return
 
-        # At this point any state besides active is treated as a failed mount, try to reload it
-        elif self.state != UnitActiveState.ACTIVE:
+        await self._update_state_await(not_state=UnitActiveState.ACTIVATING)
+
+        # If mount is not available, try to reload it
+        if not await self.is_mounted():
             await self.reload()
 
-    async def update_state(self) -> None:
+    async def _update_state(self) -> UnitActiveState | None:
         """Update mount unit state."""
         try:
             self._state = await self.unit.get_active_state()
@@ -188,56 +195,66 @@ class Mount(CoreSysAttributes, ABC):
                 f"Could not get active state of mount due to: {err!s}"
             ) from err
 
-    async def update(self) -> None:
-        """Update info about mount from dbus."""
+    async def _update_unit(self) -> SystemdUnit | None:
+        """Get systemd unit from dbus."""
         try:
             self._unit = await self.sys_dbus.systemd.get_unit(self.unit_name)
         except DBusSystemdNoSuchUnit:
             self._unit = None
             self._state = None
-            return
         except DBusError as err:
             capture_exception(err)
             raise MountError(f"Could not get mount unit due to: {err!s}") from err
+        return self.unit
 
-        await self.update_state()
+    async def update(self) -> bool:
+        """Update info about mount from dbus. Return true if it is mounted and available."""
+        if not await self._update_unit():
+            return False
+
+        await self._update_state()
 
         # If active, dismiss corresponding failed mount issue if found
         if (
-            self.state == UnitActiveState.ACTIVE
-            and self.failed_issue in self.sys_resolution.issues
-        ):
+            mounted := await self.is_mounted()
+        ) and self.failed_issue in self.sys_resolution.issues:
             self.sys_resolution.dismiss_issue(self.failed_issue)
 
-    async def _update_state_await(self, expected_states: list[UnitActiveState]) -> None:
-        """Update state info about mount from dbus. Wait up to 30 seconds for the state to appear."""
-        for i in range(5):
-            await self.update_state()
-            if self.state in expected_states:
-                return
-            await asyncio.sleep(i**2)
+        return mounted
 
-        _LOGGER.warning(
-            "Mount %s still in state %s after waiting for 30 seconods to complete",
-            self.name,
-            str(self.state).lower(),
-        )
+    async def _update_state_await(
+        self,
+        expected_states: list[UnitActiveState] | None = None,
+        not_state: UnitActiveState = UnitActiveState.ACTIVATING,
+    ) -> None:
+        """Update state info about mount from dbus. Wait for one of expected_states to appear or state to change from not_state."""
+        if not self.unit:
+            return
 
-    async def _update_await_activating(self):
-        """Update info about mount from dbus. If 'activating' wait up to 30 seconds."""
-        await self.update()
+        try:
+            async with asyncio.timeout(30), self.unit.properties_changed() as signal:
+                await self._update_state()
+                while (
+                    expected_states
+                    and self.state not in expected_states
+                    or not expected_states
+                    and self.state == not_state
+                ):
+                    prop_change_signal = await signal.wait_for_signal()
+                    if (
+                        prop_change_signal[0] == DBUS_IFACE_SYSTEMD_UNIT
+                        and DBUS_ATTR_ACTIVE_STATE in prop_change_signal[1]
+                    ):
+                        self._state = prop_change_signal[1][
+                            DBUS_ATTR_ACTIVE_STATE
+                        ].value
 
-        # If we're still activating, give it up to 30 seconds to finish
-        if self.state == UnitActiveState.ACTIVATING:
-            _LOGGER.info(
-                "Mount %s still activating, waiting up to 30 seconds to complete",
+        except asyncio.TimeoutError:
+            _LOGGER.warning(
+                "Mount %s still in state %s after waiting for 30 seconds to complete",
                 self.name,
+                str(self.state).lower(),
             )
-            for _ in range(3):
-                await asyncio.sleep(10)
-                await self.update()
-                if self.state != UnitActiveState.ACTIVATING:
-                    break
 
     async def mount(self) -> None:
         """Mount using systemd."""
@@ -282,9 +299,10 @@ class Mount(CoreSysAttributes, ABC):
                 f"Could not mount {self.name} due to: {err!s}", _LOGGER.error
             ) from err
 
-        await self._update_await_activating()
+        if await self._update_unit():
+            await self._update_state_await(not_state=UnitActiveState.ACTIVATING)
 
-        if self.state != UnitActiveState.ACTIVE:
+        if not await self.is_mounted():
             raise MountActivationError(
                 f"Mounting {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
                 _LOGGER.error,
@@ -292,8 +310,11 @@ class Mount(CoreSysAttributes, ABC):
 
     async def unmount(self) -> None:
         """Unmount using systemd."""
-        await self.update()
+        if not await self._update_unit():
+            _LOGGER.info("Mount %s is not mounted, skipping unmount", self.name)
+            return
 
+        await self._update_state()
         try:
             if self.state != UnitActiveState.FAILED:
                 await self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL)
@@ -304,8 +325,6 @@ class Mount(CoreSysAttributes, ABC):
 
             if self.state == UnitActiveState.FAILED:
                 await self.sys_dbus.systemd.reset_failed_unit(self.unit_name)
-        except DBusSystemdNoSuchUnit:
-            _LOGGER.info("Mount %s is not mounted, skipping unmount", self.name)
         except DBusError as err:
             raise MountError(
                 f"Could not unmount {self.name} due to: {err!s}", _LOGGER.error
@@ -329,9 +348,10 @@ class Mount(CoreSysAttributes, ABC):
                 f"Could not reload mount {self.name} due to: {err!s}", _LOGGER.error
             ) from err
 
-        await self._update_await_activating()
+        if await self._update_unit():
+            await self._update_state_await(not_state=UnitActiveState.ACTIVATING)
 
-        if self.state != UnitActiveState.ACTIVE:
+        if not await self.is_mounted():
             raise MountActivationError(
                 f"Reloading {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
                 _LOGGER.error,
@@ -370,6 +390,12 @@ class NetworkMount(Mount, ABC):
         if self.port:
             options.append(f"port={self.port}")
         return options
+
+    async def is_mounted(self) -> bool:
+        """Return true if successfully mounted and available."""
+        return self.state == UnitActiveState.ACTIVE and await self.sys_run_in_executor(
+            self.local_where.is_mount
+        )
 
 
 class CIFSMount(NetworkMount):

@@ -13,6 +13,7 @@ from ..exceptions import (
     DBusServiceUnkownError,
     DBusSystemdNoSuchUnit,
 )
+from ..utils.dbus import DBusSignalWrapper
 from .const import (
     DBUS_ATTR_FINISH_TIMESTAMP,
     DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC,
@@ -23,6 +24,7 @@ from .const import (
     DBUS_IFACE_SYSTEMD_MANAGER,
     DBUS_NAME_SYSTEMD,
     DBUS_OBJECT_SYSTEMD,
+    DBUS_SIGNAL_PROPERTIES_CHANGED,
     StartUnitMode,
     StopUnitMode,
     UnitActiveState,
@@ -63,6 +65,11 @@ class SystemdUnit(DBusInterface):
     async def get_active_state(self) -> UnitActiveState:
         """Get active state of the unit."""
         return await self.dbus.Unit.get_active_state()
+
+    @dbus_connected
+    def properties_changed(self) -> DBusSignalWrapper:
+        """Return signal wrapper for properties changed."""
+        return self.dbus.signal(DBUS_SIGNAL_PROPERTIES_CHANGED)
 
 
 class Systemd(DBusInterfaceProxy):

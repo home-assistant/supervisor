@@ -230,15 +230,16 @@ async def test_api_update_mount(
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
     systemd_service.mock_systemd_unit = systemd_unit_service
-    resp = await api_client.put(
-        "/mounts/backup_test",
-        json={
-            "type": "cifs",
-            "usage": "backup",
-            "server": "backup.local",
-            "share": "new_backups",
-        },
-    )
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        resp = await api_client.put(
+            "/mounts/backup_test",
+            json={
+                "type": "cifs",
+                "usage": "backup",
+                "server": "backup.local",
+                "share": "new_backups",
+            },
+        )
     result = await resp.json()
     assert result["result"] == "ok"
 
@@ -381,7 +382,8 @@ async def test_api_reload_mount(
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
 
-    resp = await api_client.post("/mounts/backup_test/reload")
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        resp = await api_client.post("/mounts/backup_test/reload")
     result = await resp.json()
     assert result["result"] == "ok"
 
@@ -587,7 +589,9 @@ async def test_backup_mounts_reload_backups(
     systemd_service.mock_systemd_unit = systemd_unit_service
     await coresys.mounts.load()
 
-    with patch.object(BackupManager, "reload") as reload:
+    with patch.object(BackupManager, "reload") as reload, patch(
+        "supervisor.mounts.mount.Path.is_mount", return_value=True
+    ):
         # Only creating a backup mount triggers reload
         resp = await api_client.post(
             "/mounts",

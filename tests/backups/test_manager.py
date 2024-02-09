@@ -431,20 +431,21 @@ async def test_backup_media_with_mounts(
     (test_file_2 := coresys.config.path_media / "test" / "inner.txt").touch()
 
     # Add a media mount
-    await coresys.mounts.load()
-    await coresys.mounts.create_mount(
-        Mount.from_dict(
-            coresys,
-            {
-                "name": "media_test",
-                "usage": "media",
-                "type": "cifs",
-                "server": "test.local",
-                "share": "test",
-            },
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        await coresys.mounts.load()
+        await coresys.mounts.create_mount(
+            Mount.from_dict(
+                coresys,
+                {
+                    "name": "media_test",
+                    "usage": "media",
+                    "type": "cifs",
+                    "server": "test.local",
+                    "share": "test",
+                },
+            )
         )
-    )
-    assert (mount_dir := coresys.config.path_media / "media_test").is_dir()
+        assert (mount_dir := coresys.config.path_media / "media_test").is_dir()
 
     # Make a partial backup
     coresys.core.state = CoreState.RUNNING
@@ -488,19 +489,20 @@ async def test_backup_media_with_mounts_retains_files(
     ]
 
     # Add a media mount
-    await coresys.mounts.load()
-    await coresys.mounts.create_mount(
-        Mount.from_dict(
-            coresys,
-            {
-                "name": "media_test",
-                "usage": "media",
-                "type": "cifs",
-                "server": "test.local",
-                "share": "test",
-            },
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        await coresys.mounts.load()
+        await coresys.mounts.create_mount(
+            Mount.from_dict(
+                coresys,
+                {
+                    "name": "media_test",
+                    "usage": "media",
+                    "type": "cifs",
+                    "server": "test.local",
+                    "share": "test",
+                },
+            )
         )
-    )
 
     # Make a partial backup
     coresys.core.state = CoreState.RUNNING
@@ -553,20 +555,21 @@ async def test_backup_share_with_mounts(
     (test_file_2 := coresys.config.path_share / "test" / "inner.txt").touch()
 
     # Add a media mount
-    await coresys.mounts.load()
-    await coresys.mounts.create_mount(
-        Mount.from_dict(
-            coresys,
-            {
-                "name": "share_test",
-                "usage": "share",
-                "type": "cifs",
-                "server": "test.local",
-                "share": "test",
-            },
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        await coresys.mounts.load()
+        await coresys.mounts.create_mount(
+            Mount.from_dict(
+                coresys,
+                {
+                    "name": "share_test",
+                    "usage": "share",
+                    "type": "cifs",
+                    "server": "test.local",
+                    "share": "test",
+                },
+            )
         )
-    )
-    assert (mount_dir := coresys.config.path_share / "share_test").is_dir()
+        assert (mount_dir := coresys.config.path_share / "share_test").is_dir()
 
     # Make a partial backup
     coresys.core.state = CoreState.RUNNING
@@ -1574,23 +1577,23 @@ async def test_backup_to_mount_bypasses_free_space_condition(
     ]
 
     # Add a backup mount
-    await coresys.mounts.load()
-    await coresys.mounts.create_mount(
-        Mount.from_dict(
-            coresys,
-            {
-                "name": "backup_test",
-                "usage": "backup",
-                "type": "cifs",
-                "server": "test.local",
-                "share": "test",
-            },
-        )
-    )
-    mount = coresys.mounts.get("backup_test")
-
-    # These succeed because local free space does not matter when using a mount
     with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        await coresys.mounts.load()
+        await coresys.mounts.create_mount(
+            Mount.from_dict(
+                coresys,
+                {
+                    "name": "backup_test",
+                    "usage": "backup",
+                    "type": "cifs",
+                    "server": "test.local",
+                    "share": "test",
+                },
+            )
+        )
+        mount = coresys.mounts.get("backup_test")
+
+        # These succeed because local free space does not matter when using a mount
         await coresys.backups.do_backup_full(location=mount)
         await coresys.backups.do_backup_partial(folders=["media"], location=mount)
 

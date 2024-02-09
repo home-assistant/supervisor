@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from unittest.mock import patch
 
 from dbus_fast import DBusError, ErrorType, Variant
 from dbus_fast.aio.message_bus import MessageBus
@@ -57,8 +58,9 @@ async def fixture_mount(
     """Add an initial mount and load mounts."""
     mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
     coresys.mounts._mounts = {"media_test": mount}  # pylint: disable=protected-access
-    await coresys.mounts.load()
-    yield mount
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        await coresys.mounts.load()
+        yield mount
 
 
 async def test_load(
@@ -350,7 +352,8 @@ async def test_create_mount(
         ERROR_NO_UNIT,
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
-    await coresys.mounts.create_mount(mount)
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        await coresys.mounts.create_mount(mount)
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount in coresys.mounts
@@ -661,7 +664,8 @@ async def test_create_share_mount(
         ERROR_NO_UNIT,
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
     ]
-    await coresys.mounts.create_mount(mount)
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+        await coresys.mounts.create_mount(mount)
 
     assert mount.state == UnitActiveState.ACTIVE
     assert mount in coresys.mounts

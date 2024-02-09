@@ -36,12 +36,14 @@ DBUS_IFACE_RAUC_INSTALLER = "de.pengutronix.rauc.Installer"
 DBUS_IFACE_RESOLVED_MANAGER = "org.freedesktop.resolve1.Manager"
 DBUS_IFACE_SETTINGS_CONNECTION = "org.freedesktop.NetworkManager.Settings.Connection"
 DBUS_IFACE_SYSTEMD_MANAGER = "org.freedesktop.systemd1.Manager"
+DBUS_IFACE_SYSTEMD_UNIT = "org.freedesktop.systemd1.Unit"
 DBUS_IFACE_TIMEDATE = "org.freedesktop.timedate1"
 DBUS_IFACE_UDISKS2_MANAGER = "org.freedesktop.UDisks2.Manager"
 
 DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED = (
     "org.freedesktop.NetworkManager.Connection.Active.StateChanged"
 )
+DBUS_SIGNAL_PROPERTIES_CHANGED = "org.freedesktop.DBus.Properties.PropertiesChanged"
 DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED = "de.pengutronix.rauc.Installer.Completed"
 
 DBUS_OBJECT_BASE = "/"
@@ -64,6 +66,7 @@ DBUS_OBJECT_UDISKS2 = "/org/freedesktop/UDisks2/Manager"
 DBUS_ATTR_ACTIVE_ACCESSPOINT = "ActiveAccessPoint"
 DBUS_ATTR_ACTIVE_CONNECTION = "ActiveConnection"
 DBUS_ATTR_ACTIVE_CONNECTIONS = "ActiveConnections"
+DBUS_ATTR_ACTIVE_STATE = "ActiveState"
 DBUS_ATTR_ACTIVITY_LED = "ActivityLED"
 DBUS_ATTR_ADDRESS_DATA = "AddressData"
 DBUS_ATTR_BITRATE = "Bitrate"
