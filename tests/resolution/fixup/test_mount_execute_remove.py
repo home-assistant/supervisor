@@ -15,6 +15,7 @@ async def test_fixup(
     all_dbus_services: dict[str, DBusServiceMock],
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test fixup."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
