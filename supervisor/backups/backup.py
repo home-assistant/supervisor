@@ -363,6 +363,8 @@ class Backup(JobGroup):
                 self._outer_secure_tarfile.__exit__(
                     exception_type, exception_value, traceback
                 )
+                self._outer_secure_tarfile = None
+                self._outer_secure_tarfile_tarfile = None
 
     async def _aexit(self, exception_type, exception_value, traceback):
         """Cleanup after backup creation.
