@@ -390,7 +390,7 @@ class Backup(JobGroup):
             """Create a new backup."""
             raw_bytes = json_bytes(self._data)
             fileobj = io.BytesIO(raw_bytes)
-            tar_info = tarfile.TarInfo(name="backup.json")
+            tar_info = tarfile.TarInfo(name="./backup.json")
             tar_info.size = len(raw_bytes)
             tar_info.mtime = time.time()
             self._outer_secure_tarfile_tarfile.addfile(tar_info, fileobj=fileobj)
@@ -409,7 +409,7 @@ class Backup(JobGroup):
         tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
 
         addon_file = self._outer_secure_tarfile.create_inner_tar(
-            tar_name,
+            f"./{tar_name}",
             gzip=self.compressed,
             key=self._key,
         )
@@ -535,7 +535,7 @@ class Backup(JobGroup):
             _LOGGER.info("Backing up folder %s", name)
 
             with self._outer_secure_tarfile.create_inner_tar(
-                tar_name,
+                f"./{tar_name}",
                 gzip=self.compressed,
                 key=self._key,
             ) as tar_file:
@@ -707,9 +707,10 @@ class Backup(JobGroup):
             ATTR_EXCLUDE_DATABASE: exclude_database,
         }
 
+        tar_name = f"homeassistant.tar{'.gz' if self.compressed else ''}"
         # Backup Home Assistant Core config directory
         homeassistant_file = self._outer_secure_tarfile.create_inner_tar(
-            f"homeassistant.tar{'.gz' if self.compressed else ''}",
+            f"./{tar_name}",
             gzip=self.compressed,
             key=self._key,
         )
