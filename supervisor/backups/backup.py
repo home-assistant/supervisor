@@ -370,7 +370,8 @@ class Backup(JobGroup):
         This is a separate method to allow it to be called from __aexit__ to ensure
         that cleanup is always performed, even if an exception is raised.
         """
-        if self.tarfile.is_file() or exception_type is not None:
+        # If we're not creating a new backup, or if an exception was raised, we're done
+        if not self._outer_secure_tarfile or exception_type is not None:
             return
 
         # validate data
