@@ -384,8 +384,9 @@ class Backup(JobGroup):
         # new backup, build it
         def _add_backup_json():
             """Create a new backup."""
+            tar_info = tarfile.TarInfo(name="backup.json")
             self._outer_secure_tarfile_tarfile.addfile(
-                "backup.json", fileobj=io.BytesIO(json_bytes(self._data))
+                tar_info, fileobj=io.BytesIO(json_bytes(self._data))
             )
 
         try:
