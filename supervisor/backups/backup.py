@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
+import time
 from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -384,12 +385,12 @@ class Backup(JobGroup):
         # new backup, build it
         def _add_backup_json():
             """Create a new backup."""
-            tar_info = tarfile.TarInfo(name="backup.json")
             raw_bytes = json_bytes(self._data)
+            fileobj = io.BytesIO(raw_bytes)
+            tar_info = tarfile.TarInfo(name="backup.json")
             tar_info.size = len(raw_bytes)
-            self._outer_secure_tarfile_tarfile.addfile(
-                tar_info, fileobj=io.BytesIO(raw_bytes)
-            )
+            tar_info.mtime = time.time()
+            self._outer_secure_tarfile_tarfile.addfile(tar_info, fileobj=fileobj)
 
         try:
             await self.sys_run_in_executor(_add_backup_json)
