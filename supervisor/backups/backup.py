@@ -392,7 +392,7 @@ class Backup(JobGroup):
             fileobj = io.BytesIO(raw_bytes)
             tar_info = tarfile.TarInfo(name="./backup.json")
             tar_info.size = len(raw_bytes)
-            tar_info.mtime = time.time()
+            tar_info.mtime = int(time.time())
             self._outer_secure_tarfile_tarfile.addfile(tar_info, fileobj=fileobj)
 
         try:
