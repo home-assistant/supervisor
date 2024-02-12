@@ -412,6 +412,7 @@ async def test_backup_media_with_mounts(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test backing up media folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -473,6 +474,7 @@ async def test_backup_media_with_mounts_retains_files(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test backing up media folder with mounts retains mount files."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -526,6 +528,7 @@ async def test_backup_share_with_mounts(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test backing up share folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -589,7 +592,11 @@ async def test_backup_share_with_mounts(
 
 
 async def test_full_backup_to_mount(
-    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
 ):
     """Test full backup to and restoring from a mount."""
     (marker := coresys.config.path_homeassistant / "test.txt").touch()
@@ -613,8 +620,7 @@ async def test_full_backup_to_mount(
     # Make a backup and add it to mounts. Confirm it exists in the right place
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        backup: Backup = await coresys.backups.do_backup_full("test", location=mount)
+    backup: Backup = await coresys.backups.do_backup_full("test", location=mount)
     assert (mount_dir / f"{backup.slug}.tar").exists()
 
     # Reload and check that backups in mounts are listed
@@ -635,6 +641,7 @@ async def test_partial_backup_to_mount(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test partial backup to and restoring from a mount."""
     (marker := coresys.config.path_homeassistant / "test.txt").touch()
@@ -663,7 +670,7 @@ async def test_partial_backup_to_mount(
         HomeAssistant,
         "version",
         new=PropertyMock(return_value=AwesomeVersion("2023.1.1")),
-    ), patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+    ):
         backup: Backup = await coresys.backups.do_backup_partial(
             "test", homeassistant=True, location=mount
         )
@@ -684,7 +691,11 @@ async def test_partial_backup_to_mount(
 
 
 async def test_backup_to_down_mount_error(
-    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+    coresys: CoreSys,
+    mock_is_mount: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test backup to mount when down raises error."""
     # Add a backup mount
@@ -704,6 +715,7 @@ async def test_backup_to_down_mount_error(
     assert mount_dir in coresys.backups.backup_locations
 
     # Attempt to make a backup which fails because is_mount on directory is false
+    mock_is_mount.return_value = False
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     with pytest.raises(BackupMountDownError):
@@ -719,6 +731,7 @@ async def test_backup_to_local_with_default(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test making backup to local when a default mount is specified."""
     # Add a default backup mount
@@ -753,7 +766,7 @@ async def test_backup_to_local_with_default(
 
 
 async def test_backup_to_default(
-    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation, mock_is_mount
 ):
     """Test making backup to default mount."""
     # Add a default backup mount
@@ -780,7 +793,7 @@ async def test_backup_to_default(
         HomeAssistant,
         "version",
         new=PropertyMock(return_value=AwesomeVersion("2023.1.1")),
-    ), patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
+    ):
         backup: Backup = await coresys.backups.do_backup_partial(
             "test", homeassistant=True
         )
@@ -789,7 +802,11 @@ async def test_backup_to_default(
 
 
 async def test_backup_to_default_mount_down_error(
-    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+    coresys: CoreSys,
+    mock_is_mount: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
 ):
     """Test making backup to default mount when it is down."""
     # Add a default backup mount
@@ -809,6 +826,7 @@ async def test_backup_to_default_mount_down_error(
     coresys.mounts.default_backup_mount = mount
 
     # Attempt to make a backup which fails because is_mount on directory is false
+    mock_is_mount.return_value = False
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
@@ -819,6 +837,7 @@ async def test_backup_to_default_mount_down_error(
 async def test_load_network_error(
     coresys: CoreSys,
     caplog: pytest.LogCaptureFixture,
+    mock_is_mount: MagicMock,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -840,6 +859,7 @@ async def test_load_network_error(
     caplog.clear()
 
     # This should not raise, manager should just ignore backup locations with errors
+    mock_is_mount.return_value = False
     mock_path = MagicMock()
     mock_path.is_dir.side_effect = OSError("Host is down")
     mock_path.as_posix.return_value = "/data/backup_test"
@@ -1552,6 +1572,7 @@ async def test_backup_to_mount_bypasses_free_space_condition(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test backing up to a mount bypasses the check on local free space."""
     coresys.core.state = CoreState.RUNNING
@@ -1590,9 +1611,8 @@ async def test_backup_to_mount_bypasses_free_space_condition(
     mount = coresys.mounts.get("backup_test")
 
     # These succeed because local free space does not matter when using a mount
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True):
-        await coresys.backups.do_backup_full(location=mount)
-        await coresys.backups.do_backup_partial(folders=["media"], location=mount)
+    await coresys.backups.do_backup_full(location=mount)
+    await coresys.backups.do_backup_partial(folders=["media"], location=mount)
 
 
 @pytest.mark.parametrize(
@@ -1686,6 +1706,7 @@ async def test_reload_error(
     caplog: pytest.LogCaptureFixture,
     error_path: Path,
     healthy_expected: bool,
+    mock_is_mount: MagicMock,
     path_extern,
     mount_propagation,
 ):
@@ -1713,6 +1734,7 @@ async def test_reload_error(
         )
     )
 
+    mock_is_mount.return_value = False
     with patch("supervisor.backups.manager.Path.is_dir", new=mock_is_dir), patch(
         "supervisor.backups.manager.Path.glob", return_value=[]
     ):

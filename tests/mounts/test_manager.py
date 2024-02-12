@@ -52,7 +52,7 @@ SHARE_TEST_DATA = {
 
 @pytest.fixture(name="mount")
 async def fixture_mount(
-    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation
+    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation, mock_is_mount
 ) -> Mount:
     """Add an initial mount and load mounts."""
     mount = Mount.from_dict(coresys, MEDIA_TEST_DATA)
@@ -328,6 +328,7 @@ async def test_create_mount(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test creating a mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -459,7 +460,11 @@ async def test_remove_reload_mount_missing(coresys: CoreSys, mount_propagation):
 
 
 async def test_save_data(
-    coresys: CoreSys, tmp_supervisor_data: Path, path_extern, mount_propagation
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
 ):
     """Test saving mount config data."""
     # Replace mount manager with one that doesn't have save_data mocked
@@ -639,6 +644,7 @@ async def test_create_share_mount(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test creating a share mount."""
     systemd_service: SystemdService = all_dbus_services["systemd"]

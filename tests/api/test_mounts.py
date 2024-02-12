@@ -51,6 +51,7 @@ async def test_api_create_mount(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test creating a mount via API."""
     resp = await api_client.post(
@@ -225,6 +226,7 @@ async def test_api_update_mount(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     mount,
+    mock_is_mount,
 ):
     """Test updating a mount via API."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -375,7 +377,10 @@ async def test_api_update_dbus_error_mount_remains(
 
 
 async def test_api_reload_mount(
-    api_client: TestClient, all_dbus_services: dict[str, DBusServiceMock], mount
+    api_client: TestClient,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount,
+    mock_is_mount,
 ):
     """Test reloading a mount via API."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -446,6 +451,7 @@ async def test_api_create_backup_mount_sets_default(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test creating backup mounts sets default if not set."""
     await coresys.mounts.load()
@@ -486,6 +492,7 @@ async def test_update_backup_mount_changes_default(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     mount,
+    mock_is_mount,
 ):
     """Test updating a backup mount may unset the default."""
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
@@ -540,6 +547,7 @@ async def test_delete_backup_mount_changes_default(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     mount,
+    mock_is_mount,
 ):
     """Test deleting a backup mount may unset the default."""
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
@@ -580,6 +588,7 @@ async def test_backup_mounts_reload_backups(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test actions on a backup mount reload backups."""
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
@@ -678,7 +687,7 @@ async def test_backup_mounts_reload_backups(
         reload.assert_called_once()
 
 
-async def test_options(api_client: TestClient, coresys: CoreSys, mount):
+async def test_options(api_client: TestClient, coresys: CoreSys, mount, mock_is_mount):
     """Test changing options."""
     resp = await api_client.post(
         "/mounts",
@@ -788,6 +797,7 @@ async def test_api_create_read_only_cifs_mount(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test creating a read-only cifs mount via API."""
     resp = await api_client.post(
@@ -829,6 +839,7 @@ async def test_api_create_read_only_nfs_mount(
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
+    mock_is_mount,
 ):
     """Test creating a read-only nfs mount via API."""
     resp = await api_client.post(
