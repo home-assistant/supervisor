@@ -711,3 +711,10 @@ def mock_aarch64_arch_supported(coresys: CoreSys) -> None:
     """Mock aarch64 arch as supported."""
     with patch.object(coresys.arch, "_supported_set", {"aarch64"}):
         yield
+
+
+@pytest.fixture
+def mock_is_mount() -> MagicMock:
+    """Mock is_mount in mounts."""
+    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True) as is_mount:
+        yield is_mount
