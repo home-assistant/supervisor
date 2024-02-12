@@ -337,9 +337,9 @@ class Backup(JobGroup):
             self._outer_secure_tarfile_tarfile = self._outer_secure_tarfile.__enter__()
             return
 
+        # extract an existing backup
         self._tmp = TemporaryDirectory(dir=str(self.tarfile.parent))
 
-        # extract an existing backup
         def _extract_backup():
             """Extract a backup."""
             with tarfile.open(self.tarfile, "r:") as tar:
