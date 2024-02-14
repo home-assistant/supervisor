@@ -16,7 +16,7 @@ async def test_new_backup_stays_in_folder(coresys: CoreSys, tmp_path: Path):
 
     async with backup:
         assert len(listdir(tmp_path)) == 1
-        assert not backup.tarfile.exists()
+        assert backup.tarfile.exists()
 
     assert len(listdir(tmp_path)) == 1
     assert backup.tarfile.exists()
