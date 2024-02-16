@@ -249,7 +249,7 @@ class Mount(CoreSysAttributes, ABC):
                             DBUS_ATTR_ACTIVE_STATE
                         ].value
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.warning(
                 "Mount %s still in state %s after waiting for 30 seconds to complete",
                 self.name,
