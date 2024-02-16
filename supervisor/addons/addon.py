@@ -351,7 +351,7 @@ class Addon(AddonModel):
     @property
     def latest_version_timestamp(self) -> datetime:
         """Return when latest version was first seen."""
-        return utc_from_timestamp(self.data[ATTR_VERSION_TIMESTAMP])
+        return utc_from_timestamp(self.data_store[ATTR_VERSION_TIMESTAMP])
 
     @property
     def protected(self) -> bool:
