@@ -22,6 +22,8 @@ from securetar import atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from supervisor.utils.dt import utc_from_timestamp
+
 from ..bus import EventListener
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -349,7 +351,7 @@ class Addon(AddonModel):
     @property
     def latest_version_timestamp(self) -> datetime:
         """Return when latest version was first seen."""
-        return datetime.fromtimestamp(self.data_store[ATTR_VERSION_TIMESTAMP])
+        return utc_from_timestamp(self.data[ATTR_VERSION_TIMESTAMP])
 
     @property
     def protected(self) -> bool:

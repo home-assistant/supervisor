@@ -10,6 +10,8 @@ from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
+from supervisor.utils.dt import utc_from_timestamp
+
 from ..const import (
     ATTR_ADVANCED,
     ATTR_APPARMOR,
@@ -227,7 +229,7 @@ class AddonModel(JobGroup, ABC):
     @property
     def latest_version_timestamp(self) -> datetime:
         """Return when latest version was first seen."""
-        return datetime.fromtimestamp(self.data[ATTR_VERSION_TIMESTAMP])
+        return utc_from_timestamp(self.data[ATTR_VERSION_TIMESTAMP])
 
     @property
     def version(self) -> AwesomeVersion:
