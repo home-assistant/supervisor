@@ -267,6 +267,10 @@ class AuthPasswordResetError(HassioError):
     """Auth error if password reset failed."""
 
 
+class AuthListUsersError(HassioError):
+    """Auth error if listing users failed."""
+
+
 # Host
 
 
