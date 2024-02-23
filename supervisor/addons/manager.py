@@ -173,13 +173,13 @@ class AddonManager(CoreSysAttributes):
 
         _LOGGER.info("Add-on '%s' successfully installed", slug)
 
-    async def uninstall(self, slug: str) -> None:
+    async def uninstall(self, slug: str, *, remove_config: bool = False) -> None:
         """Remove an add-on."""
         if slug not in self.local:
             _LOGGER.warning("Add-on %s is not installed", slug)
             return
 
-        await self.local[slug].uninstall()
+        await self.local[slug].uninstall(remove_config=remove_config)
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 

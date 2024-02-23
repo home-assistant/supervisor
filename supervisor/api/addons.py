@@ -106,7 +106,7 @@ from ..exceptions import (
     PwnedSecret,
 )
 from ..validate import docker_ports
-from .const import ATTR_SIGNED, CONTENT_TYPE_BINARY
+from .const import ATTR_REMOVE_CONFIG, ATTR_SIGNED, CONTENT_TYPE_BINARY
 from .utils import api_process, api_process_raw, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -126,8 +126,12 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
-# pylint: disable=no-value-for-parameter
 SCHEMA_SECURITY = vol.Schema({vol.Optional(ATTR_PROTECTED): vol.Boolean()})
+
+SCHEMA_UNINSTALL = vol.Schema(
+    {vol.Optional(ATTR_REMOVE_CONFIG, default=False): vol.Boolean()}
+)
+# pylint: enable=no-value-for-parameter
 
 
 class APIAddons(CoreSysAttributes):
@@ -385,10 +389,15 @@ class APIAddons(CoreSysAttributes):
         }
 
     @api_process
-    def uninstall(self, request: web.Request) -> Awaitable[None]:
+    async def uninstall(self, request: web.Request) -> Awaitable[None]:
         """Uninstall add-on."""
         addon = self._extract_addon(request)
-        return asyncio.shield(self.sys_addons.uninstall(addon.slug))
+        body: dict[str, Any] = await api_validate(SCHEMA_UNINSTALL, request)
+        return await asyncio.shield(
+            self.sys_addons.uninstall(
+                addon.slug, remove_config=body[ATTR_REMOVE_CONFIG]
+            )
+        )
 
     @api_process
     async def start(self, request: web.Request) -> None:

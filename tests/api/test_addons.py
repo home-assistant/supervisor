@@ -220,3 +220,45 @@ async def test_api_addon_rebuild_healthcheck(
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
     assert resp.status == 200
+
+
+async def test_api_addon_uninstall(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_example: Addon,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test uninstall."""
+    install_addon_example.data["map"].append(
+        {"type": "addon_config", "read_only": False}
+    )
+    install_addon_example.path_config.mkdir()
+    (test_file := install_addon_example.path_config / "test.txt").touch()
+
+    resp = await api_client.post("/addons/local_example/uninstall")
+    assert resp.status == 200
+    assert not coresys.addons.get("local_example", local_only=True)
+    assert test_file.exists()
+
+
+async def test_api_addon_uninstall_remove_config(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_example: Addon,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test uninstall and remove config."""
+    install_addon_example.data["map"].append(
+        {"type": "addon_config", "read_only": False}
+    )
+    (test_folder := install_addon_example.path_config).mkdir()
+    (install_addon_example.path_config / "test.txt").touch()
+
+    resp = await api_client.post(
+        "/addons/local_example/uninstall", json={"remove_config": True}
+    )
+    assert resp.status == 200
+    assert not coresys.addons.get("local_example", local_only=True)
+    assert not test_folder.exists()
