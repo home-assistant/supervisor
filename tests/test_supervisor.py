@@ -23,7 +23,7 @@ from supervisor.resolution.data import Issue
 from supervisor.supervisor import Supervisor
 
 
-@pytest.fixture(name="websession")
+@pytest.fixture(name="websession", scope="function")
 async def fixture_webession(coresys: CoreSys) -> AsyncMock:
     """Mock of websession."""
     mock_websession = AsyncMock()
