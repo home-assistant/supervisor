@@ -9,11 +9,19 @@ from aiohttp.web_exceptions import HTTPUnauthorized
 import voluptuous as vol
 
 from ..addons.addon import Addon
-from ..const import ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
+from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIForbidden
 from ..utils.json import json_loads
-from .const import ATTR_USERS, CONTENT_TYPE_JSON, CONTENT_TYPE_URL
+from .const import (
+    ATTR_GROUP_IDS,
+    ATTR_IS_ACTIVE,
+    ATTR_IS_OWNER,
+    ATTR_LOCAL_ONLY,
+    ATTR_USERS,
+    CONTENT_TYPE_JSON,
+    CONTENT_TYPE_URL,
+)
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -95,4 +103,17 @@ class APIAuth(CoreSysAttributes):
     @api_process
     async def list_users(self, request: web.Request) -> dict[str, list[dict[str, Any]]]:
         """List users on the Home Assistant instance."""
-        return {ATTR_USERS: await self.sys_auth.list_users()}
+        return {
+            ATTR_USERS: [
+                {
+                    ATTR_USERNAME: user[ATTR_USERNAME],
+                    ATTR_NAME: user[ATTR_NAME],
+                    ATTR_IS_OWNER: user[ATTR_IS_OWNER],
+                    ATTR_IS_ACTIVE: user[ATTR_IS_ACTIVE],
+                    ATTR_LOCAL_ONLY: user[ATTR_LOCAL_ONLY],
+                    ATTR_GROUP_IDS: user[ATTR_GROUP_IDS],
+                }
+                for user in await self.sys_auth.list_users()
+                if user[ATTR_USERNAME]
+            ]
+        }

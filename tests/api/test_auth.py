@@ -96,4 +96,13 @@ async def test_list_users(
     resp = await api_client.get("/auth/list")
     assert resp.status == 200
     result = await resp.json()
-    assert result["data"]["users"] == LIST_USERS_RESPONSE
+    assert result["data"]["users"] == [
+        {
+            "username": "test",
+            "name": "Test",
+            "is_owner": True,
+            "is_active": True,
+            "local_only": False,
+            "group_ids": ["system-admin"],
+        },
+    ]
