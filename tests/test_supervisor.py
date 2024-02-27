@@ -1,6 +1,6 @@
 """Test supervisor object."""
 
-from datetime import timedelta
+from datetime import datetime
 import errno
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
@@ -36,10 +36,7 @@ async def fixture_webession(coresys: CoreSys) -> AsyncMock:
 @pytest.fixture(name="supervisor_unthrottled")
 async def fixture_supervisor_unthrottled(coresys: CoreSys) -> Supervisor:
     """Get supervisor object with connectivity check throttle removed."""
-    with patch(
-        "supervisor.supervisor._check_connectivity_throttle_period",
-        return_value=timedelta(),
-    ):
+    with patch("supervisor.jobs.decorator.Job.last_call", return_value=datetime.min):
         yield coresys.supervisor
 
 
