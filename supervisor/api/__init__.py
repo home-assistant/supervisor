@@ -336,6 +336,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/auth", api_auth.auth),
                 web.post("/auth/reset", api_auth.reset),
                 web.delete("/auth/cache", api_auth.cache),
+                web.get("/auth/list", api_auth.list_users),
             ]
         )
 
