@@ -118,7 +118,7 @@ ADDONS_ROLE_ACCESS: dict[str, re.Pattern] = {
         r"|/multicast/.+"
         r"|/network/.+"
         r"|/observer/.+"
-        r"|/os/.+"
+        r"|/os/(?!datadisk/wipe).+"
         r"|/refresh_updates"
         r"|/resolution/.+"
         r"|/security/.+"

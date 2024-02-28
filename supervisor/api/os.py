@@ -97,6 +97,11 @@ class APIOS(CoreSysAttributes):
         await asyncio.shield(self.sys_os.datadisk.migrate_disk(body[ATTR_DEVICE]))
 
     @api_process
+    def wipe_data(self, request: web.Request) -> Awaitable[None]:
+        """Trigger data disk wipe on Host."""
+        return asyncio.shield(self.sys_os.datadisk.wipe_disk())
+
+    @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:
         """Return possible data targets."""
         return {

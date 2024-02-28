@@ -179,6 +179,7 @@ async def test_bad_requests(
         ("post", "/addons/abc123/options", {"admin", "manager"}),
         ("post", "/addons/abc123/restart", {"admin", "manager"}),
         ("post", "/addons/abc123/security", {"admin"}),
+        ("post", "/os/datadisk/wipe", {"admin"}),
     ],
 )
 async def test_token_validation(
