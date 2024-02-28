@@ -106,7 +106,7 @@ class Tasks(CoreSysAttributes):
                     addon.latest_version,
                 )
             # Delay auto-updates for a day in case of issues
-            if utcnow() + timedelta(days=1) > addon.latest_version_timestamp:
+            if utcnow() - timedelta(days=1) < addon.latest_version_timestamp:
                 continue
             if not addon.test_update_schema():
                 _LOGGER.warning(
