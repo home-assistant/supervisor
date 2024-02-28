@@ -26,7 +26,7 @@ class Logind(DBusServiceMock):
     def Reboot(self, interactive: "b") -> None:
         """Reboot."""
         if self.side_effect_reboot:
-            raise self.side_effect_reboot
+            raise self.side_effect_reboot  # pylint: disable=raising-bad-type
 
     @dbus_method()
     def PowerOff(self, interactive: "b") -> None:
