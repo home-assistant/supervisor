@@ -17,6 +17,7 @@ from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
 from tests.dbus_service_mocks.agent_boards_green import Green as GreenService
 from tests.dbus_service_mocks.agent_boards_yellow import Yellow as YellowService
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
+from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
 
 
@@ -110,6 +111,23 @@ async def test_api_os_datadisk_migrate(
         assert resp.status == 200
 
         assert datadisk_service.ChangeDevice.calls == [("/dev/sda",)]
+        reboot.assert_called_once()
+
+
+async def test_api_os_datadisk_wipe(
+    api_client: TestClient,
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test datadisk wipe."""
+    system_service: SystemService = os_agent_services["agent_system"]
+    system_service.ScheduleWipeDevice.calls.clear()
+
+    with patch.object(SystemControl, "reboot") as reboot:
+        resp = await api_client.post("/os/datadisk/wipe")
+        assert resp.status == 200
+
+        assert system_service.ScheduleWipeDevice.calls == [()]
         reboot.assert_called_once()
 
 

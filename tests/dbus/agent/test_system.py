@@ -30,5 +30,5 @@ async def test_dbus_osagent_system_wipe(
 
     await os_agent.connect(dbus_session_bus)
 
-    assert await os_agent.system.schedule_wipe_device() is None
+    assert await os_agent.system.schedule_wipe_device() is True
     assert system_service.ScheduleWipeDevice.calls == [()]
