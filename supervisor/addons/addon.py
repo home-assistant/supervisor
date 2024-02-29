@@ -687,7 +687,7 @@ class Addon(AddonModel):
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
     )
-    async def uninstall(self) -> None:
+    async def uninstall(self, *, remove_config: bool) -> None:
         """Uninstall and cleanup this addon."""
         try:
             await self.instance.remove()
@@ -697,6 +697,10 @@ class Addon(AddonModel):
         self.state = AddonState.UNKNOWN
 
         await self.unload()
+
+        # Remove config if present and requested
+        if self.addon_config_used and remove_config:
+            await remove_data(self.path_config)
 
         # Cleanup audio settings
         if self.path_pulse.exists():
