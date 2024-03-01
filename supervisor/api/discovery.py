@@ -15,7 +15,6 @@ from ..const import (
     AddonState,
 )
 from ..coresys import CoreSysAttributes
-from ..discovery.validate import valid_discovery_service
 from ..exceptions import APIError, APIForbidden
 from .utils import api_process, api_validate, require_home_assistant
 
@@ -70,15 +69,6 @@ class APIDiscovery(CoreSysAttributes):
         body = await api_validate(SCHEMA_DISCOVERY, request)
         addon: Addon = request[REQUEST_FROM]
         service = body[ATTR_SERVICE]
-
-        try:
-            valid_discovery_service(service)
-        except vol.Invalid:
-            _LOGGER.warning(
-                "Received discovery message for unknown service %s from addon %s. Please report this to the maintainer of the add-on",
-                service,
-                addon.name,
-            )
 
         # Access?
         if body[ATTR_SERVICE] not in addon.discovery:

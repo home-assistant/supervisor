@@ -1,8 +1,7 @@
 """Test discovery API."""
 
 import logging
-from unittest.mock import ANY, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -10,9 +9,10 @@ import pytest
 from supervisor.addons.addon import Addon
 from supervisor.const import AddonState
 from supervisor.coresys import CoreSys
-from supervisor.discovery import Discovery, Message
+from supervisor.discovery import Message
 
 from tests.common import load_json_fixture
+from tests.const import TEST_ADDON_SLUG
 
 
 @pytest.mark.parametrize("api_client", ["local_ssh"], indirect=True)
@@ -32,28 +32,6 @@ async def test_api_discovery_forbidden(
         result["message"]
         == "Add-ons must list services they provide via discovery in their config!"
     )
-    assert "Please report this to the maintainer of the add-on" in caplog.text
-
-
-@pytest.mark.parametrize("api_client", ["local_ssh"], indirect=True)
-async def test_api_discovery_unknown_service(
-    api_client: TestClient, caplog: pytest.LogCaptureFixture, install_addon_ssh: Addon
-):
-    """Test addon sending discovery message for an unkown service."""
-    caplog.clear()
-    install_addon_ssh.data["discovery"] = ["junk"]
-
-    message = MagicMock()
-    message.uuid = uuid4().hex
-
-    with caplog.at_level(logging.WARNING), patch.object(
-        Discovery, "send", return_value=message
-    ):
-        resp = await api_client.post("/discovery", json={"service": "junk"})
-
-    assert resp.status == 200
-    result = await resp.json()
-    assert result["data"]["uuid"] == message.uuid
     assert "Please report this to the maintainer of the add-on" in caplog.text
 
 
@@ -97,3 +75,49 @@ async def test_api_list_discovery(
     assert resp.status == 200
     result = await resp.json()
     assert result["data"]["discovery"] == []
+
+
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+async def test_api_send_del_discovery(
+    api_client: TestClient, coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test adding and removing discovery."""
+    install_addon_ssh.data["discovery"] = ["test"]
+    coresys.homeassistant.api.ensure_access_token = AsyncMock()
+    coresys.websession.post = MagicMock()
+
+    resp = await api_client.post("/discovery", json={"service": "test", "config": {}})
+    assert resp.status == 200
+    result = await resp.json()
+    uuid = result["data"]["uuid"]
+    coresys.websession.post.assert_called_once()
+    assert (
+        coresys.websession.post.call_args.args[0]
+        == f"http://172.30.32.1:8123/api/hassio_push/discovery/{uuid}"
+    )
+    assert coresys.websession.post.call_args.kwargs["json"] == {
+        "addon": TEST_ADDON_SLUG,
+        "service": "test",
+        "uuid": uuid,
+    }
+
+    message = coresys.discovery.get(uuid)
+    assert message.addon == TEST_ADDON_SLUG
+    assert message.service == "test"
+    assert message.config == {}
+
+    coresys.websession.delete = MagicMock()
+    resp = await api_client.delete(f"/discovery/{uuid}")
+    assert resp.status == 200
+    coresys.websession.delete.assert_called_once()
+    assert (
+        coresys.websession.delete.call_args.args[0]
+        == f"http://172.30.32.1:8123/api/hassio_push/discovery/{uuid}"
+    )
+    assert coresys.websession.delete.call_args.kwargs["json"] == {
+        "addon": TEST_ADDON_SLUG,
+        "service": "test",
+        "uuid": uuid,
+    }
+
+    assert coresys.discovery.get(uuid) is None
