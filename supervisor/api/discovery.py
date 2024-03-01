@@ -23,7 +23,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 SCHEMA_DISCOVERY = vol.Schema(
     {
         vol.Required(ATTR_SERVICE): str,
-        vol.Optional(ATTR_CONFIG): vol.Maybe(dict),
+        vol.Required(ATTR_CONFIG): dict,
     }
 )
 

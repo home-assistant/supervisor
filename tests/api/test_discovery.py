@@ -23,7 +23,9 @@ async def test_api_discovery_forbidden(
     caplog.clear()
 
     with caplog.at_level(logging.ERROR):
-        resp = await api_client.post("/discovery", json={"service": "mqtt"})
+        resp = await api_client.post(
+            "/discovery", json={"service": "mqtt", "config": {}}
+        )
 
     assert resp.status == 403
     result = await resp.json()
@@ -121,3 +123,15 @@ async def test_api_send_del_discovery(
     }
 
     assert coresys.discovery.get(uuid) is None
+
+
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+async def test_api_invalid_discovery(api_client: TestClient, install_addon_ssh: Addon):
+    """Test invalid discovery messages."""
+    install_addon_ssh.data["discovery"] = ["test"]
+
+    resp = await api_client.post("/discovery", json={"service": "test"})
+    assert resp.status == 400
+
+    resp = await api_client.post("/discovery", json={"service": "test", "config": None})
+    assert resp.status == 400
