@@ -129,12 +129,15 @@ def api_return_error(
         JSON_RESULT: RESULT_ERROR,
         JSON_MESSAGE: message or "Unknown error, see supervisor",
     }
-    if isinstance(error, APIError) and error.job_id:
-        result[JSON_JOB_ID] = error.job_id
+    status = 400
+    if isinstance(error, APIError):
+        status = error.status
+        if error.job_id:
+            result[JSON_JOB_ID] = error.job_id
 
     return web.json_response(
         result,
-        status=400,
+        status=status,
         dumps=json_dumps,
     )
 
