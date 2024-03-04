@@ -186,6 +186,9 @@ class APIProxy(CoreSysAttributes):
             return await target.send_str(msg.data)
         if msg.type == WSMsgType.BINARY:
             return await target.send_bytes(msg.data)
+        if msg.type == WSMsgType.CLOSE:
+            _LOGGER.debug("Received close message from WebSocket.")
+            return await target.close()
 
         raise TypeError(
             f"Cannot proxy websocket message of unsupported type: {msg.type}"
@@ -200,6 +203,7 @@ class APIProxy(CoreSysAttributes):
         # init server
         server = web.WebSocketResponse(heartbeat=30)
         await server.prepare(request)
+        addon_name = None
 
         # handle authentication
         try:
@@ -223,7 +227,8 @@ class APIProxy(CoreSysAttributes):
                 )
                 return server
 
-            _LOGGER.info("WebSocket access from %s", addon.slug)
+            addon_name = addon.slug
+            _LOGGER.info("WebSocket access from %s", addon_name)
 
             await server.send_json(
                 {"type": "auth_ok", "ha_version": self.sys_homeassistant.version},
@@ -282,5 +287,5 @@ class APIProxy(CoreSysAttributes):
             if not server.closed:
                 await server.close()
 
-        _LOGGER.info("Home Assistant WebSocket API connection is closed")
+        _LOGGER.info("Home Assistant WebSocket API for %s closed", addon_name)
         return server
