@@ -308,6 +308,8 @@ class HostLogError(HostError):
 class APIError(HassioError, RuntimeError):
     """API errors."""
 
+    status = 400
+
     def __init__(
         self,
         message: str | None = None,
@@ -321,6 +323,8 @@ class APIError(HassioError, RuntimeError):
 
 class APIForbidden(APIError):
     """API forbidden error."""
+
+    status = 403
 
 
 class APIAddonNotInstalled(APIError):

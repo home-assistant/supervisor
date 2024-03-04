@@ -25,7 +25,7 @@ async def test_api_discovery_forbidden(
     with caplog.at_level(logging.ERROR):
         resp = await api_client.post("/discovery", json={"service": "mqtt"})
 
-    assert resp.status == 400
+    assert resp.status == 403
     result = await resp.json()
     assert result["result"] == "error"
     assert (
