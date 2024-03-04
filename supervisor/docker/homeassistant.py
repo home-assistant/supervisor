@@ -2,6 +2,7 @@
 from collections.abc import Awaitable
 from ipaddress import IPv4Address
 import logging
+import re
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker.types import Mount
@@ -28,6 +29,7 @@ from .interface import CommandReturn, DockerInterface
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _VERIFY_TRUST: AwesomeVersion = AwesomeVersion("2021.5.0")
 _HASS_DOCKER_NAME: str = "homeassistant"
+ENV_S6_GRACETIME = re.compile(r"^S6_SERVICES_GRACETIME=([0-9]+)$")
 
 
 class DockerHomeAssistant(DockerInterface):
@@ -53,10 +55,15 @@ class DockerHomeAssistant(DockerInterface):
     @property
     def timeout(self) -> int:
         """Return timeout for Docker actions."""
-        # Synchronized with the homeassistant core container's S6_SERVICES_GRACETIME
-        # to avoid killing Home Assistant Core, see
+        # Use S6_SERVICES_GRACETIME to avoid killing Home Assistant Core, see
         # https://github.com/home-assistant/core/tree/dev/Dockerfile
-        return 240 + 20
+        if self.meta_config and "Env" in self.meta_config:
+            for env in self.meta_config["Env"]:
+                if match := ENV_S6_GRACETIME.match(env):
+                    return 20 + int(int(match.group(1)) / 1000)
+
+        # Fallback - as of 2024.3, S6 SERVICES_GRACETIME was set to 24000
+        return 260
 
     @property
     def ip_address(self) -> IPv4Address:
