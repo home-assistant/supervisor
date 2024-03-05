@@ -7,14 +7,12 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 import attr
-import voluptuous as vol
-from voluptuous.humanize import humanize_error
 
 from ..const import ATTR_CONFIG, ATTR_DISCOVERY, FILE_HASSIO_DISCOVERY
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DiscoveryError, HomeAssistantAPIError
+from ..exceptions import HomeAssistantAPIError
 from ..utils.common import FileConfiguration
-from .validate import SCHEMA_DISCOVERY_CONFIG, valid_discovery_config
+from .validate import SCHEMA_DISCOVERY_CONFIG
 
 if TYPE_CHECKING:
     from ..addons.addon import Addon
@@ -75,12 +73,6 @@ class Discovery(CoreSysAttributes, FileConfiguration):
 
     def send(self, addon: Addon, service: str, config: dict[str, Any]) -> Message:
         """Send a discovery message to Home Assistant."""
-        try:
-            config = valid_discovery_config(service, config)
-        except vol.Invalid as err:
-            _LOGGER.error("Invalid discovery %s config", humanize_error(config, err))
-            raise DiscoveryError() from err
-
         # Create message
         message = Message(addon.slug, service, config)
 

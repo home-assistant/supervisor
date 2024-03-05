@@ -99,7 +99,6 @@ from ..const import (
     AddonStartup,
     AddonState,
 )
-from ..discovery.validate import valid_discovery_service
 from ..docker.const import Capabilities
 from ..validate import (
     docker_image,
@@ -187,20 +186,6 @@ def _warn_addon_config(config: dict[str, Any]):
     ):
         _LOGGER.warning(
             "Add-on which only support COLD backups trying to use post/pre commands. Please report this to the maintainer of %s",
-            name,
-        )
-
-    invalid_services: list[str] = []
-    for service in config.get(ATTR_DISCOVERY, []):
-        try:
-            valid_discovery_service(service)
-        except vol.Invalid:
-            invalid_services.append(service)
-
-    if invalid_services:
-        _LOGGER.warning(
-            "Add-on lists the following unknown services for discovery: %s. Please report this to the maintainer of %s",
-            ", ".join(invalid_services),
             name,
         )
 
