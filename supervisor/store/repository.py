@@ -103,9 +103,13 @@ class Repository(CoreSysAttributes):
 
     async def update(self) -> None:
         """Update add-on repository."""
-        if self.type == StoreType.LOCAL or not self.validate():
+        if not self.validate():
             return
-        await self.git.pull()
+
+        if self.type == StoreType.LOCAL or await self.git.pull():
+            for addon in self.sys_addons.all:
+                if addon.repository == self.slug:
+                    addon.clear_cache()
 
     async def remove(self) -> None:
         """Remove add-on repository."""

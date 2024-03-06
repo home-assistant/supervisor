@@ -117,7 +117,7 @@ class GitRepo(CoreSysAttributes):
         conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
         on_condition=StoreJobError,
     )
-    async def pull(self):
+    async def pull(self) -> bool:
         """Pull Git add-on repo."""
         if self.lock.locked():
             _LOGGER.warning("There is already a task in progress")
@@ -140,25 +140,30 @@ class GitRepo(CoreSysAttributes):
                     )
                 )
 
-                # Jump on top of that
-                await self.sys_run_in_executor(
-                    ft.partial(self.repo.git.reset, f"origin/{branch}", hard=True)
-                )
-
-                # Update submodules
-                await self.sys_run_in_executor(
-                    ft.partial(
-                        self.repo.git.submodule,
-                        "update",
-                        "--init",
-                        "--recursive",
-                        "--depth",
-                        "1",
+                if changed := self.repo.commit(branch) != self.repo.commit(
+                    f"origin/{branch}"
+                ):
+                    # Jump on top of that
+                    await self.sys_run_in_executor(
+                        ft.partial(self.repo.git.reset, f"origin/{branch}", hard=True)
                     )
-                )
+
+                    # Update submodules
+                    await self.sys_run_in_executor(
+                        ft.partial(
+                            self.repo.git.submodule,
+                            "update",
+                            "--init",
+                            "--recursive",
+                            "--depth",
+                            "1",
+                        )
+                    )
 
                 # Cleanup old data
                 await self.sys_run_in_executor(ft.partial(self.repo.git.clean, "-xdf"))
+
+                return changed
 
             except (
                 git.InvalidGitRepositoryError,

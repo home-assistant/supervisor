@@ -797,6 +797,7 @@ class Addon(AddonModel):
         if it was running. Else nothing is returned.
         """
         last_state: AddonState = self.state
+        self.clear_cache()
         try:
             # remove docker container but not addon config
             try:
