@@ -24,7 +24,6 @@ from ..const import (
     ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
-from ..dbus.const import RaucState
 from ..exceptions import BoardInvalidError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import version_tag
@@ -119,11 +118,7 @@ class APIOS(CoreSysAttributes):
     async def set_boot_slot(self, request: web.Request) -> None:
         """Change the active boot slot."""
         body = await api_validate(SCHEMA_SET_BOOT_SLOT, request)
-        await asyncio.shield(
-            self.sys_dbus.rauc.mark(
-                RaucState.ACTIVE, self.sys_os.get_slot_name(body[ATTR_BOOT_NAME])
-            )
-        )
+        await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_NAME]))
 
     @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:

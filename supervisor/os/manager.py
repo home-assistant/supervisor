@@ -17,6 +17,7 @@ from ..exceptions import (
     DBusError,
     HassOSJobError,
     HassOSSlotNotFound,
+    HassOSSlotUpdateError,
     HassOSUpdateError,
 )
 from ..jobs.const import JobCondition, JobExecutionLimit
@@ -342,6 +343,26 @@ class OSManager(CoreSysAttributes):
             response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")
         except DBusError:
             _LOGGER.error("Can't mark booted partition as healthy!")
+        else:
+            _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
+            await self._update_slots()
+
+    @Job(
+        name="os_manager_set_boot_slot",
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+        internal=True,
+    )
+    async def set_boot_slot(self, boot_name: str) -> None:
+        """Set active boot slot."""
+        try:
+            response = await self.sys_dbus.rauc.mark(
+                RaucState.ACTIVE, self.get_slot_name(boot_name)
+            )
+        except DBusError as err:
+            raise HassOSSlotUpdateError(
+                f"Could not mark {boot_name} as active!", _LOGGER.error
+            ) from err
         else:
             _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
             await self._update_slots()
