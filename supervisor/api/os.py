@@ -24,17 +24,22 @@ from ..const import (
     ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
+from ..dbus.const import RaucState
 from ..exceptions import BoardInvalidError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import version_tag
 from .const import (
+    ATTR_BOOT_NAME,
+    ATTR_BOOT_SLOTS,
     ATTR_DATA_DISK,
     ATTR_DEV_PATH,
     ATTR_DEVICE,
     ATTR_DISKS,
     ATTR_MODEL,
+    ATTR_STATUS,
     ATTR_SYSTEM_HEALTH_LED,
     ATTR_VENDOR,
+    BootName,
 )
 from .utils import api_process, api_validate
 
@@ -42,6 +47,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
+SCHEMA_SET_BOOT_SLOT = vol.Schema({vol.Required(ATTR_BOOT_NAME): vol.Coerce(BootName)})
 SCHEMA_DISK = vol.Schema({vol.Required(ATTR_DEVICE): str})
 
 SCHEMA_YELLOW_OPTIONS = vol.Schema(
@@ -74,6 +80,14 @@ class APIOS(CoreSysAttributes):
             ATTR_BOARD: self.sys_os.board,
             ATTR_BOOT: self.sys_dbus.rauc.boot_slot,
             ATTR_DATA_DISK: self.sys_os.datadisk.disk_used_id,
+            ATTR_BOOT_SLOTS: {
+                slot.bootname: {
+                    ATTR_STATUS: slot.boot_status,
+                    ATTR_VERSION: slot.bundle_version,
+                }
+                for slot in self.sys_os.slots
+                if slot.bootname
+            },
         }
 
     @api_process
@@ -100,6 +114,16 @@ class APIOS(CoreSysAttributes):
     def wipe_data(self, request: web.Request) -> Awaitable[None]:
         """Trigger data disk wipe on Host."""
         return asyncio.shield(self.sys_os.datadisk.wipe_disk())
+
+    @api_process
+    async def set_boot_slot(self, request: web.Request) -> None:
+        """Change the active boot slot."""
+        body = await api_validate(SCHEMA_SET_BOOT_SLOT, request)
+        await asyncio.shield(
+            self.sys_dbus.rauc.mark(
+                RaucState.ACTIVE, self.sys_os.get_slot_name(body[ATTR_BOOT_NAME])
+            )
+        )
 
     @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:

@@ -133,6 +133,10 @@ class HassOSDataDiskError(HassOSError):
     """Issues with the DataDisk feature from HAOS."""
 
 
+class HassOSSlotNotFound(HassOSError):
+    """Could not find boot slot."""
+
+
 # All Plugins
 
 

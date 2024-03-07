@@ -97,3 +97,23 @@ async def test_dbus_rauc_connect_error(
     rauc = Rauc()
     await rauc.connect(dbus_session_bus)
     assert "Host has no rauc support" in caplog.text
+
+
+async def test_test_slot_status(
+    rauc_service: RaucService, dbus_session_bus: MessageBus
+):
+    """Test get slot status."""
+    rauc = Rauc()
+
+    await rauc.connect(dbus_session_bus)
+
+    slot_status = await rauc.get_slot_status()
+    out = {}
+    for slot in slot_status:
+        for k in slot[1]:
+            if k in out:
+                out[k] += 1
+            else:
+                out[k] = 1
+
+    assert out

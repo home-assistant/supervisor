@@ -1,6 +1,8 @@
 """D-Bus interface for rauc."""
+
+from ctypes import c_uint32, c_uint64
 import logging
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 from dbus_fast.aio.message_bus import MessageBus
 
@@ -22,6 +24,28 @@ from .interface import DBusInterfaceProxy
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+SlotStatusDataType = TypedDict(
+    "SlotStatusDataType",
+    {
+        "bundle.compatible": str,
+        "sha256": str,
+        "state": str,
+        "size": c_uint64,
+        "installed.count": c_uint32,
+        "class": str,
+        "device": str,
+        "type": str,
+        "bundle.version": str,
+        "installed.timestamp": str,
+        "status": str,
+        "activated.count": NotRequired[c_uint32],
+        "activated.timestamp": NotRequired[str],
+        "boot-status": NotRequired[str],
+        "bootname": NotRequired[str],
+        "parent": NotRequired[str],
+    },
+)
 
 
 class Rauc(DBusInterfaceProxy):
@@ -83,7 +107,7 @@ class Rauc(DBusInterfaceProxy):
         await self.dbus.Installer.call_install(str(raucb_file))
 
     @dbus_connected
-    async def get_slot_status(self) -> list[tuple[str, dict[str, Any]]]:
+    async def get_slot_status(self) -> list[tuple[str, SlotStatusDataType]]:
         """Get slot status."""
         return await self.dbus.Installer.call_get_slot_status()
 
