@@ -180,6 +180,8 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
+        await self.refresh_cache()
+
         self._listeners.append(
             self.sys_bus.register_event(
                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
@@ -797,7 +799,7 @@ class Addon(AddonModel):
         if it was running. Else nothing is returned.
         """
         last_state: AddonState = self.state
-        self.clear_cache()
+        await self.refresh_cache()
         try:
             # remove docker container but not addon config
             try:

@@ -1,4 +1,6 @@
 """Represent a Supervisor repository."""
+
+import asyncio
 import logging
 from pathlib import Path
 
@@ -107,9 +109,13 @@ class Repository(CoreSysAttributes):
             return
 
         if self.type == StoreType.LOCAL or await self.git.pull():
-            for addon in self.sys_addons.all:
-                if addon.repository == self.slug:
-                    addon.clear_cache()
+            await asyncio.gather(
+                *[
+                    addon.refresh_cache()
+                    for addon in self.sys_addons.all
+                    if addon.repository == self.slug
+                ]
+            )
 
     async def remove(self) -> None:
         """Remove add-on repository."""

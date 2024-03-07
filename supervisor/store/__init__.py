@@ -1,5 +1,6 @@
 """Add-on Store handler."""
 import asyncio
+from collections.abc import Awaitable
 import logging
 
 from ..const import ATTR_REPOSITORIES, URL_HASSIO_ADDONS
@@ -93,7 +94,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
         # read data from repositories
         await self.load()
-        self._read_addons()
+        await self._read_addons()
 
     @Job(
         name="store_manager_add_repository",
@@ -185,7 +186,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         # Persist changes
         if persist:
             await self.data.update()
-            self._read_addons()
+            await self._read_addons()
 
     async def remove_repository(self, repository: Repository, *, persist: bool = True):
         """Remove a repository."""
@@ -205,7 +206,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
         if persist:
             await self.data.update()
-            self._read_addons()
+            await self._read_addons()
 
     @Job(name="store_manager_update_repositories")
     async def update_repositories(
@@ -245,14 +246,14 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
         # Always update data, even there are errors, some changes may have succeeded
         await self.data.update()
-        self._read_addons()
+        await self._read_addons()
 
         # Raise the first error we found (if any)
         for error in add_errors + remove_errors:
             if error:
                 raise error
 
-    def _read_addons(self) -> None:
+    async def _read_addons(self) -> None:
         """Reload add-ons inside store."""
         all_addons = set(self.data.addons)
 
@@ -268,8 +269,13 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         )
 
         # new addons
-        for slug in add_addons:
-            self.sys_addons.store[slug] = AddonStore(self.coresys, slug)
+        if add_addons:
+            cache_updates: list[Awaitable[None]] = []
+            for slug in add_addons:
+                self.sys_addons.store[slug] = AddonStore(self.coresys, slug)
+                cache_updates.append(self.sys_addons.store[slug].refresh_cache())
+
+            await asyncio.gather(*cache_updates)
 
         # remove
         for slug in del_addons:
