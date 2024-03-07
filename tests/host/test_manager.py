@@ -9,6 +9,7 @@ from supervisor.coresys import CoreSys
 from supervisor.dbus.const import MulticastProtocolEnabled
 
 from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.rauc import Rauc as RaucService
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 
@@ -56,3 +57,16 @@ async def test_reload(coresys: CoreSys, systemd_service: SystemdService):
         sound_update.assert_called_once()
 
     assert systemd_service.ListUnits.calls == [()]
+
+
+async def test_reload_os(
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], os_available
+):
+    """Test manager reload while on OS also reloads OS info cache."""
+    rauc_service: RaucService = all_dbus_services["rauc"]
+    rauc_service.GetSlotStatus.calls.clear()
+
+    await coresys.host.load()
+    await coresys.host.reload()
+
+    assert rauc_service.GetSlotStatus.calls == [()]

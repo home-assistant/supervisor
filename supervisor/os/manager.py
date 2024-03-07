@@ -23,6 +23,7 @@ from ..exceptions import (
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.const import UnhealthyReason
+from ..utils.sentry import capture_exception
 from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -226,7 +227,8 @@ class OSManager(CoreSysAttributes):
                 f"Can't write OTA file: {err!s}", _LOGGER.error
             ) from err
 
-    async def _update_slots(self) -> None:
+    @Job(name="os_manager_reload", conditions=[JobCondition.HAOS], internal=True)
+    async def reload(self) -> None:
         """Update cache of slot statuses."""
         self._slots = {
             slot[0]: SlotStatus.from_dict(slot[1])
@@ -254,7 +256,7 @@ class OSManager(CoreSysAttributes):
         self._version = AwesomeVersion(cpe.get_version()[0])
         self._board = cpe.get_target_hardware()[0]
         self._os_name = cpe.get_product()[0]
-        await self._update_slots()
+        await self.reload()
 
         await self.datadisk.load()
 
@@ -345,7 +347,7 @@ class OSManager(CoreSysAttributes):
             _LOGGER.error("Can't mark booted partition as healthy!")
         else:
             _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
-            await self._update_slots()
+            await self.reload()
 
     @Job(
         name="os_manager_set_boot_slot",
@@ -353,19 +355,19 @@ class OSManager(CoreSysAttributes):
         on_condition=HassOSJobError,
         internal=True,
     )
-    async def set_boot_slot(self, boot_name: str, *, reboot: bool = False) -> None:
+    async def set_boot_slot(self, boot_name: str) -> None:
         """Set active boot slot."""
         try:
             response = await self.sys_dbus.rauc.mark(
                 RaucState.ACTIVE, self.get_slot_name(boot_name)
             )
         except DBusError as err:
+            capture_exception(err)
             raise HassOSSlotUpdateError(
-                f"Could not mark {boot_name} as active!", _LOGGER.error
+                f"Can't mark {boot_name} as active!", _LOGGER.error
             ) from err
 
         _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
 
-        if reboot:
-            _LOGGER.info("Rebooting into new boot slot now")
-            await self.sys_host.control.reboot()
+        _LOGGER.info("Rebooting into new boot slot now")
+        await self.sys_host.control.reboot()

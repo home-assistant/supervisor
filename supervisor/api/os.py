@@ -19,6 +19,7 @@ from ..const import (
     ATTR_POWER_LED,
     ATTR_SERIAL,
     ATTR_SIZE,
+    ATTR_STATE,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
@@ -81,6 +82,7 @@ class APIOS(CoreSysAttributes):
             ATTR_DATA_DISK: self.sys_os.datadisk.disk_used_id,
             ATTR_BOOT_SLOTS: {
                 slot.bootname: {
+                    ATTR_STATE: slot.state,
                     ATTR_STATUS: slot.boot_status,
                     ATTR_VERSION: slot.bundle_version,
                 }
@@ -116,11 +118,9 @@ class APIOS(CoreSysAttributes):
 
     @api_process
     async def set_boot_slot(self, request: web.Request) -> None:
-        """Change the active boot slot."""
+        """Change the active boot slot and reboot into it."""
         body = await api_validate(SCHEMA_SET_BOOT_SLOT, request)
-        await asyncio.shield(
-            self.sys_os.set_boot_slot(body[ATTR_BOOT_NAME], reboot=True)
-        )
+        await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_NAME]))
 
     @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:

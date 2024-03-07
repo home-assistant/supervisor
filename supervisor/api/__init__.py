@@ -183,6 +183,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/os/datadisk/move", api_os.migrate_data),
                 web.get("/os/datadisk/list", api_os.list_data),
                 web.post("/os/datadisk/wipe", api_os.wipe_data),
+                web.post("/os/boot-slot", api_os.set_boot_slot),
             ]
         )
 
