@@ -353,7 +353,7 @@ class OSManager(CoreSysAttributes):
         on_condition=HassOSJobError,
         internal=True,
     )
-    async def set_boot_slot(self, boot_name: str) -> None:
+    async def set_boot_slot(self, boot_name: str, *, reboot: bool = False) -> None:
         """Set active boot slot."""
         try:
             response = await self.sys_dbus.rauc.mark(
@@ -363,6 +363,9 @@ class OSManager(CoreSysAttributes):
             raise HassOSSlotUpdateError(
                 f"Could not mark {boot_name} as active!", _LOGGER.error
             ) from err
-        else:
-            _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
-            await self._update_slots()
+
+        _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
+
+        if reboot:
+            _LOGGER.info("Rebooting into new boot slot now")
+            await self.sys_host.control.reboot()

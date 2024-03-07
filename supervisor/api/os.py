@@ -118,7 +118,9 @@ class APIOS(CoreSysAttributes):
     async def set_boot_slot(self, request: web.Request) -> None:
         """Change the active boot slot."""
         body = await api_validate(SCHEMA_SET_BOOT_SLOT, request)
-        await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_NAME]))
+        await asyncio.shield(
+            self.sys_os.set_boot_slot(body[ATTR_BOOT_NAME], reboot=True)
+        )
 
     @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:
