@@ -24,12 +24,19 @@ from tests.common import load_yaml_fixture
 async def test_default_load(coresys: CoreSys):
     """Test default load from config."""
     store_manager = StoreManager(coresys)
+    refresh_cache_calls: set[str] = set()
+
+    async def mock_refresh_cache(obj: AddonStore):
+        nonlocal refresh_cache_calls
+        refresh_cache_calls.add(obj.slug)
 
     with patch(
         "supervisor.store.repository.Repository.load", return_value=None
     ), patch.object(
         type(coresys.config), "addons_repositories", return_value=[]
-    ), patch("pathlib.Path.exists", return_value=True):
+    ), patch("pathlib.Path.exists", return_value=True), patch.object(
+        AddonStore, "refresh_cache", new=mock_refresh_cache
+    ):
         await store_manager.load()
 
     assert len(store_manager.all) == 4
@@ -44,10 +51,15 @@ async def test_default_load(coresys: CoreSys):
         "https://github.com/esphome/home-assistant-addon"
         in store_manager.repository_urls
     )
+    assert refresh_cache_calls == {"local_ssh", "local_example", "core_samba"}
 
 
 async def test_load_with_custom_repository(coresys: CoreSys):
     """Test load from config with custom repository."""
+
+    async def mock_refresh_cache(_):
+        pass
+
     with patch(
         "supervisor.utils.common.read_json_or_yaml_file",
         return_value={"repositories": ["http://example.com"]},
@@ -60,7 +72,9 @@ async def test_load_with_custom_repository(coresys: CoreSys):
         type(coresys.config), "addons_repositories", return_value=[]
     ), patch(
         "supervisor.store.repository.Repository.validate", return_value=True
-    ), patch("pathlib.Path.exists", return_value=True):
+    ), patch("pathlib.Path.exists", return_value=True), patch.object(
+        AddonStore, "refresh_cache", new=mock_refresh_cache
+    ):
         await store_manager.load()
 
     assert len(store_manager.all) == 5

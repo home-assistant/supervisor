@@ -1430,3 +1430,9 @@ class Addon(AddonModel):
             ContainerState.UNHEALTHY,
         ]:
             await self._restart_after_problem(event.state)
+
+    def refresh_cache(self) -> Awaitable[None]:
+        """Refresh cache of existing paths."""
+        if self.is_detached:
+            return super().refresh_cache()
+        return self.addon_store.refresh_cache()
