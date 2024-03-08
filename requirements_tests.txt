@@ -4,7 +4,7 @@ pylint==3.1.0
 pytest-aiohttp==1.0.5
 pytest-asyncio==0.23.5
 pytest-cov==4.1.0
-pytest-timeout==2.2.0
+pytest-timeout==2.3.1
 pytest==8.1.0
 ruff==0.3.1
 time-machine==2.14.0
