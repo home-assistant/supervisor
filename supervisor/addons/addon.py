@@ -180,7 +180,8 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
-        await self.refresh_cache()
+        if self.is_detached:
+            await self.refresh_cache()
 
         self._listeners.append(
             self.sys_bus.register_event(
@@ -231,6 +232,34 @@ class Addon(AddonModel):
     def is_detached(self) -> bool:
         """Return True if add-on is detached."""
         return self.slug not in self.sys_store.data.addons
+
+    @property
+    def with_icon(self) -> bool:
+        """Return True if an icon exists."""
+        if self.is_detached:
+            return super().with_icon
+        return self.addon_store.with_icon
+
+    @property
+    def with_logo(self) -> bool:
+        """Return True if a logo exists."""
+        if self.is_detached:
+            return super().with_logo
+        return self.addon_store.with_logo
+
+    @property
+    def with_changelog(self) -> bool:
+        """Return True if a changelog exists."""
+        if self.is_detached:
+            return super().with_changelog
+        return self.addon_store.with_changelog
+
+    @property
+    def with_documentation(self) -> bool:
+        """Return True if a documentation exists."""
+        if self.is_detached:
+            return super().with_documentation
+        return self.addon_store.with_documentation
 
     @property
     def available(self) -> bool:
@@ -799,7 +828,6 @@ class Addon(AddonModel):
         if it was running. Else nothing is returned.
         """
         last_state: AddonState = self.state
-        await self.refresh_cache()
         try:
             # remove docker container but not addon config
             try:
