@@ -86,7 +86,9 @@ class HomeAssistantCore(JobGroup):
                     await self.instance.get_latest_version()
                 )
 
-            await self.instance.attach(version=self.sys_homeassistant.version)
+            await self.instance.attach(
+                version=self.sys_homeassistant.version, skip_state_event_if_down=True
+            )
         except DockerError:
             _LOGGER.info(
                 "No Home Assistant Docker image %s found.", self.sys_homeassistant.image
@@ -115,7 +117,9 @@ class HomeAssistantCore(JobGroup):
         """Install a landing page."""
         # Try to use a preinstalled landingpage
         try:
-            await self.instance.attach(version=LANDINGPAGE)
+            await self.instance.attach(
+                version=LANDINGPAGE, skip_state_event_if_down=True
+            )
         except DockerError:
             pass
         else:
