@@ -39,7 +39,7 @@ from .const import (
     ATTR_STATUS,
     ATTR_SYSTEM_HEALTH_LED,
     ATTR_VENDOR,
-    BootName,
+    BootSlot,
 )
 from .utils import api_process, api_validate
 
@@ -47,7 +47,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
-SCHEMA_SET_BOOT_SLOT = vol.Schema({vol.Required(ATTR_BOOT_NAME): vol.Coerce(BootName)})
+SCHEMA_SET_BOOT_SLOT = vol.Schema({vol.Required(ATTR_BOOT_NAME): vol.Coerce(BootSlot)})
 SCHEMA_DISK = vol.Schema({vol.Required(ATTR_DEVICE): str})
 
 SCHEMA_YELLOW_OPTIONS = vol.Schema(

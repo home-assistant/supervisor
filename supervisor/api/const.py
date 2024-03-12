@@ -67,7 +67,7 @@ ATTR_USERS = "users"
 ATTR_VENDOR = "vendor"
 
 
-class BootName(StrEnum):
+class BootSlot(StrEnum):
     """Boot names used by HAOS."""
 
     A = "A"
