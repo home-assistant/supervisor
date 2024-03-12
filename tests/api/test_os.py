@@ -175,7 +175,7 @@ async def test_api_set_boot_slot_invalid(api_client: TestClient):
     resp = await api_client.post("/os/boot-slot", json={"boot_name": "C"})
     assert resp.status == 400
     result = await resp.json()
-    assert "expected BootName or one of 'A', 'B'" in result["message"]
+    assert "expected BootSlot or one of 'A', 'B'" in result["message"]
 
     resp = await api_client.post("/os/boot-slot", json={"boot_name": "A"})
     assert resp.status == 400
