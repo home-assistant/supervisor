@@ -35,7 +35,7 @@ async def test_default_load(coresys: CoreSys):
     ), patch.object(
         type(coresys.config), "addons_repositories", return_value=[]
     ), patch("pathlib.Path.exists", return_value=True), patch.object(
-        AddonStore, "refresh_cache", new=mock_refresh_cache
+        AddonStore, "refresh_path_cache", new=mock_refresh_cache
     ):
         await store_manager.load()
 
@@ -73,7 +73,7 @@ async def test_load_with_custom_repository(coresys: CoreSys):
     ), patch(
         "supervisor.store.repository.Repository.validate", return_value=True
     ), patch("pathlib.Path.exists", return_value=True), patch.object(
-        AddonStore, "refresh_cache", new=mock_refresh_cache
+        AddonStore, "refresh_path_cache", new=mock_refresh_cache
     ):
         await store_manager.load()
 
