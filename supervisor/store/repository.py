@@ -111,7 +111,7 @@ class Repository(CoreSysAttributes):
         if self.type == StoreType.LOCAL or await self.git.pull():
             await asyncio.gather(
                 *[
-                    addon.refresh_cache()
+                    addon.refresh_path_cache()
                     for addon in self.sys_addons.all
                     if addon.repository == self.slug
                 ]

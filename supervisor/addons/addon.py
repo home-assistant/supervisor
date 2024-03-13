@@ -181,7 +181,7 @@ class Addon(AddonModel):
     async def load(self) -> None:
         """Async initialize of object."""
         if self.is_detached:
-            await self.refresh_cache()
+            await self.refresh_path_cache()
 
         self._listeners.append(
             self.sys_bus.register_event(
@@ -1431,8 +1431,8 @@ class Addon(AddonModel):
         ]:
             await self._restart_after_problem(event.state)
 
-    def refresh_cache(self) -> Awaitable[None]:
+    def refresh_path_cache(self) -> Awaitable[None]:
         """Refresh cache of existing paths."""
         if self.is_detached:
-            return super().refresh_cache()
-        return self.addon_store.refresh_cache()
+            return super().refresh_path_cache()
+        return self.addon_store.refresh_path_cache()

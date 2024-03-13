@@ -273,7 +273,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             cache_updates: list[Awaitable[None]] = []
             for slug in add_addons:
                 self.sys_addons.store[slug] = AddonStore(self.coresys, slug)
-                cache_updates.append(self.sys_addons.store[slug].refresh_cache())
+                cache_updates.append(self.sys_addons.store[slug].refresh_path_cache())
 
             await asyncio.gather(*cache_updates)
 

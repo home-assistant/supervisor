@@ -639,7 +639,7 @@ class AddonModel(JobGroup, ABC):
         """Return breaking versions of addon."""
         return self.data[ATTR_BREAKING_VERSIONS]
 
-    def refresh_cache(self) -> Awaitable[None]:
+    def refresh_path_cache(self) -> Awaitable[None]:
         """Refresh cache of existing paths."""
 
         def check_paths():

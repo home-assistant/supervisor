@@ -79,7 +79,7 @@ class AddonManager(CoreSysAttributes):
         """Start up add-on management."""
         # Refresh cache for all store addons
         tasks: list[Awaitable[None]] = [
-            store.refresh_cache() for store in self.store.values()
+            store.refresh_path_cache() for store in self.store.values()
         ]
 
         # Load all installed addons
