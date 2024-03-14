@@ -758,7 +758,7 @@ async def test_paths_cache(coresys: CoreSys, install_addon_ssh: Addon):
         assert not install_addon_ssh.with_changelog
         assert not install_addon_ssh.with_documentation
 
-        await coresys.store.get("local").update()
+        await coresys.store.reload(coresys.store.get("local"))
         assert install_addon_ssh.with_logo
         assert install_addon_ssh.with_icon
         assert install_addon_ssh.with_changelog

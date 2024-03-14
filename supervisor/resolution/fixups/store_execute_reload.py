@@ -41,7 +41,7 @@ class FixupStoreExecuteReload(FixupBase):
         # Load data again
         try:
             await repository.load()
-            await repository.update()
+            await self.sys_store.reload(repository)
         except StoreError:
             raise ResolutionFixupError() from None
 

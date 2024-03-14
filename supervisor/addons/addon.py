@@ -181,7 +181,7 @@ class Addon(AddonModel):
     async def load(self) -> None:
         """Async initialize of object."""
         if self.is_detached:
-            await self.refresh_path_cache()
+            await super().refresh_path_cache()
 
         self._listeners.append(
             self.sys_bus.register_event(

@@ -86,15 +86,39 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         conditions=[JobCondition.SUPERVISOR_UPDATED],
         on_condition=StoreJobError,
     )
-    async def reload(self) -> None:
+    async def reload(self, repository: Repository | None = None) -> None:
         """Update add-ons from repository and reload list."""
-        tasks = [self.sys_create_task(repository.update()) for repository in self.all]
-        if tasks:
-            await asyncio.wait(tasks)
+        # Make a copy to prevent race with other tasks
+        repositories = [repository] if repository else self.all.copy()
+        results: list[bool | Exception] = await asyncio.gather(
+            *[repo.update() for repo in repositories], return_exceptions=True
+        )
 
-        # read data from repositories
-        await self.load()
-        await self._read_addons()
+        # Determine which repositories were updated
+        updated_repos: set[str] = set()
+        for i, result in enumerate(results):
+            if result is True:
+                updated_repos.add(repositories[i].slug)
+            elif result:
+                _LOGGER.error(
+                    "Could not reload repository %s due to %r",
+                    repositories[i].slug,
+                    result,
+                )
+
+        # Update path cache for all addons in updated repos
+        if updated_repos:
+            await asyncio.gather(
+                *[
+                    addon.refresh_path_cache()
+                    for addon in self.sys_addons.store.values()
+                    if addon.repository in updated_repos
+                ]
+            )
+
+            # read data from repositories
+            await self.load()
+            await self._read_addons()
 
     @Job(
         name="store_manager_add_repository",

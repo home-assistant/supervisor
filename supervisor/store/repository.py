@@ -1,6 +1,5 @@
 """Represent a Supervisor repository."""
 
-import asyncio
 import logging
 from pathlib import Path
 
@@ -103,19 +102,11 @@ class Repository(CoreSysAttributes):
             return
         await self.git.load()
 
-    async def update(self) -> None:
+    async def update(self) -> bool:
         """Update add-on repository."""
         if not self.validate():
-            return
-
-        if self.type == StoreType.LOCAL or await self.git.pull():
-            await asyncio.gather(
-                *[
-                    addon.refresh_path_cache()
-                    for addon in self.sys_addons.all
-                    if addon.repository == self.slug
-                ]
-            )
+            return False
+        return self.type == StoreType.LOCAL or await self.git.pull()
 
     async def remove(self) -> None:
         """Remove add-on repository."""
