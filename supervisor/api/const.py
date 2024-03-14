@@ -16,7 +16,7 @@ ATTR_APPARMOR_VERSION = "apparmor_version"
 ATTR_ATTRIBUTES = "attributes"
 ATTR_AVAILABLE_UPDATES = "available_updates"
 ATTR_BACKGROUND = "background"
-ATTR_BOOT_NAME = "boot_name"
+ATTR_BOOT_SLOT = "boot_slot"
 ATTR_BOOT_SLOTS = "boot_slots"
 ATTR_BOOT_TIMESTAMP = "boot_timestamp"
 ATTR_BOOTS = "boots"
@@ -68,7 +68,7 @@ ATTR_VENDOR = "vendor"
 
 
 class BootSlot(StrEnum):
-    """Boot names used by HAOS."""
+    """Boot slots used by HAOS."""
 
     A = "A"
     B = "B"

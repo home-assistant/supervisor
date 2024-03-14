@@ -29,7 +29,7 @@ from ..exceptions import BoardInvalidError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import version_tag
 from .const import (
-    ATTR_BOOT_NAME,
+    ATTR_BOOT_SLOT,
     ATTR_BOOT_SLOTS,
     ATTR_DATA_DISK,
     ATTR_DEV_PATH,
@@ -47,7 +47,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_VERSION = vol.Schema({vol.Optional(ATTR_VERSION): version_tag})
-SCHEMA_SET_BOOT_SLOT = vol.Schema({vol.Required(ATTR_BOOT_NAME): vol.Coerce(BootSlot)})
+SCHEMA_SET_BOOT_SLOT = vol.Schema({vol.Required(ATTR_BOOT_SLOT): vol.Coerce(BootSlot)})
 SCHEMA_DISK = vol.Schema({vol.Required(ATTR_DEVICE): str})
 
 SCHEMA_YELLOW_OPTIONS = vol.Schema(
@@ -120,7 +120,7 @@ class APIOS(CoreSysAttributes):
     async def set_boot_slot(self, request: web.Request) -> None:
         """Change the active boot slot and reboot into it."""
         body = await api_validate(SCHEMA_SET_BOOT_SLOT, request)
-        await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_NAME]))
+        await asyncio.shield(self.sys_os.set_boot_slot(body[ATTR_BOOT_SLOT]))
 
     @api_process
     async def list_data(self, request: web.Request) -> dict[str, Any]:
