@@ -16,13 +16,9 @@ class IncompleteEntryError(Exception):
     multiple newlines in binary fields.
     """
 
-    pass
-
 
 class MultipleEntriesError(Exception):
     """Raised when a journal entry contains multiple entries."""
-
-    pass
 
 
 def parse_journal_export_entry(
