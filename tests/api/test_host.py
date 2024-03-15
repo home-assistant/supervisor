@@ -7,6 +7,7 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
+from supervisor.host.const import LogFormat
 
 DEFAULT_RANGE = "entries=:-100:"
 # pylint: disable=protected-access
@@ -154,6 +155,7 @@ async def test_advanced_logs(
     journald_logs.assert_called_once_with(
         params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -161,7 +163,9 @@ async def test_advanced_logs(
     identifier = "dropbear"
     await api_client.get(f"/host/logs/identifiers/{identifier}")
     journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": identifier}, range_header=DEFAULT_RANGE
+        params={"SYSLOG_IDENTIFIER": identifier},
+        range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -174,6 +178,7 @@ async def test_advanced_logs(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -182,6 +187,7 @@ async def test_advanced_logs(
     journald_logs.assert_called_once_with(
         params={"_BOOT_ID": bootid, "SYSLOG_IDENTIFIER": identifier},
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -191,6 +197,7 @@ async def test_advanced_logs(
     journald_logs.assert_called_once_with(
         params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
         range_header=headers["Range"],
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -202,6 +209,7 @@ async def test_advanced_logs(
             "follow": "",
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
 
@@ -216,6 +224,7 @@ async def test_advanced_logs_boot_id_offset(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -227,6 +236,7 @@ async def test_advanced_logs_boot_id_offset(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -238,6 +248,7 @@ async def test_advanced_logs_boot_id_offset(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -257,5 +268,5 @@ async def test_advanced_logs_errors(api_client: TestClient):
     assert result["result"] == "error"
     assert (
         result["message"]
-        == "Invalid content type requested. Only text/plain supported for now."
+        == "Invalid content type requested. Only text/plain and text/x-log supported for now."
     )

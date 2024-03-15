@@ -6,7 +6,9 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HostNotSupportedError
+from supervisor.host.const import LogFormatter
 from supervisor.host.logs import LogsControl
+from supervisor.utils.systemd_journal import journal_logs_reader
 
 from tests.common import load_fixture
 
@@ -33,9 +35,12 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
     assert coresys.host.logs.available is True
 
     async with coresys.host.logs.journald_logs() as resp:
-        body = await resp.text()
+        line = await anext(
+            journal_logs_reader(resp, log_formatter=LogFormatter.VERBOSE)
+        )
         assert (
-            "Oct 11 20:46:22 odroid-dev systemd[1]: Started Hostname Service." in body
+            line
+            == "2024-03-04 03:52:56.193 homeassistant systemd[1]: Started Hostname Service."
         )
 
     with patch.object(
@@ -43,6 +48,20 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
     ), pytest.raises(HostNotSupportedError):
         async with coresys.host.logs.journald_logs():
             pass
+
+
+async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
+    """Test ANSI control sequences being preserved in binary messages."""
+    journald_gateway.return_value.__aenter__.return_value.__aenter__.return_value.content.readuntil = AsyncMock(
+        return_value=load_fixture("logs_export_supervisor.txt").encode("utf-8")
+    )
+
+    async with coresys.host.logs.journald_logs() as resp:
+        line = await anext(journal_logs_reader(resp))
+        assert (
+            line
+            == "\x1b[32m24-03-04 23:56:56 INFO (MainThread) [__main__] Closing Supervisor\x1b[0m"
+        )
 
 
 async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):

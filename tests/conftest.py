@@ -408,9 +408,13 @@ async def journald_gateway() -> MagicMock:
     with patch("supervisor.host.logs.Path.is_socket", return_value=True), patch(
         "supervisor.host.logs.ClientSession.get"
     ) as get:
-        get.return_value.__aenter__.return_value.text = AsyncMock(
-            return_value=load_fixture("logs_host.txt")
+        get.return_value.__aenter__.return_value.__aenter__.return_value.content.readuntil = AsyncMock(
+            return_value=load_fixture("logs_export_host.txt").encode("utf-8")
         )
+        get.return_value.__aenter__.return_value.__aenter__.return_value.content.at_eof = MagicMock(
+            return_value=False
+        )
+
         yield get
 
 

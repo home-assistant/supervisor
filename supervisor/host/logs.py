@@ -138,6 +138,8 @@ class LogsControl(CoreSysAttributes):
                 "No systemd-journal-gatewayd Unix socket available", _LOGGER.error
             )
 
+        # FIXME: journald may not be running but the socket exists, access attempt will cause:
+        # aiohttp.client_exceptions.UnixClientConnectorError: Cannot connect to unix socket /run/systemd-journal-gatewayd.sock ssl:default [Connection refused]
         async with ClientSession(
             connector=UnixConnector(path="/run/systemd-journal-gatewayd.sock")
         ) as session:
