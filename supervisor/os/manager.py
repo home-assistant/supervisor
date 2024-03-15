@@ -1,8 +1,10 @@
 """OS support on supervisor."""
 from collections.abc import Awaitable
+from dataclasses import dataclass
+from datetime import datetime
 import errno
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
@@ -10,14 +12,96 @@ from cpe import CPE
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.agent.boards.const import BOARD_NAME_SUPERVISED
-from ..dbus.rauc import RaucState
-from ..exceptions import DBusError, HassOSJobError, HassOSUpdateError
+from ..dbus.rauc import RaucState, SlotStatusDataType
+from ..exceptions import (
+    DBusError,
+    HassOSJobError,
+    HassOSSlotNotFound,
+    HassOSSlotUpdateError,
+    HassOSUpdateError,
+)
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.const import UnhealthyReason
+from ..utils.sentry import capture_exception
 from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True, frozen=True)
+class SlotStatus:
+    """Status of a slot."""
+
+    bundle_compatible: str
+    sha256: str
+    state: str
+    size: int
+    installed_count: int
+    class_: str
+    device: PurePath
+    type_: str
+    bundle_version: AwesomeVersion
+    installed_timestamp: datetime
+    status: str
+    activated_count: int | None = None
+    activated_timestamp: datetime | None = None
+    boot_status: RaucState | None = None
+    bootname: str | None = None
+    parent: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: SlotStatusDataType) -> "SlotStatus":
+        """Create SlotStatus from dictionary."""
+        return cls(
+            bundle_compatible=data["bundle.compatible"],
+            sha256=data["sha256"],
+            state=data["state"],
+            size=data["size"],
+            installed_count=data["installed.count"],
+            class_=data["class"],
+            device=PurePath(data["device"]),
+            type_=data["type"],
+            bundle_version=AwesomeVersion(data["bundle.version"]),
+            installed_timestamp=datetime.fromisoformat(data["installed.timestamp"]),
+            status=data["status"],
+            activated_count=data.get("activated.count"),
+            activated_timestamp=datetime.fromisoformat(data["activated.timestamp"])
+            if "activated.timestamp" in data
+            else None,
+            boot_status=data.get("boot-status"),
+            bootname=data.get("bootname"),
+            parent=data.get("parent"),
+        )
+
+    def to_dict(self) -> SlotStatusDataType:
+        """Get dictionary representation."""
+        out: SlotStatusDataType = {
+            "bundle.compatible": self.bundle_compatible,
+            "sha256": self.sha256,
+            "state": self.state,
+            "size": self.size,
+            "installed.count": self.installed_count,
+            "class": self.class_,
+            "device": self.device.as_posix(),
+            "type": self.type_,
+            "bundle.version": str(self.bundle_version),
+            "installed.timestamp": str(self.installed_timestamp),
+            "status": self.status,
+        }
+
+        if self.activated_count is not None:
+            out["activated.count"] = self.activated_count
+        if self.activated_timestamp:
+            out["activated.timestamp"] = str(self.activated_timestamp)
+        if self.boot_status:
+            out["boot-status"] = self.boot_status
+        if self.bootname is not None:
+            out["bootname"] = self.bootname
+        if self.parent is not None:
+            out["parent"] = self.parent
+
+        return out
 
 
 class OSManager(CoreSysAttributes):
@@ -31,6 +115,7 @@ class OSManager(CoreSysAttributes):
         self._version: AwesomeVersion | None = None
         self._board: str | None = None
         self._os_name: str | None = None
+        self._slots: dict[str, SlotStatus] | None = None
 
     @property
     def available(self) -> bool:
@@ -69,6 +154,20 @@ class OSManager(CoreSysAttributes):
     def datadisk(self) -> DataDisk:
         """Return Operating-System datadisk."""
         return self._datadisk
+
+    @property
+    def slots(self) -> list[SlotStatus]:
+        """Return status of slots."""
+        if not self._slots:
+            return []
+        return list(self._slots.values())
+
+    def get_slot_name(self, boot_name: str) -> str:
+        """Get slot name from boot name."""
+        for name, status in self._slots.items():
+            if status.bootname == boot_name:
+                return name
+        raise HassOSSlotNotFound()
 
     def _get_download_url(self, version: AwesomeVersion) -> str:
         raw_url = self.sys_updater.ota_url
@@ -128,6 +227,14 @@ class OSManager(CoreSysAttributes):
                 f"Can't write OTA file: {err!s}", _LOGGER.error
             ) from err
 
+    @Job(name="os_manager_reload", conditions=[JobCondition.HAOS], internal=True)
+    async def reload(self) -> None:
+        """Update cache of slot statuses."""
+        self._slots = {
+            slot[0]: SlotStatus.from_dict(slot[1])
+            for slot in await self.sys_dbus.rauc.get_slot_status()
+        }
+
     async def load(self) -> None:
         """Load HassOS data."""
         try:
@@ -149,6 +256,7 @@ class OSManager(CoreSysAttributes):
         self._version = AwesomeVersion(cpe.get_version()[0])
         self._board = cpe.get_target_hardware()[0]
         self._os_name = cpe.get_product()[0]
+        await self.reload()
 
         await self.datadisk.load()
 
@@ -239,3 +347,27 @@ class OSManager(CoreSysAttributes):
             _LOGGER.error("Can't mark booted partition as healthy!")
         else:
             _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
+            await self.reload()
+
+    @Job(
+        name="os_manager_set_boot_slot",
+        conditions=[JobCondition.HAOS],
+        on_condition=HassOSJobError,
+        internal=True,
+    )
+    async def set_boot_slot(self, boot_name: str) -> None:
+        """Set active boot slot."""
+        try:
+            response = await self.sys_dbus.rauc.mark(
+                RaucState.ACTIVE, self.get_slot_name(boot_name)
+            )
+        except DBusError as err:
+            capture_exception(err)
+            raise HassOSSlotUpdateError(
+                f"Can't mark {boot_name} as active!", _LOGGER.error
+            ) from err
+
+        _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
+
+        _LOGGER.info("Rebooting into new boot slot now")
+        await self.sys_host.control.reboot()

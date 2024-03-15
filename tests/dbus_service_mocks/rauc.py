@@ -1,6 +1,6 @@
 """Mock of rauc dbus service."""
 
-from dbus_fast import Variant
+from dbus_fast import DBusError, Variant
 from dbus_fast.service import PropertyAccess, dbus_property, signal
 
 from .base import DBusServiceMock, dbus_method
@@ -21,6 +21,7 @@ class Rauc(DBusServiceMock):
 
     object_path = "/"
     interface = "de.pengutronix.rauc.Installer"
+    response_mark: list[str] | DBusError = ["kernel.1", "marked slot kernel.1 as good"]
 
     @dbus_property(access=PropertyAccess.READ)
     def Operation(self) -> "s":
@@ -70,7 +71,7 @@ class Rauc(DBusServiceMock):
     @dbus_method()
     def Mark(self, state: "s", slot_identifier: "s") -> "ss":
         """Mark slot."""
-        return ["kernel.1", "marked slot kernel.1 as good"]
+        return self.response_mark
 
     @dbus_method()
     def GetPrimary(self) -> "s":

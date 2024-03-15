@@ -127,6 +127,7 @@ class HostManager(CoreSysAttributes):
     async def reload(self):
         """Reload host functions."""
         await self.info.update()
+        await self.sys_os.reload()
 
         if self.sys_dbus.systemd.is_connected:
             await self.services.update()
