@@ -163,7 +163,7 @@ async def test_api_set_boot_slot(
     await coresys.os.load()
 
     with patch.object(SystemControl, "reboot") as reboot:
-        resp = await api_client.post("/os/boot-slot", json={"boot_name": "A"})
+        resp = await api_client.post("/os/boot-slot", json={"boot_slot": "A"})
         assert resp.status == 200
 
         reboot.assert_called_once()
@@ -172,12 +172,12 @@ async def test_api_set_boot_slot(
 
 async def test_api_set_boot_slot_invalid(api_client: TestClient):
     """Test invalid calls to set boot slot."""
-    resp = await api_client.post("/os/boot-slot", json={"boot_name": "C"})
+    resp = await api_client.post("/os/boot-slot", json={"boot_slot": "C"})
     assert resp.status == 400
     result = await resp.json()
     assert "expected BootSlot or one of 'A', 'B'" in result["message"]
 
-    resp = await api_client.post("/os/boot-slot", json={"boot_name": "A"})
+    resp = await api_client.post("/os/boot-slot", json={"boot_slot": "A"})
     assert resp.status == 400
     result = await resp.json()
     assert "no Home Assistant OS available" in result["message"]
@@ -195,7 +195,7 @@ async def test_api_set_boot_slot_error(
     rauc_service.response_mark = DBusError(ErrorType.FAILED, "fail")
     await coresys.os.load()
 
-    resp = await api_client.post("/os/boot-slot", json={"boot_name": "A"})
+    resp = await api_client.post("/os/boot-slot", json={"boot_slot": "A"})
     assert resp.status == 400
     result = await resp.json()
     assert result["message"] == "Can't mark A as active!"
