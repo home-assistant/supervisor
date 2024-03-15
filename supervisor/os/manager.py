@@ -33,17 +33,17 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class SlotStatus:
     """Status of a slot."""
 
-    bundle_compatible: str
-    sha256: str
-    state: str
-    size: int
-    installed_count: int
     class_: str
-    device: PurePath
     type_: str
-    bundle_version: AwesomeVersion
-    installed_timestamp: datetime
-    status: str
+    state: str
+    device: PurePath
+    bundle_compatible: str | None = None
+    sha256: str | None = None
+    size: int | None = None
+    installed_count: int | None = None
+    bundle_version: AwesomeVersion | None = None
+    installed_timestamp: datetime | None = None
+    status: str | None = None
     activated_count: int | None = None
     activated_timestamp: datetime | None = None
     boot_status: RaucState | None = None
@@ -54,17 +54,21 @@ class SlotStatus:
     def from_dict(cls, data: SlotStatusDataType) -> "SlotStatus":
         """Create SlotStatus from dictionary."""
         return cls(
-            bundle_compatible=data["bundle.compatible"],
-            sha256=data["sha256"],
-            state=data["state"],
-            size=data["size"],
-            installed_count=data["installed.count"],
             class_=data["class"],
-            device=PurePath(data["device"]),
             type_=data["type"],
-            bundle_version=AwesomeVersion(data["bundle.version"]),
-            installed_timestamp=datetime.fromisoformat(data["installed.timestamp"]),
-            status=data["status"],
+            state=data["state"],
+            device=PurePath(data["device"]),
+            bundle_compatible=data.get("bundle.compatible"),
+            sha256=data.get("sha256"),
+            size=data.get("size"),
+            installed_count=data.get("installed.count"),
+            bundle_version=AwesomeVersion(data["bundle.version"])
+            if "bundle.version" in data
+            else None,
+            installed_timestamp=datetime.fromisoformat(data["installed.timestamp"])
+            if "installed.timestamp" in data
+            else None,
+            status=data.get("status"),
             activated_count=data.get("activated.count"),
             activated_timestamp=datetime.fromisoformat(data["activated.timestamp"])
             if "activated.timestamp" in data
@@ -77,19 +81,26 @@ class SlotStatus:
     def to_dict(self) -> SlotStatusDataType:
         """Get dictionary representation."""
         out: SlotStatusDataType = {
-            "bundle.compatible": self.bundle_compatible,
-            "sha256": self.sha256,
-            "state": self.state,
-            "size": self.size,
-            "installed.count": self.installed_count,
             "class": self.class_,
-            "device": self.device.as_posix(),
             "type": self.type_,
-            "bundle.version": str(self.bundle_version),
-            "installed.timestamp": str(self.installed_timestamp),
-            "status": self.status,
+            "state": self.state,
+            "device": self.device.as_posix(),
         }
 
+        if self.bundle_compatible is not None:
+            out["bundle.compatible"] = self.bundle_compatible
+        if self.sha256 is not None:
+            out["sha256"] = self.sha256
+        if self.size is not None:
+            out["size"] = self.size
+        if self.installed_count is not None:
+            out["installed.count"] = self.installed_count
+        if self.bundle_version is not None:
+            out["bundle.version"] = str(self.bundle_version)
+        if self.installed_timestamp is not None:
+            out["installed.timestamp"] = str(self.installed_timestamp)
+        if self.status is not None:
+            out["status"] = self.status
         if self.activated_count is not None:
             out["activated.count"] = self.activated_count
         if self.activated_timestamp:
