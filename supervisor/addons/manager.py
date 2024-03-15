@@ -77,15 +77,20 @@ class AddonManager(CoreSysAttributes):
 
     async def load(self) -> None:
         """Start up add-on management."""
-        tasks = []
+        # Refresh cache for all store addons
+        tasks: list[Awaitable[None]] = [
+            store.refresh_path_cache() for store in self.store.values()
+        ]
+
+        # Load all installed addons
         for slug in self.data.system:
             addon = self.local[slug] = Addon(self.coresys, slug)
-            tasks.append(self.sys_create_task(addon.load()))
+            tasks.append(addon.load())
 
         # Run initial tasks
-        _LOGGER.info("Found %d installed add-ons", len(tasks))
+        _LOGGER.info("Found %d installed add-ons", len(self.data.system))
         if tasks:
-            await asyncio.wait(tasks)
+            await asyncio.gather(*tasks)
 
         # Sync DNS
         await self.sync_dns()

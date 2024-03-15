@@ -748,3 +748,18 @@ def test_auto_update_available(coresys: CoreSys, install_addon_example: Addon):
         Addon, "version", new=PropertyMock(return_value=AwesomeVersion("test"))
     ):
         assert install_addon_example.auto_update_available is False
+
+
+async def test_paths_cache(coresys: CoreSys, install_addon_ssh: Addon):
+    """Test cache for key paths that may or may not exist."""
+    with patch("supervisor.addons.addon.Path.exists", return_value=True):
+        assert not install_addon_ssh.with_logo
+        assert not install_addon_ssh.with_icon
+        assert not install_addon_ssh.with_changelog
+        assert not install_addon_ssh.with_documentation
+
+        await coresys.store.reload(coresys.store.get("local"))
+        assert install_addon_ssh.with_logo
+        assert install_addon_ssh.with_icon
+        assert install_addon_ssh.with_changelog
+        assert install_addon_ssh.with_documentation

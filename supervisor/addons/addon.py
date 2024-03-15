@@ -180,6 +180,9 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
+        if self.is_detached:
+            await super().refresh_path_cache()
+
         self._listeners.append(
             self.sys_bus.register_event(
                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
@@ -229,6 +232,34 @@ class Addon(AddonModel):
     def is_detached(self) -> bool:
         """Return True if add-on is detached."""
         return self.slug not in self.sys_store.data.addons
+
+    @property
+    def with_icon(self) -> bool:
+        """Return True if an icon exists."""
+        if self.is_detached:
+            return super().with_icon
+        return self.addon_store.with_icon
+
+    @property
+    def with_logo(self) -> bool:
+        """Return True if a logo exists."""
+        if self.is_detached:
+            return super().with_logo
+        return self.addon_store.with_logo
+
+    @property
+    def with_changelog(self) -> bool:
+        """Return True if a changelog exists."""
+        if self.is_detached:
+            return super().with_changelog
+        return self.addon_store.with_changelog
+
+    @property
+    def with_documentation(self) -> bool:
+        """Return True if a documentation exists."""
+        if self.is_detached:
+            return super().with_documentation
+        return self.addon_store.with_documentation
 
     @property
     def available(self) -> bool:
@@ -1399,3 +1430,9 @@ class Addon(AddonModel):
             ContainerState.UNHEALTHY,
         ]:
             await self._restart_after_problem(event.state)
+
+    def refresh_path_cache(self) -> Awaitable[None]:
+        """Refresh cache of existing paths."""
+        if self.is_detached:
+            return super().refresh_path_cache()
+        return self.addon_store.refresh_path_cache()

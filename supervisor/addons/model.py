@@ -1,7 +1,7 @@
 """Init file for Supervisor add-ons."""
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from datetime import datetime
 import logging
@@ -118,6 +118,10 @@ class AddonModel(JobGroup, ABC):
             coresys, JOB_GROUP_ADDON.format_map(defaultdict(str, slug=slug)), slug
         )
         self.slug: str = slug
+        self._path_icon_exists: bool = False
+        self._path_logo_exists: bool = False
+        self._path_changelog_exists: bool = False
+        self._path_documentation_exists: bool = False
 
     @property
     @abstractmethod
@@ -511,22 +515,22 @@ class AddonModel(JobGroup, ABC):
     @property
     def with_icon(self) -> bool:
         """Return True if an icon exists."""
-        return self.path_icon.exists()
+        return self._path_icon_exists
 
     @property
     def with_logo(self) -> bool:
         """Return True if a logo exists."""
-        return self.path_logo.exists()
+        return self._path_logo_exists
 
     @property
     def with_changelog(self) -> bool:
         """Return True if a changelog exists."""
-        return self.path_changelog.exists()
+        return self._path_changelog_exists
 
     @property
     def with_documentation(self) -> bool:
         """Return True if a documentation exists."""
-        return self.path_documentation.exists()
+        return self._path_documentation_exists
 
     @property
     def supported_arch(self) -> list[str]:
@@ -634,6 +638,17 @@ class AddonModel(JobGroup, ABC):
     def breaking_versions(self) -> list[AwesomeVersion]:
         """Return breaking versions of addon."""
         return self.data[ATTR_BREAKING_VERSIONS]
+
+    def refresh_path_cache(self) -> Awaitable[None]:
+        """Refresh cache of existing paths."""
+
+        def check_paths():
+            self._path_icon_exists = self.path_icon.exists()
+            self._path_logo_exists = self.path_logo.exists()
+            self._path_changelog_exists = self.path_changelog.exists()
+            self._path_documentation_exists = self.path_documentation.exists()
+
+        return self.sys_run_in_executor(check_paths)
 
     def validate_availability(self) -> None:
         """Validate if addon is available for current system."""
