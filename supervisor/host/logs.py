@@ -146,7 +146,7 @@ class LogsControl(CoreSysAttributes):
 
         try:
             async with ClientSession(
-                connector=UnixConnector(path="/run/systemd-journal-gatewayd.sock")
+                connector=UnixConnector(path=str(SYSTEMD_JOURNAL_GATEWAYD_SOCKET))
             ) as session:
                 headers = {ACCEPT: accept}
                 if range_header:
