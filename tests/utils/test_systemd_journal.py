@@ -38,6 +38,21 @@ def test_format_simple_newlines():
     assert journal_plain_formatter(fields) == "Hello,\nworld!\n"
 
 
+def test_format_verbose_timestamp():
+    """Test timestamp is properly formatted."""
+    fields = {
+        "__REALTIME_TIMESTAMP": "1000",
+        "_HOSTNAME": "x",
+        "SYSLOG_IDENTIFIER": "x",
+        "_PID": "1",
+        "MESSAGE": "x",
+    }
+    formatted = journal_verbose_formatter(fields)
+    assert formatted.startswith(
+        "1970-01-01 00:00:00.001 "
+    ), f"Invalid log timestamp: {formatted}"
+
+
 def test_format_verbose():
     """Test verbose formatter."""
     fields = {
@@ -49,7 +64,7 @@ def test_format_verbose():
     }
     assert (
         journal_verbose_formatter(fields)
-        == "2013-09-17 09:32:51.000 homeassistant python[666]: Hello, world!"
+        == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello, world!"
     )
 
 
@@ -64,7 +79,7 @@ def test_format_verbose_newlines():
     }
     assert (
         journal_verbose_formatter(fields)
-        == "2013-09-17 09:32:51.000 homeassistant python[666]: Hello,\nworld!\n"
+        == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello,\nworld!\n"
     )
 
 
@@ -89,7 +104,7 @@ async def test_parsing_verbose():
     line = await anext(
         journal_logs_reader(journal_logs, log_formatter=LogFormatter.VERBOSE)
     )
-    assert line == "2013-09-17 09:32:51.000 homeassistant python[666]: Hello, world!"
+    assert line == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello, world!"
 
 
 async def test_parsing_newlines_in_message():

@@ -1,6 +1,6 @@
 """Utilities for working with systemd journal export format."""
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import wraps
 
 from aiohttp import ClientResponse
@@ -47,9 +47,10 @@ def journal_plain_formatter(entries: dict[str, str]) -> str:
 )
 def journal_verbose_formatter(entries: dict[str, str]) -> str:
     """Format parsed journal entries to a journalctl-like format."""
-    ts = datetime.fromtimestamp(int(entries["__REALTIME_TIMESTAMP"]) / 1e6).isoformat(
-        sep=" ", timespec="milliseconds"
-    )
+    ts = datetime.fromtimestamp(
+        int(entries["__REALTIME_TIMESTAMP"]) / 1e6, UTC
+    ).isoformat(sep=" ", timespec="milliseconds")
+    ts = ts[: ts.index(".") + 4]  # strip TZ offset
 
     identifier = (
         f"{entries["SYSLOG_IDENTIFIER"]}[{entries["_PID"]}]"

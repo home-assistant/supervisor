@@ -45,7 +45,7 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
         )
         assert (
             line
-            == "2024-03-04 03:52:56.193 homeassistant systemd[1]: Started Hostname Service."
+            == "2024-03-04 02:52:56.193 homeassistant systemd[1]: Started Hostname Service."
         )
 
     with patch.object(
