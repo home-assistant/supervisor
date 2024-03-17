@@ -1,6 +1,6 @@
 """Test host logs control."""
 
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 
@@ -34,6 +34,9 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting logs and errors."""
     assert coresys.host.logs.available is True
 
+    journald_gateway.feed_data(load_fixture("logs_export_host.txt").encode("utf-8"))
+    journald_gateway.feed_eof()
+
     async with coresys.host.logs.journald_logs() as resp:
         line = await anext(
             journal_logs_reader(resp, log_formatter=LogFormatter.VERBOSE)
@@ -52,9 +55,10 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
 
 async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
     """Test ANSI control sequences being preserved in binary messages."""
-    journald_gateway.return_value.__aenter__.return_value.__aenter__.return_value.content.readuntil = AsyncMock(
-        return_value=load_fixture("logs_export_supervisor.txt").encode("utf-8")
+    journald_gateway.feed_data(
+        load_fixture("logs_export_supervisor.txt").encode("utf-8")
     )
+    journald_gateway.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
         line = await anext(journal_logs_reader(resp))
@@ -66,9 +70,8 @@ async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
 
 async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting boot ids."""
-    journald_gateway.return_value.__aenter__.return_value.text = AsyncMock(
-        return_value=load_fixture("logs_boot_ids.txt")
-    )
+    journald_gateway.feed_data(load_fixture("logs_boot_ids.txt").encode("utf-8"))
+    journald_gateway.feed_eof()
 
     assert await coresys.host.logs.get_boot_ids() == TEST_BOOT_IDS
 
@@ -92,9 +95,8 @@ async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
 
 async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting identifiers."""
-    journald_gateway.return_value.__aenter__.return_value.text = AsyncMock(
-        return_value=load_fixture("logs_identifiers.txt")
-    )
+    journald_gateway.feed_data(load_fixture("logs_identifiers.txt").encode("utf-8"))
+    journald_gateway.feed_eof()
 
     # Mock is large so just look for a few different types of identifiers
     identifiers = await coresys.host.logs.get_identifiers()

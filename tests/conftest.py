@@ -1,4 +1,5 @@
 """Common test functions."""
+import asyncio
 from functools import partial
 from inspect import unwrap
 import os
@@ -47,12 +48,7 @@ from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
-from .common import (
-    load_binary_fixture,
-    load_fixture,
-    load_json_fixture,
-    mock_dbus_services,
-)
+from .common import load_binary_fixture, load_json_fixture, mock_dbus_services
 from .const import TEST_ADDON_SLUG
 from .dbus_service_mocks.base import DBusServiceMock
 from .dbus_service_mocks.network_connection_settings import (
@@ -408,14 +404,21 @@ async def journald_gateway() -> MagicMock:
     with patch("supervisor.host.logs.Path.is_socket", return_value=True), patch(
         "supervisor.host.logs.ClientSession.get"
     ) as get:
-        get.return_value.__aenter__.return_value.__aenter__.return_value.content.readuntil = AsyncMock(
-            return_value=load_fixture("logs_export_host.txt").encode("utf-8")
-        )
-        get.return_value.__aenter__.return_value.__aenter__.return_value.content.at_eof = MagicMock(
-            return_value=False
+        reader = asyncio.StreamReader(loop=asyncio.get_running_loop())
+
+        async def response_text():
+            return (await reader.read()).decode("utf-8")
+
+        client_response = MagicMock(
+            content=reader,
+            text=response_text,
         )
 
-        yield get
+        get.return_value.__aenter__.return_value = client_response
+        get.return_value.__aenter__.return_value.__aenter__.return_value = (
+            client_response
+        )
+        yield reader
 
 
 @pytest.fixture

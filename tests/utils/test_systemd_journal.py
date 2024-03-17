@@ -1,92 +1,29 @@
 """Test systemd journal utilities."""
-from unittest.mock import AsyncMock, MagicMock
+import asyncio
+from unittest.mock import MagicMock
 
 import pytest
 
+from supervisor.host.const import LogFormatter
 from supervisor.utils.systemd_journal import (
-    IncompleteEntryError,
-    MultipleEntriesError,
     journal_logs_reader,
     journal_plain_formatter,
     journal_verbose_formatter,
-    parse_journal_export_entry,
 )
 
-
-def test_parse_simple():
-    """Simple parsing test."""
-    entry = b"A=1\nB=2\n\n"
-    entries = parse_journal_export_entry(entry)
-    assert entries == {
-        "A": "1",
-        "B": "2",
-    }
+from tests.common import load_fixture
 
 
-def test_parse_selected_fields():
-    """Test extracting only selected fields."""
-    entry = b"A=1\nB=2\n\n"
-    entries = parse_journal_export_entry(entry, fields=("A",))
-    assert entries == {
-        "A": "1",
-    }
+def _journal_logs_mock():
+    """Generate mocked stream for journal_logs_reader.
 
-
-def test_parse_binary_newlines():
-    """Test parsing binary message with newlines."""
-    entry = (
-        b"BEFORE=before\n"
-        b"_SELINUX_CONTEXT\n\x0b\x00\x00\x00\x00\x00\x00\x00unconfined\n\n"
-        b"AFTER=after\n\n"
-    )
-    entries = parse_journal_export_entry(entry)
-    assert entries == {
-        "_SELINUX_CONTEXT": "unconfined\n",
-        "BEFORE": "before",
-        "AFTER": "after",
-    }
-
-
-def test_parse_binary_only_newlines():
-    """Test parsing binary message containing only newlines."""
-    entry = (
-        b"BEFORE=before\n"
-        b"_SELINUX_CONTEXT\n\x0b\x00\x00\x00\x00\x00\x00\x00\n\n\n\n\n\n\n\n\n\n\n\n"
-        b"AFTER=after\n\n"
-    )
-    entries = parse_journal_export_entry(entry)
-    assert entries == {
-        "_SELINUX_CONTEXT": "\n\n\n\n\n\n\n\n\n\n\n",
-        "BEFORE": "before",
-        "AFTER": "after",
-    }
-
-
-def test_parse_multiple_messages():
-    """Parsing multiple journal entries raises error."""
-    entry = b"A=1\nB=2\n\n" b"A=3\nB=4\n\n"
-    with pytest.raises(MultipleEntriesError):
-        parse_journal_export_entry(entry)
-
-
-def test_parse_multiple_messages_binary():
-    """Message followed by another message starting with binary field raises error."""
-    entry = (
-        b"A=1\nB=2\n\n"
-        b"_SELINUX_CONTEXT\n\x0b\x00\x00\x00\x00\x00\x00\x00unconfined\n\n\n"
-    )
-    with pytest.raises(MultipleEntriesError):
-        parse_journal_export_entry(entry)
-
-
-def test_parse_binary_multiple_newlines_incomplete_raises_error():
-    """Incomplete binary message with newlines raises error."""
-    entry = (
-        b"BEFORE=before\n"
-        b"_SELINUX_CONTEXT\n\x0b\x00\x00\x00\x00\x00\x00\x00unconfined\n\n"
-    )
-    with pytest.raises(IncompleteEntryError):
-        parse_journal_export_entry(entry)
+    Returns tuple for mocking ClientResponse and its StreamReader
+    (.content attribute in async context).
+    """
+    stream = asyncio.StreamReader(loop=asyncio.get_running_loop())
+    journal_logs = MagicMock()
+    journal_logs.__aenter__.return_value.content = stream
+    return journal_logs, stream
 
 
 def test_format_simple():
@@ -131,80 +68,75 @@ def test_format_verbose_newlines():
     )
 
 
-async def test_journal_logs_reader():
-    """Test reading and formatting using journal logs reader."""
-    entry = (
-        b"MESSAGE=Hello, world!\n"
-        b"_SELINUX_CONTEXT\n\x0b\x00\x00\x00\x00\x00\x00\x00unconfined\n\n"
-        b"AFTER=after"
-    )
-
-    journal_logs = MagicMock()
-    at_eof = MagicMock(return_value=False)
-    at_eof.side_effect = [False, True]
-    readuntil = AsyncMock(
-        return_value=entry,
-    )
-
-    journal_logs.__aenter__.return_value.content.readuntil = readuntil
-    journal_logs.__aenter__.return_value.content.at_eof = at_eof
-
-    async for line in journal_logs_reader(journal_logs):
-        assert line == "Hello, world!"
-
-    assert at_eof.call_count == 2
-    assert readuntil.call_count == 1
+async def test_parsing_simple():
+    """Test plain formatter."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(b"MESSAGE=Hello, world!\n\n")
+    line = await anext(journal_logs_reader(journal_logs))
+    assert line == "Hello, world!"
 
 
-async def test_journal_logs_reader_two_messages():
-    """Test reading multiple messages."""
-    entry1 = b"MESSAGE=Hello, world!\n" b"ID=1"
-    entry2 = b"MESSAGE=Hello again, world!\n" b"ID=2"
-
-    journal_logs = MagicMock()
-    at_eof = MagicMock(return_value=False)
-    at_eof.side_effect = [False, False, True]
-
-    readuntil = AsyncMock(return_value=entry1, side_effect=[entry1, entry2])
-
-    journal_logs.__aenter__.return_value.content.readuntil = readuntil
-    journal_logs.__aenter__.return_value.content.at_eof = at_eof
-
-    async for line in journal_logs_reader(journal_logs):
-        if readuntil.call_count == 1:
-            assert line == "Hello, world!"
-        if readuntil.call_count == 2:
-            assert line == "Hello again, world!"
-
-    assert at_eof.call_count == 3
-    assert readuntil.call_count == 2
-
-
-async def test_journal_logs_reader_incomplete_readuntil():
-    """Test fetching remaining data after incomplete readuntil."""
-    entry_incomplete = (
-        b"BEFORE=before\n"
-        b"_SELINUX_CONTEXT\n\x0b\x00\x00\x00\x00\x00\x00\x00unconfined\n\n"
-    )
-    entry_complete = (
-        b"BEFORE=before\n"
-        b"_SELINUX_CONTEXT\n\x0b\x00\x00\x00\x00\x00\x00\x00unconfined\n\n"
+async def test_parsing_verbose():
+    """Test verbose formatter."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"__REALTIME_TIMESTAMP=1379403171000000\n"
+        b"_HOSTNAME=homeassistant\n"
+        b"SYSLOG_IDENTIFIER=python\n"
+        b"_PID=666\n"
         b"MESSAGE=Hello, world!\n\n"
     )
+    line = await anext(
+        journal_logs_reader(journal_logs, log_formatter=LogFormatter.VERBOSE)
+    )
+    assert line == "2013-09-17 09:32:51.000 homeassistant python[666]: Hello, world!"
 
-    journal_logs = MagicMock()
-    at_eof = MagicMock(return_value=False)
-    at_eof.side_effect = [False, False, True]
 
-    readuntil = AsyncMock(
-        return_value=entry_incomplete, side_effect=[entry_incomplete, entry_complete]
+async def test_parsing_newlines_in_message():
+    """Test reading and formatting using journal logs reader."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"ID=1\n"
+        b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello,\nworld!\n"
+        b"AFTER=after\n\n"
     )
 
-    journal_logs.__aenter__.return_value.content.readuntil = readuntil
-    journal_logs.__aenter__.return_value.content.at_eof = at_eof
+    line = await anext(journal_logs_reader(journal_logs))
+    assert line == "Hello,\nworld!"
 
-    async for line in journal_logs_reader(journal_logs):
-        assert line == "Hello, world!"
 
-    assert at_eof.call_count == 3
-    assert readuntil.call_count == 2
+async def test_parsing_two_messages():
+    """Test reading multiple messages."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"MESSAGE=Hello, world!\n"
+        b"ID=1\n\n"
+        b"MESSAGE=Hello again, world!\n"
+        b"ID=2\n\n"
+    )
+    stream.feed_eof()
+
+    reader = journal_logs_reader(journal_logs)
+    assert await anext(reader) == "Hello, world!"
+    assert await anext(reader) == "Hello again, world!"
+    with pytest.raises(StopAsyncIteration):
+        await anext(reader)
+
+
+async def test_parsing_journal_host_logs():
+    """Test parsing of real host logs."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(load_fixture("logs_export_host.txt").encode("utf-8"))
+    line = await anext(journal_logs_reader(journal_logs))
+    assert line == "Started Hostname Service."
+
+
+async def test_parsing_colored_supervisor_logs():
+    """Test parsing of real logs with ANSI escape sequences."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(load_fixture("logs_export_supervisor.txt").encode("utf-8"))
+    line = await anext(journal_logs_reader(journal_logs))
+    assert (
+        line
+        == "\x1b[32m24-03-04 23:56:56 INFO (MainThread) [__main__] Closing Supervisor\x1b[0m"
+    )
