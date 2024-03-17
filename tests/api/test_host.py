@@ -1,13 +1,13 @@
 """Test Host API."""
 
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
-from supervisor.host.const import LogFormat
+from supervisor.host.const import LogFormat, LogFormatter
 
 DEFAULT_RANGE = "entries=:-100:"
 # pylint: disable=protected-access
@@ -252,6 +252,35 @@ async def test_advanced_logs_boot_id_offset(
     )
 
     journald_logs.reset_mock()
+
+
+async def test_advanced_logs_formatters(
+    api_client: TestClient,
+    coresys: CoreSys,
+    journald_gateway: MagicMock,
+    journal_logs_reader: MagicMock,
+):
+    """Test advanced logs formatters varying on Accept header."""
+
+    await api_client.get("/host/logs")
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
+
+    journal_logs_reader.reset_mock()
+
+    headers = {"Accept": "text/x-log"}
+    await api_client.get("/host/logs", headers=headers)
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
+
+    journal_logs_reader.reset_mock()
+
+    await api_client.get("/host/logs/identifiers/test")
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.PLAIN)
+
+    journal_logs_reader.reset_mock()
+
+    headers = {"Accept": "text/x-log"}
+    await api_client.get("/host/logs/identifiers/test", headers=headers)
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
 
 
 async def test_advanced_logs_errors(api_client: TestClient):

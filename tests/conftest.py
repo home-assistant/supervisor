@@ -422,6 +422,13 @@ async def journald_gateway() -> MagicMock:
 
 
 @pytest.fixture
+async def journal_logs_reader() -> MagicMock:
+    """Mock journal_logs_reader in host API."""
+    with patch("supervisor.api.host.journal_logs_reader") as reader:
+        yield reader
+
+
+@pytest.fixture
 def sys_machine():
     """Mock sys_machine."""
     with patch("supervisor.coresys.CoreSys.machine", new_callable=PropertyMock) as mock:
