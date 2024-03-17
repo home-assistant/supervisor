@@ -2,10 +2,12 @@
 
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from aiohttp.client_exceptions import UnixClientConnectorError
+from aiohttp.client_reqrep import ConnectionKey
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HostNotSupportedError
+from supervisor.exceptions import HostNotSupportedError, HostServiceError
 from supervisor.host.const import LogFormatter
 from supervisor.host.logs import LogsControl
 from supervisor.utils.systemd_journal import journal_logs_reader
@@ -110,3 +112,21 @@ async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
         assert identifier in identifiers
 
     assert "" not in identifiers
+
+
+async def test_connection_refused_handled(
+    coresys: CoreSys, journald_gateway: MagicMock
+):
+    """Test connection refused is handled with HostServiceError."""
+    with patch("supervisor.host.logs.ClientSession.get") as get:
+        get.side_effect = UnixClientConnectorError(
+            path="/run/systemd-journal-gatewayd.sock",
+            connection_key=ConnectionKey(
+                "localhost", None, False, False, None, None, None
+            ),
+            os_error=ConnectionRefusedError("Connection refused"),
+        )
+
+        with pytest.raises(HostServiceError):
+            async with coresys.host.logs.journald_logs():
+                pass

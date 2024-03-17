@@ -7,12 +7,18 @@ import logging
 from pathlib import Path
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
+from aiohttp.client_exceptions import UnixClientConnectorError
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import UnixConnector
 from aiohttp.hdrs import ACCEPT, RANGE
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import ConfigurationFileError, HostLogError, HostNotSupportedError
+from ..exceptions import (
+    ConfigurationFileError,
+    HostLogError,
+    HostNotSupportedError,
+    HostServiceError,
+)
 from ..utils.json import read_json_file
 from .const import PARAM_BOOT_ID, PARAM_SYSLOG_IDENTIFIER, LogFormat
 
@@ -138,18 +144,21 @@ class LogsControl(CoreSysAttributes):
                 "No systemd-journal-gatewayd Unix socket available", _LOGGER.error
             )
 
-        # FIXME: journald may not be running but the socket exists, access attempt will cause:
-        # aiohttp.client_exceptions.UnixClientConnectorError: Cannot connect to unix socket /run/systemd-journal-gatewayd.sock ssl:default [Connection refused]
-        async with ClientSession(
-            connector=UnixConnector(path="/run/systemd-journal-gatewayd.sock")
-        ) as session:
-            headers = {ACCEPT: accept}
-            if range_header:
-                headers[RANGE] = range_header
-            async with session.get(
-                f"http://localhost{path}",
-                headers=headers,
-                params=params or {},
-                timeout=timeout,
-            ) as client_response:
-                yield client_response
+        try:
+            async with ClientSession(
+                connector=UnixConnector(path="/run/systemd-journal-gatewayd.sock")
+            ) as session:
+                headers = {ACCEPT: accept}
+                if range_header:
+                    headers[RANGE] = range_header
+                async with session.get(
+                    f"http://localhost{path}",
+                    headers=headers,
+                    params=params or {},
+                    timeout=timeout,
+                ) as client_response:
+                    yield client_response
+        except UnixClientConnectorError as ex:
+            raise HostServiceError(
+                "Unable to connect to systemd-journal-gatewayd", _LOGGER.error
+            ) from ex
