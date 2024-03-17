@@ -1,82 +1,15 @@
 """Utilities for working with systemd journal export format."""
-from collections.abc import AsyncGenerator, Iterable
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from functools import wraps
-import struct
 
 from aiohttp import ClientResponse
 
 from supervisor.host.const import LogFormatter
 
 
-class IncompleteEntryError(Exception):
-    """Entry doesn't contain complete (binary) data.
-
-    Raised when a journal entry isn't complete, likely because it contains
-    multiple newlines in binary fields.
-    """
-
-
-class MultipleEntriesError(Exception):
-    """Raised when a journal entry contains multiple entries."""
-
-
-def parse_journal_export_entry(
-    data: bytes, fields: Iterable[str] | None = None
-) -> dict[str, str]:
-    """Parse a single journal entry of Journal Export Format.
-
-    Takes a bytes buffer `data` containing a single journal entry (nothing more, nothing
-    less) and returns dict of entry: value pairs, optionally filtered by the `fields`
-    argument.
-    """
-    entries = {}
-
-    if not data:
-        return entries
-
-    for line in (lines := iter(data.split(b"\n"))):
-        if not line:
-            # previous line was a newline - only at the end of message or binary data
-            try:
-                if next(lines) == b"":
-                    break
-                raise MultipleEntriesError()
-            except StopIteration as ex:
-                raise IncompleteEntryError() from ex
-
-        # Split the field name and value
-        if b"=" in line:
-            # Journal fields consisting only of valid non-control UTF-8 codepoints
-            # are serialized as they are (i.e. the field name, followed by '=',
-            # followed by field data), followed by a newline as separator to the next
-            # field. Note that fields containing newlines cannot be formatted like
-            # this. Non-control UTF-8 codepoints are the codepoints with value at or
-            # above 32 (' '), or equal to 9 (TAB).
-            field_name, field_value = (x.decode("utf-8") for x in line.split(b"=", 1))
-            if fields and field_name not in fields:
-                continue
-        else:
-            # Other journal fields are serialized in a special binary safe way:
-            # field name, followed by newline,
-            field_name = line.decode("utf-8")
-            data = next(lines)
-            # followed by a binary 64-bit little endian size value,
-            length = struct.unpack_from("<Q", data)[0]
-            # followed by the binary field data,
-            # followed by a newline as separator to the next field.
-            data = data[8:]
-            # handle newlines in binary data
-            while len(data) < length:
-                data += b"\n" + next(lines)
-            if fields and field_name not in fields:
-                # we needed at least iterate up to the end of the data
-                continue
-            field_value = data.decode("utf-8")
-
-        entries[field_name] = field_value
-
-    return entries
+class MalformedBinaryEntry(Exception):
+    """Raised when binary entry in the journal isn't followed by a newline."""
 
 
 def formatter(required_fields: list[str]):
@@ -141,16 +74,38 @@ async def journal_logs_reader(
             raise ValueError(f"Unknown log format: {log_formatter}")
 
     async with journal_logs as resp:
-        incomplete = b""
+        entries: dict[str, str] = {}
         while not resp.content.at_eof():
-            entry = await resp.content.readuntil(b"\n\n")
-            entry = incomplete + entry
-            try:
-                entries = parse_journal_export_entry(
-                    entry, fields=formatter_.required_fields
-                )
-                incomplete = b""
-            except IncompleteEntryError:
-                incomplete = entry
+            entry = await resp.content.readuntil(b"\n")
+            line = entry
+            # newline means end of message:
+            if line == b"\n":
+                yield formatter_(entries)
                 continue
-            yield formatter_(entries)
+
+            # Journal fields consisting only of valid non-control UTF-8 codepoints
+            # are serialized as they are (i.e. the field name, followed by '=',
+            # followed by field data), followed by a newline as separator to the next
+            # field. Note that fields containing newlines cannot be formatted like
+            # this. Non-control UTF-8 codepoints are the codepoints with value at or
+            # above 32 (' '), or equal to 9 (TAB).
+            idx = line.find(b"=")
+            if idx != -1:
+                # name=value\n
+                name = line[:idx].decode("utf-8")
+                data = line[idx + 1 : -1]  # strip \n
+            else:
+                # Other journal fields are serialized in a special binary safe way:
+                # field name, followed by newline
+                name = line[:-1].decode("utf-8")  # strip \n
+                # followed by a binary 64-bit little endian size value,
+                length_raw = await resp.content.readexactly(8)
+                length = int.from_bytes(length_raw, byteorder="little")
+                # followed by the binary field data,
+                data = await resp.content.readexactly(length)
+                # followed by a newline as separator to the next field.
+                if (await resp.content.readexactly(1)) != b"\n":
+                    raise MalformedBinaryEntry(line)
+
+            if name in formatter_.required_fields:
+                entries[name] = data.decode("utf-8")
