@@ -101,8 +101,6 @@ async def journal_logs_reader(
                 # Other journal fields are serialized in a special binary safe way:
                 # field name, followed by newline
                 name = line[:-1].decode("utf-8")  # strip \n
-                if name not in formatter_.required_fields:
-                    continue
                 # followed by a binary 64-bit little endian size value,
                 length_raw = await resp.content.readexactly(8)
                 length = int.from_bytes(length_raw, byteorder="little")
@@ -111,5 +109,9 @@ async def journal_logs_reader(
                 # followed by a newline as separator to the next field.
                 if (await resp.content.readexactly(1)) != b"\n":
                     raise MalformedBinaryEntry(line)
+                if name not in formatter_.required_fields:
+                    # we must read to the end of the entry in the stream, so we can
+                    # only continue the loop here
+                    continue
 
             entries[name] = data.decode("utf-8")

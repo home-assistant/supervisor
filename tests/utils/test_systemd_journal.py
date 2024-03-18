@@ -120,6 +120,23 @@ async def test_parsing_newlines_in_message():
     assert line == "Hello,\nworld!"
 
 
+async def test_parsing_newlines_in_multiple_fields():
+    """Test entries are correctly separated with newlines in multiple fields."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"ID=1\n"
+        b"MESSAGE\n\x0e\x00\x00\x00\x00\x00\x00\x00Hello,\nworld!\n\n"
+        b"ANOTHER\n\x0e\x00\x00\x00\x00\x00\x00\x00Hello,\nworld!\n\n"
+        b"AFTER=after\n\n"
+        b"ID=2\n"
+        b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello,\nworld!\n"
+        b"AFTER=after\n\n"
+    )
+
+    assert await anext(journal_logs_reader(journal_logs)) == "Hello,\nworld!\n"
+    assert await anext(journal_logs_reader(journal_logs)) == "Hello,\nworld!"
+
+
 async def test_parsing_two_messages():
     """Test reading multiple messages."""
     journal_logs, stream = _journal_logs_mock()
