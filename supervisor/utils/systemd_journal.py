@@ -90,28 +90,25 @@ async def journal_logs_reader(
             # field. Note that fields containing newlines cannot be formatted like
             # this. Non-control UTF-8 codepoints are the codepoints with value at or
             # above 32 (' '), or equal to 9 (TAB).
-            idx = line.find(b"=")
-            if idx != -1:
-                # name=value\n
-                name = line[:idx].decode("utf-8")
-                if name not in formatter_.required_fields:
-                    continue
-                data = line[idx + 1 : -1]  # strip \n
-            else:
+            name, sep, data = line.partition(b"=")
+            if not sep:
                 # Other journal fields are serialized in a special binary safe way:
                 # field name, followed by newline
-                name = line[:-1].decode("utf-8")  # strip \n
+                name = name[:-1]  # strip \n
                 # followed by a binary 64-bit little endian size value,
                 length_raw = await resp.content.readexactly(8)
                 length = int.from_bytes(length_raw, byteorder="little")
                 # followed by the binary field data,
-                data = await resp.content.readexactly(length)
+                data = await resp.content.readexactly(length + 1)
                 # followed by a newline as separator to the next field.
-                if (await resp.content.readexactly(1)) != b"\n":
+                if not data.endswith(b"\n"):
                     raise MalformedBinaryEntry(line)
-                if name not in formatter_.required_fields:
-                    # we must read to the end of the entry in the stream, so we can
-                    # only continue the loop here
-                    continue
 
-            entries[name] = data.decode("utf-8")
+            name = name.decode("utf-8")
+            if name not in formatter_.required_fields:
+                # we must read to the end of the entry in the stream, so we can
+                # only continue the loop here
+                continue
+
+            # strip \n for simple fields before decoding
+            entries[name] = data[:-1].decode("utf-8")
