@@ -77,11 +77,11 @@ async def journal_logs_reader(
     async with journal_logs as resp:
         entries: dict[str, str] = {}
         while not resp.content.at_eof():
-            entry = await resp.content.readuntil(b"\n")
-            line = entry
+            line = await resp.content.readuntil(b"\n")
             # newline means end of message:
             if line == b"\n":
                 yield formatter_(entries)
+                entries = {}
                 continue
 
             # Journal fields consisting only of valid non-control UTF-8 codepoints
