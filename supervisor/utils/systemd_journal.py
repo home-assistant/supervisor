@@ -5,11 +5,8 @@ from functools import wraps
 
 from aiohttp import ClientResponse
 
+from supervisor.exceptions import MalformedBinaryEntryError
 from supervisor.host.const import LogFormatter
-
-
-class MalformedBinaryEntry(Exception):
-    """Raised when binary entry in the journal isn't followed by a newline."""
 
 
 def formatter(required_fields: list[str]):
@@ -102,7 +99,9 @@ async def journal_logs_reader(
                 data = await resp.content.readexactly(length + 1)
                 # followed by a newline as separator to the next field.
                 if not data.endswith(b"\n"):
-                    raise MalformedBinaryEntry(line)
+                    raise MalformedBinaryEntryError(
+                        f"Failed parsing binary entry {data}"
+                    )
 
             name = name.decode("utf-8")
             if name not in formatter_.required_fields:

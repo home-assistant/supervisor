@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from supervisor.exceptions import MalformedBinaryEntryError
 from supervisor.host.const import LogFormatter
 from supervisor.utils.systemd_journal import (
     journal_logs_reader,
@@ -153,6 +154,19 @@ async def test_parsing_two_messages():
     assert await anext(reader) == "Hello again, world!"
     with pytest.raises(StopAsyncIteration):
         await anext(reader)
+
+
+async def test_parsing_malformed_binary_message():
+    """Test that malformed binary message raises MalformedBinaryEntryError."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"ID=1\n"
+        b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello, world!"
+        b"AFTER=after\n\n"
+    )
+
+    with pytest.raises(MalformedBinaryEntryError):
+        await anext(journal_logs_reader(journal_logs))
 
 
 async def test_parsing_journal_host_logs():
