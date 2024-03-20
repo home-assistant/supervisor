@@ -7,12 +7,14 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitError, StoreNotFound
+from supervisor.host.const import LogFormat
 from supervisor.store.repository import Repository
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.os_agent import OSAgent as OSAgentService
 
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
+DEFAULT_LOG_RANGE = "entries=:-100:"
 
 
 async def test_api_supervisor_options_debug(api_client: TestClient, coresys: CoreSys):
@@ -148,9 +150,67 @@ async def test_api_supervisor_options_diagnostics(
     assert coresys.dbus.agent.diagnostics is False
 
 
-async def test_api_supervisor_logs(api_client: TestClient, docker_logs: MagicMock):
+async def test_api_supervisor_logs(api_client: TestClient, journald_logs: MagicMock):
     """Test supervisor logs."""
     resp = await api_client.get("/supervisor/logs")
+    assert resp.status == 200
+    assert resp.content_type == "text/plain"
+
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": "hassio_supervisor"},
+        range_header=DEFAULT_LOG_RANGE,
+        accept=LogFormat.JOURNAL,
+    )
+
+    journald_logs.reset_mock()
+
+    resp = await api_client.get("/supervisor/logs/follow")
+    assert resp.status == 200
+    assert resp.content_type == "text/plain"
+
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": "hassio_supervisor", "follow": ""},
+        range_header=DEFAULT_LOG_RANGE,
+        accept=LogFormat.JOURNAL,
+    )
+
+    journald_logs.reset_mock()
+
+    resp = await api_client.get("/supervisor/logs/boots/0")
+    assert resp.status == 200
+    assert resp.content_type == "text/plain"
+
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": "hassio_supervisor", "_BOOT_ID": "ccc"},
+        range_header=DEFAULT_LOG_RANGE,
+        accept=LogFormat.JOURNAL,
+    )
+
+    journald_logs.reset_mock()
+
+    resp = await api_client.get("/supervisor/logs/boots/0/follow")
+    assert resp.status == 200
+    assert resp.content_type == "text/plain"
+
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": "hassio_supervisor", "_BOOT_ID": "ccc", "follow": ""},
+        range_header=DEFAULT_LOG_RANGE,
+        accept=LogFormat.JOURNAL,
+    )
+
+
+async def test_api_supervisor_fallback(
+    api_client: TestClient, journald_logs: MagicMock, docker_logs: MagicMock
+):
+    """Check that supervisor logs read from container logs if reading from journald gateway fails badly."""
+    journald_logs.side_effect = OSError("Something bad happened!")
+
+    with patch("supervisor.api._LOGGER.exception") as logger:
+        resp = await api_client.get("/supervisor/logs")
+        logger.assert_called_once_with(
+            "Failed to get supervisor logs using advanced_logs API"
+        )
+
     assert resp.status == 200
     assert resp.content_type == "application/octet-stream"
     content = await resp.read()
