@@ -7,11 +7,9 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.homeassistant.module import HomeAssistant
-from supervisor.host.const import LogFormat
 
+from tests.api import common_test_api_advanced_logs
 from tests.common import load_json_fixture
-
-DEFAULT_LOG_RANGE = "entries=:-100:"
 
 
 @pytest.mark.parametrize("legacy_route", [True, False])
@@ -19,56 +17,11 @@ async def test_api_core_logs(
     api_client: TestClient, journald_logs: MagicMock, legacy_route: bool
 ):
     """Test core logs."""
-    resp = await api_client.get(f"/{'homeassistant' if legacy_route else 'core'}/logs")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "homeassistant"},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get(
-        f"/{'homeassistant' if legacy_route else 'core'}/logs/follow"
-    )
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "homeassistant", "follow": ""},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get(
-        f"/{'homeassistant' if legacy_route else 'core'}/logs/boots/0"
-    )
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "homeassistant", "_BOOT_ID": "ccc"},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get(
-        f"/{'homeassistant' if legacy_route else 'core'}/logs/boots/0/follow"
-    )
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "homeassistant", "_BOOT_ID": "ccc", "follow": ""},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
+    await common_test_api_advanced_logs(
+        f"/{'homeassistant' if legacy_route else 'core'}",
+        "homeassistant",
+        api_client,
+        journald_logs,
     )
 
 

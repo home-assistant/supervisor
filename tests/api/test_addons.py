@@ -13,12 +13,10 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.host.const import LogFormat
 from supervisor.store.repository import Repository
 
 from ..const import TEST_ADDON_SLUG
-
-DEFAULT_LOG_RANGE = "entries=:-100:"
+from . import common_test_api_advanced_logs
 
 
 def _create_test_event(name: str, state: ContainerState) -> DockerContainerStateEvent:
@@ -73,54 +71,8 @@ async def test_api_addon_logs(
     api_client: TestClient, journald_logs: MagicMock, install_addon_ssh: Addon
 ):
     """Test addon logs."""
-    resp = await api_client.get("/addons/local_ssh/logs")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "addon_local_ssh"},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/addons/local_ssh/logs/follow")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "addon_local_ssh", "follow": ""},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/addons/local_ssh/logs/boots/0")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "addon_local_ssh", "_BOOT_ID": "ccc"},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/addons/local_ssh/logs/boots/0/follow")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={
-            "SYSLOG_IDENTIFIER": "addon_local_ssh",
-            "_BOOT_ID": "ccc",
-            "follow": "",
-        },
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
+    await common_test_api_advanced_logs(
+        "/addons/local_ssh", "addon_local_ssh", api_client, journald_logs
     )
 
 

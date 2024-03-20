@@ -5,12 +5,10 @@ from aiohttp.test_utils import TestClient
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
-from supervisor.host.const import LogFormat
 
+from tests.api import common_test_api_advanced_logs
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.resolved import Resolved as ResolvedService
-
-DEFAULT_LOG_RANGE = "entries=:-100:"
 
 
 async def test_llmnr_mdns_info(
@@ -69,48 +67,4 @@ async def test_options(api_client: TestClient, coresys: CoreSys):
 
 async def test_api_dns_logs(api_client: TestClient, journald_logs: MagicMock):
     """Test dns logs."""
-    resp = await api_client.get("/dns/logs")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_dns"},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/dns/logs/follow")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_dns", "follow": ""},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/dns/logs/boots/0")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_dns", "_BOOT_ID": "ccc"},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/dns/logs/boots/0/follow")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_dns", "_BOOT_ID": "ccc", "follow": ""},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
+    await common_test_api_advanced_logs("/dns", "hassio_dns", api_client, journald_logs)

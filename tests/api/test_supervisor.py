@@ -7,14 +7,13 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitError, StoreNotFound
-from supervisor.host.const import LogFormat
 from supervisor.store.repository import Repository
 
+from tests.api import common_test_api_advanced_logs
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.os_agent import OSAgent as OSAgentService
 
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
-DEFAULT_LOG_RANGE = "entries=:-100:"
 
 
 async def test_api_supervisor_options_debug(api_client: TestClient, coresys: CoreSys):
@@ -152,50 +151,8 @@ async def test_api_supervisor_options_diagnostics(
 
 async def test_api_supervisor_logs(api_client: TestClient, journald_logs: MagicMock):
     """Test supervisor logs."""
-    resp = await api_client.get("/supervisor/logs")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_supervisor"},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/supervisor/logs/follow")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_supervisor", "follow": ""},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/supervisor/logs/boots/0")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_supervisor", "_BOOT_ID": "ccc"},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
-    )
-
-    journald_logs.reset_mock()
-
-    resp = await api_client.get("/supervisor/logs/boots/0/follow")
-    assert resp.status == 200
-    assert resp.content_type == "text/plain"
-
-    journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": "hassio_supervisor", "_BOOT_ID": "ccc", "follow": ""},
-        range_header=DEFAULT_LOG_RANGE,
-        accept=LogFormat.JOURNAL,
+    await common_test_api_advanced_logs(
+        "/supervisor", "hassio_supervisor", api_client, journald_logs
     )
 
 
