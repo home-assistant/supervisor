@@ -8,6 +8,7 @@ CONTENT_TYPE_PNG = "image/png"
 CONTENT_TYPE_TAR = "application/tar"
 CONTENT_TYPE_TEXT = "text/plain"
 CONTENT_TYPE_URL = "application/x-www-form-urlencoded"
+CONTENT_TYPE_X_LOG = "text/x-log"
 
 COOKIE_INGRESS = "ingress_session"
 
