@@ -1,6 +1,8 @@
 """Test evaluation base."""
-# pylint: disable=import-error,protected-access
+
 from unittest.mock import patch
+
+import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -41,7 +43,19 @@ async def test_evaluation(
         await virtualization()
         assert virtualization.reason not in coresys.resolution.unsupported
 
-    with patch("supervisor.os.manager.CPE.get_target_hardware", return_value=["ova"]):
+
+@pytest.mark.parametrize("board", ["ova", "generic-aarch64"])
+async def test_evaluation_supported_images(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    board: str,
+):
+    """Test supported images for virtualization do not trigger unsupported."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    virtualization = EvaluateVirtualizationImage(coresys)
+    coresys.core.state = CoreState.STARTUP
+
+    with patch("supervisor.os.manager.CPE.get_target_hardware", return_value=[board]):
         systemd_service.virtualization = "vmware"
         await coresys.dbus.systemd.update()
         await coresys.os.load()

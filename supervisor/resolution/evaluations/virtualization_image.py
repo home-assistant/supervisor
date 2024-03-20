@@ -33,4 +33,7 @@ class EvaluateVirtualizationImage(EvaluateBase):
         """Run evaluation."""
         if not self.sys_os.available:
             return False
-        return self.sys_dbus.systemd.virtualization and self.sys_os.board != "ova"
+        return self.sys_dbus.systemd.virtualization and self.sys_os.board not in {
+            "ova",
+            "generic-aarch64",
+        }
