@@ -9,6 +9,9 @@ from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
 from supervisor.host.const import LogFormat, LogFormatter
 
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+
 DEFAULT_RANGE = "entries=:-100:"
 # pylint: disable=protected-access
 
@@ -145,6 +148,26 @@ async def test_api_identifiers_info(api_client: TestClient, journald_logs: Magic
     assert result["data"] == {
         "identifiers": ["hassio_supervisor", "hassos-config", "kernel"]
     }
+
+
+async def test_api_virtualization_info(
+    api_client: TestClient,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    coresys_disk_info: CoreSys,
+):
+    """Test getting virtualization info."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+
+    resp = await api_client.get("/host/info")
+    result = await resp.json()
+    assert result["data"]["virtualization"] == ""
+
+    systemd_service.virtualization = "vmware"
+    await coresys_disk_info.dbus.systemd.update()
+
+    resp = await api_client.get("/host/info")
+    result = await resp.json()
+    assert result["data"]["virtualization"] == "vmware"
 
 
 async def test_advanced_logs(

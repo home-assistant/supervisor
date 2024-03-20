@@ -49,6 +49,7 @@ from .const import (
     ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
+    ATTR_VIRTUALIZATION,
     CONTENT_TYPE_TEXT,
     CONTENT_TYPE_X_LOG,
 )
@@ -73,6 +74,7 @@ class APIHost(CoreSysAttributes):
             ATTR_AGENT_VERSION: self.sys_dbus.agent.version,
             ATTR_APPARMOR_VERSION: self.sys_host.apparmor.version,
             ATTR_CHASSIS: self.sys_host.info.chassis,
+            ATTR_VIRTUALIZATION: self.sys_host.info.virtualization,
             ATTR_CPE: self.sys_host.info.cpe,
             ATTR_DEPLOYMENT: self.sys_host.info.deployment,
             ATTR_DISK_FREE: self.sys_host.info.free_space,

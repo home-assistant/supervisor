@@ -66,6 +66,7 @@ ATTR_USAGE = "usage"
 ATTR_USE_NTP = "use_ntp"
 ATTR_USERS = "users"
 ATTR_VENDOR = "vendor"
+ATTR_VIRTUALIZATION = "virtualization"
 
 
 class BootSlot(StrEnum):
