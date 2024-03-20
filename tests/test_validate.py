@@ -20,14 +20,14 @@ IMAGE_NAME_GOOD = [
     "ghcr.io/home-assistant/{machine}-homeassistant",
     "ghcr.io/home-assistant/{arch}-homeassistant",
     "homeassistant/{arch}-homeassistant",
-    "doocker.io/homeassistant/{arch}-homeassistant",
+    "doocker.io/h98h9h9h90k9k0k09k0j/{arch}-homeassistant",
     "ghcr.io/home-assistant/amd64-homeassistant",
     "homeassistant/amd64-homeassistant",
     "ttl.sh/homeassistant",
     "myreg.local:8080/homeassistant",
 ]
 IMAGE_NAME_BAD = [
-    "ghcr.io/home-assistant/homeassistant:123",
+    "ghcr.io/home-assistant/h98h9h9h90k9k0k09k0j:123",
     ".ghcr.io/home-assistant/homeassistant",
     "HOMEASSISTANT/homeassistant",
     "homeassistant/HOMEASSISTANT",

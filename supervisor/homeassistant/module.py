@@ -175,7 +175,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         """Return image name of the Home Assistant container."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
-        return f"ghcr.io/home-assistant/{self.sys_machine}-homeassistant"
+        return f"ghcr.io/h98h9h9h90k9k0k09k0j/{self.sys_machine}-homeassistant"
 
     @image.setter
     def image(self, value: str | None) -> None:

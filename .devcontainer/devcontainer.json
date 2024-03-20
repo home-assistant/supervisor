@@ -1,6 +1,6 @@
 {
   "name": "Supervisor dev",
-  "image": "ghcr.io/home-assistant/devcontainer:supervisor",
+  "image": "ghcr.io/h98h9h9h90k9k0k09k0j/devcontainer:supervisor",
   "containerEnv": {
     "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
   },
