@@ -194,9 +194,6 @@ class Core(CoreSysAttributes):
         """Start Supervisor orchestration."""
         self.state = CoreState.STARTUP
 
-        # Evaluate the system
-        await self.sys_resolution.evaluate.evaluate_system()
-
         # Check if system is healthy
         if not self.supported:
             _LOGGER.warning("System running in a unsupported environment!")

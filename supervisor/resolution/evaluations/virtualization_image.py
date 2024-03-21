@@ -27,7 +27,7 @@ class EvaluateVirtualizationImage(EvaluateBase):
     @property
     def states(self) -> list[CoreState]:
         """Return a list of valid states when this evaluation can run."""
-        return [CoreState.STARTUP]
+        return [CoreState.SETUP]
 
     async def evaluate(self):
         """Run evaluation."""

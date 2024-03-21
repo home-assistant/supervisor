@@ -21,7 +21,7 @@ async def test_evaluation(
     """Test evaluation."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     virtualization = EvaluateVirtualizationImage(coresys)
-    coresys.core.state = CoreState.STARTUP
+    coresys.core.state = CoreState.SETUP
 
     with patch(
         "supervisor.os.manager.CPE.get_target_hardware", return_value=["generic-x86-64"]
@@ -53,7 +53,7 @@ async def test_evaluation_supported_images(
     """Test supported images for virtualization do not trigger unsupported."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     virtualization = EvaluateVirtualizationImage(coresys)
-    coresys.core.state = CoreState.STARTUP
+    coresys.core.state = CoreState.SETUP
 
     with patch("supervisor.os.manager.CPE.get_target_hardware", return_value=[board]):
         systemd_service.virtualization = "vmware"
