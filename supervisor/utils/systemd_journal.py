@@ -75,9 +75,11 @@ async def journal_logs_reader(
         entries: dict[str, str] = {}
         while not resp.content.at_eof():
             line = await resp.content.readuntil(b"\n")
-            # newline means end of message:
-            if line == b"\n":
-                yield formatter_(entries)
+            # newline means end of message, also empty line is sometimes returned
+            # at EOF (likely race between at_eof and EOF check in readuntil)
+            if line == b"\n" or not line:
+                if entries:
+                    yield formatter_(entries)
                 entries = {}
                 continue
 
