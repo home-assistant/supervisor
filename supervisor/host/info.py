@@ -129,6 +129,11 @@ class InfoCenter(CoreSysAttributes):
             self.coresys.config.path_supervisor
         )
 
+    @property
+    def virtualization(self) -> str | None:
+        """Return virtualization hypervisor being used."""
+        return self.sys_dbus.systemd.virtualization
+
     async def get_dmesg(self) -> bytes:
         """Return host dmesg output."""
         proc = await asyncio.create_subprocess_shell(

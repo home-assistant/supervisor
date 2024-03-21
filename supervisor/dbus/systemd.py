@@ -20,6 +20,7 @@ from .const import (
     DBUS_ATTR_KERNEL_TIMESTAMP_MONOTONIC,
     DBUS_ATTR_LOADER_TIMESTAMP_MONOTONIC,
     DBUS_ATTR_USERSPACE_TIMESTAMP_MONOTONIC,
+    DBUS_ATTR_VIRTUALIZATION,
     DBUS_ERR_SYSTEMD_NO_SUCH_UNIT,
     DBUS_IFACE_SYSTEMD_MANAGER,
     DBUS_NAME_SYSTEMD,
@@ -113,6 +114,12 @@ class Systemd(DBusInterfaceProxy):
     def boot_timestamp(self) -> int:
         """Return the boot timestamp."""
         return self.properties[DBUS_ATTR_FINISH_TIMESTAMP]
+
+    @property
+    @dbus_property
+    def virtualization(self) -> str:
+        """Return virtualization hypervisor being used."""
+        return self.properties[DBUS_ATTR_VIRTUALIZATION]
 
     @dbus_connected
     async def reboot(self) -> None:
