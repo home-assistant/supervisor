@@ -11,6 +11,7 @@ from ..addons.addon import Addon
 from ..const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import APIAddonNotInstalled
+from ..utils.sentry import capture_exception
 from .addons import APIAddons
 from .audio import APIAudio
 from .auth import APIAuth
@@ -400,15 +401,16 @@ class RestAPI(CoreSysAttributes):
 
         async def get_supervisor_logs(*args, **kwargs):
             try:
-                kwargs["identifier"] = "hassio_supervisor"
-                return await self._api_host.advanced_logs(*args, **kwargs)
-            except Exception:  # pylint: disable=broad-exception-caught
+                return await self._api_host.advanced_logs(
+                    *args, identifier="hassio_supervisor", **kwargs
+                )
+            except Exception as err:  # pylint: disable=broad-exception-caught
                 # Supervisor logs are critical, so catch everything, log the exception
                 # and try to return Docker container logs as the fallback
                 _LOGGER.exception(
                     "Failed to get supervisor logs using advanced_logs API"
                 )
-                kwargs.pop("identifier")
+                capture_exception(err)
                 return await api_supervisor.logs(*args, **kwargs)
 
         self.webapp.add_routes(
