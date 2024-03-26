@@ -13,6 +13,7 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.exceptions import HassioError
 from supervisor.store.repository import Repository
 
 from ..const import TEST_ADDON_SLUG
@@ -74,6 +75,32 @@ async def test_api_addon_logs(
     await common_test_api_advanced_logs(
         "/addons/local_ssh", "addon_local_ssh", api_client, journald_logs
     )
+
+
+async def test_api_addon_logs_not_installed(api_client: TestClient):
+    """Test error is returned for non-existing add-on."""
+    resp = await api_client.get("/addons/hic_sunt_leones/logs")
+
+    assert resp.status == 400
+    assert resp.content_type == "text/plain"
+    content = await resp.text()
+    assert content == "Addon hic_sunt_leones does not exist"
+
+
+async def test_api_addon_logs_error(
+    api_client: TestClient,
+    journald_logs: MagicMock,
+    docker_logs: MagicMock,
+    install_addon_ssh: Addon,
+):
+    """Test errors are properly handled for add-on logs."""
+    journald_logs.side_effect = HassioError("Something bad happened!")
+    resp = await api_client.get("/addons/local_ssh/logs")
+
+    assert resp.status == 400
+    assert resp.content_type == "text/plain"
+    content = await resp.text()
+    assert content == "Something bad happened!"
 
 
 async def test_api_addon_start_healthcheck(

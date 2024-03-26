@@ -169,7 +169,7 @@ async def test_api_supervisor_fallback(
         )
 
     assert resp.status == 200
-    assert resp.content_type == "application/octet-stream"
+    assert resp.content_type == "text/plain"
     content = await resp.read()
     assert content.split(b"\n")[0:2] == [
         b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os\x1b[0m",

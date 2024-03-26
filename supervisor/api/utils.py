@@ -91,7 +91,7 @@ def require_home_assistant(method):
     return wrap_api
 
 
-def api_process_raw(content):
+def api_process_raw(content, *, error_type=None):
     """Wrap content_type into function."""
 
     def wrap_method(method):
@@ -101,19 +101,43 @@ def api_process_raw(content):
             """Return api information."""
             try:
                 msg_data = await method(api, *args, **kwargs)
+                if isinstance(msg_data, (web.Response, web.StreamResponse)):
+                    return msg_data
                 msg_type = content
-            except (APIError, APIForbidden) as err:
+            except (APIError, APIForbidden, HassioError) as err:
                 msg_data = str(err).encode()
-                msg_type = CONTENT_TYPE_BINARY
+                msg_type = error_type or CONTENT_TYPE_BINARY
             except HassioError:
                 msg_data = b""
-                msg_type = CONTENT_TYPE_BINARY
+                msg_type = error_type or CONTENT_TYPE_BINARY
 
             return web.Response(body=msg_data, content_type=msg_type)
 
         return wrap_api
 
     return wrap_method
+
+
+def api_process_custom(content_type):
+    """Ensure errors are handled and returned with specified content_type."""
+
+    def decorator(method):
+        async def wrapper(api, *args, **kwargs):
+            status = 200
+            try:
+                response = await method(api, *args, **kwargs)
+            except HassioError as err:
+                response = str(err)
+                status = 400
+
+            if isinstance(response, (web.Response, web.StreamResponse)):
+                return response
+
+            return web.Response(body=response, status=status, content_type=content_type)
+
+        return wrapper
+
+    return decorator
 
 
 def api_return_error(
