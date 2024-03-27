@@ -6,6 +6,7 @@ from aiohttp.test_utils import TestClient
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
 
+from tests.api import common_test_api_advanced_logs
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.resolved import Resolved as ResolvedService
 
@@ -64,13 +65,6 @@ async def test_options(api_client: TestClient, coresys: CoreSys):
         restart.assert_called_once()
 
 
-async def test_api_dns_logs(api_client: TestClient, docker_logs: MagicMock):
+async def test_api_dns_logs(api_client: TestClient, journald_logs: MagicMock):
     """Test dns logs."""
-    resp = await api_client.get("/dns/logs")
-    assert resp.status == 200
-    assert resp.content_type == "application/octet-stream"
-    content = await resp.read()
-    assert content.split(b"\n")[0:2] == [
-        b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os\x1b[0m",
-        b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor\x1b[0m",
-    ]
+    await common_test_api_advanced_logs("/dns", "hassio_dns", api_client, journald_logs)

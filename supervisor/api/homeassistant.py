@@ -36,8 +36,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import docker_image, network_port, version_tag
-from .const import CONTENT_TYPE_BINARY
-from .utils import api_process, api_process_raw, api_validate
+from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -172,11 +171,6 @@ class APIHomeAssistant(CoreSysAttributes):
     def rebuild(self, request: web.Request) -> Awaitable[None]:
         """Rebuild Home Assistant."""
         return asyncio.shield(self.sys_homeassistant.core.rebuild())
-
-    @api_process_raw(CONTENT_TYPE_BINARY)
-    def logs(self, request: web.Request) -> Awaitable[bytes]:
-        """Return Home Assistant Docker logs."""
-        return self.sys_homeassistant.core.logs()
 
     @api_process
     async def check(self, request: web.Request) -> None:

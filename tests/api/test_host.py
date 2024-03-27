@@ -310,15 +310,17 @@ async def test_advanced_logs_errors(api_client: TestClient):
     """Test advanced logging API errors."""
     # coresys = coresys_logs_control
     resp = await api_client.get("/host/logs")
-    result = await resp.json()
-    assert result["result"] == "error"
-    assert result["message"] == "No systemd-journal-gatewayd Unix socket available"
+    assert resp.content_type == "text/plain"
+    assert resp.status == 400
+    content = await resp.text()
+    assert content == "No systemd-journal-gatewayd Unix socket available"
 
     headers = {"Accept": "application/json"}
     resp = await api_client.get("/host/logs", headers=headers)
-    result = await resp.json()
-    assert result["result"] == "error"
+    assert resp.content_type == "text/plain"
+    assert resp.status == 400
+    content = await resp.text()
     assert (
-        result["message"]
+        content
         == "Invalid content type requested. Only text/plain and text/x-log supported for now."
     )
