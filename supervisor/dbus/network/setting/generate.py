@@ -38,7 +38,7 @@ def get_connection_from_interface(
     if not name or not name.startswith("Supervisor"):
         name = f"Supervisor {interface.name}"
     if interface.type == InterfaceType.VLAN:
-        name = f"{name}.{interface.vlan.id}"
+        name = f"{interface.name}.{interface.vlan.id}"
 
     if interface.type == InterfaceType.ETHERNET:
         iftype = "802-3-ethernet"
