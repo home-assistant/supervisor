@@ -198,6 +198,12 @@ class Addon(AddonModel):
         with suppress(DockerError):
             await self.instance.attach(version=self.version)
 
+        with suppress(DockerError):
+            await self.instance.check_image(
+                self.version, self._image(self.data), self.arch
+            )
+            self.persist[ATTR_IMAGE] = self.instance.image
+
     @property
     def ip_address(self) -> IPv4Address:
         """Return IP of add-on instance."""

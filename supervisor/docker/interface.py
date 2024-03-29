@@ -14,6 +14,7 @@ from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
 import docker
 from docker.models.containers import Container
+from docker.models.images import Image
 import requests
 
 from ..const import (
@@ -437,6 +438,47 @@ class DockerInterface(JobGroup):
             self.sys_docker.remove_image, self.image, self.version
         )
         self._meta = None
+
+    @Job(
+        name="docker_interface_check_image",
+        limit=JobExecutionLimit.GROUP_ONCE,
+        on_condition=DockerJobError,
+    )
+    async def check_image(
+        self,
+        version: AwesomeVersion,
+        expected_image: str,
+        expected_arch: CpuArch | None = None,
+    ) -> None:
+        """Check we have expected image with correct arch."""
+        expected_arch = expected_arch or self.sys_arch.supervisor
+        image_name = f"{expected_image}:{version!s}"
+        if self.image == expected_image:
+            try:
+                image: Image | None = await self.sys_run_in_executor(
+                    self.sys_docker.images.get, image_name
+                )
+            except docker.errors.ImageNotFound:
+                image = None
+            except (docker.errors.DockerException, requests.RequestException) as err:
+                raise DockerError(
+                    f"Could not get {image_name} for check due to: {err!s}",
+                    _LOGGER.error,
+                ) from err
+
+            if image:
+                image_arch = f"{image.attrs['Os']}/{image.attrs['Architecture']}"
+                if "Variant" in image.attrs:
+                    image_arch = f"{image_arch}/{image.attrs['Variant']}"
+
+                # If we have an image and its the right arch, all set
+                if MAP_ARCH[expected_arch] == image_arch:
+                    return
+
+        # We're missing the image we need. Stop and clean up what we have then pull the right one
+        with suppress(DockerError):
+            await self.remove()
+        await self.install(version, expected_image, arch=expected_arch)
 
     @Job(
         name="docker_interface_update",

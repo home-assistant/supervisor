@@ -109,6 +109,11 @@ class PluginDns(PluginBase):
         self._data[ATTR_SERVERS] = value
 
     @property
+    def default_image(self) -> str:
+        """Return default image for dns plugin."""
+        return self.sys_updater.image_dns
+
+    @property
     def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of CoreDNS."""
         return self.sys_updater.version_dns
@@ -168,25 +173,7 @@ class PluginDns(PluginBase):
 
     async def install(self) -> None:
         """Install CoreDNS."""
-        _LOGGER.info("Running setup for CoreDNS plugin")
-        while True:
-            # read homeassistant tag and install it
-            if not self.latest_version:
-                await self.sys_updater.reload()
-
-            if self.latest_version:
-                with suppress(DockerError):
-                    await self.instance.install(
-                        self.latest_version, image=self.sys_updater.image_dns
-                    )
-                    break
-            _LOGGER.warning("Error on install CoreDNS plugin. Retrying in 30sec")
-            await asyncio.sleep(30)
-
-        _LOGGER.info("CoreDNS plugin now installed")
-        self.version = self.instance.version
-        self.image = self.sys_updater.image_dns
-        self.save_data()
+        await super().install()
 
         # Init Hosts
         await self.write_hosts()
@@ -198,29 +185,10 @@ class PluginDns(PluginBase):
     )
     async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update CoreDNS plugin."""
-        version = version or self.latest_version
-        old_image = self.image
-
-        if version == self.version:
-            _LOGGER.warning("Version %s is already installed for CoreDNS", version)
-            return
-
-        # Update
         try:
-            await self.instance.update(version, image=self.sys_updater.image_dns)
+            await super().update(version)
         except DockerError as err:
             raise CoreDNSUpdateError("CoreDNS update failed", _LOGGER.error) from err
-
-        self.version = version
-        self.image = self.sys_updater.image_dns
-        self.save_data()
-
-        # Cleanup
-        with suppress(DockerError):
-            await self.instance.cleanup(old_image=old_image)
-
-        # Start CoreDNS
-        await self.start()
 
     async def restart(self) -> None:
         """Restart CoreDNS plugin."""

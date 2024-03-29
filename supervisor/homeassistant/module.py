@@ -171,11 +171,16 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         return self.sys_updater.version_homeassistant
 
     @property
+    def default_image(self) -> str:
+        """Return the default image for this system."""
+        return f"ghcr.io/home-assistant/{self.sys_machine}-homeassistant"
+
+    @property
     def image(self) -> str:
         """Return image name of the Home Assistant container."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
-        return f"ghcr.io/home-assistant/{self.sys_machine}-homeassistant"
+        return self.default_image
 
     @image.setter
     def image(self, value: str | None) -> None:

@@ -37,11 +37,16 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         self._data[ATTR_VERSION] = value
 
     @property
+    def default_image(self) -> str:
+        """Return default image for plugin."""
+        return f"ghcr.io/home-assistant/{self.sys_arch.supervisor}-hassio-{self.slug}"
+
+    @property
     def image(self) -> str:
         """Return current image of plugin."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
-        return f"ghcr.io/home-assistant/{self.sys_arch.supervisor}-hassio-{self.slug}"
+        return self.default_image
 
     @image.setter
     def image(self, value: str) -> None:
@@ -160,6 +165,8 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
             await self.instance.attach(
                 version=self.version, skip_state_event_if_down=True
             )
+
+            await self.instance.check_image(self.version, self.default_image)
         except DockerError:
             _LOGGER.info(
                 "No %s plugin Docker image %s found.", self.slug, self.instance.image
@@ -178,13 +185,52 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
             if not await self.instance.is_running():
                 await self.start()
 
-    @abstractmethod
     async def install(self) -> None:
         """Install system plugin."""
+        _LOGGER.info("Setup %s plugin", self.slug)
+        while True:
+            # read plugin tag and install it
+            if not self.latest_version:
+                await self.sys_updater.reload()
 
-    @abstractmethod
+            if self.latest_version:
+                with suppress(DockerError):
+                    await self.instance.install(
+                        self.latest_version, image=self.default_image
+                    )
+                    break
+            _LOGGER.warning(
+                "Error on installing %s plugin, retrying in 30sec", self.slug
+            )
+            await asyncio.sleep(30)
+
+        _LOGGER.info("%s plugin now installed", self.slug)
+        self.version = self.instance.version
+        self.image = self.instance.image
+        self.save_data()
+
     async def update(self, version: str | None = None) -> None:
         """Update system plugin."""
+        version = version or self.latest_version
+        old_image = self.image
+
+        if version == self.version:
+            _LOGGER.warning(
+                "Version %s is already installed for %s", version, self.slug
+            )
+            return
+
+        await self.instance.update(version, image=self.default_image)
+        self.version = self.instance.version
+        self.image = self.instance.image
+        self.save_data()
+
+        # Cleanup
+        with suppress(DockerError):
+            await self.instance.cleanup(old_image=old_image)
+
+        # Start plugin
+        await self.start()
 
     @abstractmethod
     async def repair(self) -> None:

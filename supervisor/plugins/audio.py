@@ -2,8 +2,6 @@
 
 Code: https://github.com/home-assistant/plugin-audio
 """
-import asyncio
-from contextlib import suppress
 import errno
 import logging
 from pathlib import Path, PurePath
@@ -73,6 +71,11 @@ class PluginAudio(PluginBase):
         return Path(self.sys_config.path_audio, "pulse_audio.json")
 
     @property
+    def default_image(self) -> str:
+        """Return default image for audio plugin."""
+        return self.sys_updater.image_audio
+
+    @property
     def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of Audio."""
         return self.sys_updater.version_audio
@@ -102,28 +105,6 @@ class PluginAudio(PluginBase):
                     self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
                 _LOGGER.error("Can't create default asound: %s", err)
 
-    async def install(self) -> None:
-        """Install Audio."""
-        _LOGGER.info("Setup Audio plugin")
-        while True:
-            # read audio tag and install it
-            if not self.latest_version:
-                await self.sys_updater.reload()
-
-            if self.latest_version:
-                with suppress(DockerError):
-                    await self.instance.install(
-                        self.latest_version, image=self.sys_updater.image_audio
-                    )
-                    break
-            _LOGGER.warning("Error on installing Audio plugin, retrying in 30sec")
-            await asyncio.sleep(30)
-
-        _LOGGER.info("Audio plugin now installed")
-        self.version = self.instance.version
-        self.image = self.sys_updater.image_audio
-        self.save_data()
-
     @Job(
         name="plugin_audio_update",
         conditions=PLUGIN_UPDATE_CONDITIONS,
@@ -131,28 +112,10 @@ class PluginAudio(PluginBase):
     )
     async def update(self, version: str | None = None) -> None:
         """Update Audio plugin."""
-        version = version or self.latest_version
-        old_image = self.image
-
-        if version == self.version:
-            _LOGGER.warning("Version %s is already installed for Audio", version)
-            return
-
         try:
-            await self.instance.update(version, image=self.sys_updater.image_audio)
+            await super().update(version)
         except DockerError as err:
             raise AudioUpdateError("Audio update failed", _LOGGER.error) from err
-
-        self.version = version
-        self.image = self.sys_updater.image_audio
-        self.save_data()
-
-        # Cleanup
-        with suppress(DockerError):
-            await self.instance.cleanup(old_image=old_image)
-
-        # Start Audio
-        await self.start()
 
     async def restart(self) -> None:
         """Restart Audio plugin."""
