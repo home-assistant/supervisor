@@ -723,15 +723,15 @@ async def container(docker: DockerAPI) -> MagicMock:
 @pytest.fixture
 def mock_amd64_arch_supported(coresys: CoreSys) -> None:
     """Mock amd64 arch as supported."""
-    with patch.object(coresys.arch, "_supported_set", {"amd64"}):
-        yield
+    coresys.arch._supported_arch = ["amd64"]
+    coresys.arch._supported_set = {"amd64"}
 
 
 @pytest.fixture
 def mock_aarch64_arch_supported(coresys: CoreSys) -> None:
     """Mock aarch64 arch as supported."""
-    with patch.object(coresys.arch, "_supported_set", {"aarch64"}):
-        yield
+    coresys.arch._supported_arch = ["amd64"]
+    coresys.arch._supported_set = {"amd64"}
 
 
 @pytest.fixture

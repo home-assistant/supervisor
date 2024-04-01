@@ -37,7 +37,7 @@ class FixupSystemAdoptDataDisk(FixupBase):
             not current
             or not (
                 resolved := await self.sys_dbus.udisks2.resolve_device(
-                    DeviceSpecification(path=current.as_posix())
+                    DeviceSpecification(path=current)
                 )
             )
             or not resolved[0].filesystem

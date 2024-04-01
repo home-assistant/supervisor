@@ -48,7 +48,7 @@ from ..utils import remove_folder
 from ..utils.common import FileConfiguration
 from ..utils.json import read_json_file, write_json_file
 from .api import HomeAssistantAPI
-from .const import WSType
+from .const import ATTR_OVERRIDE_IMAGE, WSType
 from .core import HomeAssistantCore
 from .secrets import HomeAssistantSecrets
 from .validate import SCHEMA_HASS_CONFIG
@@ -186,6 +186,16 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def image(self, value: str | None) -> None:
         """Set image name of Home Assistant container."""
         self._data[ATTR_IMAGE] = value
+
+    @property
+    def override_image(self) -> bool:
+        """Return if user has overridden the image to use for Home Assistant."""
+        return self._data[ATTR_OVERRIDE_IMAGE]
+
+    @override_image.setter
+    def override_image(self, value: bool) -> None:
+        """Enable/disable image override."""
+        self._data[ATTR_OVERRIDE_IMAGE] = value
 
     @property
     def version(self) -> AwesomeVersion | None:

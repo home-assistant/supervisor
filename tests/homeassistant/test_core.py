@@ -314,3 +314,78 @@ async def test_api_check_success(
 
     assert coresys.homeassistant.api.get_api_state.call_count == 1
     assert "Detect a running Home Assistant instance" in caplog.text
+
+
+async def test_core_loads_wrong_image_for_machine(
+    coresys: CoreSys, container: MagicMock
+):
+    """Test core is loaded with wrong image for machine."""
+    coresys.homeassistant.image = "ghcr.io/home-assistant/odroid-n2-homeassistant"
+    coresys.homeassistant.version = AwesomeVersion("2024.4.0")
+    container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
+
+    await coresys.homeassistant.core.load()
+
+    container.remove.assert_called_once_with(force=True)
+    assert coresys.docker.images.remove.call_args_list[0].kwargs == {
+        "image": "ghcr.io/home-assistant/odroid-n2-homeassistant:latest",
+        "force": True,
+    }
+    assert coresys.docker.images.remove.call_args_list[1].kwargs == {
+        "image": "ghcr.io/home-assistant/odroid-n2-homeassistant:2024.4.0",
+        "force": True,
+    }
+    coresys.docker.images.pull.assert_called_once_with(
+        "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0",
+        platform="linux/amd64",
+    )
+    assert (
+        coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
+    )
+
+
+async def test_core_load_allows_image_override(coresys: CoreSys, container: MagicMock):
+    """Test core does not change image if user overrode it."""
+    coresys.homeassistant.image = "ghcr.io/home-assistant/odroid-n2-homeassistant"
+    coresys.homeassistant.version = AwesomeVersion("2024.4.0")
+    container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
+
+    coresys.homeassistant.override_image = True
+    await coresys.homeassistant.core.load()
+
+    container.remove.assert_not_called()
+    coresys.docker.images.remove.assert_not_called()
+    coresys.docker.images.pull.assert_not_called()
+    assert (
+        coresys.homeassistant.image == "ghcr.io/home-assistant/odroid-n2-homeassistant"
+    )
+
+
+async def test_core_loads_wrong_image_for_architecture(
+    coresys: CoreSys, container: MagicMock
+):
+    """Test core is loaded with wrong image for architecture."""
+    coresys.homeassistant.version = AwesomeVersion("2024.4.0")
+    container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
+    coresys.docker.images.get("ghcr.io/home-assistant/qemux86-64-homeassistant").attrs[
+        "Architecture"
+    ] = "arm64"
+
+    await coresys.homeassistant.core.load()
+
+    container.remove.assert_called_once_with(force=True)
+    assert coresys.docker.images.remove.call_args_list[0].kwargs == {
+        "image": "ghcr.io/home-assistant/qemux86-64-homeassistant:latest",
+        "force": True,
+    }
+    assert coresys.docker.images.remove.call_args_list[1].kwargs == {
+        "image": "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0",
+        "force": True,
+    }
+    coresys.docker.images.pull.assert_called_once_with(
+        "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0",
+        platform="linux/amd64",
+    )
+    assert (
+        coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
+    )

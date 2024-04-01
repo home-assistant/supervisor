@@ -102,11 +102,11 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         except HassioArchNotFound:
             return False
 
-    def get_docker_args(self, version: AwesomeVersion):
+    def get_docker_args(self, version: AwesomeVersion, image: str | None = None):
         """Create a dict with Docker build arguments."""
         args = {
             "path": str(self.addon.path_location),
-            "tag": f"{self.addon.image}:{version!s}",
+            "tag": f"{image or self.addon.image}:{version!s}",
             "dockerfile": str(self.dockerfile),
             "pull": True,
             "forcerm": not self.sys_dev,

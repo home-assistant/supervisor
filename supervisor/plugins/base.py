@@ -177,7 +177,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                 await self.install()
         else:
             self.version = self.instance.version
-            self.image = self.instance.image
+            self.image = self.default_image
             self.save_data()
 
         # Run plugin
@@ -206,7 +206,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
         _LOGGER.info("%s plugin now installed", self.slug)
         self.version = self.instance.version
-        self.image = self.instance.image
+        self.image = self.default_image
         self.save_data()
 
     async def update(self, version: str | None = None) -> None:
@@ -222,7 +222,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
 
         await self.instance.update(version, image=self.default_image)
         self.version = self.instance.version
-        self.image = self.instance.image
+        self.image = self.default_image
         self.save_data()
 
         # Cleanup
