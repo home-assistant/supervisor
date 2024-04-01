@@ -77,6 +77,8 @@ async def supervisor_name() -> None:
 async def docker() -> DockerAPI:
     """Mock DockerAPI."""
     images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
+    image = MagicMock()
+    image.attrs = {"Os": "linux", "Architecture": "amd64"}
 
     with patch(
         "supervisor.docker.manager.DockerClient", return_value=MagicMock()
@@ -86,6 +88,8 @@ async def docker() -> DockerAPI:
         "supervisor.docker.manager.DockerAPI.containers", return_value=MagicMock()
     ), patch(
         "supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()
+    ), patch(
+        "supervisor.docker.manager.DockerAPI.images.get", return_value=image
     ), patch(
         "supervisor.docker.manager.DockerAPI.images.list", return_value=images
     ), patch(
@@ -317,6 +321,9 @@ async def coresys(
     coresys_obj._mounts.save_data = MagicMock()
 
     # Mock test client
+    coresys_obj._supervisor.instance._meta = {
+        "Config": {"Labels": {"io.hass.arch": "amd64"}}
+    }
     coresys_obj.arch._default_arch = "amd64"
     coresys_obj.arch._supported_set = {"amd64"}
     coresys_obj._machine = "qemux86-64"

@@ -22,6 +22,8 @@ async def test_load(
 
     # Unwrap read_secrets to prevent throttling between tests
     with patch.object(DockerInterface, "attach") as attach, patch.object(
+        DockerInterface, "check_image"
+    ) as check_image, patch.object(
         HomeAssistantSecrets,
         "_read_secrets",
         new=HomeAssistantSecrets._read_secrets.__wrapped__,
@@ -29,6 +31,7 @@ async def test_load(
         await coresys.homeassistant.load()
 
         attach.assert_called_once()
+        check_image.assert_called_once()
 
     assert coresys.homeassistant.secrets.secrets == {"hello": "world"}
 

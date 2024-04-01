@@ -53,7 +53,10 @@ async def test_check(coresys: CoreSys, sda1_block_service: BlockService):
     assert coresys.resolution.suggestions == [
         Suggestion(
             SuggestionType.RENAME_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
-        )
+        ),
+        Suggestion(
+            SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+        ),
     ]
 
 
