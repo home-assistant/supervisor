@@ -9,6 +9,8 @@ from docker.types import Mount
 from supervisor.coresys import CoreSys
 from supervisor.docker.manager import DockerAPI
 
+from . import DEV_MOUNT
+
 
 async def test_start(coresys: CoreSys, tmp_supervisor_data: Path, path_extern):
     """Test starting audio plugin."""
@@ -26,8 +28,9 @@ async def test_start(coresys: CoreSys, tmp_supervisor_data: Path, path_extern):
         assert run.call_args.kwargs["ulimits"] == [
             {"Name": "rtprio", "Soft": 10, "Hard": 10}
         ]
+
         assert run.call_args.kwargs["mounts"] == [
-            Mount(type="bind", source="/dev", target="/dev", read_only=True),
+            DEV_MOUNT,
             Mount(
                 type="bind",
                 source=coresys.config.path_extern_audio.as_posix(),
