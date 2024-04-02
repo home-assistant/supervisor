@@ -19,6 +19,7 @@ from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 
 from ..common import load_json_fixture
+from . import DEV_MOUNT
 
 
 @pytest.fixture(name="addonsdata_system")
@@ -66,11 +67,8 @@ def test_base_volumes_included(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
 
-    # Dev added as ro
-    assert (
-        Mount(type="bind", source="/dev", target="/dev", read_only=True)
-        in docker_addon.mounts
-    )
+    # Dev added as ro with bind-recursive=writable option
+    assert DEV_MOUNT in docker_addon.mounts
 
     # Data added as rw
     assert (

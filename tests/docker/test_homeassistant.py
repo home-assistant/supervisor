@@ -12,6 +12,8 @@ from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.manager import DockerAPI
 from supervisor.homeassistant.const import LANDINGPAGE
 
+from . import DEV_MOUNT
+
 
 async def test_homeassistant_start(
     coresys: CoreSys, tmp_supervisor_data: Path, path_extern
@@ -42,7 +44,7 @@ async def test_homeassistant_start(
             "HASSIO_TOKEN": ANY,
         }
         assert run.call_args.kwargs["mounts"] == [
-            Mount(type="bind", source="/dev", target="/dev", read_only=True),
+            DEV_MOUNT,
             Mount(type="bind", source="/run/dbus", target="/run/dbus", read_only=True),
             Mount(type="bind", source="/run/udev", target="/run/udev", read_only=True),
             Mount(
@@ -128,7 +130,7 @@ async def test_landingpage_start(
             "HASSIO_TOKEN": ANY,
         }
         assert run.call_args.kwargs["mounts"] == [
-            Mount(type="bind", source="/dev", target="/dev", read_only=True),
+            DEV_MOUNT,
             Mount(type="bind", source="/run/dbus", target="/run/dbus", read_only=True),
             Mount(type="bind", source="/run/udev", target="/run/udev", read_only=True),
             Mount(
