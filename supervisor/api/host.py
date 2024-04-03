@@ -53,7 +53,7 @@ from .const import (
     CONTENT_TYPE_TEXT,
     CONTENT_TYPE_X_LOG,
 )
-from .utils import api_process, api_process_custom, api_validate
+from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -163,7 +163,7 @@ class APIHost(CoreSysAttributes):
                 raise APIError() from err
         return possible_offset
 
-    @api_process_custom(CONTENT_TYPE_TEXT)
+    @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
     async def advanced_logs(
         self, request: web.Request, identifier: str | None = None, follow: bool = False
     ) -> web.StreamResponse:

@@ -25,7 +25,7 @@ from ..exceptions import APIError, APIForbidden, DockerAPIError, HassioError
 from ..utils import check_exception_chain, get_message_from_exception_chain
 from ..utils.json import json_dumps, json_loads as json_loads_util
 from ..utils.log_format import format_message
-from .const import CONTENT_TYPE_BINARY
+from . import const
 
 
 def excract_supervisor_token(request: web.Request) -> str | None:
@@ -101,63 +101,52 @@ def api_process_raw(content, *, error_type=None):
             """Return api information."""
             try:
                 msg_data = await method(api, *args, **kwargs)
-                if isinstance(msg_data, (web.Response, web.StreamResponse)):
-                    return msg_data
-                msg_type = content
-            except (APIError, APIForbidden, HassioError) as err:
-                msg_data = str(err).encode()
-                msg_type = error_type or CONTENT_TYPE_BINARY
-            except HassioError:
-                msg_data = b""
-                msg_type = error_type or CONTENT_TYPE_BINARY
+            except HassioError as err:
+                return api_return_error(
+                    err, error_type=error_type or const.CONTENT_TYPE_BINARY
+                )
 
-            return web.Response(body=msg_data, content_type=msg_type)
+            if isinstance(msg_data, (web.Response, web.StreamResponse)):
+                return msg_data
+
+            return web.Response(body=msg_data, content_type=content)
 
         return wrap_api
 
     return wrap_method
 
 
-def api_process_custom(content_type):
-    """Ensure errors are handled and returned with specified content_type."""
-
-    def decorator(method):
-        async def wrapper(api, *args, **kwargs):
-            status = 200
-            try:
-                response = await method(api, *args, **kwargs)
-            except HassioError as err:
-                response = str(err)
-                status = 400
-
-            if isinstance(response, (web.Response, web.StreamResponse)):
-                return response
-
-            return web.Response(body=response, status=status, content_type=content_type)
-
-        return wrapper
-
-    return decorator
-
-
 def api_return_error(
-    error: Exception | None = None, message: str | None = None
+    error: Exception | None = None,
+    message: str | None = None,
+    error_type: str | None = None,
 ) -> web.Response:
     """Return an API error message."""
     if error and not message:
         message = get_message_from_exception_chain(error)
         if check_exception_chain(error, DockerAPIError):
             message = format_message(message)
+    if not message:
+        message = "Unknown error, see supervisor"
 
-    result = {
-        JSON_RESULT: RESULT_ERROR,
-        JSON_MESSAGE: message or "Unknown error, see supervisor",
-    }
     status = 400
-    if isinstance(error, APIError):
+    if is_api_error := isinstance(error, APIError):
         status = error.status
-        if error.job_id:
-            result[JSON_JOB_ID] = error.job_id
+
+    match error_type:
+        case const.CONTENT_TYPE_TEXT:
+            return web.Response(body=message, content_type=error_type, status=status)
+        case const.CONTENT_TYPE_BINARY:
+            return web.Response(
+                body=message.encode(), content_type=error_type, status=status
+            )
+        case _:
+            result = {
+                JSON_RESULT: RESULT_ERROR,
+                JSON_MESSAGE: message,
+            }
+            if is_api_error and error.job_id:
+                result[JSON_JOB_ID] = error.job_id
 
     return web.json_response(
         result,

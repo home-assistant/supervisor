@@ -38,7 +38,7 @@ from .security import APISecurity
 from .services import APIServices
 from .store import APIStore
 from .supervisor import APISupervisor
-from .utils import api_process, api_process_custom
+from .utils import api_process, api_process_raw
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -518,7 +518,7 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
-        @api_process_custom(CONTENT_TYPE_TEXT)
+        @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
         async def get_addon_logs(request, *args, **kwargs):
             addon = api_addons.get_addon_for_request(request)
             kwargs["identifier"] = f"addon_{addon.slug}"
