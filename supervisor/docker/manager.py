@@ -181,7 +181,7 @@ class DockerAPI:
             # However, the default timeout of glibc and musl is 5s. Increase
             # default timeout to make sure CoreDNS fallback is working
             # on first query.
-            kwargs["dns_opt"] = "timeout:10"
+            kwargs["dns_opt"] = ["timeout:10"]
             if hostname:
                 kwargs["domainname"] = DNS_SUFFIX
 
