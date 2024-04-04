@@ -177,6 +177,11 @@ class DockerAPI:
         if dns:
             kwargs["dns"] = [str(self.network.dns)]
             kwargs["dns_search"] = [DNS_SUFFIX]
+            # CoreDNS forward plug-in fails in ~6s, then fallback triggers.
+            # However, the default timeout of glibc and musl is 5s. Increase
+            # default timeout to make sure CoreDNS fallback is working
+            # on first query.
+            kwargs["dns_opt"] = "timeout:10"
             if hostname:
                 kwargs["domainname"] = DNS_SUFFIX
 
