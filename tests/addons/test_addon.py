@@ -772,6 +772,7 @@ async def test_addon_loads_wrong_image(
     mock_amd64_arch_supported,
 ):
     """Test addon is loaded with incorrect image for architecture."""
+    coresys.addons.data.save_data.reset_mock()
     install_addon_ssh.persist["image"] = "local/aarch64-addon-ssh"
     assert install_addon_ssh.image == "local/aarch64-addon-ssh"
 
@@ -794,6 +795,7 @@ async def test_addon_loads_wrong_image(
     )
     assert coresys.docker.images.build.call_args.kwargs["platform"] == "linux/amd64"
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
+    coresys.addons.data.save_data.assert_called_once()
 
 
 async def test_addon_loads_missing_image(
@@ -808,8 +810,6 @@ async def test_addon_loads_missing_image(
     with patch("pathlib.Path.is_file", return_value=True):
         await install_addon_ssh.load()
 
-    container.remove.assert_called_once()
-    assert coresys.docker.images.remove.call_count == 2
     coresys.docker.images.build.assert_called_once()
     assert (
         coresys.docker.images.build.call_args.kwargs["tag"]

@@ -455,25 +455,22 @@ class DockerInterface(JobGroup):
         image_name = f"{expected_image}:{version!s}"
         if self.image == expected_image:
             try:
-                image: Image | None = await self.sys_run_in_executor(
+                image: Image = await self.sys_run_in_executor(
                     self.sys_docker.images.get, image_name
                 )
-            except docker.errors.ImageNotFound:
-                image = None
             except (docker.errors.DockerException, requests.RequestException) as err:
                 raise DockerError(
                     f"Could not get {image_name} for check due to: {err!s}",
                     _LOGGER.error,
                 ) from err
 
-            if image:
-                image_arch = f"{image.attrs['Os']}/{image.attrs['Architecture']}"
-                if "Variant" in image.attrs:
-                    image_arch = f"{image_arch}/{image.attrs['Variant']}"
+            image_arch = f"{image.attrs['Os']}/{image.attrs['Architecture']}"
+            if "Variant" in image.attrs:
+                image_arch = f"{image_arch}/{image.attrs['Variant']}"
 
-                # If we have an image and its the right arch, all set
-                if MAP_ARCH[expected_arch] == image_arch:
-                    return
+            # If we have an image and its the right arch, all set
+            if MAP_ARCH[expected_arch] == image_arch:
+                return
 
         # We're missing the image we need. Stop and clean up what we have then pull the right one
         with suppress(DockerError):
