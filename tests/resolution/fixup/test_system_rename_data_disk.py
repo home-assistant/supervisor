@@ -52,7 +52,11 @@ async def test_fixup(coresys: CoreSys, sda1_filesystem_service: FilesystemServic
     await system_rename_data_disk()
 
     assert sda1_filesystem_service.SetLabel.calls == [
-        ("hassos-data-old", {"auth.no_user_interaction": Variant("b", True)})
+        (
+            "/org/freedesktop/UDisks2/block_devices/sda1",
+            "hassos-data-old",
+            {"auth.no_user_interaction": Variant("b", True)},
+        )
     ]
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0

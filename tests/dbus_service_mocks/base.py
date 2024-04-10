@@ -9,32 +9,6 @@ from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.service import ServiceInterface, method
 
 
-def dbus_method(name: str = None, disabled: bool = False):
-    """Make DBus method with call tracking.
-
-    Identical to dbus_fast.service.method wrapper except all calls to it are tracked.
-    Can then test that methods with no output were called or the right arguments were
-    used if the output is static.
-    """
-    orig_decorator = method(name=name, disabled=disabled)
-
-    @no_type_check_decorator
-    def decorator(func):
-        calls: list[list[Any]] = []
-
-        @wraps(func)
-        def track_calls(self, *args):
-            calls.append(args)
-            return func(self, *args)
-
-        wrapped = orig_decorator(track_calls)
-        wrapped.__dict__["calls"] = calls
-
-        return wrapped
-
-    return decorator
-
-
 class DBusServiceMock(ServiceInterface):
     """Base dbus service mock."""
 
@@ -66,3 +40,32 @@ class DBusServiceMock(ServiceInterface):
         # So in general we sleep(0) after to clear the new task
         if sleep:
             await asyncio.sleep(0)
+
+
+def dbus_method(name: str = None, disabled: bool = False, track_obj_path: bool = False):
+    """Make DBus method with call tracking.
+
+    Identical to dbus_fast.service.method wrapper except all calls to it are tracked.
+    Can then test that methods with no output were called or the right arguments were
+    used if the output is static.
+    """
+    orig_decorator = method(name=name, disabled=disabled)
+
+    @no_type_check_decorator
+    def decorator(func):
+        calls: list[list[Any]] = []
+
+        @wraps(func)
+        def track_calls(self: DBusServiceMock, *args):
+            if track_obj_path:
+                calls.append((self.object_path, *args))
+            else:
+                calls.append(args)
+            return func(self, *args)
+
+        wrapped = orig_decorator(track_calls)
+        wrapped.__dict__["calls"] = calls
+
+        return wrapped
+
+    return decorator

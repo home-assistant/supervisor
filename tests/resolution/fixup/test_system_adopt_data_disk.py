@@ -1,5 +1,7 @@
 """Test system fixup adopt data disk."""
 
+from dataclasses import dataclass, replace
+
 from dbus_fast import DBusError, ErrorType, Variant
 import pytest
 
@@ -10,20 +12,34 @@ from supervisor.resolution.fixups.system_adopt_data_disk import FixupSystemAdopt
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.logind import Logind as LogindService
+from tests.dbus_service_mocks.udisks2_block import Block as BlockService
 from tests.dbus_service_mocks.udisks2_filesystem import Filesystem as FilesystemService
 from tests.dbus_service_mocks.udisks2_manager import (
     UDisks2Manager as UDisks2ManagerService,
 )
 
 
-@pytest.fixture(name="sda1_filesystem_service")
-async def fixture_sda1_filesystem_service(
+@dataclass
+class FSDevice:
+    """Filesystem device services."""
+
+    block_service: BlockService
+    filesystem_service: FilesystemService
+
+
+@pytest.fixture(name="sda1_device")
+async def fixture_sda1_device(
     udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-) -> FilesystemService:
-    """Return sda1 filesystem service."""
-    return udisks2_services["udisks2_filesystem"][
-        "/org/freedesktop/UDisks2/block_devices/sda1"
-    ]
+) -> FSDevice:
+    """Return sda1 services."""
+    return FSDevice(
+        udisks2_services["udisks2_block"][
+            "/org/freedesktop/UDisks2/block_devices/sda1"
+        ],
+        udisks2_services["udisks2_filesystem"][
+            "/org/freedesktop/UDisks2/block_devices/sda1"
+        ],
+    )
 
 
 @pytest.fixture(name="mmcblk1p3_filesystem_service")
@@ -54,6 +70,7 @@ async def fixture_logind_service(
 
 async def test_fixup(
     coresys: CoreSys,
+    sda1_device: FSDevice,
     mmcblk1p3_filesystem_service: FilesystemService,
     udisks2_service: UDisks2ManagerService,
     logind_service: LogindService,
@@ -61,6 +78,9 @@ async def test_fixup(
     """Test fixup."""
     mmcblk1p3_filesystem_service.SetLabel.calls.clear()
     logind_service.Reboot.calls.clear()
+    sda1_device.block_service.fixture = replace(
+        sda1_device.block_service.fixture, IdLabel="hassos-data"
+    )
     system_adopt_data_disk = FixupSystemAdoptDataDisk(coresys)
 
     assert not system_adopt_data_disk.auto
@@ -72,13 +92,18 @@ async def test_fixup(
         IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1"
     )
     udisks2_service.resolved_devices = [
-        "/org/freedesktop/UDisks2/block_devices/mmcblk1p3"
+        ["/org/freedesktop/UDisks2/block_devices/sda1"],
+        ["/org/freedesktop/UDisks2/block_devices/mmcblk1p3"],
     ]
 
     await system_adopt_data_disk()
 
     assert mmcblk1p3_filesystem_service.SetLabel.calls == [
-        ("hassos-data-old", {"auth.no_user_interaction": Variant("b", True)})
+        (
+            "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+            "hassos-data-old",
+            {"auth.no_user_interaction": Variant("b", True)},
+        )
     ]
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0
@@ -118,6 +143,7 @@ async def test_fixup_device_removed(
 
 async def test_fixup_reboot_failed(
     coresys: CoreSys,
+    sda1_device: FSDevice,
     mmcblk1p3_filesystem_service: FilesystemService,
     udisks2_service: UDisks2ManagerService,
     logind_service: LogindService,
@@ -126,6 +152,9 @@ async def test_fixup_reboot_failed(
     """Test fixup when reboot fails."""
     mmcblk1p3_filesystem_service.SetLabel.calls.clear()
     logind_service.side_effect_reboot = DBusError(ErrorType.SERVICE_ERROR, "error")
+    sda1_device.block_service.fixture = replace(
+        sda1_device.block_service.fixture, IdLabel="hassos-data"
+    )
     system_adopt_data_disk = FixupSystemAdoptDataDisk(coresys)
 
     assert not system_adopt_data_disk.auto
@@ -137,13 +166,18 @@ async def test_fixup_reboot_failed(
         IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1"
     )
     udisks2_service.resolved_devices = [
-        "/org/freedesktop/UDisks2/block_devices/mmcblk1p3"
+        ["/org/freedesktop/UDisks2/block_devices/sda1"],
+        ["/org/freedesktop/UDisks2/block_devices/mmcblk1p3"],
     ]
 
     await system_adopt_data_disk()
 
     assert mmcblk1p3_filesystem_service.SetLabel.calls == [
-        ("hassos-data-old", {"auth.no_user_interaction": Variant("b", True)})
+        (
+            "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+            "hassos-data-old",
+            {"auth.no_user_interaction": Variant("b", True)},
+        )
     ]
     assert len(coresys.resolution.suggestions) == 1
     assert (
@@ -156,3 +190,50 @@ async def test_fixup_reboot_failed(
         in coresys.resolution.issues
     )
     assert "Could not reboot host to finish data disk adoption" in caplog.text
+
+
+async def test_fixup_disabled_data_disk(
+    coresys: CoreSys,
+    sda1_device: FSDevice,
+    mmcblk1p3_filesystem_service: FilesystemService,
+    udisks2_service: UDisks2ManagerService,
+    logind_service: LogindService,
+):
+    """Test fixup for activating a disabled data disk."""
+    mmcblk1p3_filesystem_service.SetLabel.calls.clear()
+    logind_service.Reboot.calls.clear()
+    sda1_device.block_service.fixture = replace(
+        sda1_device.block_service.fixture, IdLabel="hassos-data-dis"
+    )
+    system_adopt_data_disk = FixupSystemAdoptDataDisk(coresys)
+
+    assert not system_adopt_data_disk.auto
+
+    coresys.resolution.suggestions = Suggestion(
+        SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    )
+    coresys.resolution.issues = Issue(
+        IssueType.DISABLED_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    )
+    udisks2_service.resolved_devices = [
+        ["/org/freedesktop/UDisks2/block_devices/sda1"],
+        ["/org/freedesktop/UDisks2/block_devices/mmcblk1p3"],
+    ]
+
+    await system_adopt_data_disk()
+
+    assert mmcblk1p3_filesystem_service.SetLabel.calls == [
+        (
+            "/org/freedesktop/UDisks2/block_devices/sda1",
+            "hassos-data",
+            {"auth.no_user_interaction": Variant("b", True)},
+        ),
+        (
+            "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+            "hassos-data-old",
+            {"auth.no_user_interaction": Variant("b", True)},
+        ),
+    ]
+    assert len(coresys.resolution.suggestions) == 0
+    assert len(coresys.resolution.issues) == 0
+    assert logind_service.Reboot.calls == [(False,)]
