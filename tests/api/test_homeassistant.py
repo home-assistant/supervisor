@@ -62,3 +62,33 @@ async def test_api_set_options(api_client: TestClient, coresys: CoreSys):
     result = await resp.json()
     assert result["data"]["watchdog"] is False
     assert result["data"]["backups_exclude_database"] is True
+
+
+async def test_api_set_image(api_client: TestClient, coresys: CoreSys):
+    """Test changing the image for homeassistant."""
+    assert (
+        coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
+    )
+    assert coresys.homeassistant.override_image is False
+
+    with patch.object(HomeAssistant, "save_data"):
+        resp = await api_client.post(
+            "/homeassistant/options",
+            json={"image": "test_image"},
+        )
+
+    assert resp.status == 200
+    assert coresys.homeassistant.image == "test_image"
+    assert coresys.homeassistant.override_image is True
+
+    with patch.object(HomeAssistant, "save_data"):
+        resp = await api_client.post(
+            "/homeassistant/options",
+            json={"image": "ghcr.io/home-assistant/qemux86-64-homeassistant"},
+        )
+
+    assert resp.status == 200
+    assert (
+        coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
+    )
+    assert coresys.homeassistant.override_image is False

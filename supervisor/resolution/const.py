@@ -96,6 +96,7 @@ class IssueType(StrEnum):
 class SuggestionType(StrEnum):
     """Sugestion type."""
 
+    ADOPT_DATA_DISK = "adopt_data_disk"
     CLEAR_FULL_BACKUP = "clear_full_backup"
     CREATE_FULL_BACKUP = "create_full_backup"
     EXECUTE_INTEGRITY = "execute_integrity"

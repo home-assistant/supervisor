@@ -89,6 +89,13 @@ class HomeAssistantCore(JobGroup):
             await self.instance.attach(
                 version=self.sys_homeassistant.version, skip_state_event_if_down=True
             )
+
+            # Ensure we are using correct image for this system (unless user has overridden it)
+            if not self.sys_homeassistant.override_image:
+                await self.instance.check_image(
+                    self.sys_homeassistant.version, self.sys_homeassistant.default_image
+                )
+                self.sys_homeassistant.image = self.sys_homeassistant.default_image
         except DockerError:
             _LOGGER.info(
                 "No Home Assistant Docker image %s found.", self.sys_homeassistant.image

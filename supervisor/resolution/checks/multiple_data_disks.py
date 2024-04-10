@@ -27,7 +27,10 @@ class CheckMultipleDataDisks(CheckBase):
                     IssueType.MULTIPLE_DATA_DISKS,
                     ContextType.SYSTEM,
                     reference=block_device.device.as_posix(),
-                    suggestions=[SuggestionType.RENAME_DATA_DISK],
+                    suggestions=[
+                        SuggestionType.RENAME_DATA_DISK,
+                        SuggestionType.ADOPT_DATA_DISK,
+                    ],
                 )
 
     async def approve_check(self, reference: str | None = None) -> bool:
@@ -58,4 +61,4 @@ class CheckMultipleDataDisks(CheckBase):
     @property
     def states(self) -> list[CoreState]:
         """Return a list of valid states when this check can run."""
-        return [CoreState.RUNNING, CoreState.STARTUP]
+        return [CoreState.RUNNING, CoreState.SETUP]

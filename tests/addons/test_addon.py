@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
-from docker.errors import DockerException, NotFound
+from docker.errors import DockerException, ImageNotFound, NotFound
 import pytest
 from securetar import SecureTarFile
 
@@ -763,3 +763,57 @@ async def test_paths_cache(coresys: CoreSys, install_addon_ssh: Addon):
         assert install_addon_ssh.with_icon
         assert install_addon_ssh.with_changelog
         assert install_addon_ssh.with_documentation
+
+
+async def test_addon_loads_wrong_image(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    mock_amd64_arch_supported,
+):
+    """Test addon is loaded with incorrect image for architecture."""
+    coresys.addons.data.save_data.reset_mock()
+    install_addon_ssh.persist["image"] = "local/aarch64-addon-ssh"
+    assert install_addon_ssh.image == "local/aarch64-addon-ssh"
+
+    with patch("pathlib.Path.is_file", return_value=True):
+        await install_addon_ssh.load()
+
+    container.remove.assert_called_once_with(force=True)
+    assert coresys.docker.images.remove.call_args_list[0].kwargs == {
+        "image": "local/aarch64-addon-ssh:latest",
+        "force": True,
+    }
+    assert coresys.docker.images.remove.call_args_list[1].kwargs == {
+        "image": "local/aarch64-addon-ssh:9.2.1",
+        "force": True,
+    }
+    coresys.docker.images.build.assert_called_once()
+    assert (
+        coresys.docker.images.build.call_args.kwargs["tag"]
+        == "local/amd64-addon-ssh:9.2.1"
+    )
+    assert coresys.docker.images.build.call_args.kwargs["platform"] == "linux/amd64"
+    assert install_addon_ssh.image == "local/amd64-addon-ssh"
+    coresys.addons.data.save_data.assert_called_once()
+
+
+async def test_addon_loads_missing_image(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    mock_amd64_arch_supported,
+):
+    """Test addon corrects a missing image on load."""
+    coresys.docker.images.get.side_effect = ImageNotFound("missing")
+
+    with patch("pathlib.Path.is_file", return_value=True):
+        await install_addon_ssh.load()
+
+    coresys.docker.images.build.assert_called_once()
+    assert (
+        coresys.docker.images.build.call_args.kwargs["tag"]
+        == "local/amd64-addon-ssh:9.2.1"
+    )
+    assert coresys.docker.images.build.call_args.kwargs["platform"] == "linux/amd64"
+    assert install_addon_ssh.image == "local/amd64-addon-ssh"

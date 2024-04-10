@@ -18,6 +18,7 @@ from ..const import (
     ATTR_WATCHDOG,
 )
 from ..validate import docker_image, network_port, token, uuid_match, version_tag
+from .const import ATTR_OVERRIDE_IMAGE
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_HASS_CONFIG = vol.Schema(
@@ -34,6 +35,7 @@ SCHEMA_HASS_CONFIG = vol.Schema(
         vol.Optional(ATTR_AUDIO_OUTPUT, default=None): vol.Maybe(str),
         vol.Optional(ATTR_AUDIO_INPUT, default=None): vol.Maybe(str),
         vol.Optional(ATTR_BACKUPS_EXCLUDE_DATABASE, default=False): vol.Boolean(),
+        vol.Optional(ATTR_OVERRIDE_IMAGE, default=False): vol.Boolean(),
     },
     extra=vol.REMOVE_EXTRA,
 )

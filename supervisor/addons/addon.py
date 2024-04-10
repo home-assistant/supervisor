@@ -195,8 +195,19 @@ class Addon(AddonModel):
         )
 
         await self._check_ingress_port()
-        with suppress(DockerError):
+        default_image = self._image(self.data)
+        try:
             await self.instance.attach(version=self.version)
+
+            # Ensure we are using correct image for this system
+            await self.instance.check_image(self.version, default_image, self.arch)
+        except DockerError:
+            _LOGGER.info("No %s addon Docker image %s found", self.slug, self.image)
+            with suppress(AddonsError):
+                await self.instance.install(self.version, default_image, arch=self.arch)
+
+        self.persist[ATTR_IMAGE] = default_image
+        self.save_persist()
 
     @property
     def ip_address(self) -> IPv4Address:

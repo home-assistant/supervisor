@@ -86,7 +86,7 @@ async def test_image_added_removed_on_update(
         DockerAddon, "_build"
     ) as build:
         await coresys.addons.update(TEST_ADDON_SLUG)
-        build.assert_called_once_with(AwesomeVersion("11.0.0"))
+        build.assert_called_once_with(AwesomeVersion("11.0.0"), "local/amd64-addon-ssh")
         install.assert_not_called()
 
 

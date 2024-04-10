@@ -641,11 +641,11 @@ class DockerAddon(DockerInterface):
     ) -> None:
         """Pull Docker image or build it."""
         if need_build is None and self.addon.need_build or need_build:
-            await self._build(version)
+            await self._build(version, image)
         else:
             await super().install(version, image, latest, arch)
 
-    async def _build(self, version: AwesomeVersion) -> None:
+    async def _build(self, version: AwesomeVersion, image: str | None = None) -> None:
         """Build a Docker container."""
         build_env = AddonBuild(self.coresys, self.addon)
         if not build_env.is_valid:
@@ -657,7 +657,7 @@ class DockerAddon(DockerInterface):
             image, log = await self.sys_run_in_executor(
                 self.sys_docker.images.build,
                 use_config_proxy=False,
-                **build_env.get_docker_args(version),
+                **build_env.get_docker_args(version, image),
             )
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, version, log)

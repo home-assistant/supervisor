@@ -123,9 +123,9 @@ class DataDisk(CoreSysAttributes):
             vendor="",
             model="",
             serial="",
-            id=self.sys_dbus.agent.datadisk.current_device,
+            id=self.sys_dbus.agent.datadisk.current_device.as_posix(),
             size=0,
-            device_path=self.sys_dbus.agent.datadisk.current_device,
+            device_path=self.sys_dbus.agent.datadisk.current_device.as_posix(),
             object_path="",
             device_object_path="",
         )

@@ -93,6 +93,9 @@ class APIHomeAssistant(CoreSysAttributes):
 
         if ATTR_IMAGE in body:
             self.sys_homeassistant.image = body[ATTR_IMAGE]
+            self.sys_homeassistant.override_image = (
+                self.sys_homeassistant.image != self.sys_homeassistant.default_image
+            )
 
         if ATTR_BOOT in body:
             self.sys_homeassistant.boot = body[ATTR_BOOT]
