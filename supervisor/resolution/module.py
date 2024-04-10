@@ -186,8 +186,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         """Add an issue and suggestions."""
         if suggestions:
             for suggestion in suggestions:
-                self.suggestions = Suggestion(
-                    suggestion, issue.context, issue.reference
+                self.suggestions.append(
+                    Suggestion(suggestion, issue.context, issue.reference)
                 )
 
         self.issues = issue
