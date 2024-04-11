@@ -144,5 +144,9 @@ async def test_set_label(
     filesystem_sda1_service.SetLabel.calls.clear()
     await sda1.set_label("test")
     assert filesystem_sda1_service.SetLabel.calls == [
-        ("test", {"auth.no_user_interaction": Variant("b", True)})
+        (
+            "/org/freedesktop/UDisks2/block_devices/sda1",
+            "test",
+            {"auth.no_user_interaction": Variant("b", True)},
+        )
     ]

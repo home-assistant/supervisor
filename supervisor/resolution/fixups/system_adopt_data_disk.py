@@ -6,7 +6,7 @@ from pathlib import Path
 from ...coresys import CoreSys
 from ...dbus.udisks2.data import DeviceSpecification
 from ...exceptions import DBusError, HostError, ResolutionFixupError
-from ...os.const import FILESYSTEM_LABEL_OLD_DATA_DISK
+from ...os.const import FILESYSTEM_LABEL_DATA_DISK, FILESYSTEM_LABEL_OLD_DATA_DISK
 from ..const import ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
@@ -23,8 +23,10 @@ class FixupSystemAdoptDataDisk(FixupBase):
 
     async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
-        if not await self.sys_dbus.udisks2.resolve_device(
-            DeviceSpecification(path=Path(reference))
+        if not (
+            new_resolved := await self.sys_dbus.udisks2.resolve_device(
+                DeviceSpecification(path=Path(reference))
+            )
         ):
             _LOGGER.info(
                 "Data disk at %s with name conflict was removed, skipping adopt",
@@ -36,15 +38,29 @@ class FixupSystemAdoptDataDisk(FixupBase):
         if (
             not current
             or not (
-                resolved := await self.sys_dbus.udisks2.resolve_device(
+                current_resolved := await self.sys_dbus.udisks2.resolve_device(
                     DeviceSpecification(path=current)
                 )
             )
-            or not resolved[0].filesystem
+            or not current_resolved[0].filesystem
         ):
             raise ResolutionFixupError(
                 "Cannot resolve current data disk for rename", _LOGGER.error
             )
+
+        if new_resolved[0].id_label != FILESYSTEM_LABEL_DATA_DISK:
+            _LOGGER.info(
+                "Renaming disabled data disk at %s to %s to activate it",
+                reference,
+                FILESYSTEM_LABEL_DATA_DISK,
+            )
+            try:
+                await new_resolved[0].filesystem.set_label(FILESYSTEM_LABEL_DATA_DISK)
+            except DBusError as err:
+                raise ResolutionFixupError(
+                    f"Could not rename filesystem at {reference}: {err!s}",
+                    _LOGGER.error,
+                ) from err
 
         _LOGGER.info(
             "Renaming current data disk at %s to %s so new data disk at %s becomes primary ",
@@ -53,7 +69,9 @@ class FixupSystemAdoptDataDisk(FixupBase):
             reference,
         )
         try:
-            await resolved[0].filesystem.set_label(FILESYSTEM_LABEL_OLD_DATA_DISK)
+            await current_resolved[0].filesystem.set_label(
+                FILESYSTEM_LABEL_OLD_DATA_DISK
+            )
         except DBusError as err:
             raise ResolutionFixupError(
                 f"Could not rename filesystem at {current.as_posix()}: {err!s}",
@@ -87,4 +105,4 @@ class FixupSystemAdoptDataDisk(FixupBase):
     @property
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.MULTIPLE_DATA_DISKS]
+        return [IssueType.DISABLED_DATA_DISK, IssueType.MULTIPLE_DATA_DISKS]

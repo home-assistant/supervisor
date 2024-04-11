@@ -32,7 +32,9 @@ class UDisks2Manager(DBusServiceMock):
         "/org/freedesktop/UDisks2/block_devices/sdb1",
         "/org/freedesktop/UDisks2/block_devices/zram1",
     ]
-    resolved_devices = ["/org/freedesktop/UDisks2/block_devices/sda1"]
+    resolved_devices: list[list[str]] | list[str] = [
+        "/org/freedesktop/UDisks2/block_devices/sda1"
+    ]
 
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> "s":
@@ -98,4 +100,8 @@ class UDisks2Manager(DBusServiceMock):
     @dbus_method()
     def ResolveDevice(self, devspec: "a{sv}", options: "a{sv}") -> "ao":
         """Do ResolveDevice method."""
+        if len(self.resolved_devices) > 0 and isinstance(
+            self.resolved_devices[0], list
+        ):
+            return self.resolved_devices.pop(0)
         return self.resolved_devices
