@@ -325,3 +325,38 @@ async def test_repair_failed(
 
     capture_exception.assert_called_once()
     assert check_exception_chain(capture_exception.call_args[0][0], CodeNotaryUntrusted)
+
+
+@pytest.mark.parametrize(
+    "plugin",
+    [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
+    indirect=True,
+)
+async def test_load_with_incorrect_image(
+    coresys: CoreSys, container: MagicMock, plugin: PluginBase
+):
+    """Test plugin loads with the incorrect image."""
+    plugin.image = old_image = f"ghcr.io/home-assistant/aarch64-hassio-{plugin.slug}"
+    correct_image = f"ghcr.io/home-assistant/amd64-hassio-{plugin.slug}"
+    coresys.updater._data["image"][plugin.slug] = correct_image  # pylint: disable=protected-access
+    plugin.version = AwesomeVersion("2024.4.0")
+
+    container.status = "running"
+    container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
+
+    await plugin.load()
+
+    container.remove.assert_called_once_with(force=True)
+    assert coresys.docker.images.remove.call_args_list[0].kwargs == {
+        "image": f"{old_image}:latest",
+        "force": True,
+    }
+    assert coresys.docker.images.remove.call_args_list[1].kwargs == {
+        "image": f"{old_image}:2024.4.0",
+        "force": True,
+    }
+    coresys.docker.images.pull.assert_called_once_with(
+        f"{correct_image}:2024.4.0",
+        platform="linux/amd64",
+    )
+    assert plugin.image == correct_image

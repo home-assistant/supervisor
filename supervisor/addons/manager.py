@@ -77,15 +77,20 @@ class AddonManager(CoreSysAttributes):
 
     async def load(self) -> None:
         """Start up add-on management."""
-        tasks = []
+        # Refresh cache for all store addons
+        tasks: list[Awaitable[None]] = [
+            store.refresh_path_cache() for store in self.store.values()
+        ]
+
+        # Load all installed addons
         for slug in self.data.system:
             addon = self.local[slug] = Addon(self.coresys, slug)
-            tasks.append(self.sys_create_task(addon.load()))
+            tasks.append(addon.load())
 
         # Run initial tasks
-        _LOGGER.info("Found %d installed add-ons", len(tasks))
+        _LOGGER.info("Found %d installed add-ons", len(self.data.system))
         if tasks:
-            await asyncio.wait(tasks)
+            await asyncio.gather(*tasks)
 
         # Sync DNS
         await self.sync_dns()
@@ -173,13 +178,13 @@ class AddonManager(CoreSysAttributes):
 
         _LOGGER.info("Add-on '%s' successfully installed", slug)
 
-    async def uninstall(self, slug: str) -> None:
+    async def uninstall(self, slug: str, *, remove_config: bool = False) -> None:
         """Remove an add-on."""
         if slug not in self.local:
             _LOGGER.warning("Add-on %s is not installed", slug)
             return
 
-        await self.local[slug].uninstall()
+        await self.local[slug].uninstall(remove_config=remove_config)
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 

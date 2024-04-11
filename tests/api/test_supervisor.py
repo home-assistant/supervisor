@@ -9,6 +9,7 @@ from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitError, StoreNotFound
 from supervisor.store.repository import Repository
 
+from tests.api import common_test_api_advanced_logs
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.os_agent import OSAgent as OSAgentService
 
@@ -148,11 +149,27 @@ async def test_api_supervisor_options_diagnostics(
     assert coresys.dbus.agent.diagnostics is False
 
 
-async def test_api_supervisor_logs(api_client: TestClient, docker_logs: MagicMock):
+async def test_api_supervisor_logs(api_client: TestClient, journald_logs: MagicMock):
     """Test supervisor logs."""
-    resp = await api_client.get("/supervisor/logs")
+    await common_test_api_advanced_logs(
+        "/supervisor", "hassio_supervisor", api_client, journald_logs
+    )
+
+
+async def test_api_supervisor_fallback(
+    api_client: TestClient, journald_logs: MagicMock, docker_logs: MagicMock
+):
+    """Check that supervisor logs read from container logs if reading from journald gateway fails badly."""
+    journald_logs.side_effect = OSError("Something bad happened!")
+
+    with patch("supervisor.api._LOGGER.exception") as logger:
+        resp = await api_client.get("/supervisor/logs")
+        logger.assert_called_once_with(
+            "Failed to get supervisor logs using advanced_logs API"
+        )
+
     assert resp.status == 200
-    assert resp.content_type == "application/octet-stream"
+    assert resp.content_type == "text/plain"
     content = await resp.read()
     assert content.split(b"\n")[0:2] == [
         b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os\x1b[0m",

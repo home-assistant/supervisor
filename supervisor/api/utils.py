@@ -25,7 +25,7 @@ from ..exceptions import APIError, APIForbidden, DockerAPIError, HassioError
 from ..utils import check_exception_chain, get_message_from_exception_chain
 from ..utils.json import json_dumps, json_loads as json_loads_util
 from ..utils.log_format import format_message
-from .const import CONTENT_TYPE_BINARY
+from . import const
 
 
 def excract_supervisor_token(request: web.Request) -> str | None:
@@ -91,7 +91,7 @@ def require_home_assistant(method):
     return wrap_api
 
 
-def api_process_raw(content):
+def api_process_raw(content, *, error_type=None):
     """Wrap content_type into function."""
 
     def wrap_method(method):
@@ -101,15 +101,15 @@ def api_process_raw(content):
             """Return api information."""
             try:
                 msg_data = await method(api, *args, **kwargs)
-                msg_type = content
-            except (APIError, APIForbidden) as err:
-                msg_data = str(err).encode()
-                msg_type = CONTENT_TYPE_BINARY
-            except HassioError:
-                msg_data = b""
-                msg_type = CONTENT_TYPE_BINARY
+            except HassioError as err:
+                return api_return_error(
+                    err, error_type=error_type or const.CONTENT_TYPE_BINARY
+                )
 
-            return web.Response(body=msg_data, content_type=msg_type)
+            if isinstance(msg_data, (web.Response, web.StreamResponse)):
+                return msg_data
+
+            return web.Response(body=msg_data, content_type=content)
 
         return wrap_api
 
@@ -117,24 +117,40 @@ def api_process_raw(content):
 
 
 def api_return_error(
-    error: Exception | None = None, message: str | None = None
+    error: Exception | None = None,
+    message: str | None = None,
+    error_type: str | None = None,
 ) -> web.Response:
     """Return an API error message."""
     if error and not message:
         message = get_message_from_exception_chain(error)
         if check_exception_chain(error, DockerAPIError):
             message = format_message(message)
+    if not message:
+        message = "Unknown error, see supervisor"
 
-    result = {
-        JSON_RESULT: RESULT_ERROR,
-        JSON_MESSAGE: message or "Unknown error, see supervisor",
-    }
-    if isinstance(error, APIError) and error.job_id:
-        result[JSON_JOB_ID] = error.job_id
+    status = 400
+    if is_api_error := isinstance(error, APIError):
+        status = error.status
+
+    match error_type:
+        case const.CONTENT_TYPE_TEXT:
+            return web.Response(body=message, content_type=error_type, status=status)
+        case const.CONTENT_TYPE_BINARY:
+            return web.Response(
+                body=message.encode(), content_type=error_type, status=status
+            )
+        case _:
+            result = {
+                JSON_RESULT: RESULT_ERROR,
+                JSON_MESSAGE: message,
+            }
+            if is_api_error and error.job_id:
+                result[JSON_JOB_ID] = error.job_id
 
     return web.json_response(
         result,
-        status=400,
+        status=status,
         dumps=json_dumps,
     )
 

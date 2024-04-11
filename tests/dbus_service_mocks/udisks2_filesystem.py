@@ -83,7 +83,7 @@ class Filesystem(DBusServiceMock):
         """Get Size."""
         return self.fixture.Size
 
-    @dbus_method()
+    @dbus_method(track_obj_path=True)
     def SetLabel(self, label: "s", options: "a{sv}") -> None:
         """Do SetLabel method."""
 

@@ -1,6 +1,6 @@
 """Test Home Assistant watchdog."""
 import asyncio
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 
@@ -135,3 +135,30 @@ async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> N
         await asyncio.sleep(0)
         start.assert_called_once()
         rebuild.assert_called_once()
+
+
+async def test_home_assistant_watchdog_skip_on_load(
+    coresys: CoreSys, container: MagicMock
+) -> None:
+    """Test home assistant watchdog skips a crash event on load."""
+    container.status = "stopped"
+    container.attrs["State"]["ExitCode"] = 1
+    coresys.homeassistant.core.watchdog = True
+
+    events = AsyncMock()
+    coresys.bus.register_event(BusEvent.DOCKER_CONTAINER_STATE_CHANGE, events)
+
+    coresys.homeassistant.version = AwesomeVersion("2022.7.3")
+    with patch(
+        "supervisor.docker.interface.DockerInterface.version",
+        new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
+    ), patch.object(
+        type(coresys.homeassistant.core), "restart"
+    ) as restart, patch.object(type(coresys.homeassistant.core), "start") as start:
+        await coresys.homeassistant.core.load()
+
+        # No events should be raised on attach
+        await asyncio.sleep(0)
+        events.assert_not_called()
+        restart.assert_not_called()
+        start.assert_not_called()

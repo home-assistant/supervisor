@@ -2,7 +2,7 @@
 
 from ipaddress import IPv4Address
 from pathlib import Path
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, MagicMock, patch
 
 from awesomeversion import AwesomeVersion
 from docker.types import Mount
@@ -11,6 +11,8 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.manager import DockerAPI
 from supervisor.homeassistant.const import LANDINGPAGE
+
+from . import DEV_MOUNT
 
 
 async def test_homeassistant_start(
@@ -42,7 +44,7 @@ async def test_homeassistant_start(
             "HASSIO_TOKEN": ANY,
         }
         assert run.call_args.kwargs["mounts"] == [
-            Mount(type="bind", source="/dev", target="/dev", read_only=True),
+            DEV_MOUNT,
             Mount(type="bind", source="/run/dbus", target="/run/dbus", read_only=True),
             Mount(type="bind", source="/run/udev", target="/run/udev", read_only=True),
             Mount(
@@ -128,7 +130,7 @@ async def test_landingpage_start(
             "HASSIO_TOKEN": ANY,
         }
         assert run.call_args.kwargs["mounts"] == [
-            Mount(type="bind", source="/dev", target="/dev", read_only=True),
+            DEV_MOUNT,
             Mount(type="bind", source="/run/dbus", target="/run/dbus", read_only=True),
             Mount(type="bind", source="/run/udev", target="/run/udev", read_only=True),
             Mount(
@@ -145,3 +147,32 @@ async def test_landingpage_start(
             ),
         ]
         assert "volumes" not in run.call_args.kwargs
+
+
+async def test_timeout(coresys: CoreSys, container: MagicMock):
+    """Test timeout for set from S6_SERVICES_GRACETIME."""
+    assert coresys.homeassistant.core.instance.timeout == 260
+
+    # Env missing, remain at default
+    await coresys.homeassistant.core.instance.attach(AwesomeVersion("2024.3.0"))
+    assert coresys.homeassistant.core.instance.timeout == 260
+
+    # Set a mock value for env in attrs, see that it changes
+    container.attrs["Config"] = {
+        "Env": [
+            "SUPERVISOR=172.30.32.2",
+            "HASSIO=172.30.32.2",
+            "TZ=America/New_York",
+            "SUPERVISOR_TOKEN=abc123",
+            "HASSIO_TOKEN=abc123",
+            "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "LANG=C.UTF-8",
+            "S6_BEHAVIOUR_IF_STAGE2_FAILS=2",
+            "S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0",
+            "S6_CMD_WAIT_FOR_SERVICES=1",
+            "S6_SERVICES_READYTIME=50",
+            "S6_SERVICES_GRACETIME=300000",
+        ]
+    }
+    await coresys.homeassistant.core.instance.attach(AwesomeVersion("2024.3.0"))
+    assert coresys.homeassistant.core.instance.timeout == 320

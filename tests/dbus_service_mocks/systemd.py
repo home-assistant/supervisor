@@ -28,6 +28,7 @@ class Systemd(DBusServiceMock):
     reboot_watchdog_usec = 600000000
     kexec_watchdog_usec = 0
     service_watchdogs = True
+    virtualization = ""
     response_get_unit: dict[str, list[str | DBusError]] | list[
         str | DBusError
     ] | str | DBusError = "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
@@ -53,7 +54,7 @@ class Systemd(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def Virtualization(self) -> "s":
         """Get Virtualization."""
-        return ""
+        return self.virtualization
 
     @dbus_property(access=PropertyAccess.READ)
     def Architecture(self) -> "s":

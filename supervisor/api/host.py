@@ -28,7 +28,14 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HostLogError
-from ..host.const import PARAM_BOOT_ID, PARAM_FOLLOW, PARAM_SYSLOG_IDENTIFIER
+from ..host.const import (
+    PARAM_BOOT_ID,
+    PARAM_FOLLOW,
+    PARAM_SYSLOG_IDENTIFIER,
+    LogFormat,
+    LogFormatter,
+)
+from ..utils.systemd_journal import journal_logs_reader
 from .const import (
     ATTR_AGENT_VERSION,
     ATTR_APPARMOR_VERSION,
@@ -42,9 +49,11 @@ from .const import (
     ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
+    ATTR_VIRTUALIZATION,
     CONTENT_TYPE_TEXT,
+    CONTENT_TYPE_X_LOG,
 )
-from .utils import api_process, api_validate
+from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -65,6 +74,7 @@ class APIHost(CoreSysAttributes):
             ATTR_AGENT_VERSION: self.sys_dbus.agent.version,
             ATTR_APPARMOR_VERSION: self.sys_host.apparmor.version,
             ATTR_CHASSIS: self.sys_host.info.chassis,
+            ATTR_VIRTUALIZATION: self.sys_host.info.virtualization,
             ATTR_CPE: self.sys_host.info.cpe,
             ATTR_DEPLOYMENT: self.sys_host.info.deployment,
             ATTR_DISK_FREE: self.sys_host.info.free_space,
@@ -153,11 +163,12 @@ class APIHost(CoreSysAttributes):
                 raise APIError() from err
         return possible_offset
 
-    @api_process
+    @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
     async def advanced_logs(
         self, request: web.Request, identifier: str | None = None, follow: bool = False
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
+        log_formatter = LogFormatter.PLAIN
         params = {}
         if identifier:
             params[PARAM_SYSLOG_IDENTIFIER] = identifier
@@ -165,6 +176,8 @@ class APIHost(CoreSysAttributes):
             params[PARAM_SYSLOG_IDENTIFIER] = request.match_info.get(IDENTIFIER)
         else:
             params[PARAM_SYSLOG_IDENTIFIER] = self.sys_host.logs.default_identifiers
+            # host logs should be always verbose, no matter what Accept header is used
+            log_formatter = LogFormatter.VERBOSE
 
         if BOOTID in request.match_info:
             params[PARAM_BOOT_ID] = await self._get_boot_id(
@@ -175,11 +188,16 @@ class APIHost(CoreSysAttributes):
 
         if ACCEPT in request.headers and request.headers[ACCEPT] not in [
             CONTENT_TYPE_TEXT,
+            CONTENT_TYPE_X_LOG,
             "*/*",
         ]:
             raise APIError(
-                "Invalid content type requested. Only text/plain supported for now."
+                "Invalid content type requested. Only text/plain and text/x-log "
+                "supported for now."
             )
+
+        if request.headers[ACCEPT] == CONTENT_TYPE_X_LOG:
+            log_formatter = LogFormatter.VERBOSE
 
         if RANGE in request.headers:
             range_header = request.headers.get(RANGE)
@@ -187,14 +205,14 @@ class APIHost(CoreSysAttributes):
             range_header = f"entries=:-{DEFAULT_RANGE}:"
 
         async with self.sys_host.logs.journald_logs(
-            params=params, range_header=range_header
+            params=params, range_header=range_header, accept=LogFormat.JOURNAL
         ) as resp:
             try:
                 response = web.StreamResponse()
                 response.content_type = CONTENT_TYPE_TEXT
                 await response.prepare(request)
-                async for data in resp.content:
-                    await response.write(data)
+                async for line in journal_logs_reader(resp, log_formatter):
+                    await response.write(line.encode("utf-8") + b"\n")
             except ConnectionResetError as ex:
                 raise APIError(
                     "Connection reset when trying to fetch data from systemd-journald."

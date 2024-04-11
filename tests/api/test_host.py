@@ -1,12 +1,16 @@
 """Test Host API."""
 
-from unittest.mock import MagicMock
+from unittest.mock import ANY, MagicMock
 
 from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
+from supervisor.host.const import LogFormat, LogFormatter
+
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 DEFAULT_RANGE = "entries=:-100:"
 # pylint: disable=protected-access
@@ -146,6 +150,26 @@ async def test_api_identifiers_info(api_client: TestClient, journald_logs: Magic
     }
 
 
+async def test_api_virtualization_info(
+    api_client: TestClient,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    coresys_disk_info: CoreSys,
+):
+    """Test getting virtualization info."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+
+    resp = await api_client.get("/host/info")
+    result = await resp.json()
+    assert result["data"]["virtualization"] == ""
+
+    systemd_service.virtualization = "vmware"
+    await coresys_disk_info.dbus.systemd.update()
+
+    resp = await api_client.get("/host/info")
+    result = await resp.json()
+    assert result["data"]["virtualization"] == "vmware"
+
+
 async def test_advanced_logs(
     api_client: TestClient, coresys: CoreSys, journald_logs: MagicMock
 ):
@@ -154,6 +178,7 @@ async def test_advanced_logs(
     journald_logs.assert_called_once_with(
         params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -161,7 +186,9 @@ async def test_advanced_logs(
     identifier = "dropbear"
     await api_client.get(f"/host/logs/identifiers/{identifier}")
     journald_logs.assert_called_once_with(
-        params={"SYSLOG_IDENTIFIER": identifier}, range_header=DEFAULT_RANGE
+        params={"SYSLOG_IDENTIFIER": identifier},
+        range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -174,6 +201,7 @@ async def test_advanced_logs(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -182,6 +210,7 @@ async def test_advanced_logs(
     journald_logs.assert_called_once_with(
         params={"_BOOT_ID": bootid, "SYSLOG_IDENTIFIER": identifier},
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -191,6 +220,7 @@ async def test_advanced_logs(
     journald_logs.assert_called_once_with(
         params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
         range_header=headers["Range"],
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -202,6 +232,7 @@ async def test_advanced_logs(
             "follow": "",
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
 
@@ -216,6 +247,7 @@ async def test_advanced_logs_boot_id_offset(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -227,6 +259,7 @@ async def test_advanced_logs_boot_id_offset(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
@@ -238,24 +271,56 @@ async def test_advanced_logs_boot_id_offset(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
         },
         range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
     )
 
     journald_logs.reset_mock()
+
+
+async def test_advanced_logs_formatters(
+    api_client: TestClient,
+    coresys: CoreSys,
+    journald_gateway: MagicMock,
+    journal_logs_reader: MagicMock,
+):
+    """Test advanced logs formatters varying on Accept header."""
+
+    await api_client.get("/host/logs")
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
+
+    journal_logs_reader.reset_mock()
+
+    headers = {"Accept": "text/x-log"}
+    await api_client.get("/host/logs", headers=headers)
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
+
+    journal_logs_reader.reset_mock()
+
+    await api_client.get("/host/logs/identifiers/test")
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.PLAIN)
+
+    journal_logs_reader.reset_mock()
+
+    headers = {"Accept": "text/x-log"}
+    await api_client.get("/host/logs/identifiers/test", headers=headers)
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
 
 
 async def test_advanced_logs_errors(api_client: TestClient):
     """Test advanced logging API errors."""
     # coresys = coresys_logs_control
     resp = await api_client.get("/host/logs")
-    result = await resp.json()
-    assert result["result"] == "error"
-    assert result["message"] == "No systemd-journal-gatewayd Unix socket available"
+    assert resp.content_type == "text/plain"
+    assert resp.status == 400
+    content = await resp.text()
+    assert content == "No systemd-journal-gatewayd Unix socket available"
 
     headers = {"Accept": "application/json"}
     resp = await api_client.get("/host/logs", headers=headers)
-    result = await resp.json()
-    assert result["result"] == "error"
+    assert resp.content_type == "text/plain"
+    assert resp.status == 400
+    content = await resp.text()
     assert (
-        result["message"]
-        == "Invalid content type requested. Only text/plain supported for now."
+        content
+        == "Invalid content type requested. Only text/plain and text/x-log supported for now."
     )

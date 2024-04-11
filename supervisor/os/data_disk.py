@@ -123,9 +123,9 @@ class DataDisk(CoreSysAttributes):
             vendor="",
             model="",
             serial="",
-            id=self.sys_dbus.agent.datadisk.current_device,
+            id=self.sys_dbus.agent.datadisk.current_device.as_posix(),
             size=0,
-            device_path=self.sys_dbus.agent.datadisk.current_device,
+            device_path=self.sys_dbus.agent.datadisk.current_device.as_posix(),
             object_path="",
             device_object_path="",
         )
@@ -269,6 +269,35 @@ class DataDisk(CoreSysAttributes):
         except HostError as err:
             raise HassOSError(
                 f"Can't restart device to finish disk migration: {err!s}",
+                _LOGGER.warning,
+            ) from err
+
+    @Job(
+        name="data_disk_wipe",
+        conditions=[JobCondition.HAOS, JobCondition.OS_AGENT, JobCondition.HEALTHY],
+        limit=JobExecutionLimit.ONCE,
+        on_condition=HassOSJobError,
+    )
+    async def wipe_disk(self) -> None:
+        """Wipe the current data disk."""
+        _LOGGER.info("Scheduling wipe of data disk on next reboot")
+        try:
+            if not await self.sys_dbus.agent.system.schedule_wipe_device():
+                raise HassOSDataDiskError(
+                    "Can't schedule wipe of data disk, check host logs for details",
+                    _LOGGER.error,
+                )
+        except DBusError as err:
+            raise HassOSDataDiskError(
+                f"Can't schedule wipe of data disk: {err!s}", _LOGGER.error
+            ) from err
+
+        _LOGGER.info("Rebooting the host to finish the wipe")
+        try:
+            await self.sys_host.control.reboot()
+        except (HostError, DBusError) as err:
+            raise HassOSError(
+                f"Can't restart device to finish data disk wipe: {err!s}",
                 _LOGGER.warning,
             ) from err
 

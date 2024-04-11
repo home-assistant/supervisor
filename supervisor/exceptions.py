@@ -133,6 +133,14 @@ class HassOSDataDiskError(HassOSError):
     """Issues with the DataDisk feature from HAOS."""
 
 
+class HassOSSlotNotFound(HassOSError):
+    """Could not find boot slot."""
+
+
+class HassOSSlotUpdateError(HassOSError):
+    """Error while updating a slot via rauc."""
+
+
 # All Plugins
 
 
@@ -267,6 +275,10 @@ class AuthPasswordResetError(HassioError):
     """Auth error if password reset failed."""
 
 
+class AuthListUsersError(HassioError):
+    """Auth error if listing users failed."""
+
+
 # Host
 
 
@@ -304,6 +316,8 @@ class HostLogError(HostError):
 class APIError(HassioError, RuntimeError):
     """API errors."""
 
+    status = 400
+
     def __init__(
         self,
         message: str | None = None,
@@ -317,6 +331,8 @@ class APIError(HassioError, RuntimeError):
 
 class APIForbidden(APIError):
     """API forbidden error."""
+
+    status = 403
 
 
 class APIAddonNotInstalled(APIError):
@@ -491,6 +507,17 @@ class WhoamiSSLError(WhoamiError):
 
 class WhoamiConnectivityError(WhoamiError):
     """Connectivity errors while using whoami."""
+
+
+# utils/systemd_journal
+
+
+class SystemdJournalError(HassioError):
+    """Error while processing systemd journal logs."""
+
+
+class MalformedBinaryEntryError(SystemdJournalError):
+    """Raised when binary entry in the journal isn't followed by a newline."""
 
 
 # docker/api

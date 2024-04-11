@@ -13,9 +13,11 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.exceptions import HassioError
 from supervisor.store.repository import Repository
 
 from ..const import TEST_ADDON_SLUG
+from . import common_test_api_advanced_logs
 
 
 def _create_test_event(name: str, state: ContainerState) -> DockerContainerStateEvent:
@@ -67,17 +69,38 @@ async def test_addons_info_not_installed(
 
 
 async def test_api_addon_logs(
-    api_client: TestClient, docker_logs: MagicMock, install_addon_ssh: Addon
+    api_client: TestClient, journald_logs: MagicMock, install_addon_ssh: Addon
 ):
     """Test addon logs."""
+    await common_test_api_advanced_logs(
+        "/addons/local_ssh", "addon_local_ssh", api_client, journald_logs
+    )
+
+
+async def test_api_addon_logs_not_installed(api_client: TestClient):
+    """Test error is returned for non-existing add-on."""
+    resp = await api_client.get("/addons/hic_sunt_leones/logs")
+
+    assert resp.status == 400
+    assert resp.content_type == "text/plain"
+    content = await resp.text()
+    assert content == "Addon hic_sunt_leones does not exist"
+
+
+async def test_api_addon_logs_error(
+    api_client: TestClient,
+    journald_logs: MagicMock,
+    docker_logs: MagicMock,
+    install_addon_ssh: Addon,
+):
+    """Test errors are properly handled for add-on logs."""
+    journald_logs.side_effect = HassioError("Something bad happened!")
     resp = await api_client.get("/addons/local_ssh/logs")
-    assert resp.status == 200
-    assert resp.content_type == "application/octet-stream"
-    content = await resp.read()
-    assert content.split(b"\n")[0:2] == [
-        b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os\x1b[0m",
-        b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor\x1b[0m",
-    ]
+
+    assert resp.status == 400
+    assert resp.content_type == "text/plain"
+    content = await resp.text()
+    assert content == "Something bad happened!"
 
 
 async def test_api_addon_start_healthcheck(
@@ -220,3 +243,45 @@ async def test_api_addon_rebuild_healthcheck(
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
     assert install_addon_ssh.state == AddonState.STARTED
     assert resp.status == 200
+
+
+async def test_api_addon_uninstall(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_example: Addon,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test uninstall."""
+    install_addon_example.data["map"].append(
+        {"type": "addon_config", "read_only": False}
+    )
+    install_addon_example.path_config.mkdir()
+    (test_file := install_addon_example.path_config / "test.txt").touch()
+
+    resp = await api_client.post("/addons/local_example/uninstall")
+    assert resp.status == 200
+    assert not coresys.addons.get("local_example", local_only=True)
+    assert test_file.exists()
+
+
+async def test_api_addon_uninstall_remove_config(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_example: Addon,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test uninstall and remove config."""
+    install_addon_example.data["map"].append(
+        {"type": "addon_config", "read_only": False}
+    )
+    (test_folder := install_addon_example.path_config).mkdir()
+    (install_addon_example.path_config / "test.txt").touch()
+
+    resp = await api_client.post(
+        "/addons/local_example/uninstall", json={"remove_config": True}
+    )
+    assert resp.status == 200
+    assert not coresys.addons.get("local_example", local_only=True)
+    assert not test_folder.exists()

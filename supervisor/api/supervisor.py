@@ -49,7 +49,7 @@ from ..store.validate import repositories
 from ..utils.sentry import close_sentry, init_sentry
 from ..utils.validate import validate_timezone
 from ..validate import version_tag, wait_boot
-from .const import CONTENT_TYPE_BINARY
+from .const import CONTENT_TYPE_TEXT
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -229,7 +229,7 @@ class APISupervisor(CoreSysAttributes):
         """Soft restart Supervisor."""
         return asyncio.shield(self.sys_supervisor.restart())
 
-    @api_process_raw(CONTENT_TYPE_BINARY)
+    @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
     def logs(self, request: web.Request) -> Awaitable[bytes]:
         """Return supervisor Docker logs."""
         return self.sys_supervisor.logs()

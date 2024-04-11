@@ -74,6 +74,7 @@ MOUNT_DBUS = Mount(
     type=MountType.BIND, source="/run/dbus", target="/run/dbus", read_only=True
 )
 MOUNT_DEV = Mount(type=MountType.BIND, source="/dev", target="/dev", read_only=True)
+MOUNT_DEV.setdefault("BindOptions", {})["ReadOnlyNonRecursive"] = True
 MOUNT_DOCKER = Mount(
     type=MountType.BIND,
     source="/run/docker.sock",

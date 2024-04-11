@@ -2,8 +2,6 @@
 
 Code: https://github.com/home-assistant/plugin-multicast
 """
-import asyncio
-from contextlib import suppress
 import logging
 
 from awesomeversion import AwesomeVersion
@@ -44,31 +42,14 @@ class PluginMulticast(PluginBase):
         self.instance: DockerMulticast = DockerMulticast(coresys)
 
     @property
+    def default_image(self) -> str:
+        """Return default image for multicast plugin."""
+        return self.sys_updater.image_multicast
+
+    @property
     def latest_version(self) -> AwesomeVersion | None:
         """Return latest version of Multicast."""
         return self.sys_updater.version_multicast
-
-    async def install(self) -> None:
-        """Install Multicast."""
-        _LOGGER.info("Running setup for Multicast plugin")
-        while True:
-            # read multicast tag and install it
-            if not self.latest_version:
-                await self.sys_updater.reload()
-
-            if self.latest_version:
-                with suppress(DockerError):
-                    await self.instance.install(
-                        self.latest_version, image=self.sys_updater.image_multicast
-                    )
-                    break
-            _LOGGER.warning("Error on install Multicast plugin. Retrying in 30sec")
-            await asyncio.sleep(30)
-
-        _LOGGER.info("Multicast plugin is now installed")
-        self.version = self.instance.version
-        self.image = self.sys_updater.image_multicast
-        self.save_data()
 
     @Job(
         name="plugin_multicast_update",
@@ -77,31 +58,12 @@ class PluginMulticast(PluginBase):
     )
     async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Multicast plugin."""
-        version = version or self.latest_version
-        old_image = self.image
-
-        if version == self.version:
-            _LOGGER.warning("Version %s is already installed for Multicast", version)
-            return
-
-        # Update
         try:
-            await self.instance.update(version, image=self.sys_updater.image_multicast)
+            await super().update(version)
         except DockerError as err:
             raise MulticastUpdateError(
                 "Multicast update failed", _LOGGER.error
             ) from err
-
-        self.version = version
-        self.image = self.sys_updater.image_multicast
-        self.save_data()
-
-        # Cleanup
-        with suppress(DockerError):
-            await self.instance.cleanup(old_image=old_image)
-
-        # Start Multicast plugin
-        await self.start()
 
     async def restart(self) -> None:
         """Restart Multicast plugin."""

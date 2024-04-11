@@ -62,3 +62,10 @@ class LogFormat(StrEnum):
     JOURNAL = "application/vnd.fdo.journal"
     JSON = "application/json"
     TEXT = "text/plain"
+
+
+class LogFormatter(StrEnum):
+    """Log formatter."""
+
+    PLAIN = "plain"
+    VERBOSE = "verbose"

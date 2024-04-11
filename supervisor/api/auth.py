@@ -1,6 +1,7 @@
 """Init file for Supervisor auth/SSO RESTful API."""
 import asyncio
 import logging
+from typing import Any
 
 from aiohttp import BasicAuth, web
 from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE, WWW_AUTHENTICATE
@@ -8,11 +9,19 @@ from aiohttp.web_exceptions import HTTPUnauthorized
 import voluptuous as vol
 
 from ..addons.addon import Addon
-from ..const import ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
+from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIForbidden
 from ..utils.json import json_loads
-from .const import CONTENT_TYPE_JSON, CONTENT_TYPE_URL
+from .const import (
+    ATTR_GROUP_IDS,
+    ATTR_IS_ACTIVE,
+    ATTR_IS_OWNER,
+    ATTR_LOCAL_ONLY,
+    ATTR_USERS,
+    CONTENT_TYPE_JSON,
+    CONTENT_TYPE_URL,
+)
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -90,3 +99,21 @@ class APIAuth(CoreSysAttributes):
     async def cache(self, request: web.Request) -> None:
         """Process cache reset request."""
         self.sys_auth.reset_data()
+
+    @api_process
+    async def list_users(self, request: web.Request) -> dict[str, list[dict[str, Any]]]:
+        """List users on the Home Assistant instance."""
+        return {
+            ATTR_USERS: [
+                {
+                    ATTR_USERNAME: user[ATTR_USERNAME],
+                    ATTR_NAME: user[ATTR_NAME],
+                    ATTR_IS_OWNER: user[ATTR_IS_OWNER],
+                    ATTR_IS_ACTIVE: user[ATTR_IS_ACTIVE],
+                    ATTR_LOCAL_ONLY: user[ATTR_LOCAL_ONLY],
+                    ATTR_GROUP_IDS: user[ATTR_GROUP_IDS],
+                }
+                for user in await self.sys_auth.list_users()
+                if user[ATTR_USERNAME]
+            ]
+        }

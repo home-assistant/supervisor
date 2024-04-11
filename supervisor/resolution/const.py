@@ -53,6 +53,7 @@ class UnsupportedReason(StrEnum):
     SYSTEMD = "systemd"
     SYSTEMD_JOURNAL = "systemd_journal"
     SYSTEMD_RESOLVED = "systemd_resolved"
+    VIRTUALIZATION_IMAGE = "virtualization_image"
 
 
 class UnhealthyReason(StrEnum):
@@ -72,6 +73,7 @@ class IssueType(StrEnum):
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
     CORRUPT_FILESYSTEM = "corrupt_filesystem"
+    DISABLED_DATA_DISK = "disabled_data_disk"
     DNS_LOOP = "dns_loop"
     DNS_SERVER_FAILED = "dns_server_failed"
     DNS_SERVER_IPV6_ERROR = "dns_server_ipv6_error"
@@ -95,6 +97,7 @@ class IssueType(StrEnum):
 class SuggestionType(StrEnum):
     """Sugestion type."""
 
+    ADOPT_DATA_DISK = "adopt_data_disk"
     CLEAR_FULL_BACKUP = "clear_full_backup"
     CREATE_FULL_BACKUP = "create_full_backup"
     EXECUTE_INTEGRITY = "execute_integrity"

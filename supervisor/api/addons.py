@@ -106,8 +106,8 @@ from ..exceptions import (
     PwnedSecret,
 )
 from ..validate import docker_ports
-from .const import ATTR_SIGNED, CONTENT_TYPE_BINARY
-from .utils import api_process, api_process_raw, api_validate, json_loads
+from .const import ATTR_REMOVE_CONFIG, ATTR_SIGNED
+from .utils import api_process, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -126,15 +126,19 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
-# pylint: disable=no-value-for-parameter
 SCHEMA_SECURITY = vol.Schema({vol.Optional(ATTR_PROTECTED): vol.Boolean()})
+
+SCHEMA_UNINSTALL = vol.Schema(
+    {vol.Optional(ATTR_REMOVE_CONFIG, default=False): vol.Boolean()}
+)
+# pylint: enable=no-value-for-parameter
 
 
 class APIAddons(CoreSysAttributes):
     """Handle RESTful API for add-on functions."""
 
-    def _extract_addon(self, request: web.Request) -> Addon:
-        """Return addon, throw an exception it it doesn't exist."""
+    def get_addon_for_request(self, request: web.Request) -> Addon:
+        """Return addon, throw an exception if it doesn't exist."""
         addon_slug: str = request.match_info.get("addon")
 
         # Lookup itself
@@ -187,7 +191,7 @@ class APIAddons(CoreSysAttributes):
 
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
-        addon: AnyAddon = self._extract_addon(request)
+        addon: AnyAddon = self.get_addon_for_request(request)
 
         data = {
             ATTR_NAME: addon.name,
@@ -268,7 +272,7 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def options(self, request: web.Request) -> None:
         """Store user options for add-on."""
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
 
         # Update secrets for validation
         await self.sys_homeassistant.secrets.reload()
@@ -303,7 +307,7 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def options_validate(self, request: web.Request) -> None:
         """Validate user options for add-on."""
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
         data = {ATTR_MESSAGE: "", ATTR_VALID: True, ATTR_PWNED: False}
 
         options = await request.json(loads=json_loads) or addon.options
@@ -345,7 +349,7 @@ class APIAddons(CoreSysAttributes):
         slug: str = request.match_info.get("addon")
         if slug != "self":
             raise APIForbidden("This can be only read by the Add-on itself!")
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
 
         # Lookup/reload secrets
         await self.sys_homeassistant.secrets.reload()
@@ -357,7 +361,7 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def security(self, request: web.Request) -> None:
         """Store security options for add-on."""
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
         body: dict[str, Any] = await api_validate(SCHEMA_SECURITY, request)
 
         if ATTR_PROTECTED in body:
@@ -369,7 +373,7 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
 
         stats: DockerStats = await addon.stats()
 
@@ -385,48 +389,47 @@ class APIAddons(CoreSysAttributes):
         }
 
     @api_process
-    def uninstall(self, request: web.Request) -> Awaitable[None]:
+    async def uninstall(self, request: web.Request) -> Awaitable[None]:
         """Uninstall add-on."""
-        addon = self._extract_addon(request)
-        return asyncio.shield(self.sys_addons.uninstall(addon.slug))
+        addon = self.get_addon_for_request(request)
+        body: dict[str, Any] = await api_validate(SCHEMA_UNINSTALL, request)
+        return await asyncio.shield(
+            self.sys_addons.uninstall(
+                addon.slug, remove_config=body[ATTR_REMOVE_CONFIG]
+            )
+        )
 
     @api_process
     async def start(self, request: web.Request) -> None:
         """Start add-on."""
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
         if start_task := await asyncio.shield(addon.start()):
             await start_task
 
     @api_process
     def stop(self, request: web.Request) -> Awaitable[None]:
         """Stop add-on."""
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
         return asyncio.shield(addon.stop())
 
     @api_process
     async def restart(self, request: web.Request) -> None:
         """Restart add-on."""
-        addon: Addon = self._extract_addon(request)
+        addon: Addon = self.get_addon_for_request(request)
         if start_task := await asyncio.shield(addon.restart()):
             await start_task
 
     @api_process
     async def rebuild(self, request: web.Request) -> None:
         """Rebuild local build add-on."""
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
         if start_task := await asyncio.shield(self.sys_addons.rebuild(addon.slug)):
             await start_task
-
-    @api_process_raw(CONTENT_TYPE_BINARY)
-    def logs(self, request: web.Request) -> Awaitable[bytes]:
-        """Return logs from add-on."""
-        addon = self._extract_addon(request)
-        return addon.logs()
 
     @api_process
     async def stdin(self, request: web.Request) -> None:
         """Write to stdin of add-on."""
-        addon = self._extract_addon(request)
+        addon = self.get_addon_for_request(request)
         if not addon.with_stdin:
             raise APIError(f"STDIN not supported the {addon.slug} add-on")
 

@@ -1,12 +1,16 @@
 """Test host logs control."""
 
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
+from aiohttp.client_exceptions import UnixClientConnectorError
+from aiohttp.client_reqrep import ConnectionKey
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HostNotSupportedError
+from supervisor.exceptions import HostNotSupportedError, HostServiceError
+from supervisor.host.const import LogFormatter
 from supervisor.host.logs import LogsControl
+from supervisor.utils.systemd_journal import journal_logs_reader
 
 from tests.common import load_fixture
 
@@ -32,10 +36,16 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting logs and errors."""
     assert coresys.host.logs.available is True
 
+    journald_gateway.feed_data(load_fixture("logs_export_host.txt").encode("utf-8"))
+    journald_gateway.feed_eof()
+
     async with coresys.host.logs.journald_logs() as resp:
-        body = await resp.text()
+        line = await anext(
+            journal_logs_reader(resp, log_formatter=LogFormatter.VERBOSE)
+        )
         assert (
-            "Oct 11 20:46:22 odroid-dev systemd[1]: Started Hostname Service." in body
+            line
+            == "2024-03-04 02:52:56.193 homeassistant systemd[1]: Started Hostname Service."
         )
 
     with patch.object(
@@ -45,11 +55,25 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
             pass
 
 
+async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
+    """Test ANSI control sequences being preserved in binary messages."""
+    journald_gateway.feed_data(
+        load_fixture("logs_export_supervisor.txt").encode("utf-8")
+    )
+    journald_gateway.feed_eof()
+
+    async with coresys.host.logs.journald_logs() as resp:
+        line = await anext(journal_logs_reader(resp))
+        assert (
+            line
+            == "\x1b[32m24-03-04 23:56:56 INFO (MainThread) [__main__] Closing Supervisor\x1b[0m"
+        )
+
+
 async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting boot ids."""
-    journald_gateway.return_value.__aenter__.return_value.text = AsyncMock(
-        return_value=load_fixture("logs_boot_ids.txt")
-    )
+    journald_gateway.feed_data(load_fixture("logs_boot_ids.txt").encode("utf-8"))
+    journald_gateway.feed_eof()
 
     assert await coresys.host.logs.get_boot_ids() == TEST_BOOT_IDS
 
@@ -73,9 +97,8 @@ async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
 
 async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting identifiers."""
-    journald_gateway.return_value.__aenter__.return_value.text = AsyncMock(
-        return_value=load_fixture("logs_identifiers.txt")
-    )
+    journald_gateway.feed_data(load_fixture("logs_identifiers.txt").encode("utf-8"))
+    journald_gateway.feed_eof()
 
     # Mock is large so just look for a few different types of identifiers
     identifiers = await coresys.host.logs.get_identifiers()
@@ -89,3 +112,21 @@ async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
         assert identifier in identifiers
 
     assert "" not in identifiers
+
+
+async def test_connection_refused_handled(
+    coresys: CoreSys, journald_gateway: MagicMock
+):
+    """Test connection refused is handled with HostServiceError."""
+    with patch("supervisor.host.logs.ClientSession.get") as get:
+        get.side_effect = UnixClientConnectorError(
+            path="/run/systemd-journal-gatewayd.sock",
+            connection_key=ConnectionKey(
+                "localhost", None, False, False, None, None, None
+            ),
+            os_error=ConnectionRefusedError("Connection refused"),
+        )
+
+        with pytest.raises(HostServiceError):
+            async with coresys.host.logs.journald_logs():
+                pass

@@ -3,16 +3,17 @@ from dataclasses import replace
 from pathlib import PosixPath
 from unittest.mock import patch
 
-from dbus_fast import Variant
+from dbus_fast import DBusError, ErrorType, Variant
 import pytest
 
 from supervisor.core import Core
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HassOSDataDiskError
+from supervisor.exceptions import HassOSDataDiskError, HassOSError
 from supervisor.os.data_disk import Disk
 
 from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
+from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.logind import Logind as LogindService
 from tests.dbus_service_mocks.udisks2_block import Block as BlockService
@@ -270,3 +271,45 @@ async def test_datadisk_migrate_between_external_renames(
     assert sdb1_partition_service.SetName.calls == [
         ("hassos-data-external-old", {"auth.no_user_interaction": Variant("b", True)})
     ]
+
+
+async def test_datadisk_wipe_errors(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_available,
+):
+    """Test errors during datadisk wipe."""
+    system_service: SystemService = all_dbus_services["agent_system"]
+    system_service.ScheduleWipeDevice.calls.clear()
+    logind_service: LogindService = all_dbus_services["logind"]
+    logind_service.Reboot.calls.clear()
+
+    system_service.response_schedule_wipe_device = False
+    with pytest.raises(
+        HassOSDataDiskError, match="Can't schedule wipe of data disk, check host logs"
+    ):
+        await coresys.os.datadisk.wipe_disk()
+
+    assert system_service.ScheduleWipeDevice.calls == [()]
+    assert not logind_service.Reboot.calls
+
+    system_service.ScheduleWipeDevice.calls.clear()
+    system_service.response_schedule_wipe_device = DBusError(ErrorType.FAILED, "fail")
+    with pytest.raises(
+        HassOSDataDiskError, match="Can't schedule wipe of data disk: fail"
+    ):
+        await coresys.os.datadisk.wipe_disk()
+
+    assert system_service.ScheduleWipeDevice.calls == [()]
+    assert not logind_service.Reboot.calls
+
+    system_service.ScheduleWipeDevice.calls.clear()
+    system_service.response_schedule_wipe_device = True
+    logind_service.side_effect_reboot = DBusError(ErrorType.FAILED, "fail")
+    with patch.object(Core, "shutdown"), pytest.raises(
+        HassOSError, match="Can't restart device"
+    ):
+        await coresys.os.datadisk.wipe_disk()
+
+    assert system_service.ScheduleWipeDevice.calls == [()]
+    assert logind_service.Reboot.calls == [(False,)]

@@ -66,4 +66,4 @@ class FixupSystemRenameDataDisk(FixupBase):
     @property
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.MULTIPLE_DATA_DISKS]
+        return [IssueType.DISABLED_DATA_DISK, IssueType.MULTIPLE_DATA_DISKS]

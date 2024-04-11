@@ -256,9 +256,11 @@ def migrate_system_env(coresys: CoreSys) -> None:
 def initialize_logging() -> None:
     """Initialize the logging."""
     logging.basicConfig(level=logging.INFO)
-    fmt = "%(asctime)s %(levelname)s (%(threadName)s) [%(name)s] %(message)s"
+    fmt = (
+        "%(asctime)s.%(msecs)03d %(levelname)s (%(threadName)s) [%(name)s] %(message)s"
+    )
     colorfmt = f"%(log_color)s{fmt}%(reset)s"
-    datefmt = "%y-%m-%d %H:%M:%S"
+    datefmt = "%Y-%m-%d %H:%M:%S"
 
     # suppress overly verbose logs from libraries that aren't helpful
     logging.getLogger("aiohttp.access").setLevel(logging.WARNING)

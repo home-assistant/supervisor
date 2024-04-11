@@ -86,7 +86,7 @@ async def test_image_added_removed_on_update(
         DockerAddon, "_build"
     ) as build:
         await coresys.addons.update(TEST_ADDON_SLUG)
-        build.assert_called_once_with(AwesomeVersion("11.0.0"))
+        build.assert_called_once_with(AwesomeVersion("11.0.0"), "local/amd64-addon-ssh")
         install.assert_not_called()
 
 
@@ -393,7 +393,7 @@ async def test_store_data_changes_during_update(
     update_task = coresys.create_task(simulate_update())
     await asyncio.sleep(0)
 
-    with patch.object(Repository, "update"):
+    with patch.object(Repository, "update", return_value=True):
         await coresys.store.reload()
 
     assert "image" not in coresys.store.data.addons["local_ssh"]

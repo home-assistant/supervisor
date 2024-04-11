@@ -1,8 +1,9 @@
 """Test OS API."""
 
-from unittest.mock import PropertyMock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
+from dbus_fast import DBusError, ErrorType
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -17,7 +18,9 @@ from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
 from tests.dbus_service_mocks.agent_boards_green import Green as GreenService
 from tests.dbus_service_mocks.agent_boards_yellow import Yellow as YellowService
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
+from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.rauc import Rauc as RaucService
 
 
 @pytest.fixture(name="boards_service")
@@ -29,7 +32,7 @@ async def fixture_boards_service(
 
 
 async def test_api_os_info(api_client: TestClient):
-    """Test docker info api."""
+    """Test os info api."""
     resp = await api_client.get("/os/info")
     result = await resp.json()
 
@@ -40,16 +43,35 @@ async def test_api_os_info(api_client: TestClient):
         "board",
         "boot",
         "data_disk",
+        "boot_slots",
     ):
         assert attr in result["data"]
 
 
 async def test_api_os_info_with_agent(api_client: TestClient, coresys: CoreSys):
-    """Test docker info api."""
+    """Test os info api for data disk."""
     resp = await api_client.get("/os/info")
     result = await resp.json()
 
     assert result["data"]["data_disk"] == "BJTD4R-0x97cde291"
+
+
+async def test_api_os_info_boot_slots(
+    api_client: TestClient, coresys: CoreSys, os_available
+):
+    """Test os info api for boot slots."""
+    await coresys.os.load()
+    resp = await api_client.get("/os/info")
+    result = await resp.json()
+
+    assert result["data"]["boot_slots"] == {
+        "A": {
+            "state": "inactive",
+            "status": "good",
+            "version": "9.0.dev20220818",
+        },
+        "B": {"state": "booted", "status": "good", "version": "9.0.dev20220824"},
+    }
 
 
 @pytest.mark.parametrize(
@@ -111,6 +133,73 @@ async def test_api_os_datadisk_migrate(
 
         assert datadisk_service.ChangeDevice.calls == [("/dev/sda",)]
         reboot.assert_called_once()
+
+
+async def test_api_os_datadisk_wipe(
+    api_client: TestClient,
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test datadisk wipe."""
+    system_service: SystemService = os_agent_services["agent_system"]
+    system_service.ScheduleWipeDevice.calls.clear()
+
+    with patch.object(SystemControl, "reboot") as reboot:
+        resp = await api_client.post("/os/datadisk/wipe")
+        assert resp.status == 200
+
+        assert system_service.ScheduleWipeDevice.calls == [()]
+        reboot.assert_called_once()
+
+
+async def test_api_set_boot_slot(
+    api_client: TestClient,
+    all_dbus_services: dict[str, DBusServiceMock],
+    coresys: CoreSys,
+    os_available,
+):
+    """Test changing the boot slot via API."""
+    rauc_service: RaucService = all_dbus_services["rauc"]
+    await coresys.os.load()
+
+    with patch.object(SystemControl, "reboot") as reboot:
+        resp = await api_client.post("/os/boot-slot", json={"boot_slot": "A"})
+        assert resp.status == 200
+
+        reboot.assert_called_once()
+        assert rauc_service.Mark.calls == [("active", "kernel.0")]
+
+
+async def test_api_set_boot_slot_invalid(api_client: TestClient):
+    """Test invalid calls to set boot slot."""
+    resp = await api_client.post("/os/boot-slot", json={"boot_slot": "C"})
+    assert resp.status == 400
+    result = await resp.json()
+    assert "expected BootSlot or one of 'A', 'B'" in result["message"]
+
+    resp = await api_client.post("/os/boot-slot", json={"boot_slot": "A"})
+    assert resp.status == 400
+    result = await resp.json()
+    assert "no Home Assistant OS available" in result["message"]
+
+
+async def test_api_set_boot_slot_error(
+    api_client: TestClient,
+    all_dbus_services: dict[str, DBusServiceMock],
+    coresys: CoreSys,
+    capture_exception: Mock,
+    os_available,
+):
+    """Test changing the boot slot via API."""
+    rauc_service: RaucService = all_dbus_services["rauc"]
+    rauc_service.response_mark = DBusError(ErrorType.FAILED, "fail")
+    await coresys.os.load()
+
+    resp = await api_client.post("/os/boot-slot", json={"boot_slot": "A"})
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["message"] == "Can't mark A as active!"
+    capture_exception.assert_called_once()
 
 
 async def test_api_board_yellow_info(api_client: TestClient, coresys: CoreSys):
