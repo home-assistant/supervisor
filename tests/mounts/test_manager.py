@@ -608,6 +608,49 @@ async def test_reload_mounts(
     assert not coresys.resolution.suggestions_for_issue(mount.failed_issue)
 
 
+async def test_reload_mounts_attempts_initial_mount(
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock], mount: Mount
+):
+    """Test reloading mounts attempts initial mount."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StartTransientUnit.calls.clear()
+    systemd_service.response_get_unit = [
+        ERROR_NO_UNIT,
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        ERROR_NO_UNIT,
+        ERROR_NO_UNIT,
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+    systemd_service.response_reload_or_restart_unit = ERROR_NO_UNIT
+    coresys.mounts.bound_mounts[0].emergency = True
+
+    await coresys.mounts.reload()
+
+    assert systemd_service.StartTransientUnit.calls == [
+        (
+            "mnt-data-supervisor-mounts-media_test.mount",
+            "fail",
+            [
+                ["Options", Variant("s", "soft,timeo=200")],
+                ["Type", Variant("s", "nfs")],
+                ["Description", Variant("s", "Supervisor nfs mount: media_test")],
+                ["What", Variant("s", "media.local:/media")],
+            ],
+            [],
+        ),
+        (
+            "mnt-data-supervisor-media-media_test.mount",
+            "fail",
+            [
+                ["Options", Variant("s", "bind")],
+                ["Description", Variant("s", "Supervisor bind mount: bind_media_test")],
+                ["What", Variant("s", "/mnt/data/supervisor/mounts/media_test")],
+            ],
+            [],
+        ),
+    ]
+
+
 @pytest.mark.parametrize("os_available", ["9.5"], indirect=True)
 async def test_mounting_not_supported(
     coresys: CoreSys,

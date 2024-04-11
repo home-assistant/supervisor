@@ -342,20 +342,23 @@ class Mount(CoreSysAttributes, ABC):
                 "Mount %s is not mounted, mounting instead of reloading", self.name
             )
             await self.mount()
-            return
         except DBusError as err:
             raise MountError(
                 f"Could not reload mount {self.name} due to: {err!s}", _LOGGER.error
             ) from err
+        else:
+            if await self._update_unit():
+                await self._update_state_await(not_state=UnitActiveState.ACTIVATING)
 
-        if await self._update_unit():
-            await self._update_state_await(not_state=UnitActiveState.ACTIVATING)
+            if not await self.is_mounted():
+                raise MountActivationError(
+                    f"Reloading {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
+                    _LOGGER.error,
+                )
 
-        if not await self.is_mounted():
-            raise MountActivationError(
-                f"Reloading {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
-                _LOGGER.error,
-            )
+        # If it is mounted now, dismiss corresponding issue if present
+        if self.failed_issue in self.sys_resolution.issues:
+            self.sys_resolution.dismiss_issue(self.failed_issue)
 
 
 class NetworkMount(Mount, ABC):
