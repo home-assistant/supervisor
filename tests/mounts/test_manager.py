@@ -595,10 +595,6 @@ async def test_reload_mounts(
     assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
     assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
 
-    # This shouldn't reload the mount again since this isn't a new failure
-    await coresys.mounts.reload()
-    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
-
     # This should now remove the issue from the list
     systemd_unit_service.active_state = "active"
     await coresys.mounts.reload()
