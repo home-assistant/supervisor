@@ -203,7 +203,7 @@ class Addon(AddonModel):
             await self.instance.check_image(self.version, default_image, self.arch)
         except DockerError:
             _LOGGER.info("No %s addon Docker image %s found", self.slug, self.image)
-            with suppress(AddonsError):
+            with suppress(DockerError):
                 await self.instance.install(self.version, default_image, arch=self.arch)
 
         self.persist[ATTR_IMAGE] = default_image

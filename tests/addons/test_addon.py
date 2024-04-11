@@ -817,3 +817,33 @@ async def test_addon_loads_missing_image(
     )
     assert coresys.docker.images.build.call_args.kwargs["platform"] == "linux/amd64"
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
+
+
+async def test_addon_load_succeeds_with_docker_errors(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    caplog: pytest.LogCaptureFixture,
+    mock_amd64_arch_supported,
+):
+    """Docker errors while building/pulling an image during load should not raise and fail setup."""
+    # Build env invalid failure
+    coresys.docker.images.get.side_effect = ImageNotFound("missing")
+    caplog.clear()
+    await install_addon_ssh.load()
+    assert "Invalid build environment" in caplog.text
+
+    # Image build failure
+    coresys.docker.images.build.side_effect = DockerException()
+    caplog.clear()
+    with patch("pathlib.Path.is_file", return_value=True):
+        await install_addon_ssh.load()
+    assert "Can't build local/amd64-addon-ssh:9.2.1" in caplog.text
+
+    # Image pull failure
+    install_addon_ssh.data["image"] = "test/amd64-addon-ssh"
+    coresys.docker.images.build.reset_mock(side_effect=True)
+    coresys.docker.images.pull.side_effect = DockerException()
+    caplog.clear()
+    await install_addon_ssh.load()
+    assert "Unknown error with test/amd64-addon-ssh:9.2.1" in caplog.text
