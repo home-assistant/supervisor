@@ -35,6 +35,7 @@ from ..utils import convert_to_ascii
 from ..utils.sentry import capture_exception
 from .const import (
     LANDINGPAGE,
+    SAFE_MODE_FILENAME,
     WATCHDOG_MAX_ATTEMPTS,
     WATCHDOG_RETRY_SECONDS,
     WATCHDOG_THROTTLE_MAX_CALLS,
@@ -362,8 +363,14 @@ class HomeAssistantCore(JobGroup):
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
     )
-    async def restart(self) -> None:
+    async def restart(self, *, safe_mode: bool = False) -> None:
         """Restart Home Assistant Docker."""
+        # Create safe mode marker file if necessary
+        if safe_mode:
+            await self.sys_run_in_executor(
+                (self.sys_config.path_homeassistant / SAFE_MODE_FILENAME).touch
+            )
+
         try:
             await self.instance.restart()
         except DockerError as err:

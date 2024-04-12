@@ -1,11 +1,13 @@
 """Test homeassistant api."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 
 from tests.api import common_test_api_advanced_logs
@@ -92,3 +94,24 @@ async def test_api_set_image(api_client: TestClient, coresys: CoreSys):
         coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
     )
     assert coresys.homeassistant.override_image is False
+
+
+async def test_api_restart(
+    api_client: TestClient,
+    container: MagicMock,
+    tmp_supervisor_data: Path,
+):
+    """Test restarting homeassistant."""
+    safe_mode_marker = tmp_supervisor_data / "homeassistant" / "safe-mode"
+
+    with patch.object(HomeAssistantCore, "_block_till_run"):
+        await api_client.post("/homeassistant/restart")
+
+    container.restart.assert_called_once()
+    assert not safe_mode_marker.exists()
+
+    with patch.object(HomeAssistantCore, "_block_till_run"):
+        await api_client.post("/homeassistant/restart", json={"safe_mode": True})
+
+    assert container.restart.call_count == 2
+    assert safe_mode_marker.exists()
