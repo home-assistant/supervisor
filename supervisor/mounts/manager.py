@@ -150,15 +150,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             *[mount.update() for mount in mounts], return_exceptions=True
         )
 
-        # Try to reload any newly failed mounts and report issues if failure persists
-        new_failures = [
-            mounts[i]
-            for i in range(len(mounts))
-            if results[i] is not True
-            and mounts[i].failed_issue not in self.sys_resolution.issues
-        ]
+        # Try to reload failed mounts and report issues if failure persists
+        failures = [mounts[i] for i in range(len(mounts)) if results[i] is not True]
         await self._mount_errors_to_issues(
-            new_failures, [mount.reload() for mount in new_failures]
+            failures, [self.reload_mount(mount.name) for mount in failures]
         )
 
     async def _mount_errors_to_issues(
@@ -169,6 +164,8 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         for i in range(len(errors)):  # pylint: disable=consider-using-enumerate
             if not errors[i]:
+                continue
+            if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
             if not isinstance(errors[i], MountError):
                 capture_exception(errors[i])
