@@ -36,6 +36,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..validate import docker_image, network_port, version_tag
+from .const import ATTR_SAFE_MODE
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -59,6 +60,12 @@ SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): version_tag,
         vol.Optional(ATTR_BACKUP): bool,
+    }
+)
+
+SCHEMA_RESTART = vol.Schema(
+    {
+        vol.Optional(ATTR_SAFE_MODE, default=False): vol.Boolean(),
     }
 )
 
@@ -166,9 +173,13 @@ class APIHomeAssistant(CoreSysAttributes):
         return asyncio.shield(self.sys_homeassistant.core.start())
 
     @api_process
-    def restart(self, request: web.Request) -> Awaitable[None]:
+    async def restart(self, request: web.Request) -> None:
         """Restart Home Assistant."""
-        return asyncio.shield(self.sys_homeassistant.core.restart())
+        body = await api_validate(SCHEMA_RESTART, request)
+
+        await asyncio.shield(
+            self.sys_homeassistant.core.restart(safe_mode=body[ATTR_SAFE_MODE])
+        )
 
     @api_process
     def rebuild(self, request: web.Request) -> Awaitable[None]:
