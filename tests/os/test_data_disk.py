@@ -371,3 +371,55 @@ async def test_multiple_datadisk_add_remove_signals(
     await asyncio.sleep(0.2)
 
     assert coresys.resolution.issues == []
+
+
+async def test_disabled_datadisk_add_remove_signals(
+    coresys: CoreSys,
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_available,
+):
+    """Test disabled data disk issue created/removed on signal."""
+    udisks2_service: UDisks2Service = udisks2_services["udisks2"]
+    sdb1_block: BlockService = udisks2_services["udisks2_block"][
+        "/org/freedesktop/UDisks2/block_devices/sdb1"
+    ]
+
+    await coresys.os.datadisk.load()
+    coresys.core.state = CoreState.RUNNING
+
+    assert coresys.resolution.issues == []
+    assert coresys.resolution.suggestions == []
+
+    sdb1_block.fixture = replace(sdb1_block.fixture, IdLabel="hassos-data-dis")
+    udisks2_service.InterfacesAdded(
+        "/org/freedesktop/UDisks2/block_devices/sdb1",
+        {
+            "org.freedesktop.UDisks2.Block": {
+                "Device": Variant("ay", b"/dev/sdb1"),
+                "PreferredDevice": Variant("ay", b"/dev/sdb1"),
+                "DeviceNumber": Variant("t", 2065),
+                "Id": Variant("s", ""),
+                "IdUsage": Variant("s", ""),
+                "IdType": Variant("s", ""),
+                "IdVersion": Variant("s", ""),
+                "IdLabel": Variant("s", "hassos-data-dis"),
+                "IdUUID": Variant("s", ""),
+            }
+        },
+    )
+    await udisks2_service.ping()
+    await asyncio.sleep(0.2)
+
+    assert (
+        Issue(IssueType.DISABLED_DATA_DISK, ContextType.SYSTEM, reference="/dev/sdb1")
+        in coresys.resolution.issues
+    )
+
+    udisks2_service.InterfacesRemoved(
+        "/org/freedesktop/UDisks2/block_devices/sdb1",
+        ["org.freedesktop.UDisks2.Block", "org.freedesktop.UDisks2.Filesystem"],
+    )
+    await udisks2_service.ping()
+    await asyncio.sleep(0.2)
+
+    assert coresys.resolution.issues == []
