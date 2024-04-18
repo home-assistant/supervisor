@@ -1,4 +1,5 @@
 """Init file for Supervisor host RESTful API."""
+
 import asyncio
 from contextlib import suppress
 import logging
@@ -163,8 +164,7 @@ class APIHost(CoreSysAttributes):
                 raise APIError() from err
         return possible_offset
 
-    @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
-    async def advanced_logs(
+    async def advanced_logs_handler(
         self, request: web.Request, identifier: str | None = None, follow: bool = False
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
@@ -218,3 +218,10 @@ class APIHost(CoreSysAttributes):
                     "Connection reset when trying to fetch data from systemd-journald."
                 ) from ex
             return response
+
+    @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
+    async def advanced_logs(
+        self, request: web.Request, identifier: str | None = None, follow: bool = False
+    ) -> web.StreamResponse:
+        """Return systemd-journald logs. Wrapped as standard API handler."""
+        return await self.advanced_logs_handler(request, identifier, follow)

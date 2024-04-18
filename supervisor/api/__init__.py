@@ -401,7 +401,7 @@ class RestAPI(CoreSysAttributes):
 
         async def get_supervisor_logs(*args, **kwargs):
             try:
-                return await self._api_host.advanced_logs(
+                return await self._api_host.advanced_logs_handler(
                     *args, identifier="hassio_supervisor", **kwargs
                 )
             except Exception as err:  # pylint: disable=broad-exception-caught
