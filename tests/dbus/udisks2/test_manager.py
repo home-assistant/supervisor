@@ -105,6 +105,7 @@ async def test_update_checks_devices_and_drives(dbus_session_bus: MessageBus):
     """Test update rechecks block devices and drives correctly."""
     mocked = await mock_dbus_services(
         {
+            "udisks2": None,
             "udisks2_manager": None,
             "udisks2_block": [
                 "/org/freedesktop/UDisks2/block_devices/sda",
