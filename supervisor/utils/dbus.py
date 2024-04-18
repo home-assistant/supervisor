@@ -37,6 +37,7 @@ from .sentry import capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+DBUS_INTERFACE_OBJECT_MANAGER: str = "org.freedesktop.DBus.ObjectManager"
 DBUS_INTERFACE_PROPERTIES: str = "org.freedesktop.DBus.Properties"
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
 
@@ -195,6 +196,13 @@ class DBus:
         if DBUS_INTERFACE_PROPERTIES not in self._proxies:
             return None
         return DBusCallWrapper(self, DBUS_INTERFACE_PROPERTIES)
+
+    @property
+    def object_manager(self) -> DBusCallWrapper | None:
+        """Get object manager proxy interface."""
+        if DBUS_INTERFACE_OBJECT_MANAGER not in self._proxies:
+            return None
+        return DBusCallWrapper(self, DBUS_INTERFACE_OBJECT_MANAGER)
 
     async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""

@@ -1,14 +1,16 @@
 """Home Assistant Operating-System DataDisk."""
 
+import asyncio
 from contextlib import suppress
 from dataclasses import dataclass
 import logging
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys, CoreSysAttributes
+from ..dbus.const import DBUS_ATTR_ID_LABEL, DBUS_IFACE_BLOCK
 from ..dbus.udisks2.block import UDisks2Block
 from ..dbus.udisks2.const import FormatType
 from ..dbus.udisks2.drive import UDisks2Drive
@@ -22,8 +24,12 @@ from ..exceptions import (
 )
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
+from ..resolution.checks.disabled_data_disk import CheckDisabledDataDisk
+from ..resolution.checks.multiple_data_disks import CheckMultipleDataDisks
 from ..utils.sentry import capture_exception
 from .const import (
+    FILESYSTEM_LABEL_DATA_DISK,
+    FILESYSTEM_LABEL_DISABLED_DATA_DISK,
     PARTITION_NAME_EXTERNAL_DATA_DISK,
     PARTITION_NAME_OLD_EXTERNAL_DATA_DISK,
 )
@@ -157,6 +163,16 @@ class DataDisk(CoreSysAttributes):
 
         return available
 
+    @property
+    def check_multiple_data_disks(self) -> CheckMultipleDataDisks:
+        """Resolution center check for multiple data disks."""
+        return self.sys_resolution.check.get("multiple_data_disks")
+
+    @property
+    def check_disabled_data_disk(self) -> CheckDisabledDataDisk:
+        """Resolution center check for disabled data disk."""
+        return self.sys_resolution.check.get("disabled_data_disk")
+
     def _get_block_devices_for_drive(self, drive: UDisks2Drive) -> list[UDisks2Block]:
         """Get block devices for a drive."""
         return [
@@ -171,6 +187,14 @@ class DataDisk(CoreSysAttributes):
         # Update datadisk details on OS-Agent
         if self.sys_dbus.agent.version >= AwesomeVersion("1.2.0"):
             await self.sys_dbus.agent.datadisk.reload_device()
+
+        # Register for signals on devices added/removed
+        self.sys_dbus.udisks2.udisks2_object_manager.dbus.object_manager.on_interfaces_added(
+            self._udisks2_interface_added
+        )
+        self.sys_dbus.udisks2.udisks2_object_manager.dbus.object_manager.on_interfaces_removed(
+            self._udisks2_interface_removed
+        )
 
     @Job(
         name="data_disk_migrate",
@@ -348,3 +372,54 @@ class DataDisk(CoreSysAttributes):
             "New data partition prepared on device %s", partition_block.device
         )
         return partition_block
+
+    async def _udisks2_interface_added(
+        self, _: str, properties: dict[str, dict[str, Any]]
+    ):
+        """If a data disk is added, trigger the resolution check."""
+        if (
+            DBUS_IFACE_BLOCK not in properties
+            or DBUS_ATTR_ID_LABEL not in properties[DBUS_IFACE_BLOCK]
+        ):
+            return
+
+        if (
+            properties[DBUS_IFACE_BLOCK][DBUS_ATTR_ID_LABEL]
+            == FILESYSTEM_LABEL_DATA_DISK
+        ):
+            check = self.check_multiple_data_disks
+        elif (
+            properties[DBUS_IFACE_BLOCK][DBUS_ATTR_ID_LABEL]
+            == FILESYSTEM_LABEL_DISABLED_DATA_DISK
+        ):
+            check = self.check_disabled_data_disk
+        else:
+            return
+
+        # Delay briefly before running check to allow data updates to occur
+        await asyncio.sleep(0.1)
+        await check()
+
+    async def _udisks2_interface_removed(self, _: str, interfaces: list[str]):
+        """If affected by a data disk issue, re-check on removal of a block device."""
+        if DBUS_IFACE_BLOCK not in interfaces:
+            return
+
+        if any(
+            issue.type == self.check_multiple_data_disks.issue
+            and issue.context == self.check_multiple_data_disks.context
+            for issue in self.sys_resolution.issues
+        ):
+            check = self.check_multiple_data_disks
+        elif any(
+            issue.type == self.check_disabled_data_disk.issue
+            and issue.context == self.check_disabled_data_disk.context
+            for issue in self.sys_resolution.issues
+        ):
+            check = self.check_disabled_data_disk
+        else:
+            return
+
+        # Delay briefly before running check to allow data updates to occur
+        await asyncio.sleep(0.1)
+        await check()

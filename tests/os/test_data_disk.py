@@ -1,4 +1,6 @@
 """Test OS API."""
+
+import asyncio
 from dataclasses import replace
 from pathlib import PosixPath
 from unittest.mock import patch
@@ -6,16 +8,20 @@ from unittest.mock import patch
 from dbus_fast import DBusError, ErrorType, Variant
 import pytest
 
+from supervisor.const import CoreState
 from supervisor.core import Core
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HassOSDataDiskError, HassOSError
 from supervisor.os.data_disk import Disk
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.logind import Logind as LogindService
+from tests.dbus_service_mocks.udisks2 import UDisks2 as UDisks2Service
 from tests.dbus_service_mocks.udisks2_block import Block as BlockService
 from tests.dbus_service_mocks.udisks2_filesystem import Filesystem as FilesystemService
 from tests.dbus_service_mocks.udisks2_partition import Partition as PartitionService
@@ -313,3 +319,55 @@ async def test_datadisk_wipe_errors(
 
     assert system_service.ScheduleWipeDevice.calls == [()]
     assert logind_service.Reboot.calls == [(False,)]
+
+
+async def test_multiple_datadisk_add_remove_signals(
+    coresys: CoreSys,
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+    os_available,
+):
+    """Test multiple data disk issue created/removed on signal."""
+    udisks2_service: UDisks2Service = udisks2_services["udisks2"]
+    sdb1_block: BlockService = udisks2_services["udisks2_block"][
+        "/org/freedesktop/UDisks2/block_devices/sdb1"
+    ]
+
+    await coresys.os.datadisk.load()
+    coresys.core.state = CoreState.RUNNING
+
+    assert coresys.resolution.issues == []
+    assert coresys.resolution.suggestions == []
+
+    sdb1_block.fixture = replace(sdb1_block.fixture, IdLabel="hassos-data")
+    udisks2_service.InterfacesAdded(
+        "/org/freedesktop/UDisks2/block_devices/sdb1",
+        {
+            "org.freedesktop.UDisks2.Block": {
+                "Device": Variant("ay", b"/dev/sdb1"),
+                "PreferredDevice": Variant("ay", b"/dev/sdb1"),
+                "DeviceNumber": Variant("t", 2065),
+                "Id": Variant("s", ""),
+                "IdUsage": Variant("s", ""),
+                "IdType": Variant("s", ""),
+                "IdVersion": Variant("s", ""),
+                "IdLabel": Variant("s", "hassos-data"),
+                "IdUUID": Variant("s", ""),
+            }
+        },
+    )
+    await udisks2_service.ping()
+    await asyncio.sleep(0.2)
+
+    assert (
+        Issue(IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sdb1")
+        in coresys.resolution.issues
+    )
+
+    udisks2_service.InterfacesRemoved(
+        "/org/freedesktop/UDisks2/block_devices/sdb1",
+        ["org.freedesktop.UDisks2.Block", "org.freedesktop.UDisks2.Filesystem"],
+    )
+    await udisks2_service.ping()
+    await asyncio.sleep(0.2)
+
+    assert coresys.resolution.issues == []

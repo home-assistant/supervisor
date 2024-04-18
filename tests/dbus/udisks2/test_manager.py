@@ -1,5 +1,6 @@
 """Test UDisks2 Manager interface."""
 
+import asyncio
 from pathlib import Path
 
 from awesomeversion import AwesomeVersion
@@ -7,13 +8,14 @@ from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.dbus.udisks2 import UDisks2
+from supervisor.dbus.udisks2 import UDisks2Manager
 from supervisor.dbus.udisks2.const import PartitionTableType
 from supervisor.dbus.udisks2.data import DeviceSpecification
 from supervisor.exceptions import DBusNotConnectedError, DBusObjectError
 
 from tests.common import mock_dbus_services
 from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.udisks2 import UDisks2 as UDisks2Service
 from tests.dbus_service_mocks.udisks2_manager import (
     UDisks2Manager as UDisks2ManagerService,
 )
@@ -27,12 +29,20 @@ async def fixture_udisks2_manager_service(
     yield udisks2_services["udisks2_manager"]
 
 
+@pytest.fixture(name="udisks2_service")
+async def fixture_udisks2_service(
+    udisks2_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> UDisks2Service:
+    """Mock UDisks2 base service."""
+    yield udisks2_services["udisks2"]
+
+
 async def test_udisks2_manager_info(
     udisks2_manager_service: UDisks2ManagerService, dbus_session_bus: MessageBus
 ):
     """Test udisks2 manager dbus connection."""
     udisks2_manager_service.GetBlockDevices.calls.clear()
-    udisks2 = UDisks2()
+    udisks2 = UDisks2Manager()
 
     assert udisks2.supported_filesystems is None
 
@@ -115,7 +125,7 @@ async def test_update_checks_devices_and_drives(dbus_session_bus: MessageBus):
         "/org/freedesktop/UDisks2/block_devices/sdb",
     ]
 
-    udisks2 = UDisks2()
+    udisks2 = UDisks2Manager()
     await udisks2.connect(dbus_session_bus)
 
     assert len(udisks2.block_devices) == 3
@@ -214,7 +224,7 @@ async def test_get_block_device(
     udisks2_manager_service: UDisks2ManagerService, dbus_session_bus: MessageBus
 ):
     """Test get block device by object path."""
-    udisks2 = UDisks2()
+    udisks2 = UDisks2Manager()
 
     with pytest.raises(DBusNotConnectedError):
         udisks2.get_block_device("/org/freedesktop/UDisks2/block_devices/sda1")
@@ -234,7 +244,7 @@ async def test_get_drive(
     udisks2_manager_service: UDisks2ManagerService, dbus_session_bus: MessageBus
 ):
     """Test get drive by object path."""
-    udisks2 = UDisks2()
+    udisks2 = UDisks2Manager()
 
     with pytest.raises(DBusNotConnectedError):
         udisks2.get_drive("/org/freedesktop/UDisks2/drives/BJTD4R_0x97cde291")
@@ -253,7 +263,7 @@ async def test_resolve_device(
 ):
     """Test resolve device."""
     udisks2_manager_service.ResolveDevice.calls.clear()
-    udisks2 = UDisks2()
+    udisks2 = UDisks2Manager()
 
     with pytest.raises(DBusNotConnectedError):
         await udisks2.resolve_device(DeviceSpecification(path=Path("/dev/sda1")))
@@ -269,3 +279,52 @@ async def test_resolve_device(
             {"auth.no_user_interaction": Variant("b", True)},
         )
     ]
+
+
+async def test_block_devices_add_remove_signals(
+    udisks2_service: UDisks2Service, dbus_session_bus: MessageBus
+):
+    """Test signals processed for added and removed block devices."""
+    udisks2 = UDisks2Manager()
+    await udisks2.connect(dbus_session_bus)
+
+    assert any(
+        device
+        for device in udisks2.block_devices
+        if device.object_path == "/org/freedesktop/UDisks2/block_devices/zram1"
+    )
+    udisks2_service.InterfacesRemoved(
+        "/org/freedesktop/UDisks2/block_devices/zram1",
+        ["org.freedesktop.UDisks2.Block"],
+    )
+    await udisks2_service.ping()
+
+    assert not any(
+        device
+        for device in udisks2.block_devices
+        if device.object_path == "/org/freedesktop/UDisks2/block_devices/zram1"
+    )
+
+    udisks2_service.InterfacesAdded(
+        "/org/freedesktop/UDisks2/block_devices/zram1",
+        {
+            "org.freedesktop.UDisks2.Block": {
+                "Device": Variant("ay", b"/dev/zram1"),
+                "PreferredDevice": Variant("ay", b"/dev/zram1"),
+                "DeviceNumber": Variant("t", 64769),
+                "Id": Variant("s", ""),
+                "IdUsage": Variant("s", ""),
+                "IdType": Variant("s", ""),
+                "IdVersion": Variant("s", ""),
+                "IdLabel": Variant("s", ""),
+                "IdUUID": Variant("s", ""),
+            }
+        },
+    )
+    await udisks2_service.ping()
+    await asyncio.sleep(0.1)
+    assert any(
+        device
+        for device in udisks2.block_devices
+        if device.object_path == "/org/freedesktop/UDisks2/block_devices/zram1"
+    )

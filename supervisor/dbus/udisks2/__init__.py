@@ -15,12 +15,15 @@ from ...exceptions import (
 from ..const import (
     DBUS_ATTR_SUPPORTED_FILESYSTEMS,
     DBUS_ATTR_VERSION,
+    DBUS_IFACE_BLOCK,
+    DBUS_IFACE_DRIVE,
     DBUS_IFACE_UDISKS2_MANAGER,
     DBUS_NAME_UDISKS2,
     DBUS_OBJECT_BASE,
-    DBUS_OBJECT_UDISKS2,
+    DBUS_OBJECT_UDISK2,
+    DBUS_OBJECT_UDISKS2_MANAGER,
 )
-from ..interface import DBusInterfaceProxy, dbus_property
+from ..interface import DBusInterface, DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .block import UDisks2Block
 from .const import UDISKS2_DEFAULT_OPTIONS
@@ -30,7 +33,15 @@ from .drive import UDisks2Drive
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class UDisks2(DBusInterfaceProxy):
+class UDisks2(DBusInterface):
+    """Handle D-Bus interface for UDisks2 root object."""
+
+    name: str = DBUS_NAME_UDISKS2
+    bus_name: str = DBUS_NAME_UDISKS2
+    object_path: str = DBUS_OBJECT_UDISK2
+
+
+class UDisks2Manager(DBusInterfaceProxy):
     """Handle D-Bus interface for UDisks2.
 
     http://storaged.org/doc/udisks2-api/latest/
@@ -38,22 +49,36 @@ class UDisks2(DBusInterfaceProxy):
 
     name: str = DBUS_NAME_UDISKS2
     bus_name: str = DBUS_NAME_UDISKS2
-    object_path: str = DBUS_OBJECT_UDISKS2
+    object_path: str = DBUS_OBJECT_UDISKS2_MANAGER
     properties_interface: str = DBUS_IFACE_UDISKS2_MANAGER
 
     _block_devices: dict[str, UDisks2Block] = {}
     _drives: dict[str, UDisks2Drive] = {}
 
+    def __init__(self):
+        """Initialize object."""
+        super().__init__()
+        self.udisks2_object_manager = UDisks2()
+
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
         try:
             await super().connect(bus)
+            await self.udisks2_object_manager.connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to udisks2")
         except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "No udisks2 support on the host. Host control has been disabled."
             )
+
+        # Register for signals on devices added/removed
+        self.udisks2_object_manager.dbus.object_manager.on_interfaces_added(
+            self._interfaces_added
+        )
+        self.udisks2_object_manager.dbus.object_manager.on_interfaces_removed(
+            self._interfaces_removed
+        )
 
     @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:
@@ -161,6 +186,41 @@ class UDisks2(DBusInterfaceProxy):
             ]
         )
 
+    async def _interfaces_added(
+        self, object_path: str, properties: dict[str, dict[str, Any]]
+    ) -> None:
+        """Interfaces added to a UDisks2 object."""
+        if object_path in self._block_devices:
+            await self._block_devices[object_path].update()
+            return
+        if object_path in self._drives:
+            await self._drives[object_path].update()
+            return
+
+        if DBUS_IFACE_BLOCK in properties:
+            self._block_devices[object_path] = await UDisks2Block.new(
+                object_path, self.dbus.bus
+            )
+            return
+
+        if DBUS_IFACE_DRIVE in properties:
+            self._drives[object_path] = await UDisks2Drive.new(
+                object_path, self.dbus.bus
+            )
+
+    async def _interfaces_removed(
+        self, object_path: str, interfaces: list[str]
+    ) -> None:
+        """Interfaces removed from a UDisks2 object."""
+        if object_path in self._block_devices and DBUS_IFACE_BLOCK in interfaces:
+            self._block_devices[object_path].shutdown()
+            del self._block_devices[object_path]
+            return
+
+        if object_path in self._drives and DBUS_IFACE_DRIVE in interfaces:
+            self._drives[object_path].shutdown()
+            del self._drives[object_path]
+
     def shutdown(self) -> None:
         """Shutdown the object and disconnect from D-Bus.
 
@@ -170,4 +230,5 @@ class UDisks2(DBusInterfaceProxy):
             block_device.shutdown()
         for drive in self.drives:
             drive.shutdown()
+        self.udisks2_object_manager.shutdown()
         super().shutdown()

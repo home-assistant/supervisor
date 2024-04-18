@@ -229,6 +229,7 @@ async def fixture_udisks2_services(
             ],
             "udisks2_loop": None,
             "udisks2_manager": None,
+            "udisks2": None,
             "udisks2_partition_table": [
                 "/org/freedesktop/UDisks2/block_devices/mmcblk1",
                 "/org/freedesktop/UDisks2/block_devices/sda",
