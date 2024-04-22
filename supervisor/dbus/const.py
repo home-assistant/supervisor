@@ -61,7 +61,7 @@ DBUS_OBJECT_RESOLVED = "/org/freedesktop/resolve1"
 DBUS_OBJECT_SETTINGS = "/org/freedesktop/NetworkManager/Settings"
 DBUS_OBJECT_SYSTEMD = "/org/freedesktop/systemd1"
 DBUS_OBJECT_TIMEDATE = "/org/freedesktop/timedate1"
-DBUS_OBJECT_UDISK2 = "/org/freedesktop/UDisks2"
+DBUS_OBJECT_UDISKS2 = "/org/freedesktop/UDisks2"
 DBUS_OBJECT_UDISKS2_MANAGER = "/org/freedesktop/UDisks2/Manager"
 
 DBUS_ATTR_ACTIVE_ACCESSPOINT = "ActiveAccessPoint"

@@ -20,7 +20,7 @@ from ..const import (
     DBUS_IFACE_UDISKS2_MANAGER,
     DBUS_NAME_UDISKS2,
     DBUS_OBJECT_BASE,
-    DBUS_OBJECT_UDISK2,
+    DBUS_OBJECT_UDISKS2,
     DBUS_OBJECT_UDISKS2_MANAGER,
 )
 from ..interface import DBusInterface, DBusInterfaceProxy, dbus_property
@@ -38,7 +38,7 @@ class UDisks2(DBusInterface):
 
     name: str = DBUS_NAME_UDISKS2
     bus_name: str = DBUS_NAME_UDISKS2
-    object_path: str = DBUS_OBJECT_UDISK2
+    object_path: str = DBUS_OBJECT_UDISKS2
 
 
 class UDisks2Manager(DBusInterfaceProxy):
