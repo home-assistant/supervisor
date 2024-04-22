@@ -6,7 +6,7 @@ from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import StoreGitError, StoreNotFound
+from supervisor.exceptions import HassioError, StoreGitError, StoreNotFound
 from supervisor.store.repository import Repository
 
 from tests.api import common_test_api_advanced_logs
@@ -160,7 +160,7 @@ async def test_api_supervisor_fallback(
     api_client: TestClient, journald_logs: MagicMock, docker_logs: MagicMock
 ):
     """Check that supervisor logs read from container logs if reading from journald gateway fails badly."""
-    journald_logs.side_effect = OSError("Something bad happened!")
+    journald_logs.side_effect = HassioError("Something bad happened!")
 
     with patch("supervisor.api._LOGGER.exception") as logger:
         resp = await api_client.get("/supervisor/logs")
@@ -175,6 +175,19 @@ async def test_api_supervisor_fallback(
         b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os\x1b[0m",
         b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor\x1b[0m",
     ]
+
+    journald_logs.reset_mock()
+
+    # also check generic Python error
+    journald_logs.side_effect = OSError("Something bad happened!")
+
+    with patch("supervisor.api._LOGGER.exception") as logger:
+        resp = await api_client.get("/supervisor/logs")
+        logger.assert_called_once_with(
+            "Failed to get supervisor logs using advanced_logs API"
+        )
+        assert resp.status == 200
+        assert resp.content_type == "text/plain"
 
 
 async def test_api_supervisor_reload(api_client: TestClient):
