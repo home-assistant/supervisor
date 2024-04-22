@@ -226,9 +226,9 @@ class UDisks2Manager(DBusInterfaceProxy):
 
         This method is irreversible.
         """
+        self.udisks2_object_manager.shutdown()
         for block_device in self.block_devices:
             block_device.shutdown()
         for drive in self.drives:
             drive.shutdown()
-        self.udisks2_object_manager.shutdown()
         super().shutdown()
