@@ -16,7 +16,7 @@ def setup(object_path: str | None = None) -> DBusServiceMock:
 class UDisks2(DBusServiceMock):
     """UDisks2 base object mock.
 
-    gdbus introspect --system --dest org.freedesktop.UDisks2 --object-path /org/freedesktop/UDisks2/Manager
+    gdbus introspect --system --dest org.freedesktop.UDisks2 --object-path /org/freedesktop/UDisks2
     """
 
     interface = "org.freedesktop.DBus.ObjectManager"
