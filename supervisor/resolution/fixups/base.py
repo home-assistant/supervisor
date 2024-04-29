@@ -58,9 +58,9 @@ class FixupBase(ABC, CoreSysAttributes):
         """Return a ContextType enum."""
 
     @property
+    @abstractmethod
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
-        return []
 
     @property
     def auto(self) -> bool:
