@@ -5,7 +5,7 @@ pytest-aiohttp==1.0.5
 pytest-asyncio==0.23.6
 pytest-cov==5.0.0
 pytest-timeout==2.3.1
-pytest==8.1.1
+pytest==8.2.0
 ruff==0.4.2
 time-machine==2.14.1
 typing_extensions==4.11.0
