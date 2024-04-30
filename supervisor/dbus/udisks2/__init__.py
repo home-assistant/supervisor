@@ -71,14 +71,14 @@ class UDisks2Manager(DBusInterfaceProxy):
             _LOGGER.warning(
                 "No udisks2 support on the host. Host control has been disabled."
             )
-
-        # Register for signals on devices added/removed
-        self.udisks2_object_manager.dbus.object_manager.on_interfaces_added(
-            self._interfaces_added
-        )
-        self.udisks2_object_manager.dbus.object_manager.on_interfaces_removed(
-            self._interfaces_removed
-        )
+        else:
+            # Register for signals on devices added/removed
+            self.udisks2_object_manager.dbus.object_manager.on_interfaces_added(
+                self._interfaces_added
+            )
+            self.udisks2_object_manager.dbus.object_manager.on_interfaces_removed(
+                self._interfaces_removed
+            )
 
     @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:
