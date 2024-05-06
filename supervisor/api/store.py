@@ -251,7 +251,7 @@ class APIStore(CoreSysAttributes):
         """Return changelog from add-on."""
         addon = self._extract_addon(request)
         if not addon.with_changelog:
-            raise APIError(f"No changelog found for add-on {addon.slug}!")
+            return f"No changelog found for add-on {addon.slug}!"
 
         with addon.path_changelog.open("r") as changelog:
             return changelog.read()
