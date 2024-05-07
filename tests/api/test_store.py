@@ -194,7 +194,11 @@ async def test_api_store_update_healthcheck(
 async def test_api_store_addons_no_changelog(
     api_client: TestClient, coresys: CoreSys, store_addon: AddonStore, resource: str
 ):
-    """Test /store/addons/{addon}/changelog REST API."""
+    """Test /store/addons/{addon}/changelog REST API.
+    
+    Currently the frontend expects a valid body even in the error case. Make sure that is
+    what the API returns.
+    """
     resp = await api_client.get(f"/{resource}/{store_addon.slug}/changelog")
     assert resp.status == 200
     result = await resp.text()
