@@ -697,7 +697,6 @@ class RestAPI(CoreSysAttributes):
                 web.get("/store", api_store.store_info),
                 web.get("/store/addons", api_store.addons_list),
                 web.get("/store/addons/{addon}", api_store.addons_addon_info),
-                web.get("/store/addons/{addon}/{version}", api_store.addons_addon_info),
                 web.get("/store/addons/{addon}/icon", api_store.addons_addon_icon),
                 web.get("/store/addons/{addon}/logo", api_store.addons_addon_logo),
                 web.get(
@@ -719,6 +718,8 @@ class RestAPI(CoreSysAttributes):
                     "/store/addons/{addon}/update/{version}",
                     api_store.addons_addon_update,
                 ),
+                # Must be below others since it has a wildcard in resource path
+                web.get("/store/addons/{addon}/{version}", api_store.addons_addon_info),
                 web.post("/store/reload", api_store.reload),
                 web.get("/store/repositories", api_store.repositories_list),
                 web.get(
