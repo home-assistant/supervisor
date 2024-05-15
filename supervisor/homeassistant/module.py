@@ -48,7 +48,7 @@ from ..utils import remove_folder
 from ..utils.common import FileConfiguration
 from ..utils.json import read_json_file, write_json_file
 from .api import HomeAssistantAPI
-from .const import ATTR_OVERRIDE_IMAGE, WSType
+from .const import ATTR_OVERRIDE_IMAGE, LANDINGPAGE, WSType
 from .core import HomeAssistantCore
 from .secrets import HomeAssistantSecrets
 from .validate import SCHEMA_HASS_CONFIG
@@ -328,6 +328,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         if (
             not self.sys_hardware.policy.is_match_cgroup(PolicyGroup.UART, device)
             or not self.version
+            or self.version == LANDINGPAGE
             or self.version < "2021.9.0"
         ):
             return
