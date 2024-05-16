@@ -73,6 +73,7 @@ class IssueType(StrEnum):
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
     CORRUPT_FILESYSTEM = "corrupt_filesystem"
+    DETACHED_ADDON = "detached_addon"
     DISABLED_DATA_DISK = "disabled_data_disk"
     DNS_LOOP = "dns_loop"
     DNS_SERVER_FAILED = "dns_server_failed"
