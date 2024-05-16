@@ -209,14 +209,14 @@ async def test_api_store_addons_no_changelog(
 
 
 @pytest.mark.parametrize("resource", ["store/addons", "addons"])
-async def test_api_orphaned_addon_changelog(
+async def test_api_detached_addon_changelog(
     api_client: TestClient,
     coresys: CoreSys,
     install_addon_ssh: Addon,
     tmp_supervisor_data: Path,
     resource: str,
 ):
-    """Test /store/addons/{addon}/changelog for an orphaned addon.
+    """Test /store/addons/{addon}/changelog for an detached addon.
 
     Currently the frontend expects a valid body even in the error case. Make sure that is
     what the API returns.
@@ -253,14 +253,14 @@ async def test_api_store_addons_no_documentation(
 
 
 @pytest.mark.parametrize("resource", ["store/addons", "addons"])
-async def test_api_orphaned_addon_documentation(
+async def test_api_detached_addon_documentation(
     api_client: TestClient,
     coresys: CoreSys,
     install_addon_ssh: Addon,
     tmp_supervisor_data: Path,
     resource: str,
 ):
-    """Test /store/addons/{addon}/changelog for an orphaned addon.
+    """Test /store/addons/{addon}/changelog for an detached addon.
 
     Currently the frontend expects a valid body even in the error case. Make sure that is
     what the API returns.
