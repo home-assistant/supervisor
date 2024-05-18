@@ -103,8 +103,12 @@ class HardwareManager(CoreSysAttributes):
         # Exctract all devices
         for device in self._udev.list_devices():
             # Skip devices without mapping
-            if not device.device_node or self.helper.hide_virtual_device(device):
-                continue
+            try:
+              if not device.device_node or self.helper.hide_virtual_device(device):
+                  continue
+            except:
+              continue
+                
             self._devices[device.sys_name] = Device.import_udev(device)
 
     async def load(self) -> None:
