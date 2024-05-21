@@ -18,7 +18,10 @@ def setup(coresys: CoreSys) -> FixupBase:
 class FixupAddonExecuteRepair(FixupBase):
     """Storage class for fixup."""
 
-    attempts = 0
+    def __init__(self, coresys: CoreSys) -> None:
+        """Initialize the add-on execute repair fixup class."""
+        super().__init__(coresys)
+        self.attempts = 0
 
     async def process_fixup(self, reference: str | None = None) -> None:
         """Pull the addons image."""
