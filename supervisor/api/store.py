@@ -249,7 +249,12 @@ class APIStore(CoreSysAttributes):
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def addons_addon_changelog(self, request: web.Request) -> str:
         """Return changelog from add-on."""
-        addon = self._extract_addon(request)
+        # Frontend can't handle error response here, need to return 200 and error as text for now
+        try:
+            addon = self._extract_addon(request)
+        except APIError as err:
+            return str(err)
+
         if not addon.with_changelog:
             return f"No changelog found for add-on {addon.slug}!"
 
@@ -259,9 +264,14 @@ class APIStore(CoreSysAttributes):
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def addons_addon_documentation(self, request: web.Request) -> str:
         """Return documentation from add-on."""
-        addon = self._extract_addon(request)
+        # Frontend can't handle error response here, need to return 200 and error as text for now
+        try:
+            addon = self._extract_addon(request)
+        except APIError as err:
+            return str(err)
+
         if not addon.with_documentation:
-            raise APIError(f"No documentation found for add-on {addon.slug}!")
+            return f"No documentation found for add-on {addon.slug}!"
 
         with addon.path_documentation.open("r") as documentation:
             return documentation.read()
