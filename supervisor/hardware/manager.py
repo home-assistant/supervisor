@@ -107,6 +107,7 @@ class HardwareManager(CoreSysAttributes):
               if not device.device_node or self.helper.hide_virtual_device(device):
                   continue
             except:
+               _LOGGER.exception("Exception : UDEV name does not appear to be a string - ignoring and continuing")
               continue
                 
             self._devices[device.sys_name] = Device.import_udev(device)
