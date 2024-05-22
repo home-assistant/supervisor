@@ -1,4 +1,4 @@
-"""Helpers to check for detached addons."""
+"""Helpers to check for detached addons due to repo misisng."""
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -8,18 +8,21 @@ from .base import CheckBase
 
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
-    return CheckDetachedAddon(coresys)
+    return CheckDetachedAddonMissing(coresys)
 
 
-class CheckDetachedAddon(CheckBase):
-    """CheckDetachedAddon class for check."""
+class CheckDetachedAddonMissing(CheckBase):
+    """CheckDetachedAddonMissing class for check."""
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for addon in self.sys_addons.installed:
-            if addon.is_detached:
+            if (
+                addon.is_detached
+                and addon.repository not in self.sys_store.repositories
+            ):
                 self.sys_resolution.create_issue(
-                    IssueType.DETACHED_ADDON,
+                    IssueType.DETACHED_ADDON_MISSING,
                     ContextType.ADDON,
                     reference=addon.slug,
                 )
@@ -33,7 +36,7 @@ class CheckDetachedAddon(CheckBase):
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.DETACHED_ADDON
+        return IssueType.DETACHED_ADDON_MISSING
 
     @property
     def context(self) -> ContextType:
@@ -43,4 +46,4 @@ class CheckDetachedAddon(CheckBase):
     @property
     def states(self) -> list[CoreState]:
         """Return a list of valid states when this check can run."""
-        return [CoreState.RUNNING, CoreState.SETUP]
+        return [CoreState.SETUP]
