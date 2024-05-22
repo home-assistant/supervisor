@@ -104,14 +104,14 @@ class HardwareManager(CoreSysAttributes):
         for device in self._udev.list_devices():            
             # Skip devices without mapping
             try:
-              if not device.device_node:
+              if self.helper.hide_virtual_device(device):  
                   continue
             except:
               _LOGGER.exception("Exception:")
               continue
 
             try:
-              if self.helper.hide_virtual_device(device):
+              if not device.device_node:
                   continue
             except:
               _LOGGER.exception("Exception:")
