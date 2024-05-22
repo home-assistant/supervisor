@@ -104,11 +104,18 @@ class HardwareManager(CoreSysAttributes):
         for device in self._udev.list_devices():
             # Skip devices without mapping
             try:
-              if not device.device_node or self.helper.hide_virtual_device(device):
+              if not device.device_node:
                   continue
             except:
-               _LOGGER.exception("Exception : UDEV name does not appear to be a string - ignoring and continuing")
+               _LOGGER.exception("Exception : UDEV passed bad data")
               continue
+
+            try: 
+              if self.helper.hide_virtual_device(device):
+                continue
+            except:      
+                _LOGGER.exception("Exception: Could not parse virtual device")
+                continue
                 
             self._devices[device.sys_name] = Device.import_udev(device)
 
