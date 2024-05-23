@@ -101,7 +101,7 @@ class HardwareManager(CoreSysAttributes):
         self._devices.clear()
 
         # Exctract all devices
-        for device in self._udev.list_devices():            
+        for device in self._udev.list_devices():
             # Skip devices without mapping
             try:
                 if not device.device_node or self.helper.hide_virtual_device(device):
