@@ -7,6 +7,7 @@ from ..const import ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+MAX_AUTO_ATTEMPTS = 5
 
 
 def setup(coresys: CoreSys) -> FixupBase:
@@ -16,6 +17,11 @@ def setup(coresys: CoreSys) -> FixupBase:
 
 class FixupAddonExecuteRepair(FixupBase):
     """Storage class for fixup."""
+
+    def __init__(self, coresys: CoreSys) -> None:
+        """Initialize the add-on execute repair fixup class."""
+        super().__init__(coresys)
+        self.attempts = 0
 
     async def process_fixup(self, reference: str | None = None) -> None:
         """Pull the addons image."""
@@ -34,6 +40,7 @@ class FixupAddonExecuteRepair(FixupBase):
             return
 
         _LOGGER.info("Installing image for addon %s")
+        self.attempts += 1
         await addon.instance.install(addon.version)
 
     @property
@@ -54,4 +61,4 @@ class FixupAddonExecuteRepair(FixupBase):
     @property
     def auto(self) -> bool:
         """Return if a fixup can be apply as auto fix."""
-        return True
+        return self.attempts < MAX_AUTO_ATTEMPTS
