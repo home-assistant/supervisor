@@ -12,7 +12,7 @@ cryptography==42.0.7
 debugpy==1.8.1
 deepmerge==1.1.1
 dirhash==0.4.0
-docker==7.0.0
+docker==7.1.0
 faust-cchardet==2.1.19
 gitpython==3.1.43
 jinja2==3.1.4
