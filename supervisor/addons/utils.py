@@ -47,6 +47,7 @@ def rating_security(addon: AddonModel) -> int:
                 Capabilities.BPF,
                 Capabilities.DAC_READ_SEARCH,
                 Capabilities.NET_ADMIN,
+                Capabilities.NET_BIND_SERVICE,
                 Capabilities.NET_RAW,
                 Capabilities.PERFMON,
                 Capabilities.SYS_ADMIN,
