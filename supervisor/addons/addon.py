@@ -1343,11 +1343,11 @@ class Addon(AddonModel):
                         )
                         raise AddonsError() from err
 
+            finally:
                 # Is add-on loaded
                 if not self.loaded:
                     await self.load()
 
-            finally:
                 # Run add-on
                 if data[ATTR_STATE] == AddonState.STARTED:
                     wait_for_start = await self.start()
