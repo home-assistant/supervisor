@@ -9,7 +9,7 @@ from supervisor.coresys import CoreSys
 from supervisor.resolution.checks.detached_addon_removed import (
     CheckDetachedAddonRemoved,
 )
-from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 
 
 async def test_base(coresys: CoreSys):
@@ -28,6 +28,7 @@ async def test_check(
 
     await detached_addon_removed()
     assert len(coresys.resolution.issues) == 0
+    assert len(coresys.resolution.suggestions) == 0
 
     (addons_dir := tmp_supervisor_data / "addons" / "local").mkdir()
     with patch.object(
@@ -41,6 +42,11 @@ async def test_check(
     assert coresys.resolution.issues[0].type is IssueType.DETACHED_ADDON_REMOVED
     assert coresys.resolution.issues[0].context is ContextType.ADDON
     assert coresys.resolution.issues[0].reference == install_addon_ssh.slug
+
+    assert len(coresys.resolution.suggestions) == 1
+    assert coresys.resolution.suggestions[0].type is SuggestionType.EXECUTE_REMOVE
+    assert coresys.resolution.suggestions[0].context is ContextType.ADDON
+    assert coresys.resolution.suggestions[0].reference == install_addon_ssh.slug
 
 
 async def test_approve(

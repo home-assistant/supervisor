@@ -37,6 +37,7 @@ async def test_check(coresys: CoreSys, install_addon_ssh: Addon):
     assert coresys.resolution.issues[0].type is IssueType.DETACHED_ADDON_MISSING
     assert coresys.resolution.issues[0].context is ContextType.ADDON
     assert coresys.resolution.issues[0].reference == install_addon_ssh.slug
+    assert len(coresys.resolution.suggestions) == 0
 
 
 async def test_approve(coresys: CoreSys, install_addon_ssh: Addon):
