@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -114,4 +115,30 @@ async def test_api_restart(
         await api_client.post("/homeassistant/restart", json={"safe_mode": True})
 
     assert container.restart.call_count == 2
+    assert safe_mode_marker.exists()
+
+
+async def test_api_rebuild(
+    api_client: TestClient,
+    coresys: CoreSys,
+    container: MagicMock,
+    tmp_supervisor_data: Path,
+    path_extern,
+):
+    """Test rebuilding homeassistant."""
+    coresys.homeassistant.version = AwesomeVersion("2023.09.0")
+    safe_mode_marker = tmp_supervisor_data / "homeassistant" / "safe-mode"
+
+    with patch.object(HomeAssistantCore, "_block_till_run"):
+        await api_client.post("/homeassistant/rebuild")
+
+    assert container.remove.call_count == 2
+    container.start.assert_called_once()
+    assert not safe_mode_marker.exists()
+
+    with patch.object(HomeAssistantCore, "_block_till_run"):
+        await api_client.post("/homeassistant/rebuild", json={"safe_mode": True})
+
+    assert container.remove.call_count == 4
+    assert container.start.call_count == 2
     assert safe_mode_marker.exists()
