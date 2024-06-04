@@ -367,6 +367,7 @@ class HomeAssistantCore(JobGroup):
         """Restart Home Assistant Docker."""
         # Create safe mode marker file if necessary
         if safe_mode:
+            _LOGGER.debug("Creating safe mode marker file.")
             await self.sys_run_in_executor(
                 (self.sys_config.path_homeassistant / SAFE_MODE_FILENAME).touch
             )
@@ -387,6 +388,7 @@ class HomeAssistantCore(JobGroup):
         """Rebuild Home Assistant Docker container."""
         # Create safe mode marker file if necessary
         if safe_mode:
+            _LOGGER.debug("Creating safe mode marker file.")
             await self.sys_run_in_executor(
                 (self.sys_config.path_homeassistant / SAFE_MODE_FILENAME).touch
             )
