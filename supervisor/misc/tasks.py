@@ -174,15 +174,9 @@ class Tasks(CoreSysAttributes):
             self._cache[HASS_WATCHDOG_API_FAILURES] = 0
             return
 
-        # Give up after 5 reanimation failures in a row. Supervisor cannot fix this issue.
+        # After 5 reanimation attempts switch to safe mode. If that fails, give up
         reanimate_fails = self._cache.get(HASS_WATCHDOG_REANIMATE_FAILURES, 0)
-        if reanimate_fails >= HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
-            if reanimate_fails == HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
-                _LOGGER.critical(
-                    "Watchdog cannot reanimate Home Assistant Core, failed all %s attempts.",
-                    reanimate_fails,
-                )
-                self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] += 1
+        if reanimate_fails > HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
             return
 
         # Init cache data
@@ -195,16 +189,30 @@ class Tasks(CoreSysAttributes):
             _LOGGER.warning("Watchdog missed an Home Assistant Core API response.")
             return
 
-        _LOGGER.error(
-            "Watchdog missed %s Home Assistant Core API responses in a row. Restarting Home Assistant Core API!",
-            HASS_WATCHDOG_MAX_API_ATTEMPTS,
-        )
+        if safe_mode := reanimate_fails == HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
+            _LOGGER.critical(
+                "Watchdog cannot reanimate Home Assistant Core, failed all %s attempts. Restarting into safe mode",
+                reanimate_fails,
+            )
+        else:
+            _LOGGER.error(
+                "Watchdog missed %s Home Assistant Core API responses in a row. Restarting Home Assistant Core API!",
+                HASS_WATCHDOG_MAX_API_ATTEMPTS,
+            )
+
         try:
-            await self.sys_homeassistant.core.restart()
+            await self.sys_homeassistant.core.restart(safe_mode=safe_mode)
         except HomeAssistantError as err:
-            _LOGGER.error("Home Assistant watchdog reanimation failed!")
-            if reanimate_fails == 0:
+            if reanimate_fails == 0 or safe_mode:
                 capture_exception(err)
+
+            if safe_mode:
+                _LOGGER.critical(
+                    "Safe mode restart failed. Watchdog cannot bring Home Assistant online."
+                )
+            else:
+                _LOGGER.error("Home Assistant watchdog reanimation failed!")
+
             self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = reanimate_fails + 1
         else:
             self._cache[HASS_WATCHDOG_REANIMATE_FAILURES] = 0

@@ -115,24 +115,33 @@ async def test_watchdog_homeassistant_api_reanimation_limit(
             restart.assert_not_called()
 
             await tasks._watchdog_homeassistant_api()
-            restart.assert_called_once()
+            restart.assert_called_once_with(safe_mode=False)
             assert "Home Assistant watchdog reanimation failed!" in caplog.text
 
             restart.reset_mock()
 
         capture_exception.assert_called_once_with(err)
 
+        # Next time it should try safe mode
         caplog.clear()
         await tasks._watchdog_homeassistant_api()
-
         restart.assert_not_called()
-        assert "Watchdog missed an Home Assistant Core API response." not in caplog.text
-        assert "Watchdog found a problem with Home Assistant API!" not in caplog.text
+
+        await tasks._watchdog_homeassistant_api()
+        restart.assert_called_once_with(safe_mode=True)
+
+        restart.assert_called_once_with(safe_mode=True)
         assert (
-            "Watchdog cannot reanimate Home Assistant Core, failed all 5 attempts."
+            "Watchdog cannot reanimate Home Assistant Core, failed all 5 attempts. Restarting into safe mode"
+            in caplog.text
+        )
+        assert (
+            "Safe mode restart failed. Watchdog cannot bring Home Assistant online."
             in caplog.text
         )
 
+        # After safe mode has failed too, no more restart attempts
+        restart.reset_mock()
         caplog.clear()
         await tasks._watchdog_homeassistant_api()
         restart.assert_not_called()
