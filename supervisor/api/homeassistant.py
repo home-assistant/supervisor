@@ -182,9 +182,13 @@ class APIHomeAssistant(CoreSysAttributes):
         )
 
     @api_process
-    def rebuild(self, request: web.Request) -> Awaitable[None]:
+    async def rebuild(self, request: web.Request) -> None:
         """Rebuild Home Assistant."""
-        return asyncio.shield(self.sys_homeassistant.core.rebuild())
+        body = await api_validate(SCHEMA_RESTART, request)
+
+        await asyncio.shield(
+            self.sys_homeassistant.core.rebuild(safe_mode=body[ATTR_SAFE_MODE])
+        )
 
     @api_process
     async def check(self, request: web.Request) -> None:
