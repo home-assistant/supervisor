@@ -8,5 +8,5 @@ pytest-timeout==2.3.1
 pytest==8.2.2
 ruff==0.4.8
 time-machine==2.14.1
-typing_extensions==4.12.1
+typing_extensions==4.12.2
 urllib3==2.2.1
