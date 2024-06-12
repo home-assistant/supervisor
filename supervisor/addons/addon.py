@@ -285,9 +285,13 @@ class Addon(AddonModel):
     @property
     def need_update(self) -> bool:
         """Return True if an update is available."""
-        if self.is_detached:
+        if self.is_detached or self.version == self.latest_version:
             return False
-        return self.version != self.latest_version
+
+        with suppress(AddonsNotSupportedError):
+            self._validate_availability(self.data_store)
+            return True
+        return False
 
     @property
     def dns(self) -> list[str]:

@@ -4,6 +4,8 @@ import asyncio
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
+import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
@@ -285,3 +287,37 @@ async def test_api_addon_uninstall_remove_config(
     assert resp.status == 200
     assert not coresys.addons.get("local_example", local_only=True)
     assert not test_folder.exists()
+
+
+async def test_api_update_available_validates_version(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_example: Addon,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test update available field is only true if user can update to latest version."""
+    install_addon_example.data["ingress"] = False
+    install_addon_example.data_store["version"] = "1.3.0"
+    caplog.clear()
+
+    resp = await api_client.get("/addons/local_example/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["version"] == "1.2.0"
+    assert result["data"]["version_latest"] == "1.3.0"
+    assert result["data"]["update_available"] is True
+
+    # If new version can't be installed due to HA version, then no update is available
+    coresys.homeassistant.version = AwesomeVersion("2024.04.0")
+    install_addon_example.data_store["homeassistant"] = "2024.06.0"
+
+    resp = await api_client.get("/addons/local_example/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["version"] == "1.2.0"
+    assert result["data"]["version_latest"] == "1.3.0"
+    assert result["data"]["update_available"] is False
+
+    assert "Add-on local_example not supported" not in caplog.text
