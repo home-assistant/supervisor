@@ -128,7 +128,6 @@ async def test_watchdog_homeassistant_api_reanimation_limit(
         restart.assert_not_called()
 
         await tasks._watchdog_homeassistant_api()
-        restart.assert_called_once_with(safe_mode=True)
 
         restart.assert_called_once_with(safe_mode=True)
         assert (
