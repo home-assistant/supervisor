@@ -9,4 +9,4 @@ pytest==8.2.2
 ruff==0.4.9
 time-machine==2.14.1
 typing_extensions==4.12.2
-urllib3==2.2.1
+urllib3==2.2.2
