@@ -174,11 +174,6 @@ class Tasks(CoreSysAttributes):
             self._cache[HASS_WATCHDOG_API_FAILURES] = 0
             return
 
-        # After 5 reanimation attempts switch to safe mode. If that fails, give up
-        reanimate_fails = self._cache.get(HASS_WATCHDOG_REANIMATE_FAILURES, 0)
-        if reanimate_fails > HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
-            return
-
         # Init cache data
         api_fails = self._cache.get(HASS_WATCHDOG_API_FAILURES, 0)
 
@@ -187,6 +182,11 @@ class Tasks(CoreSysAttributes):
         if api_fails < HASS_WATCHDOG_MAX_API_ATTEMPTS:
             self._cache[HASS_WATCHDOG_API_FAILURES] = api_fails
             _LOGGER.warning("Watchdog missed an Home Assistant Core API response.")
+            return
+
+        # After 5 reanimation attempts switch to safe mode. If that fails, give up
+        reanimate_fails = self._cache.get(HASS_WATCHDOG_REANIMATE_FAILURES, 0)
+        if reanimate_fails > HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
             return
 
         if safe_mode := reanimate_fails == HASS_WATCHDOG_MAX_REANIMATE_ATTEMPTS:
@@ -201,7 +201,10 @@ class Tasks(CoreSysAttributes):
             )
 
         try:
-            await self.sys_homeassistant.core.restart(safe_mode=safe_mode)
+            if safe_mode:
+                await self.sys_homeassistant.core.rebuild(safe_mode=True)
+            else:
+                await self.sys_homeassistant.core.restart()
         except HomeAssistantError as err:
             if reanimate_fails == 0 or safe_mode:
                 capture_exception(err)
