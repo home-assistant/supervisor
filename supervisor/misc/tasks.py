@@ -196,7 +196,7 @@ class Tasks(CoreSysAttributes):
             )
         else:
             _LOGGER.error(
-                "Watchdog missed %s Home Assistant Core API responses in a row. Restarting Home Assistant Core API!",
+                "Watchdog missed %s Home Assistant Core API responses in a row. Restarting Home Assistant Core!",
                 HASS_WATCHDOG_MAX_API_ATTEMPTS,
             )
 
