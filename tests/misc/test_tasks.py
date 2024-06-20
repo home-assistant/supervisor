@@ -46,7 +46,7 @@ async def test_watchdog_homeassistant_api(
         restart.assert_called_once()
         assert "Watchdog missed an Home Assistant Core API response." not in caplog.text
         assert (
-            "Watchdog missed 2 Home Assistant Core API responses in a row. Restarting Home Assistant Core API!"
+            "Watchdog missed 2 Home Assistant Core API responses in a row. Restarting Home Assistant Core!"
             in caplog.text
         )
 
