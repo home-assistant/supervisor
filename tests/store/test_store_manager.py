@@ -55,6 +55,7 @@ async def test_default_load(coresys: CoreSys):
         "https://github.com/music-assistant/home-assistant-addon"
         in store_manager.repository_urls
     )
+    # NOTE: When adding new stores, make sure to add it to tests/fixtures/addons/git/
     assert refresh_cache_calls == {"local_ssh", "local_example", "core_samba"}
 
 
@@ -255,12 +256,12 @@ async def test_install_unavailable_addon(
 async def test_reload(coresys: CoreSys):
     """Test store reload."""
     await coresys.store.load()
-    assert len(coresys.store.all) == 4
+    assert len(coresys.store.all) == 5
 
     with patch.object(GitRepo, "pull") as git_pull:
         await coresys.store.reload()
 
-        assert git_pull.call_count == 3
+        assert git_pull.call_count == 4
 
 
 async def test_addon_version_timestamp(coresys: CoreSys, install_addon_example: Addon):
