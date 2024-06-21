@@ -26,7 +26,7 @@ class FixupAddonExecuteRemove(FixupBase):
         # Remove addon
         _LOGGER.info("Remove addon: %s", reference)
         try:
-            await addon.uninstall()
+            await addon.uninstall(remove_config=False)
         except AddonsError as err:
             _LOGGER.error("Could not remove %s due to %s", reference, err)
             raise ResolutionFixupError() from None
