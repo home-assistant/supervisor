@@ -1,1 +1,0 @@
-{"version":3,"file":"2811-cOtKUarlTZg.js","mappings":"+JAMAA,EAAAA,GAAaC,MAAMC,EAAAA,GAAS,IAAIC,EAAAA,IAEhC,UAAeH,EAAY,E","sources":["https://raw.githubusercontent.com/home-assistant/frontend/20230703.0/src/resources/sortable.ts"],"names":["SortableCore","mount","OnSpill","AutoScroll"],"sourceRoot":""}
