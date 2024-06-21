@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
+import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
@@ -285,3 +286,63 @@ async def test_api_addon_uninstall_remove_config(
     assert resp.status == 200
     assert not coresys.addons.get("local_example", local_only=True)
     assert not test_folder.exists()
+
+
+async def test_api_addon_system_managed(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_example: Addon,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test setting system managed for an addon."""
+    install_addon_example.data["ingress"] = False
+
+    # Not system managed
+    resp = await api_client.get("/addons")
+    body = await resp.json()
+    assert body["data"]["addons"][0]["slug"] == "local_example"
+    assert body["data"]["addons"][0]["system_managed"] is False
+
+    resp = await api_client.get("/addons/local_example/info")
+    body = await resp.json()
+    assert body["data"]["system_managed"] is False
+    assert body["data"]["system_managed_config_entry"] is None
+
+    # Mark as system managed
+    coresys.addons.data.save_data.reset_mock()
+    resp = await api_client.post(
+        "/addons/local_example/options",
+        json={"system_managed": True, "system_managed_config_entry": "abc123"},
+    )
+    assert resp.status == 200
+    coresys.addons.data.save_data.assert_called_once()
+
+    resp = await api_client.get("/addons")
+    body = await resp.json()
+    assert body["data"]["addons"][0]["system_managed"] is True
+
+    resp = await api_client.get("/addons/local_example/info")
+    body = await resp.json()
+    assert body["data"]["system_managed"] is True
+    assert body["data"]["system_managed_config_entry"] == "abc123"
+
+    # Revert. Log that cannot have a config entry if not system managed
+    coresys.addons.data.save_data.reset_mock()
+    resp = await api_client.post(
+        "/addons/local_example/options",
+        json={"system_managed": False, "system_managed_config_entry": "abc123"},
+    )
+    assert resp.status == 200
+    coresys.addons.data.save_data.assert_called_once()
+    assert "Ignoring system managed config entry" in caplog.text
+
+    resp = await api_client.get("/addons")
+    body = await resp.json()
+    assert body["data"]["addons"][0]["system_managed"] is False
+
+    resp = await api_client.get("/addons/local_example/info")
+    body = await resp.json()
+    assert body["data"]["system_managed"] is False
+    assert body["data"]["system_managed_config_entry"] is None

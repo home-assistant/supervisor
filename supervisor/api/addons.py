@@ -81,6 +81,8 @@ from ..const import (
     ATTR_STARTUP,
     ATTR_STATE,
     ATTR_STDIN,
+    ATTR_SYSTEM_MANAGED,
+    ATTR_SYSTEM_MANAGED_CONFIG_ENTRY,
     ATTR_TRANSLATIONS,
     ATTR_UART,
     ATTR_UDEV,
@@ -123,6 +125,8 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
+        vol.Optional(ATTR_SYSTEM_MANAGED): vol.Boolean(),
+        vol.Optional(ATTR_SYSTEM_MANAGED_CONFIG_ENTRY): vol.Maybe(str),
     }
 )
 
@@ -178,6 +182,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_URL: addon.url,
                 ATTR_ICON: addon.with_icon,
                 ATTR_LOGO: addon.with_logo,
+                ATTR_SYSTEM_MANAGED: addon.system_managed,
             }
             for addon in self.sys_addons.installed
         ]
@@ -265,6 +270,8 @@ class APIAddons(CoreSysAttributes):
             ATTR_WATCHDOG: addon.watchdog,
             ATTR_DEVICES: addon.static_devices
             + [device.path for device in addon.devices],
+            ATTR_SYSTEM_MANAGED: addon.system_managed,
+            ATTR_SYSTEM_MANAGED_CONFIG_ENTRY: addon.system_managed_config_entry,
         }
 
         return data
@@ -301,6 +308,10 @@ class APIAddons(CoreSysAttributes):
             await self.sys_ingress.update_hass_panel(addon)
         if ATTR_WATCHDOG in body:
             addon.watchdog = body[ATTR_WATCHDOG]
+        if ATTR_SYSTEM_MANAGED in body:
+            addon.system_managed = body[ATTR_SYSTEM_MANAGED]
+        if ATTR_SYSTEM_MANAGED_CONFIG_ENTRY in body:
+            addon.system_managed_config_entry = body[ATTR_SYSTEM_MANAGED_CONFIG_ENTRY]
 
         addon.save_persist()
 
