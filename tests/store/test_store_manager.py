@@ -39,16 +39,20 @@ async def test_default_load(coresys: CoreSys):
     ):
         await store_manager.load()
 
-    assert len(store_manager.all) == 4
+    assert len(store_manager.all) == 5
     assert isinstance(store_manager.get("core"), Repository)
     assert isinstance(store_manager.get("local"), Repository)
 
-    assert len(store_manager.repository_urls) == 2
+    assert len(store_manager.repository_urls) == 3
     assert (
         "https://github.com/hassio-addons/repository" in store_manager.repository_urls
     )
     assert (
         "https://github.com/esphome/home-assistant-addon"
+        in store_manager.repository_urls
+    )
+    assert (
+        "https://github.com/music-assistant/home-assistant-addon"
         in store_manager.repository_urls
     )
     assert refresh_cache_calls == {"local_ssh", "local_example", "core_samba"}
@@ -77,16 +81,20 @@ async def test_load_with_custom_repository(coresys: CoreSys):
     ):
         await store_manager.load()
 
-    assert len(store_manager.all) == 5
+    assert len(store_manager.all) == 6
     assert isinstance(store_manager.get("core"), Repository)
     assert isinstance(store_manager.get("local"), Repository)
 
-    assert len(store_manager.repository_urls) == 3
+    assert len(store_manager.repository_urls) == 4
     assert (
         "https://github.com/hassio-addons/repository" in store_manager.repository_urls
     )
     assert (
         "https://github.com/esphome/home-assistant-addon"
+        in store_manager.repository_urls
+    )
+    assert (
+        "https://github.com/music-assistant/home-assistant-addon"
         in store_manager.repository_urls
     )
     assert "http://example.com" in store_manager.repository_urls
@@ -105,16 +113,20 @@ async def test_load_from_core_config(coresys: CoreSys):
     ), patch("pathlib.Path.exists", return_value=True):
         await coresys.store.load()
 
-    assert len(coresys.store.all) == 5
+    assert len(coresys.store.all) == 6
     assert isinstance(coresys.store.get("core"), Repository)
     assert isinstance(coresys.store.get("local"), Repository)
 
-    assert len(coresys.store.repository_urls) == 3
+    assert len(coresys.store.repository_urls) == 4
     assert (
         "https://github.com/hassio-addons/repository" in coresys.store.repository_urls
     )
     assert (
         "https://github.com/esphome/home-assistant-addon"
+        in coresys.store.repository_urls
+    )
+    assert (
+        "https://github.com/music-assistant/home-assistant-addon"
         in coresys.store.repository_urls
     )
     assert "http://example.com" in coresys.store.repository_urls
