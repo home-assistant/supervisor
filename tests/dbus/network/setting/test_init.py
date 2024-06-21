@@ -67,6 +67,7 @@ async def test_update(
     assert settings["ipv4"]["method"] == Variant("s", "auto")
     assert "gateway" not in settings["ipv4"]
     assert "dns" not in settings["ipv4"]
+    assert "dns-data" not in settings["ipv4"]
     assert "address-data" not in settings["ipv4"]
     assert "addresses" not in settings["ipv4"]
     assert len(settings["ipv4"]["route-data"].value) == 1
@@ -83,6 +84,7 @@ async def test_update(
     assert settings["ipv6"]["method"] == Variant("s", "auto")
     assert "gateway" not in settings["ipv6"]
     assert "dns" not in settings["ipv6"]
+    assert "dns-data" not in settings["ipv6"]
     assert "address-data" not in settings["ipv6"]
     assert "addresses" not in settings["ipv6"]
     assert settings["ipv6"]["addr-gen-mode"] == Variant("i", 0)
