@@ -163,6 +163,7 @@ async def test_preinstall_valid_repository(
         assert store_manager.get("local").validate()
         assert store_manager.get("a0d7b954").validate()
         assert store_manager.get("5c53de3b").validate()
+        assert store_manager.get("d5369777").validate()
 
 
 @pytest.mark.parametrize("use_update", [True, False])
