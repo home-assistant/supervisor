@@ -31,6 +31,7 @@ SETTINGS_FIXTURE: dict[str, dict[str, Variant]] = {
         ),
         "addresses": Variant("aau", [[2483202240, 24, 16951488]]),
         "dns": Variant("au", [16951488]),
+        "dns-data": Variant("as", ["192.168.2.1"]),
         "dns-search": Variant("as", []),
         "gateway": Variant("s", "192.168.2.1"),
         "method": Variant("s", "auto"),

@@ -44,6 +44,7 @@ IPV4_6_IGNORE_FIELDS = [
     "addresses",
     "address-data",
     "dns",
+    "dns-data",
     "gateway",
     "method",
 ]
