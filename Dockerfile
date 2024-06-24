@@ -26,20 +26,19 @@ RUN \
         yaml \
     \
     && curl -Lso /usr/bin/cosign "https://github.com/home-assistant/cosign/releases/download/${COSIGN_VERSION}/cosign_${BUILD_ARCH}" \
-    && chmod a+x /usr/bin/cosign
+    && chmod a+x /usr/bin/cosign \
+    && pip3 install uv==0.2.15
 
 # Install requirements
 COPY requirements.txt .
 RUN \
-    export MAKEFLAGS="-j$(nproc)" \
-    && pip3 install --only-binary=:all: \
-        -r ./requirements.txt \
+    uv pip install --no-build -r requirements.txt \
     && rm -f requirements.txt
 
 # Install Home Assistant Supervisor
 COPY . supervisor
 RUN \
-    pip3 install -e ./supervisor \
+    uv pip3 install -e ./supervisor \
     && python3 -m compileall ./supervisor/supervisor
 
 
