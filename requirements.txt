@@ -9,7 +9,7 @@ ciso8601==2.3.1
 colorlog==6.8.2
 cpe==1.2.1
 cryptography==42.0.8
-debugpy==1.8.1
+debugpy==1.8.2
 deepmerge==1.1.1
 dirhash==0.4.1
 docker==7.1.0
