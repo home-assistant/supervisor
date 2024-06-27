@@ -1,6 +1,6 @@
 coverage==7.5.4
 pre-commit==3.7.1
-pylint==3.2.3
+pylint==3.2.4
 pytest-aiohttp==1.0.5
 pytest-asyncio==0.23.6
 pytest-cov==5.0.0
