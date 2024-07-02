@@ -46,6 +46,8 @@ from ..const import (
     ATTR_SLUG,
     ATTR_STATE,
     ATTR_SYSTEM,
+    ATTR_SYSTEM_MANAGED,
+    ATTR_SYSTEM_MANAGED_CONFIG_ENTRY,
     ATTR_TYPE,
     ATTR_USER,
     ATTR_UUID,
@@ -362,6 +364,37 @@ class Addon(AddonModel):
             )
         else:
             self.persist[ATTR_WATCHDOG] = value
+
+    @property
+    def system_managed(self) -> bool:
+        """Return True if addon is managed by Home Assistant."""
+        return self.persist[ATTR_SYSTEM_MANAGED]
+
+    @system_managed.setter
+    def system_managed(self, value: bool) -> None:
+        """Set system managed enable/disable."""
+        if not value and self.system_managed_config_entry:
+            self.system_managed_config_entry = None
+
+        self.persist[ATTR_SYSTEM_MANAGED] = value
+
+    @property
+    def system_managed_config_entry(self) -> str | None:
+        """Return id of config entry managing this addon (if any)."""
+        if not self.system_managed:
+            return None
+        return self.persist.get(ATTR_SYSTEM_MANAGED_CONFIG_ENTRY)
+
+    @system_managed_config_entry.setter
+    def system_managed_config_entry(self, value: str | None) -> None:
+        """Set ID of config entry managing this addon."""
+        if not self.system_managed:
+            _LOGGER.warning(
+                "Ignoring system managed config entry for %s because it is not system managed",
+                self.slug,
+            )
+        else:
+            self.persist[ATTR_SYSTEM_MANAGED_CONFIG_ENTRY] = value
 
     @property
     def uuid(self) -> str:

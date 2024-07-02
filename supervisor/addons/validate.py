@@ -78,6 +78,8 @@ from ..const import (
     ATTR_STATE,
     ATTR_STDIN,
     ATTR_SYSTEM,
+    ATTR_SYSTEM_MANAGED,
+    ATTR_SYSTEM_MANAGED_CONFIG_ENTRY,
     ATTR_TIMEOUT,
     ATTR_TMPFS,
     ATTR_TRANSLATIONS,
@@ -467,6 +469,8 @@ SCHEMA_ADDON_USER = vol.Schema(
         vol.Optional(ATTR_PROTECTED, default=True): vol.Boolean(),
         vol.Optional(ATTR_INGRESS_PANEL, default=False): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG, default=False): vol.Boolean(),
+        vol.Optional(ATTR_SYSTEM_MANAGED, default=False): vol.Boolean(),
+        vol.Optional(ATTR_SYSTEM_MANAGED_CONFIG_ENTRY, default=None): vol.Maybe(str),
     },
     extra=vol.REMOVE_EXTRA,
 )
