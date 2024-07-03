@@ -34,9 +34,9 @@ RUN \
 COPY requirements.txt .
 RUN \
     if [ "${BUILD_ARCH}" = "i386" ]; then \
-        linux32 uv pip install --no-build -r requirements.txt \
+        linux32 uv pip install --no-build -r requirements.txt; \
     else \
-        uv pip install --no-build -r requirements.txt \
+        uv pip install --no-build -r requirements.txt; \
     fi \
     && rm -f requirements.txt
 
