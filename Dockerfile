@@ -33,7 +33,11 @@ RUN \
 # Install requirements
 COPY requirements.txt .
 RUN \
-    uv pip install --no-build -r requirements.txt \
+    if [ "${BUILD_ARCH}" = "i386" ]; then \
+        linux32 uv pip install --no-build -r requirements.txt \
+    else \
+        uv pip install --no-build -r requirements.txt \
+    fi \
     && rm -f requirements.txt
 
 # Install Home Assistant Supervisor
