@@ -113,8 +113,11 @@ class CoreSys:
         """Return system timezone."""
         if self.config.timezone:
             return self.config.timezone
+        # pylint bug with python 3.12.4 (https://github.com/pylint-dev/pylint/issues/9811)
+        # pylint: disable=no-member
         if self.host.info.timezone:
             return self.host.info.timezone
+        # pylint: enable=no-member
         return "UTC"
 
     @property
