@@ -191,7 +191,7 @@ class Interface:
             mode = WifiMode(inet.settings.wireless.mode)
 
         # Signal
-        if inet.wireless:
+        if inet.wireless and inet.wireless.active:
             signal = inet.wireless.active.strength
         else:
             signal = None
