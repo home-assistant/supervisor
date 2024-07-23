@@ -322,6 +322,7 @@ async def test_api_check_database_migration(
 ):
     """Test attempts to contact the API timeout."""
     calls = []
+
     def mock_api_state(*args):
         calls.append(None)
         if len(calls) > 50:
