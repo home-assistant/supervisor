@@ -49,6 +49,10 @@ SECONDS_BETWEEN_API_CHECKS: Final[int] = 5
 STARTUP_API_RESPONSE_TIMEOUT: Final[timedelta] = timedelta(minutes=3)
 # All stages plus event start timeout and some wiggle rooom
 STARTUP_API_CHECK_RUNNING_TIMEOUT: Final[timedelta] = timedelta(minutes=15)
+# While database migration is running, the timeout will be extended
+DATABASE_MIGRATION_TIMEOUT: Final[timedelta] = timedelta(
+    seconds=SECONDS_BETWEEN_API_CHECKS * 10
+)
 RE_YAML_ERROR = re.compile(r"homeassistant\.util\.yaml")
 
 
@@ -490,10 +494,14 @@ class HomeAssistantCore(JobGroup):
                     _LOGGER.info("Home Assistant Core state changed to %s", state)
                     last_state = state
 
-                if state == "RUNNING":
+                if state.core_state == "RUNNING":
                     _LOGGER.info("Detect a running Home Assistant instance")
                     self._error_state = False
                     return
+
+                if state.offline_db_migration:
+                    # Keep extended the deadline while database migration is active
+                    deadline = datetime.now() + DATABASE_MIGRATION_TIMEOUT
 
         self._error_state = True
         if timeout:
