@@ -21,6 +21,7 @@ from supervisor.exceptions import (
     HomeAssistantError,
     HomeAssistantJobError,
 )
+from supervisor.homeassistant.api import APIState
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.updater import Updater
@@ -313,6 +314,41 @@ async def test_api_check_success(
             await coresys.homeassistant.core.start()
 
     assert coresys.homeassistant.api.get_api_state.call_count == 1
+    assert "Detect a running Home Assistant instance" in caplog.text
+
+
+async def test_api_check_database_migration(
+    coresys: CoreSys, container: MagicMock, caplog: pytest.LogCaptureFixture
+):
+    """Test attempts to contact the API timeout."""
+    calls = []
+    def mock_api_state(*args):
+        calls.append(None)
+        if len(calls) > 50:
+            return APIState("RUNNING", False)
+        else:
+            return APIState("NOT_RUNNING", True)
+
+    container.status = "stopped"
+    coresys.homeassistant.version = AwesomeVersion("2023.9.0")
+    coresys.homeassistant.api.get_api_state.side_effect = mock_api_state
+
+    async def mock_instance_start(*_):
+        container.status = "running"
+
+    with (
+        patch.object(DockerHomeAssistant, "start", new=mock_instance_start),
+        patch.object(DockerAPI, "container_is_initialized", return_value=True),
+        travel(datetime(2023, 10, 2, 0, 0, 0), tick=False) as traveller,
+    ):
+
+        async def mock_sleep(*args):
+            traveller.shift(timedelta(minutes=1))
+
+        with patch("supervisor.homeassistant.core.asyncio.sleep", new=mock_sleep):
+            await coresys.homeassistant.core.start()
+
+    assert coresys.homeassistant.api.get_api_state.call_count == 51
     assert "Detect a running Home Assistant instance" in caplog.text
 
 
