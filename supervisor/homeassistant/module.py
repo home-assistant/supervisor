@@ -1,4 +1,5 @@
 """Home Assistant control object."""
+
 import asyncio
 from datetime import timedelta
 import errno
@@ -22,6 +23,7 @@ from ..const import (
     ATTR_BACKUPS_EXCLUDE_DATABASE,
     ATTR_BOOT,
     ATTR_IMAGE,
+    ATTR_MESSAGE,
     ATTR_PORT,
     ATTR_REFRESH_TOKEN,
     ATTR_SSL,
@@ -48,7 +50,7 @@ from ..utils import remove_folder
 from ..utils.common import FileConfiguration
 from ..utils.json import read_json_file, write_json_file
 from .api import HomeAssistantAPI
-from .const import ATTR_OVERRIDE_IMAGE, LANDINGPAGE, WSType
+from .const import ATTR_ERROR, ATTR_OVERRIDE_IMAGE, ATTR_SUCCESS, LANDINGPAGE, WSType
 from .core import HomeAssistantCore
 from .secrets import HomeAssistantSecrets
 from .validate import SCHEMA_HASS_CONFIG
@@ -345,20 +347,37 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def begin_backup(self) -> None:
         """Inform Home Assistant a backup is beginning."""
         try:
-            await self.websocket.async_send_command({ATTR_TYPE: WSType.BACKUP_START})
-        except HomeAssistantWSError:
-            _LOGGER.warning(
-                "Preparing backup of Home Assistant Core failed. Check HA Core logs."
+            resp = await self.websocket.async_send_command(
+                {ATTR_TYPE: WSType.BACKUP_START}
+            )
+        except HomeAssistantWSError as err:
+            raise HomeAssistantBackupError(
+                "Preparing backup of Home Assistant Core failed. Check HA Core logs.",
+                _LOGGER.error,
+            ) from err
+
+        if not resp.get(ATTR_SUCCESS):
+            raise HomeAssistantBackupError(
+                f"Preparing backup of Home Assistant Core failed due to: {resp.get(ATTR_ERROR, {}).get(ATTR_MESSAGE, "")}. Check HA Core logs.",
+                _LOGGER.error,
             )
 
     @Job(name="home_assistant_module_end_backup")
     async def end_backup(self) -> None:
         """Inform Home Assistant the backup is ending."""
         try:
-            await self.websocket.async_send_command({ATTR_TYPE: WSType.BACKUP_END})
+            resp = await self.websocket.async_send_command(
+                {ATTR_TYPE: WSType.BACKUP_END}
+            )
         except HomeAssistantWSError:
             _LOGGER.warning(
-                "Error during Home Assistant Core backup. Check HA Core logs."
+                "Error resuming normal operations after backup of Home Assistant Core. Check HA Core logs."
+            )
+
+        if not resp.get(ATTR_SUCCESS):
+            _LOGGER.warning(
+                "Error resuming normal operations after backup of Home Assistant Core due to: %s. Check HA Core logs.",
+                resp.get(ATTR_ERROR, {}).get(ATTR_MESSAGE, ""),
             )
 
     @Job(name="home_assistant_module_backup")

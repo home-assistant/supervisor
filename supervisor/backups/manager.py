@@ -1,4 +1,5 @@
 """Backup manager."""
+
 from __future__ import annotations
 
 import asyncio
@@ -259,11 +260,6 @@ class BackupManager(FileConfiguration, JobGroup):
             self.sys_core.state = CoreState.FREEZE
 
             async with backup:
-                # Backup add-ons
-                if addon_list:
-                    self._change_stage(BackupJobStage.ADDONS, backup)
-                    addon_start_tasks = await backup.store_addons(addon_list)
-
                 # HomeAssistant Folder is for v1
                 if homeassistant:
                     self._change_stage(BackupJobStage.HOME_ASSISTANT, backup)
@@ -272,6 +268,11 @@ class BackupManager(FileConfiguration, JobGroup):
                         if homeassistant_exclude_database is None
                         else homeassistant_exclude_database
                     )
+
+                # Backup add-ons
+                if addon_list:
+                    self._change_stage(BackupJobStage.ADDONS, backup)
+                    addon_start_tasks = await backup.store_addons(addon_list)
 
                 # Backup folders
                 if folder_list:

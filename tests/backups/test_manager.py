@@ -31,6 +31,7 @@ from supervisor.exceptions import (
     DockerError,
 )
 from supervisor.homeassistant.api import HomeAssistantAPI
+from supervisor.homeassistant.const import WSType
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.jobs.const import JobCondition
@@ -41,6 +42,18 @@ from tests.const import TEST_ADDON_SLUG
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
+
+
+@pytest.fixture(name="ha_ws_backups")
+def fixture_ha_ws_backups(ha_ws_client: AsyncMock) -> AsyncMock:
+    """Mock ha ws client to allow backups."""
+    ha_ws_client.ha_version = AwesomeVersion("2024.7.0")
+    ha_ws_client.async_send_command.return_value = {
+        "id": 1,
+        "success": True,
+        "type": "result",
+    }
+    return ha_ws_client
 
 
 async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
@@ -335,9 +348,14 @@ async def test_fail_invalid_full_backup(
 
     backup_instance.protected = False
     backup_instance.supervisor_version = "2022.08.4"
-    with patch.object(
-        type(coresys.supervisor), "version", new=PropertyMock(return_value="2022.08.3")
-    ), pytest.raises(BackupInvalidError):
+    with (
+        patch.object(
+            type(coresys.supervisor),
+            "version",
+            new=PropertyMock(return_value="2022.08.3"),
+        ),
+        pytest.raises(BackupInvalidError),
+    ):
         await manager.do_restore_full(backup_instance)
 
 
@@ -364,9 +382,14 @@ async def test_fail_invalid_partial_backup(
         await manager.do_restore_partial(backup_instance, homeassistant=True)
 
     backup_instance.supervisor_version = "2022.08.4"
-    with patch.object(
-        type(coresys.supervisor), "version", new=PropertyMock(return_value="2022.08.3")
-    ), pytest.raises(BackupInvalidError):
+    with (
+        patch.object(
+            type(coresys.supervisor),
+            "version",
+            new=PropertyMock(return_value="2022.08.3"),
+        ),
+        pytest.raises(BackupInvalidError),
+    ):
         await manager.do_restore_partial(backup_instance)
 
 
@@ -593,6 +616,7 @@ async def test_backup_share_with_mounts(
 
 async def test_full_backup_to_mount(
     coresys: CoreSys,
+    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -638,6 +662,7 @@ async def test_full_backup_to_mount(
 
 async def test_partial_backup_to_mount(
     coresys: CoreSys,
+    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -728,6 +753,7 @@ async def test_backup_to_down_mount_error(
 
 async def test_backup_to_local_with_default(
     coresys: CoreSys,
+    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -766,7 +792,12 @@ async def test_backup_to_local_with_default(
 
 
 async def test_backup_to_default(
-    coresys: CoreSys, tmp_supervisor_data, path_extern, mount_propagation, mock_is_mount
+    coresys: CoreSys,
+    ha_ws_backups,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
 ):
     """Test making backup to default mount."""
     # Add a default backup mount
@@ -926,9 +957,15 @@ async def test_backup_with_healthcheck(
         nonlocal _container_events_task
         _container_events_task = asyncio.create_task(container_events())
 
-    with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
-        AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
-    ), patch.object(DockerAddon, "is_running", side_effect=[True, False, False]):
+    with (
+        patch.object(DockerAddon, "run", new=container_events_task),
+        patch.object(
+            AddonModel,
+            "backup_mode",
+            new=PropertyMock(return_value=AddonBackupMode.COLD),
+        ),
+        patch.object(DockerAddon, "is_running", side_effect=[True, False, False]),
+    ):
         backup = await coresys.backups.do_backup_partial(
             homeassistant=False, addons=["local_ssh"]
         )
@@ -1000,10 +1037,11 @@ async def test_restore_with_healthcheck(
         nonlocal _container_events_task
         _container_events_task = asyncio.create_task(container_events())
 
-    with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
-        DockerAddon, "is_running", return_value=False
-    ), patch.object(AddonModel, "_validate_availability"), patch.object(
-        Addon, "with_ingress", new=PropertyMock(return_value=False)
+    with (
+        patch.object(DockerAddon, "run", new=container_events_task),
+        patch.object(DockerAddon, "is_running", return_value=False),
+        patch.object(AddonModel, "_validate_availability"),
+        patch.object(Addon, "with_ingress", new=PropertyMock(return_value=False)),
     ):
         await coresys.backups.do_restore_partial(backup, addons=["local_ssh"])
 
@@ -1044,7 +1082,7 @@ async def test_backup_progress(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: MagicMock,
-    ha_ws_client: AsyncMock,
+    ha_ws_backups: AsyncMock,
     tmp_supervisor_data,
     path_extern,
 ):
@@ -1054,16 +1092,22 @@ async def test_backup_progress(
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    with patch.object(
-        AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
-    ), patch("supervisor.addons.addon.asyncio.Event.wait"):
+    with (
+        patch.object(
+            AddonModel,
+            "backup_mode",
+            new=PropertyMock(return_value=AddonBackupMode.COLD),
+        ),
+        patch("supervisor.addons.addon.asyncio.Event.wait"),
+    ):
         full_backup: Backup = await coresys.backups.do_backup_full()
     await asyncio.sleep(0)
 
     messages = [
         call.args[0]
-        for call in ha_ws_client.async_send_command.call_args_list
-        if call.args[0]["data"].get("data", {}).get("name")
+        for call in ha_ws_backups.async_send_command.call_args_list
+        if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
+        and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_full_backup"
     ]
     assert messages == [
@@ -1075,10 +1119,10 @@ async def test_backup_progress(
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="docker_config"
         ),
-        _make_backup_message_for_assert(reference=full_backup.slug, stage="addons"),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="home_assistant"
         ),
+        _make_backup_message_for_assert(reference=full_backup.slug, stage="addons"),
         _make_backup_message_for_assert(reference=full_backup.slug, stage="folders"),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="finishing_file"
@@ -1091,7 +1135,7 @@ async def test_backup_progress(
         ),
     ]
 
-    ha_ws_client.async_send_command.reset_mock()
+    ha_ws_backups.async_send_command.reset_mock()
     partial_backup: Backup = await coresys.backups.do_backup_partial(
         addons=["local_ssh"], folders=["media", "share", "ssl"]
     )
@@ -1099,8 +1143,9 @@ async def test_backup_progress(
 
     messages = [
         call.args[0]
-        for call in ha_ws_client.async_send_command.call_args_list
-        if call.args[0]["data"].get("data", {}).get("name")
+        for call in ha_ws_backups.async_send_command.call_args_list
+        if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
+        and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_partial_backup"
     ]
     assert messages == [
@@ -1145,7 +1190,7 @@ async def test_restore_progress(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: MagicMock,
-    ha_ws_client: AsyncMock,
+    ha_ws_backups: AsyncMock,
     tmp_supervisor_data,
     path_extern,
 ):
@@ -1158,22 +1203,25 @@ async def test_restore_progress(
 
     full_backup: Backup = await coresys.backups.do_backup_full()
     await asyncio.sleep(0)
-    ha_ws_client.async_send_command.reset_mock()
+    ha_ws_backups.async_send_command.reset_mock()
 
     # Install another addon to be uninstalled
     request.getfixturevalue("install_addon_example")
-    with patch("supervisor.addons.addon.asyncio.Event.wait"), patch.object(
-        HomeAssistant, "restore"
-    ), patch.object(HomeAssistantCore, "update"), patch.object(
-        AddonModel, "_validate_availability"
-    ), patch.object(AddonModel, "with_ingress", new=PropertyMock(return_value=False)):
+    with (
+        patch("supervisor.addons.addon.asyncio.Event.wait"),
+        patch.object(HomeAssistant, "restore"),
+        patch.object(HomeAssistantCore, "update"),
+        patch.object(AddonModel, "_validate_availability"),
+        patch.object(AddonModel, "with_ingress", new=PropertyMock(return_value=False)),
+    ):
         await coresys.backups.do_restore_full(full_backup)
     await asyncio.sleep(0)
 
     messages = [
         call.args[0]
-        for call in ha_ws_client.async_send_command.call_args_list
-        if call.args[0]["data"].get("data", {}).get("name")
+        for call in ha_ws_backups.async_send_command.call_args_list
+        if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
+        and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_full_restore"
     ]
     assert messages == [
@@ -1233,7 +1281,7 @@ async def test_restore_progress(
     folders_backup: Backup = await coresys.backups.do_backup_partial(
         folders=["media", "share", "ssl"]
     )
-    ha_ws_client.async_send_command.reset_mock()
+    ha_ws_backups.async_send_command.reset_mock()
     await coresys.backups.do_restore_partial(
         folders_backup, folders=["media", "share", "ssl"]
     )
@@ -1241,8 +1289,9 @@ async def test_restore_progress(
 
     messages = [
         call.args[0]
-        for call in ha_ws_client.async_send_command.call_args_list
-        if call.args[0]["data"].get("data", {}).get("name")
+        for call in ha_ws_backups.async_send_command.call_args_list
+        if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
+        and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_partial_restore"
     ]
     assert messages == [
@@ -1276,17 +1325,19 @@ async def test_restore_progress(
     install_addon_ssh.state = AddonState.STOPPED
     addon_backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
 
-    ha_ws_client.async_send_command.reset_mock()
-    with patch.object(AddonModel, "_validate_availability"), patch.object(
-        HomeAssistantCore, "start"
+    ha_ws_backups.async_send_command.reset_mock()
+    with (
+        patch.object(AddonModel, "_validate_availability"),
+        patch.object(HomeAssistantCore, "start"),
     ):
         await coresys.backups.do_restore_partial(addon_backup, addons=["local_ssh"])
     await asyncio.sleep(0)
 
     messages = [
         call.args[0]
-        for call in ha_ws_client.async_send_command.call_args_list
-        if call.args[0]["data"].get("data", {}).get("name")
+        for call in ha_ws_backups.async_send_command.call_args_list
+        if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
+        and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_partial_restore"
     ]
     assert messages == [
@@ -1338,10 +1389,13 @@ async def test_freeze_thaw(
     container.exec_run.return_value = (0, None)
     ha_ws_client.ha_version = AwesomeVersion("2022.1.0")
 
-    with patch.object(
-        AddonModel, "backup_pre", new=PropertyMock(return_value="pre_backup")
-    ), patch.object(
-        AddonModel, "backup_post", new=PropertyMock(return_value="post_backup")
+    with (
+        patch.object(
+            AddonModel, "backup_pre", new=PropertyMock(return_value="pre_backup")
+        ),
+        patch.object(
+            AddonModel, "backup_post", new=PropertyMock(return_value="post_backup")
+        ),
     ):
         # Run the freeze
         await coresys.backups.freeze_all()
@@ -1465,11 +1519,12 @@ async def test_restore_only_reloads_ingress_on_change(
     async def mock_is_running(*_) -> bool:
         return True
 
-    with patch.object(
-        HomeAssistantCore, "is_running", new=mock_is_running
-    ), patch.object(AddonModel, "_validate_availability"), patch.object(
-        DockerAddon, "attach"
-    ), patch.object(HomeAssistantAPI, "make_request") as make_request:
+    with (
+        patch.object(HomeAssistantCore, "is_running", new=mock_is_running),
+        patch.object(AddonModel, "_validate_availability"),
+        patch.object(DockerAddon, "attach"),
+        patch.object(HomeAssistantAPI, "make_request") as make_request,
+    ):
         make_request.return_value.__aenter__.return_value.status = 200
 
         # Has ingress before and after - not called
@@ -1518,8 +1573,9 @@ async def test_restore_new_addon(
     await coresys.addons.uninstall("local_example")
     assert "local_example" not in coresys.addons.local
 
-    with patch.object(AddonModel, "_validate_availability"), patch.object(
-        DockerAddon, "attach"
+    with (
+        patch.object(AddonModel, "_validate_availability"),
+        patch.object(DockerAddon, "attach"),
     ):
         assert await coresys.backups.do_restore_partial(
             backup, addons=["local_example"]
@@ -1554,8 +1610,9 @@ async def test_restore_preserves_data_config(
     assert install_addon_example.path_config.exists()
     assert test_config2.exists()
 
-    with patch.object(AddonModel, "_validate_availability"), patch.object(
-        DockerAddon, "attach"
+    with (
+        patch.object(AddonModel, "_validate_availability"),
+        patch.object(DockerAddon, "attach"),
     ):
         assert await coresys.backups.do_restore_partial(
             backup, addons=["local_example"]
@@ -1624,6 +1681,7 @@ async def test_skip_homeassistant_database(
     container: MagicMock,
     partial_backup: bool,
     exclude_db_setting: bool | None,
+    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
 ):
@@ -1660,8 +1718,9 @@ async def test_skip_homeassistant_database(
     write_json_file(test_db, {"hello": "world"})
     write_json_file(test_db_wal, {"hello": "world"})
 
-    with patch.object(HomeAssistantCore, "update"), patch.object(
-        HomeAssistantCore, "start"
+    with (
+        patch.object(HomeAssistantCore, "update"),
+        patch.object(HomeAssistantCore, "start"),
     ):
         await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
@@ -1735,8 +1794,9 @@ async def test_reload_error(
     )
 
     mock_is_mount.return_value = False
-    with patch("supervisor.backups.manager.Path.is_dir", new=mock_is_dir), patch(
-        "supervisor.backups.manager.Path.glob", return_value=[]
+    with (
+        patch("supervisor.backups.manager.Path.is_dir", new=mock_is_dir),
+        patch("supervisor.backups.manager.Path.glob", return_value=[]),
     ):
         err.errno = errno.EBUSY
         await coresys.backups.reload()
@@ -1787,3 +1847,38 @@ async def test_monitoring_after_partial_restore(
     backup_instance.restore_addons.assert_called_once_with([TEST_ADDON_SLUG])
     assert coresys.core.state == CoreState.RUNNING
     coresys.docker.unload.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "pre_backup_error",
+    [
+        {
+            "code": "pre_backup_actions_failed",
+            "message": "Database migration in progress",
+        },
+        {"code": "unknown_command", "message": "Unknown command."},
+    ],
+)
+async def test_core_pre_backup_actions_failed(
+    coresys: CoreSys,
+    ha_ws_backups: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
+    pre_backup_error: dict[str, str],
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test pre-backup actions failed in HA core stops backup."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    ha_ws_backups.async_send_command.return_value = {
+        "error": pre_backup_error,
+        "id": 1,
+        "success": False,
+        "type": "result",
+    }
+
+    assert not await coresys.backups.do_backup_full()
+    assert (
+        f"Preparing backup of Home Assistant Core failed due to: {pre_backup_error['message']}"
+        in caplog.text
+    )
