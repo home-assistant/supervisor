@@ -2,6 +2,7 @@
 
 Code: https://github.com/home-assistant/plugin-cli
 """
+
 from collections.abc import Awaitable
 import logging
 import secrets
@@ -42,7 +43,9 @@ class PluginCli(PluginBase):
     @property
     def default_image(self) -> str:
         """Return default image for cli plugin."""
-        return self.sys_updater.image_cli
+        if self.sys_updater.image_cli:
+            return self.sys_updater.image_cli
+        return super().default_image
 
     @property
     def latest_version(self) -> AwesomeVersion | None:

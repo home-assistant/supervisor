@@ -1,4 +1,5 @@
 """Test base plugin functionality."""
+
 import asyncio
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
@@ -60,14 +61,17 @@ async def fixture_plugin(
 )
 async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
     """Test plugin watchdog works correctly."""
-    with patch.object(type(plugin.instance), "attach"), patch.object(
-        type(plugin.instance), "is_running", return_value=True
+    with (
+        patch.object(type(plugin.instance), "attach"),
+        patch.object(type(plugin.instance), "is_running", return_value=True),
     ):
         await plugin.load()
 
-    with patch.object(type(plugin), "rebuild") as rebuild, patch.object(
-        type(plugin), "start"
-    ) as start, patch.object(type(plugin.instance), "current_state") as current_state:
+    with (
+        patch.object(type(plugin), "rebuild") as rebuild,
+        patch.object(type(plugin), "start") as start,
+        patch.object(type(plugin.instance), "current_state") as current_state,
+    ):
         current_state.return_value = ContainerState.UNHEALTHY
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
@@ -168,9 +172,10 @@ async def test_plugin_watchdog_max_failed_attempts(
 
     container.status = "stopped"
     container.attrs = {"State": {"ExitCode": 1}}
-    with patch("supervisor.plugins.base.WATCHDOG_RETRY_SECONDS", 0), patch.object(
-        type(plugin), "start", side_effect=error
-    ) as start:
+    with (
+        patch("supervisor.plugins.base.WATCHDOG_RETRY_SECONDS", 0),
+        patch.object(type(plugin), "start", side_effect=error) as start,
+    ):
         await plugin.watchdog_container(
             DockerContainerStateEvent(
                 name=plugin.instance.name,
@@ -198,17 +203,18 @@ async def test_plugin_load_running_container(
 ) -> None:
     """Test plugins load and attach to a running container."""
     test_version = AwesomeVersion("2022.7.3")
-    with patch.object(
-        type(coresys.bus), "register_event"
-    ) as register_event, patch.object(
-        type(plugin.instance), "attach"
-    ) as attach, patch.object(type(plugin), "install") as install, patch.object(
-        type(plugin), "start"
-    ) as start, patch.object(
-        type(plugin.instance),
-        "get_latest_version",
-        return_value=test_version,
-    ), patch.object(type(plugin.instance), "is_running", return_value=True):
+    with (
+        patch.object(type(coresys.bus), "register_event") as register_event,
+        patch.object(type(plugin.instance), "attach") as attach,
+        patch.object(type(plugin), "install") as install,
+        patch.object(type(plugin), "start") as start,
+        patch.object(
+            type(plugin.instance),
+            "get_latest_version",
+            return_value=test_version,
+        ),
+        patch.object(type(plugin.instance), "is_running", return_value=True),
+    ):
         await plugin.load()
         register_event.assert_any_call(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
@@ -230,17 +236,18 @@ async def test_plugin_load_stopped_container(
 ) -> None:
     """Test plugins load and start existing container."""
     test_version = AwesomeVersion("2022.7.3")
-    with patch.object(
-        type(coresys.bus), "register_event"
-    ) as register_event, patch.object(
-        type(plugin.instance), "attach"
-    ) as attach, patch.object(type(plugin), "install") as install, patch.object(
-        type(plugin), "start"
-    ) as start, patch.object(
-        type(plugin.instance),
-        "get_latest_version",
-        return_value=test_version,
-    ), patch.object(type(plugin.instance), "is_running", return_value=False):
+    with (
+        patch.object(type(coresys.bus), "register_event") as register_event,
+        patch.object(type(plugin.instance), "attach") as attach,
+        patch.object(type(plugin), "install") as install,
+        patch.object(type(plugin), "start") as start,
+        patch.object(
+            type(plugin.instance),
+            "get_latest_version",
+            return_value=test_version,
+        ),
+        patch.object(type(plugin.instance), "is_running", return_value=False),
+    ):
         await plugin.load()
         register_event.assert_any_call(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
@@ -262,17 +269,20 @@ async def test_plugin_load_missing_container(
 ) -> None:
     """Test plugins load and create and start container."""
     test_version = AwesomeVersion("2022.7.3")
-    with patch.object(
-        type(coresys.bus), "register_event"
-    ) as register_event, patch.object(
-        type(plugin.instance), "attach", side_effect=DockerError()
-    ) as attach, patch.object(type(plugin), "install") as install, patch.object(
-        type(plugin), "start"
-    ) as start, patch.object(
-        type(plugin.instance),
-        "get_latest_version",
-        return_value=test_version,
-    ), patch.object(type(plugin.instance), "is_running", return_value=False):
+    with (
+        patch.object(type(coresys.bus), "register_event") as register_event,
+        patch.object(
+            type(plugin.instance), "attach", side_effect=DockerError()
+        ) as attach,
+        patch.object(type(plugin), "install") as install,
+        patch.object(type(plugin), "start") as start,
+        patch.object(
+            type(plugin.instance),
+            "get_latest_version",
+            return_value=test_version,
+        ),
+        patch.object(type(plugin.instance), "is_running", return_value=False),
+    ):
         await plugin.load()
         register_event.assert_any_call(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE, plugin.watchdog_container
@@ -301,9 +311,12 @@ async def test_update_fails_if_out_of_date(
     """Test update of plugins fail when supervisor is out of date."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    with patch.object(
-        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
-    ), pytest.raises(error):
+    with (
+        patch.object(
+            type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+        ),
+        pytest.raises(error),
+    ):
         await plugin.update()
 
 
@@ -316,10 +329,14 @@ async def test_repair_failed(
     coresys: CoreSys, capture_exception: Mock, plugin: PluginBase
 ):
     """Test repair failed."""
-    with patch.object(DockerInterface, "exists", return_value=False), patch.object(
-        DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
-    ), patch(
-        "supervisor.security.module.cas_validate", side_effect=CodeNotaryUntrusted
+    with (
+        patch.object(DockerInterface, "exists", return_value=False),
+        patch.object(
+            DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
+        ),
+        patch(
+            "supervisor.security.module.cas_validate", side_effect=CodeNotaryUntrusted
+        ),
     ):
         await plugin.repair()
 
@@ -360,3 +377,16 @@ async def test_load_with_incorrect_image(
         platform="linux/amd64",
     )
     assert plugin.image == correct_image
+
+
+@pytest.mark.parametrize(
+    "plugin",
+    [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
+    indirect=True,
+)
+async def test_default_image_fallback(
+    coresys: CoreSys, container: MagicMock, plugin: PluginBase
+):
+    """Test default image falls back to hard-coded constant if we fail to fetch version file."""
+    assert getattr(coresys.updater, f"image_{plugin.slug}") is None
+    assert plugin.default_image == f"ghcr.io/home-assistant/amd64-hassio-{plugin.slug}"
