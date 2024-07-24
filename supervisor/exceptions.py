@@ -1,4 +1,5 @@
 """Core Exceptions."""
+
 from collections.abc import Callable
 
 
@@ -337,6 +338,12 @@ class APIForbidden(APIError):
 
 class APIAddonNotInstalled(APIError):
     """Not installed addon requested at addons API."""
+
+
+class APIDBMigrationInProgress(APIError):
+    """Service is unavailable due to an offline DB migration is in progress."""
+
+    status = 503
 
 
 # Service / Discovery
