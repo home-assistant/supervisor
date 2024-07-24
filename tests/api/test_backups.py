@@ -20,6 +20,18 @@ from supervisor.mounts.mount import Mount
 from supervisor.supervisor import Supervisor
 
 
+@pytest.fixture(name="ha_ws_backups")
+def fixture_ha_ws_backups(ha_ws_client: AsyncMock) -> AsyncMock:
+    """Mock ha ws client to allow backups."""
+    ha_ws_client.ha_version = AwesomeVersion("2024.7.0")
+    ha_ws_client.async_send_command.return_value = {
+        "id": 1,
+        "success": True,
+        "type": "result",
+    }
+    return ha_ws_client
+
+
 async def test_info(api_client, coresys: CoreSys, mock_full_backup: Backup):
     """Test info endpoint."""
     resp = await api_client.get("/backups/info")
@@ -69,6 +81,7 @@ async def test_backup_to_location(
     location: str | None,
     backup_dir: PurePath,
     tmp_supervisor_data: Path,
+    ha_ws_backups,
     path_extern,
     mount_propagation,
     mock_is_mount,
@@ -113,6 +126,7 @@ async def test_backup_to_location(
 async def test_backup_to_default(
     api_client: TestClient,
     coresys: CoreSys,
+    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -235,6 +249,7 @@ async def test_api_backup_restore_background(
     backup_type: str,
     options: dict[str, Any],
     tmp_supervisor_data: Path,
+    ha_ws_backups,
     path_extern,
 ):
     """Test background option on backup/restore APIs."""
@@ -321,6 +336,7 @@ async def test_api_backup_errors(
     backup_type: str,
     options: dict[str, Any],
     tmp_supervisor_data: Path,
+    ha_ws_backups,
     install_addon_ssh,
     path_extern,
 ):
@@ -348,15 +364,15 @@ async def test_api_backup_errors(
     assert job["done"] is True
     assert job["reference"] == slug
     assert job["errors"] == []
-    assert job["child_jobs"][0]["name"] == "backup_store_addons"
+    assert job["child_jobs"][0]["name"] == "backup_store_homeassistant"
     assert job["child_jobs"][0]["reference"] == slug
-    assert job["child_jobs"][0]["child_jobs"][0]["name"] == "backup_addon_save"
-    assert job["child_jobs"][0]["child_jobs"][0]["reference"] == "local_ssh"
-    assert job["child_jobs"][0]["child_jobs"][0]["errors"] == [
+    assert job["child_jobs"][1]["name"] == "backup_store_addons"
+    assert job["child_jobs"][1]["reference"] == slug
+    assert job["child_jobs"][1]["child_jobs"][0]["name"] == "backup_addon_save"
+    assert job["child_jobs"][1]["child_jobs"][0]["reference"] == "local_ssh"
+    assert job["child_jobs"][1]["child_jobs"][0]["errors"] == [
         {"type": "BackupError", "message": "Can't create backup for local_ssh"}
     ]
-    assert job["child_jobs"][1]["name"] == "backup_store_homeassistant"
-    assert job["child_jobs"][1]["reference"] == slug
     assert job["child_jobs"][2]["name"] == "backup_store_folders"
     assert job["child_jobs"][2]["reference"] == slug
     assert {j["reference"] for j in job["child_jobs"][2]["child_jobs"]} == {
@@ -366,9 +382,14 @@ async def test_api_backup_errors(
         "ssl",
     }
 
-    with patch.object(
-        HomeAssistant, "backup", side_effect=HomeAssistantBackupError("Backup error")
-    ), patch.object(Addon, "backup"):
+    with (
+        patch.object(
+            HomeAssistant,
+            "backup",
+            side_effect=HomeAssistantBackupError("Backup error"),
+        ),
+        patch.object(Addon, "backup"),
+    ):
         resp = await api_client.post(
             f"/backups/new/{backup_type}",
             json={"name": f"{backup_type} backup"} | options,
@@ -384,10 +405,9 @@ async def test_api_backup_errors(
     assert job["errors"] == (
         err := [{"type": "HomeAssistantBackupError", "message": "Backup error"}]
     )
-    assert job["child_jobs"][0]["name"] == "backup_store_addons"
-    assert job["child_jobs"][1]["name"] == "backup_store_homeassistant"
-    assert job["child_jobs"][1]["errors"] == err
-    assert len(job["child_jobs"]) == 2
+    assert job["child_jobs"][0]["name"] == "backup_store_homeassistant"
+    assert job["child_jobs"][0]["errors"] == err
+    assert len(job["child_jobs"]) == 1
 
 
 async def test_backup_immediate_errors(api_client: TestClient, coresys: CoreSys):
@@ -426,14 +446,17 @@ async def test_restore_immediate_errors(
     assert resp.status == 400
     assert "only a partial backup" in (await resp.json())["message"]
 
-    with patch.object(
-        Backup,
-        "supervisor_version",
-        new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
-    ), patch.object(
-        Supervisor,
-        "version",
-        new=PropertyMock(return_value=AwesomeVersion("2023.12.0")),
+    with (
+        patch.object(
+            Backup,
+            "supervisor_version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.01.0")),
+        ),
+        patch.object(
+            Supervisor,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2023.12.0")),
+        ),
     ):
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
@@ -442,9 +465,10 @@ async def test_restore_immediate_errors(
     assert resp.status == 400
     assert "Must update supervisor" in (await resp.json())["message"]
 
-    with patch.object(
-        Backup, "protected", new=PropertyMock(return_value=True)
-    ), patch.object(Backup, "set_password", return_value=False):
+    with (
+        patch.object(Backup, "protected", new=PropertyMock(return_value=True)),
+        patch.object(Backup, "set_password", return_value=False),
+    ):
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
             json={"background": True, "homeassistant": True},
