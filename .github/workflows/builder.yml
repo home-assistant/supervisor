@@ -317,10 +317,10 @@ jobs:
             exit 1
           fi
 
-      - name: Create full backup
+      - name: Create partial backup
         id: backup
         run: |
-          test=$(docker exec hassio_cli ha backups new --no-progress --raw-json)
+          test=$(docker exec hassio_cli ha backups new --addons core_ssh --no-progress --raw-json)
           if [ "$(echo $test | jq -r '.result')" != "ok" ]; then
             exit 1
           fi
