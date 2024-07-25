@@ -1,4 +1,5 @@
 """Init file for Supervisor Home Assistant RESTful API."""
+
 import asyncio
 from collections.abc import Awaitable
 import logging
@@ -34,9 +35,9 @@ from ..const import (
     ATTR_WATCHDOG,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+from ..exceptions import APIDBMigrationInProgress, APIError
 from ..validate import docker_image, network_port, version_tag
-from .const import ATTR_SAFE_MODE
+from .const import ATTR_FORCE, ATTR_SAFE_MODE
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -66,12 +67,30 @@ SCHEMA_UPDATE = vol.Schema(
 SCHEMA_RESTART = vol.Schema(
     {
         vol.Optional(ATTR_SAFE_MODE, default=False): vol.Boolean(),
+        vol.Optional(ATTR_FORCE, default=False): vol.Boolean(),
+    }
+)
+
+SCHEMA_STOP = vol.Schema(
+    {
+        vol.Optional(ATTR_FORCE, default=False): vol.Boolean(),
     }
 )
 
 
 class APIHomeAssistant(CoreSysAttributes):
     """Handle RESTful API for Home Assistant functions."""
+
+    async def _check_offline_migration(self, force: bool = False) -> None:
+        """Check and raise if there's an offline DB migration in progress."""
+        if (
+            not force
+            and (state := await self.sys_homeassistant.api.get_api_state())
+            and state.offline_db_migration
+        ):
+            raise APIDBMigrationInProgress(
+                "Offline database migration in progress, try again after it has completed"
+            )
 
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
@@ -154,6 +173,7 @@ class APIHomeAssistant(CoreSysAttributes):
     async def update(self, request: web.Request) -> None:
         """Update Home Assistant."""
         body = await api_validate(SCHEMA_UPDATE, request)
+        await self._check_offline_migration()
 
         await asyncio.shield(
             self.sys_homeassistant.core.update(
@@ -163,9 +183,12 @@ class APIHomeAssistant(CoreSysAttributes):
         )
 
     @api_process
-    def stop(self, request: web.Request) -> Awaitable[None]:
+    async def stop(self, request: web.Request) -> Awaitable[None]:
         """Stop Home Assistant."""
-        return asyncio.shield(self.sys_homeassistant.core.stop())
+        body = await api_validate(SCHEMA_STOP, request)
+        await self._check_offline_migration(force=body[ATTR_FORCE])
+
+        return await asyncio.shield(self.sys_homeassistant.core.stop())
 
     @api_process
     def start(self, request: web.Request) -> Awaitable[None]:
@@ -176,6 +199,7 @@ class APIHomeAssistant(CoreSysAttributes):
     async def restart(self, request: web.Request) -> None:
         """Restart Home Assistant."""
         body = await api_validate(SCHEMA_RESTART, request)
+        await self._check_offline_migration(force=body[ATTR_FORCE])
 
         await asyncio.shield(
             self.sys_homeassistant.core.restart(safe_mode=body[ATTR_SAFE_MODE])
@@ -185,6 +209,7 @@ class APIHomeAssistant(CoreSysAttributes):
     async def rebuild(self, request: web.Request) -> None:
         """Rebuild Home Assistant."""
         body = await api_validate(SCHEMA_RESTART, request)
+        await self._check_offline_migration(force=body[ATTR_FORCE])
 
         await asyncio.shield(
             self.sys_homeassistant.core.rebuild(safe_mode=body[ATTR_SAFE_MODE])

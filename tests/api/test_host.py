@@ -1,13 +1,15 @@
 """Test Host API."""
 
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
+from supervisor.homeassistant.api import APIState
 from supervisor.host.const import LogFormat, LogFormatter
+from supervisor.host.control import SystemControl
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
@@ -324,3 +326,41 @@ async def test_advanced_logs_errors(api_client: TestClient):
         content
         == "Invalid content type requested. Only text/plain and text/x-log supported for now."
     )
+
+
+@pytest.mark.parametrize("action", ["reboot", "shutdown"])
+async def test_migration_blocks_shutdown(
+    api_client: TestClient,
+    coresys: CoreSys,
+    action: str,
+):
+    """Test that an offline db migration in progress stops users from shuting down or rebooting system."""
+    coresys.homeassistant.api.get_api_state.return_value = APIState("NOT_RUNNING", True)
+
+    resp = await api_client.post(f"/host/{action}")
+    assert resp.status == 503
+    result = await resp.json()
+    assert (
+        result["message"]
+        == "Home Assistant offline database migration in progress, please wait until complete before shutting down host"
+    )
+
+
+async def test_force_reboot_during_migration(api_client: TestClient, coresys: CoreSys):
+    """Test force option reboots even during a migration."""
+    coresys.homeassistant.api.get_api_state.return_value = APIState("NOT_RUNNING", True)
+
+    with patch.object(SystemControl, "reboot") as reboot:
+        await api_client.post("/host/reboot", json={"force": True})
+        reboot.assert_called_once()
+
+
+async def test_force_shutdown_during_migration(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test force option shutdown even during a migration."""
+    coresys.homeassistant.api.get_api_state.return_value = APIState("NOT_RUNNING", True)
+
+    with patch.object(SystemControl, "shutdown") as shutdown:
+        await api_client.post("/host/shutdown", json={"force": True})
+        shutdown.assert_called_once()
