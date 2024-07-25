@@ -20,18 +20,6 @@ from supervisor.mounts.mount import Mount
 from supervisor.supervisor import Supervisor
 
 
-@pytest.fixture(name="ha_ws_backups")
-def fixture_ha_ws_backups(ha_ws_client: AsyncMock) -> AsyncMock:
-    """Mock ha ws client to allow backups."""
-    ha_ws_client.ha_version = AwesomeVersion("2024.7.0")
-    ha_ws_client.async_send_command.return_value = {
-        "id": 1,
-        "success": True,
-        "type": "result",
-    }
-    return ha_ws_client
-
-
 async def test_info(api_client, coresys: CoreSys, mock_full_backup: Backup):
     """Test info endpoint."""
     resp = await api_client.get("/backups/info")
@@ -81,7 +69,6 @@ async def test_backup_to_location(
     location: str | None,
     backup_dir: PurePath,
     tmp_supervisor_data: Path,
-    ha_ws_backups,
     path_extern,
     mount_propagation,
     mock_is_mount,
@@ -126,7 +113,6 @@ async def test_backup_to_location(
 async def test_backup_to_default(
     api_client: TestClient,
     coresys: CoreSys,
-    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -249,7 +235,6 @@ async def test_api_backup_restore_background(
     backup_type: str,
     options: dict[str, Any],
     tmp_supervisor_data: Path,
-    ha_ws_backups,
     path_extern,
 ):
     """Test background option on backup/restore APIs."""
@@ -336,7 +321,6 @@ async def test_api_backup_errors(
     backup_type: str,
     options: dict[str, Any],
     tmp_supervisor_data: Path,
-    ha_ws_backups,
     install_addon_ssh,
     path_extern,
 ):

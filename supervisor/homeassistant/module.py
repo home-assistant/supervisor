@@ -356,7 +356,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 _LOGGER.error,
             ) from err
 
-        if not resp.get(ATTR_SUCCESS):
+        if resp and not resp.get(ATTR_SUCCESS):
             raise HomeAssistantBackupError(
                 f"Preparing backup of Home Assistant Core failed due to: {resp.get(ATTR_ERROR, {}).get(ATTR_MESSAGE, "")}. Check HA Core logs.",
                 _LOGGER.error,
@@ -374,7 +374,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 "Error resuming normal operations after backup of Home Assistant Core. Check HA Core logs."
             )
 
-        if not resp.get(ATTR_SUCCESS):
+        if resp and not resp.get(ATTR_SUCCESS):
             _LOGGER.warning(
                 "Error resuming normal operations after backup of Home Assistant Core due to: %s. Check HA Core logs.",
                 resp.get(ATTR_ERROR, {}).get(ATTR_MESSAGE, ""),

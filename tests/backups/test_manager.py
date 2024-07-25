@@ -44,18 +44,6 @@ from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
 
 
-@pytest.fixture(name="ha_ws_backups")
-def fixture_ha_ws_backups(ha_ws_client: AsyncMock) -> AsyncMock:
-    """Mock ha ws client to allow backups."""
-    ha_ws_client.ha_version = AwesomeVersion("2024.7.0")
-    ha_ws_client.async_send_command.return_value = {
-        "id": 1,
-        "success": True,
-        "type": "result",
-    }
-    return ha_ws_client
-
-
 async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
     """Test creating Backup."""
     coresys.core.state = CoreState.RUNNING
@@ -616,7 +604,6 @@ async def test_backup_share_with_mounts(
 
 async def test_full_backup_to_mount(
     coresys: CoreSys,
-    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -662,7 +649,6 @@ async def test_full_backup_to_mount(
 
 async def test_partial_backup_to_mount(
     coresys: CoreSys,
-    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -753,7 +739,6 @@ async def test_backup_to_down_mount_error(
 
 async def test_backup_to_local_with_default(
     coresys: CoreSys,
-    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -793,7 +778,6 @@ async def test_backup_to_local_with_default(
 
 async def test_backup_to_default(
     coresys: CoreSys,
-    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -1082,7 +1066,7 @@ async def test_backup_progress(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: MagicMock,
-    ha_ws_backups: AsyncMock,
+    ha_ws_client: AsyncMock,
     tmp_supervisor_data,
     path_extern,
 ):
@@ -1105,7 +1089,7 @@ async def test_backup_progress(
 
     messages = [
         call.args[0]
-        for call in ha_ws_backups.async_send_command.call_args_list
+        for call in ha_ws_client.async_send_command.call_args_list
         if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
         and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_full_backup"
@@ -1135,7 +1119,7 @@ async def test_backup_progress(
         ),
     ]
 
-    ha_ws_backups.async_send_command.reset_mock()
+    ha_ws_client.async_send_command.reset_mock()
     partial_backup: Backup = await coresys.backups.do_backup_partial(
         addons=["local_ssh"], folders=["media", "share", "ssl"]
     )
@@ -1143,7 +1127,7 @@ async def test_backup_progress(
 
     messages = [
         call.args[0]
-        for call in ha_ws_backups.async_send_command.call_args_list
+        for call in ha_ws_client.async_send_command.call_args_list
         if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
         and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_partial_backup"
@@ -1190,7 +1174,7 @@ async def test_restore_progress(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: MagicMock,
-    ha_ws_backups: AsyncMock,
+    ha_ws_client: AsyncMock,
     tmp_supervisor_data,
     path_extern,
 ):
@@ -1203,7 +1187,7 @@ async def test_restore_progress(
 
     full_backup: Backup = await coresys.backups.do_backup_full()
     await asyncio.sleep(0)
-    ha_ws_backups.async_send_command.reset_mock()
+    ha_ws_client.async_send_command.reset_mock()
 
     # Install another addon to be uninstalled
     request.getfixturevalue("install_addon_example")
@@ -1219,7 +1203,7 @@ async def test_restore_progress(
 
     messages = [
         call.args[0]
-        for call in ha_ws_backups.async_send_command.call_args_list
+        for call in ha_ws_client.async_send_command.call_args_list
         if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
         and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_full_restore"
@@ -1281,7 +1265,7 @@ async def test_restore_progress(
     folders_backup: Backup = await coresys.backups.do_backup_partial(
         folders=["media", "share", "ssl"]
     )
-    ha_ws_backups.async_send_command.reset_mock()
+    ha_ws_client.async_send_command.reset_mock()
     await coresys.backups.do_restore_partial(
         folders_backup, folders=["media", "share", "ssl"]
     )
@@ -1289,7 +1273,7 @@ async def test_restore_progress(
 
     messages = [
         call.args[0]
-        for call in ha_ws_backups.async_send_command.call_args_list
+        for call in ha_ws_client.async_send_command.call_args_list
         if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
         and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_partial_restore"
@@ -1325,7 +1309,7 @@ async def test_restore_progress(
     install_addon_ssh.state = AddonState.STOPPED
     addon_backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
 
-    ha_ws_backups.async_send_command.reset_mock()
+    ha_ws_client.async_send_command.reset_mock()
     with (
         patch.object(AddonModel, "_validate_availability"),
         patch.object(HomeAssistantCore, "start"),
@@ -1335,7 +1319,7 @@ async def test_restore_progress(
 
     messages = [
         call.args[0]
-        for call in ha_ws_backups.async_send_command.call_args_list
+        for call in ha_ws_client.async_send_command.call_args_list
         if call.args[0]["type"] == WSType.SUPERVISOR_EVENT
         and call.args[0]["data"].get("data", {}).get("name")
         == "backup_manager_partial_restore"
@@ -1861,7 +1845,7 @@ async def test_monitoring_after_partial_restore(
 )
 async def test_core_pre_backup_actions_failed(
     coresys: CoreSys,
-    ha_ws_backups: AsyncMock,
+    ha_ws_client: AsyncMock,
     caplog: pytest.LogCaptureFixture,
     pre_backup_error: dict[str, str],
     tmp_supervisor_data,
@@ -1870,7 +1854,8 @@ async def test_core_pre_backup_actions_failed(
     """Test pre-backup actions failed in HA core stops backup."""
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    ha_ws_backups.async_send_command.return_value = {
+    ha_ws_client.ha_version = AwesomeVersion("2024.7.0")
+    ha_ws_client.async_send_command.return_value = {
         "error": pre_backup_error,
         "id": 1,
         "success": False,
