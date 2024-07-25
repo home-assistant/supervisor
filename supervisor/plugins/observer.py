@@ -2,6 +2,7 @@
 
 Code: https://github.com/home-assistant/plugin-observer
 """
+
 import logging
 import secrets
 
@@ -47,7 +48,9 @@ class PluginObserver(PluginBase):
     @property
     def default_image(self) -> str:
         """Return default image for observer plugin."""
-        return self.sys_updater.image_observer
+        if self.sys_updater.image_observer:
+            return self.sys_updater.image_observer
+        return super().default_image
 
     @property
     def latest_version(self) -> AwesomeVersion | None:

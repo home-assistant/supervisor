@@ -2,6 +2,7 @@
 
 Code: https://github.com/home-assistant/plugin-dns
 """
+
 import asyncio
 from contextlib import suppress
 import errno
@@ -111,7 +112,9 @@ class PluginDns(PluginBase):
     @property
     def default_image(self) -> str:
         """Return default image for dns plugin."""
-        return self.sys_updater.image_dns
+        if self.sys_updater.image_dns:
+            return self.sys_updater.image_dns
+        return super().default_image
 
     @property
     def latest_version(self) -> AwesomeVersion | None:
