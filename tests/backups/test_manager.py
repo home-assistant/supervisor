@@ -1665,7 +1665,6 @@ async def test_skip_homeassistant_database(
     container: MagicMock,
     partial_backup: bool,
     exclude_db_setting: bool | None,
-    ha_ws_backups,
     tmp_supervisor_data,
     path_extern,
 ):
