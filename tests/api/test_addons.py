@@ -232,13 +232,13 @@ async def test_api_addon_rebuild_healthcheck(
         nonlocal _container_events_task
         _container_events_task = asyncio.create_task(container_events())
 
-    with patch.object(
-        AddonBuild, "is_valid", new=PropertyMock(return_value=True)
-    ), patch.object(DockerAddon, "is_running", return_value=False), patch.object(
-        Addon, "need_build", new=PropertyMock(return_value=True)
-    ), patch.object(
-        CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
-    ), patch.object(DockerAddon, "run", new=container_events_task):
+    with (
+        patch.object(AddonBuild, "is_valid", new=PropertyMock(return_value=True)),
+        patch.object(DockerAddon, "is_running", return_value=False),
+        patch.object(Addon, "need_build", new=PropertyMock(return_value=True)),
+        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(DockerAddon, "run", new=container_events_task),
+    ):
         resp = await api_client.post("/addons/local_ssh/rebuild")
 
     assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
@@ -313,7 +313,7 @@ async def test_api_addon_system_managed(
     # Mark as system managed
     coresys.addons.data.save_data.reset_mock()
     resp = await api_client.post(
-        "/addons/local_example/options",
+        "/addons/local_example/sys_options",
         json={"system_managed": True, "system_managed_config_entry": "abc123"},
     )
     assert resp.status == 200
@@ -331,7 +331,7 @@ async def test_api_addon_system_managed(
     # Revert. Log that cannot have a config entry if not system managed
     coresys.addons.data.save_data.reset_mock()
     resp = await api_client.post(
-        "/addons/local_example/options",
+        "/addons/local_example/sys_options",
         json={"system_managed": False, "system_managed_config_entry": "abc123"},
     )
     assert resp.status == 200

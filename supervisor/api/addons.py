@@ -1,4 +1,5 @@
 """Init file for Supervisor Home Assistant RESTful API."""
+
 import asyncio
 from collections.abc import Awaitable
 import logging
@@ -125,6 +126,11 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
+    }
+)
+
+SCHEMA_SYS_OPTIONS = vol.Schema(
+    {
         vol.Optional(ATTR_SYSTEM_MANAGED): vol.Boolean(),
         vol.Optional(ATTR_SYSTEM_MANAGED_CONFIG_ENTRY): vol.Maybe(str),
     }
@@ -308,6 +314,16 @@ class APIAddons(CoreSysAttributes):
             await self.sys_ingress.update_hass_panel(addon)
         if ATTR_WATCHDOG in body:
             addon.watchdog = body[ATTR_WATCHDOG]
+
+        addon.save_persist()
+
+    @api_process
+    async def sys_options(self, request: web.Request) -> None:
+        """Store system options for an add-on."""
+        addon = self.get_addon_for_request(request)
+
+        # Validate/Process Body
+        body = await api_validate(SCHEMA_SYS_OPTIONS, request)
         if ATTR_SYSTEM_MANAGED in body:
             addon.system_managed = body[ATTR_SYSTEM_MANAGED]
         if ATTR_SYSTEM_MANAGED_CONFIG_ENTRY in body:
