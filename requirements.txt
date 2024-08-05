@@ -11,7 +11,7 @@ cpe==1.2.1
 cryptography==43.0.0
 debugpy==1.8.2
 deepmerge==1.1.1
-dirhash==0.4.1
+dirhash==0.5.0
 docker==7.1.0
 faust-cchardet==2.1.19
 gitpython==3.1.43
