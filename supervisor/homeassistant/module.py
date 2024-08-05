@@ -373,12 +373,12 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             _LOGGER.warning(
                 "Error resuming normal operations after backup of Home Assistant Core. Check HA Core logs."
             )
-
-        if resp and not resp.get(ATTR_SUCCESS):
-            _LOGGER.warning(
-                "Error resuming normal operations after backup of Home Assistant Core due to: %s. Check HA Core logs.",
-                resp.get(ATTR_ERROR, {}).get(ATTR_MESSAGE, ""),
-            )
+        else:
+            if resp and not resp.get(ATTR_SUCCESS):
+                _LOGGER.warning(
+                    "Error resuming normal operations after backup of Home Assistant Core due to: %s. Check HA Core logs.",
+                    resp.get(ATTR_ERROR, {}).get(ATTR_MESSAGE, ""),
+                )
 
     @Job(name="home_assistant_module_backup")
     async def backup(
