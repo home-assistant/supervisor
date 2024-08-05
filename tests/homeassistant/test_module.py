@@ -5,12 +5,17 @@ import errno
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from pytest import LogCaptureFixture
+from pytest import LogCaptureFixture, raises
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
+from supervisor.exceptions import (
+    HomeAssistantBackupError,
+    HomeAssistantWSConnectionError,
+)
 from supervisor.homeassistant.secrets import HomeAssistantSecrets
+from supervisor.homeassistant.websocket import HomeAssistantWebSocket
 
 
 async def test_load(
@@ -21,12 +26,14 @@ async def test_load(
         secrets.write("hello: world\n")
 
     # Unwrap read_secrets to prevent throttling between tests
-    with patch.object(DockerInterface, "attach") as attach, patch.object(
-        DockerInterface, "check_image"
-    ) as check_image, patch.object(
-        HomeAssistantSecrets,
-        "_read_secrets",
-        new=HomeAssistantSecrets._read_secrets.__wrapped__,
+    with (
+        patch.object(DockerInterface, "attach") as attach,
+        patch.object(DockerInterface, "check_image") as check_image,
+        patch.object(
+            HomeAssistantSecrets,
+            "_read_secrets",
+            new=HomeAssistantSecrets._read_secrets.__wrapped__,
+        ),
     ):
         await coresys.homeassistant.load()
 
@@ -70,3 +77,34 @@ def test_write_pulse_error(coresys: CoreSys, caplog: LogCaptureFixture):
 
         assert "can't write pulse/client.config" in caplog.text
         assert coresys.core.healthy is False
+
+
+async def test_begin_backup_ws_error(coresys: CoreSys):
+    """Test WS error when beginning backup."""
+    # pylint: disable-next=protected-access
+    coresys.homeassistant.websocket._client.async_send_command.side_effect = (
+        HomeAssistantWSConnectionError
+    )
+    with (
+        patch.object(HomeAssistantWebSocket, "_can_send", return_value=True),
+        raises(
+            HomeAssistantBackupError,
+            match="Preparing backup of Home Assistant Core failed. Check HA Core logs.",
+        ),
+    ):
+        await coresys.homeassistant.begin_backup()
+
+
+async def test_end_backup_ws_error(coresys: CoreSys, caplog: LogCaptureFixture):
+    """Test WS error when ending backup."""
+    # pylint: disable-next=protected-access
+    coresys.homeassistant.websocket._client.async_send_command.side_effect = (
+        HomeAssistantWSConnectionError
+    )
+    with patch.object(HomeAssistantWebSocket, "_can_send", return_value=True):
+        await coresys.homeassistant.end_backup()
+
+    assert (
+        "Error resuming normal operations after backup of Home Assistant Core. Check HA Core logs."
+        in caplog.text
+    )
