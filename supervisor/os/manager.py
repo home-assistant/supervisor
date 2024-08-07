@@ -1,14 +1,27 @@
 """OS support on supervisor."""
+
 from collections.abc import Awaitable
 from dataclasses import dataclass
 from datetime import datetime
 import errno
 import logging
+import os
 from pathlib import Path, PurePath
+from warnings import catch_warnings, simplefilter
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from cpe import CPE
+
+# Fix for https://github.com/home-assistant/supervisor/issues/5226
+# Remove when CPE updated with https://github.com/nilp0inter/cpe/pull/57
+# Continue logging the warning on dev systems at least as this is still a problem
+with catch_warnings():
+    if not os.environ.get("SUPERVISOR_DEV") and not logging.getLogger(
+        __name__
+    ).isEnabledFor(logging.DEBUG):
+        simplefilter("ignore", SyntaxWarning)
+
+    from cpe import CPE
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.agent.boards.const import BOARD_NAME_SUPERVISED
