@@ -8,11 +8,13 @@ from .const import StoreType
 
 URL_COMMUNITY_ADDONS = "https://github.com/hassio-addons/repository"
 URL_ESPHOME = "https://github.com/esphome/home-assistant-addon"
+URL_MUSIC_ASSISTANT = "https://github.com/music-assistant/home-assistant-addon"
 BUILTIN_REPOSITORIES = {
     StoreType.CORE,
     StoreType.LOCAL,
     URL_COMMUNITY_ADDONS,
     URL_ESPHOME,
+    URL_MUSIC_ASSISTANT,
 }
 
 # pylint: disable=no-value-for-parameter

@@ -4,8 +4,12 @@
   "containerEnv": {
     "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
   },
+  "remoteEnv": {
+    "PATH": "${containerEnv:VIRTUAL_ENV}/bin:${containerEnv:PATH}"
+  },
   "appPort": ["9123:8123", "7357:4357"],
-  "postCreateCommand": "bash devcontainer_bootstrap",
+  "postCreateCommand": "bash devcontainer_setup",
+  "postStartCommand": "bash devcontainer_bootstrap",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
   "customizations": {
     "vscode": {
@@ -19,17 +23,21 @@
         "GitHub.vscode-pull-request-github"
       ],
       "settings": {
+        "python.defaultInterpreterPath": "/home/vscode/.local/ha-venv/bin/python",
+        "python.pythonPath": "/home/vscode/.local/ha-venv/bin/python",
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "python.testing.pytestArgs": ["--no-cov"],
+        "pylint.importStrategy": "fromEnvironment",
+        "editor.formatOnPaste": false,
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "files.trimTrailingWhitespace": true,
         "terminal.integrated.profiles.linux": {
           "zsh": {
             "path": "/usr/bin/zsh"
           }
         },
         "terminal.integrated.defaultProfile.linux": "zsh",
-        "editor.formatOnPaste": false,
-        "editor.formatOnSave": true,
-        "editor.formatOnType": true,
-        "files.trimTrailingWhitespace": true,
-        "python.pythonPath": "/usr/local/bin/python3",
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff"
         }

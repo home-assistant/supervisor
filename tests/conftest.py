@@ -42,6 +42,7 @@ from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
+from supervisor.homeassistant.api import APIState
 from supervisor.host.logs import LogsControl
 from supervisor.os.manager import OSManager
 from supervisor.store.addon import AddonStore
@@ -360,7 +361,9 @@ async def coresys(
     )
 
     # WebSocket
-    coresys_obj.homeassistant.api.get_api_state = AsyncMock(return_value="RUNNING")
+    coresys_obj.homeassistant.api.get_api_state = AsyncMock(
+        return_value=APIState("RUNNING", False)
+    )
     coresys_obj.homeassistant._websocket._client = AsyncMock(
         ha_version=AwesomeVersion("2021.2.4")
     )

@@ -2,6 +2,7 @@
 
 Code: https://github.com/home-assistant/plugin-audio
 """
+
 import errno
 import logging
 from pathlib import Path, PurePath
@@ -73,7 +74,9 @@ class PluginAudio(PluginBase):
     @property
     def default_image(self) -> str:
         """Return default image for audio plugin."""
-        return self.sys_updater.image_audio
+        if self.sys_updater.image_audio:
+            return self.sys_updater.image_audio
+        return super().default_image
 
     @property
     def latest_version(self) -> AwesomeVersion | None:

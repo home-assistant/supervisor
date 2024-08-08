@@ -2,6 +2,7 @@
 
 Code: https://github.com/home-assistant/plugin-multicast
 """
+
 import logging
 
 from awesomeversion import AwesomeVersion
@@ -44,7 +45,9 @@ class PluginMulticast(PluginBase):
     @property
     def default_image(self) -> str:
         """Return default image for multicast plugin."""
-        return self.sys_updater.image_multicast
+        if self.sys_updater.image_multicast:
+            return self.sys_updater.image_multicast
+        return super().default_image
 
     @property
     def latest_version(self) -> AwesomeVersion | None:

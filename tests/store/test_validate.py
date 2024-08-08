@@ -49,12 +49,13 @@ async def test_repository_validate(repo_list: list[str], valid: bool):
     """Test repository list validate."""
     if valid:
         processed = repositories(repo_list)
-        assert len(processed) == 4
+        assert len(processed) == 5
         assert set(repositories(repo_list)) == {
             "core",
             "local",
             "https://github.com/hassio-addons/repository",
             "https://github.com/esphome/home-assistant-addon",
+            "https://github.com/music-assistant/home-assistant-addon",
         }
     else:
         with pytest.raises(Invalid):

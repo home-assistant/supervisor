@@ -28,7 +28,7 @@ from ..const import (
     ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, HostLogError
+from ..exceptions import APIDBMigrationInProgress, APIError, HostLogError
 from ..host.const import (
     PARAM_BOOT_ID,
     PARAM_FOLLOW,
@@ -46,6 +46,7 @@ from .const import (
     ATTR_BROADCAST_MDNS,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
+    ATTR_FORCE,
     ATTR_IDENTIFIERS,
     ATTR_LLMNR_HOSTNAME,
     ATTR_STARTUP_TIME,
@@ -64,9 +65,28 @@ DEFAULT_RANGE = 100
 
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
+# pylint: disable=no-value-for-parameter
+SCHEMA_SHUTDOWN = vol.Schema(
+    {
+        vol.Optional(ATTR_FORCE, default=False): vol.Boolean(),
+    }
+)
+# pylint: enable=no-value-for-parameter
+
 
 class APIHost(CoreSysAttributes):
     """Handle RESTful API for host functions."""
+
+    async def _check_ha_offline_migration(self, force: bool) -> None:
+        """Check if HA has an offline migration in progress and raise if not forced."""
+        if (
+            not force
+            and (state := await self.sys_homeassistant.api.get_api_state())
+            and state.offline_db_migration
+        ):
+            raise APIDBMigrationInProgress(
+                "Home Assistant offline database migration in progress, please wait until complete before shutting down host"
+            )
 
     @api_process
     async def info(self, request):
@@ -109,14 +129,20 @@ class APIHost(CoreSysAttributes):
             )
 
     @api_process
-    def reboot(self, request):
+    async def reboot(self, request):
         """Reboot host."""
-        return asyncio.shield(self.sys_host.control.reboot())
+        body = await api_validate(SCHEMA_SHUTDOWN, request)
+        await self._check_ha_offline_migration(force=body[ATTR_FORCE])
+
+        return await asyncio.shield(self.sys_host.control.reboot())
 
     @api_process
-    def shutdown(self, request):
+    async def shutdown(self, request):
         """Poweroff host."""
-        return asyncio.shield(self.sys_host.control.shutdown())
+        body = await api_validate(SCHEMA_SHUTDOWN, request)
+        await self._check_ha_offline_migration(force=body[ATTR_FORCE])
+
+        return await asyncio.shield(self.sys_host.control.shutdown())
 
     @api_process
     def reload(self, request):

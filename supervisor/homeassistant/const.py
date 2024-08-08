@@ -7,7 +7,9 @@ from awesomeversion import AwesomeVersion
 
 from ..const import CoreState
 
+ATTR_ERROR = "error"
 ATTR_OVERRIDE_IMAGE = "override_image"
+ATTR_SUCCESS = "success"
 LANDINGPAGE: AwesomeVersion = AwesomeVersion("landingpage")
 WATCHDOG_RETRY_SECONDS = 10
 WATCHDOG_MAX_ATTEMPTS = 5
