@@ -1,4 +1,5 @@
 """Init file for Supervisor RESTful API."""
+
 from functools import partial
 import logging
 from pathlib import Path
@@ -508,6 +509,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/addons/{addon}/stop", api_addons.stop),
                 web.post("/addons/{addon}/restart", api_addons.restart),
                 web.post("/addons/{addon}/options", api_addons.options),
+                web.post("/addons/{addon}/sys_options", api_addons.sys_options),
                 web.post(
                     "/addons/{addon}/options/validate", api_addons.options_validate
                 ),

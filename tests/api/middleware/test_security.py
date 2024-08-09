@@ -1,4 +1,5 @@
 """Test API security layer."""
+
 import asyncio
 from http import HTTPStatus
 from unittest.mock import patch
@@ -180,6 +181,8 @@ async def test_bad_requests(
         ("post", "/addons/abc123/restart", {"admin", "manager"}),
         ("post", "/addons/abc123/security", {"admin"}),
         ("post", "/os/datadisk/wipe", {"admin"}),
+        ("post", "/addons/self/sys_options", set()),
+        ("post", "/addons/abc123/sys_options", set()),
     ],
 )
 async def test_token_validation(
@@ -205,3 +208,12 @@ async def test_token_validation(
             request_path, headers={"Authorization": "Bearer abc123"}
         )
         assert resp.status == 403
+
+
+async def test_home_assistant_paths(api_token_validation: TestClient, coresys: CoreSys):
+    """Test Home Assistant only paths."""
+    coresys.homeassistant.supervisor_token = "abc123"
+    resp = await api_token_validation.post(
+        "/addons/local_test/sys_options", headers={"Authorization": "Bearer abc123"}
+    )
+    assert resp.status == 200
