@@ -6,7 +6,12 @@ import logging
 import docker
 import requests
 
-from ..const import DOCKER_NETWORK, DOCKER_NETWORK_MASK, DOCKER_NETWORK_RANGE
+from ..const import (
+    DOCKER_NETWORK,
+    DOCKER_NETWORK_MASK,
+    DOCKER_NETWORK_RANGE,
+    DOCKER_NETWORK_ULA,
+)
 from ..exceptions import DockerError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -75,19 +80,25 @@ class DockerNetwork:
         except docker.errors.NotFound:
             _LOGGER.info("Can't find Supervisor network, creating a new network")
 
-        ipam_pool = docker.types.IPAMPool(
+        # IP configuration
+        ipam_pool_v4 = docker.types.IPAMPool(
             subnet=str(DOCKER_NETWORK_MASK),
             gateway=str(self.gateway),
             iprange=str(DOCKER_NETWORK_RANGE),
         )
+        ipam_pool_v6 = docker.types.IPAMPool(
+            subnet=str(DOCKER_NETWORK_ULA),
+            gateway=str(DOCKER_NETWORK_ULA[1]),
+        )
 
-        ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
+        ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool_v4, ipam_pool_v6])
 
+        # Create Network
         return self.docker.networks.create(
             DOCKER_NETWORK,
             driver="bridge",
             ipam=ipam_config,
-            enable_ipv6=False,
+            enable_ipv6=True,
             options={"com.docker.network.bridge.name": DOCKER_NETWORK},
         )
 
