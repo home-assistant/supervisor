@@ -112,6 +112,13 @@ class DBus:
                 )
             return await getattr(proxy_interface, method)(*args)
         except DBusFastDBusError as err:
+            _LOGGER.debug(
+                "D-Bus fast error on call - %s.%s on %s: %s",
+                proxy_interface.introspection.name,
+                method,
+                proxy_interface.path,
+                err,
+            )
             raise DBus.from_dbus_error(err) from None
         except Exception as err:  # pylint: disable=broad-except
             capture_exception(err)

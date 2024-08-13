@@ -4,7 +4,7 @@ import logging
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ....exceptions import BoardInvalidError
+from ....exceptions import BoardInvalidError, DBusInterfaceError, DBusServiceUnkownError
 from ...const import (
     DBUS_ATTR_BOARD,
     DBUS_IFACE_HAOS_BOARDS,
@@ -73,8 +73,16 @@ class BoardManager(DBusInterfaceProxy):
             self._board_proxy = Yellow()
         elif self.board == BOARD_NAME_GREEN:
             self._board_proxy = Green()
-        elif self.board == BOARD_NAME_SUPERVISED:
-            self._board_proxy = Supervised()
+        # Currently unused, avoid initialization due to a bug in introspection:
+        # See: https://github.com/home-assistant/os-agent/issues/206
+        # elif self.board == BOARD_NAME_SUPERVISED:
+        #     self._board_proxy = Supervised()
+        else:
+            return
 
-        if self._board_proxy:
+        try:
             await self._board_proxy.connect(bus)
+        except (DBusServiceUnkownError, DBusInterfaceError) as ex:
+            _LOGGER.warning(
+                "OS-Agent Board support initialization failed.", exc_info=ex
+            )

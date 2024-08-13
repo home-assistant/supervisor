@@ -8,7 +8,7 @@ from typing import Any
 from awesomeversion import AwesomeVersion
 from dbus_fast.aio.message_bus import MessageBus
 
-from ...exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
+from ...exceptions import DBusInterfaceError, DBusServiceUnkownError
 from ..const import (
     DBUS_ATTR_DIAGNOSTICS,
     DBUS_ATTR_VERSION,
@@ -96,13 +96,24 @@ class OSAgent(DBusInterfaceProxy):
         _LOGGER.info("Load dbus interface %s", self.name)
         try:
             await super().connect(bus)
-            await asyncio.gather(*[dbus.connect(bus) for dbus in self.all])
-        except DBusError:
-            _LOGGER.warning("Can't connect to OS-Agent")
         except (DBusServiceUnkownError, DBusInterfaceError):
-            _LOGGER.warning(
+            _LOGGER.error(
                 "No OS-Agent support on the host. Some Host functions have been disabled."
             )
+            return
+
+        errors = await asyncio.gather(
+            *[dbus.connect(bus) for dbus in self.all], return_exceptions=True
+        )
+
+        for err in errors:
+            if err:
+                _LOGGER.error(
+                    "Can't load OS Agent dbus interface %s %s: %s",
+                    self.all[errors.index(err)].bus_name,
+                    self.all[errors.index(err)].object_path,
+                    err,
+                )
 
     @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:
