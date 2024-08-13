@@ -1,4 +1,5 @@
 """Test audio plugin."""
+
 import errno
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
@@ -13,9 +14,10 @@ from supervisor.docker.audio import DockerAudio
 @pytest.fixture(name="docker_interface")
 async def fixture_docker_interface() -> tuple[AsyncMock, AsyncMock]:
     """Mock docker interface methods."""
-    with patch.object(DockerAudio, "run") as run, patch.object(
-        DockerAudio, "restart"
-    ) as restart:
+    with (
+        patch.object(DockerAudio, "run") as run,
+        patch.object(DockerAudio, "restart") as restart,
+    ):
         yield (run, restart)
 
 
@@ -63,9 +65,12 @@ async def test_load_error(
     coresys: CoreSys, caplog: pytest.LogCaptureFixture, container
 ):
     """Test error reading config file during load."""
-    with patch(
-        "supervisor.plugins.audio.Path.read_text", side_effect=(err := OSError())
-    ), patch("supervisor.plugins.audio.shutil.copy", side_effect=err):
+    with (
+        patch(
+            "supervisor.plugins.audio.Path.read_text", side_effect=(err := OSError())
+        ),
+        patch("supervisor.plugins.audio.shutil.copy", side_effect=err),
+    ):
         err.errno = errno.EBUSY
         await coresys.plugins.audio.load()
 

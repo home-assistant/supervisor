@@ -1,4 +1,5 @@
 """Host function like audio, D-Bus or systemd."""
+
 from contextlib import suppress
 from functools import lru_cache
 import logging

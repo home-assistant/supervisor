@@ -1,4 +1,5 @@
 """Test network manager."""
+
 import asyncio
 from ipaddress import IPv4Address, IPv6Address
 from unittest.mock import AsyncMock, patch

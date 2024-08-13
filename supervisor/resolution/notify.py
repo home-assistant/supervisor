@@ -3,6 +3,7 @@
 This helper creates persistant notification in the Core UI.
 In the future we want to remove this in favour of a "center" in the UI.
 """
+
 import logging
 
 from ..coresys import CoreSys, CoreSysAttributes

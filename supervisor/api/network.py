@@ -1,4 +1,5 @@
 """REST API for network."""
+
 import asyncio
 from collections.abc import Awaitable
 from dataclasses import replace

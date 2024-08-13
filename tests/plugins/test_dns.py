@@ -1,4 +1,5 @@
 """Test DNS plugin."""
+
 import asyncio
 import errno
 from ipaddress import IPv4Address
@@ -20,9 +21,10 @@ from supervisor.resolution.data import Issue, Suggestion
 @pytest.fixture(name="docker_interface")
 async def fixture_docker_interface() -> tuple[AsyncMock, AsyncMock]:
     """Mock docker interface methods."""
-    with patch.object(DockerDNS, "run") as run, patch.object(
-        DockerDNS, "restart"
-    ) as restart:
+    with (
+        patch.object(DockerDNS, "run") as run,
+        patch.object(DockerDNS, "restart") as restart,
+    ):
         yield (run, restart)
 
 
@@ -84,9 +86,10 @@ async def test_reset(coresys: CoreSys):
     coresys.plugins.dns._loop = True  # pylint: disable=protected-access
     assert len(coresys.addons.installed) == 0
 
-    with patch.object(
-        type(coresys.plugins.dns.hosts), "unlink"
-    ) as unlink, patch.object(type(coresys.plugins.dns), "write_hosts") as write_hosts:
+    with (
+        patch.object(type(coresys.plugins.dns.hosts), "unlink") as unlink,
+        patch.object(type(coresys.plugins.dns), "write_hosts") as write_hosts,
+    ):
         await coresys.plugins.dns.reset()
 
         assert coresys.plugins.dns.servers == []
@@ -135,21 +138,28 @@ async def test_loop_detection_on_failure(coresys: CoreSys):
     assert len(coresys.resolution.issues) == 0
     assert len(coresys.resolution.suggestions) == 0
 
-    with patch.object(type(coresys.plugins.dns.instance), "attach"), patch.object(
-        type(coresys.plugins.dns.instance),
-        "is_running",
-        return_value=True,
+    with (
+        patch.object(type(coresys.plugins.dns.instance), "attach"),
+        patch.object(
+            type(coresys.plugins.dns.instance),
+            "is_running",
+            return_value=True,
+        ),
     ):
         await coresys.plugins.dns.load()
 
-    with patch.object(type(coresys.plugins.dns), "rebuild") as rebuild, patch.object(
-        type(coresys.plugins.dns.instance),
-        "current_state",
-        side_effect=[
-            ContainerState.FAILED,
-            ContainerState.FAILED,
-        ],
-    ), patch.object(type(coresys.plugins.dns.instance), "logs") as logs:
+    with (
+        patch.object(type(coresys.plugins.dns), "rebuild") as rebuild,
+        patch.object(
+            type(coresys.plugins.dns.instance),
+            "current_state",
+            side_effect=[
+                ContainerState.FAILED,
+                ContainerState.FAILED,
+            ],
+        ),
+        patch.object(type(coresys.plugins.dns.instance), "logs") as logs,
+    ):
         logs.return_value = b""
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
@@ -190,9 +200,10 @@ async def test_load_error(
     coresys: CoreSys, caplog: pytest.LogCaptureFixture, container
 ):
     """Test error reading config files during load."""
-    with patch(
-        "supervisor.plugins.dns.Path.read_text", side_effect=(err := OSError())
-    ), patch("supervisor.plugins.dns.Path.write_text", side_effect=err):
+    with (
+        patch("supervisor.plugins.dns.Path.read_text", side_effect=(err := OSError())),
+        patch("supervisor.plugins.dns.Path.write_text", side_effect=err),
+    ):
         err.errno = errno.EBUSY
         await coresys.plugins.dns.load()
 

@@ -1,4 +1,5 @@
 """Test websocket."""
+
 # pylint: disable=protected-access, import-error
 import asyncio
 import logging

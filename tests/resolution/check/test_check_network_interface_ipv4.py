@@ -1,4 +1,5 @@
 """Test Check Network Interface."""
+
 from unittest.mock import PropertyMock, patch
 
 import pytest

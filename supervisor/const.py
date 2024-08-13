@@ -1,4 +1,5 @@
 """Constants file for Supervisor."""
+
 from dataclasses import dataclass
 from enum import StrEnum
 from ipaddress import ip_network

@@ -1,4 +1,5 @@
 """Util add-ons functions."""
+
 import hashlib
 import logging
 from pathlib import Path

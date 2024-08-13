@@ -1,4 +1,5 @@
 """DataDisk object for OS-Agent."""
+
 from pathlib import Path
 
 from ..const import (

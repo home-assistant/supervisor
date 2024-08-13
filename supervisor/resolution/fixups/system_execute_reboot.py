@@ -1,4 +1,5 @@
 """Reboot host fixup."""
+
 import asyncio
 import logging
 

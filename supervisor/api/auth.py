@@ -1,4 +1,5 @@
 """Init file for Supervisor auth/SSO RESTful API."""
+
 import asyncio
 import logging
 from typing import Any

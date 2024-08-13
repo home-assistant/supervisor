@@ -1,4 +1,5 @@
 """Test host info."""
+
 from unittest.mock import patch
 
 from supervisor.host.info import InfoCenter

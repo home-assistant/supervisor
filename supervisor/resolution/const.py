@@ -1,4 +1,5 @@
 """Constants for the resoulution manager."""
+
 from enum import StrEnum
 from pathlib import Path
 

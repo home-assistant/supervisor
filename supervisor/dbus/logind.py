@@ -1,4 +1,5 @@
 """Interface to Logind over D-Bus."""
+
 import logging
 
 from dbus_fast.aio.message_bus import MessageBus

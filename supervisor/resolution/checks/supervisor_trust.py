@@ -1,4 +1,5 @@
 """Helpers to check supervisor trust."""
+
 import logging
 
 from ...const import CoreState

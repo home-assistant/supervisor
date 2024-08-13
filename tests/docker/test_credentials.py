@@ -1,4 +1,5 @@
 """Test docker login."""
+
 # pylint: disable=protected-access
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DOCKER_HUB, DockerInterface

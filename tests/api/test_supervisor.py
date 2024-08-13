@@ -1,4 +1,5 @@
 """Test Supervisor API."""
+
 # pylint: disable=protected-access
 from unittest.mock import MagicMock, patch
 
@@ -38,8 +39,9 @@ async def test_api_supervisor_options_add_repository(
     with pytest.raises(StoreNotFound):
         coresys.store.get_from_url(REPO_URL)
 
-    with patch("supervisor.store.repository.Repository.load", return_value=None), patch(
-        "supervisor.store.repository.Repository.validate", return_value=True
+    with (
+        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.Repository.validate", return_value=True),
     ):
         response = await api_client.post(
             "/supervisor/options", json={"addons_repositories": [REPO_URL]}
@@ -71,11 +73,11 @@ async def test_api_supervisor_options_repositories_skipped_on_error(
     api_client: TestClient, coresys: CoreSys, git_error: StoreGitError
 ):
     """Test repositories skipped on error via POST /supervisor/options REST API."""
-    with patch(
-        "supervisor.store.repository.Repository.load", side_effect=git_error
-    ), patch(
-        "supervisor.store.repository.Repository.validate", return_value=False
-    ), patch("supervisor.store.repository.Repository.remove"):
+    with (
+        patch("supervisor.store.repository.Repository.load", side_effect=git_error),
+        patch("supervisor.store.repository.Repository.validate", return_value=False),
+        patch("supervisor.store.repository.Repository.remove"),
+    ):
         response = await api_client.post(
             "/supervisor/options", json={"addons_repositories": [REPO_URL]}
         )

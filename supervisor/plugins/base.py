@@ -1,4 +1,5 @@
 """Supervisor plugins base class."""
+
 from abc import ABC, abstractmethod
 import asyncio
 from collections.abc import Awaitable

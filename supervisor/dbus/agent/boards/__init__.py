@@ -1,4 +1,5 @@
 """Board management for OS Agent."""
+
 import logging
 
 from dbus_fast.aio.message_bus import MessageBus

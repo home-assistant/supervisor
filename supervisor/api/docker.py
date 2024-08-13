@@ -1,4 +1,5 @@
 """Init file for Supervisor Home Assistant RESTful API."""
+
 import logging
 from typing import Any
 

@@ -35,9 +35,10 @@ from tests.const import TEST_ADDON_SLUG
 @pytest.fixture(autouse=True)
 async def fixture_mock_arch_disk() -> None:
     """Mock supported arch and disk space."""
-    with patch(
-        "shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))
-    ), patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])):
+    with (
+        patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))),
+        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+    ):
         yield
 
 
@@ -62,9 +63,10 @@ async def test_image_added_removed_on_update(
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
     assert coresys.addons.store.get(TEST_ADDON_SLUG).image == "test/amd64-my-ssh-addon"
 
-    with patch.object(DockerInterface, "install") as install, patch.object(
-        DockerAddon, "_build"
-    ) as build:
+    with (
+        patch.object(DockerInterface, "install") as install,
+        patch.object(DockerAddon, "_build") as build,
+    ):
         await coresys.addons.update(TEST_ADDON_SLUG)
         build.assert_not_called()
         install.assert_called_once_with(
@@ -82,9 +84,10 @@ async def test_image_added_removed_on_update(
     assert install_addon_ssh.image == "test/amd64-my-ssh-addon"
     assert coresys.addons.store.get(TEST_ADDON_SLUG).image == "local/amd64-addon-ssh"
 
-    with patch.object(DockerInterface, "install") as install, patch.object(
-        DockerAddon, "_build"
-    ) as build:
+    with (
+        patch.object(DockerInterface, "install") as install,
+        patch.object(DockerAddon, "_build") as build,
+    ):
         await coresys.addons.update(TEST_ADDON_SLUG)
         build.assert_called_once_with(AwesomeVersion("11.0.0"), "local/amd64-addon-ssh")
         install.assert_not_called()
@@ -96,8 +99,9 @@ async def test_addon_boot_system_error(
 ):
     """Test system errors during addon boot."""
     install_addon_ssh.boot = AddonBoot.AUTO
-    with patch.object(Addon, "write_options"), patch.object(
-        DockerAddon, "run", side_effect=err
+    with (
+        patch.object(Addon, "write_options"),
+        patch.object(DockerAddon, "run", side_effect=err),
     ):
         await coresys.addons.boot(AddonStartup.APPLICATION)
 
@@ -123,8 +127,9 @@ async def test_addon_boot_other_error(
     """Test other errors captured during addon boot."""
     install_addon_ssh.boot = AddonBoot.AUTO
     err = OSError()
-    with patch.object(Addon, "write_options"), patch.object(
-        DockerAddon, "run", side_effect=err
+    with (
+        patch.object(Addon, "write_options"),
+        patch.object(DockerAddon, "run", side_effect=err),
     ):
         await coresys.addons.boot(AddonStartup.APPLICATION)
 
@@ -186,9 +191,10 @@ async def test_load(
     """Test addon manager load."""
     caplog.clear()
 
-    with patch.object(DockerInterface, "attach") as attach, patch.object(
-        PluginDns, "write_hosts"
-    ) as write_hosts:
+    with (
+        patch.object(DockerInterface, "attach") as attach,
+        patch.object(PluginDns, "write_hosts") as write_hosts,
+    ):
         await coresys.addons.load()
 
         attach.assert_called_once_with(version=AwesomeVersion("9.2.1"))
@@ -254,8 +260,9 @@ async def test_update(
 
     assert install_addon_ssh.need_update is True
 
-    with patch.object(DockerInterface, "install"), patch.object(
-        DockerAddon, "is_running", return_value=False
+    with (
+        patch.object(DockerInterface, "install"),
+        patch.object(DockerAddon, "is_running", return_value=False),
     ):
         start_task = await coresys.addons.update(TEST_ADDON_SLUG)
 
@@ -276,9 +283,11 @@ async def test_rebuild(
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
-    with patch.object(DockerAddon, "_build"), patch.object(
-        DockerAddon, "is_running", return_value=False
-    ), patch.object(Addon, "need_build", new=PropertyMock(return_value=True)):
+    with (
+        patch.object(DockerAddon, "_build"),
+        patch.object(DockerAddon, "is_running", return_value=False),
+        patch.object(Addon, "need_build", new=PropertyMock(return_value=True)),
+    ):
         start_task = await coresys.addons.rebuild(TEST_ADDON_SLUG)
 
     assert bool(start_task) is (status == "running")
@@ -382,9 +391,10 @@ async def test_store_data_changes_during_update(
             assert image == "test_image"
             await event.wait()
 
-        with patch.object(DockerAddon, "update", new=mock_update), patch.object(
-            DockerAPI, "cleanup_old_images"
-        ) as cleanup:
+        with (
+            patch.object(DockerAddon, "update", new=mock_update),
+            patch.object(DockerAPI, "cleanup_old_images") as cleanup,
+        ):
             await coresys.addons.update("local_ssh")
             cleanup.assert_called_once_with(
                 "test_image", AwesomeVersion("1.1.1"), {"local/amd64-addon-ssh"}
@@ -434,9 +444,12 @@ async def test_watchdog_runs_during_update(
         await asyncio.sleep(0)
 
     # Start should be called exactly once by update itself. Restart should never be called
-    with patch.object(DockerAddon, "stop", new=mock_stop), patch.object(
-        DockerAddon, "update", new=mock_update
-    ), patch.object(Addon, "start") as start, patch.object(Addon, "restart") as restart:
+    with (
+        patch.object(DockerAddon, "stop", new=mock_stop),
+        patch.object(DockerAddon, "update", new=mock_update),
+        patch.object(Addon, "start") as start,
+        patch.object(Addon, "restart") as restart,
+    ):
         await coresys.addons.update("local_ssh")
         await asyncio.sleep(0)
         start.assert_called_once()

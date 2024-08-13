@@ -1,4 +1,5 @@
 """Manager for Supervisor Docker."""
+
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging

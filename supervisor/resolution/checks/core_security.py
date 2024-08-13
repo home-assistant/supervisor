@@ -1,4 +1,5 @@
 """Helpers to check core security."""
+
 from enum import StrEnum
 from pathlib import Path
 

@@ -1,4 +1,5 @@
 """Test Home Assistant watchdog."""
+
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
@@ -14,21 +15,24 @@ from supervisor.exceptions import HomeAssistantError
 async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
     """Test homeassistant watchdog works correctly."""
     coresys.homeassistant.version = AwesomeVersion("2022.7.3")
-    with patch(
-        "supervisor.docker.interface.DockerInterface.version",
-        new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
-    ), patch.object(type(coresys.homeassistant.core.instance), "attach"):
+    with (
+        patch(
+            "supervisor.docker.interface.DockerInterface.version",
+            new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
+        ),
+        patch.object(type(coresys.homeassistant.core.instance), "attach"),
+    ):
         await coresys.homeassistant.core.load()
 
     coresys.homeassistant.core.watchdog = True
 
-    with patch.object(
-        type(coresys.homeassistant.core), "restart"
-    ) as restart, patch.object(
-        type(coresys.homeassistant.core), "start"
-    ) as start, patch.object(
-        type(coresys.homeassistant.core.instance), "current_state"
-    ) as current_state:
+    with (
+        patch.object(type(coresys.homeassistant.core), "restart") as restart,
+        patch.object(type(coresys.homeassistant.core), "start") as start,
+        patch.object(
+            type(coresys.homeassistant.core.instance), "current_state"
+        ) as current_state,
+    ):
         current_state.return_value = ContainerState.UNHEALTHY
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
@@ -106,22 +110,27 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
 async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> None:
     """Test home assistant watchdog rebuilds if start fails."""
     coresys.homeassistant.version = AwesomeVersion("2022.7.3")
-    with patch(
-        "supervisor.docker.interface.DockerInterface.version",
-        new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
-    ), patch.object(type(coresys.homeassistant.core.instance), "attach"):
+    with (
+        patch(
+            "supervisor.docker.interface.DockerInterface.version",
+            new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
+        ),
+        patch.object(type(coresys.homeassistant.core.instance), "attach"),
+    ):
         await coresys.homeassistant.core.load()
 
     coresys.homeassistant.core.watchdog = True
 
-    with patch.object(
-        type(coresys.homeassistant.core), "start", side_effect=HomeAssistantError()
-    ) as start, patch.object(
-        type(coresys.homeassistant.core), "rebuild"
-    ) as rebuild, patch.object(
-        type(coresys.homeassistant.core.instance),
-        "current_state",
-        return_value=ContainerState.FAILED,
+    with (
+        patch.object(
+            type(coresys.homeassistant.core), "start", side_effect=HomeAssistantError()
+        ) as start,
+        patch.object(type(coresys.homeassistant.core), "rebuild") as rebuild,
+        patch.object(
+            type(coresys.homeassistant.core.instance),
+            "current_state",
+            return_value=ContainerState.FAILED,
+        ),
     ):
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
@@ -149,12 +158,14 @@ async def test_home_assistant_watchdog_skip_on_load(
     coresys.bus.register_event(BusEvent.DOCKER_CONTAINER_STATE_CHANGE, events)
 
     coresys.homeassistant.version = AwesomeVersion("2022.7.3")
-    with patch(
-        "supervisor.docker.interface.DockerInterface.version",
-        new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
-    ), patch.object(
-        type(coresys.homeassistant.core), "restart"
-    ) as restart, patch.object(type(coresys.homeassistant.core), "start") as start:
+    with (
+        patch(
+            "supervisor.docker.interface.DockerInterface.version",
+            new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
+        ),
+        patch.object(type(coresys.homeassistant.core), "restart") as restart,
+        patch.object(type(coresys.homeassistant.core), "start") as start,
+    ):
         await coresys.homeassistant.core.load()
 
         # No events should be raised on attach

@@ -1,4 +1,5 @@
 """Const for plugins."""
+
 from datetime import timedelta
 from pathlib import Path
 

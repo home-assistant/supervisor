@@ -1,4 +1,5 @@
 """Network Manager implementation for DBUS."""
+
 import logging
 from typing import Any
 

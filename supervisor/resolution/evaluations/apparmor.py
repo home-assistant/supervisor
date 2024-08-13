@@ -1,4 +1,5 @@
 """Evaluation class for AppArmor."""
+
 from pathlib import Path
 
 from ...const import CoreState

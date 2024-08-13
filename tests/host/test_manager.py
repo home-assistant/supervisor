@@ -48,9 +48,10 @@ async def test_reload(coresys: CoreSys, systemd_service: SystemdService):
     await coresys.host.load()
     systemd_service.ListUnits.calls.clear()
 
-    with patch("supervisor.utils.dbus.DBus.connect") as connect, patch.object(
-        coresys.host.sound, "update"
-    ) as sound_update:
+    with (
+        patch("supervisor.utils.dbus.DBus.connect") as connect,
+        patch.object(coresys.host.sound, "update") as sound_update,
+    ):
         await coresys.host.reload()
 
         connect.assert_not_called()

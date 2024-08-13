@@ -312,8 +312,9 @@ async def test_datadisk_wipe_errors(
     system_service.ScheduleWipeDevice.calls.clear()
     system_service.response_schedule_wipe_device = True
     logind_service.side_effect_reboot = DBusError(ErrorType.FAILED, "fail")
-    with patch.object(Core, "shutdown"), pytest.raises(
-        HassOSError, match="Can't restart device"
+    with (
+        patch.object(Core, "shutdown"),
+        pytest.raises(HassOSError, match="Can't restart device"),
     ):
         await coresys.os.datadisk.wipe_disk()
 

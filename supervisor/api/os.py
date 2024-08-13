@@ -1,4 +1,5 @@
 """Init file for Supervisor HassOS RESTful API."""
+
 import asyncio
 from collections.abc import Awaitable
 import logging

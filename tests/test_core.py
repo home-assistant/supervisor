@@ -1,4 +1,5 @@
 """Testing handling with CoreState."""
+
 # pylint: disable=W0212
 import datetime
 import errno
@@ -64,15 +65,18 @@ async def test_adjust_system_datetime_if_time_behind(coresys: CoreSys):
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC) + datetime.timedelta(
         days=4
     )
-    with patch(
-        "supervisor.core.retrieve_whoami",
-        new_callable=AsyncMock,
-        side_effect=[WhoamiData("Europe/Zurich", utc_ts)],
-    ) as mock_retrieve_whoami, patch.object(
-        SystemControl, "set_datetime"
-    ) as mock_set_datetime, patch.object(
-        InfoCenter, "dt_synchronized", new=PropertyMock(return_value=False)
-    ), patch.object(Supervisor, "check_connectivity") as mock_check_connectivity:
+    with (
+        patch(
+            "supervisor.core.retrieve_whoami",
+            new_callable=AsyncMock,
+            side_effect=[WhoamiData("Europe/Zurich", utc_ts)],
+        ) as mock_retrieve_whoami,
+        patch.object(SystemControl, "set_datetime") as mock_set_datetime,
+        patch.object(
+            InfoCenter, "dt_synchronized", new=PropertyMock(return_value=False)
+        ),
+        patch.object(Supervisor, "check_connectivity") as mock_check_connectivity,
+    ):
         await coresys.core._adjust_system_datetime()
         mock_retrieve_whoami.assert_called_once()
         mock_set_datetime.assert_called_once()

@@ -1,4 +1,5 @@
 """Some functions around AppArmor profiles."""
+
 import logging
 from pathlib import Path
 import re

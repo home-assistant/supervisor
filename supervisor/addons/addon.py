@@ -1,4 +1,5 @@
 """Init file for Supervisor add-ons."""
+
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress

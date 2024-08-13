@@ -1,4 +1,5 @@
 """Hardware Manager of Supervisor."""
+
 import logging
 from pathlib import Path
 

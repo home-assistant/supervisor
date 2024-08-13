@@ -1,4 +1,5 @@
 """Baseclass for system evaluations."""
+
 from abc import ABC, abstractmethod
 import logging
 

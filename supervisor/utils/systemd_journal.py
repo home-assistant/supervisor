@@ -1,4 +1,5 @@
 """Utilities for working with systemd journal export format."""
+
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from functools import wraps

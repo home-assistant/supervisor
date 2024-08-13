@@ -1,4 +1,5 @@
 """Test schema validation."""
+
 from typing import Any
 
 import pytest

@@ -1,4 +1,5 @@
 """Test arch object."""
+
 from unittest.mock import patch
 
 import pytest

@@ -1,4 +1,5 @@
 """Init file for Supervisor add-on data."""
+
 from dataclasses import dataclass
 import errno
 import logging

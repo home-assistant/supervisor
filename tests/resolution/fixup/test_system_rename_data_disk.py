@@ -1,4 +1,5 @@
 """Test system fixup rename data disk."""
+
 # pylint: disable=import-error
 from dbus_fast import Variant
 import pytest

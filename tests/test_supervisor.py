@@ -78,9 +78,11 @@ async def test_connectivity_check_throttling(
 async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
     """Test update failure."""
     err = DockerError()
-    with patch.object(DockerSupervisor, "install", side_effect=err), patch.object(
-        type(coresys.supervisor), "update_apparmor"
-    ), pytest.raises(SupervisorUpdateError):
+    with (
+        patch.object(DockerSupervisor, "install", side_effect=err),
+        patch.object(type(coresys.supervisor), "update_apparmor"),
+        pytest.raises(SupervisorUpdateError),
+    ):
         await coresys.supervisor.update(AwesomeVersion("1.0"))
 
     capture_exception.assert_called_once_with(err)
@@ -98,9 +100,10 @@ async def test_update_apparmor(
 ):
     """Test updating apparmor."""
     coresys.updater.channel = channel
-    with patch("supervisor.coresys.aiohttp.ClientSession.get") as get, patch.object(
-        AppArmorControl, "load_profile"
-    ) as load_profile:
+    with (
+        patch("supervisor.coresys.aiohttp.ClientSession.get") as get,
+        patch.object(AppArmorControl, "load_profile") as load_profile,
+    ):
         get.return_value.__aenter__.return_value.status = 200
         get.return_value.__aenter__.return_value.text = AsyncMock(return_value="")
         await coresys.supervisor.update_apparmor()
@@ -114,9 +117,11 @@ async def test_update_apparmor(
 
 async def test_update_apparmor_error(coresys: CoreSys, tmp_supervisor_data):
     """Test error updating apparmor profile."""
-    with patch("supervisor.coresys.aiohttp.ClientSession.get") as get, patch.object(
-        AppArmorControl, "load_profile"
-    ), patch("supervisor.supervisor.Path.write_text", side_effect=(err := OSError())):
+    with (
+        patch("supervisor.coresys.aiohttp.ClientSession.get") as get,
+        patch.object(AppArmorControl, "load_profile"),
+        patch("supervisor.supervisor.Path.write_text", side_effect=(err := OSError())),
+    ):
         get.return_value.__aenter__.return_value.status = 200
         get.return_value.__aenter__.return_value.text = AsyncMock(return_value="")
 

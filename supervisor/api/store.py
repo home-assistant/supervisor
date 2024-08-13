@@ -1,4 +1,5 @@
 """Init file for Supervisor Home Assistant RESTful API."""
+
 import asyncio
 from collections.abc import Awaitable
 from typing import Any

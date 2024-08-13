@@ -1,4 +1,5 @@
 """Plugin for Supervisor backend."""
+
 import asyncio
 import logging
 

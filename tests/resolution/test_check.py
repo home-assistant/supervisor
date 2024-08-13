@@ -12,8 +12,9 @@ async def test_check_system_error(coresys: CoreSys, capture_exception: Mock):
     """Test error while checking system."""
     coresys.core.state = CoreState.STARTUP
 
-    with patch.object(CheckCoreSecurity, "run_check", side_effect=ValueError), patch(
-        "shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))
+    with (
+        patch.object(CheckCoreSecurity, "run_check", side_effect=ValueError),
+        patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))),
     ):
         await coresys.resolution.check.check_system()
 

@@ -1,4 +1,5 @@
 """Calc and represent docker stats data."""
+
 from contextlib import suppress
 
 

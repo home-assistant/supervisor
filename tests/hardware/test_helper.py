@@ -1,4 +1,5 @@
 """Test hardware utils."""
+
 import errno
 from pathlib import Path
 from unittest.mock import MagicMock, patch

@@ -1,4 +1,5 @@
 """Fetch last versions from webserver."""
+
 from datetime import timedelta
 import logging
 import random

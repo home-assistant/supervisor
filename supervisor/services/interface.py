@@ -1,4 +1,5 @@
 """Interface for single service."""
+
 from abc import ABC, abstractmethod
 from typing import Any
 

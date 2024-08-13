@@ -1,4 +1,5 @@
 """Test updater files."""
+
 from unittest.mock import patch
 
 from awesomeversion import AwesomeVersion

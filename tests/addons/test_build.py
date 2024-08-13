@@ -1,4 +1,5 @@
 """Test addon build."""
+
 from unittest.mock import PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -11,10 +12,13 @@ from supervisor.coresys import CoreSys
 async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
     build = AddonBuild(coresys, install_addon_ssh)
-    with patch.object(
-        type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])
-    ), patch.object(
-        type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
+    with (
+        patch.object(
+            type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])
+        ),
+        patch.object(
+            type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
+        ),
     ):
         args = build.get_docker_args(AwesomeVersion("latest"))
 
@@ -24,10 +28,13 @@ async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
 async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
     build = AddonBuild(coresys, install_addon_ssh)
-    with patch.object(
-        type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])
-    ), patch.object(
-        type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
+    with (
+        patch.object(
+            type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])
+        ),
+        patch.object(
+            type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
+        ),
     ):
         args = build.get_docker_args(AwesomeVersion("latest"))
 
@@ -39,10 +46,13 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon)
 async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
     build = AddonBuild(coresys, install_addon_ssh)
-    with patch.object(
-        type(coresys.arch), "supported", new=PropertyMock(return_value=["aarch64"])
-    ), patch.object(
-        type(coresys.arch), "default", new=PropertyMock(return_value="aarch64")
+    with (
+        patch.object(
+            type(coresys.arch), "supported", new=PropertyMock(return_value=["aarch64"])
+        ),
+        patch.object(
+            type(coresys.arch), "default", new=PropertyMock(return_value="aarch64")
+        ),
     ):
         args = build.get_docker_args(AwesomeVersion("latest"))
 
@@ -56,10 +66,13 @@ async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: A
 async def test_build_valid(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
     build = AddonBuild(coresys, install_addon_ssh)
-    with patch.object(
-        type(coresys.arch), "supported", new=PropertyMock(return_value=["aarch64"])
-    ), patch.object(
-        type(coresys.arch), "default", new=PropertyMock(return_value="aarch64")
+    with (
+        patch.object(
+            type(coresys.arch), "supported", new=PropertyMock(return_value=["aarch64"])
+        ),
+        patch.object(
+            type(coresys.arch), "default", new=PropertyMock(return_value="aarch64")
+        ),
     ):
         assert build.is_valid
 
@@ -67,9 +80,12 @@ async def test_build_valid(coresys: CoreSys, install_addon_ssh: Addon):
 async def test_build_invalid(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
     build = AddonBuild(coresys, install_addon_ssh)
-    with patch.object(
-        type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])
-    ), patch.object(
-        type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
+    with (
+        patch.object(
+            type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])
+        ),
+        patch.object(
+            type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
+        ),
     ):
         assert not build.is_valid

@@ -132,9 +132,11 @@ async def test_addon_watchdog(coresys: CoreSys, install_addon_ssh: Addon) -> Non
     install_addon_ssh.watchdog = True
     install_addon_ssh._manual_stop = False  # pylint: disable=protected-access
 
-    with patch.object(Addon, "restart") as restart, patch.object(
-        Addon, "start"
-    ) as start, patch.object(DockerAddon, "current_state") as current_state:
+    with (
+        patch.object(Addon, "restart") as restart,
+        patch.object(Addon, "start") as start,
+        patch.object(DockerAddon, "current_state") as current_state,
+    ):
         # Restart if it becomes unhealthy
         current_state.return_value = ContainerState.UNHEALTHY
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY)
@@ -177,11 +179,15 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_addon_ssh: Addon) -> N
 
     install_addon_ssh.watchdog = True
 
-    with patch.object(Addon, "restart") as restart, patch.object(
-        DockerAddon,
-        "current_state",
-        return_value=ContainerState.STOPPED,
-    ), patch.object(DockerAddon, "stop"):
+    with (
+        patch.object(Addon, "restart") as restart,
+        patch.object(
+            DockerAddon,
+            "current_state",
+            return_value=ContainerState.STOPPED,
+        ),
+        patch.object(DockerAddon, "stop"),
+    ):
         # Do not restart when addon stopped by user
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
         await asyncio.sleep(0)
@@ -205,14 +211,20 @@ async def test_listener_attached_on_install(
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     container_collection = MagicMock()
     container_collection.get.side_effect = DockerException()
-    with patch(
-        "supervisor.docker.manager.DockerAPI.containers",
-        new=PropertyMock(return_value=container_collection),
-    ), patch("pathlib.Path.is_dir", return_value=True), patch(
-        "supervisor.addons.addon.Addon.need_build", new=PropertyMock(return_value=False)
-    ), patch(
-        "supervisor.addons.model.AddonModel.with_ingress",
-        new=PropertyMock(return_value=False),
+    with (
+        patch(
+            "supervisor.docker.manager.DockerAPI.containers",
+            new=PropertyMock(return_value=container_collection),
+        ),
+        patch("pathlib.Path.is_dir", return_value=True),
+        patch(
+            "supervisor.addons.addon.Addon.need_build",
+            new=PropertyMock(return_value=False),
+        ),
+        patch(
+            "supervisor.addons.model.AddonModel.with_ingress",
+            new=PropertyMock(return_value=False),
+        ),
     ):
         await coresys.addons.install(TEST_ADDON_SLUG)
 
@@ -234,14 +246,19 @@ async def test_watchdog_during_attach(
     store = coresys.addons.store[TEST_ADDON_SLUG]
     coresys.addons.data.install(store)
 
-    with patch.object(Addon, "restart") as restart, patch.object(
-        type(coresys.hardware.helper),
-        "last_boot",
-        new=PropertyMock(return_value=utcnow()),
-    ), patch.object(DockerAddon, "attach"), patch.object(
-        DockerAddon,
-        "current_state",
-        return_value=ContainerState.STOPPED,
+    with (
+        patch.object(Addon, "restart") as restart,
+        patch.object(
+            type(coresys.hardware.helper),
+            "last_boot",
+            new=PropertyMock(return_value=utcnow()),
+        ),
+        patch.object(DockerAddon, "attach"),
+        patch.object(
+            DockerAddon,
+            "current_state",
+            return_value=ContainerState.STOPPED,
+        ),
     ):
         coresys.config.last_boot = coresys.hardware.helper.last_boot + boot_timedelta
         addon = Addon(coresys, store.slug)
@@ -269,10 +286,15 @@ async def test_install_update_fails_if_out_of_date(
         with pytest.raises(AddonsJobError):
             await coresys.addons.update(TEST_ADDON_SLUG)
 
-    with patch.object(
-        type(coresys.plugins.audio), "need_update", new=PropertyMock(return_value=True)
-    ), patch.object(
-        type(coresys.plugins.audio), "update", side_effect=AudioUpdateError
+    with (
+        patch.object(
+            type(coresys.plugins.audio),
+            "need_update",
+            new=PropertyMock(return_value=True),
+        ),
+        patch.object(
+            type(coresys.plugins.audio), "update", side_effect=AudioUpdateError
+        ),
     ):
         with pytest.raises(AddonsJobError):
             await coresys.addons.install(TEST_ADDON_SLUG)
@@ -437,9 +459,12 @@ async def test_backup_with_pre_post_command(
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
-    with patch.object(
-        Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")
-    ), patch.object(Addon, "backup_post", new=PropertyMock(return_value="backup_post")):
+    with (
+        patch.object(Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")),
+        patch.object(
+            Addon, "backup_post", new=PropertyMock(return_value="backup_post")
+        ),
+    ):
         assert await install_addon_ssh.backup(tarfile) is None
 
     assert container.exec_run.call_count == 2
@@ -478,9 +503,11 @@ async def test_backup_with_pre_command_error(
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
-    with patch.object(DockerAddon, "is_running", return_value=True), patch.object(
-        Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")
-    ), pytest.raises(AddonsError):
+    with (
+        patch.object(DockerAddon, "is_running", return_value=True),
+        patch.object(Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")),
+        pytest.raises(AddonsError),
+    ):
         assert await install_addon_ssh.backup(tarfile) is None
 
     assert not tarfile.path.exists()
@@ -501,10 +528,15 @@ async def test_backup_cold_mode(
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
-    with patch.object(
-        AddonModel, "backup_mode", new=PropertyMock(return_value=AddonBackupMode.COLD)
-    ), patch.object(
-        DockerAddon, "is_running", side_effect=[status == "running", False, False]
+    with (
+        patch.object(
+            AddonModel,
+            "backup_mode",
+            new=PropertyMock(return_value=AddonBackupMode.COLD),
+        ),
+        patch.object(
+            DockerAddon, "is_running", side_effect=[status == "running", False, False]
+        ),
     ):
         start_task = await install_addon_ssh.backup(tarfile)
 
@@ -532,14 +564,16 @@ async def test_backup_cold_mode_with_watchdog(
     # Patching out the normal end of backup process leaves the container in a stopped state
     # Watchdog should still not try to restart it though, it should remain this way
     tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
-    with patch.object(Addon, "start") as start, patch.object(
-        Addon, "restart"
-    ) as restart, patch.object(Addon, "end_backup"), patch.object(
-        DockerAddon, "stop", new=mock_stop
-    ), patch.object(
-        AddonModel,
-        "backup_mode",
-        new=PropertyMock(return_value=AddonBackupMode.COLD),
+    with (
+        patch.object(Addon, "start") as start,
+        patch.object(Addon, "restart") as restart,
+        patch.object(Addon, "end_backup"),
+        patch.object(DockerAddon, "stop", new=mock_stop),
+        patch.object(
+            AddonModel,
+            "backup_mode",
+            new=PropertyMock(return_value=AddonBackupMode.COLD),
+        ),
     ):
         await install_addon_ssh.backup(tarfile)
         await asyncio.sleep(0)
@@ -584,8 +618,9 @@ async def test_restore_while_running(
     await install_addon_ssh.load()
 
     tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
-    with patch.object(DockerAddon, "is_running", return_value=True), patch.object(
-        Ingress, "update_hass_panel"
+    with (
+        patch.object(DockerAddon, "is_running", return_value=True),
+        patch.object(Ingress, "update_hass_panel"),
     ):
         start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
 
@@ -616,10 +651,11 @@ async def test_restore_while_running_with_watchdog(
     # We restore a stopped backup so restore will not restart it
     # Watchdog will see it stop and should not attempt reanimation either
     tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
-    with patch.object(Addon, "start") as start, patch.object(
-        Addon, "restart"
-    ) as restart, patch.object(DockerAddon, "stop", new=mock_stop), patch.object(
-        Ingress, "update_hass_panel"
+    with (
+        patch.object(Addon, "start") as start,
+        patch.object(Addon, "restart") as restart,
+        patch.object(DockerAddon, "stop", new=mock_stop),
+        patch.object(Ingress, "update_hass_panel"),
     ):
         await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
         await asyncio.sleep(0)

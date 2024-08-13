@@ -1,4 +1,5 @@
 """A collection of tasks."""
+
 import asyncio
 from collections.abc import Awaitable
 from datetime import timedelta

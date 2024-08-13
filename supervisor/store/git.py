@@ -1,4 +1,5 @@
 """Init file for Supervisor add-on Git."""
+
 import asyncio
 import functools as ft
 import logging

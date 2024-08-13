@@ -1,4 +1,5 @@
 """Validate add-ons options schema."""
+
 import logging
 import re
 import secrets

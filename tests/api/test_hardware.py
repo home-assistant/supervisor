@@ -1,4 +1,5 @@
 """Test Docker API."""
+
 from pathlib import Path
 
 from aiohttp.test_utils import TestClient

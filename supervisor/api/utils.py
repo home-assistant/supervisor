@@ -1,4 +1,5 @@
 """Init file for Supervisor util for RESTful API."""
+
 import json
 from typing import Any
 

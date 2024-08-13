@@ -1,4 +1,5 @@
 """Test add-ons schema to UI schema convertion."""
+
 from pathlib import Path
 
 import pytest

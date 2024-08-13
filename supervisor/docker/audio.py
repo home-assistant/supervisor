@@ -1,4 +1,5 @@
 """Audio docker object."""
+
 import logging
 
 import docker

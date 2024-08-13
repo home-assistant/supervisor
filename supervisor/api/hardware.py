@@ -1,4 +1,5 @@
 """Init file for Supervisor hardware RESTful API."""
+
 import logging
 from typing import Any
 

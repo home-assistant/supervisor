@@ -1,4 +1,5 @@
 """Test HardwareManager Module."""
+
 from pathlib import Path
 
 from supervisor.hardware.data import Device

@@ -1,4 +1,5 @@
 """Test hostname dbus interface."""
+
 # pylint: disable=import-error
 from dbus_fast import DBusError, Variant
 from dbus_fast.aio.message_bus import MessageBus

@@ -48,9 +48,10 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
             == "2024-03-04 02:52:56.193 homeassistant systemd[1]: Started Hostname Service."
         )
 
-    with patch.object(
-        LogsControl, "available", new=PropertyMock(return_value=False)
-    ), pytest.raises(HostNotSupportedError):
+    with (
+        patch.object(LogsControl, "available", new=PropertyMock(return_value=False)),
+        pytest.raises(HostNotSupportedError),
+    ):
         async with coresys.host.logs.journald_logs():
             pass
 

@@ -1,4 +1,5 @@
 """Util add-on functions."""
+
 import hashlib
 import re
 

@@ -1,4 +1,5 @@
 """Home Assistant control object."""
+
 from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta

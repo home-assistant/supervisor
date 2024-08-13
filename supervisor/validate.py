@@ -1,4 +1,5 @@
 """Validate functions."""
+
 import ipaddress
 import re
 

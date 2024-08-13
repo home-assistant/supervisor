@@ -1,4 +1,5 @@
 """Test for API calls."""
+
 from unittest.mock import MagicMock
 
 from aiohttp.test_utils import TestClient

@@ -1,4 +1,5 @@
 """Test OSAgent dbus interface."""
+
 # pylint: disable=import-error
 from dbus_fast.aio.message_bus import MessageBus
 import pytest

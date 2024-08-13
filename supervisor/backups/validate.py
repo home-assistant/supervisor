@@ -1,4 +1,5 @@
 """Validate some things around restore."""
+
 from __future__ import annotations
 
 from typing import Any

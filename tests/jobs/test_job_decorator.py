@@ -1,4 +1,5 @@
 """Test the condition decorators."""
+
 import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, patch
@@ -101,10 +102,11 @@ async def test_internet(
     mock_websession = AsyncMock()
     mock_websession.head.side_effect = head_side_effect
     coresys.supervisor.connectivity = None
-    with patch(
-        "supervisor.utils.dbus.DBus.call_dbus", return_value=connectivity
-    ), patch.object(
-        CoreSys, "websession", new=PropertyMock(return_value=mock_websession)
+    with (
+        patch("supervisor.utils.dbus.DBus.call_dbus", return_value=connectivity),
+        patch.object(
+            CoreSys, "websession", new=PropertyMock(return_value=mock_websession)
+        ),
     ):
         assert await test.execute_host() is host_result
         assert await test.execute_system() is system_result
@@ -502,10 +504,13 @@ async def test_plugins_updated(coresys: CoreSys):
     )
     assert await test.execute()
 
-    with patch.object(
-        PluginAudio, "need_update", new=PropertyMock(return_value=True)
-    ), patch.object(
-        PluginAudio, "update", side_effect=[AudioUpdateError, None, AudioUpdateError]
+    with (
+        patch.object(PluginAudio, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(
+            PluginAudio,
+            "update",
+            side_effect=[AudioUpdateError, None, AudioUpdateError],
+        ),
     ):
         assert not await test.execute()
         assert await test.execute()

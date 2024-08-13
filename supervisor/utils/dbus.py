@@ -1,4 +1,5 @@
 """DBus implementation with glib."""
+
 from __future__ import annotations
 
 import asyncio

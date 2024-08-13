@@ -1,4 +1,5 @@
 """Init file for Supervisor HA cli RESTful API."""
+
 import asyncio
 import logging
 from typing import Any

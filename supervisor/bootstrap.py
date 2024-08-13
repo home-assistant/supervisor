@@ -1,4 +1,6 @@
 """Bootstrap Supervisor."""
+
+# ruff: noqa: T100
 import logging
 import os
 from pathlib import Path

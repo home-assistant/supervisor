@@ -1,4 +1,5 @@
 """Test evaluation base."""
+
 # pylint: disable=import-error,protected-access
 import errno
 from unittest.mock import patch

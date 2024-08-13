@@ -1,4 +1,5 @@
 """Evaluation class for CGroup version."""
+
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import UnsupportedReason

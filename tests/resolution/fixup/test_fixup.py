@@ -1,4 +1,5 @@
 """Test check."""
+
 # pylint: disable=import-error, protected-access
 from unittest.mock import AsyncMock, patch
 

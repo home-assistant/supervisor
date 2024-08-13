@@ -1,4 +1,5 @@
 """Test AppArmor/Agent dbus interface."""
+
 # pylint: disable=import-error
 from pathlib import Path
 

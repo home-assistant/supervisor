@@ -1,4 +1,5 @@
 """Provide the MySQL Service."""
+
 import logging
 from typing import Any
 

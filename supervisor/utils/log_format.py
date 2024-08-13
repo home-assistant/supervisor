@@ -1,4 +1,5 @@
 """Custom log messages."""
+
 import logging
 import re
 

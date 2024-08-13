@@ -1,4 +1,5 @@
 """Small wrapper for haveibeenpwned.com API."""
+
 import io
 import logging
 

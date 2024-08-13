@@ -1,4 +1,5 @@
 """Data objects."""
+
 from uuid import UUID, uuid4
 
 import attr

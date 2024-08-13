@@ -228,7 +228,7 @@ filterwarnings = [
 ]
 
 [tool.ruff]
-select = [
+lint.select = [
     "B002",    # Python does not support the unary prefix increment
     "B007",    # Loop control variable {name} not used within loop body
     "B014",    # Exception handler with duplicate exception
@@ -291,7 +291,7 @@ select = [
     "W",       # pycodestyle
 ]
 
-ignore = [
+lint.ignore = [
     "D202", # No blank lines allowed after function docstring
     "D203", # 1 blank line required before class docstring
     "D213", # Multi-line docstring summary should start at the second line
@@ -338,16 +338,16 @@ ignore = [
     "PLE0605",
 ]
 
-[tool.ruff.flake8-import-conventions.extend-aliases]
+[tool.ruff.lint.flake8-import-conventions.extend-aliases]
 voluptuous = "vol"
 
-[tool.ruff.flake8-pytest-style]
+[tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
 
-[tool.ruff.flake8-tidy-imports.banned-api]
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
 "pytz".msg = "use zoneinfo instead"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 force-sort-within-sections = true
 section-order = [
     "future",
@@ -361,10 +361,10 @@ known-first-party = ["supervisor", "tests"]
 combine-as-imports = true
 split-on-trailing-comma = false
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 
 # DBus Service Mocks must use typing and names understood by dbus-fast
 "tests/dbus_service_mocks/*.py" = ["F722", "F821", "N815"]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 25

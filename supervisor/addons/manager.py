@@ -1,4 +1,5 @@
 """Supervisor add-on manager."""
+
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress

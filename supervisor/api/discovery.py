@@ -1,4 +1,5 @@
 """Init file for Supervisor network RESTful API."""
+
 import logging
 
 import voluptuous as vol

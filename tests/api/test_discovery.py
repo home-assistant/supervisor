@@ -47,10 +47,13 @@ async def test_api_list_discovery(
     skip_state: AddonState,
 ):
     """Test listing discovery messages only returns ones for healthy services."""
-    with patch(
-        "supervisor.utils.common.read_json_or_yaml_file",
-        return_value=load_json_fixture("discovery.json"),
-    ), patch("supervisor.utils.common.Path.is_file", return_value=True):
+    with (
+        patch(
+            "supervisor.utils.common.read_json_or_yaml_file",
+            return_value=load_json_fixture("discovery.json"),
+        ),
+        patch("supervisor.utils.common.Path.is_file", return_value=True),
+    ):
         coresys.discovery.read_data()
 
     await coresys.discovery.load()

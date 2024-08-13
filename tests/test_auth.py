@@ -1,4 +1,5 @@
 """Test auth object."""
+
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 

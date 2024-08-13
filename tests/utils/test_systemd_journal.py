@@ -1,4 +1,5 @@
 """Test systemd journal utilities."""
+
 import asyncio
 from unittest.mock import MagicMock
 

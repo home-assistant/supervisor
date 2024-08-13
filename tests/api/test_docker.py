@@ -1,4 +1,5 @@
 """Test Docker API."""
+
 import pytest
 
 
