@@ -1,4 +1,5 @@
 """Handle security part of this API."""
+
 import logging
 import re
 from typing import Final
@@ -74,6 +75,13 @@ ADDONS_API_BYPASS: Final = re.compile(
     r"|/services.*"
     r"|/discovery.*"
     r"|/auth"
+    r")$"
+)
+
+# Home Assistant only
+CORE_ONLY_PATHS: Final = re.compile(
+    r"^(?:"
+    r"/addons/" + RE_SLUG + "/sys_options"
     r")$"
 )
 
@@ -232,6 +240,9 @@ class SecurityMiddleware(CoreSysAttributes):
         if supervisor_token == self.sys_homeassistant.supervisor_token:
             _LOGGER.debug("%s access from Home Assistant", request.path)
             request_from = self.sys_homeassistant
+        elif CORE_ONLY_PATHS.match(request.path):
+            _LOGGER.warning("Attempted access to %s from client besides Home Assistant")
+            raise HTTPForbidden()
 
         # Host
         if supervisor_token == self.sys_plugins.cli.supervisor_token:
