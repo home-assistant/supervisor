@@ -1,4 +1,5 @@
 """Test loading add-translation."""
+
 # pylint: disable=import-error,protected-access
 import os
 from pathlib import Path

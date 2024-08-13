@@ -1,4 +1,5 @@
 """Pulse host control."""
+
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum

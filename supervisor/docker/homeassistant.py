@@ -1,4 +1,5 @@
 """Init file for Supervisor Docker object."""
+
 from collections.abc import Awaitable
 from ipaddress import IPv4Address
 import logging

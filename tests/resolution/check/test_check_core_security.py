@@ -1,4 +1,5 @@
 """Test core version check."""
+
 # pylint: disable=import-error,protected-access
 from pathlib import Path
 from unittest.mock import patch

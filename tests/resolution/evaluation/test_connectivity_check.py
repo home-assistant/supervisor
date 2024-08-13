@@ -1,4 +1,5 @@
 """Test connectivity check evaluation."""
+
 from unittest.mock import PropertyMock, patch
 
 from supervisor.const import CoreState

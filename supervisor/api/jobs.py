@@ -1,4 +1,5 @@
 """Init file for Supervisor Jobs RESTful API."""
+
 import logging
 from typing import Any
 

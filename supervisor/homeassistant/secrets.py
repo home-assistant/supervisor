@@ -1,4 +1,5 @@
 """Handle Home Assistant secrets to add-ons."""
+
 from datetime import timedelta
 import logging
 from pathlib import Path

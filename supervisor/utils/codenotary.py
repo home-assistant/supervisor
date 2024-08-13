@@ -1,4 +1,5 @@
 """Small wrapper for CodeNotary."""
+
 from __future__ import annotations
 
 import asyncio

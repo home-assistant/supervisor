@@ -1,4 +1,5 @@
 """Home Assistant Supervisor setup."""
+
 from pathlib import Path
 import re
 

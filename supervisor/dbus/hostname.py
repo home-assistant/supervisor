@@ -1,4 +1,5 @@
 """D-Bus interface for hostname."""
+
 import logging
 
 from dbus_fast.aio.message_bus import MessageBus

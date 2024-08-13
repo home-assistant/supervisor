@@ -1,4 +1,5 @@
 """Evaluation class for lxc."""
+
 from contextlib import suppress
 from pathlib import Path
 

@@ -21,9 +21,13 @@ async def test_homeassistant_start(
     """Test starting homeassistant."""
     coresys.homeassistant.version = AwesomeVersion("2023.8.1")
 
-    with patch.object(DockerAPI, "run") as run, patch.object(
-        DockerHomeAssistant, "is_running", side_effect=[False, False, True]
-    ), patch("supervisor.homeassistant.core.asyncio.sleep"):
+    with (
+        patch.object(DockerAPI, "run") as run,
+        patch.object(
+            DockerHomeAssistant, "is_running", side_effect=[False, False, True]
+        ),
+        patch("supervisor.homeassistant.core.asyncio.sleep"),
+    ):
         await coresys.homeassistant.core.start()
 
         run.assert_called_once()
@@ -107,8 +111,9 @@ async def test_landingpage_start(
     """Test starting landingpage."""
     coresys.homeassistant.version = LANDINGPAGE
 
-    with patch.object(DockerAPI, "run") as run, patch.object(
-        DockerHomeAssistant, "is_running", return_value=False
+    with (
+        patch.object(DockerAPI, "run") as run,
+        patch.object(DockerHomeAssistant, "is_running", return_value=False),
     ):
         await coresys.homeassistant.core.start()
 

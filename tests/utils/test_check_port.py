@@ -1,4 +1,5 @@
 """Check ports."""
+
 from ipaddress import ip_address
 
 from supervisor.coresys import CoreSys

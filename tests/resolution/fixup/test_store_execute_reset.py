@@ -1,4 +1,5 @@
 """Test evaluation base."""
+
 # pylint: disable=import-error,protected-access
 from pathlib import Path
 from unittest.mock import AsyncMock, patch

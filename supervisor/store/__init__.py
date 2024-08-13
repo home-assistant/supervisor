@@ -1,4 +1,5 @@
 """Add-on Store handler."""
+
 import asyncio
 from collections.abc import Awaitable
 import logging

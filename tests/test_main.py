@@ -1,4 +1,5 @@
 """Testing handling with main."""
+
 from pathlib import Path
 
 import supervisor.__main__ as main

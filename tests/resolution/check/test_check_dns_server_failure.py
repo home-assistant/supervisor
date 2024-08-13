@@ -1,4 +1,5 @@
 """Test check DNS Servers for failures."""
+
 from unittest.mock import AsyncMock, Mock, call, patch
 
 from aiodns.error import DNSError
@@ -115,9 +116,10 @@ async def test_check_if_affected(coresys: CoreSys):
     )
     assert len(coresys.resolution.issues) == 1
 
-    with patch.object(
-        CheckDNSServer, "approve_check", return_value=True
-    ) as approve, patch.object(CheckDNSServer, "run_check", return_value=None) as check:
+    with (
+        patch.object(CheckDNSServer, "approve_check", return_value=True) as approve,
+        patch.object(CheckDNSServer, "run_check", return_value=None) as check,
+    ):
         await dns_server()
         approve.assert_called_once()
         check.assert_called_once()

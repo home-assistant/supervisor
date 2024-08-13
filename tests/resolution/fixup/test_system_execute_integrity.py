@@ -1,4 +1,5 @@
 """Test evaluation base."""
+
 # pylint: disable=import-error,protected-access
 from datetime import timedelta
 from unittest.mock import AsyncMock

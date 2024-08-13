@@ -13,8 +13,11 @@ from supervisor.exceptions import HostAppArmorError
 async def test_load_profile_error(coresys: CoreSys):
     """Test error loading apparmor profile."""
     test_path = Path("test")
-    with patch("supervisor.host.apparmor.validate_profile"), patch(
-        "supervisor.host.apparmor.shutil.copyfile", side_effect=(err := OSError())
+    with (
+        patch("supervisor.host.apparmor.validate_profile"),
+        patch(
+            "supervisor.host.apparmor.shutil.copyfile", side_effect=(err := OSError())
+        ),
     ):
         err.errno = errno.EBUSY
         with raises(HostAppArmorError):

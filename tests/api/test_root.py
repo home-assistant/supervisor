@@ -1,4 +1,5 @@
 """Test Supervisor API."""
+
 # pylint: disable=protected-access
 from unittest.mock import AsyncMock
 

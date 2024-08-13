@@ -1,4 +1,5 @@
 """Test Supervisor scheduler backend."""
+
 import asyncio
 
 from supervisor.const import CoreState

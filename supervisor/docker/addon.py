@@ -1,4 +1,5 @@
 """Init file for Supervisor add-on Docker object."""
+
 from __future__ import annotations
 
 from collections.abc import Awaitable

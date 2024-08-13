@@ -1,4 +1,5 @@
 """Common test functions."""
+
 import asyncio
 from functools import partial
 from inspect import unwrap
@@ -81,25 +82,25 @@ async def docker() -> DockerAPI:
     image = MagicMock()
     image.attrs = {"Os": "linux", "Architecture": "amd64"}
 
-    with patch(
-        "supervisor.docker.manager.DockerClient", return_value=MagicMock()
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.images", return_value=MagicMock()
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.containers", return_value=MagicMock()
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.images.get", return_value=image
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.images.list", return_value=images
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.info",
-        return_value=MagicMock(),
-    ), patch(
-        "supervisor.docker.manager.DockerConfig",
-        return_value=MagicMock(),
-    ), patch("supervisor.docker.manager.DockerAPI.unload"):
+    with (
+        patch("supervisor.docker.manager.DockerClient", return_value=MagicMock()),
+        patch("supervisor.docker.manager.DockerAPI.images", return_value=MagicMock()),
+        patch(
+            "supervisor.docker.manager.DockerAPI.containers", return_value=MagicMock()
+        ),
+        patch("supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()),
+        patch("supervisor.docker.manager.DockerAPI.images.get", return_value=image),
+        patch("supervisor.docker.manager.DockerAPI.images.list", return_value=images),
+        patch(
+            "supervisor.docker.manager.DockerAPI.info",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "supervisor.docker.manager.DockerConfig",
+            return_value=MagicMock(),
+        ),
+        patch("supervisor.docker.manager.DockerAPI.unload"),
+    ):
         docker_obj = DockerAPI(MagicMock())
         with patch("supervisor.docker.monitor.DockerMonitor.load"):
             await docker_obj.load()
@@ -306,8 +307,9 @@ async def coresys(
     supervisor_name,
 ) -> CoreSys:
     """Create a CoreSys Mock."""
-    with patch("supervisor.bootstrap.initialize_system"), patch(
-        "supervisor.utils.sentry.sentry_sdk.init"
+    with (
+        patch("supervisor.bootstrap.initialize_system"),
+        patch("supervisor.utils.sentry.sentry_sdk.init"),
     ):
         coresys_obj = await initialize_coresys()
 
@@ -332,8 +334,9 @@ async def coresys(
     coresys_obj._machine_id = uuid4()
 
     # Mock host communication
-    with patch("supervisor.dbus.manager.MessageBus") as message_bus, patch(
-        "supervisor.dbus.manager.SOCKET_DBUS"
+    with (
+        patch("supervisor.dbus.manager.MessageBus") as message_bus,
+        patch("supervisor.dbus.manager.SOCKET_DBUS"),
     ):
         message_bus.return_value.connect = AsyncMock(return_value=dbus_session_bus)
         await coresys_obj._dbus.load()
@@ -412,9 +415,10 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
 @pytest.fixture
 async def journald_gateway() -> MagicMock:
     """Mock logs control."""
-    with patch("supervisor.host.logs.Path.is_socket", return_value=True), patch(
-        "supervisor.host.logs.ClientSession.get"
-    ) as get:
+    with (
+        patch("supervisor.host.logs.Path.is_socket", return_value=True),
+        patch("supervisor.host.logs.ClientSession.get") as get,
+    ):
         reader = asyncio.StreamReader(loop=asyncio.get_running_loop())
 
         async def response_text():
@@ -523,9 +527,10 @@ async def repository(coresys: CoreSys):
     )
     coresys.config._data[ATTR_ADDONS_CUSTOM_LIST] = []
 
-    with patch(
-        "supervisor.store.validate.BUILTIN_REPOSITORIES", {"local", "core"}
-    ), patch("supervisor.store.git.GitRepo.load", return_value=None):
+    with (
+        patch("supervisor.store.validate.BUILTIN_REPOSITORIES", {"local", "core"}),
+        patch("supervisor.store.git.GitRepo.load", return_value=None),
+    ):
         await coresys.store.load()
 
         repository_obj = Repository(
@@ -638,15 +643,16 @@ async def backups(
 @pytest.fixture
 async def journald_logs(coresys: CoreSys) -> MagicMock:
     """Mock journald logs and make it available."""
-    with patch.object(
-        LogsControl, "available", new=PropertyMock(return_value=True)
-    ), patch.object(
-        LogsControl, "get_boot_ids", return_value=["aaa", "bbb", "ccc"]
-    ), patch.object(
-        LogsControl,
-        "get_identifiers",
-        return_value=["hassio_supervisor", "hassos-config", "kernel"],
-    ), patch.object(LogsControl, "journald_logs", new=MagicMock()) as logs:
+    with (
+        patch.object(LogsControl, "available", new=PropertyMock(return_value=True)),
+        patch.object(LogsControl, "get_boot_ids", return_value=["aaa", "bbb", "ccc"]),
+        patch.object(
+            LogsControl,
+            "get_identifiers",
+            return_value=["hassio_supervisor", "hassos-config", "kernel"],
+        ),
+        patch.object(LogsControl, "journald_logs", new=MagicMock()) as logs,
+    ):
         await coresys.host.logs.load()
         yield logs
 
@@ -663,18 +669,22 @@ async def docker_logs(docker: DockerAPI, supervisor_name) -> MagicMock:
 @pytest.fixture
 async def capture_exception() -> Mock:
     """Mock capture exception method for testing."""
-    with patch("supervisor.utils.sentry.sentry_connected", return_value=True), patch(
-        "supervisor.utils.sentry.sentry_sdk.capture_exception"
-    ) as capture_exception:
+    with (
+        patch("supervisor.utils.sentry.sentry_connected", return_value=True),
+        patch(
+            "supervisor.utils.sentry.sentry_sdk.capture_exception"
+        ) as capture_exception,
+    ):
         yield capture_exception
 
 
 @pytest.fixture
 async def capture_event() -> Mock:
     """Mock capture event for testing."""
-    with patch("supervisor.utils.sentry.sentry_connected", return_value=True), patch(
-        "supervisor.utils.sentry.sentry_sdk.capture_event"
-    ) as capture_event:
+    with (
+        patch("supervisor.utils.sentry.sentry_connected", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.capture_event") as capture_event,
+    ):
         yield capture_event
 
 
@@ -686,9 +696,10 @@ async def os_available(request: pytest.FixtureRequest) -> None:
         if hasattr(request, "param")
         else AwesomeVersion("10.2")
     )
-    with patch.object(
-        OSManager, "available", new=PropertyMock(return_value=True)
-    ), patch.object(OSManager, "version", new=PropertyMock(return_value=version)):
+    with (
+        patch.object(OSManager, "available", new=PropertyMock(return_value=True)),
+        patch.object(OSManager, "version", new=PropertyMock(return_value=version)),
+    ):
         yield
 
 

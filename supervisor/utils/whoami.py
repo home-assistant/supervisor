@@ -2,6 +2,7 @@
 
 https://github.com/home-assistant/whoami.home-assistant.io
 """
+
 from datetime import datetime
 import logging
 

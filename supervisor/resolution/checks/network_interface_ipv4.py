@@ -1,4 +1,5 @@
 """Helpers to check core security."""
+
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...dbus.const import ConnectionStateFlags, ConnectionStateType

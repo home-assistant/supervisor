@@ -1,4 +1,5 @@
 """Helpers to fix addon issue by removing it."""
+
 import logging
 
 from ...coresys import CoreSys

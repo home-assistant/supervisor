@@ -1,4 +1,5 @@
 """Evaluation class for docker configuration."""
+
 import logging
 
 from ...const import CoreState

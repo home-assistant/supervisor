@@ -1,4 +1,5 @@
 """Test check for disabled data disk."""
+
 # pylint: disable=import-error
 from dataclasses import replace
 from unittest.mock import patch

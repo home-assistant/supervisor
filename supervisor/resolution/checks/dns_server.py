@@ -1,4 +1,5 @@
 """Helpers to check DNS servers for failure."""
+
 import asyncio
 from datetime import timedelta
 

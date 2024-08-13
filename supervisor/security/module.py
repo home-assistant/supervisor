@@ -1,4 +1,5 @@
 """Fetch last versions from webserver."""
+
 from __future__ import annotations
 
 import logging

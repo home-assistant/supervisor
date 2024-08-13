@@ -1,4 +1,5 @@
 """NetworkConnection objects for Network Manager."""
+
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
 

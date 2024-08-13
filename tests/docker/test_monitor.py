@@ -90,10 +90,13 @@ async def test_events(
     event["Actor"]["Attributes"]["name"] = "some_container"
     event["id"] = "abc123"
     event["time"] = 123
-    with patch(
-        "supervisor.docker.manager.DockerAPI.events",
-        new=PropertyMock(return_value=[event]),
-    ), patch.object(type(coresys.bus), "fire_event") as fire_event:
+    with (
+        patch(
+            "supervisor.docker.manager.DockerAPI.events",
+            new=PropertyMock(return_value=[event]),
+        ),
+        patch.object(type(coresys.bus), "fire_event") as fire_event,
+    ):
         await coresys.docker.monitor.load()
         await asyncio.sleep(0.1)
         if expected:
@@ -122,22 +125,25 @@ async def test_unlabeled_container(coresys: CoreSys):
     ):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
 
-    with patch(
-        "supervisor.docker.manager.DockerAPI.events",
-        new=PropertyMock(
-            return_value=[
-                {
-                    "id": "abc123",
-                    "time": 123,
-                    "Type": "container",
-                    "Action": "die",
-                    "Actor": {
-                        "Attributes": {"name": "homeassistant", "exitCode": "137"}
-                    },
-                }
-            ]
+    with (
+        patch(
+            "supervisor.docker.manager.DockerAPI.events",
+            new=PropertyMock(
+                return_value=[
+                    {
+                        "id": "abc123",
+                        "time": 123,
+                        "Type": "container",
+                        "Action": "die",
+                        "Actor": {
+                            "Attributes": {"name": "homeassistant", "exitCode": "137"}
+                        },
+                    }
+                ]
+            ),
         ),
-    ), patch.object(type(coresys.bus), "fire_event") as fire_event:
+        patch.object(type(coresys.bus), "fire_event") as fire_event,
+    ):
         await coresys.docker.monitor.load()
         await asyncio.sleep(0.1)
         fire_event.assert_called_once_with(

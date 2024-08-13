@@ -1,4 +1,5 @@
 """Test clear full backup fixup."""
+
 # pylint: disable=import-error,protected-access
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType

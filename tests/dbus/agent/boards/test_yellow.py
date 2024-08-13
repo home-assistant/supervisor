@@ -29,9 +29,12 @@ async def test_dbus_yellow(yellow_service: YellowService, dbus_session_bus: Mess
     assert yellow.heartbeat_led is True
     assert yellow.power_led is True
 
-    with patch("supervisor.utils.common.Path.is_file", return_value=True), patch(
-        "supervisor.utils.common.read_json_file",
-        return_value={"disk_led": False, "heartbeat_led": False},
+    with (
+        patch("supervisor.utils.common.Path.is_file", return_value=True),
+        patch(
+            "supervisor.utils.common.read_json_file",
+            return_value={"disk_led": False, "heartbeat_led": False},
+        ),
     ):
         yellow = Yellow()
     await yellow.connect(dbus_session_bus)

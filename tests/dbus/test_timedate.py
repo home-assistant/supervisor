@@ -1,4 +1,5 @@
 """Test TimeDate dbus interface."""
+
 # pylint: disable=import-error
 from datetime import UTC, datetime
 

@@ -1,4 +1,5 @@
 """Interface to systemd-timedate over D-Bus."""
+
 from datetime import datetime
 import logging
 

@@ -1,4 +1,5 @@
 """Manage SSO for Add-ons with Home Assistant user."""
+
 import asyncio
 import hashlib
 import logging

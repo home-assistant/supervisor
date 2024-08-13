@@ -68,11 +68,15 @@ def test_ota_url_os_name_rel_5_downgrade(coresys: CoreSys) -> None:
 async def test_update_fails_if_out_of_date(coresys: CoreSys) -> None:
     """Test update of OS fails if Supervisor is out of date."""
     coresys.core.state = CoreState.RUNNING
-    with patch.object(
-        type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
-    ), patch.object(
-        type(coresys.os), "available", new=PropertyMock(return_value=True)
-    ), pytest.raises(HassOSJobError):
+    with (
+        patch.object(
+            type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)
+        ),
+        patch.object(
+            type(coresys.os), "available", new=PropertyMock(return_value=True)
+        ),
+        pytest.raises(HassOSJobError),
+    ):
         await coresys.os.update()
 
 

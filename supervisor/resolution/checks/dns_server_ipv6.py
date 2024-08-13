@@ -1,4 +1,5 @@
 """Helpers to check DNS servers for IPv6 errors."""
+
 import asyncio
 from datetime import timedelta
 

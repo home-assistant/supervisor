@@ -1,4 +1,5 @@
 """Const for host."""
+
 from enum import StrEnum
 
 PARAM_BOOT_ID = "_BOOT_ID"

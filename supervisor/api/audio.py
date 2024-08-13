@@ -1,4 +1,5 @@
 """Init file for Supervisor Audio RESTful API."""
+
 import asyncio
 from collections.abc import Awaitable
 from dataclasses import asdict

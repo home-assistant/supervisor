@@ -1,4 +1,5 @@
 """Baseclass for system checks."""
+
 from abc import ABC, abstractmethod
 import logging
 

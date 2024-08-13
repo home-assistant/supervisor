@@ -1,4 +1,5 @@
 """Test Resolution API."""
+
 from unittest.mock import AsyncMock
 
 import pytest

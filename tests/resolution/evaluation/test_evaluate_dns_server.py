@@ -1,4 +1,5 @@
 """Test DNS server evaluation."""
+
 from unittest.mock import patch
 
 from supervisor.const import CoreState

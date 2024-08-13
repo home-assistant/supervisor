@@ -1,4 +1,5 @@
 """Read hardware info from system."""
+
 from datetime import UTC, datetime
 import logging
 from pathlib import Path

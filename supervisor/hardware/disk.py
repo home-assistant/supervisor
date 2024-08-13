@@ -1,4 +1,5 @@
 """Read disk hardware info from system."""
+
 import logging
 from pathlib import Path
 import shutil

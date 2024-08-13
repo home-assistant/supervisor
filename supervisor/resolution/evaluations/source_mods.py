@@ -1,4 +1,5 @@
 """Evaluation class for Content Trust."""
+
 import errno
 import logging
 from pathlib import Path

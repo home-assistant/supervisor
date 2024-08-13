@@ -1,4 +1,5 @@
 """test json."""
+
 import time
 from typing import NamedTuple
 

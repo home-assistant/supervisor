@@ -1,4 +1,5 @@
 """Constants for DBUS."""
+
 from enum import IntEnum, StrEnum
 from socket import AF_INET, AF_INET6
 

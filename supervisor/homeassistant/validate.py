@@ -1,4 +1,5 @@
 """Validate functions."""
+
 import uuid
 
 import voluptuous as vol

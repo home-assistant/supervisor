@@ -1,4 +1,5 @@
 """Init file for Supervisor Multicast RESTful API."""
+
 import asyncio
 from collections.abc import Awaitable
 import logging

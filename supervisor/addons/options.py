@@ -1,4 +1,5 @@
 """Add-on Options / UI rendering."""
+
 import hashlib
 import logging
 from pathlib import Path

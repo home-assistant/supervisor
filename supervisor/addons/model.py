@@ -1,4 +1,5 @@
 """Init file for Supervisor add-ons."""
+
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Awaitable, Callable

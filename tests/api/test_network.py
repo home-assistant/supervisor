@@ -1,4 +1,5 @@
 """Test NetwrokInterface API."""
+
 from unittest.mock import AsyncMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -203,10 +204,11 @@ async def test_api_network_wireless_scan(api_client: TestClient):
         )
     result = await resp.json()
 
-    assert ["UPC4814466", "VQ@35(55720"] == [
-        ap["ssid"] for ap in result["data"]["accesspoints"]
+    assert [ap["ssid"] for ap in result["data"]["accesspoints"]] == [
+        "UPC4814466",
+        "VQ@35(55720",
     ]
-    assert [47, 63] == [ap["signal"] for ap in result["data"]["accesspoints"]]
+    assert [ap["signal"] for ap in result["data"]["accesspoints"]] == [47, 63]
 
 
 async def test_api_network_reload(

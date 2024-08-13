@@ -1,4 +1,5 @@
 """Test supported features."""
+
 # pylint: disable=protected-access
 import asyncio
 from unittest.mock import PropertyMock, patch

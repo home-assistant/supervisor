@@ -1,4 +1,5 @@
 """Test core version check."""
+
 # pylint: disable=import-error,protected-access
 from datetime import timedelta
 from unittest.mock import patch

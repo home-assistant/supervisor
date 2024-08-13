@@ -1,4 +1,5 @@
 """Handle service data for persistent supervisor reboot."""
+
 from typing import Any
 
 from ..const import FILE_HASSIO_SERVICES

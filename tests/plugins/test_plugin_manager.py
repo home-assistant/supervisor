@@ -41,14 +41,16 @@ async def test_load(coresys: CoreSys):
     await coresys.updater.load()
 
     need_update = PropertyMock(return_value=True)
-    with patch.object(DockerInterface, "attach") as attach, patch.object(
-        DockerInterface, "update"
-    ) as update, patch.object(Supervisor, "need_update", new=need_update), patch.object(
-        PluginBase, "need_update", new=PropertyMock(return_value=True)
-    ), patch.object(
-        PluginBase,
-        "version",
-        new=PropertyMock(return_value=AwesomeVersion("1970-01-01")),
+    with (
+        patch.object(DockerInterface, "attach") as attach,
+        patch.object(DockerInterface, "update") as update,
+        patch.object(Supervisor, "need_update", new=need_update),
+        patch.object(PluginBase, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(
+            PluginBase,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("1970-01-01")),
+        ),
     ):
         await coresys.plugins.load()
 

@@ -1,4 +1,5 @@
 """Security constants."""
+
 from enum import StrEnum
 
 import attr

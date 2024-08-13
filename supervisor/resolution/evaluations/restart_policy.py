@@ -1,4 +1,5 @@
 """Evaluation class for restart policy."""
+
 from supervisor.docker.const import RestartPolicy
 from supervisor.docker.interface import DockerInterface
 

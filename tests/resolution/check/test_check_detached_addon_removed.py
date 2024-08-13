@@ -1,4 +1,5 @@
 """Test check for detached addons due to removal from repo."""
+
 from pathlib import Path
 from unittest.mock import PropertyMock, patch
 

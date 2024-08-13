@@ -1,4 +1,5 @@
 """Test evaluation base."""
+
 from unittest.mock import patch
 
 from supervisor.addons.addon import Addon

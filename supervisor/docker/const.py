@@ -1,4 +1,5 @@
 """Docker constants."""
+
 from enum import StrEnum
 
 from docker.types import Mount

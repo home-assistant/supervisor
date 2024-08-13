@@ -1,4 +1,5 @@
 """Info control for host."""
+
 import asyncio
 from contextlib import suppress
 import logging

@@ -29,9 +29,9 @@ class Systemd(DBusServiceMock):
     kexec_watchdog_usec = 0
     service_watchdogs = True
     virtualization = ""
-    response_get_unit: dict[str, list[str | DBusError]] | list[
-        str | DBusError
-    ] | str | DBusError = "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
+    response_get_unit: (
+        dict[str, list[str | DBusError]] | list[str | DBusError] | str | DBusError
+    ) = "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
     response_stop_unit: str | DBusError = "/org/freedesktop/systemd1/job/7623"
     response_reload_or_restart_unit: str | DBusError = (
         "/org/freedesktop/systemd1/job/7623"

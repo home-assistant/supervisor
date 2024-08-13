@@ -97,9 +97,10 @@ async def test_fixup_unknown_core(
         reference="local_ssh",
         suggestions=[SuggestionType.EXECUTE_REBUILD],
     )
-    with patch.object(Addon, "restart") as restart, patch.object(
-        DockerInterface, "stop"
-    ) as stop:
+    with (
+        patch.object(Addon, "restart") as restart,
+        patch.object(DockerInterface, "stop") as stop,
+    ):
         await addon_execute_rebuild()
         restart.assert_not_called()
         stop.assert_not_called()

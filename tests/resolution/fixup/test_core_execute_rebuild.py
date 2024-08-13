@@ -82,9 +82,10 @@ async def test_fixup_unknown_core(
         ContextType.CORE,
         suggestions=[SuggestionType.EXECUTE_REBUILD],
     )
-    with patch.object(HomeAssistantCore, "rebuild") as rebuild, patch.object(
-        DockerInterface, "stop"
-    ) as stop:
+    with (
+        patch.object(HomeAssistantCore, "rebuild") as rebuild,
+        patch.object(DockerInterface, "stop") as stop,
+    ):
         await core_execute_rebuild()
         rebuild.assert_not_called()
         stop.assert_not_called()

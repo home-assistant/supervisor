@@ -1,4 +1,5 @@
 """Tests for message formater."""
+
 from supervisor.utils.log_format import format_message
 
 

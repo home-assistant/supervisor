@@ -1,4 +1,5 @@
 """Supervisor add-on build environment."""
+
 from __future__ import annotations
 
 from functools import cached_property

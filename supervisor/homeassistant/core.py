@@ -1,4 +1,5 @@
 """Home Assistant control object."""
+
 import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress

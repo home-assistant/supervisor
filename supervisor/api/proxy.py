@@ -1,4 +1,5 @@
 """Utils for Home Assistant Proxy."""
+
 import asyncio
 from contextlib import asynccontextmanager
 import logging

@@ -93,8 +93,9 @@ async def test_api_store_repositories_repository(
 
 async def test_api_store_add_repository(api_client: TestClient, coresys: CoreSys):
     """Test POST /store/repositories REST API."""
-    with patch("supervisor.store.repository.Repository.load", return_value=None), patch(
-        "supervisor.store.repository.Repository.validate", return_value=True
+    with (
+        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.Repository.validate", return_value=True),
     ):
         response = await api_client.post(
             "/store/repositories", json={"repository": REPO_URL}
@@ -178,10 +179,11 @@ async def test_api_store_update_healthcheck(
         nonlocal _container_events_task
         _container_events_task = asyncio.create_task(container_events())
 
-    with patch.object(DockerAddon, "run", new=container_events_task), patch.object(
-        DockerInterface, "install"
-    ), patch.object(DockerAddon, "is_running", return_value=False), patch.object(
-        CpuArch, "supported", new=PropertyMock(return_value=["amd64"])
+    with (
+        patch.object(DockerAddon, "run", new=container_events_task),
+        patch.object(DockerInterface, "install"),
+        patch.object(DockerAddon, "is_running", return_value=False),
+        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
     ):
         resp = await api_client.post(f"/store/addons/{TEST_ADDON_SLUG}/update")
 

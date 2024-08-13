@@ -1,4 +1,5 @@
 """AppArmor object for OS-Agent."""
+
 from pathlib import Path
 
 from awesomeversion import AwesomeVersion

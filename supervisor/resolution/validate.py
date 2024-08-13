@@ -1,4 +1,5 @@
 """Validate resolution configuration schema."""
+
 from pathlib import Path
 
 import voluptuous as vol

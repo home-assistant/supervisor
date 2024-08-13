@@ -1,4 +1,5 @@
 """Home Assistant control object."""
+
 import asyncio
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
 from dataclasses import dataclass

@@ -1,4 +1,5 @@
 """Supervisor Hardware monitor based on udev."""
+
 import asyncio
 import logging
 from pathlib import Path

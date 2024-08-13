@@ -149,8 +149,9 @@ async def test_proxy_missing_properties_interface(dbus_session_bus: MessageBus):
         """Return introspection without properties."""
         return load_fixture("test_no_properties_interface.xml")
 
-    with patch.object(MessageBus, "introspect", new=mock_introspect), pytest.raises(
-        DBusInterfaceError
+    with (
+        patch.object(MessageBus, "introspect", new=mock_introspect),
+        pytest.raises(DBusInterfaceError),
     ):
         await proxy.connect(dbus_session_bus)
 

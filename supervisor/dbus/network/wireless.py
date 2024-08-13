@@ -1,4 +1,5 @@
 """Wireless object for Network Manager."""
+
 import asyncio
 import logging
 from typing import Any

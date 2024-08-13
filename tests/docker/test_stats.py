@@ -1,4 +1,5 @@
 """Test docker stats."""
+
 import pytest
 
 from supervisor.docker.stats import DockerStats

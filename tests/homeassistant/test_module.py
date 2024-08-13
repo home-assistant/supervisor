@@ -54,8 +54,8 @@ async def test_load(
 async def test_get_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
     """Test get users returning none does not fail."""
     ha_ws_client.async_send_command.return_value = None
-    assert [] == await coresys.homeassistant.get_users.__wrapped__(
-        coresys.homeassistant
+    assert (
+        await coresys.homeassistant.get_users.__wrapped__(coresys.homeassistant) == []
     )
 
 

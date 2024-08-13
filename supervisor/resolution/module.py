@@ -1,4 +1,5 @@
 """Supervisor resolution center."""
+
 import logging
 from typing import Any
 

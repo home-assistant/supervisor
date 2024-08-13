@@ -1,4 +1,5 @@
 """DNS docker object."""
+
 import logging
 
 from docker.types import Mount

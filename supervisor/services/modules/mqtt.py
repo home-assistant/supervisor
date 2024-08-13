@@ -1,4 +1,5 @@
 """Provide the MQTT Service."""
+
 import logging
 from typing import Any
 

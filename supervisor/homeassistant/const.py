@@ -1,4 +1,5 @@
 """Constants for homeassistant."""
+
 from datetime import timedelta
 from enum import StrEnum
 from pathlib import PurePath

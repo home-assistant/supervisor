@@ -1,4 +1,5 @@
 """Constants for the add-on store."""
+
 from enum import StrEnum
 from pathlib import Path
 

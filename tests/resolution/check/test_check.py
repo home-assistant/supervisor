@@ -1,4 +1,5 @@
 """Test check."""
+
 # pylint: disable=import-error,protected-access
 from unittest.mock import AsyncMock, patch
 
@@ -15,12 +16,15 @@ from supervisor.resolution.validate import get_valid_modules
 @pytest.fixture(autouse=True)
 def fixture_mock_dns_query():
     """Mock aiodns query."""
-    with patch(
-        "supervisor.resolution.checks.dns_server.DNSResolver.query",
-        new_callable=AsyncMock,
-    ), patch(
-        "supervisor.resolution.checks.dns_server_ipv6.DNSResolver.query",
-        new_callable=AsyncMock,
+    with (
+        patch(
+            "supervisor.resolution.checks.dns_server.DNSResolver.query",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "supervisor.resolution.checks.dns_server_ipv6.DNSResolver.query",
+            new_callable=AsyncMock,
+        ),
     ):
         yield
 

@@ -42,13 +42,11 @@ async def test_fixup(coresys: CoreSys):
         ContextType.SYSTEM,
         suggestions=[SuggestionType.EXECUTE_REBUILD],
     )
-    with patch.object(
-        FixupAddonExecuteRebuild, "process_fixup"
-    ) as addon_fixup, patch.object(
-        FixupCoreExecuteRebuild, "process_fixup"
-    ) as core_fixup, patch.object(
-        FixupPluginExecuteRebuild, "process_fixup"
-    ) as plugin_fixup:
+    with (
+        patch.object(FixupAddonExecuteRebuild, "process_fixup") as addon_fixup,
+        patch.object(FixupCoreExecuteRebuild, "process_fixup") as core_fixup,
+        patch.object(FixupPluginExecuteRebuild, "process_fixup") as plugin_fixup,
+    ):
         await system_execute_rebuild()
         addon_fixup.assert_called_once_with(reference="local_ssh")
         core_fixup.assert_called_once()

@@ -1,4 +1,5 @@
 """Logs control for host."""
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager

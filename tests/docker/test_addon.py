@@ -1,4 +1,5 @@
 """Test docker addon setup."""
+
 from ipaddress import IPv4Address
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
@@ -319,9 +320,13 @@ async def test_addon_run_docker_error(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
 
-    with patch.object(DockerAddon, "stop"), patch.object(
-        AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
-    ), pytest.raises(DockerNotFound):
+    with (
+        patch.object(DockerAddon, "stop"),
+        patch.object(
+            AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
+        ),
+        pytest.raises(DockerNotFound),
+    ):
         await docker_addon.run()
 
     assert (
@@ -342,9 +347,13 @@ async def test_addon_run_add_host_error(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
 
-    with patch.object(DockerAddon, "stop"), patch.object(
-        AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
-    ), patch.object(PluginDns, "add_host", side_effect=(err := CoreDNSError())):
+    with (
+        patch.object(DockerAddon, "stop"),
+        patch.object(
+            AddonOptions, "validate", new=PropertyMock(return_value=lambda _: None)
+        ),
+        patch.object(PluginDns, "add_host", side_effect=(err := CoreDNSError())),
+    ):
         await docker_addon.run()
 
         capture_exception.assert_called_once_with(err)
@@ -360,11 +369,14 @@ async def test_addon_stop_delete_host_error(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
 
-    with patch.object(
-        DockerAddon,
-        "ip_address",
-        new=PropertyMock(return_value=IPv4Address("172.30.33.1")),
-    ), patch.object(PluginDns, "delete_host", side_effect=(err := CoreDNSError())):
+    with (
+        patch.object(
+            DockerAddon,
+            "ip_address",
+            new=PropertyMock(return_value=IPv4Address("172.30.33.1")),
+        ),
+        patch.object(PluginDns, "delete_host", side_effect=(err := CoreDNSError())),
+    ):
         await docker_addon.stop()
 
         capture_exception.assert_called_once_with(err)

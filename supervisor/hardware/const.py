@@ -1,4 +1,5 @@
 """Constants for hardware."""
+
 from enum import StrEnum
 
 

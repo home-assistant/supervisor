@@ -1,4 +1,5 @@
 """Handle core shared data."""
+
 from __future__ import annotations
 
 import asyncio

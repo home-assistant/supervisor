@@ -1,4 +1,5 @@
 """Backups RESTful API."""
+
 import asyncio
 from collections.abc import Callable
 import errno
@@ -342,9 +343,9 @@ class APIBackups(CoreSysAttributes):
         _LOGGER.info("Downloading backup %s", backup.slug)
         response = web.FileResponse(backup.tarfile)
         response.content_type = CONTENT_TYPE_TAR
-        response.headers[
-            CONTENT_DISPOSITION
-        ] = f"attachment; filename={RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
+        response.headers[CONTENT_DISPOSITION] = (
+            f"attachment; filename={RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
+        )
         return response
 
     @api_process

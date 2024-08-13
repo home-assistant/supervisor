@@ -1,4 +1,5 @@
 """Connection object for Network Manager."""
+
 import logging
 from typing import Any
 

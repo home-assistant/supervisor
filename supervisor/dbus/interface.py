@@ -1,4 +1,5 @@
 """Interface class for D-Bus wrappers."""
+
 from abc import ABC
 from collections.abc import Callable
 from functools import wraps

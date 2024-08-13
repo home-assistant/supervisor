@@ -1,4 +1,5 @@
 """Validate services schema."""
+
 import voluptuous as vol
 
 from ..utils.validate import schema_or

@@ -1,4 +1,5 @@
 """Test git repository."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -68,9 +69,12 @@ async def test_git_load(coresys: CoreSys, tmp_path: Path):
     """Test git load."""
     repo = GitRepo(coresys, tmp_path, REPO_URL)
 
-    with patch("pathlib.Path.is_dir", return_value=True), patch.object(
-        GitRepo, "sys_run_in_executor", new_callable=AsyncMock
-    ) as run_in_executor:
+    with (
+        patch("pathlib.Path.is_dir", return_value=True),
+        patch.object(
+            GitRepo, "sys_run_in_executor", new_callable=AsyncMock
+        ) as run_in_executor,
+    ):
         await repo.load()
 
         assert run_in_executor.call_count == 2
@@ -90,9 +94,13 @@ async def test_git_load_error(coresys: CoreSys, tmp_path: Path, git_errors: Exce
     """Test git load error."""
     repo = GitRepo(coresys, tmp_path, REPO_URL)
 
-    with patch("pathlib.Path.is_dir", return_value=True), patch.object(
-        GitRepo, "sys_run_in_executor", new_callable=AsyncMock
-    ) as run_in_executor, pytest.raises(StoreGitError):
+    with (
+        patch("pathlib.Path.is_dir", return_value=True),
+        patch.object(
+            GitRepo, "sys_run_in_executor", new_callable=AsyncMock
+        ) as run_in_executor,
+        pytest.raises(StoreGitError),
+    ):
         run_in_executor.side_effect = git_errors
         await repo.load()
 

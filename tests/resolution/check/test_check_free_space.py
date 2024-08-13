@@ -1,4 +1,5 @@
 """Test check free space fixup."""
+
 # pylint: disable=import-error,protected-access
 from unittest.mock import MagicMock, PropertyMock, patch
 

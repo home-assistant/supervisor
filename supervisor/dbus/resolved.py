@@ -1,4 +1,5 @@
 """D-Bus interface for systemd-resolved."""
+
 from __future__ import annotations
 
 import logging

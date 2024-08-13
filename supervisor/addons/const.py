@@ -1,4 +1,5 @@
 """Add-on static data."""
+
 from datetime import timedelta
 from enum import StrEnum
 

@@ -1,4 +1,5 @@
 """Test DNS API."""
+
 from unittest.mock import MagicMock, patch
 
 from aiohttp.test_utils import TestClient

@@ -1,4 +1,5 @@
 """Representation of a backup file."""
+
 import asyncio
 from base64 import b64decode, b64encode
 from collections import defaultdict

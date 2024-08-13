@@ -1,4 +1,5 @@
 """Interface to UDisks2 Block Device over D-Bus."""
+
 import asyncio
 from collections.abc import Callable
 from pathlib import Path

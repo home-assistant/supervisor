@@ -1,4 +1,5 @@
 """Test check for detached addons due to repo missing."""
+
 from unittest.mock import patch
 
 from supervisor.addons.addon import Addon

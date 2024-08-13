@@ -1,4 +1,5 @@
 """Test Docker interface."""
+
 import asyncio
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, call, patch
@@ -56,11 +57,14 @@ async def test_docker_image_platform(coresys: CoreSys, cpu_arch: str, platform: 
 
 async def test_docker_image_default_platform(coresys: CoreSys):
     """Test platform set using supervisor arch when omitted."""
-    with patch.object(
-        type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
-    ), patch.object(
-        coresys.docker.images, "pull", return_value=Mock(id="test:1.2.3")
-    ) as pull:
+    with (
+        patch.object(
+            type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
+        ),
+        patch.object(
+            coresys.docker.images, "pull", return_value=Mock(id="test:1.2.3")
+        ) as pull,
+    ):
         instance = DockerInterface(coresys)
         await instance.install(AwesomeVersion("1.2.3"), "test")
         assert pull.call_count == 1
@@ -151,11 +155,13 @@ async def test_attach_existing_container(
     attrs["Config"] = {}
     container_collection = MagicMock()
     container_collection.get.return_value = Container(attrs)
-    with patch(
-        "supervisor.docker.manager.DockerAPI.containers",
-        new=PropertyMock(return_value=container_collection),
-    ), patch.object(type(coresys.bus), "fire_event") as fire_event, patch(
-        "supervisor.docker.interface.time", return_value=1
+    with (
+        patch(
+            "supervisor.docker.manager.DockerAPI.containers",
+            new=PropertyMock(return_value=container_collection),
+        ),
+        patch.object(type(coresys.bus), "fire_event") as fire_event,
+        patch("supervisor.docker.interface.time", return_value=1),
     ):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
         await asyncio.sleep(0)
@@ -198,13 +204,17 @@ async def test_attach_container_failure(coresys: CoreSys):
     image_collection = MagicMock()
     image_config = {"Image": "sha256:abc123"}
     image_collection.get.return_value = Image({"Config": image_config})
-    with patch(
-        "supervisor.docker.manager.DockerAPI.containers",
-        new=PropertyMock(return_value=container_collection),
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.images",
-        new=PropertyMock(return_value=image_collection),
-    ), patch.object(type(coresys.bus), "fire_event") as fire_event:
+    with (
+        patch(
+            "supervisor.docker.manager.DockerAPI.containers",
+            new=PropertyMock(return_value=container_collection),
+        ),
+        patch(
+            "supervisor.docker.manager.DockerAPI.images",
+            new=PropertyMock(return_value=image_collection),
+        ),
+        patch.object(type(coresys.bus), "fire_event") as fire_event,
+    ):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
         assert not [
             event
@@ -220,13 +230,17 @@ async def test_attach_total_failure(coresys: CoreSys):
     container_collection.get.side_effect = DockerException()
     image_collection = MagicMock()
     image_collection.get.side_effect = DockerException()
-    with patch(
-        "supervisor.docker.manager.DockerAPI.containers",
-        new=PropertyMock(return_value=container_collection),
-    ), patch(
-        "supervisor.docker.manager.DockerAPI.images",
-        new=PropertyMock(return_value=image_collection),
-    ), pytest.raises(DockerError):
+    with (
+        patch(
+            "supervisor.docker.manager.DockerAPI.containers",
+            new=PropertyMock(return_value=container_collection),
+        ),
+        patch(
+            "supervisor.docker.manager.DockerAPI.images",
+            new=PropertyMock(return_value=image_collection),
+        ),
+        pytest.raises(DockerError),
+    ):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
 
 

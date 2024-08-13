@@ -1,4 +1,5 @@
 """Network Manager DNS Manager object."""
+
 from ipaddress import ip_address
 import logging
 from typing import Any

@@ -1,4 +1,5 @@
 """Init file for Supervisor add-on data."""
+
 from copy import deepcopy
 from typing import Any
 
