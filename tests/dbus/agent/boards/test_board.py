@@ -65,7 +65,8 @@ async def test_dbus_board_supervised(
     await board.connect(dbus_session_bus)
 
     assert board.board == "Supervised"
-    assert board.supervised
+    # Board is currently not loaded
+    assert board.supervised is None
 
     with pytest.raises(BoardInvalidError):
         assert not board.yellow
