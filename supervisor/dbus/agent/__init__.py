@@ -108,10 +108,11 @@ class OSAgent(DBusInterfaceProxy):
 
         for err in errors:
             if err:
+                dbus = self.all[errors.index(err)]
                 _LOGGER.error(
                     "Can't load OS Agent dbus interface %s %s: %s",
-                    self.all[errors.index(err)].bus_name,
-                    self.all[errors.index(err)].object_path,
+                    dbus.bus_name,
+                    dbus.object_path,
                     err,
                 )
 

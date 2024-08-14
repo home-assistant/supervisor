@@ -129,10 +129,11 @@ class DBusManager(CoreSysAttributes):
 
         for err in errors:
             if err:
+                dbus = self.all[errors.index(err)]
                 _LOGGER.warning(
                     "Can't load dbus interface %s %s: %s",
-                    self.all[errors.index(err)].name,
-                    self.all[errors.index(err)].object_path,
+                    dbus.name,
+                    dbus.object_path,
                     err,
                 )
 
