@@ -83,6 +83,4 @@ class BoardManager(DBusInterfaceProxy):
         try:
             await self._board_proxy.connect(bus)
         except (DBusServiceUnkownError, DBusInterfaceError) as ex:
-            _LOGGER.warning(
-                "OS-Agent Board support initialization failed.", exc_info=ex
-            )
+            _LOGGER.warning("OS-Agent board support initialization failed: %s", ex)
