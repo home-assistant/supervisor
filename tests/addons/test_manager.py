@@ -463,9 +463,9 @@ async def test_shared_image_kept_on_uninstall(
 ):
     """Test if two addons share an image it is not removed on uninstall."""
     # Clone example to a new mock copy so two share an image
-    store = AddonStore(
-        coresys, "local_example2", deepcopy(coresys.addons.store["local_example"].data)
-    )
+    store_data = deepcopy(coresys.addons.store["local_example"].data)
+    store = AddonStore(coresys, "local_example2", store_data)
+    coresys.addons.store["local_example2"] = store
     coresys.addons.data.install(store)
     # pylint: disable-next=protected-access
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
