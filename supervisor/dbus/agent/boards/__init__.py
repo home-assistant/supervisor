@@ -73,10 +73,8 @@ class BoardManager(DBusInterfaceProxy):
             self._board_proxy = Yellow()
         elif self.board == BOARD_NAME_GREEN:
             self._board_proxy = Green()
-        # Currently unused, avoid initialization due to a bug in introspection:
-        # See: https://github.com/home-assistant/os-agent/issues/206
-        # elif self.board == BOARD_NAME_SUPERVISED:
-        #     self._board_proxy = Supervised()
+        elif self.board == BOARD_NAME_SUPERVISED:
+            self._board_proxy = Supervised()
         else:
             return
 
