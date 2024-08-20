@@ -50,6 +50,18 @@ async def fixture_remove_wait_boot(coresys: CoreSys) -> None:
     coresys.config.wait_boot = 0
 
 
+@pytest.fixture("install_addon_example_image")
+def fixture_install_addon_example_image(coresys: CoreSys, repository) -> Addon:
+    """Install local_example add-on with image."""
+    store = coresys.addons.store["local_example_image"]
+    coresys.addons.data.install(store)
+    coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
+
+    addon = Addon(coresys, store.slug)
+    coresys.addons.local[addon.slug] = addon
+    yield addon
+
+
 async def test_image_added_removed_on_update(
     coresys: CoreSys, install_addon_ssh: Addon
 ):
@@ -491,3 +503,39 @@ async def test_shared_image_kept_on_uninstall(
         "force": True,
     }
     assert not coresys.addons.get("local_example", local_only=True)
+
+
+async def test_shared_image_kept_on_update(
+    coresys: CoreSys, install_addon_example_image: Addon
+):
+    """Test if two addons share an image it is not removed on update."""
+    # Clone example to a new mock copy so two share an image
+    # But modify version in store so Supervisor sees an update
+    curr_store_data = deepcopy(coresys.store.data.addons["local_example_image"])
+    curr_store = AddonStore(coresys, "local_example2", curr_store_data)
+    install_addon_example_image.data_store["version"] = "1.3.0"
+    new_store_data = deepcopy(coresys.store.data.addons["local_example_image"])
+    new_store = AddonStore(coresys, "local_example2", new_store_data)
+
+    coresys.store.data.addons["local_example2"] = new_store_data
+    coresys.addons.store["local_example2"] = new_store
+    coresys.addons.data.install(curr_store)
+    # pylint: disable-next=protected-access
+    coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
+
+    example_2 = Addon(coresys, curr_store.slug)
+    coresys.addons.local[example_2.slug] = example_2
+
+    assert example_2.version == "1.2.0"
+    assert install_addon_example_image.version == "1.2.0"
+
+    with patch.object(DockerAPI, "cleanup_old_images") as cleanup:
+        await coresys.addons.update("local_example2")
+        cleanup.assert_not_called()
+        assert example_2.version == "1.3.0"
+
+        await coresys.addons.update("local_example_image")
+        cleanup.assert_called_once_with(
+            "example/with_image", AwesomeVersion("1.3.0"), {"example/with_image"}
+        )
+        assert install_addon_example_image.version == "1.3.0"
