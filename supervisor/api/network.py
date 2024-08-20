@@ -29,6 +29,7 @@ from ..const import (
     ATTR_METHOD,
     ATTR_MODE,
     ATTR_NAMESERVERS,
+    ATTR_NAMESERVERS_AUTO,
     ATTR_PARENT,
     ATTR_PRIMARY,
     ATTR_PSK,
@@ -90,6 +91,7 @@ def ipconfig_struct(config: IpConfig) -> dict[str, Any]:
     return {
         ATTR_METHOD: config.method,
         ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
+        ATTR_NAMESERVERS_AUTO: config.nameservers_auto,
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway) if config.gateway else None,
         ATTR_READY: config.ready,
@@ -200,15 +202,19 @@ class APINetwork(CoreSysAttributes):
             if key == ATTR_IPV4:
                 interface.ipv4 = replace(
                     interface.ipv4
-                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
+                    or IpConfig(InterfaceMethod.STATIC, [], None, False, [], None),
                     **config,
                 )
+                if interface.ipv4.method == InterfaceMethod.AUTO:
+                    interface.ipv4.nameservers_auto = ATTR_NAMESERVERS not in config
             elif key == ATTR_IPV6:
                 interface.ipv6 = replace(
                     interface.ipv6
-                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
+                    or IpConfig(InterfaceMethod.STATIC, [], None, False, [], None),
                     **config,
                 )
+                if interface.ipv6.method == InterfaceMethod.AUTO:
+                    interface.ipv6.nameservers_auto = ATTR_NAMESERVERS not in config
             elif key == ATTR_WIFI:
                 interface.wifi = replace(
                     interface.wifi

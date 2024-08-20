@@ -6,7 +6,7 @@ from typing import Any
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 
-from ....const import ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
+from ....const import ATTR_DNS, ATTR_METHOD, ATTR_MODE, ATTR_PSK, ATTR_SSID
 from ...const import DBUS_NAME_NM
 from ...interface import DBusInterface
 from ...utils import dbus_connected
@@ -75,7 +75,7 @@ def _merge_settings_attribute(
 class NetworkSetting(DBusInterface):
     """Network connection setting object for Network Manager.
 
-    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Settings.Connection.html
+    https://networkmanager.dev/docs/api/1.48.0/gdbus-org.freedesktop.NetworkManager.Settings.Connection.html
     """
 
     bus_name: str = DBUS_NAME_NM
@@ -229,11 +229,13 @@ class NetworkSetting(DBusInterface):
         if CONF_ATTR_IPV4 in data:
             self._ipv4 = IpProperties(
                 data[CONF_ATTR_IPV4].get(ATTR_METHOD),
+                data[CONF_ATTR_IPV4].get(ATTR_DNS),
             )
 
         if CONF_ATTR_IPV6 in data:
             self._ipv6 = IpProperties(
                 data[CONF_ATTR_IPV6].get(ATTR_METHOD),
+                data[CONF_ATTR_IPV6].get(ATTR_DNS),
             )
 
         if CONF_ATTR_MATCH in data:

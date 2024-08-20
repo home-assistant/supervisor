@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
+import socket
 
 from ..dbus.const import (
     ConnectionStateFlags,
@@ -32,6 +33,7 @@ class IpConfig:
     method: InterfaceMethod
     address: list[IPv4Interface | IPv6Interface]
     gateway: IPv4Address | IPv6Address | None
+    nameservers_auto: bool
     nameservers: list[IPv4Address | IPv6Address]
     ready: bool | None
 
@@ -102,6 +104,30 @@ class Interface:
             bool(inet.connection)
             and ConnectionStateFlags.IP6_READY in inet.connection.state_flags
         )
+
+        # Use Nameserver from configuration if present (means manual DNS override)
+        if inet.settings.ipv4.dns:
+            ipv4_nameservers_auto = False
+            ipv4_nameservers = [
+                IPv4Address(socket.ntohl(ip)) for ip in inet.settings.ipv4.dns
+            ]
+        elif inet.connection.ipv4.nameservers:
+            ipv4_nameservers_auto = True
+            ipv4_nameservers = inet.connection.ipv4.nameservers
+        else:
+            ipv4_nameservers_auto = True
+            ipv4_nameservers = []
+
+        if inet.settings.ipv6.dns:
+            ipv6_nameservers_auto = False
+            ipv6_nameservers = [IPv6Address(bytes(ip)) for ip in inet.settings.ipv6.dns]
+        elif inet.connection.ipv6.nameservers:
+            ipv6_nameservers_auto = True
+            ipv6_nameservers = inet.connection.ipv6.nameservers
+        else:
+            ipv6_nameservers_auto = True
+            ipv6_nameservers = []
+
         return Interface(
             inet.name,
             inet.hw_address,
@@ -111,27 +137,29 @@ class Interface:
             inet.primary,
             Interface._map_nm_type(inet.type),
             IpConfig(
-                ipv4_method,
-                inet.connection.ipv4.address if inet.connection.ipv4.address else [],
-                inet.connection.ipv4.gateway,
-                inet.connection.ipv4.nameservers
-                if inet.connection.ipv4.nameservers
+                method=ipv4_method,
+                address=inet.connection.ipv4.address
+                if inet.connection.ipv4.address
                 else [],
-                ipv4_ready,
+                gateway=inet.connection.ipv4.gateway,
+                nameservers_auto=ipv4_nameservers_auto,
+                nameservers=ipv4_nameservers,
+                ready=ipv4_ready,
             )
             if inet.connection and inet.connection.ipv4
-            else IpConfig(ipv4_method, [], None, [], ipv4_ready),
+            else IpConfig(ipv4_method, [], None, True, [], ipv4_ready),
             IpConfig(
-                ipv6_method,
-                inet.connection.ipv6.address if inet.connection.ipv6.address else [],
-                inet.connection.ipv6.gateway,
-                inet.connection.ipv6.nameservers
-                if inet.connection.ipv6.nameservers
+                method=ipv6_method,
+                address=inet.connection.ipv6.address
+                if inet.connection.ipv6.address
                 else [],
-                ipv6_ready,
+                gateway=inet.connection.ipv6.gateway,
+                nameservers_auto=ipv6_nameservers_auto,
+                nameservers=ipv6_nameservers,
+                ready=ipv6_ready,
             )
             if inet.connection and inet.connection.ipv6
-            else IpConfig(ipv6_method, [], None, [], ipv6_ready),
+            else IpConfig(ipv6_method, [], None, True, [], ipv6_ready),
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
         )

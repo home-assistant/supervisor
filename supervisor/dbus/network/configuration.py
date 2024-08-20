@@ -64,6 +64,7 @@ class IpProperties:
     """IP properties object for Network Manager."""
 
     method: str | None
+    dns: list[str] | None
 
 
 @dataclass(slots=True)
