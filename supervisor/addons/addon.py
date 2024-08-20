@@ -763,10 +763,12 @@ class Addon(AddonModel):
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
     )
-    async def uninstall(self, *, remove_config: bool) -> None:
+    async def uninstall(
+        self, *, remove_config: bool, remove_image: bool = True
+    ) -> None:
         """Uninstall and cleanup this addon."""
         try:
-            await self.instance.remove()
+            await self.instance.remove(remove_image=remove_image)
         except DockerError as err:
             raise AddonsError() from err
 

@@ -185,7 +185,15 @@ class AddonManager(CoreSysAttributes):
             _LOGGER.warning("Add-on %s is not installed", slug)
             return
 
-        await self.local[slug].uninstall(remove_config=remove_config)
+        shared_image = any(
+            self.local[slug].image == addon.image
+            and self.local[slug].version == addon.version
+            for addon in self.installed
+            if addon.slug != slug
+        )
+        await self.local[slug].uninstall(
+            remove_config=remove_config, remove_image=not shared_image
+        )
 
         _LOGGER.info("Add-on '%s' successfully removed", slug)
 
