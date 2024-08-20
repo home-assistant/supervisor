@@ -4,7 +4,7 @@ import logging
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from ....exceptions import BoardInvalidError
+from ....exceptions import BoardInvalidError, DBusInterfaceError, DBusServiceUnkownError
 from ...const import (
     DBUS_ATTR_BOARD,
     DBUS_IFACE_HAOS_BOARDS,
@@ -75,6 +75,10 @@ class BoardManager(DBusInterfaceProxy):
             self._board_proxy = Green()
         elif self.board == BOARD_NAME_SUPERVISED:
             self._board_proxy = Supervised()
+        else:
+            return
 
-        if self._board_proxy:
+        try:
             await self._board_proxy.connect(bus)
+        except (DBusServiceUnkownError, DBusInterfaceError) as ex:
+            _LOGGER.warning("OS-Agent board support initialization failed: %s", ex)
