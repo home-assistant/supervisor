@@ -100,7 +100,7 @@ class Interface:
             ipv4_setting = IpSetting(
                 method=Interface._map_nm_method(inet.settings.ipv4.method),
                 address=[
-                    IPv4Interface(f"{ip['address']}/{ip['prefix']}")
+                    IPv4Interface(f"{ip.address}/{ip.prefix}")
                     for ip in inet.settings.ipv4.address_data
                 ]
                 if inet.settings.ipv4.address_data
@@ -119,7 +119,7 @@ class Interface:
             ipv6_setting = IpSetting(
                 method=Interface._map_nm_method(inet.settings.ipv6.method),
                 address=[
-                    IPv6Interface(f"{ip['address']}/{ip['prefix']}")
+                    IPv6Interface(f"{ip.address}/{ip.prefix}")
                     for ip in inet.settings.ipv6.address_data
                 ]
                 if inet.settings.ipv6.address_data

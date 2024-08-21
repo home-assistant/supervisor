@@ -12,6 +12,7 @@ from ...utils import dbus_connected
 from ..configuration import (
     ConnectionProperties,
     EthernetProperties,
+    IpAddress,
     IpProperties,
     MatchProperties,
     VlanProperties,
@@ -255,17 +256,25 @@ class NetworkSetting(DBusInterface):
             )
 
         if CONF_ATTR_IPV4 in data:
+            address_data = [
+                IpAddress(ip["address"], ip["prefix"])
+                for ip in data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_ADDRESS_DATA)
+            ]
             self._ipv4 = IpProperties(
                 data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_METHOD),
-                data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_ADDRESS_DATA),
+                address_data,
                 data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_GATEWAY),
                 data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_DNS),
             )
 
         if CONF_ATTR_IPV6 in data:
+            address_data = [
+                IpAddress(ip["address"], ip["prefix"])
+                for ip in data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_ADDRESS_DATA)
+            ]
             self._ipv6 = IpProperties(
                 data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_METHOD),
-                data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_ADDRESS_DATA),
+                address_data,
                 data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_GATEWAY),
                 data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_DNS),
             )
