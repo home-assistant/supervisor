@@ -1,6 +1,7 @@
 """Test addon manager."""
 
 import asyncio
+from copy import deepcopy
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
@@ -24,6 +25,7 @@ from supervisor.exceptions import (
     DockerNotFound,
 )
 from supervisor.plugins.dns import PluginDns
+from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils import check_exception_chain
 from supervisor.utils.common import write_json_file
@@ -454,3 +456,38 @@ async def test_watchdog_runs_during_update(
         await asyncio.sleep(0)
         start.assert_called_once()
         restart.assert_not_called()
+
+
+async def test_shared_image_kept_on_uninstall(
+    coresys: CoreSys, install_addon_example: Addon
+):
+    """Test if two addons share an image it is not removed on uninstall."""
+    # Clone example to a new mock copy so two share an image
+    store_data = deepcopy(coresys.addons.store["local_example"].data)
+    store = AddonStore(coresys, "local_example2", store_data)
+    coresys.addons.store["local_example2"] = store
+    coresys.addons.data.install(store)
+    # pylint: disable-next=protected-access
+    coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
+
+    example_2 = Addon(coresys, store.slug)
+    coresys.addons.local[example_2.slug] = example_2
+
+    image = f"{install_addon_example.image}:{install_addon_example.version}"
+    latest = f"{install_addon_example.image}:latest"
+
+    await coresys.addons.uninstall("local_example2")
+    coresys.docker.images.remove.assert_not_called()
+    assert not coresys.addons.get("local_example2", local_only=True)
+
+    await coresys.addons.uninstall("local_example")
+    assert coresys.docker.images.remove.call_count == 2
+    assert coresys.docker.images.remove.call_args_list[0].kwargs == {
+        "image": latest,
+        "force": True,
+    }
+    assert coresys.docker.images.remove.call_args_list[1].kwargs == {
+        "image": image,
+        "force": True,
+    }
+    assert not coresys.addons.get("local_example", local_only=True)

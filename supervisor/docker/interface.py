@@ -429,15 +429,17 @@ class DockerInterface(JobGroup):
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
     )
-    async def remove(self) -> None:
+    async def remove(self, *, remove_image: bool = True) -> None:
         """Remove Docker images."""
         # Cleanup container
         with suppress(DockerError):
             await self.stop()
 
-        await self.sys_run_in_executor(
-            self.sys_docker.remove_image, self.image, self.version
-        )
+        if remove_image:
+            await self.sys_run_in_executor(
+                self.sys_docker.remove_image, self.image, self.version
+            )
+
         self._meta = None
 
     @Job(
