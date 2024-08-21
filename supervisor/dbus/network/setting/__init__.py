@@ -256,10 +256,9 @@ class NetworkSetting(DBusInterface):
             )
 
         if CONF_ATTR_IPV4 in data:
-            address_data = [
-                IpAddress(ip["address"], ip["prefix"])
-                for ip in data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_ADDRESS_DATA)
-            ]
+            address_data = None
+            if ips := data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_ADDRESS_DATA):
+                address_data = [IpAddress(ip["address"], ip["prefix"]) for ip in ips]
             self._ipv4 = IpProperties(
                 data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_METHOD),
                 address_data,
@@ -268,10 +267,9 @@ class NetworkSetting(DBusInterface):
             )
 
         if CONF_ATTR_IPV6 in data:
-            address_data = [
-                IpAddress(ip["address"], ip["prefix"])
-                for ip in data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_ADDRESS_DATA)
-            ]
+            address_data = None
+            if ips := data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_ADDRESS_DATA):
+                address_data = [IpAddress(ip["address"], ip["prefix"]) for ip in ips]
             self._ipv6 = IpProperties(
                 data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_METHOD),
                 address_data,
