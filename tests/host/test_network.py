@@ -46,7 +46,11 @@ async def fixture_wireless_service(
     yield network_manager_services["network_device_wireless"]
 
 
-async def test_load(coresys: CoreSys, network_manager_service: NetworkManagerService):
+async def test_load(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connection_settings_service: ConnectionSettingsService,
+):
     """Test network manager load."""
     network_manager_service.ActivateConnection.calls.clear()
     network_manager_service.CheckConnectivity.calls.clear()
@@ -63,14 +67,29 @@ async def test_load(coresys: CoreSys, network_manager_service: NetworkManagerSer
     assert "eth0" in name_dict
     assert name_dict["eth0"].mac == "AA:BB:CC:DD:EE:FF"
     assert name_dict["eth0"].enabled is True
-    assert name_dict["eth0"].ipv4.method == InterfaceMethod.AUTO
     assert name_dict["eth0"].ipv4.gateway == IPv4Address("192.168.2.1")
     assert name_dict["eth0"].ipv4.ready is True
-    assert name_dict["eth0"].ipv6.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv4setting.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv4setting.address == []
+    assert name_dict["eth0"].ipv4setting.gateway is None
+    assert name_dict["eth0"].ipv4setting.nameservers == []
     assert name_dict["eth0"].ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
     assert name_dict["eth0"].ipv6.ready is True
+    assert name_dict["eth0"].ipv6setting.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv6setting.address == []
+    assert name_dict["eth0"].ipv6setting.gateway is None
+    assert name_dict["eth0"].ipv6setting.nameservers == []
     assert "wlan0" in name_dict
     assert name_dict["wlan0"].enabled is False
+
+    assert connection_settings_service.settings["ipv4"]["method"].value == "auto"
+    assert "address-data" not in connection_settings_service.settings["ipv4"]
+    assert "gateway" not in connection_settings_service.settings["ipv4"]
+    assert "dns" not in connection_settings_service.settings["ipv4"]
+    assert connection_settings_service.settings["ipv6"]["method"].value == "auto"
+    assert "address-data" not in connection_settings_service.settings["ipv6"]
+    assert "gateway" not in connection_settings_service.settings["ipv6"]
+    assert "dns" not in connection_settings_service.settings["ipv6"]
 
     assert network_manager_service.ActivateConnection.calls == [
         (
@@ -100,6 +119,15 @@ async def test_load_with_disabled_methods(
     await coresys.host.network.load()
     assert network_manager_service.ActivateConnection.calls == []
 
+    assert connection_settings_service.settings["ipv4"]["method"].value == "disabled"
+    assert "address-data" not in connection_settings_service.settings["ipv4"]
+    assert "gateway" not in connection_settings_service.settings["ipv4"]
+    assert "dns" not in connection_settings_service.settings["ipv4"]
+    assert connection_settings_service.settings["ipv6"]["method"].value == "disabled"
+    assert "address-data" not in connection_settings_service.settings["ipv6"]
+    assert "gateway" not in connection_settings_service.settings["ipv6"]
+    assert "dns" not in connection_settings_service.settings["ipv6"]
+
 
 async def test_load_with_network_connection_issues(
     coresys: CoreSys,
@@ -121,9 +149,9 @@ async def test_load_with_network_connection_issues(
     name_dict = {intr.name: intr for intr in coresys.host.network.interfaces}
     assert "eth0" in name_dict
     assert name_dict["eth0"].enabled is True
-    assert name_dict["eth0"].ipv4.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv4setting.method == InterfaceMethod.AUTO
     assert name_dict["eth0"].ipv4.gateway is None
-    assert name_dict["eth0"].ipv6.method == InterfaceMethod.AUTO
+    assert name_dict["eth0"].ipv6setting.method == InterfaceMethod.AUTO
     assert name_dict["eth0"].ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
 
 

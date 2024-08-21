@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
 
+from dbus_fast import Variant
+
 
 @dataclass(slots=True)
 class DNSConfiguration:
@@ -64,6 +66,9 @@ class IpProperties:
     """IP properties object for Network Manager."""
 
     method: str | None
+    address_data: list[dict[str, Variant]] | None
+    gateway: str | None
+    dns: list[str] | None
 
 
 @dataclass(slots=True)

@@ -128,8 +128,8 @@ class NetworkManager(CoreSysAttributes):
                     for interface in interfaces
                     if interface.enabled
                     and (
-                        interface.ipv4.method != InterfaceMethod.DISABLED
-                        or interface.ipv6.method != InterfaceMethod.DISABLED
+                        interface.ipv4setting.method != InterfaceMethod.DISABLED
+                        or interface.ipv6setting.method != InterfaceMethod.DISABLED
                     )
                 ]
             )

@@ -70,9 +70,12 @@ def get_connection_from_interface(
             conn[CONF_ATTR_CONNECTION]["interface-name"] = Variant("s", interface.name)
 
     ipv4 = {}
-    if not interface.ipv4 or interface.ipv4.method == InterfaceMethod.AUTO:
+    if (
+        not interface.ipv4setting
+        or interface.ipv4setting.method == InterfaceMethod.AUTO
+    ):
         ipv4["method"] = Variant("s", "auto")
-    elif interface.ipv4.method == InterfaceMethod.DISABLED:
+    elif interface.ipv4setting.method == InterfaceMethod.DISABLED:
         ipv4["method"] = Variant("s", "disabled")
     else:
         ipv4["method"] = Variant("s", "manual")
@@ -80,46 +83,50 @@ def get_connection_from_interface(
             "au",
             [
                 socket.htonl(int(ip_address))
-                for ip_address in interface.ipv4.nameservers
+                for ip_address in interface.ipv4setting.nameservers
             ],
         )
 
-        adressdata = []
-        for address in interface.ipv4.address:
-            adressdata.append(
+        address_data = []
+        for address in interface.ipv4setting.address:
+            address_data.append(
                 {
                     "address": Variant("s", str(address.ip)),
                     "prefix": Variant("u", int(address.with_prefixlen.split("/")[-1])),
                 }
             )
 
-        ipv4["address-data"] = Variant("aa{sv}", adressdata)
-        ipv4["gateway"] = Variant("s", str(interface.ipv4.gateway))
+        ipv4["address-data"] = Variant("aa{sv}", address_data)
+        ipv4["gateway"] = Variant("s", str(interface.ipv4setting.gateway))
 
     conn[CONF_ATTR_IPV4] = ipv4
 
     ipv6 = {}
-    if not interface.ipv6 or interface.ipv6.method == InterfaceMethod.AUTO:
+    if (
+        not interface.ipv6setting
+        or interface.ipv6setting.method == InterfaceMethod.AUTO
+    ):
         ipv6["method"] = Variant("s", "auto")
-    elif interface.ipv6.method == InterfaceMethod.DISABLED:
+    elif interface.ipv6setting.method == InterfaceMethod.DISABLED:
         ipv6["method"] = Variant("s", "link-local")
     else:
         ipv6["method"] = Variant("s", "manual")
         ipv6["dns"] = Variant(
-            "aay", [ip_address.packed for ip_address in interface.ipv6.nameservers]
+            "aay",
+            [ip_address.packed for ip_address in interface.ipv6setting.nameservers],
         )
 
-        adressdata = []
-        for address in interface.ipv6.address:
-            adressdata.append(
+        address_data = []
+        for address in interface.ipv6setting.address:
+            address_data.append(
                 {
                     "address": Variant("s", str(address.ip)),
                     "prefix": Variant("u", int(address.with_prefixlen.split("/")[-1])),
                 }
             )
 
-        ipv6["address-data"] = Variant("aa{sv}", adressdata)
-        ipv6["gateway"] = Variant("s", str(interface.ipv6.gateway))
+        ipv6["address-data"] = Variant("aa{sv}", address_data)
+        ipv6["gateway"] = Variant("s", str(interface.ipv6setting.gateway))
 
     conn[CONF_ATTR_IPV6] = ipv6
 

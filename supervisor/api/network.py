@@ -49,6 +49,7 @@ from ..host.configuration import (
     Interface,
     InterfaceMethod,
     IpConfig,
+    IpSetting,
     VlanConfig,
     WifiConfig,
 )
@@ -85,10 +86,10 @@ SCHEMA_UPDATE = vol.Schema(
 )
 
 
-def ipconfig_struct(config: IpConfig) -> dict[str, Any]:
+def ipconfig_struct(config: IpConfig, setting: IpSetting) -> dict[str, Any]:
     """Return a dict with information about ip configuration."""
     return {
-        ATTR_METHOD: config.method,
+        ATTR_METHOD: setting.method,
         ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway) if config.gateway else None,
@@ -123,8 +124,8 @@ def interface_struct(interface: Interface) -> dict[str, Any]:
         ATTR_CONNECTED: interface.connected,
         ATTR_PRIMARY: interface.primary,
         ATTR_MAC: interface.mac,
-        ATTR_IPV4: ipconfig_struct(interface.ipv4) if interface.ipv4 else None,
-        ATTR_IPV6: ipconfig_struct(interface.ipv6) if interface.ipv6 else None,
+        ATTR_IPV4: ipconfig_struct(interface.ipv4, interface.ipv4setting),
+        ATTR_IPV6: ipconfig_struct(interface.ipv6, interface.ipv6setting),
         ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
         ATTR_VLAN: vlan_struct(interface.vlan) if interface.vlan else None,
     }
@@ -198,15 +199,15 @@ class APINetwork(CoreSysAttributes):
         # Apply config
         for key, config in body.items():
             if key == ATTR_IPV4:
-                interface.ipv4 = replace(
-                    interface.ipv4
-                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
+                interface.ipv4setting = replace(
+                    interface.ipv4setting
+                    or IpSetting(InterfaceMethod.STATIC, [], None, []),
                     **config,
                 )
             elif key == ATTR_IPV6:
-                interface.ipv6 = replace(
-                    interface.ipv6
-                    or IpConfig(InterfaceMethod.STATIC, [], None, [], None),
+                interface.ipv6setting = replace(
+                    interface.ipv6setting
+                    or IpSetting(InterfaceMethod.STATIC, [], None, []),
                     **config,
                 )
             elif key == ATTR_WIFI:
@@ -257,24 +258,22 @@ class APINetwork(CoreSysAttributes):
 
         vlan_config = VlanConfig(vlan, interface.name)
 
-        ipv4_config = None
+        ipv4_setting = None
         if ATTR_IPV4 in body:
-            ipv4_config = IpConfig(
+            ipv4_setting = IpSetting(
                 body[ATTR_IPV4].get(ATTR_METHOD, InterfaceMethod.AUTO),
                 body[ATTR_IPV4].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV4].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV4].get(ATTR_NAMESERVERS, []),
-                None,
             )
 
-        ipv6_config = None
+        ipv6_setting = None
         if ATTR_IPV6 in body:
-            ipv6_config = IpConfig(
+            ipv6_setting = IpSetting(
                 body[ATTR_IPV6].get(ATTR_METHOD, InterfaceMethod.AUTO),
                 body[ATTR_IPV6].get(ATTR_ADDRESS, []),
                 body[ATTR_IPV6].get(ATTR_GATEWAY, None),
                 body[ATTR_IPV6].get(ATTR_NAMESERVERS, []),
-                None,
             )
 
         vlan_interface = Interface(
@@ -285,8 +284,10 @@ class APINetwork(CoreSysAttributes):
             True,
             False,
             InterfaceType.VLAN,
-            ipv4_config,
-            ipv6_config,
+            None,
+            ipv4_setting,
+            None,
+            ipv6_setting,
             None,
             vlan_config,
         )
