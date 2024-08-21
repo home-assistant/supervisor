@@ -133,7 +133,7 @@ jobs:
         if: needs.init.outputs.publish == 'true'
         uses: sigstore/cosign-installer@v3.6.0
         with:
-          cosign-release: "v2.2.3"
+          cosign-release: "v2.4.0"
 
       - name: Install dirhash and calc hash
         if: needs.init.outputs.publish == 'true'
