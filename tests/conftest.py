@@ -670,7 +670,7 @@ async def docker_logs(docker: DockerAPI, supervisor_name) -> MagicMock:
 async def capture_exception() -> Mock:
     """Mock capture exception method for testing."""
     with (
-        patch("supervisor.utils.sentry.sentry_connected", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
         patch(
             "supervisor.utils.sentry.sentry_sdk.capture_exception"
         ) as capture_exception,
@@ -682,7 +682,7 @@ async def capture_exception() -> Mock:
 async def capture_event() -> Mock:
     """Mock capture event for testing."""
     with (
-        patch("supervisor.utils.sentry.sentry_connected", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
         patch("supervisor.utils.sentry.sentry_sdk.capture_event") as capture_event,
     ):
         yield capture_event

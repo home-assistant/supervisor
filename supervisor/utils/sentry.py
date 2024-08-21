@@ -20,14 +20,9 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 only_once_events: set[str] = set()
 
 
-def sentry_connected() -> bool:
-    """Is sentry connected."""
-    return sentry_sdk.Hub.current.client and sentry_sdk.Hub.current.client.transport
-
-
 def init_sentry(coresys: CoreSys) -> None:
     """Initialize sentry client."""
-    if not sentry_connected():
+    if not sentry_sdk.is_initialized():
         _LOGGER.info("Initializing Supervisor Sentry")
         sentry_sdk.init(
             dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
@@ -49,7 +44,7 @@ def init_sentry(coresys: CoreSys) -> None:
 
 def capture_event(event: dict[str, Any], only_once: str | None = None):
     """Capture an event and send to sentry."""
-    if sentry_connected():
+    if sentry_sdk.is_initialized():
         if only_once and only_once not in only_once_events:
             only_once_events.add(only_once)
             sentry_sdk.capture_event(event)
@@ -57,7 +52,7 @@ def capture_event(event: dict[str, Any], only_once: str | None = None):
 
 def capture_exception(err: Exception) -> None:
     """Capture an exception and send to sentry."""
-    if sentry_connected():
+    if sentry_sdk.is_initialized():
         sentry_sdk.capture_exception(err)
 
 
@@ -66,6 +61,6 @@ def close_sentry() -> None:
 
     This method is irreversible. A new client will have to be initialized to re-open connetion.
     """
-    if sentry_connected():
+    if sentry_sdk.is_initialized():
         _LOGGER.info("Closing connection to Supervisor Sentry")
-        sentry_sdk.Hub.current.client.close()
+        sentry_sdk.get_client().close()
