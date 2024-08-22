@@ -21,7 +21,7 @@ pyudev==0.24.3
 PyYAML==6.0.2
 requests==2.32.3
 securetar==2024.2.1
-sentry-sdk==2.10.0
+sentry-sdk==2.13.0
 setuptools==73.0.1
 voluptuous==0.15.2
 dbus-fast==2.23.0
