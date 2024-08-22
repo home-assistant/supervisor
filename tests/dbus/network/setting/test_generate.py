@@ -5,7 +5,7 @@ from unittest.mock import PropertyMock, patch
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
-from supervisor.host.configuration import IpConfig, VlanConfig
+from supervisor.host.configuration import IpConfig, IpSetting, VlanConfig
 from supervisor.host.const import InterfaceMethod, InterfaceType
 from supervisor.host.network import Interface
 
@@ -55,8 +55,10 @@ async def test_generate_from_vlan(network_manager: NetworkManager):
         connected=True,
         primary=False,
         type=InterfaceType.VLAN,
-        ipv4=IpConfig(InterfaceMethod.AUTO, [], None, [], None),
+        ipv4=IpConfig([], None, [], None),
+        ipv4setting=IpSetting(InterfaceMethod.AUTO, [], None, []),
         ipv6=None,
+        ipv6setting=None,
         wifi=None,
         vlan=VlanConfig(1, "eth0"),
     )

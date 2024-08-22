@@ -106,8 +106,8 @@ async def test_update(
 async def test_ipv6_disabled_is_link_local(dbus_interface: NetworkInterface):
     """Test disabled equals link local for ipv6."""
     interface = Interface.from_dbus_interface(dbus_interface)
-    interface.ipv4.method = InterfaceMethod.DISABLED
-    interface.ipv6.method = InterfaceMethod.DISABLED
+    interface.ipv4setting.method = InterfaceMethod.DISABLED
+    interface.ipv6setting.method = InterfaceMethod.DISABLED
     conn = get_connection_from_interface(
         interface,
         MagicMock(),

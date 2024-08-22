@@ -60,10 +60,21 @@ class VlanProperties:
 
 
 @dataclass(slots=True)
+class IpAddress:
+    """IP address object for Network Manager."""
+
+    address: str
+    prefix: int
+
+
+@dataclass(slots=True)
 class IpProperties:
     """IP properties object for Network Manager."""
 
     method: str | None
+    address_data: list[IpAddress] | None
+    gateway: str | None
+    dns: list[str] | None
 
 
 @dataclass(slots=True)

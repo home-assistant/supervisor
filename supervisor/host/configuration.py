@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
+import socket
 
 from ..dbus.const import (
     ConnectionStateFlags,
@@ -27,13 +28,22 @@ class AccessPoint:
 
 @dataclass(slots=True)
 class IpConfig:
-    """Represent a IP configuration."""
+    """Represent a (current) IP configuration."""
+
+    address: list[IPv4Interface | IPv6Interface]
+    gateway: IPv4Address | IPv6Address | None
+    nameservers: list[IPv4Address | IPv6Address]
+    ready: bool | None
+
+
+@dataclass(slots=True)
+class IpSetting:
+    """Represent a user IP setting."""
 
     method: InterfaceMethod
     address: list[IPv4Interface | IPv6Interface]
     gateway: IPv4Address | IPv6Address | None
     nameservers: list[IPv4Address | IPv6Address]
-    ready: bool | None
 
 
 @dataclass(slots=True)
@@ -67,7 +77,9 @@ class Interface:
     primary: bool
     type: InterfaceType
     ipv4: IpConfig | None
+    ipv4setting: IpSetting | None
     ipv6: IpConfig | None
+    ipv6setting: IpSetting | None
     wifi: WifiConfig | None
     vlan: VlanConfig | None
 
@@ -84,16 +96,42 @@ class Interface:
     @staticmethod
     def from_dbus_interface(inet: NetworkInterface) -> "Interface":
         """Coerce a dbus interface into normal Interface."""
-        ipv4_method = (
-            Interface._map_nm_method(inet.settings.ipv4.method)
-            if inet.settings and inet.settings.ipv4
-            else InterfaceMethod.DISABLED
-        )
-        ipv6_method = (
-            Interface._map_nm_method(inet.settings.ipv6.method)
-            if inet.settings and inet.settings.ipv6
-            else InterfaceMethod.DISABLED
-        )
+        if inet.settings and inet.settings.ipv4:
+            ipv4_setting = IpSetting(
+                method=Interface._map_nm_method(inet.settings.ipv4.method),
+                address=[
+                    IPv4Interface(f"{ip.address}/{ip.prefix}")
+                    for ip in inet.settings.ipv4.address_data
+                ]
+                if inet.settings.ipv4.address_data
+                else [],
+                gateway=inet.settings.ipv4.gateway,
+                nameservers=[
+                    IPv4Address(socket.ntohl(ip)) for ip in inet.settings.ipv4.dns
+                ]
+                if inet.settings.ipv4.dns
+                else [],
+            )
+        else:
+            ipv4_setting = IpSetting(InterfaceMethod.DISABLED, [], None, [])
+
+        if inet.settings and inet.settings.ipv6:
+            ipv6_setting = IpSetting(
+                method=Interface._map_nm_method(inet.settings.ipv6.method),
+                address=[
+                    IPv6Interface(f"{ip.address}/{ip.prefix}")
+                    for ip in inet.settings.ipv6.address_data
+                ]
+                if inet.settings.ipv6.address_data
+                else [],
+                gateway=inet.settings.ipv6.gateway,
+                nameservers=[IPv6Address(bytes(ip)) for ip in inet.settings.ipv6.dns]
+                if inet.settings.ipv6.dns
+                else [],
+            )
+        else:
+            ipv6_setting = IpSetting(InterfaceMethod.DISABLED, [], None, [])
+
         ipv4_ready = (
             bool(inet.connection)
             and ConnectionStateFlags.IP4_READY in inet.connection.state_flags
@@ -102,6 +140,7 @@ class Interface:
             bool(inet.connection)
             and ConnectionStateFlags.IP6_READY in inet.connection.state_flags
         )
+
         return Interface(
             inet.name,
             inet.hw_address,
@@ -111,27 +150,31 @@ class Interface:
             inet.primary,
             Interface._map_nm_type(inet.type),
             IpConfig(
-                ipv4_method,
-                inet.connection.ipv4.address if inet.connection.ipv4.address else [],
-                inet.connection.ipv4.gateway,
-                inet.connection.ipv4.nameservers
+                address=inet.connection.ipv4.address
+                if inet.connection.ipv4.address
+                else [],
+                gateway=inet.connection.ipv4.gateway,
+                nameservers=inet.connection.ipv4.nameservers
                 if inet.connection.ipv4.nameservers
                 else [],
-                ipv4_ready,
+                ready=ipv4_ready,
             )
             if inet.connection and inet.connection.ipv4
-            else IpConfig(ipv4_method, [], None, [], ipv4_ready),
+            else IpConfig([], None, [], ipv4_ready),
+            ipv4_setting,
             IpConfig(
-                ipv6_method,
-                inet.connection.ipv6.address if inet.connection.ipv6.address else [],
-                inet.connection.ipv6.gateway,
-                inet.connection.ipv6.nameservers
+                address=inet.connection.ipv6.address
+                if inet.connection.ipv6.address
+                else [],
+                gateway=inet.connection.ipv6.gateway,
+                nameservers=inet.connection.ipv6.nameservers
                 if inet.connection.ipv6.nameservers
                 else [],
-                ipv6_ready,
+                ready=ipv6_ready,
             )
             if inet.connection and inet.connection.ipv6
-            else IpConfig(ipv6_method, [], None, [], ipv6_ready),
+            else IpConfig([], None, [], ipv6_ready),
+            ipv6_setting,
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
         )
