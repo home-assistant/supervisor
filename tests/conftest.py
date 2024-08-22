@@ -1,6 +1,7 @@
 """Common test functions."""
 
 import asyncio
+from collections.abc import AsyncGenerator, Generator
 from functools import partial
 from inspect import unwrap
 import os
@@ -115,20 +116,28 @@ async def docker() -> DockerAPI:
 
 
 @pytest.fixture(scope="session")
-def dbus_session() -> None:
-    """Start a dbus session."""
-    dbus_launch = subprocess.run(["dbus-launch"], stdout=subprocess.PIPE, check=False)
-    envs = dbus_launch.stdout.decode(encoding="utf-8").rstrip()
+def dbus_session() -> Generator[str, None, None]:
+    """Start a dbus session.
 
-    for env in envs.split("\n"):
-        name, value = env.split("=", 1)
-        os.environ[name] = value
+    Returns session address.
+    """
+    with subprocess.Popen(
+        [
+            "dbus-daemon",
+            "--nofork",
+            "--print-address",
+            "--session",
+        ],
+        stdout=subprocess.PIPE,
+    ) as proc:
+        yield proc.stdout.readline().decode("utf-8").strip()
+        proc.terminate()
 
 
 @pytest.fixture
-async def dbus_session_bus(dbus_session) -> MessageBus:
+async def dbus_session_bus(dbus_session) -> AsyncGenerator[MessageBus, None, None]:
     """Return message bus connected to session dbus."""
-    bus = await MessageBus(bus_type=BusType.SESSION).connect()
+    bus = await MessageBus(bus_type=BusType.SESSION, bus_address=dbus_session).connect()
     yield bus
     bus.disconnect()
 
