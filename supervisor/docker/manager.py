@@ -567,10 +567,10 @@ class DockerAPI:
         keep_images -= {image}
         if keep_images:
             try:
-                keep = keep | {self.images.get(image).id for image in keep_images}
-            except ImageNotFound:
-                # This one is already missing, no need to preserve it from getting removed
-                pass
+                for image in keep_images:
+                    # If its not found, no need to preserve it from getting removed
+                    with suppress(ImageNotFound):
+                        keep.add(self.images.get(image).id)
             except (DockerException, requests.RequestException) as err:
                 raise DockerError(
                     f"Failed to get one or more images from {keep} during cleanup",
