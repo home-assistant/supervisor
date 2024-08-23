@@ -51,12 +51,12 @@ def journal_verbose_formatter(entries: dict[str, str]) -> str:
     ts = ts[: ts.index(".") + 4]  # strip TZ offset
 
     identifier = (
-        f"{entries.get("SYSLOG_IDENTIFIER", "_UNKNOWN_")}[{entries["_PID"]}]"
+        f"{entries.get('SYSLOG_IDENTIFIER', '_UNKNOWN_')}[{entries['_PID']}]"
         if "_PID" in entries
         else entries.get("SYSLOG_IDENTIFIER", "_UNKNOWN_")
     )
 
-    return f"{ts} {entries.get("_HOSTNAME", "")} {identifier}: {entries.get("MESSAGE", "")}"
+    return f"{ts} {entries.get('_HOSTNAME', '')} {identifier}: {entries.get('MESSAGE', '')}"
 
 
 async def journal_logs_reader(
