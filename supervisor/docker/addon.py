@@ -709,6 +709,33 @@ class DockerAddon(DockerInterface):
             with suppress(DockerError):
                 await self.cleanup()
 
+    @Job(name="docker_addon_cleanup", limit=JobExecutionLimit.GROUP_WAIT)
+    async def cleanup(
+        self,
+        old_image: str | None = None,
+        image: str | None = None,
+        version: AwesomeVersion | None = None,
+    ) -> None:
+        """Check if old version exists and cleanup other versions of image not in use."""
+        if not image:
+            image = self.image
+        if not version:
+            version = self.version
+
+        await self.sys_run_in_executor(
+            self.sys_docker.cleanup_old_images,
+            image,
+            version,
+            {old_image} if old_image else None,
+            keep_images={
+                f"{addon.image}:{addon.version}"
+                for addon in self.sys_addons.installed
+                if addon.slug != self.addon.slug
+                and addon.image
+                and addon.image in {old_image, image}
+            },
+        )
+
     @Job(
         name="docker_addon_write_stdin",
         limit=JobExecutionLimit.GROUP_ONCE,

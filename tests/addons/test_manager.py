@@ -50,11 +50,12 @@ async def fixture_remove_wait_boot(coresys: CoreSys) -> None:
     coresys.config.wait_boot = 0
 
 
-@pytest.fixture("install_addon_example_image")
+@pytest.fixture(name="install_addon_example_image")
 def fixture_install_addon_example_image(coresys: CoreSys, repository) -> Addon:
     """Install local_example add-on with image."""
     store = coresys.addons.store["local_example_image"]
     coresys.addons.data.install(store)
+    # pylint: disable-next=protected-access
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 
     addon = Addon(coresys, store.slug)
@@ -506,7 +507,7 @@ async def test_shared_image_kept_on_uninstall(
 
 
 async def test_shared_image_kept_on_update(
-    coresys: CoreSys, install_addon_example_image: Addon
+    coresys: CoreSys, install_addon_example_image: Addon, docker: DockerAPI
 ):
     """Test if two addons share an image it is not removed on update."""
     # Clone example to a new mock copy so two share an image
@@ -529,13 +530,18 @@ async def test_shared_image_kept_on_update(
     assert example_2.version == "1.2.0"
     assert install_addon_example_image.version == "1.2.0"
 
-    with patch.object(DockerAPI, "cleanup_old_images") as cleanup:
-        await coresys.addons.update("local_example2")
-        cleanup.assert_not_called()
-        assert example_2.version == "1.3.0"
+    image_new = MagicMock()
+    image_new.id = "image_new"
+    image_old = MagicMock()
+    image_old.id = "image_old"
+    docker.images.get.side_effect = [image_new, image_old]
+    docker.images.list.return_value = [image_new, image_old]
 
-        await coresys.addons.update("local_example_image")
-        cleanup.assert_called_once_with(
-            "example/with_image", AwesomeVersion("1.3.0"), {"example/with_image"}
-        )
-        assert install_addon_example_image.version == "1.3.0"
+    await coresys.addons.update("local_example2")
+    docker.images.remove.assert_not_called()
+    assert example_2.version == "1.3.0"
+
+    docker.images.get.side_effect = [image_new]
+    await coresys.addons.update("local_example_image")
+    docker.images.remove.assert_called_once_with("image_old", force=True)
+    assert install_addon_example_image.version == "1.3.0"
