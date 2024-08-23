@@ -412,7 +412,10 @@ async def test_store_data_changes_during_update(
         ):
             await coresys.addons.update("local_ssh")
             cleanup.assert_called_once_with(
-                "test_image", AwesomeVersion("1.1.1"), {"local/amd64-addon-ssh"}
+                "test_image",
+                AwesomeVersion("1.1.1"),
+                {"local/amd64-addon-ssh"},
+                keep_images=set(),
             )
 
     update_task = coresys.create_task(simulate_update())

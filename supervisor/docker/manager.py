@@ -564,8 +564,8 @@ class DockerAPI:
                 f"Can't get {current_image} for cleanup", _LOGGER.warning
             ) from err
 
-        keep_images -= {image}
         if keep_images:
+            keep_images -= {image}
             try:
                 for image in keep_images:
                     # If its not found, no need to preserve it from getting removed
