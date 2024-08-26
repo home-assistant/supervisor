@@ -98,6 +98,7 @@ from ..const import (
     ATTR_WEBUI,
     REQUEST_FROM,
     AddonBoot,
+    AddonBootConfig,
 )
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
@@ -300,6 +301,10 @@ class APIAddons(CoreSysAttributes):
         if ATTR_OPTIONS in body:
             addon.options = body[ATTR_OPTIONS]
         if ATTR_BOOT in body:
+            if addon.boot_config == AddonBootConfig.MANUAL_FORCED:
+                raise APIError(
+                    f"Addon {addon.slug} boot option is set to {addon.boot_config} so it cannot be changed"
+                )
             addon.boot = body[ATTR_BOOT]
         if ATTR_AUTO_UPDATE in body:
             addon.auto_update = body[ATTR_AUTO_UPDATE]

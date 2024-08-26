@@ -98,6 +98,7 @@ from ..const import (
     ROLE_ALL,
     ROLE_DEFAULT,
     AddonBoot,
+    AddonBootConfig,
     AddonStage,
     AddonStartup,
     AddonState,
@@ -321,7 +322,9 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_STARTUP, default=AddonStartup.APPLICATION): vol.Coerce(
             AddonStartup
         ),
-        vol.Optional(ATTR_BOOT, default=AddonBoot.AUTO): vol.Coerce(AddonBoot),
+        vol.Optional(ATTR_BOOT, default=AddonBootConfig.AUTO): vol.Coerce(
+            AddonBootConfig
+        ),
         vol.Optional(ATTR_INIT, default=True): vol.Boolean(),
         vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),
         vol.Optional(ATTR_STAGE, default=AddonStage.STABLE): vol.Coerce(AddonStage),
