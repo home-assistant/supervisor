@@ -352,6 +352,13 @@ async def test_addon_options_boot_mode_forced_invalid(
     api_client: TestClient, install_addon_example: Addon
 ):
     """Test changing boot mode is invalid if set to manual forced."""
+    install_addon_example.data["ingress"] = False
+    resp = await api_client.get("/addons/local_example/info")
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["data"]["boot"] == "manual"
+    assert body["data"]["boot_config"] == "manual_forced"
+
     resp = await api_client.post("/addons/local_example/options", json={"boot": "auto"})
     assert resp.status == 400
     body = await resp.json()

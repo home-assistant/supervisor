@@ -110,7 +110,7 @@ from ..exceptions import (
     PwnedSecret,
 )
 from ..validate import docker_ports
-from .const import ATTR_REMOVE_CONFIG, ATTR_SIGNED
+from .const import ATTR_BOOT_CONFIG, ATTR_REMOVE_CONFIG, ATTR_SIGNED
 from .utils import api_process, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -218,6 +218,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_VERSION_LATEST: addon.latest_version,
             ATTR_PROTECTED: addon.protected,
             ATTR_RATING: rating_security(addon),
+            ATTR_BOOT_CONFIG: addon.boot_config,
             ATTR_BOOT: addon.boot,
             ATTR_OPTIONS: addon.options,
             ATTR_SCHEMA: addon.schema_ui,
