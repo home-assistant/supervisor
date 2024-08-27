@@ -387,7 +387,7 @@ class AddonBootConfig(StrEnum):
 
     AUTO = "auto"
     MANUAL = "manual"
-    MANUAL_FORCED = "manual_forced"
+    MANUAL_ONLY = "manual_only"
 
 
 class AddonBoot(StrEnum):
@@ -399,7 +399,7 @@ class AddonBoot(StrEnum):
     @classmethod
     def _missing_(cls, value: str) -> Self | None:
         """Convert 'forced' config values to their counterpart."""
-        if value == AddonBootConfig.MANUAL_FORCED:
+        if value == AddonBootConfig.MANUAL_ONLY:
             return AddonBoot.MANUAL
         return None
 

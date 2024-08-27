@@ -302,7 +302,7 @@ class APIAddons(CoreSysAttributes):
         if ATTR_OPTIONS in body:
             addon.options = body[ATTR_OPTIONS]
         if ATTR_BOOT in body:
-            if addon.boot_config == AddonBootConfig.MANUAL_FORCED:
+            if addon.boot_config == AddonBootConfig.MANUAL_ONLY:
                 raise APIError(
                     f"Addon {addon.slug} boot option is set to {addon.boot_config} so it cannot be changed"
                 )

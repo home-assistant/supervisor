@@ -313,7 +313,7 @@ class Addon(AddonModel):
     @property
     def boot(self) -> AddonBoot:
         """Return boot config with prio local settings unless config is forced."""
-        if self.boot_config == AddonBootConfig.MANUAL_FORCED:
+        if self.boot_config == AddonBootConfig.MANUAL_ONLY:
             return super().boot
         return self.persist.get(ATTR_BOOT, super().boot)
 

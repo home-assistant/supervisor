@@ -23,4 +23,4 @@ ingress_port: 0
 breaking_versions:
   - test
   - 1.0
-boot: manual_forced
+boot: manual_only

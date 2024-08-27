@@ -886,9 +886,9 @@ async def test_addon_load_succeeds_with_docker_errors(
     assert "Unknown error with test/amd64-addon-ssh:9.2.1" in caplog.text
 
 
-async def test_addon_manual_forced_boot(coresys: CoreSys, install_addon_example: Addon):
-    """Test an addon with manual forced boot mode."""
-    assert install_addon_example.boot_config == "manual_forced"
+async def test_addon_manual_only_boot(coresys: CoreSys, install_addon_example: Addon):
+    """Test an addon with manual only boot mode."""
+    assert install_addon_example.boot_config == "manual_only"
     assert install_addon_example.boot == "manual"
 
     # Users cannot change boot mode of an addon with manual forced so changing boot isn't realistic
