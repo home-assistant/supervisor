@@ -209,14 +209,12 @@ class APINetwork(CoreSysAttributes):
         for key, config in body.items():
             if key == ATTR_IPV4:
                 interface.ipv4setting = replace(
-                    interface.ipv4setting
-                    or IpSetting(InterfaceMethod.STATIC, [], None, []),
+                    IpSetting(InterfaceMethod.STATIC, [], None, []),
                     **config,
                 )
             elif key == ATTR_IPV6:
                 interface.ipv6setting = replace(
-                    interface.ipv6setting
-                    or IpSetting(InterfaceMethod.STATIC, [], None, []),
+                    IpSetting(InterfaceMethod.STATIC, [], None, []),
                     **config,
                 )
             elif key == ATTR_WIFI:

@@ -72,13 +72,13 @@ async def test_load(
     assert name_dict["eth0"].ipv4setting.method == InterfaceMethod.AUTO
     assert name_dict["eth0"].ipv4setting.address == []
     assert name_dict["eth0"].ipv4setting.gateway is None
-    assert name_dict["eth0"].ipv4setting.nameservers == []
+    assert name_dict["eth0"].ipv4setting.nameservers == [IPv4Address("192.168.2.1")]
     assert name_dict["eth0"].ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
     assert name_dict["eth0"].ipv6.ready is True
     assert name_dict["eth0"].ipv6setting.method == InterfaceMethod.AUTO
     assert name_dict["eth0"].ipv6setting.address == []
     assert name_dict["eth0"].ipv6setting.gateway is None
-    assert name_dict["eth0"].ipv6setting.nameservers == []
+    assert name_dict["eth0"].ipv6setting.nameservers == [IPv6Address("2001:4860:4860::8888")]
     assert "wlan0" in name_dict
     assert name_dict["wlan0"].enabled is False
 
@@ -87,13 +87,13 @@ async def test_load(
         "aa{sv}", []
     )
     assert "gateway" not in connection_settings_service.settings["ipv4"]
-    assert "dns" not in connection_settings_service.settings["ipv4"]
+    assert connection_settings_service.settings["ipv4"]["dns"] == Variant ("au", [16951488])
     assert connection_settings_service.settings["ipv6"]["method"].value == "auto"
     assert connection_settings_service.settings["ipv6"]["address-data"] == Variant(
         "aa{sv}", []
     )
     assert "gateway" not in connection_settings_service.settings["ipv6"]
-    assert "dns" not in connection_settings_service.settings["ipv6"]
+    assert connection_settings_service.settings["ipv6"]["dns"] == Variant ("aay", [bytearray(b' \x01H`H`\x00\x00\x00\x00\x00\x00\x00\x00\x88\x88')])
 
     assert network_manager_service.ActivateConnection.calls == [
         (
