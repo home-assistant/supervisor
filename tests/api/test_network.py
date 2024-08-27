@@ -251,8 +251,14 @@ async def test_api_network_vlan(
         "autoconnect": Variant("b", True),
         "uuid": connection["connection"]["uuid"],
     }
-    assert connection["ipv4"] == {"method": Variant("s", "auto")}
-    assert connection["ipv6"] == {"method": Variant("s", "auto")}
+    assert connection["ipv4"] == {
+        "method": Variant("s", "auto"),
+        "dns": Variant("au", []),
+    }
+    assert connection["ipv6"] == {
+        "method": Variant("s", "auto"),
+        "dns": Variant("aay", []),
+    }
     assert connection["vlan"] == {
         "id": Variant("u", 1),
         "parent": Variant("s", "0c23631e-2118-355c-bbb0-8943229cb0d6"),

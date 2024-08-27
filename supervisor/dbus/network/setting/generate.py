@@ -102,15 +102,8 @@ def get_connection_from_interface(
         ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "auto")
     elif interface.ipv4setting.method == InterfaceMethod.DISABLED:
         ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "disabled")
-    else:
+    elif interface.ipv4setting.method == InterfaceMethod.STATIC:
         ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "manual")
-        ipv4[CONF_ATTR_IPV4_DNS] = Variant(
-            "au",
-            [
-                socket.htonl(int(ip_address))
-                for ip_address in interface.ipv4setting.nameservers
-            ],
-        )
 
         address_data = []
         for address in interface.ipv4setting.address:
@@ -123,6 +116,19 @@ def get_connection_from_interface(
 
         ipv4[CONF_ATTR_IPV4_ADDRESS_DATA] = Variant("aa{sv}", address_data)
         ipv4[CONF_ATTR_IPV4_GATEWAY] = Variant("s", str(interface.ipv4setting.gateway))
+    else:
+        raise RuntimeError("Invalid IPv4 InterfaceMethod")
+
+    if (
+        not interface.ipv4setting
+        or interface.ipv4setting.method == InterfaceMethod.AUTO
+        or interface.ipv4setting.method == InterfaceMethod.STATIC
+    ):
+        nameservers = interface.ipv4setting.nameservers if interface.ipv4setting else []
+        ipv4[CONF_ATTR_IPV4_DNS] = Variant(
+            "au",
+            [socket.htonl(int(ip_address)) for ip_address in nameservers],
+        )
 
     conn[CONF_ATTR_IPV4] = ipv4
 
@@ -134,12 +140,8 @@ def get_connection_from_interface(
         ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "auto")
     elif interface.ipv6setting.method == InterfaceMethod.DISABLED:
         ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "link-local")
-    else:
+    elif interface.ipv4setting.method == InterfaceMethod.STATIC:
         ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "manual")
-        ipv6[CONF_ATTR_IPV6_DNS] = Variant(
-            "aay",
-            [ip_address.packed for ip_address in interface.ipv6setting.nameservers],
-        )
 
         address_data = []
         for address in interface.ipv6setting.address:
@@ -152,6 +154,19 @@ def get_connection_from_interface(
 
         ipv6[CONF_ATTR_IPV6_ADDRESS_DATA] = Variant("aa{sv}", address_data)
         ipv6[CONF_ATTR_IPV6_GATEWAY] = Variant("s", str(interface.ipv6setting.gateway))
+    else:
+        raise RuntimeError("Invalid IPv6 InterfaceMethod")
+
+    if (
+        not interface.ipv6setting
+        or interface.ipv6setting.method == InterfaceMethod.AUTO
+        or interface.ipv6setting.method == InterfaceMethod.STATIC
+    ):
+        nameservers = interface.ipv6setting.nameservers if interface.ipv6setting else []
+        ipv6[CONF_ATTR_IPV6_DNS] = Variant(
+            "aay",
+            [ip_address.packed for ip_address in nameservers],
+        )
 
     conn[CONF_ATTR_IPV6] = ipv6
 
