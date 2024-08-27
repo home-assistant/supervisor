@@ -366,11 +366,19 @@ class OSManager(CoreSysAttributes):
     async def mark_healthy(self) -> None:
         """Set booted partition as good for rauc."""
         try:
-            response = await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted")
+            responses = [
+                await self.sys_dbus.rauc.mark(RaucState.ACTIVE, "booted"),
+                await self.sys_dbus.rauc.mark(RaucState.GOOD, "booted"),
+            ]
         except DBusError:
-            _LOGGER.error("Can't mark booted partition as healthy!")
+            _LOGGER.exception("Can't mark booted partition as healthy!")
         else:
-            _LOGGER.info("Rauc: %s - %s", self.sys_dbus.rauc.boot_slot, response[1])
+            _LOGGER.info(
+                "Rauc: slot %s - %s, %s",
+                self.sys_dbus.rauc.boot_slot,
+                responses[0][1],
+                responses[1][1],
+            )
             await self.reload()
 
     @Job(
