@@ -717,15 +717,10 @@ class DockerAddon(DockerInterface):
         version: AwesomeVersion | None = None,
     ) -> None:
         """Check if old version exists and cleanup other versions of image not in use."""
-        if not image:
-            image = self.image
-        if not version:
-            version = self.version
-
         await self.sys_run_in_executor(
             self.sys_docker.cleanup_old_images,
-            image,
-            version,
+            (image := image or self.image),
+            version or self.version,
             {old_image} if old_image else None,
             keep_images={
                 f"{addon.image}:{addon.version}"
