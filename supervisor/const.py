@@ -382,11 +382,26 @@ ROLE_ADMIN = "admin"
 ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
 
 
+class AddonBootConfig(StrEnum):
+    """Boot mode config for the add-on."""
+
+    AUTO = "auto"
+    MANUAL = "manual"
+    MANUAL_ONLY = "manual_only"
+
+
 class AddonBoot(StrEnum):
     """Boot mode for the add-on."""
 
     AUTO = "auto"
     MANUAL = "manual"
+
+    @classmethod
+    def _missing_(cls, value: str) -> Self | None:
+        """Convert 'forced' config values to their counterpart."""
+        if value == AddonBootConfig.MANUAL_ONLY:
+            return AddonBoot.MANUAL
+        return None
 
 
 class AddonStartup(StrEnum):

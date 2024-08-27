@@ -57,6 +57,7 @@ from ..const import (
     ATTR_WATCHDOG,
     DNS_SUFFIX,
     AddonBoot,
+    AddonBootConfig,
     AddonStartup,
     AddonState,
     BusEvent,
@@ -311,7 +312,9 @@ class Addon(AddonModel):
 
     @property
     def boot(self) -> AddonBoot:
-        """Return boot config with prio local settings."""
+        """Return boot config with prio local settings unless config is forced."""
+        if self.boot_config == AddonBootConfig.MANUAL_ONLY:
+            return super().boot
         return self.persist.get(ATTR_BOOT, super().boot)
 
     @boot.setter

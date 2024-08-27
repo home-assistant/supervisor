@@ -691,6 +691,7 @@ async def test_local_example_install(
     mock_aarch64_arch_supported: None,
 ):
     """Test install of an addon."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     assert not (
         data_dir := tmp_supervisor_data / "addons" / "data" / "local_example"
     ).exists()
@@ -883,3 +884,14 @@ async def test_addon_load_succeeds_with_docker_errors(
     caplog.clear()
     await install_addon_ssh.load()
     assert "Unknown error with test/amd64-addon-ssh:9.2.1" in caplog.text
+
+
+async def test_addon_manual_only_boot(coresys: CoreSys, install_addon_example: Addon):
+    """Test an addon with manual only boot mode."""
+    assert install_addon_example.boot_config == "manual_only"
+    assert install_addon_example.boot == "manual"
+
+    # Users cannot change boot mode of an addon with manual forced so changing boot isn't realistic
+    # However boot mode can change on update and user may have set auto before, ensure it is ignored
+    install_addon_example.boot = "auto"
+    assert install_addon_example.boot == "manual"

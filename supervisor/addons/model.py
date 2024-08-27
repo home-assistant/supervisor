@@ -83,6 +83,7 @@ from ..const import (
     SECURITY_DISABLE,
     SECURITY_PROFILE,
     AddonBoot,
+    AddonBootConfig,
     AddonStage,
     AddonStartup,
 )
@@ -150,9 +151,14 @@ class AddonModel(JobGroup, ABC):
         return self.data[ATTR_OPTIONS]
 
     @property
-    def boot(self) -> AddonBoot:
-        """Return boot config with prio local settings."""
+    def boot_config(self) -> AddonBootConfig:
+        """Return boot config."""
         return self.data[ATTR_BOOT]
+
+    @property
+    def boot(self) -> AddonBoot:
+        """Return boot config with prio local settings unless config is forced."""
+        return AddonBoot(self.data[ATTR_BOOT])
 
     @property
     def auto_update(self) -> bool | None:
