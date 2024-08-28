@@ -50,6 +50,77 @@ if TYPE_CHECKING:
     from ....host.configuration import Interface
 
 
+def _get_ipv4_connection_settings(ipv4setting) -> dict:
+    ipv4 = {}
+    if not ipv4setting or ipv4setting.method == InterfaceMethod.AUTO:
+        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "auto")
+    elif ipv4setting.method == InterfaceMethod.DISABLED:
+        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "disabled")
+    elif ipv4setting.method == InterfaceMethod.STATIC:
+        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "manual")
+
+        address_data = []
+        for address in ipv4setting.address:
+            address_data.append(
+                {
+                    "address": Variant("s", str(address.ip)),
+                    "prefix": Variant("u", int(address.with_prefixlen.split("/")[-1])),
+                }
+            )
+
+        ipv4[CONF_ATTR_IPV4_ADDRESS_DATA] = Variant("aa{sv}", address_data)
+        ipv4[CONF_ATTR_IPV4_GATEWAY] = Variant("s", str(ipv4setting.gateway))
+    else:
+        raise RuntimeError("Invalid IPv4 InterfaceMethod")
+
+    if not ipv4setting or ipv4setting.method in (
+        InterfaceMethod.AUTO,
+        InterfaceMethod.STATIC,
+    ):
+        nameservers = ipv4setting.nameservers if ipv4setting else []
+        ipv4[CONF_ATTR_IPV4_DNS] = Variant(
+            "au",
+            [socket.htonl(int(ip_address)) for ip_address in nameservers],
+        )
+
+    return ipv4
+
+
+def _get_ipv6_connection_settings(ipv6setting) -> dict:
+    ipv6 = {}
+    if not ipv6setting or ipv6setting.method == InterfaceMethod.AUTO:
+        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "auto")
+    elif ipv6setting.method == InterfaceMethod.DISABLED:
+        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "link-local")
+    elif ipv6setting.method == InterfaceMethod.STATIC:
+        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "manual")
+
+        address_data = []
+        for address in ipv6setting.address:
+            address_data.append(
+                {
+                    "address": Variant("s", str(address.ip)),
+                    "prefix": Variant("u", int(address.with_prefixlen.split("/")[-1])),
+                }
+            )
+
+        ipv6[CONF_ATTR_IPV6_ADDRESS_DATA] = Variant("aa{sv}", address_data)
+        ipv6[CONF_ATTR_IPV6_GATEWAY] = Variant("s", str(ipv6setting.gateway))
+    else:
+        raise RuntimeError("Invalid IPv6 InterfaceMethod")
+
+    if not ipv6setting or ipv6setting.method in (
+        InterfaceMethod.AUTO,
+        InterfaceMethod.STATIC,
+    ):
+        nameservers = ipv6setting.nameservers if ipv6setting else []
+        ipv6[CONF_ATTR_IPV6_DNS] = Variant(
+            "aay",
+            [ip_address.packed for ip_address in nameservers],
+        )
+    return ipv6
+
+
 def get_connection_from_interface(
     interface: Interface,
     network_manager: NetworkManager,
@@ -94,81 +165,9 @@ def get_connection_from_interface(
         else:
             conn[CONF_ATTR_CONNECTION]["interface-name"] = Variant("s", interface.name)
 
-    ipv4 = {}
-    if (
-        not interface.ipv4setting
-        or interface.ipv4setting.method == InterfaceMethod.AUTO
-    ):
-        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "auto")
-    elif interface.ipv4setting.method == InterfaceMethod.DISABLED:
-        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "disabled")
-    elif interface.ipv4setting.method == InterfaceMethod.STATIC:
-        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "manual")
+    conn[CONF_ATTR_IPV4] = _get_ipv4_connection_settings(interface.ipv4setting)
 
-        address_data = []
-        for address in interface.ipv4setting.address:
-            address_data.append(
-                {
-                    "address": Variant("s", str(address.ip)),
-                    "prefix": Variant("u", int(address.with_prefixlen.split("/")[-1])),
-                }
-            )
-
-        ipv4[CONF_ATTR_IPV4_ADDRESS_DATA] = Variant("aa{sv}", address_data)
-        ipv4[CONF_ATTR_IPV4_GATEWAY] = Variant("s", str(interface.ipv4setting.gateway))
-    else:
-        raise RuntimeError("Invalid IPv4 InterfaceMethod")
-
-    if (
-        not interface.ipv4setting
-        or interface.ipv4setting.method == InterfaceMethod.AUTO
-        or interface.ipv4setting.method == InterfaceMethod.STATIC
-    ):
-        nameservers = interface.ipv4setting.nameservers if interface.ipv4setting else []
-        ipv4[CONF_ATTR_IPV4_DNS] = Variant(
-            "au",
-            [socket.htonl(int(ip_address)) for ip_address in nameservers],
-        )
-
-    conn[CONF_ATTR_IPV4] = ipv4
-
-    ipv6 = {}
-    if (
-        not interface.ipv6setting
-        or interface.ipv6setting.method == InterfaceMethod.AUTO
-    ):
-        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "auto")
-    elif interface.ipv6setting.method == InterfaceMethod.DISABLED:
-        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "link-local")
-    elif interface.ipv4setting.method == InterfaceMethod.STATIC:
-        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "manual")
-
-        address_data = []
-        for address in interface.ipv6setting.address:
-            address_data.append(
-                {
-                    "address": Variant("s", str(address.ip)),
-                    "prefix": Variant("u", int(address.with_prefixlen.split("/")[-1])),
-                }
-            )
-
-        ipv6[CONF_ATTR_IPV6_ADDRESS_DATA] = Variant("aa{sv}", address_data)
-        ipv6[CONF_ATTR_IPV6_GATEWAY] = Variant("s", str(interface.ipv6setting.gateway))
-    else:
-        raise RuntimeError("Invalid IPv6 InterfaceMethod")
-
-    if (
-        not interface.ipv6setting
-        or interface.ipv6setting.method == InterfaceMethod.AUTO
-        or interface.ipv6setting.method == InterfaceMethod.STATIC
-    ):
-        nameservers = interface.ipv6setting.nameservers if interface.ipv6setting else []
-        ipv6[CONF_ATTR_IPV6_DNS] = Variant(
-            "aay",
-            [ip_address.packed for ip_address in nameservers],
-        )
-
-    conn[CONF_ATTR_IPV6] = ipv6
+    conn[CONF_ATTR_IPV6] = _get_ipv6_connection_settings(interface.ipv6setting)
 
     if interface.type == InterfaceType.ETHERNET:
         conn[CONF_ATTR_802_ETHERNET] = {
