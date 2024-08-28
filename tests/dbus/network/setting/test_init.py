@@ -1,5 +1,6 @@
 """Test Network Manager Connection object."""
 
+from ipaddress import IPv6Address
 from unittest.mock import MagicMock
 
 from dbus_fast import Variant
@@ -66,7 +67,10 @@ async def test_update(
     assert "ipv4" in settings
     assert settings["ipv4"]["method"] == Variant("s", "auto")
     assert "gateway" not in settings["ipv4"]
-    assert "dns" not in settings["ipv4"]
+    assert settings["ipv4"]["dns"] == Variant(
+        "au", [16951488]
+    )
+    # Make sure we use the legacy "dns" property only.
     assert "dns-data" not in settings["ipv4"]
     assert "address-data" not in settings["ipv4"]
     assert "addresses" not in settings["ipv4"]
@@ -83,7 +87,10 @@ async def test_update(
     assert "ipv6" in settings
     assert settings["ipv6"]["method"] == Variant("s", "auto")
     assert "gateway" not in settings["ipv6"]
-    assert "dns" not in settings["ipv6"]
+    assert settings["ipv6"]["dns"] == Variant(
+        "aay", [IPv6Address("2001:4860:4860::8888").packed]
+    )
+    # Make sure we use the legacy "dns" property only.
     assert "dns-data" not in settings["ipv6"]
     assert "address-data" not in settings["ipv6"]
     assert "addresses" not in settings["ipv6"]
