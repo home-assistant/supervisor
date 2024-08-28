@@ -3,6 +3,7 @@
 from ipaddress import IPv6Address
 from dbus_fast import Variant
 from dbus_fast.service import PropertyAccess, dbus_property, signal
+from copy import deepcopy
 
 from .base import DBusServiceMock, dbus_method
 
@@ -103,7 +104,7 @@ class ConnectionSettings(DBusServiceMock):
         """Initialize object."""
         super().__init__()
         self.object_path = object_path
-        self.settings = SETINGS_FIXTURES[object_path]
+        self.settings = deepcopy(SETINGS_FIXTURES[object_path])
 
     @dbus_property(access=PropertyAccess.READ)
     def Unsaved(self) -> "b":
@@ -131,7 +132,11 @@ class ConnectionSettings(DBusServiceMock):
     @dbus_method()
     def Update(self, properties: "a{sa{sv}}") -> None:
         """Do Update method."""
-        self.settings = properties
+        for k, v in properties.items():
+            if k in self.settings:
+                self.settings[k].update(v)
+            else:
+                self.settings[k] = v
         self.Updated()
 
     @dbus_method()
