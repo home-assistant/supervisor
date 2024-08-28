@@ -1,5 +1,6 @@
 """Mock of Network Manager Connection Settings service."""
 
+from ipaddress import IPv6Address
 from dbus_fast import Variant
 from dbus_fast.service import PropertyAccess, dbus_property, signal
 
@@ -54,6 +55,8 @@ SETTINGS_FIXTURE: dict[str, dict[str, Variant]] = {
         "method": Variant("s", "auto"),
         "route-data": Variant("aa{sv}", []),
         "routes": Variant("a(ayuayu)", []),
+        "dns": Variant("aay", [IPv6Address("2001:4860:4860::8888").packed]),
+        "dns-data": Variant("as", ["2001:4860:4860::8888"]),
         "addr-gen-mode": Variant("i", 0),
     },
     "proxy": {},
