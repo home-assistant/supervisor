@@ -1,9 +1,10 @@
 """Mock of Network Manager Connection Settings service."""
 
+from copy import deepcopy
 from ipaddress import IPv6Address
+
 from dbus_fast import Variant
 from dbus_fast.service import PropertyAccess, dbus_property, signal
-from copy import deepcopy
 
 from .base import DBusServiceMock, dbus_method
 
