@@ -67,9 +67,7 @@ async def test_update(
     assert "ipv4" in settings
     assert settings["ipv4"]["method"] == Variant("s", "auto")
     assert "gateway" not in settings["ipv4"]
-    assert settings["ipv4"]["dns"] == Variant(
-        "au", [16951488]
-    )
+    assert settings["ipv4"]["dns"] == Variant("au", [16951488])
     # Make sure we use the legacy "dns" property only.
     assert "dns-data" not in settings["ipv4"]
     assert "address-data" not in settings["ipv4"]
