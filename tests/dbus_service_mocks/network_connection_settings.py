@@ -25,14 +25,9 @@ SETTINGS_FIXTURE: dict[str, dict[str, Variant]] = {
     "ipv4": {
         "address-data": Variant(
             "aa{sv}",
-            [
-                {
-                    "address": Variant("s", "192.168.2.148"),
-                    "prefix": Variant("u", 24),
-                }
-            ],
+            [],
         ),
-        "addresses": Variant("aau", [[2483202240, 24, 16951488]]),
+        "addresses": Variant("aau", []),
         "dns": Variant("au", [16951488]),
         "dns-data": Variant("as", ["192.168.2.1"]),
         "dns-search": Variant("as", []),
