@@ -64,7 +64,7 @@ MINIMAL_WIRELESS_SETTINGS_FIXTURE = MINIMAL_SETTINGS_FIXTURE | {
 
 
 def settings_update(minimal_setting, new_settings):
-    """Updates Connection settings with minimal skeleton in mind"""
+    """Update Connection settings with minimal skeleton in mind."""
     settings = deepcopy(minimal_setting)
     for k, v in new_settings.items():
         if k in settings:
