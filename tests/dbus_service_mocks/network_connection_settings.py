@@ -220,6 +220,28 @@ class ConnectionSettings(DBusServiceMock):
         # If both "dns" and "dns-data" are provided the former wins
         if "ipv4" in properties:
             ipv4 = properties["ipv4"]
+            if "address-data" in ipv4:
+                addresses = Variant("aau", [])
+                for entry in ipv4["address-data"].value:
+                    addresses.value.append(
+                        [
+                            socket.htonl(int(IPv4Address(entry["address"].value))),
+                            entry["prefix"].value,
+                            0,
+                        ]
+                    )
+                self.settings["ipv4"]["addresses"] = addresses
+            if "addresses" in ipv4:
+                address_data = Variant("aa{sv}", [])
+                for entry in ipv4["addresses"].value:
+                    ipv4address = IPv4Address(socket.ntohl(entry[0]))
+                    address_data.value.append(
+                        {
+                            "address": Variant("s", str(ipv4address)),
+                            "prefix": Variant("u", int(entry[1])),
+                        }
+                    )
+                self.settings["ipv4"]["address-data"] = address_data
             if "dns-data" in ipv4:
                 dns = Variant("au", [])
                 for entry in ipv4["dns-data"].value:
