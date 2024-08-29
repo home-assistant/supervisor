@@ -16,6 +16,10 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_connection_settings import (
     ConnectionSettings as ConnectionSettingsService,
 )
+from tests.dbus_service_mocks.network_device import (
+    ETHERNET_DEVICE_OBJECT_PATH,
+    WIRELESS_DEVICE_OBJECT_PATH,
+)
 
 
 @pytest.fixture(name="connection_settings_service", autouse=True)
@@ -27,14 +31,21 @@ async def fixture_connection_settings_service(
 
 
 @pytest.fixture(name="dbus_interface")
-async def fixture_dbus_interface(dbus_session_bus: MessageBus) -> NetworkInterface:
+async def fixture_dbus_interface(
+    dbus_session_bus: MessageBus, device_object_path: str = ETHERNET_DEVICE_OBJECT_PATH
+) -> NetworkInterface:
     """Get connected dbus interface."""
-    dbus_interface = NetworkInterface("/org/freedesktop/NetworkManager/Devices/1")
+    dbus_interface = NetworkInterface(device_object_path)
     await dbus_interface.connect(dbus_session_bus)
     yield dbus_interface
 
 
-async def test_update(
+@pytest.mark.parametrize(
+    "dbus_interface",
+    [ETHERNET_DEVICE_OBJECT_PATH, WIRELESS_DEVICE_OBJECT_PATH],
+    indirect=True,
+)
+async def test_ethernet_update(
     dbus_interface: NetworkInterface,
     connection_settings_service: ConnectionSettingsService,
 ):
@@ -91,16 +102,22 @@ async def test_update(
 
     assert "proxy" in settings
 
-    assert "802-3-ethernet" in settings
-    assert settings["802-3-ethernet"]["auto-negotiate"] == Variant("b", False)
-
-    assert "802-11-wireless" in settings
-    assert settings["802-11-wireless"]["ssid"] == Variant("ay", b"NETT")
-    assert "mode" not in settings["802-11-wireless"]
-    assert "powersave" not in settings["802-11-wireless"]
-
-    assert "802-11-wireless-security" not in settings
     assert "vlan" not in settings
+
+    if settings["connection"]["type"] == "802-3-ethernet":
+        assert "802-3-ethernet" in settings
+        assert settings["802-3-ethernet"]["auto-negotiate"] == Variant("b", False)
+
+        assert "802-11-wireless" not in settings
+        assert "802-11-wireless-security" not in settings
+
+    if settings["connection"]["type"] == "802-11-wireless":
+        assert "802-11-wireless" in settings
+        assert settings["802-11-wireless"]["ssid"] == Variant("ay", b"NETT")
+        assert "mode" not in settings["802-11-wireless"]
+        assert "powersave" not in settings["802-11-wireless"]
+
+        assert "802-11-wireless-security" not in settings
 
 
 async def test_ipv6_disabled_is_link_local(dbus_interface: NetworkInterface):

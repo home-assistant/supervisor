@@ -83,11 +83,15 @@ async def test_load(
     assert name_dict["wlan0"].enabled is False
 
     assert connection_settings_service.settings["ipv4"]["method"].value == "auto"
-    assert connection_settings_service.settings["ipv4"]["address-data"] == Variant("aa{sv}",[])
+    assert connection_settings_service.settings["ipv4"]["address-data"] == Variant(
+        "aa{sv}", []
+    )
     assert "gateway" not in connection_settings_service.settings["ipv4"]
     assert "dns" not in connection_settings_service.settings["ipv4"]
     assert connection_settings_service.settings["ipv6"]["method"].value == "auto"
-    assert connection_settings_service.settings["ipv6"]["address-data"] == Variant("aa{sv}", [])
+    assert connection_settings_service.settings["ipv6"]["address-data"] == Variant(
+        "aa{sv}", []
+    )
     assert "gateway" not in connection_settings_service.settings["ipv6"]
     assert "dns" not in connection_settings_service.settings["ipv6"]
 
