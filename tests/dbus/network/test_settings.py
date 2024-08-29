@@ -7,7 +7,7 @@ from supervisor.dbus.network.settings import NetworkManagerSettings
 from supervisor.exceptions import DBusNotConnectedError
 
 from tests.common import mock_dbus_services
-from tests.dbus_service_mocks.network_connection_settings import SETTINGS_FIXTURE
+from tests.dbus_service_mocks.network_connection_settings import SETTINGS_1_FIXTURE
 from tests.dbus_service_mocks.network_settings import Settings as SettingsService
 
 
@@ -30,15 +30,15 @@ async def test_add_connection(
     settings = NetworkManagerSettings()
 
     with pytest.raises(DBusNotConnectedError):
-        await settings.add_connection(SETTINGS_FIXTURE)
+        await settings.add_connection(SETTINGS_1_FIXTURE)
 
     await settings.connect(dbus_session_bus)
 
-    connection_settings = await settings.add_connection(SETTINGS_FIXTURE)
+    connection_settings = await settings.add_connection(SETTINGS_1_FIXTURE)
     assert connection_settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
     assert connection_settings.ipv4.method == "auto"
 
-    assert settings_service.AddConnection.calls == [(SETTINGS_FIXTURE,)]
+    assert settings_service.AddConnection.calls == [(SETTINGS_1_FIXTURE,)]
 
 
 async def test_reload_connections(

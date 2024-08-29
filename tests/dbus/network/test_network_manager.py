@@ -19,7 +19,7 @@ from supervisor.utils.dbus import DBus
 
 from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
 from tests.dbus_service_mocks.base import DBusServiceMock
-from tests.dbus_service_mocks.network_connection_settings import SETTINGS_FIXTURE
+from tests.dbus_service_mocks.network_connection_settings import SETTINGS_1_FIXTURE
 from tests.dbus_service_mocks.network_manager import (
     NetworkManager as NetworkManagerService,
 )
@@ -113,7 +113,7 @@ async def test_add_and_activate_connection(
     network_manager_service.AddAndActivateConnection.calls.clear()
 
     settings, connection = await network_manager.add_and_activate_connection(
-        SETTINGS_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1"
+        SETTINGS_1_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1"
     )
     assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
     assert settings.ipv4.method == "auto"
@@ -122,7 +122,7 @@ async def test_add_and_activate_connection(
         connection.settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
     )
     assert network_manager_service.AddAndActivateConnection.calls == [
-        (SETTINGS_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1", "/")
+        (SETTINGS_1_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1", "/")
     ]
 
 
