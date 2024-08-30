@@ -157,6 +157,7 @@ async def test_api_network_interface_update_ethernet(
     network_manager_service.CheckConnectivity.calls.clear()
     connection_settings_service.Update.calls.clear()
 
+    # Full static configuration (represents frontend static config)
     resp = await api_client.post(
         f"/network/interface/{TEST_INTERFACE_ETH_NAME}/update",
         json={
@@ -181,7 +182,33 @@ async def test_api_network_interface_update_ethernet(
         [{"address": Variant("s", "192.168.2.148"), "prefix": Variant("u", 24)}],
     )
     assert settings["ipv4"]["dns"] == Variant("au", [16843009])
+    assert settings["ipv4"]["gateway"] == Variant("s", "192.168.2.1")
 
+    # Partial static configuration, updates only provided settings (e.g. by CLI)
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_ETH_NAME}/update",
+        json={
+            "ipv4": {
+                "method": "static",
+                "address": ["192.168.2.149/24"],
+            }
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert len(connection_settings_service.Update.calls) == 2
+    settings = connection_settings_service.Update.calls[1][0]
+
+    assert "ipv4" in settings
+    assert settings["ipv4"]["method"] == Variant("s", "manual")
+    assert settings["ipv4"]["address-data"] == Variant(
+        "aa{sv}",
+        [{"address": Variant("s", "192.168.2.149"), "prefix": Variant("u", 24)}],
+    )
+    assert settings["ipv4"]["dns"] == Variant("au", [16843009])
+    assert settings["ipv4"]["gateway"] == Variant("s", "192.168.2.1")
+
+    # Auto configuration, clears all settings (represents frontend auto config)
     resp = await api_client.post(
         f"/network/interface/{TEST_INTERFACE_ETH_NAME}/update",
         json={
@@ -192,8 +219,8 @@ async def test_api_network_interface_update_ethernet(
     )
     result = await resp.json()
     assert result["result"] == "ok"
-    assert len(connection_settings_service.Update.calls) == 2
-    settings = connection_settings_service.Update.calls[1][0]
+    assert len(connection_settings_service.Update.calls) == 3
+    settings = connection_settings_service.Update.calls[2][0]
 
     # Validate network update to auto clears address, DNS and gateway settings
     assert "ipv4" in settings
