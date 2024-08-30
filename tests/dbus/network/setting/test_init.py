@@ -78,7 +78,7 @@ async def test_ethernet_update(
     assert settings["ipv4"]["method"] == Variant("s", "auto")
     assert "gateway" not in settings["ipv4"]
     # Only DNS settings need to be preserved with auto
-    assert settings["ipv4"]["dns"] == Variant ("au", [16951488])
+    assert settings["ipv4"]["dns"] == Variant("au", [16951488])
     assert "dns-data" not in settings["ipv4"]
     assert "address-data" not in settings["ipv4"]
     assert "addresses" not in settings["ipv4"]
@@ -96,7 +96,9 @@ async def test_ethernet_update(
     assert settings["ipv6"]["method"] == Variant("s", "auto")
     assert "gateway" not in settings["ipv6"]
     # Only DNS settings need to be preserved with auto
-    assert settings["ipv6"]["dns"] == Variant ("aay", [bytearray(b' \x01H`H`\x00\x00\x00\x00\x00\x00\x00\x00\x88\x88')])
+    assert settings["ipv6"]["dns"] == Variant(
+        "aay", [bytearray(b" \x01H`H`\x00\x00\x00\x00\x00\x00\x00\x00\x88\x88")]
+    )
     assert "dns-data" not in settings["ipv6"]
     assert "address-data" not in settings["ipv6"]
     assert "addresses" not in settings["ipv6"]
