@@ -10,7 +10,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 
 from tests.common import mock_dbus_services
-from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
+from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_device import Device as DeviceService
 
@@ -108,7 +108,7 @@ async def test_network_interface_wlan(
     await interface.connect(dbus_session_bus)
 
     assert interface.sync_properties is True
-    assert interface.name == TEST_INTERFACE_WLAN
+    assert interface.name == TEST_INTERFACE_WLAN_NAME
     assert interface.type == DeviceType.WIRELESS
     assert interface.wireless is not None
     assert interface.wireless.bitrate == 0
@@ -133,7 +133,7 @@ async def test_old_wireless_disconnect(
     network_manager: NetworkManager, device_wlan0_service: DeviceService
 ):
     """Test old wireless disconnects on type change."""
-    interface = network_manager.get(TEST_INTERFACE_WLAN)
+    interface = network_manager.get(TEST_INTERFACE_WLAN_NAME)
     wireless = interface.wireless
     assert wireless.is_connected is True
 
@@ -169,7 +169,7 @@ async def test_interface_becomes_unmanaged(
     """Test managed objects disconnect when interface becomes unmanaged."""
     eth0 = network_manager.get(TEST_INTERFACE)
     connection = eth0.connection
-    wlan0 = network_manager.get(TEST_INTERFACE_WLAN)
+    wlan0 = network_manager.get(TEST_INTERFACE_WLAN_NAME)
     wireless = wlan0.wireless
 
     assert connection.is_connected is True

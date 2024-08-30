@@ -17,7 +17,7 @@ from supervisor.exceptions import (
 )
 from supervisor.utils.dbus import DBus
 
-from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
+from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_connection_settings import SETTINGS_1_FIXTURE
 from tests.dbus_service_mocks.network_manager import (
@@ -130,13 +130,13 @@ async def test_removed_devices_disconnect(
     network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Test removed devices are disconnected."""
-    wlan = network_manager.get(TEST_INTERFACE_WLAN)
+    wlan = network_manager.get(TEST_INTERFACE_WLAN_NAME)
     assert wlan.is_connected is True
 
     network_manager_service.emit_properties_changed({"Devices": []})
     await network_manager_service.ping()
 
-    assert TEST_INTERFACE_WLAN not in network_manager
+    assert TEST_INTERFACE_WLAN_NAME not in network_manager
     assert wlan.is_connected is False
 
 

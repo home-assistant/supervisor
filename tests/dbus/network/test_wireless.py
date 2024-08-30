@@ -6,7 +6,7 @@ import pytest
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.wireless import NetworkWireless
 
-from tests.const import TEST_INTERFACE_WLAN
+from tests.const import TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_device_wireless import (
     DeviceWireless as DeviceWirelessService,
@@ -56,7 +56,7 @@ async def test_request_scan(
     """Test request scan."""
     device_wireless_service.RequestScan.calls.clear()
     assert (
-        await network_manager.get(TEST_INTERFACE_WLAN).wireless.request_scan() is None
+        await network_manager.get(TEST_INTERFACE_WLAN_NAME).wireless.request_scan() is None
     )
     assert device_wireless_service.RequestScan.calls == [({},)]
 
@@ -64,7 +64,7 @@ async def test_request_scan(
 async def test_get_all_access_points(network_manager: NetworkManager):
     """Test get all access points."""
     accesspoints = await network_manager.get(
-        TEST_INTERFACE_WLAN
+        TEST_INTERFACE_WLAN_NAME
     ).wireless.get_all_accesspoints()
     assert len(accesspoints) == 2
     assert accesspoints[0].mac == "E4:57:40:A9:D7:DE"
@@ -75,7 +75,7 @@ async def test_get_all_access_points(network_manager: NetworkManager):
 
 async def test_old_active_ap_disconnects(network_manager: NetworkManager):
     """Test old access point disconnects on active ap change."""
-    wireless = network_manager.get(TEST_INTERFACE_WLAN).wireless
+    wireless = network_manager.get(TEST_INTERFACE_WLAN_NAME).wireless
 
     await wireless.update(
         {"ActiveAccessPoint": "/org/freedesktop/NetworkManager/AccessPoint/43099"}
