@@ -56,7 +56,8 @@ async def test_request_scan(
     """Test request scan."""
     device_wireless_service.RequestScan.calls.clear()
     assert (
-        await network_manager.get(TEST_INTERFACE_WLAN_NAME).wireless.request_scan() is None
+        await network_manager.get(TEST_INTERFACE_WLAN_NAME).wireless.request_scan()
+        is None
     )
     assert device_wireless_service.RequestScan.calls == [({},)]
 

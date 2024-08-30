@@ -181,7 +181,7 @@ async def test_api_network_interface_update_ethernet(
         "aa{sv}",
         [{"address": Variant("s", "192.168.2.148"), "prefix": Variant("u", 24)}],
     )
-    assert settings["ipv4"]["dns"] == Variant ('au', [16843009])
+    assert settings["ipv4"]["dns"] == Variant("au", [16843009])
 
     resp = await api_client.post(
         f"/network/interface/{TEST_INTERFACE_ETH_NAME}/update",
