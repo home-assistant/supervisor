@@ -10,7 +10,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 
 from tests.common import mock_dbus_services
-from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN_NAME
+from tests.const import TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_device import Device as DeviceService
 
@@ -61,7 +61,7 @@ async def test_network_interface_ethernet(
     await interface.connect(dbus_session_bus)
 
     assert interface.sync_properties is True
-    assert interface.name == TEST_INTERFACE
+    assert interface.name == TEST_INTERFACE_ETH_NAME
     assert interface.type == DeviceType.ETHERNET
     assert interface.managed is True
     assert interface.wireless is None
@@ -118,7 +118,7 @@ async def test_old_connection_disconnect(
     network_manager: NetworkManager, device_eth0_service: DeviceService
 ):
     """Test old connection disconnects on connection change."""
-    interface = network_manager.get(TEST_INTERFACE)
+    interface = network_manager.get(TEST_INTERFACE_ETH_NAME)
     connection = interface.connection
     assert connection.is_connected is True
 
@@ -167,7 +167,7 @@ async def test_interface_becomes_unmanaged(
     device_wlan0_service: DeviceService,
 ):
     """Test managed objects disconnect when interface becomes unmanaged."""
-    eth0 = network_manager.get(TEST_INTERFACE)
+    eth0 = network_manager.get(TEST_INTERFACE_ETH_NAME)
     connection = eth0.connection
     wlan0 = network_manager.get(TEST_INTERFACE_WLAN_NAME)
     wireless = wlan0.wireless

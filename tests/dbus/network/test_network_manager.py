@@ -17,7 +17,7 @@ from supervisor.exceptions import (
 )
 from supervisor.utils.dbus import DBus
 
-from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN_NAME
+from tests.const import TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_connection_settings import SETTINGS_1_FIXTURE
 from tests.dbus_service_mocks.network_manager import (
@@ -43,7 +43,7 @@ async def test_network_manager(
 
     await network_manager.connect(dbus_session_bus)
 
-    assert TEST_INTERFACE in network_manager
+    assert TEST_INTERFACE_ETH_NAME in network_manager
     assert network_manager.connectivity_enabled is True
 
     network_manager_service.emit_properties_changed({"ConnectivityCheckEnabled": False})
