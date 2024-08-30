@@ -3,7 +3,14 @@
 import asyncio
 from collections.abc import Awaitable
 from dataclasses import replace
-from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface, ip_address, ip_interface
+from ipaddress import (
+    IPv4Address,
+    IPv4Interface,
+    IPv6Address,
+    IPv6Interface,
+    ip_address,
+    ip_interface,
+)
 from typing import Any
 
 from aiohttp import web
