@@ -105,7 +105,9 @@ class Interface:
                 ]
                 if inet.settings.ipv4.address_data
                 else [],
-                gateway=inet.settings.ipv4.gateway,
+                gateway=IPv4Address(inet.settings.ipv4.gateway)
+                if inet.settings.ipv4.gateway
+                else None,
                 nameservers=[
                     IPv4Address(socket.ntohl(ip)) for ip in inet.settings.ipv4.dns
                 ]
@@ -124,7 +126,9 @@ class Interface:
                 ]
                 if inet.settings.ipv6.address_data
                 else [],
-                gateway=inet.settings.ipv6.gateway,
+                gateway=IPv6Address(inet.settings.ipv6.gateway)
+                if inet.settings.ipv6.gateway
+                else None,
                 nameservers=[IPv6Address(bytes(ip)) for ip in inet.settings.ipv6.dns]
                 if inet.settings.ipv6.dns
                 else [],
