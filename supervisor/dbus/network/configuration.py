@@ -74,7 +74,7 @@ class IpProperties:
     method: str | None
     address_data: list[IpAddress] | None
     gateway: str | None
-    dns: list[bytes|int] | None
+    dns: list[bytes | int] | None
 
 
 @dataclass(slots=True)

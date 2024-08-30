@@ -74,9 +74,14 @@ def _get_ipv4_connection_settings(ipv4setting) -> dict:
     else:
         raise RuntimeError("Invalid IPv4 InterfaceMethod")
 
-    if ipv4setting and ipv4setting.nameservers and ipv4setting.method in (
-        InterfaceMethod.AUTO,
-        InterfaceMethod.STATIC,
+    if (
+        ipv4setting
+        and ipv4setting.nameservers
+        and ipv4setting.method
+        in (
+            InterfaceMethod.AUTO,
+            InterfaceMethod.STATIC,
+        )
     ):
         nameservers = ipv4setting.nameservers if ipv4setting else []
         ipv4[CONF_ATTR_IPV4_DNS] = Variant(
@@ -111,9 +116,14 @@ def _get_ipv6_connection_settings(ipv6setting) -> dict:
     else:
         raise RuntimeError("Invalid IPv6 InterfaceMethod")
 
-    if ipv6setting and ipv6setting.nameservers and ipv6setting.method in (
-        InterfaceMethod.AUTO,
-        InterfaceMethod.STATIC,
+    if (
+        ipv6setting
+        and ipv6setting.nameservers
+        and ipv6setting.method
+        in (
+            InterfaceMethod.AUTO,
+            InterfaceMethod.STATIC,
+        )
     ):
         nameservers = ipv6setting.nameservers if ipv6setting else []
         ipv6[CONF_ATTR_IPV6_DNS] = Variant(
