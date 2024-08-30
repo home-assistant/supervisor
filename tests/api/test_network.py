@@ -9,10 +9,9 @@ import pytest
 from supervisor.const import DOCKER_NETWORK, DOCKER_NETWORK_MASK
 from supervisor.coresys import CoreSys
 
-from supervisor.dbus.network.configuration import IpAddress
 from tests.const import (
-    TEST_INTERFACE_ETH_NAME,
     TEST_INTERFACE_ETH_MAC,
+    TEST_INTERFACE_ETH_NAME,
     TEST_INTERFACE_WLAN_NAME,
 )
 from tests.dbus_service_mocks.base import DBusServiceMock
