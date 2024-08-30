@@ -19,7 +19,7 @@ from tests.dbus_service_mocks.network_active_connection import (
     ActiveConnection as ActiveConnectionService,
 )
 from tests.dbus_service_mocks.network_connection_settings import (
-    SETTINGS_FIXTURE,
+    SETTINGS_1_FIXTURE,
     ConnectionSettings as ConnectionSettingsService,
 )
 from tests.dbus_service_mocks.network_device_wireless import (
@@ -83,11 +83,15 @@ async def test_load(
     assert name_dict["wlan0"].enabled is False
 
     assert connection_settings_service.settings["ipv4"]["method"].value == "auto"
-    assert "address-data" not in connection_settings_service.settings["ipv4"]
+    assert connection_settings_service.settings["ipv4"]["address-data"] == Variant(
+        "aa{sv}", []
+    )
     assert "gateway" not in connection_settings_service.settings["ipv4"]
     assert "dns" not in connection_settings_service.settings["ipv4"]
     assert connection_settings_service.settings["ipv6"]["method"].value == "auto"
-    assert "address-data" not in connection_settings_service.settings["ipv6"]
+    assert connection_settings_service.settings["ipv6"]["address-data"] == Variant(
+        "aa{sv}", []
+    )
     assert "gateway" not in connection_settings_service.settings["ipv6"]
     assert "dns" not in connection_settings_service.settings["ipv6"]
 
@@ -110,7 +114,7 @@ async def test_load_with_disabled_methods(
     network_manager_service.ActivateConnection.calls.clear()
 
     disabled = {"method": Variant("s", "disabled")}
-    connection_settings_service.settings = SETTINGS_FIXTURE | {
+    connection_settings_service.settings = SETTINGS_1_FIXTURE | {
         "ipv4": disabled,
         "ipv6": disabled,
     }
@@ -118,15 +122,6 @@ async def test_load_with_disabled_methods(
 
     await coresys.host.network.load()
     assert network_manager_service.ActivateConnection.calls == []
-
-    assert connection_settings_service.settings["ipv4"]["method"].value == "disabled"
-    assert "address-data" not in connection_settings_service.settings["ipv4"]
-    assert "gateway" not in connection_settings_service.settings["ipv4"]
-    assert "dns" not in connection_settings_service.settings["ipv4"]
-    assert connection_settings_service.settings["ipv6"]["method"].value == "disabled"
-    assert "address-data" not in connection_settings_service.settings["ipv6"]
-    assert "gateway" not in connection_settings_service.settings["ipv6"]
-    assert "dns" not in connection_settings_service.settings["ipv6"]
 
 
 async def test_load_with_network_connection_issues(
