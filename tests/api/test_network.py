@@ -292,6 +292,26 @@ async def test_api_network_interface_update_invalid(api_client: TestClient):
         == "expected a list for dictionary value @ data['ipv4']['nameservers']. Got '1.1.1.1'"
     )
 
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_ETH_NAME}/update",
+        json={"ipv4": {"gateway": "invalid"}},
+    )
+    result = await resp.json()
+    assert (
+        result["message"]
+        == "expected IPv4Address for dictionary value @ data['ipv4']['gateway']. Got 'invalid'"
+    )
+
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_ETH_NAME}/update",
+        json={"ipv6": {"gateway": "invalid"}},
+    )
+    result = await resp.json()
+    assert (
+        result["message"]
+        == "expected IPv6Address for dictionary value @ data['ipv6']['gateway']. Got 'invalid'"
+    )
+
 
 async def test_api_network_wireless_scan(api_client: TestClient):
     """Test network manager api."""
