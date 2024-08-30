@@ -219,8 +219,7 @@ class APINetwork(CoreSysAttributes):
                 )
             elif key == ATTR_WIFI:
                 interface.wifi = replace(
-                    interface.wifi
-                    or WifiConfig(
+                    WifiConfig(
                         WifiMode.INFRASTRUCTURE, "", AuthMethod.OPEN, None, None
                     ),
                     **config,
