@@ -69,7 +69,8 @@ def _get_ipv4_connection_settings(ipv4setting) -> dict:
             )
 
         ipv4[CONF_ATTR_IPV4_ADDRESS_DATA] = Variant("aa{sv}", address_data)
-        ipv4[CONF_ATTR_IPV4_GATEWAY] = Variant("s", str(ipv4setting.gateway))
+        if ipv4setting.gateway:
+            ipv4[CONF_ATTR_IPV4_GATEWAY] = Variant("s", str(ipv4setting.gateway))
     else:
         raise RuntimeError("Invalid IPv4 InterfaceMethod")
 
@@ -105,7 +106,8 @@ def _get_ipv6_connection_settings(ipv6setting) -> dict:
             )
 
         ipv6[CONF_ATTR_IPV6_ADDRESS_DATA] = Variant("aa{sv}", address_data)
-        ipv6[CONF_ATTR_IPV6_GATEWAY] = Variant("s", str(ipv6setting.gateway))
+        if ipv6setting.gateway:
+            ipv6[CONF_ATTR_IPV6_GATEWAY] = Variant("s", str(ipv6setting.gateway))
     else:
         raise RuntimeError("Invalid IPv6 InterfaceMethod")
 
