@@ -56,7 +56,12 @@ async def test_default_load(coresys: CoreSys):
         in store_manager.repository_urls
     )
     # NOTE: When adding new stores, make sure to add it to tests/fixtures/addons/git/
-    assert refresh_cache_calls == {"local_ssh", "local_example", "core_samba"}
+    assert refresh_cache_calls == {
+        "local_ssh",
+        "local_example",
+        "core_samba",
+        "local_example_image",
+    }
 
 
 async def test_load_with_custom_repository(coresys: CoreSys):
