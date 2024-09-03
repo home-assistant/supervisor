@@ -222,10 +222,14 @@ class APIHost(CoreSysAttributes):
                 "supported for now."
             )
 
-        if request.headers[ACCEPT] == CONTENT_TYPE_X_LOG:
+        if "verbose" in request.query or request.headers[ACCEPT] == CONTENT_TYPE_X_LOG:
             log_formatter = LogFormatter.VERBOSE
 
-        if RANGE in request.headers:
+        if "lines" in request.query:
+            lines = request.query.get("lines", DEFAULT_RANGE)
+            # entries=cursor[[:num_skip]:num_entries]
+            range_header = f"entries=:-{lines}:"
+        elif RANGE in request.headers:
             range_header = request.headers.get(RANGE)
         else:
             range_header = f"entries=:-{DEFAULT_RANGE}:"
