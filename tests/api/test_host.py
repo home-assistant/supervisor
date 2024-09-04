@@ -238,6 +238,51 @@ async def test_advanced_logs(
     )
 
 
+async def test_advaced_logs_query_parameters(
+    api_client: TestClient,
+    coresys: CoreSys,
+    journald_logs: MagicMock,
+    journal_logs_reader: MagicMock,
+):
+    """Test advanced logging API entries controlled by query parameters."""
+    # Check lines query parameter
+    await api_client.get("/host/logs?lines=53")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
+        range_header="entries=:-53:",
+        accept=LogFormat.JOURNAL,
+    )
+
+    journald_logs.reset_mock()
+
+    # Check verbose logs formatter via query parameter
+    await api_client.get("/host/logs?verbose")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
+        range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
+    )
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE)
+
+    journal_logs_reader.reset_mock()
+    journald_logs.reset_mock()
+
+    # Query parameters should take precedence over headers
+    await api_client.get(
+        "/host/logs?lines=53&verbose",
+        headers={
+            "Range": "entries=:-19:10",
+            "Accept": "text/plain",
+        },
+    )
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
+        range_header="entries=:-53:",
+        accept=LogFormat.JOURNAL,
+    )
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE)
+
+
 async def test_advanced_logs_boot_id_offset(
     api_client: TestClient, coresys: CoreSys, journald_logs: MagicMock
 ):
