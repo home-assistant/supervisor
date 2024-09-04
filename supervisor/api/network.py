@@ -2,7 +2,6 @@
 
 import asyncio
 from collections.abc import Awaitable
-from dataclasses import replace
 from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 from typing import Any
 
@@ -58,28 +57,32 @@ from .utils import api_process, api_validate
 
 _SCHEMA_IPV4_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_ADDRESS): [vol.Coerce(IPv4Interface)],
-        vol.Optional(ATTR_METHOD): vol.Coerce(InterfaceMethod),
-        vol.Optional(ATTR_GATEWAY): vol.Coerce(IPv4Address),
-        vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(IPv4Address)],
+        vol.Optional(ATTR_ADDRESS, default=[]): [vol.Coerce(IPv4Interface)],
+        vol.Optional(ATTR_METHOD, default=InterfaceMethod.STATIC): vol.Coerce(
+            InterfaceMethod
+        ),
+        vol.Optional(ATTR_GATEWAY, default=None): vol.Maybe(vol.Coerce(IPv4Address)),
+        vol.Optional(ATTR_NAMESERVERS, default=[]): [vol.Coerce(IPv4Address)],
     }
 )
 
 _SCHEMA_IPV6_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_ADDRESS): [vol.Coerce(IPv6Interface)],
-        vol.Optional(ATTR_METHOD): vol.Coerce(InterfaceMethod),
-        vol.Optional(ATTR_GATEWAY): vol.Coerce(IPv6Address),
-        vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(IPv6Address)],
+        vol.Optional(ATTR_ADDRESS, default=[]): [vol.Coerce(IPv6Interface)],
+        vol.Optional(ATTR_METHOD, default=InterfaceMethod.STATIC): vol.Coerce(
+            InterfaceMethod
+        ),
+        vol.Optional(ATTR_GATEWAY, default=None): vol.Maybe(vol.Coerce(IPv6Address)),
+        vol.Optional(ATTR_NAMESERVERS, default=[]): [vol.Coerce(IPv6Address)],
     }
 )
 
 _SCHEMA_WIFI_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_MODE): vol.Coerce(WifiMode),
-        vol.Optional(ATTR_AUTH): vol.Coerce(AuthMethod),
-        vol.Optional(ATTR_SSID): str,
-        vol.Optional(ATTR_PSK): str,
+        vol.Optional(ATTR_MODE, default=WifiMode.INFRASTRUCTURE): vol.Coerce(WifiMode),
+        vol.Optional(ATTR_AUTH, default=AuthMethod.OPEN): vol.Coerce(AuthMethod),
+        vol.Optional(ATTR_SSID, default=None): vol.Maybe(str),
+        vol.Optional(ATTR_PSK, default=None): vol.Maybe(str),
     }
 )
 
@@ -208,22 +211,11 @@ class APINetwork(CoreSysAttributes):
         # Apply config
         for key, config in body.items():
             if key == ATTR_IPV4:
-                interface.ipv4setting = replace(
-                    IpSetting(InterfaceMethod.STATIC, [], None, []),
-                    **config,
-                )
+                interface.ipv4setting = IpSetting(**config)
             elif key == ATTR_IPV6:
-                interface.ipv6setting = replace(
-                    IpSetting(InterfaceMethod.STATIC, [], None, []),
-                    **config,
-                )
+                interface.ipv6setting = IpSetting(**config)
             elif key == ATTR_WIFI:
-                interface.wifi = replace(
-                    WifiConfig(
-                        WifiMode.INFRASTRUCTURE, "", AuthMethod.OPEN, None, None
-                    ),
-                    **config,
-                )
+                interface.wifi = WifiConfig(**config, signal=None)
             elif key == ATTR_ENABLED:
                 interface.enabled = config
 

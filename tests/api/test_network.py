@@ -300,7 +300,7 @@ async def test_api_network_interface_update_invalid(api_client: TestClient):
     result = await resp.json()
     assert (
         result["message"]
-        == "expected IPv4Address for dictionary value @ data['ipv4']['gateway']. Got 'invalid'"
+        == "not a valid value for dictionary value @ data['ipv4']['gateway']. Got 'invalid'"
     )
 
     resp = await api_client.post(
