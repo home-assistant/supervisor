@@ -184,7 +184,7 @@ async def test_api_network_interface_update_ethernet(
     assert settings["ipv4"]["dns"] == Variant("au", [16843009])
     assert settings["ipv4"]["gateway"] == Variant("s", "192.168.2.1")
 
-    # Partial static configuration, updates only provided settings (e.g. by CLI)
+    # Partial static configuration, clears other settings (e.g. by CLI)
     resp = await api_client.post(
         f"/network/interface/{TEST_INTERFACE_ETH_NAME}/update",
         json={
@@ -205,8 +205,8 @@ async def test_api_network_interface_update_ethernet(
         "aa{sv}",
         [{"address": Variant("s", "192.168.2.149"), "prefix": Variant("u", 24)}],
     )
-    assert settings["ipv4"]["dns"] == Variant("au", [16843009])
-    assert settings["ipv4"]["gateway"] == Variant("s", "192.168.2.1")
+    assert "dns" not in settings["ipv4"]
+    assert "gateway" not in settings["ipv4"]
 
     # Auto configuration, clears all settings (represents frontend auto config)
     resp = await api_client.post(
@@ -214,6 +214,7 @@ async def test_api_network_interface_update_ethernet(
         json={
             "ipv4": {
                 "method": "auto",
+                "nameservers": ["8.8.8.8"],
             }
         },
     )
@@ -228,7 +229,7 @@ async def test_api_network_interface_update_ethernet(
     assert "address-data" not in settings["ipv4"]
     assert "addresses" not in settings["ipv4"]
     assert "dns-data" not in settings["ipv4"]
-    assert "dns" not in settings["ipv4"]
+    assert settings["ipv4"]["dns"] == Variant("au", [134744072])
     assert "gateway" not in settings["ipv4"]
 
 
