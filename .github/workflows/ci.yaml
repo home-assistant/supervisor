@@ -339,6 +339,7 @@ jobs:
         with:
           name: coverage-${{ matrix.python-version }}
           path: .coverage
+          include-hidden-files: true
 
   coverage:
     name: Process test coverage
