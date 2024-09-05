@@ -236,7 +236,10 @@ class NetworkManager(CoreSysAttributes):
                 ) from err
 
         # Remove config from interface
-        elif inet and inet.settings and not interface.enabled:
+        elif inet and not interface.enabled:
+            if not inet.settings:
+                # It was and is disabled, that is fine
+                return
             try:
                 await inet.settings.delete()
             except DBusError as err:
