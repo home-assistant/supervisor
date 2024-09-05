@@ -238,7 +238,7 @@ class NetworkManager(CoreSysAttributes):
         # Remove config from interface
         elif inet and not interface.enabled:
             if not inet.settings:
-                # It was and is disabled, that is fine
+                _LOGGER.debug("Interface %s is already disabled.", interface.name)
                 return
             try:
                 await inet.settings.delete()
