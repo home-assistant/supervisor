@@ -234,7 +234,7 @@ async def test_api_network_interface_update_ethernet(
 
 
 async def test_api_network_interface_update_wifi(api_client: TestClient):
-    """Test network manager api."""
+    """Test network interface WiFi API."""
     resp = await api_client.post(
         f"/network/interface/{TEST_INTERFACE_WLAN_NAME}/update",
         json={
@@ -250,6 +250,30 @@ async def test_api_network_interface_update_wifi(api_client: TestClient):
     )
     result = await resp.json()
     assert result["result"] == "ok"
+
+
+async def test_api_network_interface_update_wifi_error(api_client: TestClient):
+    """Test network interface WiFi API error handling."""
+    # Simulate frontend WiFi interface edit where the user did not select
+    # a WiFi SSID.
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_WLAN_NAME}/update",
+        json={
+            "enabled": True,
+            "ipv4": {
+                "method": "auto",
+            },
+            "ipv6": {
+                "method": "auto",
+            },
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert (
+        result["message"]
+        == "Can't create config and activate wlan0: A 'wireless' setting with a valid SSID is required if no AP path was given."
+    )
 
 
 async def test_api_network_interface_update_remove(api_client: TestClient):

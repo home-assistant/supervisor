@@ -1,5 +1,6 @@
 """Mock of Network Manager service."""
 
+from dbus_fast import DBusError
 from dbus_fast.service import PropertyAccess, dbus_property, signal
 
 from .base import DBusServiceMock, dbus_method
@@ -227,6 +228,18 @@ class NetworkManager(DBusServiceMock):
         self, connection: "a{sa{sv}}", device: "o", speciic_object: "o"
     ) -> "oo":
         """Do AddAndActivateConnection method."""
+        if connection["connection"]["type"].value == "802-11-wireless":
+            if "802-11-wireless" not in connection:
+                raise DBusError(
+                    "org.freedesktop.NetworkManager.Device.InvalidConnection",
+                    "A 'wireless' setting is required if no AP path was given.",
+                )
+            if "ssid" not in connection["802-11-wireless"]:
+                raise DBusError(
+                    "org.freedesktop.NetworkManager.Device.InvalidConnection",
+                    "A 'wireless' setting with a valid SSID is required if no AP path was given.",
+                )
+
         return [
             "/org/freedesktop/NetworkManager/Settings/1",
             "/org/freedesktop/NetworkManager/ActiveConnection/1",
