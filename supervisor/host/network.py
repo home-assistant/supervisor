@@ -236,7 +236,10 @@ class NetworkManager(CoreSysAttributes):
                 ) from err
 
         # Remove config from interface
-        elif inet and inet.settings and not interface.enabled:
+        elif inet and not interface.enabled:
+            if not inet.settings:
+                _LOGGER.debug("Interface %s is already disabled.", interface.name)
+                return
             try:
                 await inet.settings.delete()
             except DBusError as err:

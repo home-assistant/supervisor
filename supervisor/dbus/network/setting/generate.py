@@ -199,15 +199,17 @@ def get_connection_from_interface(
     elif interface.type == InterfaceType.WIRELESS:
         wireless = {
             CONF_ATTR_802_WIRELESS_ASSIGNED_MAC: Variant("s", "preserve"),
-            CONF_ATTR_802_WIRELESS_SSID: Variant(
-                "ay", interface.wifi.ssid.encode("UTF-8")
-            ),
             CONF_ATTR_802_WIRELESS_MODE: Variant("s", "infrastructure"),
             CONF_ATTR_802_WIRELESS_POWERSAVE: Variant("i", 1),
         }
+        if interface.wifi and interface.wifi.ssid:
+            wireless[CONF_ATTR_802_WIRELESS_SSID] = Variant(
+                "ay", interface.wifi.ssid.encode("UTF-8")
+            )
+
         conn[CONF_ATTR_802_WIRELESS] = wireless
 
-        if interface.wifi.auth != "open":
+        if interface.wifi and interface.wifi.auth != "open":
             wireless["security"] = Variant("s", CONF_ATTR_802_WIRELESS_SECURITY)
             wireless_security = {}
             if interface.wifi.auth == "wep":
