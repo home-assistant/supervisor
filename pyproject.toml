@@ -215,6 +215,9 @@ expected-line-ending-format = "LF"
 [tool.pylint.EXCEPTIONS]
 overgeneral-exceptions = ["builtins.BaseException", "builtins.Exception"]
 
+[tool.pylint.DESIGN]
+max-positional-arguments = 10
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = [".git"]
