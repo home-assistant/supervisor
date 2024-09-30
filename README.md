@@ -30,3 +30,5 @@ Releases are done in 3 stages (channels) with this structure:
 
 [development]: https://developers.home-assistant.io/docs/supervisor/development
 [stable]: https://github.com/home-assistant/version/blob/master/stable.json
+
+[![Home Assistant - A project from the Open Home Foundation](https://www.openhomefoundation.org/badges/home-assistant.png)](https://www.openhomefoundation.org/)
