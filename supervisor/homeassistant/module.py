@@ -66,6 +66,7 @@ HOMEASSISTANT_BACKUP_EXCLUDE = [
     "*.log",
     "*.log.*",
     "OZW_Log.txt",
+    "tts/*",
 ]
 HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE = [
     "home-assistant_v?.db",
