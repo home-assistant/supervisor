@@ -9,6 +9,8 @@ from aiohttp.web import Request, RequestHandler, Response, middleware
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPUnauthorized
 from awesomeversion import AwesomeVersion
 
+from supervisor.homeassistant.const import LANDINGPAGE
+
 from ...addons.const import RE_SLUG
 from ...const import (
     REQUEST_FROM,
@@ -288,8 +290,10 @@ class SecurityMiddleware(CoreSysAttributes):
     @middleware
     async def core_proxy(self, request: Request, handler: RequestHandler) -> Response:
         """Validate user from Core API proxy."""
-        if request[REQUEST_FROM] != self.sys_homeassistant or version_is_new_enough(
-            self.sys_homeassistant.version, _CORE_VERSION
+        if (
+            request[REQUEST_FROM] != self.sys_homeassistant
+            or self.sys_homeassistant.version == LANDINGPAGE
+            or version_is_new_enough(self.sys_homeassistant.version, _CORE_VERSION)
         ):
             return await handler(request)
 
