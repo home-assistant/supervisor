@@ -1,6 +1,6 @@
 """Utilities for working with systemd journal export format."""
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable, Coroutine
 from datetime import UTC, datetime
 from functools import wraps
 
@@ -22,7 +22,7 @@ def formatter(required_fields: list[str]):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        wrapper.required_fields = required_fields
+        wrapper.required_fields = ["__CURSOR"] + required_fields
         return wrapper
 
     return decorator
@@ -62,8 +62,13 @@ def journal_verbose_formatter(entries: dict[str, str]) -> str:
 async def journal_logs_reader(
     journal_logs: ClientResponse,
     log_formatter: LogFormatter = LogFormatter.PLAIN,
+    first_cursor_callback: Callable[[str], Coroutine] | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Read logs from systemd journal line by line, formatted using the given formatter."""
+    """Read logs from systemd journal line by line, formatted using the given formatter.
+
+    Optionally takes a first_cursor_callback which is an async function that is called with
+    the journal cursor value found in the first log entry and awaited.
+    """
     match log_formatter:
         case LogFormatter.PLAIN:
             formatter_ = journal_plain_formatter
@@ -71,6 +76,8 @@ async def journal_logs_reader(
             formatter_ = journal_verbose_formatter
         case _:
             raise ValueError(f"Unknown log format: {log_formatter}")
+
+    call_cursor_fallback = first_cursor_callback is not None
 
     async with journal_logs as resp:
         entries: dict[str, str] = {}
@@ -80,6 +87,9 @@ async def journal_logs_reader(
             # at EOF (likely race between at_eof and EOF check in readuntil)
             if line == b"\n" or not line:
                 if entries:
+                    if call_cursor_fallback:
+                        await first_cursor_callback(entries.get("__CURSOR"))
+                        call_cursor_fallback = False
                     yield formatter_(entries)
                 entries = {}
                 continue

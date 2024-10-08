@@ -262,7 +262,7 @@ async def test_advaced_logs_query_parameters(
         range_header=DEFAULT_RANGE,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE)
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE, ANY)
 
     journal_logs_reader.reset_mock()
     journald_logs.reset_mock()
@@ -280,7 +280,7 @@ async def test_advaced_logs_query_parameters(
         range_header="entries=:-53:",
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE)
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE, ANY)
 
 
 async def test_advanced_logs_boot_id_offset(
@@ -333,24 +333,24 @@ async def test_advanced_logs_formatters(
     """Test advanced logs formatters varying on Accept header."""
 
     await api_client.get("/host/logs")
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE, ANY)
 
     journal_logs_reader.reset_mock()
 
     headers = {"Accept": "text/x-log"}
     await api_client.get("/host/logs", headers=headers)
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE, ANY)
 
     journal_logs_reader.reset_mock()
 
     await api_client.get("/host/logs/identifiers/test")
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.PLAIN)
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.PLAIN, ANY)
 
     journal_logs_reader.reset_mock()
 
     headers = {"Accept": "text/x-log"}
     await api_client.get("/host/logs/identifiers/test", headers=headers)
-    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE)
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE, ANY)
 
 
 async def test_advanced_logs_errors(api_client: TestClient):

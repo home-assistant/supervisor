@@ -240,8 +240,15 @@ class APIHost(CoreSysAttributes):
             try:
                 response = web.StreamResponse()
                 response.content_type = CONTENT_TYPE_TEXT
-                await response.prepare(request)
-                async for line in journal_logs_reader(resp, log_formatter):
+
+                async def finish_prepare(cursor: str):
+                    if cursor:
+                        response.headers["X-First-Cursor"] = cursor
+                    await response.prepare(request)
+
+                async for line in journal_logs_reader(
+                    resp, log_formatter, finish_prepare
+                ):
                     await response.write(line.encode("utf-8") + b"\n")
             except ConnectionResetError as ex:
                 raise APIError(

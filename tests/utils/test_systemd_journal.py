@@ -1,7 +1,7 @@
 """Test systemd journal utilities."""
 
 import asyncio
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -153,6 +153,48 @@ async def test_parsing_two_messages():
     reader = journal_logs_reader(journal_logs)
     assert await anext(reader) == "Hello, world!"
     assert await anext(reader) == "Hello again, world!"
+    with pytest.raises(StopAsyncIteration):
+        await anext(reader)
+
+
+async def test_cursor_callback():
+    """Test reading multiple messages."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"__CURSOR=cursor1\n"
+        b"MESSAGE=Hello, world!\n"
+        b"ID=1\n\n"
+        b"__CURSOR=cursor2\n"
+        b"MESSAGE=Hello again, world!\n"
+        b"ID=2\n\n"
+    )
+    stream.feed_eof()
+
+    cursor_callback = AsyncMock()
+    reader = journal_logs_reader(journal_logs, first_cursor_callback=cursor_callback)
+    assert await anext(reader) == "Hello, world!"
+    assert await anext(reader) == "Hello again, world!"
+    cursor_callback.assert_called_once_with("cursor1")
+    with pytest.raises(StopAsyncIteration):
+        await anext(reader)
+
+
+async def test_cursor_callback_no_cursor():
+    """Test reading multiple messages."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"MESSAGE=Hello, world!\n"
+        b"ID=1\n\n"
+        b"MESSAGE=Hello again, world!\n"
+        b"ID=2\n\n"
+    )
+    stream.feed_eof()
+
+    cursor_callback = AsyncMock()
+    reader = journal_logs_reader(journal_logs, first_cursor_callback=cursor_callback)
+    assert await anext(reader) == "Hello, world!"
+    assert await anext(reader) == "Hello again, world!"
+    cursor_callback.assert_called_once_with(None)
     with pytest.raises(StopAsyncIteration):
         await anext(reader)
 
