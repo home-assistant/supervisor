@@ -61,7 +61,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 IDENTIFIER = "identifier"
 BOOTID = "bootid"
-DEFAULT_RANGE = 100
+DEFAULT_LINES = 100
 
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
@@ -226,13 +226,24 @@ class APIHost(CoreSysAttributes):
             log_formatter = LogFormatter.VERBOSE
 
         if "lines" in request.query:
-            lines = request.query.get("lines", DEFAULT_RANGE)
+            lines = request.query.get("lines", DEFAULT_LINES)
+            try:
+                lines = int(lines)
+            except ValueError:
+                # If the user passed a non-integer value, just use the default instead of error.
+                lines = DEFAULT_LINES
+            finally:
+                # We can't use the entries= Range header syntax to refer to the last 1 line,
+                # and passing 1 to the calculation below would return the 1st line of the logs
+                # instead. Since this is really an edge case that doesn't matter much, we'll just
+                # return 2 lines at minimum.
+                lines = max(2, lines)
             # entries=cursor[[:num_skip]:num_entries]
-            range_header = f"entries=:-{lines}:"
+            range_header = f"entries=:-{lines-1}:{lines}"
         elif RANGE in request.headers:
             range_header = request.headers.get(RANGE)
         else:
-            range_header = f"entries=:-{DEFAULT_RANGE}:"
+            range_header = f"entries=:-{DEFAULT_LINES-1}:{DEFAULT_LINES}"
 
         async with self.sys_host.logs.journald_logs(
             params=params, range_header=range_header, accept=LogFormat.JOURNAL

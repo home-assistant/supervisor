@@ -6,7 +6,7 @@ from aiohttp.test_utils import TestClient
 
 from supervisor.host.const import LogFormat
 
-DEFAULT_LOG_RANGE = "entries=:-100:"
+DEFAULT_LOG_RANGE = "entries=:-99:100"
 
 
 async def common_test_api_advanced_logs(
