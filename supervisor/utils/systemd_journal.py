@@ -77,7 +77,7 @@ async def journal_logs_reader(
         case _:
             raise ValueError(f"Unknown log format: {log_formatter}")
 
-    call_cursor_fallback = first_cursor_callback is not None
+    call_cursor_callback = first_cursor_callback is not None
 
     async with journal_logs as resp:
         entries: dict[str, str] = {}
@@ -87,9 +87,9 @@ async def journal_logs_reader(
             # at EOF (likely race between at_eof and EOF check in readuntil)
             if line == b"\n" or not line:
                 if entries:
-                    if call_cursor_fallback:
+                    if call_cursor_callback:
                         await first_cursor_callback(entries.get("__CURSOR"))
-                        call_cursor_fallback = False
+                        call_cursor_callback = False
                     yield formatter_(entries)
                 entries = {}
                 continue
