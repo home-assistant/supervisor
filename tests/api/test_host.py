@@ -14,7 +14,7 @@ from supervisor.host.control import SystemControl
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
-DEFAULT_RANGE = "entries=:-100:"
+DEFAULT_RANGE = "entries=:-99:100"
 # pylint: disable=protected-access
 
 
@@ -249,7 +249,7 @@ async def test_advaced_logs_query_parameters(
     await api_client.get("/host/logs?lines=53")
     journald_logs.assert_called_once_with(
         params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
-        range_header="entries=:-53:",
+        range_header="entries=:-52:53",
         accept=LogFormat.JOURNAL,
     )
 
@@ -277,7 +277,7 @@ async def test_advaced_logs_query_parameters(
     )
     journald_logs.assert_called_once_with(
         params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
-        range_header="entries=:-53:",
+        range_header="entries=:-52:53",
         accept=LogFormat.JOURNAL,
     )
     journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE)
