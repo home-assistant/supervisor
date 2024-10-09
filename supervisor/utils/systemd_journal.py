@@ -22,7 +22,7 @@ def formatter(required_fields: list[str]):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        wrapper.required_fields = required_fields
+        wrapper.required_fields = ["__CURSOR"] + required_fields
         return wrapper
 
     return decorator
@@ -60,10 +60,12 @@ def journal_verbose_formatter(entries: dict[str, str]) -> str:
 
 
 async def journal_logs_reader(
-    journal_logs: ClientResponse,
-    log_formatter: LogFormatter = LogFormatter.PLAIN,
-) -> AsyncGenerator[str, None]:
-    """Read logs from systemd journal line by line, formatted using the given formatter."""
+    journal_logs: ClientResponse, log_formatter: LogFormatter = LogFormatter.PLAIN
+) -> AsyncGenerator[(str | None, str), None]:
+    """Read logs from systemd journal line by line, formatted using the given formatter.
+
+    Returns a generator of (cursor, formatted_entry) tuples.
+    """
     match log_formatter:
         case LogFormatter.PLAIN:
             formatter_ = journal_plain_formatter
@@ -80,7 +82,7 @@ async def journal_logs_reader(
             # at EOF (likely race between at_eof and EOF check in readuntil)
             if line == b"\n" or not line:
                 if entries:
-                    yield formatter_(entries)
+                    yield entries.get("__CURSOR"), formatter_(entries)
                 entries = {}
                 continue
 

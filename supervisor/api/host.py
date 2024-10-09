@@ -251,8 +251,13 @@ class APIHost(CoreSysAttributes):
             try:
                 response = web.StreamResponse()
                 response.content_type = CONTENT_TYPE_TEXT
-                await response.prepare(request)
-                async for line in journal_logs_reader(resp, log_formatter):
+                headers_returned = False
+                async for cursor, line in journal_logs_reader(resp, log_formatter):
+                    if not headers_returned:
+                        if cursor:
+                            response.headers["X-First-Cursor"] = cursor
+                        await response.prepare(request)
+                        headers_returned = True
                     await response.write(line.encode("utf-8") + b"\n")
             except ConnectionResetError as ex:
                 raise APIError(
