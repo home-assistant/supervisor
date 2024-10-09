@@ -274,6 +274,8 @@ class Supervisor(CoreSysAttributes):
                 "https://checkonline.home-assistant.io/online.txt", timeout=timeout
             )
         except (ClientError, TimeoutError):
+            # Need to recreate the websession to avoid stale connection checks
+            self.coresys.create_websession()
             self.connectivity = False
         else:
             self.connectivity = True
