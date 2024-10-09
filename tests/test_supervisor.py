@@ -1,6 +1,6 @@
 """Test supervisor object."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import errno
 from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
@@ -8,6 +8,7 @@ from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion
 import pytest
+from time_machine import travel
 
 from supervisor.const import UpdateChannel
 from supervisor.coresys import CoreSys
@@ -21,6 +22,8 @@ from supervisor.host.apparmor import AppArmorControl
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 from supervisor.supervisor import Supervisor
+
+from tests.utils.test_decorator import get_job_decorator
 
 
 @pytest.fixture(name="websession", scope="function")
@@ -58,21 +61,37 @@ async def test_connectivity_check(
     assert supervisor_unthrottled.connectivity is connectivity
 
 
-@pytest.mark.parametrize("side_effect,call_count", [(ClientError(), 3), (None, 1)])
+@pytest.mark.parametrize(
+    "side_effect,call_interval,throttled",
+    [
+        (None, timedelta(minutes=5), True),
+        (None, timedelta(minutes=15), False),
+        (ClientError(), timedelta(seconds=20), True),
+        (ClientError(), timedelta(seconds=40), False),
+    ],
+)
 async def test_connectivity_check_throttling(
     coresys: CoreSys,
     websession: AsyncMock,
     side_effect: Exception | None,
-    call_count: int,
+    call_interval: timedelta,
+    throttled: bool,
 ):
     """Test connectivity check throttled when checks succeed."""
     coresys.supervisor.connectivity = None
     websession.head.side_effect = side_effect
 
-    for _ in range(3):
+    job_decorator = get_job_decorator(Supervisor.check_connectivity)
+    job_decorator._last_call.clear()  # pylint: disable=W0212
+
+    with (
+        travel(datetime.now(), tick=False) as traveller,
+    ):
+        await coresys.supervisor.check_connectivity()
+        traveller.shift(call_interval)
         await coresys.supervisor.check_connectivity()
 
-    assert websession.head.call_count == call_count
+    assert websession.head.call_count == (1 if throttled else 2)
 
 
 async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
