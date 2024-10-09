@@ -40,8 +40,12 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
     journald_gateway.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
-        line = await anext(
+        cursor, line = await anext(
             journal_logs_reader(resp, log_formatter=LogFormatter.VERBOSE)
+        )
+        assert (
+            cursor
+            == "s=83fee99ca0c3466db5fc120d52ca7dd8;i=203f2ce;b=f5a5c442fa6548cf97474d2d57c920b3;m=3191a3c620;t=612ccd299e7af;x=8675b540119d10bb"
         )
         assert (
             line
@@ -64,7 +68,11 @@ async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
     journald_gateway.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
-        line = await anext(journal_logs_reader(resp))
+        cursor, line = await anext(journal_logs_reader(resp))
+        assert (
+            cursor
+            == "s=83fee99ca0c3466db5fc120d52ca7dd8;i=2049389;b=f5a5c442fa6548cf97474d2d57c920b3;m=4263828e8c;t=612dda478b01b;x=9ae12394c9326930"
+        )
         assert (
             line
             == "\x1b[32m24-03-04 23:56:56 INFO (MainThread) [__main__] Closing Supervisor\x1b[0m"
