@@ -7,6 +7,7 @@ from unittest.mock import PropertyMock, patch
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.plugins.dns import PluginDns
 
 from tests.dbus_service_mocks.network_manager import (
     NetworkManager as NetworkManagerService,
@@ -84,3 +85,20 @@ async def test_connectivity_events(coresys: CoreSys, force: bool):
                     },
                 }
             )
+
+
+async def test_dns_restart_on_connection_change(
+    coresys: CoreSys, network_manager_service: NetworkManagerService
+):
+    """Test dns plugin is restarted when primary connection changes."""
+    await coresys.host.network.load()
+    with patch.object(PluginDns, "restart") as restart:
+        network_manager_service.emit_properties_changed({"PrimaryConnection": "/"})
+        await network_manager_service.ping()
+        restart.assert_not_called()
+
+        network_manager_service.emit_properties_changed(
+            {"PrimaryConnection": "/org/freedesktop/NetworkManager/ActiveConnection/2"}
+        )
+        await network_manager_service.ping()
+        restart.assert_called_once()
