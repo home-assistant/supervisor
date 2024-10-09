@@ -383,7 +383,14 @@ class Job(CoreSysAttributes):
             )
 
         if JobCondition.INTERNET_SYSTEM in used_conditions:
-            await coresys.sys_supervisor.check_connectivity()
+            # Connectivity check may take up to 10s (timeout) to complete, and
+            # hence slow down all exection. If we know connectivity is bad,
+            # schedule another connectivity check but fail immeaditly.
+            if coresys.sys_supervisor.connectivity:
+                await coresys.sys_supervisor.check_connectivity()
+            else:
+                coresys.sys_create_task(coresys.sys_supervisor.check_connectivity())
+
             if not coresys.sys_supervisor.connectivity:
                 raise JobConditionException(
                     f"'{method_name}' blocked from execution, no supervisor internet connection"
