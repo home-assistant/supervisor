@@ -157,8 +157,8 @@ async def test_parsing_two_messages():
         await anext(reader)
 
 
-async def test_cursor_callback():
-    """Test reading multiple messages."""
+async def test_cursor_parsing():
+    """Test cursor is extracted correctly."""
     journal_logs, stream = _journal_logs_mock()
     stream.feed_data(
         b"__CURSOR=cursor1\n"
@@ -176,24 +176,6 @@ async def test_cursor_callback():
     assert await anext(reader) == ("cursor1", "Hello, world!")
     assert await anext(reader) == ("cursor2", "Hello again, world!")
     assert await anext(reader) == (None, "No cursor")
-    with pytest.raises(StopAsyncIteration):
-        await anext(reader)
-
-
-async def test_cursor_callback_no_cursor():
-    """Test reading multiple messages."""
-    journal_logs, stream = _journal_logs_mock()
-    stream.feed_data(
-        b"MESSAGE=Hello, world!\n"
-        b"ID=1\n\n"
-        b"MESSAGE=Hello again, world!\n"
-        b"ID=2\n\n"
-    )
-    stream.feed_eof()
-
-    reader = journal_logs_reader(journal_logs)
-    assert await anext(reader) == (ANY, "Hello, world!")
-    assert await anext(reader) == (ANY, "Hello again, world!")
     with pytest.raises(StopAsyncIteration):
         await anext(reader)
 
