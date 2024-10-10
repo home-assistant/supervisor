@@ -1,12 +1,15 @@
 """Common test functions."""
 
+from datetime import datetime
 from importlib import import_module
+from inspect import getclosurevars
 import json
 from pathlib import Path
 from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
+from supervisor.jobs.decorator import Job
 from supervisor.resolution.validate import get_valid_modules
 from supervisor.utils.yaml import read_yaml_file
 
@@ -82,3 +85,17 @@ async def mock_dbus_services(
                 services[module] = service_module.setup(to_mock[module]).export(bus)
 
     return services
+
+
+def get_job_decorator(func) -> Job:
+    """Get Job object of decorated function."""
+    # Access the closure of the wrapper function
+    job = getclosurevars(func).nonlocals["self"]
+    if not isinstance(job, Job):
+        raise TypeError(f"{func.__qualname__} is not a Job")
+    return job
+
+
+def reset_last_call(func, group: str | None = None) -> None:
+    """Reset last call for a function using the Job decorator."""
+    get_job_decorator(func).set_last_call(datetime.min, group)
