@@ -23,7 +23,7 @@ from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 from supervisor.supervisor import Supervisor
 
-from tests.utils.test_decorator import get_job_decorator
+from tests.common import reset_last_call
 
 
 @pytest.fixture(name="websession", scope="function")
@@ -81,9 +81,7 @@ async def test_connectivity_check_throttling(
     coresys.supervisor.connectivity = None
     websession.head.side_effect = side_effect
 
-    job_decorator = get_job_decorator(Supervisor.check_connectivity)
-    job_decorator._last_call.clear()  # pylint: disable=W0212
-
+    reset_last_call(Supervisor.check_connectivity)
     with (
         travel(datetime.now(), tick=False) as traveller,
     ):

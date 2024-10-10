@@ -26,7 +26,10 @@ from supervisor.jobs.job_group import JobGroup
 from supervisor.os.manager import OSManager
 from supervisor.plugins.audio import PluginAudio
 from supervisor.resolution.const import UnhealthyReason
+from supervisor.supervisor import Supervisor
 from supervisor.utils.dt import utcnow
+
+from tests.common import reset_last_call
 
 
 async def test_healthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
@@ -73,6 +76,7 @@ async def test_internet(
 ):
     """Test the internet decorator."""
     coresys.core.state = CoreState.RUNNING
+    reset_last_call(Supervisor.check_connectivity)
 
     class TestClass:
         """Test class."""
