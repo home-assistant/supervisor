@@ -82,9 +82,7 @@ async def test_connectivity_check_throttling(
     websession.head.side_effect = side_effect
 
     reset_last_call(Supervisor.check_connectivity)
-    with (
-        travel(datetime.now(), tick=False) as traveller,
-    ):
+    with travel(datetime.now(), tick=False) as traveller:
         await coresys.supervisor.check_connectivity()
         traveller.shift(call_interval)
         await coresys.supervisor.check_connectivity()
