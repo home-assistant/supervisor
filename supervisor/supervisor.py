@@ -41,7 +41,7 @@ def _check_connectivity_throttle_period(coresys: CoreSys, *_) -> timedelta:
     if coresys.supervisor.connectivity:
         return timedelta(minutes=10)
 
-    return timedelta()
+    return timedelta(seconds=30)
 
 
 class Supervisor(CoreSysAttributes):
