@@ -15,6 +15,7 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 DEFAULT_RANGE = "entries=:-99:100"
+DEFAULT_RANGE_FOLLOW = "entries=:-99:"
 # pylint: disable=protected-access
 
 
@@ -233,7 +234,7 @@ async def test_advanced_logs(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
             "follow": "",
         },
-        range_header=DEFAULT_RANGE,
+        range_header=DEFAULT_RANGE_FOLLOW,
         accept=LogFormat.JOURNAL,
     )
 

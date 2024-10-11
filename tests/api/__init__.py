@@ -7,6 +7,7 @@ from aiohttp.test_utils import TestClient
 from supervisor.host.const import LogFormat
 
 DEFAULT_LOG_RANGE = "entries=:-99:100"
+DEFAULT_LOG_RANGE_FOLLOW = "entries=:-99:"
 
 
 async def common_test_api_advanced_logs(
@@ -34,7 +35,7 @@ async def common_test_api_advanced_logs(
 
     journald_logs.assert_called_once_with(
         params={"SYSLOG_IDENTIFIER": syslog_identifier, "follow": ""},
-        range_header=DEFAULT_LOG_RANGE,
+        range_header=DEFAULT_LOG_RANGE_FOLLOW,
         accept=LogFormat.JOURNAL,
     )
 
@@ -62,6 +63,6 @@ async def common_test_api_advanced_logs(
             "_BOOT_ID": "ccc",
             "follow": "",
         },
-        range_header=DEFAULT_LOG_RANGE,
+        range_header=DEFAULT_LOG_RANGE_FOLLOW,
         accept=LogFormat.JOURNAL,
     )
