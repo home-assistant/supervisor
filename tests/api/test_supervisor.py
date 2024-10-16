@@ -183,6 +183,17 @@ async def test_api_supervisor_fallback(
         b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor\x1b[0m",
     ]
 
+    # check fallback also works for the follow endpoint (no mock reset needed)
+
+    with patch("supervisor.api._LOGGER.exception") as logger:
+        resp = await api_client.get("/supervisor/logs/follow")
+        logger.assert_called_once_with(
+            "Failed to get supervisor logs using advanced_logs API"
+        )
+
+    assert resp.status == 200
+    assert resp.content_type == "text/plain"
+
     journald_logs.reset_mock()
 
     # also check generic Python error
