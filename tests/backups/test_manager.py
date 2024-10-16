@@ -1169,6 +1169,40 @@ async def test_backup_progress(
     ]
 
 
+async def test_backup_sync_notification(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    ha_ws_client: AsyncMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test backup sync notification."""
+    container.status = "running"
+    install_addon_ssh.path_data.mkdir()
+    coresys.core.state = CoreState.RUNNING
+    ha_ws_client.ha_version = AwesomeVersion("9999.9.9")
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    ha_ws_client.async_send_command.reset_mock()
+    partial_backup: Backup = await coresys.backups.do_backup_partial()
+    await asyncio.sleep(0)
+
+    messages = [
+        call.args[0]
+        for call in ha_ws_client.async_send_command.call_args_list
+        if call.args[0]["type"] == WSType.BACKUP_SYNC
+    ]
+    assert messages == [
+        {
+            "data": {
+                "slug": partial_backup.slug,
+            },
+            "type": WSType.BACKUP_SYNC,
+        },
+    ]
+
+
 async def test_restore_progress(
     request: pytest.FixtureRequest,
     coresys: CoreSys,
