@@ -10,7 +10,10 @@ from pathlib import Path
 
 from ..addons.addon import Addon
 from ..const import (
+    ATTR_DATA,
     ATTR_DAYS_UNTIL_STALE,
+    ATTR_SLUG,
+    ATTR_TYPE,
     FILE_HASSIO_BACKUPS,
     FOLDER_HOMEASSISTANT,
     CoreState,
@@ -21,7 +24,9 @@ from ..exceptions import (
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
+    HomeAssistantWSError,
 )
+from ..homeassistant.const import WSType
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -298,6 +303,18 @@ class BackupManager(FileConfiguration, JobGroup):
                 self._change_stage(BackupJobStage.AWAIT_ADDON_RESTARTS, backup)
                 # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
                 await asyncio.gather(*addon_start_tasks, return_exceptions=True)
+
+            try:
+                await self.sys_homeassistant.websocket.async_send_command(
+                    {
+                        ATTR_TYPE: WSType.BACKUP_SYNC,
+                        ATTR_DATA: {
+                            ATTR_SLUG: backup.slug,
+                        },
+                    },
+                )
+            except HomeAssistantWSError as err:
+                _LOGGER.error("Can't send backup sync to Home Assistant: %s", err)
 
             return backup
         finally:
