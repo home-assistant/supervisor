@@ -4,7 +4,7 @@ import asyncio
 from contextlib import suppress
 import logging
 
-from aiohttp import web
+from aiohttp import ClientConnectionResetError, web
 from aiohttp.hdrs import ACCEPT, RANGE
 import voluptuous as vol
 from voluptuous.error import CoerceInvalid
@@ -260,7 +260,10 @@ class APIHost(CoreSysAttributes):
                             response.headers["X-First-Cursor"] = cursor
                         await response.prepare(request)
                         headers_returned = True
-                    await response.write(line.encode("utf-8") + b"\n")
+                    # When client closes the connection while reading busy logs, we
+                    # sometimes get this exception. It should be safe to ignore it.
+                    with suppress(ClientConnectionResetError):
+                        await response.write(line.encode("utf-8") + b"\n")
             except ConnectionResetError as ex:
                 raise APIError(
                     "Connection reset when trying to fetch data from systemd-journald."
