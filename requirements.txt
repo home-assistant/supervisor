@@ -15,7 +15,7 @@ docker==7.1.0
 faust-cchardet==2.1.19
 gitpython==3.1.43
 jinja2==3.1.4
-orjson==3.10.7
+orjson==3.10.9
 pulsectl==24.8.0
 pyudev==0.24.3
 PyYAML==6.0.2
