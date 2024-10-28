@@ -10,7 +10,7 @@ from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError, HomeAssistantError, ObserverError
 from ..homeassistant.const import LANDINGPAGE
-from ..jobs.decorator import Job, JobCondition
+from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 from ..utils.dt import utcnow
 from ..utils.sentry import capture_exception
@@ -136,6 +136,7 @@ class Tasks(CoreSysAttributes):
             JobCondition.INTERNET_HOST,
             JobCondition.RUNNING,
         ],
+        limit=JobExecutionLimit.ONCE,
     )
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
@@ -333,3 +334,12 @@ class Tasks(CoreSysAttributes):
     async def _reload_store(self) -> None:
         """Reload store and check for addon updates."""
         await self.sys_store.reload()
+
+    @Job(name="tasks_reload_updater")
+    async def _reload_updater(self) -> None:
+        """Check for new versions of Home Assistant, Supervisor, OS, etc."""
+        await self.sys_updater.reload()
+
+        # If there's a new version of supervisor, start update immediately
+        if self.sys_supervisor.need_update:
+            await self._update_supervisor()
