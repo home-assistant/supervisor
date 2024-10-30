@@ -1,2 +1,0 @@
-export const id=2811;export const ids=[2811];export const modules={32811:(o,t,e)=>{e.r(t),e.d(t,{default:()=>s});var n=e(56087);n.ZP.mount(n.V8,new n.lK);const s=n.ZP}};
-//# sourceMappingURL=2811-4hLRc8Qi4Xo.js.map
