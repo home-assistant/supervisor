@@ -1,5 +1,6 @@
 """Test host logs control."""
 
+import asyncio
 from unittest.mock import MagicMock, PropertyMock, patch
 
 from aiohttp.client_exceptions import UnixClientConnectorError
@@ -36,8 +37,10 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting logs and errors."""
     assert coresys.host.logs.available is True
 
-    journald_gateway.feed_data(load_fixture("logs_export_host.txt").encode("utf-8"))
-    journald_gateway.feed_eof()
+    journald_gateway.content.feed_data(
+        load_fixture("logs_export_host.txt").encode("utf-8")
+    )
+    journald_gateway.content.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
         cursor, line = await anext(
@@ -62,10 +65,10 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
 
 async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
     """Test ANSI control sequences being preserved in binary messages."""
-    journald_gateway.feed_data(
+    journald_gateway.content.feed_data(
         load_fixture("logs_export_supervisor.txt").encode("utf-8")
     )
-    journald_gateway.feed_eof()
+    journald_gateway.content.feed_eof()
 
     async with coresys.host.logs.journald_logs() as resp:
         cursor, line = await anext(journal_logs_reader(resp))
@@ -81,13 +84,15 @@ async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
 
 async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting boot ids."""
-    journald_gateway.feed_data(load_fixture("logs_boot_ids.txt").encode("utf-8"))
-    journald_gateway.feed_eof()
+    journald_gateway.content.feed_data(
+        load_fixture("logs_boot_ids.txt").encode("utf-8")
+    )
+    journald_gateway.content.feed_eof()
 
     assert await coresys.host.logs.get_boot_ids() == TEST_BOOT_IDS
 
     # Boot ID query should not be run again, mock a failure for it to ensure
-    journald_gateway.side_effect = TimeoutError()
+    journald_gateway.get.side_effect = TimeoutError()
     assert await coresys.host.logs.get_boot_ids() == TEST_BOOT_IDS
 
     assert await coresys.host.logs.get_boot_id(0) == "b1c386a144fd44db8f855d7e907256f8"
@@ -104,10 +109,37 @@ async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
         await coresys.host.logs.get_boot_id(3)
 
 
+async def test_boot_ids_fallback(coresys: CoreSys, journald_gateway: MagicMock):
+    """Test getting boot ids using fallback."""
+    # Initial response has no log lines
+    journald_gateway.content.feed_data(b"")
+    journald_gateway.content.feed_eof()
+
+    # Fallback contains exactly one with a boot ID
+    boot_id_data = load_fixture("logs_boot_ids.txt")
+    reader = asyncio.StreamReader(loop=asyncio.get_running_loop())
+    reader.feed_data(boot_id_data.split("\n")[0].encode("utf-8"))
+    reader.feed_eof()
+
+    readers = [journald_gateway.content, reader]
+
+    def get_side_effect(*args, **kwargs):
+        journald_gateway.content = readers.pop(0)
+        return journald_gateway.get.return_value
+
+    journald_gateway.get.side_effect = get_side_effect
+
+    assert await coresys.host.logs.get_boot_ids() == [
+        "b2aca10d5ca54fb1b6fb35c85a0efca9"
+    ]
+
+
 async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
     """Test getting identifiers."""
-    journald_gateway.feed_data(load_fixture("logs_identifiers.txt").encode("utf-8"))
-    journald_gateway.feed_eof()
+    journald_gateway.content.feed_data(
+        load_fixture("logs_identifiers.txt").encode("utf-8")
+    )
+    journald_gateway.content.feed_eof()
 
     # Mock is large so just look for a few different types of identifiers
     identifiers = await coresys.host.logs.get_identifiers()

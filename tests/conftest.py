@@ -422,27 +422,25 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-async def journald_gateway() -> MagicMock:
+async def journald_gateway() -> AsyncGenerator[MagicMock]:
     """Mock logs control."""
     with (
         patch("supervisor.host.logs.Path.is_socket", return_value=True),
         patch("supervisor.host.logs.ClientSession.get") as get,
     ):
         reader = asyncio.StreamReader(loop=asyncio.get_running_loop())
+        client_response = MagicMock(content=reader, get=get)
 
         async def response_text():
-            return (await reader.read()).decode("utf-8")
+            return (await client_response.content.read()).decode("utf-8")
 
-        client_response = MagicMock(
-            content=reader,
-            text=response_text,
-        )
+        client_response.text = response_text
 
         get.return_value.__aenter__.return_value = client_response
         get.return_value.__aenter__.return_value.__aenter__.return_value = (
             client_response
         )
-        yield reader
+        yield client_response
 
 
 @pytest.fixture
