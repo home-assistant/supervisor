@@ -1,4 +1,4 @@
-"""Test fixup core execute repair."""
+"""Test fixup addon execute repair."""
 
 from unittest.mock import MagicMock, patch
 
