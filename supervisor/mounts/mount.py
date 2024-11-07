@@ -68,6 +68,9 @@ class Mount(CoreSysAttributes, ABC):
         self._data: MountData = data
         self._unit: SystemdUnit | None = None
         self._state: UnitActiveState | None = None
+        self._failed_issue = Issue(
+            IssueType.MOUNT_FAILED, ContextType.MOUNT, reference=self.name
+        )
 
     @classmethod
     def from_dict(cls, coresys: CoreSys, data: MountData) -> "Mount":
@@ -162,7 +165,7 @@ class Mount(CoreSysAttributes, ABC):
     @property
     def failed_issue(self) -> Issue:
         """Get issue used if this mount has failed."""
-        return Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference=self.name)
+        return self._failed_issue
 
     async def is_mounted(self) -> bool:
         """Return true if successfully mounted and available."""

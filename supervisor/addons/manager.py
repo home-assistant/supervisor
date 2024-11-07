@@ -7,24 +7,22 @@ import logging
 import tarfile
 from typing import Union
 
+from attr import evolve
+
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
-    AddonConfigurationError,
     AddonsError,
     AddonsJobError,
     AddonsNotSupportedError,
     CoreDNSError,
-    DockerAPIError,
     DockerError,
-    DockerNotFound,
     HassioError,
     HomeAssistantAPIError,
 )
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
-from ..utils import check_exception_chain
 from ..utils.sentry import capture_exception
 from .addon import Addon
 from .const import ADDON_UPDATE_CONDITIONS
@@ -118,15 +116,14 @@ class AddonManager(CoreSysAttributes):
             try:
                 if start_task := await addon.start():
                     wait_boot.append(start_task)
-            except AddonsError as err:
-                # Check if there is an system/user issue
-                if check_exception_chain(
-                    err, (DockerAPIError, DockerNotFound, AddonConfigurationError)
-                ):
-                    addon.boot = AddonBoot.MANUAL
-                    addon.save_persist()
             except HassioError:
-                pass  # These are already handled
+                self.sys_resolution.add_issue(
+                    evolve(addon.boot_failed_issue),
+                    suggestions=[
+                        SuggestionType.EXECUTE_START,
+                        SuggestionType.DISABLE_BOOT,
+                    ],
+                )
             else:
                 continue
 
@@ -134,6 +131,19 @@ class AddonManager(CoreSysAttributes):
 
         # Ignore exceptions from waiting for addon startup, addon errors handled elsewhere
         await asyncio.gather(*wait_boot, return_exceptions=True)
+
+        # After waiting for startup, create an issue for boot addons that are error or unknown state
+        # Ignore stopped as single shot addons can be run at boot and this is successful exit
+        # Timeout waiting for startup is not a failure, addon is probably just slow
+        for addon in tasks:
+            if addon.state in {AddonState.ERROR, AddonState.UNKNOWN}:
+                self.sys_resolution.add_issue(
+                    evolve(addon.boot_failed_issue),
+                    suggestions=[
+                        SuggestionType.EXECUTE_START,
+                        SuggestionType.DISABLE_BOOT,
+                    ],
+                )
 
     async def shutdown(self, stage: AddonStartup) -> None:
         """Shutdown addons."""
