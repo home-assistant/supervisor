@@ -7,6 +7,8 @@ import logging
 import tarfile
 from typing import Union
 
+from attr import evolve
+
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -116,7 +118,7 @@ class AddonManager(CoreSysAttributes):
                     wait_boot.append(start_task)
             except HassioError:
                 self.sys_resolution.add_issue(
-                    addon.boot_failed_issue,
+                    evolve(addon.boot_failed_issue),
                     suggestions=[
                         SuggestionType.EXECUTE_START,
                         SuggestionType.DISABLE_BOOT,
@@ -136,7 +138,7 @@ class AddonManager(CoreSysAttributes):
         for addon in tasks:
             if addon.state in {AddonState.ERROR, AddonState.UNKNOWN}:
                 self.sys_resolution.add_issue(
-                    addon.boot_failed_issue,
+                    evolve(addon.boot_failed_issue),
                     suggestions=[
                         SuggestionType.EXECUTE_START,
                         SuggestionType.DISABLE_BOOT,

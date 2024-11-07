@@ -145,6 +145,9 @@ class Addon(AddonModel):
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._startup_task: asyncio.Task | None = None
+        self._boot_failed_issue = Issue(
+            IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug
+        )
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -153,7 +156,7 @@ class Addon(AddonModel):
     @property
     def boot_failed_issue(self) -> Issue:
         """Get issue used if start on boot failed."""
-        return Issue(IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug)
+        return self._boot_failed_issue
 
     @property
     def state(self) -> AddonState:
@@ -338,9 +341,9 @@ class Addon(AddonModel):
         # Dismiss boot failed issue if present and boot at start disabled
         if (
             value == AddonBoot.MANUAL
-            and self.boot_failed_issue in self.sys_resolution.issues
+            and self._boot_failed_issue in self.sys_resolution.issues
         ):
-            self.sys_resolution.dismiss_issue(self.boot_failed_issue)
+            self.sys_resolution.dismiss_issue(self._boot_failed_issue)
 
     @property
     def auto_update(self) -> bool:
