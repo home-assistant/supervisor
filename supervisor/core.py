@@ -208,19 +208,12 @@ class Core(CoreSysAttributes):
 
         # On release channel, try update itself if auto update enabled
         if self.sys_supervisor.need_update and self.sys_updater.auto_update:
-            try:
-                if not self.healthy:
-                    _LOGGER.warning("Ignoring Supervisor updates!")
-                else:
+            if not self.healthy:
+                _LOGGER.warning("Ignoring Supervisor updates!")
+            else:
+                with suppress(SupervisorUpdateError):
                     await self.sys_supervisor.update()
                     return
-            except SupervisorUpdateError as err:
-                _LOGGER.critical(
-                    "Can't update Supervisor! This will break some Add-ons or affect "
-                    "future versions of Home Assistant!"
-                )
-                self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
-                capture_exception(err)
 
         # Start addon mark as initialize
         await self.sys_addons.boot(AddonStartup.INITIALIZE)
