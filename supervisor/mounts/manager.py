@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import logging
 from pathlib import PurePath
 
+from attr import evolve
+
 from ..const import ATTR_NAME
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import UnitActiveState
@@ -171,7 +173,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 capture_exception(errors[i])
 
             self.sys_resolution.add_issue(
-                mounts[i].failed_issue,
+                evolve(mounts[i].failed_issue),
                 suggestions=[
                     SuggestionType.EXECUTE_RELOAD,
                     SuggestionType.EXECUTE_REMOVE,

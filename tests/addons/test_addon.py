@@ -14,7 +14,7 @@ from securetar import SecureTarFile
 from supervisor.addons.addon import Addon
 from supervisor.addons.const import AddonBackupMode
 from supervisor.addons.model import AddonModel
-from supervisor.const import AddonState, BusEvent
+from supervisor.const import AddonBoot, AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
@@ -23,6 +23,8 @@ from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
 from supervisor.ingress import Ingress
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
+
+from .test_manager import BOOT_FAIL_ISSUE, BOOT_FAIL_SUGGESTIONS
 
 from tests.common import get_fixture_path
 from tests.const import TEST_ADDON_SLUG
@@ -895,3 +897,32 @@ async def test_addon_manual_only_boot(coresys: CoreSys, install_addon_example: A
     # However boot mode can change on update and user may have set auto before, ensure it is ignored
     install_addon_example.boot = "auto"
     assert install_addon_example.boot == "manual"
+
+
+async def test_addon_start_dismisses_boot_fail(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test a successful start dismisses the boot fail issue."""
+    install_addon_ssh.state = AddonState.ERROR
+    coresys.resolution.add_issue(
+        BOOT_FAIL_ISSUE, [suggestion.type for suggestion in BOOT_FAIL_SUGGESTIONS]
+    )
+
+    install_addon_ssh.state = AddonState.STARTED
+    assert coresys.resolution.issues == []
+    assert coresys.resolution.suggestions == []
+
+
+async def test_addon_disable_boot_dismisses_boot_fail(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test a disabling boot dismisses the boot fail issue."""
+    install_addon_ssh.boot = AddonBoot.AUTO
+    install_addon_ssh.state = AddonState.ERROR
+    coresys.resolution.add_issue(
+        BOOT_FAIL_ISSUE, [suggestion.type for suggestion in BOOT_FAIL_SUGGESTIONS]
+    )
+
+    install_addon_ssh.boot = AddonBoot.MANUAL
+    assert coresys.resolution.issues == []
+    assert coresys.resolution.suggestions == []

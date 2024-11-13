@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 import json
 import logging
@@ -101,17 +102,32 @@ class LogsControl(CoreSysAttributes):
                 timeout=ClientTimeout(total=20),
             ) as resp:
                 text = await resp.text()
-                self._boot_ids = [
-                    json.loads(entry)[PARAM_BOOT_ID]
-                    for entry in text.split("\n")
-                    if entry
-                ]
-                return self._boot_ids
         except (ClientError, TimeoutError) as err:
             raise HostLogError(
                 "Could not get a list of boot IDs from systemd-journal-gatewayd",
                 _LOGGER.error,
             ) from err
+
+        # If a system has not been rebooted in a long time query can come back with zero results
+        # Fallback is to get latest log line and its boot ID so we always have at least one.
+        if not text:
+            try:
+                async with self.journald_logs(
+                    range_header="entries=:-1:1",
+                    accept=LogFormat.JSON,
+                    timeout=ClientTimeout(total=20),
+                ) as resp:
+                    text = await resp.text()
+            except (ClientError, TimeoutError) as err:
+                raise HostLogError(
+                    "Could not get a list of boot IDs from systemd-journal-gatewayd",
+                    _LOGGER.error,
+                ) from err
+
+        self._boot_ids = [
+            json.loads(entry)[PARAM_BOOT_ID] for entry in text.split("\n") if entry
+        ]
+        return self._boot_ids
 
     async def get_identifiers(self) -> list[str]:
         """Get syslog identifiers."""
@@ -135,7 +151,7 @@ class LogsControl(CoreSysAttributes):
         range_header: str | None = None,
         accept: LogFormat = LogFormat.TEXT,
         timeout: ClientTimeout | None = None,
-    ) -> ClientResponse:
+    ) -> AsyncGenerator[ClientResponse]:
         """Get logs from systemd-journal-gatewayd.
 
         See https://www.freedesktop.org/software/systemd/man/systemd-journal-gatewayd.service.html for params and more info.

@@ -1,5 +1,6 @@
 """Test Host API."""
 
+from collections.abc import AsyncGenerator
 from unittest.mock import ANY, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -20,7 +21,7 @@ DEFAULT_RANGE_FOLLOW = "entries=:-99:"
 
 
 @pytest.fixture(name="coresys_disk_info")
-async def fixture_coresys_disk_info(coresys: CoreSys) -> CoreSys:
+async def fixture_coresys_disk_info(coresys: CoreSys) -> AsyncGenerator[CoreSys]:
     """Mock basic disk information for host APIs."""
     coresys.hardware.disk.get_disk_life_time = lambda _: 0
     coresys.hardware.disk.get_disk_free_space = lambda _: 5000

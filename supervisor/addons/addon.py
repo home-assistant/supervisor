@@ -81,7 +81,8 @@ from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
-from ..resolution.const import UnhealthyReason
+from ..resolution.const import ContextType, IssueType, UnhealthyReason
+from ..resolution.data import Issue
 from ..store.addon import AddonStore
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
@@ -144,10 +145,18 @@ class Addon(AddonModel):
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._startup_task: asyncio.Task | None = None
+        self._boot_failed_issue = Issue(
+            IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug
+        )
 
     def __repr__(self) -> str:
         """Return internal representation."""
         return f"<Addon: {self.slug}>"
+
+    @property
+    def boot_failed_issue(self) -> Issue:
+        """Get issue used if start on boot failed."""
+        return self._boot_failed_issue
 
     @property
     def state(self) -> AddonState:
@@ -165,6 +174,13 @@ class Addon(AddonModel):
         # Signal listeners about addon state change
         if new_state == AddonState.STARTED or old_state == AddonState.STARTUP:
             self._startup_event.set()
+
+        # Dismiss boot failed issue if present and we started
+        if (
+            new_state == AddonState.STARTED
+            and self.boot_failed_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self.boot_failed_issue)
 
         self.sys_homeassistant.websocket.send_message(
             {
@@ -321,6 +337,13 @@ class Addon(AddonModel):
     def boot(self, value: AddonBoot) -> None:
         """Store user boot options."""
         self.persist[ATTR_BOOT] = value
+
+        # Dismiss boot failed issue if present and boot at start disabled
+        if (
+            value == AddonBoot.MANUAL
+            and self._boot_failed_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self._boot_failed_issue)
 
     @property
     def auto_update(self) -> bool:
