@@ -205,7 +205,7 @@ class Supervisor(CoreSysAttributes):
             )
             capture_exception(err)
             raise SupervisorUpdateError(
-                f"Update of Supervisor failed: {err!s}", _LOGGER.error
+                f"Update of Supervisor failed: {err!s}", _LOGGER.critical
             ) from err
 
         self.sys_config.version = version
