@@ -11,7 +11,7 @@ from voluptuous.humanize import humanize_error
 
 from ..addons.validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_TRANSLATIONS
 from ..const import (
-    ATTR_LOCATON,
+    ATTR_LOCATION,
     ATTR_REPOSITORY,
     ATTR_SLUG,
     ATTR_TRANSLATIONS,
@@ -223,7 +223,7 @@ class StoreData(CoreSysAttributes):
 
                 # store
                 addon_config[ATTR_REPOSITORY] = repository
-                addon_config[ATTR_LOCATON] = str(addon.parent)
+                addon_config[ATTR_LOCATION] = str(addon.parent)
                 addon_config[ATTR_TRANSLATIONS] = _read_addon_translations(addon.parent)
                 addons_config[addon_slug] = addon_config
 

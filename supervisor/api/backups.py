@@ -14,18 +14,22 @@ from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
 from ..backups.backup import Backup
+from ..backups.const import LOCATION_CLOUD_BACKUP
 from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT, days_until_stale
 from ..const import (
     ATTR_ADDONS,
+    ATTR_BACKUP,
     ATTR_BACKUPS,
     ATTR_COMPRESSED,
     ATTR_CONTENT,
     ATTR_DATE,
     ATTR_DAYS_UNTIL_STALE,
+    ATTR_FILENAME,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_HOMEASSISTANT_EXCLUDE_DATABASE,
-    ATTR_LOCATON,
+    ATTR_JOB_ID,
+    ATTR_LOCATION,
     ATTR_NAME,
     ATTR_PASSWORD,
     ATTR_PROTECTED,
@@ -36,20 +40,22 @@ from ..const import (
     ATTR_TIMEOUT,
     ATTR_TYPE,
     ATTR_VERSION,
+    REQUEST_FROM,
     BusEvent,
     CoreState,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+from ..exceptions import APIError, APIForbidden
 from ..jobs import JobSchedulerOptions
 from ..mounts.const import MountUsage
 from ..resolution.const import UnhealthyReason
-from .const import ATTR_BACKGROUND, ATTR_JOB_ID, CONTENT_TYPE_TAR
+from .const import ATTR_BACKGROUND, ATTR_LOCATIONS, CONTENT_TYPE_TAR
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
+RE_FILENAME = re.compile(r"^[^\\\/]+")
 
 # Backwards compatible
 # Remove: 2022.08
@@ -76,7 +82,7 @@ SCHEMA_BACKUP_FULL = vol.Schema(
         vol.Optional(ATTR_NAME): str,
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_COMPRESSED): vol.Maybe(vol.Boolean()),
-        vol.Optional(ATTR_LOCATON): vol.Maybe(str),
+        vol.Optional(ATTR_LOCATION): vol.Maybe(str),
         vol.Optional(ATTR_HOMEASSISTANT_EXCLUDE_DATABASE): vol.Boolean(),
         vol.Optional(ATTR_BACKGROUND, default=False): vol.Boolean(),
     }
@@ -101,6 +107,16 @@ SCHEMA_FREEZE = vol.Schema(
         vol.Optional(ATTR_TIMEOUT): vol.All(int, vol.Range(min=1)),
     }
 )
+SCHEMA_RELOAD = vol.Schema(
+    {
+        vol.Optional(ATTR_BACKUP, default={}): vol.Schema(
+            {
+                vol.Required(ATTR_LOCATION): vol.Maybe(str),
+                vol.Required(ATTR_FILENAME): vol.Match(RE_FILENAME),
+            }
+        )
+    }
+)
 
 
 class APIBackups(CoreSysAttributes):
@@ -122,7 +138,8 @@ class APIBackups(CoreSysAttributes):
                 ATTR_DATE: backup.date,
                 ATTR_TYPE: backup.sys_type,
                 ATTR_SIZE: backup.size,
-                ATTR_LOCATON: backup.location,
+                ATTR_LOCATION: backup.location,
+                ATTR_LOCATIONS: backup.locations,
                 ATTR_PROTECTED: backup.protected,
                 ATTR_COMPRESSED: backup.compressed,
                 ATTR_CONTENT: {
@@ -132,6 +149,7 @@ class APIBackups(CoreSysAttributes):
                 },
             }
             for backup in self.sys_backups.list_backups
+            if backup.location != LOCATION_CLOUD_BACKUP
         ]
 
     @api_process
@@ -164,10 +182,12 @@ class APIBackups(CoreSysAttributes):
         self.sys_backups.save_data()
 
     @api_process
-    async def reload(self, _):
+    async def reload(self, request: web.Request):
         """Reload backup list."""
-        await asyncio.shield(self.sys_backups.reload())
-        return True
+        body = await api_validate(SCHEMA_RELOAD, request)
+        backup = self._location_to_mount(body[ATTR_BACKUP])
+
+        return await asyncio.shield(self.sys_backups.reload(**backup))
 
     @api_process
     async def backup_info(self, request):
@@ -195,7 +215,8 @@ class APIBackups(CoreSysAttributes):
             ATTR_PROTECTED: backup.protected,
             ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
             ATTR_HOMEASSISTANT: backup.homeassistant_version,
-            ATTR_LOCATON: backup.location,
+            ATTR_LOCATION: backup.location,
+            ATTR_LOCATIONS: backup.locations,
             ATTR_ADDONS: data_addons,
             ATTR_REPOSITORIES: backup.repositories,
             ATTR_FOLDERS: backup.folders,
@@ -204,16 +225,28 @@ class APIBackups(CoreSysAttributes):
 
     def _location_to_mount(self, body: dict[str, Any]) -> dict[str, Any]:
         """Change location field to mount if necessary."""
-        if not body.get(ATTR_LOCATON):
+        if not body.get(ATTR_LOCATION) or body[ATTR_LOCATION] == LOCATION_CLOUD_BACKUP:
             return body
 
-        body[ATTR_LOCATON] = self.sys_mounts.get(body[ATTR_LOCATON])
-        if body[ATTR_LOCATON].usage != MountUsage.BACKUP:
+        body[ATTR_LOCATION] = self.sys_mounts.get(body[ATTR_LOCATION])
+        if body[ATTR_LOCATION].usage != MountUsage.BACKUP:
             raise APIError(
-                f"Mount {body[ATTR_LOCATON].name} is not used for backups, cannot backup to there"
+                f"Mount {body[ATTR_LOCATION].name} is not used for backups, cannot backup to there"
             )
 
         return body
+
+    def _validate_cloud_backup_location(
+        self, request: web.Request, location: str | None
+    ) -> None:
+        """Cloud backup location is only available to Home Assistant."""
+        if (
+            location == LOCATION_CLOUD_BACKUP
+            and request.get(REQUEST_FROM) != self.sys_homeassistant
+        ):
+            raise APIForbidden(
+                f"Location {LOCATION_CLOUD_BACKUP} is only available for Home Assistant"
+            )
 
     async def _background_backup_task(
         self, backup_method: Callable, *args, **kwargs
@@ -246,9 +279,10 @@ class APIBackups(CoreSysAttributes):
             self.sys_bus.remove_listener(listener)
 
     @api_process
-    async def backup_full(self, request):
+    async def backup_full(self, request: web.Request):
         """Create full backup."""
         body = await api_validate(SCHEMA_BACKUP_FULL, request)
+        self._validate_cloud_backup_location(request, body.get(ATTR_LOCATION))
         background = body.pop(ATTR_BACKGROUND)
         backup_task, job_id = await self._background_backup_task(
             self.sys_backups.do_backup_full, **self._location_to_mount(body)
@@ -266,9 +300,10 @@ class APIBackups(CoreSysAttributes):
         )
 
     @api_process
-    async def backup_partial(self, request):
+    async def backup_partial(self, request: web.Request):
         """Create a partial backup."""
         body = await api_validate(SCHEMA_BACKUP_PARTIAL, request)
+        self._validate_cloud_backup_location(request, body.get(ATTR_LOCATION))
         background = body.pop(ATTR_BACKGROUND)
         backup_task, job_id = await self._background_backup_task(
             self.sys_backups.do_backup_partial, **self._location_to_mount(body)
@@ -286,9 +321,10 @@ class APIBackups(CoreSysAttributes):
         )
 
     @api_process
-    async def restore_full(self, request):
+    async def restore_full(self, request: web.Request):
         """Full restore of a backup."""
         backup = self._extract_slug(request)
+        self._validate_cloud_backup_location(request, backup.location)
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
         background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await self._background_backup_task(
@@ -303,9 +339,10 @@ class APIBackups(CoreSysAttributes):
         )
 
     @api_process
-    async def restore_partial(self, request):
+    async def restore_partial(self, request: web.Request):
         """Partial restore a backup."""
         backup = self._extract_slug(request)
+        self._validate_cloud_backup_location(request, backup.location)
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
         background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await self._background_backup_task(
@@ -320,23 +357,24 @@ class APIBackups(CoreSysAttributes):
         )
 
     @api_process
-    async def freeze(self, request):
+    async def freeze(self, request: web.Request):
         """Initiate manual freeze for external backup."""
         body = await api_validate(SCHEMA_FREEZE, request)
         await asyncio.shield(self.sys_backups.freeze_all(**body))
 
     @api_process
-    async def thaw(self, request):
+    async def thaw(self, request: web.Request):
         """Begin thaw after manual freeze."""
         await self.sys_backups.thaw_all()
 
     @api_process
-    async def remove(self, request):
+    async def remove(self, request: web.Request):
         """Remove a backup."""
         backup = self._extract_slug(request)
+        self._validate_cloud_backup_location(request, backup.location)
         return self.sys_backups.remove(backup)
 
-    async def download(self, request):
+    async def download(self, request: web.Request):
         """Download a backup file."""
         backup = self._extract_slug(request)
 
@@ -349,7 +387,7 @@ class APIBackups(CoreSysAttributes):
         return response
 
     @api_process
-    async def upload(self, request):
+    async def upload(self, request: web.Request):
         """Upload a backup file."""
         with TemporaryDirectory(dir=str(self.sys_config.path_tmp)) as temp_dir:
             tar_file = Path(temp_dir, "backup.tar")

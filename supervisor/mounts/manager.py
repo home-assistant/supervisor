@@ -141,6 +141,15 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 ]
             )
 
+        # Bind all backup mounts to directories in backup
+        if self.backup_mounts:
+            await asyncio.wait(
+                [
+                    self.sys_create_task(self._bind_backup(mount))
+                    for mount in self.backup_mounts
+                ]
+            )
+
     @Job(name="mount_manager_reload", conditions=[JobCondition.MOUNT_AVAILABLE])
     async def reload(self) -> None:
         """Update mounts info via dbus and reload failed mounts."""
@@ -206,6 +215,8 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             await self._bind_media(mount)
         elif mount.usage == MountUsage.SHARE:
             await self._bind_share(mount)
+        elif mount.usage == MountUsage.BACKUP:
+            await self._bind_backup(mount)
 
     @Job(
         name="mount_manager_remove_mount",
@@ -257,6 +268,10 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
         if (bound_mount := self._bound_mounts.get(name)) and bound_mount.emergency:
             await self._bind_mount(bound_mount.mount, bound_mount.bind_mount.where)
+
+    async def _bind_backup(self, mount: Mount) -> None:
+        """Bind a backup mount to backup directory."""
+        await self._bind_mount(mount, self.sys_config.path_extern_backup / mount.name)
 
     async def _bind_media(self, mount: Mount) -> None:
         """Bind a media mount to media directory."""

@@ -47,7 +47,7 @@ from ..const import (
     ATTR_JOURNALD,
     ATTR_KERNEL_MODULES,
     ATTR_LEGACY,
-    ATTR_LOCATON,
+    ATTR_LOCATION,
     ATTR_MACHINE,
     ATTR_MAP,
     ATTR_NAME,
@@ -581,7 +581,7 @@ class AddonModel(JobGroup, ABC):
     @property
     def path_location(self) -> Path:
         """Return path to this add-on."""
-        return Path(self.data[ATTR_LOCATON])
+        return Path(self.data[ATTR_LOCATION])
 
     @property
     def path_icon(self) -> Path:

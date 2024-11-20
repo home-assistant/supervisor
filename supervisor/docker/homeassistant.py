@@ -22,6 +22,12 @@ from .const import (
     MOUNT_DEV,
     MOUNT_MACHINE_ID,
     MOUNT_UDEV,
+    PATH_BACKUP,
+    PATH_CLOUD_BACKUP,
+    PATH_MEDIA,
+    PATH_PUBLIC_CONFIG,
+    PATH_SHARE,
+    PATH_SSL,
     MountType,
     PropagationMode,
 )
@@ -96,7 +102,7 @@ class DockerHomeAssistant(DockerInterface):
             Mount(
                 type=MountType.BIND,
                 source=self.sys_config.path_extern_homeassistant.as_posix(),
-                target="/config",
+                target=PATH_PUBLIC_CONFIG.as_posix(),
                 read_only=False,
             ),
         ]
@@ -109,22 +115,35 @@ class DockerHomeAssistant(DockerInterface):
                     Mount(
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_ssl.as_posix(),
-                        target="/ssl",
+                        target=PATH_SSL.as_posix(),
                         read_only=True,
                     ),
                     Mount(
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_share.as_posix(),
-                        target="/share",
+                        target=PATH_SHARE.as_posix(),
                         read_only=False,
                         propagation=PropagationMode.RSLAVE.value,
                     ),
                     Mount(
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_media.as_posix(),
-                        target="/media",
+                        target=PATH_MEDIA.as_posix(),
                         read_only=False,
                         propagation=PropagationMode.RSLAVE.value,
+                    ),
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_config.path_extern_backup.as_posix(),
+                        target=PATH_BACKUP,
+                        read_only=False,
+                        propagation=PropagationMode.RSLAVE.value,
+                    ),
+                    Mount(
+                        type=MountType.BIND,
+                        source=self.sys_config.path_extern_core_backup.as_posix(),
+                        target=PATH_CLOUD_BACKUP.as_posix(),
+                        read_only=False,
                     ),
                     # Configuration audio
                     Mount(

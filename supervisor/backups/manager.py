@@ -7,10 +7,16 @@ from collections.abc import Awaitable, Iterable
 import errno
 import logging
 from pathlib import Path
+from typing import Literal
 
 from ..addons.addon import Addon
 from ..const import (
+    ATTR_DATA,
     ATTR_DAYS_UNTIL_STALE,
+    ATTR_JOB_ID,
+    ATTR_LOCATION,
+    ATTR_SLUG,
+    ATTR_TYPE,
     FILE_HASSIO_BACKUPS,
     FOLDER_HOMEASSISTANT,
     CoreState,
@@ -22,6 +28,7 @@ from ..exceptions import (
     BackupJobError,
     BackupMountDownError,
 )
+from ..homeassistant.const import WSType
 from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -32,7 +39,13 @@ from ..utils.dt import utcnow
 from ..utils.sentinel import DEFAULT
 from ..utils.sentry import capture_exception
 from .backup import Backup
-from .const import DEFAULT_FREEZE_TIMEOUT, BackupJobStage, BackupType, RestoreJobStage
+from .const import (
+    DEFAULT_FREEZE_TIMEOUT,
+    LOCATION_CLOUD_BACKUP,
+    BackupJobStage,
+    BackupType,
+    RestoreJobStage,
+)
 from .utils import create_slug
 from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
@@ -66,20 +79,33 @@ class BackupManager(FileConfiguration, JobGroup):
         self._data[ATTR_DAYS_UNTIL_STALE] = value
 
     @property
-    def backup_locations(self) -> list[Path]:
+    def backup_locations(self) -> dict[str | None, Path]:
         """List of locations containing backups."""
-        return [self.sys_config.path_backup] + [
-            mount.local_where
-            for mount in self.sys_mounts.backup_mounts
-            if mount.state == UnitActiveState.ACTIVE
-        ]
+        return {
+            None: self.sys_config.path_backup,
+            LOCATION_CLOUD_BACKUP: self.sys_config.path_core_backup,
+            **{
+                mount.name: mount.local_where
+                for mount in self.sys_mounts.backup_mounts
+                if mount.state == UnitActiveState.ACTIVE
+            },
+        }
 
     def get(self, slug: str) -> Backup:
         """Return backup object."""
         return self._backups.get(slug)
 
-    def _get_base_path(self, location: Mount | type[DEFAULT] | None = DEFAULT) -> Path:
+    def _get_base_path(
+        self,
+        location: Mount
+        | Literal[LOCATION_CLOUD_BACKUP]
+        | type[DEFAULT]
+        | None = DEFAULT,
+    ) -> Path:
         """Get base path for backup using location or default location."""
+        if location == LOCATION_CLOUD_BACKUP:
+            return self.sys_config.path_core_backup
+
         if location == DEFAULT and self.sys_mounts.default_backup_mount:
             location = self.sys_mounts.default_backup_mount
 
@@ -91,6 +117,24 @@ class BackupManager(FileConfiguration, JobGroup):
             return location.local_where
 
         return self.sys_config.path_backup
+
+    def _get_location_name(
+        self,
+        location: Mount
+        | Literal[LOCATION_CLOUD_BACKUP]
+        | type[DEFAULT]
+        | None = DEFAULT,
+    ) -> str | None:
+        """Get name of location (or None for local backup folder)."""
+        if location == LOCATION_CLOUD_BACKUP:
+            return location
+
+        if location == DEFAULT and self.sys_mounts.default_backup_mount:
+            location = self.sys_mounts.default_backup_mount
+
+        if location:
+            return location.name
+        return None
 
     def _change_stage(
         self,
@@ -138,7 +182,10 @@ class BackupManager(FileConfiguration, JobGroup):
         sys_type: BackupType,
         password: str | None,
         compressed: bool = True,
-        location: Mount | type[DEFAULT] | None = DEFAULT,
+        location: Mount
+        | Literal[LOCATION_CLOUD_BACKUP]
+        | type[DEFAULT]
+        | None = DEFAULT,
     ) -> Backup:
         """Initialize a new backup object from name.
 
@@ -149,7 +196,7 @@ class BackupManager(FileConfiguration, JobGroup):
         tar_file = Path(self._get_base_path(location), f"{slug}.tar")
 
         # init object
-        backup = Backup(self.coresys, tar_file, slug)
+        backup = Backup(self.coresys, tar_file, slug, self._get_location_name(location))
         backup.new(name, date_str, sys_type, password, compressed)
 
         # Add backup ID to job
@@ -169,27 +216,45 @@ class BackupManager(FileConfiguration, JobGroup):
         """
         return self.reload()
 
-    async def reload(self) -> None:
+    async def reload(
+        self,
+        location: Mount
+        | Literal[LOCATION_CLOUD_BACKUP]
+        | type[DEFAULT]
+        | None = DEFAULT,
+        filename: str | None = None,
+    ) -> None:
         """Load exists backups."""
-        self._backups = {}
 
-        async def _load_backup(tar_file):
+        async def _load_backup(location: str | None, tar_file: Path) -> bool:
             """Load the backup."""
-            backup = Backup(self.coresys, tar_file, "temp")
+            backup = Backup(self.coresys, tar_file, "temp", location)
             if await backup.load():
-                self._backups[backup.slug] = Backup(
-                    self.coresys, tar_file, backup.slug, backup.data
-                )
+                if backup.slug in self._backups:
+                    self._backups[backup.slug].add_location(location)
+                else:
+                    self._backups[backup.slug] = Backup(
+                        self.coresys, tar_file, backup.slug, location, backup.data
+                    )
+                return True
+            return False
 
+        if location != DEFAULT and filename:
+            return await _load_backup(
+                location, self._get_base_path(location) / filename
+            )
+
+        self._backups = {}
         tasks = [
-            self.sys_create_task(_load_backup(tar_file))
-            for path in self.backup_locations
+            self.sys_create_task(_load_backup(_location, tar_file))
+            for _location, path in self.backup_locations.items()
             for tar_file in self._list_backup_files(path)
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))
         if tasks:
             await asyncio.wait(tasks)
+        return True
 
     def remove(self, backup: Backup) -> bool:
         """Remove a backup."""
@@ -211,7 +276,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     async def import_backup(self, tar_file: Path) -> Backup | None:
         """Check backup tarfile and import it."""
-        backup = Backup(self.coresys, tar_file, "temp")
+        backup = Backup(self.coresys, tar_file, "temp", None)
 
         # Read meta data
         if not await backup.load():
@@ -234,7 +299,7 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
 
         # Load new backup
-        backup = Backup(self.coresys, tar_origin, backup.slug, backup.data)
+        backup = Backup(self.coresys, tar_origin, backup.slug, None, backup.data)
         if not await backup.load():
             return None
         _LOGGER.info("Successfully imported %s", backup.slug)
@@ -293,6 +358,16 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
         else:
             self._backups[backup.slug] = backup
+            self.sys_homeassistant.websocket.async_send_message(
+                {
+                    ATTR_TYPE: WSType.BACKUP_COMPLETE,
+                    ATTR_DATA: {
+                        ATTR_JOB_ID: self.sys_jobs.current.uuid,
+                        ATTR_SLUG: backup.slug,
+                        ATTR_LOCATION: backup.location,
+                    },
+                }
+            )
 
             if addon_start_tasks:
                 self._change_stage(BackupJobStage.AWAIT_ADDON_RESTARTS, backup)
@@ -315,11 +390,17 @@ class BackupManager(FileConfiguration, JobGroup):
         name: str = "",
         password: str | None = None,
         compressed: bool = True,
-        location: Mount | type[DEFAULT] | None = DEFAULT,
+        location: Mount
+        | Literal[LOCATION_CLOUD_BACKUP]
+        | type[DEFAULT]
+        | None = DEFAULT,
         homeassistant_exclude_database: bool | None = None,
     ) -> Backup | None:
         """Create a full backup."""
-        if self._get_base_path(location) == self.sys_config.path_backup:
+        if self._get_base_path(location) in {
+            self.sys_config.path_backup,
+            self.sys_config.path_core_backup,
+        }:
             await Job.check_conditions(
                 self, {JobCondition.FREE_SPACE}, "BackupManager.do_backup_full"
             )
@@ -355,11 +436,17 @@ class BackupManager(FileConfiguration, JobGroup):
         password: str | None = None,
         homeassistant: bool = False,
         compressed: bool = True,
-        location: Mount | type[DEFAULT] | None = DEFAULT,
+        location: Mount
+        | Literal[LOCATION_CLOUD_BACKUP]
+        | type[DEFAULT]
+        | None = DEFAULT,
         homeassistant_exclude_database: bool | None = None,
     ) -> Backup | None:
         """Create a partial backup."""
-        if self._get_base_path(location) == self.sys_config.path_backup:
+        if self._get_base_path(location) in {
+            self.sys_config.path_backup,
+            self.sys_config.path_core_backup,
+        }:
             await Job.check_conditions(
                 self, {JobCondition.FREE_SPACE}, "BackupManager.do_backup_partial"
             )
