@@ -588,3 +588,15 @@ async def test_cloud_backup_core_only(api_client: TestClient, mock_full_backup: 
 
     resp = await api_client.delete(f"/backups/{mock_full_backup.slug}")
     assert resp.status == 403
+
+
+async def test_partial_reload_errors_no_file(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+):
+    """Partial reload returns error when asked to reload non-existent file."""
+    resp = await api_client.post(
+        "/backups/reload", json={"location": None, "filename": "does_not_exist.tar"}
+    )
+    assert resp.status == 400
