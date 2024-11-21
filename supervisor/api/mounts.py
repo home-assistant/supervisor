@@ -11,7 +11,7 @@ from ..exceptions import APIError
 from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, MountUsage
 from ..mounts.mount import Mount
 from ..mounts.validate import SCHEMA_MOUNT_CONFIG
-from .const import ATTR_MOUNTS
+from .const import ATTR_MOUNTS, ATTR_USER_PATH
 from .utils import api_process, api_validate
 
 SCHEMA_OPTIONS = vol.Schema(
@@ -32,7 +32,11 @@ class APIMounts(CoreSysAttributes):
             if self.sys_mounts.default_backup_mount
             else None,
             ATTR_MOUNTS: [
-                mount.to_dict() | {ATTR_STATE: mount.state}
+                mount.to_dict()
+                | {
+                    ATTR_STATE: mount.state,
+                    ATTR_USER_PATH: mount.container_where.as_posix(),
+                }
                 for mount in self.sys_mounts.mounts
             ],
         }

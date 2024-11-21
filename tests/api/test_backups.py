@@ -2,6 +2,7 @@
 
 import asyncio
 from pathlib import Path, PurePath
+from shutil import copy
 from typing import Any
 from unittest.mock import ANY, AsyncMock, PropertyMock, patch
 
@@ -18,6 +19,9 @@ from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.mounts.mount import Mount
 from supervisor.supervisor import Supervisor
+
+from tests.common import get_fixture_path
+from tests.const import TEST_ADDON_SLUG
 
 
 async def test_info(api_client, coresys: CoreSys, mock_full_backup: Backup):
@@ -467,3 +471,132 @@ async def test_restore_immediate_errors(
         )
     assert resp.status == 400
     assert "No Home Assistant" in (await resp.json())["message"]
+
+
+@pytest.mark.parametrize(
+    ("folder", "location"), [("backup", None), ("core/backup", ".cloud_backup")]
+)
+async def test_reload(
+    request: pytest.FixtureRequest,
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    folder: str,
+    location: str | None,
+):
+    """Test backups reload."""
+    assert not coresys.backups.list_backups
+
+    backup_file = get_fixture_path("backup_example.tar")
+    copy(backup_file, tmp_supervisor_data / folder)
+
+    resp = await api_client.post("/backups/reload")
+    assert resp.status == 200
+
+    assert len(coresys.backups.list_backups) == 1
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.location == location
+    assert backup.locations == [location]
+
+
+@pytest.mark.parametrize(
+    ("folder", "location"), [("backup", None), ("core/backup", ".cloud_backup")]
+)
+async def test_partial_reload(
+    request: pytest.FixtureRequest,
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    folder: str,
+    location: str | None,
+):
+    """Test partial backups reload."""
+    assert not coresys.backups.list_backups
+
+    backup_file = get_fixture_path("backup_example.tar")
+    copy(backup_file, tmp_supervisor_data / folder)
+
+    resp = await api_client.post(
+        "/backups/reload", json={"location": location, "filename": "backup_example.tar"}
+    )
+    assert resp.status == 200
+
+    assert len(coresys.backups.list_backups) == 1
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.location == location
+    assert backup.locations == [location]
+
+
+async def test_invalid_reload(api_client: TestClient):
+    """Test invalid reload."""
+    resp = await api_client.post("/backups/reload", json={"location": "no_filename"})
+    assert resp.status == 400
+
+    resp = await api_client.post(
+        "/backups/reload", json={"filename": "no_location.tar"}
+    )
+    assert resp.status == 400
+
+    resp = await api_client.post(
+        "/backups/reload", json={"location": None, "filename": "no/sub/paths.tar"}
+    )
+    assert resp.status == 400
+
+    resp = await api_client.post(
+        "/backups/reload", json={"location": None, "filename": "not_tar.tar.gz"}
+    )
+    assert resp.status == 400
+
+
+@pytest.mark.usefixtures("install_addon_ssh")
+@pytest.mark.parametrize("api_client", TEST_ADDON_SLUG, indirect=True)
+async def test_cloud_backup_core_only(api_client: TestClient, mock_full_backup: Backup):
+    """Test only core can access cloud backup location."""
+    resp = await api_client.post(
+        "/backups/reload",
+        json={"location": ".cloud_backup", "filename": "caller_not_core.tar"},
+    )
+    assert resp.status == 403
+
+    resp = await api_client.post(
+        "/backups/new/full",
+        json={
+            "name": "Mount test",
+            "location": ".cloud_backup",
+        },
+    )
+    assert resp.status == 403
+
+    resp = await api_client.post(
+        "/backups/new/partial",
+        json={"name": "Test", "homeassistant": True, "location": ".cloud_backup"},
+    )
+    assert resp.status == 403
+
+    # pylint: disable-next=protected-access
+    mock_full_backup._locations = {".cloud_backup": None}
+    assert mock_full_backup.location == ".cloud_backup"
+
+    resp = await api_client.post(f"/backups/{mock_full_backup.slug}/restore/full")
+    assert resp.status == 403
+
+    resp = await api_client.post(
+        f"/backups/{mock_full_backup.slug}/restore/partial",
+        json={"homeassistant": True},
+    )
+    assert resp.status == 403
+
+    resp = await api_client.delete(f"/backups/{mock_full_backup.slug}")
+    assert resp.status == 403
+
+
+async def test_partial_reload_errors_no_file(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+):
+    """Partial reload returns error when asked to reload non-existent file."""
+    resp = await api_client.post(
+        "/backups/reload", json={"location": None, "filename": "does_not_exist.tar"}
+    )
+    assert resp.status == 400

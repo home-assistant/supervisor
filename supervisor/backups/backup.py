@@ -10,11 +10,11 @@ from functools import cached_property
 import io
 import json
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 import tarfile
 from tempfile import TemporaryDirectory
 import time
-from typing import Any
+from typing import Any, Literal
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
@@ -48,6 +48,7 @@ from ..const import (
     CRYPTO_AES128,
 )
 from ..coresys import CoreSys
+from ..docker.const import PATH_BACKUP, PATH_CLOUD_BACKUP
 from ..exceptions import AddonsError, BackupError, BackupInvalidError
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
@@ -55,7 +56,7 @@ from ..jobs.job_group import JobGroup
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
-from .const import BUF_SIZE, BackupType
+from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
 from .utils import key_to_iv, password_to_key
 from .validate import SCHEMA_BACKUP
 
@@ -70,6 +71,7 @@ class Backup(JobGroup):
         coresys: CoreSys,
         tar_file: Path,
         slug: str,
+        location: str | None,
         data: dict[str, Any] | None = None,
     ):
         """Initialize a backup."""
@@ -83,6 +85,8 @@ class Backup(JobGroup):
         self._outer_secure_tarfile_tarfile: tarfile.TarFile | None = None
         self._key: bytes | None = None
         self._aes: Cipher | None = None
+        # Order is maintained in dict keys so this is effectively an ordered set
+        self._locations: dict[str | None, Literal[None]] = {location: None}
 
     @property
     def version(self) -> int:
@@ -178,12 +182,44 @@ class Backup(JobGroup):
         """Set the Docker config data."""
         self._data[ATTR_DOCKER] = value
 
-    @cached_property
+    @property
     def location(self) -> str | None:
         """Return the location of the backup."""
-        for backup_mount in self.sys_mounts.backup_mounts:
-            if self.tarfile.is_relative_to(backup_mount.local_where):
-                return backup_mount.name
+        return self.locations[0]
+
+    @property
+    def all_locations(self) -> set[str | None]:
+        """Return all locations this backup was found in."""
+        return self._locations.keys()
+
+    @property
+    def locations(self) -> list[str | None]:
+        """Return locations this backup was found in except cloud backup (unless that's the only one)."""
+        if len(self._locations) == 1:
+            return list(self._locations)
+        return [
+            location
+            for location in self._locations
+            if location != LOCATION_CLOUD_BACKUP
+        ]
+
+    @cached_property
+    def container_path(self) -> PurePath | None:
+        """Return where this is made available in managed containers (core, addons, etc.).
+
+        This returns none if the tarfile is not in a place mapped into other containers.
+        """
+        path_map: dict[Path, PurePath] = {
+            self.sys_config.path_backup: PATH_BACKUP,
+            self.sys_config.path_core_backup: PATH_CLOUD_BACKUP,
+        } | {
+            mount.local_where: mount.container_where
+            for mount in self.sys_mounts.backup_mounts
+        }
+        for source, target in path_map.items():
+            if self.tarfile.is_relative_to(source):
+                return target / self.tarfile.relative_to(source)
+
         return None
 
     @property
@@ -214,6 +250,10 @@ class Backup(JobGroup):
     def data(self) -> dict[str, Any]:
         """Returns a copy of the data."""
         return deepcopy(self._data)
+
+    def add_location(self, location: str | None) -> None:
+        """Add a location the backup exists."""
+        self._locations[location] = None
 
     def new(
         self,

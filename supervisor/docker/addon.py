@@ -50,6 +50,16 @@ from .const import (
     MOUNT_DEV,
     MOUNT_DOCKER,
     MOUNT_UDEV,
+    PATH_ALL_ADDON_CONFIGS,
+    PATH_BACKUP,
+    PATH_HOMEASSISTANT_CONFIG,
+    PATH_HOMEASSISTANT_CONFIG_LEGACY,
+    PATH_LOCAL_ADDONS,
+    PATH_MEDIA,
+    PATH_PRIVATE_DATA,
+    PATH_PUBLIC_CONFIG,
+    PATH_SHARE,
+    PATH_SSL,
     Capabilities,
     MountType,
     PropagationMode,
@@ -334,7 +344,7 @@ class DockerAddon(DockerInterface):
             Mount(
                 type=MountType.BIND,
                 source=self.addon.path_extern_data.as_posix(),
-                target=target_data_path or "/data",
+                target=target_data_path or PATH_PRIVATE_DATA.as_posix(),
                 read_only=False,
             ),
         ]
@@ -345,7 +355,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
-                    target=addon_mapping[MappingType.CONFIG].path or "/config",
+                    target=addon_mapping[MappingType.CONFIG].path
+                    or PATH_HOMEASSISTANT_CONFIG_LEGACY.as_posix(),
                     read_only=addon_mapping[MappingType.CONFIG].read_only,
                 )
             )
@@ -358,7 +369,7 @@ class DockerAddon(DockerInterface):
                         type=MountType.BIND,
                         source=self.addon.path_extern_config.as_posix(),
                         target=addon_mapping[MappingType.ADDON_CONFIG].path
-                        or "/config",
+                        or PATH_PUBLIC_CONFIG.as_posix(),
                         read_only=addon_mapping[MappingType.ADDON_CONFIG].read_only,
                     )
                 )
@@ -370,7 +381,7 @@ class DockerAddon(DockerInterface):
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_homeassistant.as_posix(),
                         target=addon_mapping[MappingType.HOMEASSISTANT_CONFIG].path
-                        or "/homeassistant",
+                        or PATH_HOMEASSISTANT_CONFIG.as_posix(),
                         read_only=addon_mapping[
                             MappingType.HOMEASSISTANT_CONFIG
                         ].read_only,
@@ -383,7 +394,7 @@ class DockerAddon(DockerInterface):
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_addon_configs.as_posix(),
                     target=addon_mapping[MappingType.ALL_ADDON_CONFIGS].path
-                    or "/addon_configs",
+                    or PATH_ALL_ADDON_CONFIGS.as_posix(),
                     read_only=addon_mapping[MappingType.ALL_ADDON_CONFIGS].read_only,
                 )
             )
@@ -393,7 +404,7 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
-                    target=addon_mapping[MappingType.SSL].path or "/ssl",
+                    target=addon_mapping[MappingType.SSL].path or PATH_SSL.as_posix(),
                     read_only=addon_mapping[MappingType.SSL].read_only,
                 )
             )
@@ -403,7 +414,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_addons_local.as_posix(),
-                    target=addon_mapping[MappingType.ADDONS].path or "/addons",
+                    target=addon_mapping[MappingType.ADDONS].path
+                    or PATH_LOCAL_ADDONS.as_posix(),
                     read_only=addon_mapping[MappingType.ADDONS].read_only,
                 )
             )
@@ -413,8 +425,10 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_backup.as_posix(),
-                    target=addon_mapping[MappingType.BACKUP].path or "/backup",
+                    target=addon_mapping[MappingType.BACKUP].path
+                    or PATH_BACKUP.as_posix(),
                     read_only=addon_mapping[MappingType.BACKUP].read_only,
+                    propagation=PropagationMode.RSLAVE,
                 )
             )
 
@@ -423,7 +437,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
-                    target=addon_mapping[MappingType.SHARE].path or "/share",
+                    target=addon_mapping[MappingType.SHARE].path
+                    or PATH_SHARE.as_posix(),
                     read_only=addon_mapping[MappingType.SHARE].read_only,
                     propagation=PropagationMode.RSLAVE,
                 )
@@ -434,7 +449,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_media.as_posix(),
-                    target=addon_mapping[MappingType.MEDIA].path or "/media",
+                    target=addon_mapping[MappingType.MEDIA].path
+                    or PATH_MEDIA.as_posix(),
                     read_only=addon_mapping[MappingType.MEDIA].read_only,
                     propagation=PropagationMode.RSLAVE,
                 )

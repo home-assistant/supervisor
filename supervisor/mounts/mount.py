@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 import asyncio
+from functools import cached_property
 import logging
 from pathlib import Path, PurePath
 
@@ -29,6 +30,7 @@ from ..dbus.const import (
     UnitActiveState,
 )
 from ..dbus.systemd import SystemdUnit
+from ..docker.const import PATH_BACKUP, PATH_MEDIA, PATH_SHARE
 from ..exceptions import (
     DBusError,
     DBusSystemdNoSuchUnit,
@@ -150,7 +152,7 @@ class Mount(CoreSysAttributes, ABC):
         """Get state of mount."""
         return self._state
 
-    @property
+    @cached_property
     def local_where(self) -> Path | None:
         """Return where this is mounted within supervisor container.
 
@@ -161,6 +163,21 @@ class Mount(CoreSysAttributes, ABC):
             if self.where.is_relative_to(self.sys_config.path_extern_supervisor)
             else None
         )
+
+    @property
+    def container_where(self) -> PurePath | None:
+        """Return where this is made available in managed containers (core, addons, etc.).
+
+        This returns none if it is not made available in managed containers.
+        """
+        match self.usage:
+            case MountUsage.BACKUP:
+                return PurePath(PATH_BACKUP, self.name)
+            case MountUsage.MEDIA:
+                return PurePath(PATH_MEDIA, self.name)
+            case MountUsage.SHARE:
+                return PurePath(PATH_SHARE, self.name)
+        return None
 
     @property
     def failed_issue(self) -> Issue:

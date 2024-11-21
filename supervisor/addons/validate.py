@@ -55,7 +55,7 @@ from ..const import (
     ATTR_KERNEL_MODULES,
     ATTR_LABELS,
     ATTR_LEGACY,
-    ATTR_LOCATON,
+    ATTR_LOCATION,
     ATTR_MACHINE,
     ATTR_MAP,
     ATTR_NAME,
@@ -483,7 +483,7 @@ SCHEMA_ADDON_SYSTEM = vol.All(
     _migrate_addon_config(),
     _SCHEMA_ADDON_CONFIG.extend(
         {
-            vol.Required(ATTR_LOCATON): str,
+            vol.Required(ATTR_LOCATION): str,
             vol.Required(ATTR_REPOSITORY): str,
             vol.Required(ATTR_TRANSLATIONS, default=dict): {
                 str: SCHEMA_ADDON_TRANSLATIONS

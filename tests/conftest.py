@@ -418,6 +418,7 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
         coresys.config.path_addons_data.mkdir(parents=True)
         coresys.config.path_addon_configs.mkdir(parents=True)
         coresys.config.path_ssl.mkdir()
+        coresys.config.path_core_backup.mkdir(parents=True)
         yield tmp_path
 
 
@@ -579,7 +580,7 @@ def install_addon_example(coresys: CoreSys, repository):
 @pytest.fixture
 async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a full backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test")
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test", None)
     mock_backup.new("Test", utcnow().isoformat(), BackupType.FULL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
@@ -603,7 +604,7 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
 @pytest.fixture
 async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a partial backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test")
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test", None)
     mock_backup.new("Test", utcnow().isoformat(), BackupType.PARTIAL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
@@ -634,7 +635,7 @@ async def backups(
         temp_tar = Path(tmp_path, f"{slug}.tar")
         with SecureTarFile(temp_tar, "w"):
             pass
-        backup = Backup(coresys, temp_tar, slug)
+        backup = Backup(coresys, temp_tar, slug, None)
         backup._data = {  # pylint: disable=protected-access
             ATTR_SLUG: slug,
             ATTR_DATE: utcnow().isoformat(),
