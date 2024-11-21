@@ -212,6 +212,9 @@ class Backup(JobGroup):
         path_map: dict[Path, PurePath] = {
             self.sys_config.path_backup: PATH_BACKUP,
             self.sys_config.path_core_backup: PATH_CLOUD_BACKUP,
+        } | {
+            mount.local_where: mount.container_where
+            for mount in self.sys_mounts.backup_mounts
         }
         for source, target in path_map.items():
             if self.tarfile.is_relative_to(source):

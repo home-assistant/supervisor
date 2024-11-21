@@ -79,6 +79,19 @@ async def test_homeassistant_start(
             ),
             Mount(
                 type="bind",
+                source=coresys.config.path_extern_backup.as_posix(),
+                target="/backup",
+                read_only=False,
+                propagation="rslave",
+            ),
+            Mount(
+                type="bind",
+                source=coresys.config.path_extern_core_backup.as_posix(),
+                target="/cloud_backup",
+                read_only=False,
+            ),
+            Mount(
+                type="bind",
                 source=coresys.homeassistant.path_extern_pulse.as_posix(),
                 target="/etc/pulse/client.conf",
                 read_only=True,

@@ -14,7 +14,7 @@ from ..const import (
     ATTR_DATA,
     ATTR_DAYS_UNTIL_STALE,
     ATTR_JOB_ID,
-    ATTR_LOCATION,
+    ATTR_PATH,
     ATTR_SLUG,
     ATTR_TYPE,
     FILE_HASSIO_BACKUPS,
@@ -84,11 +84,10 @@ class BackupManager(FileConfiguration, JobGroup):
         return {
             None: self.sys_config.path_backup,
             LOCATION_CLOUD_BACKUP: self.sys_config.path_core_backup,
-            **{
-                mount.name: mount.local_where
-                for mount in self.sys_mounts.backup_mounts
-                if mount.state == UnitActiveState.ACTIVE
-            },
+        } | {
+            mount.name: mount.local_where
+            for mount in self.sys_mounts.backup_mounts
+            if mount.state == UnitActiveState.ACTIVE
         }
 
     def get(self, slug: str) -> Backup:
@@ -241,7 +240,8 @@ class BackupManager(FileConfiguration, JobGroup):
 
         if location != DEFAULT and filename:
             return await _load_backup(
-                location, self._get_base_path(location) / filename
+                self._get_location_name(location),
+                self._get_base_path(location) / filename,
             )
 
         self._backups = {}
@@ -358,13 +358,13 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
         else:
             self._backups[backup.slug] = backup
-            self.sys_homeassistant.websocket.async_send_message(
+            await self.sys_homeassistant.websocket.async_send_message(
                 {
                     ATTR_TYPE: WSType.BACKUP_COMPLETE,
                     ATTR_DATA: {
                         ATTR_JOB_ID: self.sys_jobs.current.uuid,
                         ATTR_SLUG: backup.slug,
-                        ATTR_LOCATION: backup.location,
+                        ATTR_PATH: backup.container_path.as_posix(),
                     },
                 }
             )

@@ -18,7 +18,6 @@ from ..backups.const import LOCATION_CLOUD_BACKUP
 from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT, days_until_stale
 from ..const import (
     ATTR_ADDONS,
-    ATTR_BACKUP,
     ATTR_BACKUPS,
     ATTR_COMPRESSED,
     ATTR_CONTENT,
@@ -55,7 +54,7 @@ from .utils import api_process, api_validate
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
-RE_FILENAME = re.compile(r"^[^\\\/]+")
+RE_BACKUP_FILENAME = re.compile(r"^[^\\\/]+\.tar$")
 
 # Backwards compatible
 # Remove: 2022.08
@@ -109,12 +108,8 @@ SCHEMA_FREEZE = vol.Schema(
 )
 SCHEMA_RELOAD = vol.Schema(
     {
-        vol.Optional(ATTR_BACKUP, default={}): vol.Schema(
-            {
-                vol.Required(ATTR_LOCATION): vol.Maybe(str),
-                vol.Required(ATTR_FILENAME): vol.Match(RE_FILENAME),
-            }
-        )
+        vol.Inclusive(ATTR_LOCATION, "file"): vol.Maybe(str),
+        vol.Inclusive(ATTR_FILENAME, "file"): vol.Match(RE_BACKUP_FILENAME),
     }
 )
 
@@ -185,7 +180,8 @@ class APIBackups(CoreSysAttributes):
     async def reload(self, request: web.Request):
         """Reload backup list."""
         body = await api_validate(SCHEMA_RELOAD, request)
-        backup = self._location_to_mount(body[ATTR_BACKUP])
+        self._validate_cloud_backup_location(request, body.get(ATTR_LOCATION))
+        backup = self._location_to_mount(body)
 
         return await asyncio.shield(self.sys_backups.reload(**backup))
 

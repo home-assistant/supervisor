@@ -135,7 +135,7 @@ class DockerHomeAssistant(DockerInterface):
                     Mount(
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_backup.as_posix(),
-                        target=PATH_BACKUP,
+                        target=PATH_BACKUP.as_posix(),
                         read_only=False,
                         propagation=PropagationMode.RSLAVE.value,
                     ),

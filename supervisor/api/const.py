@@ -68,6 +68,7 @@ ATTR_UPDATE_TYPE = "update_type"
 ATTR_USAGE = "usage"
 ATTR_USE_NTP = "use_ntp"
 ATTR_USERS = "users"
+ATTR_USER_PATH = "user_path"
 ATTR_VENDOR = "vendor"
 ATTR_VIRTUALIZATION = "virtualization"
 

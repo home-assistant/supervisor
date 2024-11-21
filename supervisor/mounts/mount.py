@@ -164,24 +164,19 @@ class Mount(CoreSysAttributes, ABC):
             else None
         )
 
-    @cached_property
-    def container_where(self) -> Path | None:
+    @property
+    def container_where(self) -> PurePath | None:
         """Return where this is made available in managed containers (core, addons, etc.).
 
-        This returns none if 'local_where' is none or not a place mapped into other containers.
+        This returns none if it is not made available in managed containers.
         """
-        if not (local_where := self.local_where):
-            return None
-
-        path_map: dict[Path, PurePath] = {
-            self.sys_config.path_backup: PATH_BACKUP,
-            self.sys_config.path_media: PATH_MEDIA,
-            self.sys_config.path_share: PATH_SHARE,
-        }
-        for source, target in path_map.items():
-            if local_where.is_relative_to(source):
-                return target / local_where.relative_to(source)
-
+        match self.usage:
+            case MountUsage.BACKUP:
+                return PurePath(PATH_BACKUP, self.name)
+            case MountUsage.MEDIA:
+                return PurePath(PATH_MEDIA, self.name)
+            case MountUsage.SHARE:
+                return PurePath(PATH_SHARE, self.name)
         return None
 
     @property
