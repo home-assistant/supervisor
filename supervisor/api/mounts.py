@@ -35,7 +35,9 @@ class APIMounts(CoreSysAttributes):
                 mount.to_dict()
                 | {
                     ATTR_STATE: mount.state,
-                    ATTR_USER_PATH: mount.container_where.as_posix(),
+                    ATTR_USER_PATH: mount.container_where.as_posix()
+                    if mount.container_where
+                    else None,
                 }
                 for mount in self.sys_mounts.mounts
             ],
