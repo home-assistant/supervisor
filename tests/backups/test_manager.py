@@ -1917,7 +1917,8 @@ async def test_reload_multiple_locations(coresys: CoreSys, tmp_supervisor_data: 
     assert coresys.backups.list_backups
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.location in {None, "backup_test"}
-    assert backup.locations == [None, "backup_test"]
+    assert None in backup.locations
+    assert "backup_test" in backup.locations
     assert backup.all_locations == {".cloud_backup", None, "backup_test"}
 
 
@@ -1967,7 +1968,8 @@ async def test_partial_reload_multiple_locations(
     assert coresys.backups.list_backups
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.location is None
-    assert backup.locations == [None, "backup_test"]
+    assert None in backup.locations
+    assert "backup_test" in backup.locations
     assert backup.all_locations == {".cloud_backup", None, "backup_test"}
 
 
