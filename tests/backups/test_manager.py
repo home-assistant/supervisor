@@ -1983,7 +1983,7 @@ async def test_partial_backup_complete_ws_message(
     """Test WS message notifies core when a partial backup is complete."""
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    ha_ws_client.ha_version = AwesomeVersion("2024.12.0")
+    ha_ws_client.ha_version = AwesomeVersion("2025.12.0")
 
     # Test a partial backup
     job, backup_task = coresys.jobs.schedule_job(
@@ -2015,7 +2015,7 @@ async def test_full_backup_complete_ws_message(
     """Test WS message notifies core when a full backup is complete."""
     coresys.core.state = CoreState.RUNNING
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    ha_ws_client.ha_version = AwesomeVersion("2024.12.0")
+    ha_ws_client.ha_version = AwesomeVersion("2025.12.0")
 
     # Test a full backup
     job, backup_task = coresys.jobs.schedule_job(
