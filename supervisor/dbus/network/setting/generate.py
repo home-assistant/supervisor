@@ -158,13 +158,22 @@ def get_connection_from_interface(
     if not uuid:
         uuid = str(uuid4())
 
+    # Announce mDNS/LLMNR hostname only on primary interface to avoid conflicts
+    # TODO: Expose these settings in API to allow users to have control over these settings.
+    if interface.primary:
+        mdns = 2
+        llmnr = 2
+    else:
+        mdns = 1 # resolve only
+        llmnr = 1
+
     conn: dict[str, dict[str, Variant]] = {
         CONF_ATTR_CONNECTION: {
             CONF_ATTR_CONNECTION_ID: Variant("s", name),
             CONF_ATTR_CONNECTION_UUID: Variant("s", uuid),
             CONF_ATTR_CONNECTION_TYPE: Variant("s", iftype),
-            CONF_ATTR_CONNECTION_LLMNR: Variant("i", 2),
-            CONF_ATTR_CONNECTION_MDNS: Variant("i", 2),
+            CONF_ATTR_CONNECTION_LLMNR: Variant("i", llmnr),
+            CONF_ATTR_CONNECTION_MDNS: Variant("i", mdns),
             CONF_ATTR_CONNECTION_AUTOCONNECT: Variant("b", True),
         },
     }
