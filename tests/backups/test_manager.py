@@ -15,7 +15,7 @@ from supervisor.addons.addon import Addon
 from supervisor.addons.const import AddonBackupMode
 from supervisor.addons.model import AddonModel
 from supervisor.backups.backup import Backup
-from supervisor.backups.const import BackupType
+from supervisor.backups.const import LOCATION_TYPE, BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, AddonState, CoreState
 from supervisor.coresys import CoreSys
@@ -1717,29 +1717,35 @@ async def test_skip_homeassistant_database(
     assert not test_db_shm.exists()
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 @pytest.mark.parametrize(
-    "tar_parent,healthy_expected",
+    ("backup_locations", "location_name", "healthy_expected"),
     [
-        (Path("/data/mounts/test"), True),
-        (Path("/data/backup"), False),
+        (["test"], "test", True),
+        ([None], None, False),
     ],
+    indirect=["backup_locations"],
 )
-def test_backup_remove_error(
+async def test_backup_remove_error(
     coresys: CoreSys,
-    full_backup_mock: Backup,
-    tar_parent: Path,
+    backup_locations: list[LOCATION_TYPE],
+    location_name: str | None,
     healthy_expected: bool,
 ):
     """Test removing a backup error."""
-    full_backup_mock.tarfile.unlink.side_effect = (err := OSError())
-    full_backup_mock.tarfile.parent = tar_parent
+    copy(get_fixture_path("backup_example.tar"), coresys.config.path_backup)
+    await coresys.backups.reload(location=None, filename="backup_example.tar")
+    assert (backup := coresys.backups.get("7fed74c8"))
+
+    backup.all_locations[location_name] = (tar_mock := MagicMock())
+    tar_mock.unlink.side_effect = (err := OSError())
 
     err.errno = errno.EBUSY
-    assert coresys.backups.remove(full_backup_mock) is False
+    assert coresys.backups.remove(backup) is False
     assert coresys.core.healthy is True
 
     err.errno = errno.EBADMSG
-    assert coresys.backups.remove(full_backup_mock) is False
+    assert coresys.backups.remove(backup) is False
     assert coresys.core.healthy is healthy_expected
 
 

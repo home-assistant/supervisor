@@ -8,7 +8,6 @@ import errno
 import logging
 from pathlib import Path
 from shutil import copy
-from typing import Literal
 
 from ..addons.addon import Addon
 from ..const import (
@@ -38,6 +37,7 @@ from .backup import Backup
 from .const import (
     DEFAULT_FREEZE_TIMEOUT,
     LOCATION_CLOUD_BACKUP,
+    LOCATION_TYPE,
     BackupJobStage,
     BackupType,
     RestoreJobStage,
@@ -92,10 +92,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     def _get_base_path(
         self,
-        location: Mount
-        | Literal[LOCATION_CLOUD_BACKUP]
-        | type[DEFAULT]
-        | None = DEFAULT,
+        location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
     ) -> Path:
         """Get base path for backup using location or default location."""
         if location == LOCATION_CLOUD_BACKUP:
@@ -115,10 +112,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     def _get_location_name(
         self,
-        location: Mount
-        | Literal[LOCATION_CLOUD_BACKUP]
-        | type[DEFAULT]
-        | None = DEFAULT,
+        location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
     ) -> str | None:
         """Get name of location (or None for local backup folder)."""
         if location == LOCATION_CLOUD_BACKUP:
@@ -180,10 +174,7 @@ class BackupManager(FileConfiguration, JobGroup):
         sys_type: BackupType,
         password: str | None,
         compressed: bool = True,
-        location: Mount
-        | Literal[LOCATION_CLOUD_BACKUP]
-        | type[DEFAULT]
-        | None = DEFAULT,
+        location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
         extra: dict | None = None,
     ) -> Backup:
         """Initialize a new backup object from name.
@@ -217,10 +208,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
     async def reload(
         self,
-        location: Mount
-        | Literal[LOCATION_CLOUD_BACKUP]
-        | type[DEFAULT]
-        | None = DEFAULT,
+        location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
         filename: str | None = None,
     ) -> bool:
         """Load exists backups."""
@@ -270,7 +258,7 @@ class BackupManager(FileConfiguration, JobGroup):
     def remove(
         self,
         backup: Backup,
-        locations: list[Mount | Literal[LOCATION_CLOUD_BACKUP] | None] | None = None,
+        locations: list[LOCATION_TYPE] | None = None,
     ) -> bool:
         """Remove a backup."""
         targets = (
@@ -304,7 +292,7 @@ class BackupManager(FileConfiguration, JobGroup):
     async def _copy_to_additional_locations(
         self,
         backup: Backup,
-        locations: list[Mount | Literal[LOCATION_CLOUD_BACKUP] | None],
+        locations: list[LOCATION_TYPE],
     ):
         """Copy a backup file to additional locations."""
 
@@ -349,9 +337,8 @@ class BackupManager(FileConfiguration, JobGroup):
     async def import_backup(
         self,
         tar_file: Path,
-        location: Mount | Literal[LOCATION_CLOUD_BACKUP] | None = None,
-        additional_locations: list[Mount | Literal[LOCATION_CLOUD_BACKUP] | None]
-        | None = None,
+        location: LOCATION_TYPE = None,
+        additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Check backup tarfile and import it."""
         backup = Backup(self.coresys, tar_file, "temp", None)
@@ -407,8 +394,7 @@ class BackupManager(FileConfiguration, JobGroup):
         folder_list: list[str],
         homeassistant: bool,
         homeassistant_exclude_database: bool | None,
-        additional_locations: list[Mount | Literal[LOCATION_CLOUD_BACKUP] | None]
-        | None = None,
+        additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Create a backup.
 
@@ -485,14 +471,10 @@ class BackupManager(FileConfiguration, JobGroup):
         *,
         password: str | None = None,
         compressed: bool = True,
-        location: Mount
-        | Literal[LOCATION_CLOUD_BACKUP]
-        | type[DEFAULT]
-        | None = DEFAULT,
+        location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
         homeassistant_exclude_database: bool | None = None,
         extra: dict | None = None,
-        additional_locations: list[Mount | Literal[LOCATION_CLOUD_BACKUP] | None]
-        | None = None,
+        additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Create a full backup."""
         if self._get_base_path(location) in {
@@ -536,14 +518,10 @@ class BackupManager(FileConfiguration, JobGroup):
         password: str | None = None,
         homeassistant: bool = False,
         compressed: bool = True,
-        location: Mount
-        | Literal[LOCATION_CLOUD_BACKUP]
-        | type[DEFAULT]
-        | None = DEFAULT,
+        location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
         homeassistant_exclude_database: bool | None = None,
         extra: dict | None = None,
-        additional_locations: list[Mount | Literal[LOCATION_CLOUD_BACKUP] | None]
-        | None = None,
+        additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Create a partial backup."""
         if self._get_base_path(location) in {

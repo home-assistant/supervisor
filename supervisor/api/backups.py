@@ -9,14 +9,14 @@ import logging
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
-from typing import Any, Literal
+from typing import Any
 
 from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 
 from ..backups.backup import Backup
-from ..backups.const import LOCATION_CLOUD_BACKUP
+from ..backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE
 from ..backups.validate import ALL_FOLDERS, FOLDER_HOMEASSISTANT, days_until_stale
 from ..const import (
     ATTR_ADDONS,
@@ -49,7 +49,6 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden
 from ..jobs import JobSchedulerOptions
 from ..mounts.const import MountUsage
-from ..mounts.mount import Mount
 from ..resolution.const import UnhealthyReason
 from .const import (
     ATTR_ADDITIONAL_LOCATIONS,
@@ -230,9 +229,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_EXTRA: backup.extra,
         }
 
-    def _location_to_mount(
-        self, location: str | None
-    ) -> Literal[LOCATION_CLOUD_BACKUP] | Mount | None:
+    def _location_to_mount(self, location: str | None) -> LOCATION_TYPE:
         """Convert a single location to a mount if possible."""
         if not location or location == LOCATION_CLOUD_BACKUP:
             return location
@@ -298,7 +295,7 @@ class APIBackups(CoreSysAttributes):
     async def backup_full(self, request: web.Request):
         """Create full backup."""
         body = await api_validate(SCHEMA_BACKUP_FULL, request)
-        locations: list[Literal[LOCATION_CLOUD_BACKUP] | Mount | None] | None = None
+        locations: list[LOCATION_TYPE] | None = None
 
         if ATTR_LOCATION in body:
             location_names: list[str | None] = body.pop(ATTR_LOCATION)
@@ -331,7 +328,7 @@ class APIBackups(CoreSysAttributes):
     async def backup_partial(self, request: web.Request):
         """Create a partial backup."""
         body = await api_validate(SCHEMA_BACKUP_PARTIAL, request)
-        locations: list[Literal[LOCATION_CLOUD_BACKUP] | Mount | None] | None = None
+        locations: list[LOCATION_TYPE] | None = None
 
         if ATTR_LOCATION in body:
             location_names: list[str | None] = body.pop(ATTR_LOCATION)
@@ -431,8 +428,8 @@ class APIBackups(CoreSysAttributes):
     @api_process
     async def upload(self, request: web.Request):
         """Upload a backup file."""
-        location: Literal[LOCATION_CLOUD_BACKUP] | Mount | None = None
-        locations: list[Literal[LOCATION_CLOUD_BACKUP] | Mount | None] | None = None
+        location: LOCATION_TYPE = None
+        locations: list[LOCATION_TYPE] | None = None
         tmp_path = self.sys_config.path_tmp
         if ATTR_LOCATION in request.query:
             location_names: list[str] = request.query.getall(ATTR_LOCATION)
