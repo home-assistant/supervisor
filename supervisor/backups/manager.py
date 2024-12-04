@@ -482,6 +482,7 @@ class BackupManager(FileConfiguration, JobGroup):
     async def do_backup_full(
         self,
         name: str = "",
+        *,
         password: str | None = None,
         compressed: bool = True,
         location: Mount
@@ -529,6 +530,7 @@ class BackupManager(FileConfiguration, JobGroup):
     async def do_backup_partial(
         self,
         name: str = "",
+        *,
         addons: list[str] | None = None,
         folders: list[str] | None = None,
         password: str | None = None,
