@@ -30,7 +30,7 @@ from ..dbus.const import (
     UnitActiveState,
 )
 from ..dbus.systemd import SystemdUnit
-from ..docker.const import PATH_BACKUP, PATH_MEDIA, PATH_SHARE
+from ..docker.const import PATH_MEDIA, PATH_SHARE
 from ..exceptions import (
     DBusError,
     DBusSystemdNoSuchUnit,
@@ -171,8 +171,6 @@ class Mount(CoreSysAttributes, ABC):
         This returns none if it is not made available in managed containers.
         """
         match self.usage:
-            case MountUsage.BACKUP:
-                return PurePath(PATH_BACKUP, self.name)
             case MountUsage.MEDIA:
                 return PurePath(PATH_MEDIA, self.name)
             case MountUsage.SHARE:

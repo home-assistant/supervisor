@@ -645,6 +645,10 @@ class BackupMountDownError(BackupError):
     """Raise if mount specified for backup is down."""
 
 
+class BackupDataDiskBadMessageError(BackupError):
+    """Raise if bad message error received from data disk during backup."""
+
+
 class BackupJobError(BackupError, JobException):
     """Raise on Backup job error."""
 

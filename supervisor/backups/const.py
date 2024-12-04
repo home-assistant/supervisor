@@ -23,6 +23,7 @@ class BackupJobStage(StrEnum):
     FINISHING_FILE = "finishing_file"
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
+    COPY_ADDITONAL_LOCATIONS = "copy_additional_locations"
     AWAIT_ADDON_RESTARTS = "await_addon_restarts"
 
 

@@ -34,7 +34,6 @@ from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.const import WSType
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
-from supervisor.jobs import JobSchedulerOptions
 from supervisor.jobs.const import JobCondition
 from supervisor.mounts.mount import Mount
 from supervisor.utils.json import read_json_file, write_json_file
@@ -1900,7 +1899,7 @@ async def test_reload_multiple_locations(coresys: CoreSys, tmp_supervisor_data: 
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.location == ".cloud_backup"
     assert backup.locations == [".cloud_backup"]
-    assert backup.all_locations == {".cloud_backup"}
+    assert backup.all_locations.keys() == {".cloud_backup"}
 
     copy(backup_file, tmp_supervisor_data / "backup")
     await coresys.backups.reload()
@@ -1909,7 +1908,7 @@ async def test_reload_multiple_locations(coresys: CoreSys, tmp_supervisor_data: 
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.location is None
     assert backup.locations == [None]
-    assert backup.all_locations == {".cloud_backup", None}
+    assert backup.all_locations.keys() == {".cloud_backup", None}
 
     copy(backup_file, mount_dir)
     await coresys.backups.reload()
@@ -1919,7 +1918,7 @@ async def test_reload_multiple_locations(coresys: CoreSys, tmp_supervisor_data: 
     assert backup.location in {None, "backup_test"}
     assert None in backup.locations
     assert "backup_test" in backup.locations
-    assert backup.all_locations == {".cloud_backup", None, "backup_test"}
+    assert backup.all_locations.keys() == {".cloud_backup", None, "backup_test"}
 
 
 @pytest.mark.usefixtures("mount_propagation", "mock_is_mount", "path_extern")
@@ -1951,7 +1950,7 @@ async def test_partial_reload_multiple_locations(
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.location == ".cloud_backup"
     assert backup.locations == [".cloud_backup"]
-    assert backup.all_locations == {".cloud_backup"}
+    assert backup.all_locations.keys() == {".cloud_backup"}
 
     copy(backup_file, tmp_supervisor_data / "backup")
     await coresys.backups.reload(location=None, filename="backup_example.tar")
@@ -1960,7 +1959,7 @@ async def test_partial_reload_multiple_locations(
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.location is None
     assert backup.locations == [None]
-    assert backup.all_locations == {".cloud_backup", None}
+    assert backup.all_locations.keys() == {".cloud_backup", None}
 
     copy(backup_file, mount_dir)
     await coresys.backups.reload(location=mount, filename="backup_example.tar")
@@ -1968,66 +1967,5 @@ async def test_partial_reload_multiple_locations(
     assert coresys.backups.list_backups
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.location is None
-    assert None in backup.locations
-    assert "backup_test" in backup.locations
-    assert backup.all_locations == {".cloud_backup", None, "backup_test"}
-
-
-@pytest.mark.parametrize(
-    ("location", "folder"), [(None, "backup"), (".cloud_backup", "cloud_backup")]
-)
-@pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_partial_backup_complete_ws_message(
-    coresys: CoreSys, ha_ws_client: AsyncMock, location: str | None, folder: str
-):
-    """Test WS message notifies core when a partial backup is complete."""
-    coresys.core.state = CoreState.RUNNING
-    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    ha_ws_client.ha_version = AwesomeVersion("2025.12.0")
-
-    # Test a partial backup
-    job, backup_task = coresys.jobs.schedule_job(
-        coresys.backups.do_backup_partial,
-        JobSchedulerOptions(),
-        "test",
-        folders=["media"],
-        location=location,
-    )
-    backup: Backup = await backup_task
-
-    assert ha_ws_client.async_send_command.call_args_list[-3].args[0] == {
-        "type": "backup/supervisor/backup_complete",
-        "data": {
-            "job_id": job.uuid,
-            "slug": backup.slug,
-            "path": f"/{folder}/{backup.slug}.tar",
-        },
-    }
-
-
-@pytest.mark.parametrize(
-    ("location", "folder"), [(None, "backup"), (".cloud_backup", "cloud_backup")]
-)
-@pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_full_backup_complete_ws_message(
-    coresys: CoreSys, ha_ws_client: AsyncMock, location: str | None, folder: str
-):
-    """Test WS message notifies core when a full backup is complete."""
-    coresys.core.state = CoreState.RUNNING
-    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    ha_ws_client.ha_version = AwesomeVersion("2025.12.0")
-
-    # Test a full backup
-    job, backup_task = coresys.jobs.schedule_job(
-        coresys.backups.do_backup_full, JobSchedulerOptions(), "test", location=location
-    )
-    backup: Backup = await backup_task
-
-    assert ha_ws_client.async_send_command.call_args_list[-3].args[0] == {
-        "type": "backup/supervisor/backup_complete",
-        "data": {
-            "job_id": job.uuid,
-            "slug": backup.slug,
-            "path": f"/{folder}/{backup.slug}.tar",
-        },
-    }
+    assert backup.locations == [None, "backup_test"]
+    assert backup.all_locations.keys() == {".cloud_backup", None, "backup_test"}
