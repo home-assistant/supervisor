@@ -2,10 +2,11 @@
 
 import asyncio
 from collections.abc import Awaitable
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 
 from ..addons.const import ADDON_UPDATE_CONDITIONS
+from ..backups.const import LOCATION_CLOUD_BACKUP
 from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError, HomeAssistantError, ObserverError
@@ -42,7 +43,11 @@ RUN_WATCHDOG_HOMEASSISTANT_API = 120
 RUN_WATCHDOG_ADDON_APPLICATON = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
+RUN_CORE_BACKUP_CLEANUP = 86200
+
 PLUGIN_AUTO_UPDATE_CONDITIONS = PLUGIN_UPDATE_CONDITIONS + [JobCondition.RUNNING]
+
+OLD_BACKUP_THRESHOLD = timedelta(days=2)
 
 
 class Tasks(CoreSysAttributes):
@@ -81,6 +86,11 @@ class Tasks(CoreSysAttributes):
         )
         self.sys_scheduler.register_task(
             self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
+        )
+
+        # Cleanup
+        self.sys_scheduler.register_task(
+            self._core_backup_cleanup, RUN_CORE_BACKUP_CLEANUP
         )
 
         _LOGGER.info("All core tasks are scheduled")
@@ -343,3 +353,15 @@ class Tasks(CoreSysAttributes):
         # If there's a new version of supervisor, start update immediately
         if self.sys_supervisor.need_update:
             await self._update_supervisor()
+
+    @Job(name="tasks_core_backup_cleanup", conditions=[JobCondition.HEALTHY])
+    async def _core_backup_cleanup(self) -> None:
+        """Core backup is intended for transient use, remove any old backups that got left behind."""
+        old_backups = [
+            backup
+            for backup in self.sys_backups.list_backups
+            if LOCATION_CLOUD_BACKUP in backup.all_locations
+            and datetime.fromisoformat(backup.date) < utcnow() - OLD_BACKUP_THRESHOLD
+        ]
+        for backup in old_backups:
+            self.sys_backups.remove(backup, [LOCATION_CLOUD_BACKUP])

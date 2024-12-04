@@ -1969,3 +1969,40 @@ async def test_partial_reload_multiple_locations(
     assert backup.location is None
     assert backup.locations == [None, "backup_test"]
     assert backup.all_locations.keys() == {".cloud_backup", None, "backup_test"}
+
+
+async def test_backup_remove_multiple_locations(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test removing a backup that exists in multiple locations."""
+    backup_file = get_fixture_path("backup_example.tar")
+    location_1 = Path(copy(backup_file, coresys.config.path_backup))
+    location_2 = Path(copy(backup_file, coresys.config.path_core_backup))
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+
+    coresys.backups.remove(backup)
+    assert not location_1.exists()
+    assert not location_2.exists()
+    assert not coresys.backups.get("7fed74c8")
+
+
+async def test_backup_remove_one_location_of_multiple(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test removing a backup that exists in multiple locations from one location."""
+    backup_file = get_fixture_path("backup_example.tar")
+    location_1 = Path(copy(backup_file, coresys.config.path_backup))
+    location_2 = Path(copy(backup_file, coresys.config.path_core_backup))
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+
+    coresys.backups.remove(backup, locations=[".cloud_backup"])
+    assert location_1.exists()
+    assert not location_2.exists()
+    assert coresys.backups.get("7fed74c8")
+    assert backup.all_locations == {None: location_1}

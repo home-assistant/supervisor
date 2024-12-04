@@ -267,21 +267,37 @@ class BackupManager(FileConfiguration, JobGroup):
             await asyncio.wait(tasks)
         return True
 
-    def remove(self, backup: Backup) -> bool:
+    def remove(
+        self,
+        backup: Backup,
+        locations: list[Mount | Literal[LOCATION_CLOUD_BACKUP] | None] | None = None,
+    ) -> bool:
         """Remove a backup."""
-        try:
-            backup.tarfile.unlink()
-            self._backups.pop(backup.slug, None)
-            _LOGGER.info("Removed backup file %s", backup.slug)
+        targets = (
+            [
+                self._get_location_name(location)
+                for location in locations
+                if location in backup.all_locations
+            ]
+            if locations
+            else list(backup.all_locations.keys())
+        )
+        for location in targets:
+            try:
+                backup.all_locations[location].unlink()
+                del backup.all_locations[location]
+            except OSError as err:
+                if err.errno == errno.EBADMSG and location in {
+                    None,
+                    LOCATION_CLOUD_BACKUP,
+                }:
+                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                _LOGGER.error("Can't remove backup %s: %s", backup.slug, err)
+                return False
 
-        except OSError as err:
-            if err.errno == errno.EBADMSG and backup.tarfile.parent in {
-                self.sys_config.path_backup,
-                self.sys_config.path_core_backup,
-            }:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-            _LOGGER.error("Can't remove backup %s: %s", backup.slug, err)
-            return False
+        # If backup has been removed from all locations, remove it from cache
+        if not backup.all_locations:
+            del self._backups[backup.slug]
 
         return True
 
