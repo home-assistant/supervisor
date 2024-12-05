@@ -6,6 +6,7 @@ from shutil import copy
 from typing import Any
 from unittest.mock import ANY, AsyncMock, PropertyMock, patch
 
+from aiohttp import MultipartWriter
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
@@ -499,65 +500,10 @@ async def test_reload(
     assert backup.locations == [location]
 
 
-@pytest.mark.parametrize(
-    ("folder", "location"), [("backup", None), ("core/backup", ".cloud_backup")]
-)
-async def test_partial_reload(
-    request: pytest.FixtureRequest,
-    api_client: TestClient,
-    coresys: CoreSys,
-    tmp_supervisor_data: Path,
-    folder: str,
-    location: str | None,
-):
-    """Test partial backups reload."""
-    assert not coresys.backups.list_backups
-
-    backup_file = get_fixture_path("backup_example.tar")
-    copy(backup_file, tmp_supervisor_data / folder)
-
-    resp = await api_client.post(
-        "/backups/reload", json={"location": location, "filename": "backup_example.tar"}
-    )
-    assert resp.status == 200
-
-    assert len(coresys.backups.list_backups) == 1
-    assert (backup := coresys.backups.get("7fed74c8"))
-    assert backup.location == location
-    assert backup.locations == [location]
-
-
-async def test_invalid_reload(api_client: TestClient):
-    """Test invalid reload."""
-    resp = await api_client.post("/backups/reload", json={"location": "no_filename"})
-    assert resp.status == 400
-
-    resp = await api_client.post(
-        "/backups/reload", json={"filename": "no_location.tar"}
-    )
-    assert resp.status == 400
-
-    resp = await api_client.post(
-        "/backups/reload", json={"location": None, "filename": "no/sub/paths.tar"}
-    )
-    assert resp.status == 400
-
-    resp = await api_client.post(
-        "/backups/reload", json={"location": None, "filename": "not_tar.tar.gz"}
-    )
-    assert resp.status == 400
-
-
 @pytest.mark.usefixtures("install_addon_ssh")
-@pytest.mark.parametrize("api_client", TEST_ADDON_SLUG, indirect=True)
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
 async def test_cloud_backup_core_only(api_client: TestClient, mock_full_backup: Backup):
     """Test only core can access cloud backup location."""
-    resp = await api_client.post(
-        "/backups/reload",
-        json={"location": ".cloud_backup", "filename": "caller_not_core.tar"},
-    )
-    assert resp.status == 403
-
     resp = await api_client.post(
         "/backups/new/full",
         json={
@@ -589,14 +535,132 @@ async def test_cloud_backup_core_only(api_client: TestClient, mock_full_backup: 
     resp = await api_client.delete(f"/backups/{mock_full_backup.slug}")
     assert resp.status == 403
 
+    resp = await api_client.get(f"/backups/{mock_full_backup.slug}/download")
+    assert resp.status == 403
 
-async def test_partial_reload_errors_no_file(
+
+async def test_upload_download(
+    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test upload and download of a backup."""
+    # Capture our backup initially
+    backup_file = get_fixture_path("backup_example.tar")
+    backup = Backup(coresys, backup_file, "in", None)
+    await backup.load()
+
+    # Upload it and confirm it matches what we had
+    with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
+        mp.append(file)
+        resp = await api_client.post("/backups/new/upload", data=mp)
+
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["data"]["slug"] == "7fed74c8"
+    assert backup == coresys.backups.get("7fed74c8")
+
+    # Download it and confirm it against the original again
+    resp = await api_client.get("/backups/7fed74c8/download")
+    assert resp.status == 200
+    out_file = tmp_supervisor_data / "backup_example.tar"
+    with out_file.open("wb") as out:
+        out.write(await resp.read())
+
+    out_backup = Backup(coresys, out_file, "out", None)
+    await out_backup.load()
+    assert backup == out_backup
+
+
+@pytest.mark.usefixtures("path_extern")
+@pytest.mark.parametrize(
+    ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
+)
+async def test_backup_to_multiple_locations(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    backup_type: str,
+    inputs: dict[str, Any],
+):
+    """Test making a backup to multiple locations."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    resp = await api_client.post(
+        f"/backups/new/{backup_type}",
+        json={"name": "Multiple locations test", "location": [None, ".cloud_backup"]}
+        | inputs,
+    )
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["result"] == "ok"
+    slug = result["data"]["slug"]
+
+    orig_backup = coresys.config.path_backup / f"{slug}.tar"
+    copy_backup = coresys.config.path_core_backup / f"{slug}.tar"
+    assert orig_backup.exists()
+    assert copy_backup.exists()
+    assert coresys.backups.get(slug).all_locations == {
+        None: orig_backup,
+        ".cloud_backup": copy_backup,
+    }
+    assert coresys.backups.get(slug).location is None
+
+
+@pytest.mark.parametrize(
+    ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
+)
+async def test_backup_with_extras(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    backup_type: str,
+    inputs: dict[str, Any],
+):
+    """Test backup including extra metdata."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    resp = await api_client.post(
+        f"/backups/new/{backup_type}",
+        json={"name": "Extras test", "extra": {"user": "test", "scheduled": True}}
+        | inputs,
+    )
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["result"] == "ok"
+    slug = result["data"]["slug"]
+
+    resp = await api_client.get(f"/backups/{slug}/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["result"] == "ok"
+    slug = result["data"]["extra"] == {"user": "test", "scheduled": True}
+
+
+async def test_upload_to_multiple_locations(
     api_client: TestClient,
     coresys: CoreSys,
     tmp_supervisor_data: Path,
 ):
-    """Partial reload returns error when asked to reload non-existent file."""
-    resp = await api_client.post(
-        "/backups/reload", json={"location": None, "filename": "does_not_exist.tar"}
-    )
-    assert resp.status == 400
+    """Test uploading a backup to multiple locations."""
+    backup_file = get_fixture_path("backup_example.tar")
+
+    with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
+        mp.append(file)
+        resp = await api_client.post(
+            "/backups/new/upload?location=&location=.cloud_backup", data=mp
+        )
+
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["data"]["slug"] == "7fed74c8"
+
+    orig_backup = coresys.config.path_backup / "7fed74c8.tar"
+    copy_backup = coresys.config.path_core_backup / "7fed74c8.tar"
+    assert orig_backup.exists()
+    assert copy_backup.exists()
+    assert coresys.backups.get("7fed74c8").all_locations == {
+        None: orig_backup,
+        ".cloud_backup": copy_backup,
+    }
+    assert coresys.backups.get("7fed74c8").location is None

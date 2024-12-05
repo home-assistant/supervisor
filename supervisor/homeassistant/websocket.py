@@ -34,7 +34,6 @@ MIN_VERSION = {
     WSType.SUPERVISOR_EVENT: "2021.2.4",
     WSType.BACKUP_START: "2022.1.0",
     WSType.BACKUP_END: "2022.1.0",
-    WSType.BACKUP_COMPLETE: "2025.11.99",
 }
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

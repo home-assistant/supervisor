@@ -428,7 +428,6 @@ class DockerAddon(DockerInterface):
                     target=addon_mapping[MappingType.BACKUP].path
                     or PATH_BACKUP.as_posix(),
                     read_only=addon_mapping[MappingType.BACKUP].read_only,
-                    propagation=PropagationMode.RSLAVE,
                 )
             )
 

@@ -22,8 +22,6 @@ from .const import (
     MOUNT_DEV,
     MOUNT_MACHINE_ID,
     MOUNT_UDEV,
-    PATH_BACKUP,
-    PATH_CLOUD_BACKUP,
     PATH_MEDIA,
     PATH_PUBLIC_CONFIG,
     PATH_SHARE,
@@ -131,19 +129,6 @@ class DockerHomeAssistant(DockerInterface):
                         target=PATH_MEDIA.as_posix(),
                         read_only=False,
                         propagation=PropagationMode.RSLAVE.value,
-                    ),
-                    Mount(
-                        type=MountType.BIND,
-                        source=self.sys_config.path_extern_backup.as_posix(),
-                        target=PATH_BACKUP.as_posix(),
-                        read_only=False,
-                        propagation=PropagationMode.RSLAVE.value,
-                    ),
-                    Mount(
-                        type=MountType.BIND,
-                        source=self.sys_config.path_extern_core_backup.as_posix(),
-                        target=PATH_CLOUD_BACKUP.as_posix(),
-                        read_only=False,
                     ),
                     # Configuration audio
                     Mount(

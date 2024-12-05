@@ -46,14 +46,13 @@ async def test_fixup(
         suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
     )
 
-    systemd_unit_service.active_state = ["active", "inactive", "active", "inactive"]
+    systemd_unit_service.active_state = ["active", "inactive"]
     await mount_execute_remove()
 
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
     assert coresys.mounts.mounts == []
     assert systemd_service.StopUnit.calls == [
-        ("mnt-data-supervisor-backup-test.mount", "fail"),
-        ("mnt-data-supervisor-mounts-test.mount", "fail"),
+        ("mnt-data-supervisor-mounts-test.mount", "fail")
     ]
     coresys.mounts.save_data.assert_called_once()

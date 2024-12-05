@@ -12,6 +12,7 @@ CONTENT_TYPE_X_LOG = "text/x-log"
 
 COOKIE_INGRESS = "ingress_session"
 
+ATTR_ADDITIONAL_LOCATIONS = "additional_locations"
 ATTR_AGENT_VERSION = "agent_version"
 ATTR_APPARMOR_VERSION = "apparmor_version"
 ATTR_ATTRIBUTES = "attributes"

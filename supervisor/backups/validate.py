@@ -16,6 +16,7 @@ from ..const import (
     ATTR_DAYS_UNTIL_STALE,
     ATTR_DOCKER,
     ATTR_EXCLUDE_DATABASE,
+    ATTR_EXTRA,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
@@ -132,6 +133,7 @@ SCHEMA_BACKUP = vol.Schema(
             unique_addons,
         ),
         vol.Optional(ATTR_REPOSITORIES, default=list): repositories,
+        vol.Optional(ATTR_EXTRA, default=dict): dict,
     },
     extra=vol.ALLOW_EXTRA,
 )

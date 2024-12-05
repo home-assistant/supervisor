@@ -81,7 +81,7 @@ async def test_api_create_mount(
             "share": "backups",
             "state": "active",
             "read_only": False,
-            "user_path": "/backup/backup_test",
+            "user_path": None,
         }
     ]
     coresys.mounts.save_data.assert_called_once()
@@ -258,7 +258,7 @@ async def test_api_update_mount(
             "share": "new_backups",
             "state": "active",
             "read_only": False,
-            "user_path": "/backup/backup_test",
+            "user_path": None,
         }
     ]
     coresys.mounts.save_data.assert_called_once()
@@ -294,9 +294,8 @@ async def test_api_update_dbus_error_mount_remains(
     """Test mount remains in list with unsuccessful state if dbus error occurs during update."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_unit_service.active_state = ["failed", "inactive", "failed", "inactive"]
+    systemd_unit_service.active_state = ["failed", "inactive"]
     systemd_service.response_get_unit = [
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
         DBusError("org.freedesktop.systemd1.NoSuchUnit", "error"),
     ]
@@ -328,7 +327,7 @@ async def test_api_update_dbus_error_mount_remains(
             "share": "backups",
             "state": None,
             "read_only": False,
-            "user_path": "/backup/backup_test",
+            "user_path": None,
         }
     ]
 
@@ -376,7 +375,7 @@ async def test_api_update_dbus_error_mount_remains(
             "share": "backups",
             "state": None,
             "read_only": False,
-            "user_path": "/backup/backup_test",
+            "user_path": None,
         }
     ]
 

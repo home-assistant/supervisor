@@ -2,6 +2,8 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
+from shutil import copy
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -16,7 +18,7 @@ from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.misc.tasks import Tasks
 from supervisor.supervisor import Supervisor
 
-from tests.common import load_fixture
+from tests.common import get_fixture_path, load_fixture
 
 # pylint: disable=protected-access
 
@@ -208,3 +210,32 @@ async def test_reload_updater_triggers_supervisor_update(
         version_resp.read.return_value = version_data.replace("2024.10.0", "2024.10.1")
         await tasks._reload_updater()
         update.assert_called_once()
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_core_backup_cleanup(
+    tasks: Tasks, coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test core backup task cleans up old backup files."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    # Put an old and new backup in folder
+    copy(get_fixture_path("backup_example.tar"), coresys.config.path_core_backup)
+    await coresys.backups.reload(
+        location=".cloud_backup", filename="backup_example.tar"
+    )
+    assert (old_backup := coresys.backups.get("7fed74c8"))
+    new_backup = await coresys.backups.do_backup_partial(
+        name="test", folders=["ssl"], location=".cloud_backup"
+    )
+
+    old_tar = old_backup.tarfile
+    new_tar = new_backup.tarfile
+    # pylint: disable-next=protected-access
+    await tasks._core_backup_cleanup()
+
+    assert coresys.backups.get(new_backup.slug)
+    assert not coresys.backups.get("7fed74c8")
+    assert new_tar.exists()
+    assert not old_tar.exists()

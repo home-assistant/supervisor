@@ -32,7 +32,6 @@ class WSType(StrEnum):
     SUPERVISOR_EVENT = "supervisor/event"
     BACKUP_START = "backup/start"
     BACKUP_END = "backup/end"
-    BACKUP_COMPLETE = "backup/supervisor/backup_complete"
 
 
 class WSEvent(StrEnum):
