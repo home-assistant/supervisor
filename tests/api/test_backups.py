@@ -25,8 +25,12 @@ from tests.common import get_fixture_path
 from tests.const import TEST_ADDON_SLUG
 
 
-async def test_info(api_client, coresys: CoreSys, mock_full_backup: Backup):
+async def test_info(
+    api_client, coresys: CoreSys, mock_full_backup: Backup, tmp_path: Path
+):
     """Test info endpoint."""
+    copy(get_fixture_path("backup_example.tar"), tmp_path / "test_backup.tar")
+
     resp = await api_client.get("/backups/info")
     result = await resp.json()
     assert result["data"]["days_until_stale"] == 30
@@ -35,10 +39,38 @@ async def test_info(api_client, coresys: CoreSys, mock_full_backup: Backup):
     assert result["data"]["backups"][0]["content"]["homeassistant"] is True
     assert len(result["data"]["backups"][0]["content"]["addons"]) == 1
     assert result["data"]["backups"][0]["content"]["addons"][0] == "local_ssh"
+    assert result["data"]["backups"][0]["size"] == 0.01
+    assert result["data"]["backups"][0]["size_bytes"] == 10240
 
 
-async def test_list(api_client, coresys: CoreSys, mock_full_backup: Backup):
+async def test_backup_more_info(
+    api_client, coresys: CoreSys, mock_full_backup: Backup, tmp_path: Path
+):
+    """Test info endpoint."""
+    copy(get_fixture_path("backup_example.tar"), tmp_path / "test_backup.tar")
+
+    resp = await api_client.get("/backups/test/info")
+    result = await resp.json()
+    assert result["data"]["slug"] == "test"
+    assert result["data"]["homeassistant"] == "2022.8.0"
+    assert len(result["data"]["addons"]) == 1
+    assert result["data"]["addons"][0] == {
+        "name": "SSH",
+        "size": 0,
+        "slug": "local_ssh",
+        "version": "1.0.0",
+    }
+    assert result["data"]["size"] == 0.01
+    assert result["data"]["size_bytes"] == 10240
+    assert result["data"]["homeassistant_exclude_database"] is False
+
+
+async def test_list(
+    api_client, coresys: CoreSys, mock_full_backup: Backup, tmp_path: Path
+):
     """Test list endpoint."""
+    copy(get_fixture_path("backup_example.tar"), tmp_path / "test_backup.tar")
+
     resp = await api_client.get("/backups")
     result = await resp.json()
     assert len(result["data"]["backups"]) == 1
@@ -46,6 +78,8 @@ async def test_list(api_client, coresys: CoreSys, mock_full_backup: Backup):
     assert result["data"]["backups"][0]["content"]["homeassistant"] is True
     assert len(result["data"]["backups"][0]["content"]["addons"]) == 1
     assert result["data"]["backups"][0]["content"]["addons"][0] == "local_ssh"
+    assert result["data"]["backups"][0]["size"] == 0.01
+    assert result["data"]["backups"][0]["size_bytes"] == 10240
 
 
 async def test_options(api_client, coresys: CoreSys):
