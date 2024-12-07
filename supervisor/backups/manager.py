@@ -359,7 +359,7 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
 
         # Load new backup
-        backup = Backup(self.coresys, tar_origin, backup.slug, None, backup.data)
+        backup = Backup(self.coresys, tar_origin, backup.slug, location, backup.data)
         if not await backup.load():
             # Remove invalid backup from location it was moved to
             backup.tarfile.unlink()
@@ -369,7 +369,7 @@ class BackupManager(FileConfiguration, JobGroup):
         # Already exists?
         if (
             backup.slug in self._backups
-            and backup.all_locations != self._backups[backup].all_locations
+            and backup.all_locations != self._backups[backup.slug].all_locations
         ):
             _LOGGER.warning("Backup %s already exists! consolidating", backup.slug)
             try:
