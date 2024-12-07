@@ -6,6 +6,7 @@ from collections import defaultdict
 from collections.abc import Awaitable
 from copy import deepcopy
 from datetime import timedelta
+from functools import cached_property
 import io
 import json
 import logging
@@ -213,12 +214,17 @@ class Backup(JobGroup):
             key=location_sort_key,
         )
 
-    @property
+    @cached_property
     def size(self) -> float:
         """Return backup size."""
+        return round(self.size_bytes / 1048576, 2)  # calc mbyte
+
+    @cached_property
+    def size_bytes(self) -> int:
+        """Return backup size in bytes."""
         if not self.tarfile.is_file():
             return 0
-        return round(self.tarfile.stat().st_size / 1048576, 2)  # calc mbyte
+        return self.tarfile.stat().st_size
 
     @property
     def is_new(self) -> bool:

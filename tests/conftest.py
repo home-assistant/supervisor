@@ -30,6 +30,7 @@ from supervisor.const import (
     ATTR_ADDONS,
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_DATE,
+    ATTR_EXCLUDE_DATABASE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
@@ -580,7 +581,7 @@ def install_addon_example(coresys: CoreSys, repository):
 @pytest.fixture
 async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a full backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test", None)
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup.tar"), "test", None)
     mock_backup.new("Test", utcnow().isoformat(), BackupType.FULL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
@@ -596,6 +597,7 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     mock_backup._data[ATTR_HOMEASSISTANT] = {
         ATTR_VERSION: AwesomeVersion("2022.8.0"),
         ATTR_SIZE: 0,
+        ATTR_EXCLUDE_DATABASE: False,
     }
     coresys.backups._backups = {"test": mock_backup}
     yield mock_backup
@@ -604,7 +606,7 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
 @pytest.fixture
 async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a partial backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test", None)
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup.tar"), "test", None)
     mock_backup.new("Test", utcnow().isoformat(), BackupType.PARTIAL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
@@ -620,6 +622,7 @@ async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     mock_backup._data[ATTR_HOMEASSISTANT] = {
         ATTR_VERSION: AwesomeVersion("2022.8.0"),
         ATTR_SIZE: 0,
+        ATTR_EXCLUDE_DATABASE: False,
     }
     coresys.backups._backups = {"test": mock_backup}
     yield mock_backup

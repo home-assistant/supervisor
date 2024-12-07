@@ -54,6 +54,7 @@ from .const import (
     ATTR_ADDITIONAL_LOCATIONS,
     ATTR_BACKGROUND,
     ATTR_LOCATIONS,
+    ATTR_SIZE_BYTES,
     CONTENT_TYPE_TAR,
 )
 from .utils import api_process, api_validate
@@ -145,6 +146,7 @@ class APIBackups(CoreSysAttributes):
                 ATTR_DATE: backup.date,
                 ATTR_TYPE: backup.sys_type,
                 ATTR_SIZE: backup.size,
+                ATTR_SIZE_BYTES: backup.size_bytes,
                 ATTR_LOCATION: backup.location,
                 ATTR_LOCATIONS: backup.locations,
                 ATTR_PROTECTED: backup.protected,
@@ -216,6 +218,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_NAME: backup.name,
             ATTR_DATE: backup.date,
             ATTR_SIZE: backup.size,
+            ATTR_SIZE_BYTES: backup.size_bytes,
             ATTR_COMPRESSED: backup.compressed,
             ATTR_PROTECTED: backup.protected,
             ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
