@@ -1,6 +1,8 @@
 """Test docker addon setup."""
 
+import asyncio
 from ipaddress import IPv4Address
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
@@ -12,12 +14,17 @@ from supervisor.addons import validate as vd
 from supervisor.addons.addon import Addon
 from supervisor.addons.model import Data
 from supervisor.addons.options import AddonOptions
+from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
+from supervisor.dbus.agent.cgroup import CGroup
 from supervisor.docker.addon import DockerAddon
+from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import CoreDNSError, DockerNotFound
+from supervisor.hardware.data import Device
+from supervisor.os.manager import OSManager
 from supervisor.plugins.dns import PluginDns
-from supervisor.resolution.const import ContextType, IssueType
-from supervisor.resolution.data import Issue
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.data import Issue, Suggestion
 
 from ..common import load_json_fixture
 from . import DEV_MOUNT
@@ -380,3 +387,113 @@ async def test_addon_stop_delete_host_error(
         await docker_addon.stop()
 
         capture_exception.assert_called_once_with(err)
+
+
+TEST_DEV_PATH = "/dev/ttyAMA0"
+TEST_SYSFS_PATH = "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM0"
+TEST_HW_DEVICE = Device(
+    name="ttyACM0",
+    path=Path("/dev/ttyAMA0"),
+    sysfs=Path(
+        "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0/tty/ttyACM0"
+    ),
+    subsystem="tty",
+    parent=Path(
+        "/sys/devices/platform/soc/ffe09000.usb/ff500000.usb/xhci-hcd.0.auto/usb1/1-1/1-1.1/1-1.1:1.0"
+    ),
+    links=[
+        Path(
+            "/dev/serial/by-id/usb-Texas_Instruments_TI_CC2531_USB_CDC___0X0123456789ABCDEF-if00"
+        ),
+        Path("/dev/serial/by-path/platform-xhci-hcd.0.auto-usb-0:1.1:1.0"),
+        Path("/dev/serial/by-path/platform-xhci-hcd.0.auto-usbv2-0:1.1:1.0"),
+    ],
+    attributes={},
+    children=[],
+)
+
+
+@pytest.mark.usefixtures("path_extern")
+@pytest.mark.parametrize(
+    ("dev_path", "cgroup", "is_os"),
+    [
+        (TEST_DEV_PATH, "1", True),
+        (TEST_SYSFS_PATH, "1", True),
+        (TEST_DEV_PATH, "1", False),
+        (TEST_SYSFS_PATH, "1", False),
+        (TEST_DEV_PATH, "2", True),
+        (TEST_SYSFS_PATH, "2", True),
+    ],
+)
+async def test_addon_new_device(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    docker: DockerAPI,
+    dev_path: str,
+    cgroup: str,
+    is_os: bool,
+):
+    """Test new device that is listed in static devices."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.data["devices"] = [dev_path]
+    container.id = 123
+    docker.info.cgroup = cgroup
+
+    with (
+        patch.object(Addon, "write_options"),
+        patch.object(OSManager, "available", new=PropertyMock(return_value=is_os)),
+        patch.object(CGroup, "add_devices_allowed") as add_devices,
+    ):
+        await install_addon_ssh.start()
+
+        coresys.bus.fire_event(
+            BusEvent.HARDWARE_NEW_DEVICE,
+            TEST_HW_DEVICE,
+        )
+        await asyncio.sleep(0.01)
+
+        add_devices.assert_called_once_with(123, "c 0:0 rwm")
+
+
+@pytest.mark.usefixtures("path_extern")
+@pytest.mark.parametrize("dev_path", [TEST_DEV_PATH, TEST_SYSFS_PATH])
+async def test_addon_new_device_no_haos(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    docker: DockerAPI,
+    dev_path: str,
+):
+    """Test new device that is listed in static devices on non HAOS system with CGroup V2."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.data["devices"] = [dev_path]
+    docker.info.cgroup = "2"
+
+    with (
+        patch.object(Addon, "write_options"),
+        patch.object(OSManager, "available", new=PropertyMock(return_value=False)),
+        patch.object(CGroup, "add_devices_allowed") as add_devices,
+    ):
+        await install_addon_ssh.start()
+
+        coresys.bus.fire_event(
+            BusEvent.HARDWARE_NEW_DEVICE,
+            TEST_HW_DEVICE,
+        )
+        await asyncio.sleep(0.01)
+
+        add_devices.assert_not_called()
+
+    # Issue added with hardware event since access cannot be added dynamically
+    assert install_addon_ssh.device_access_missing_issue in coresys.resolution.issues
+    assert (
+        Suggestion(
+            SuggestionType.EXECUTE_RESTART, ContextType.ADDON, reference="local_ssh"
+        )
+        in coresys.resolution.suggestions
+    )
+
+    # Stopping and removing the container clears it as access granted on next start
+    await install_addon_ssh.stop()
+    assert coresys.resolution.issues == []
+    assert coresys.resolution.suggestions == []

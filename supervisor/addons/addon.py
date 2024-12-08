@@ -148,6 +148,9 @@ class Addon(AddonModel):
         self._boot_failed_issue = Issue(
             IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug
         )
+        self._device_access_missing_issue = Issue(
+            IssueType.DEVICE_ACCESS_MISSING, ContextType.ADDON, reference=self.slug
+        )
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -157,6 +160,11 @@ class Addon(AddonModel):
     def boot_failed_issue(self) -> Issue:
         """Get issue used if start on boot failed."""
         return self._boot_failed_issue
+
+    @property
+    def device_access_missing_issue(self) -> Issue:
+        """Get issue used if device access is missing and can't be automatically added."""
+        return self._device_access_missing_issue
 
     @property
     def state(self) -> AddonState:
@@ -181,6 +189,13 @@ class Addon(AddonModel):
             and self.boot_failed_issue in self.sys_resolution.issues
         ):
             self.sys_resolution.dismiss_issue(self.boot_failed_issue)
+
+        # Dismiss device access missing issue if present and we stopped
+        if (
+            new_state == AddonState.STOPPED
+            and self.device_access_missing_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self.device_access_missing_issue)
 
         self.sys_homeassistant.websocket.send_message(
             {

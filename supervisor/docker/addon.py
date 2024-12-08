@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from attr import evolve
 from awesomeversion import AwesomeVersion
 import docker
 from docker.types import Mount
@@ -40,7 +41,7 @@ from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
 from ..utils.sentry import capture_exception
 from .const import (
     ENV_TIME,
@@ -802,6 +803,13 @@ class DockerAddon(DockerInterface):
 
         await super().stop(remove_container)
 
+        # If there is a device access issue and the container is removed, clear it
+        if (
+            remove_container
+            and self.addon.device_access_missing_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self.addon.device_access_missing_issue)
+
     async def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
     ) -> None:
@@ -838,6 +846,16 @@ class DockerAddon(DockerInterface):
             raise DockerError(
                 f"Can't process Hardware Event on {self.name}: {err!s}", _LOGGER.error
             ) from err
+
+        if (
+            self.sys_docker.info.cgroup == CGROUP_V2_VERSION
+            and not self.sys_os.available
+        ):
+            self.sys_resolution.add_issue(
+                evolve(self.addon.device_access_missing_issue),
+                suggestions=[SuggestionType.EXECUTE_RESTART],
+            )
+            return
 
         permission = self.sys_hardware.policy.get_cgroups_rule(device)
         try:
