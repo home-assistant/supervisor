@@ -15,6 +15,9 @@ MINIMUM_FULL_BACKUPS = 2
 DNS_CHECK_HOST = "_checkdns.home-assistant.io"
 DNS_ERROR_NO_DATA = 1
 
+CGROUP_V1_VERSION = "1"
+CGROUP_V2_VERSION = "2"
+
 
 class ContextType(StrEnum):
     """Place where somethings was happening."""
@@ -77,6 +80,7 @@ class IssueType(StrEnum):
     CORRUPT_FILESYSTEM = "corrupt_filesystem"
     DETACHED_ADDON_MISSING = "detached_addon_missing"
     DETACHED_ADDON_REMOVED = "detached_addon_removed"
+    DEVICE_ACCESS_MISSING = "device_access_missing"
     DISABLED_DATA_DISK = "disabled_data_disk"
     DNS_LOOP = "dns_loop"
     DNS_SERVER_FAILED = "dns_server_failed"
@@ -112,6 +116,7 @@ class SuggestionType(StrEnum):
     EXECUTE_REMOVE = "execute_remove"
     EXECUTE_REPAIR = "execute_repair"
     EXECUTE_RESET = "execute_reset"
+    EXECUTE_RESTART = "execute_restart"
     EXECUTE_START = "execute_start"
     EXECUTE_STOP = "execute_stop"
     EXECUTE_UPDATE = "execute_update"
