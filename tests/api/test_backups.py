@@ -698,3 +698,34 @@ async def test_upload_to_multiple_locations(
         ".cloud_backup": copy_backup,
     }
     assert coresys.backups.get("7fed74c8").location is None
+
+
+async def test_upload_duplicate_backup_new_location(
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+):
+    """Test uploading a backup that already exists to a new location."""
+    backup_file = get_fixture_path("backup_example.tar")
+    orig_backup = Path(copy(backup_file, coresys.config.path_backup))
+    await coresys.backups.reload(None, "backup_example.tar")
+    assert coresys.backups.get("7fed74c8").all_locations == {None: orig_backup}
+
+    with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
+        mp.append(file)
+        resp = await api_client.post(
+            "/backups/new/upload?location=.cloud_backup", data=mp
+        )
+
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["data"]["slug"] == "7fed74c8"
+
+    copy_backup = coresys.config.path_core_backup / "7fed74c8.tar"
+    assert orig_backup.exists()
+    assert copy_backup.exists()
+    assert coresys.backups.get("7fed74c8").all_locations == {
+        None: orig_backup,
+        ".cloud_backup": copy_backup,
+    }
+    assert coresys.backups.get("7fed74c8").location is None
