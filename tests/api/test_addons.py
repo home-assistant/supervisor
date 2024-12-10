@@ -3,6 +3,7 @@
 import asyncio
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from aiohttp import ClientResponse
 from aiohttp.test_utils import TestClient
 import pytest
 
@@ -366,3 +367,71 @@ async def test_addon_options_boot_mode_manual_only_invalid(
         body["message"]
         == "Addon local_example boot option is set to manual_only so it cannot be changed"
     )
+
+
+async def get_message(resp: ClientResponse, json_expected: bool) -> str:
+    """Get message from response based on response type."""
+    if json_expected:
+        body = await resp.json()
+        return body["message"]
+    return await resp.text()
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "json_expected"),
+    [
+        ("get", "/addons/bad/info", True),
+        ("post", "/addons/bad/uninstall", True),
+        ("post", "/addons/bad/start", True),
+        ("post", "/addons/bad/stop", True),
+        ("post", "/addons/bad/restart", True),
+        ("post", "/addons/bad/options", True),
+        ("post", "/addons/bad/sys_options", True),
+        ("post", "/addons/bad/options/validate", True),
+        ("post", "/addons/bad/rebuild", True),
+        ("post", "/addons/bad/stdin", True),
+        ("post", "/addons/bad/security", True),
+        ("get", "/addons/bad/stats", True),
+        ("get", "/addons/bad/logs", False),
+        ("get", "/addons/bad/logs/follow", False),
+        ("get", "/addons/bad/logs/boots/1", False),
+        ("get", "/addons/bad/logs/boots/1/follow", False),
+    ],
+)
+async def test_addon_not_found(
+    api_client: TestClient, method: str, url: str, json_expected: bool
+):
+    """Test addon not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    assert await get_message(resp, json_expected) == "Addon bad does not exist"
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "json_expected"),
+    [
+        ("post", "/addons/local_ssh/uninstall", True),
+        ("post", "/addons/local_ssh/start", True),
+        ("post", "/addons/local_ssh/stop", True),
+        ("post", "/addons/local_ssh/restart", True),
+        ("post", "/addons/local_ssh/options", True),
+        ("post", "/addons/local_ssh/sys_options", True),
+        ("post", "/addons/local_ssh/options/validate", True),
+        ("post", "/addons/local_ssh/rebuild", True),
+        ("post", "/addons/local_ssh/stdin", True),
+        ("post", "/addons/local_ssh/security", True),
+        ("get", "/addons/local_ssh/stats", True),
+        ("get", "/addons/local_ssh/logs", False),
+        ("get", "/addons/local_ssh/logs/follow", False),
+        ("get", "/addons/local_ssh/logs/boots/1", False),
+        ("get", "/addons/local_ssh/logs/boots/1/follow", False),
+    ],
+)
+@pytest.mark.usefixtures("repository")
+async def test_addon_not_installed(
+    api_client: TestClient, method: str, url: str, json_expected: bool
+):
+    """Test addon not installed error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 400
+    assert await get_message(resp, json_expected) == "Addon is not installed"

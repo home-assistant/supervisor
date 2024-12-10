@@ -42,7 +42,7 @@ from ..const import (
     DOCKER_NETWORK_MASK,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, HostNetworkNotFound
+from ..exceptions import APIError, APINotFound, HostNetworkNotFound
 from ..host.configuration import (
     AccessPoint,
     Interface,
@@ -167,7 +167,7 @@ class APINetwork(CoreSysAttributes):
             except HostNetworkNotFound:
                 pass
 
-        raise APIError(f"Interface {name} does not exist") from None
+        raise APINotFound(f"Interface {name} does not exist") from None
 
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:

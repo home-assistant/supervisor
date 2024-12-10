@@ -4,6 +4,7 @@ import asyncio
 from unittest.mock import ANY
 
 from aiohttp.test_utils import TestClient
+import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.jobs.const import ATTR_IGNORE_CONDITIONS, JobCondition
@@ -216,3 +217,15 @@ async def test_job_manual_cleanup(api_client: TestClient, coresys: CoreSys):
     assert resp.status == 400
     result = await resp.json()
     assert result["message"] == f"No job found with id {test.job_id}"
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [("get", "/services/bad"), ("post", "/services/bad"), ("delete", "/services/bad")],
+)
+async def test_job_not_found(api_client: TestClient, method: str, url: str):
+    """Test job not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    resp = await resp.json()
+    assert resp["message"] == "Service does not exist"
