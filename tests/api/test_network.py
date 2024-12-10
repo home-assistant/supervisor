@@ -400,3 +400,22 @@ async def test_api_network_vlan(
         "id": Variant("u", 1),
         "parent": Variant("s", "0c23631e-2118-355c-bbb0-8943229cb0d6"),
     }
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [
+        ("get", "/network/interface/bad/info"),
+        ("post", "/network/interface/bad/update"),
+        ("get", "/network/interface/bad/accesspoints"),
+        ("post", "/network/interface/bad/vlan/1"),
+    ],
+)
+async def test_network_interface_not_found(
+    api_client: TestClient, method: str, url: str
+):
+    """Test network interface not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    resp = await resp.json()
+    assert resp["message"] == "Interface bad does not exist"

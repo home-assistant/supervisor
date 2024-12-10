@@ -9,7 +9,7 @@ from ..const import (
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APIForbidden
+from ..exceptions import APIError, APIForbidden, APINotFound
 from .utils import api_process, api_validate
 
 
@@ -20,7 +20,7 @@ class APIServices(CoreSysAttributes):
         """Return service, throw an exception if it doesn't exist."""
         service = self.sys_services.get(request.match_info.get("service"))
         if not service:
-            raise APIError("Service does not exist")
+            raise APINotFound("Service does not exist")
 
         return service
 
