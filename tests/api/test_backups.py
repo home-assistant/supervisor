@@ -729,3 +729,21 @@ async def test_upload_duplicate_backup_new_location(
         ".cloud_backup": copy_backup,
     }
     assert coresys.backups.get("7fed74c8").location is None
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [
+        ("get", "/backups/bad/info"),
+        ("delete", "/backups/bad"),
+        ("post", "/backups/bad/restore/full"),
+        ("post", "/backups/bad/restore/partial"),
+        ("get", "/backups/bad/download"),
+    ],
+)
+async def test_backup_not_found(api_client: TestClient, method: str, url: str):
+    """Test backup not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    resp = await resp.json()
+    assert resp["message"] == "Backup does not exist"
