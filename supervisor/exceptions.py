@@ -336,6 +336,12 @@ class APIForbidden(APIError):
     status = 403
 
 
+class APINotFound(APIError):
+    """API not found error."""
+
+    status = 404
+
+
 class APIAddonNotInstalled(APIError):
     """Not installed addon requested at addons API."""
 

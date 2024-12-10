@@ -46,7 +46,7 @@ from ..const import (
     CoreState,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APIForbidden
+from ..exceptions import APIError, APIForbidden, APINotFound
 from ..jobs import JobSchedulerOptions
 from ..mounts.const import MountUsage
 from ..resolution.const import UnhealthyReason
@@ -134,7 +134,7 @@ class APIBackups(CoreSysAttributes):
         """Return backup, throw an exception if it doesn't exist."""
         backup = self.sys_backups.get(request.match_info.get("slug"))
         if not backup:
-            raise APIError("Backup does not exist")
+            raise APINotFound("Backup does not exist")
         return backup
 
     def _list_backups(self):
