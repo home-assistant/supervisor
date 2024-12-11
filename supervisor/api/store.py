@@ -81,7 +81,7 @@ class APIStore(CoreSysAttributes):
         if installed and not addon.is_installed:
             raise APIError(f"Addon {addon_slug} is not installed")
 
-        if not installed:
+        if not installed and addon.is_installed:
             return addon.addon_store
         return addon
 
