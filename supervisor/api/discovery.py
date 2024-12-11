@@ -16,7 +16,7 @@ from ..const import (
     AddonState,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APIForbidden
+from ..exceptions import APIForbidden, APINotFound
 from .utils import api_process, api_validate, require_home_assistant
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class APIDiscovery(CoreSysAttributes):
         """Extract discovery message from URL."""
         message = self.sys_discovery.get(request.match_info.get("uuid"))
         if not message:
-            raise APIError("Discovery message not found")
+            raise APINotFound("Discovery message not found")
         return message
 
     @api_process

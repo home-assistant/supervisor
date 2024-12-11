@@ -83,7 +83,7 @@ async def test_api_addon_logs_not_installed(api_client: TestClient):
     """Test error is returned for non-existing add-on."""
     resp = await api_client.get("/addons/hic_sunt_leones/logs")
 
-    assert resp.status == 400
+    assert resp.status == 404
     assert resp.content_type == "text/plain"
     content = await resp.text()
     assert content == "Addon hic_sunt_leones does not exist"
