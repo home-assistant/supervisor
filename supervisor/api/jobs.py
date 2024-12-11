@@ -7,7 +7,7 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError
+from ..exceptions import APIError, APINotFound, JobNotFound
 from ..jobs import SupervisorJob
 from ..jobs.const import ATTR_IGNORE_CONDITIONS, JobCondition
 from .const import ATTR_JOBS
@@ -22,6 +22,13 @@ SCHEMA_OPTIONS = vol.Schema(
 
 class APIJobs(CoreSysAttributes):
     """Handle RESTful API for OS functions."""
+
+    def _extract_job(self, request: web.Request) -> SupervisorJob:
+        """Extract job from request or raise."""
+        try:
+            return self.sys_jobs.get_job(request.match_info.get("uuid"))
+        except JobNotFound:
+            raise APINotFound("Job does not exist") from None
 
     def _list_jobs(self, start: SupervisorJob | None = None) -> list[dict[str, Any]]:
         """Return current job tree."""
@@ -86,13 +93,13 @@ class APIJobs(CoreSysAttributes):
     @api_process
     async def job_info(self, request: web.Request) -> dict[str, Any]:
         """Get details of a job by ID."""
-        job = self.sys_jobs.get_job(request.match_info.get("uuid"))
+        job = self._extract_job(request)
         return self._list_jobs(job)[0]
 
     @api_process
     async def remove_job(self, request: web.Request) -> None:
         """Remove a completed job."""
-        job = self.sys_jobs.get_job(request.match_info.get("uuid"))
+        job = self._extract_job(request)
 
         if not job.done:
             raise APIError(f"Job {job.uuid} is not done!")

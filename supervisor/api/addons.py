@@ -106,6 +106,7 @@ from ..exceptions import (
     APIAddonNotInstalled,
     APIError,
     APIForbidden,
+    APINotFound,
     PwnedError,
     PwnedSecret,
 )
@@ -161,7 +162,7 @@ class APIAddons(CoreSysAttributes):
 
         addon = self.sys_addons.get(addon_slug)
         if not addon:
-            raise APIError(f"Addon {addon_slug} does not exist")
+            raise APINotFound(f"Addon {addon_slug} does not exist")
         if not isinstance(addon, Addon) or not addon.is_installed:
             raise APIAddonNotInstalled("Addon is not installed")
 
