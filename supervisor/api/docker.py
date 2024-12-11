@@ -16,6 +16,7 @@ from ..const import (
     ATTR_VERSION,
 )
 from ..coresys import CoreSysAttributes
+from ..exceptions import APINotFound
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -58,6 +59,9 @@ class APIDocker(CoreSysAttributes):
     async def remove_registry(self, request: web.Request):
         """Delete a docker registry."""
         hostname = request.match_info.get(ATTR_HOSTNAME)
+        if hostname not in self.sys_docker.config.registries:
+            raise APINotFound(f"Hostname {hostname} does not exist in registries")
+
         del self.sys_docker.config.registries[hostname]
         self.sys_docker.config.save_data()
 

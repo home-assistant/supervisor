@@ -182,8 +182,8 @@ async def test_issue_not_found(api_client: TestClient, method: str, url: str):
     """Test issue not found error."""
     resp = await api_client.request(method, url)
     assert resp.status == 404
-    resp = await resp.json()
-    assert resp["message"] == "The supplied UUID is not a valid issue"
+    body = await resp.json()
+    assert body["message"] == "The supplied UUID is not a valid issue"
 
 
 @pytest.mark.parametrize(
@@ -194,8 +194,8 @@ async def test_suggestion_not_found(api_client: TestClient, method: str, url: st
     """Test suggestion not found error."""
     resp = await api_client.request(method, url)
     assert resp.status == 404
-    resp = await resp.json()
-    assert resp["message"] == "The supplied UUID is not a valid suggestion"
+    body = await resp.json()
+    assert body["message"] == "The supplied UUID is not a valid suggestion"
 
 
 @pytest.mark.parametrize(
@@ -206,5 +206,5 @@ async def test_check_not_found(api_client: TestClient, method: str, url: str):
     """Test check not found error."""
     resp = await api_client.request(method, url)
     assert resp.status == 404
-    resp = await resp.json()
-    assert resp["message"] == "The supplied check slug is not available"
+    body = await resp.json()
+    assert body["message"] == "The supplied check slug is not available"

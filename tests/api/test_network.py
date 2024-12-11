@@ -417,5 +417,5 @@ async def test_network_interface_not_found(
     """Test network interface not found error."""
     resp = await api_client.request(method, url)
     assert resp.status == 404
-    resp = await resp.json()
-    assert resp["message"] == "Interface bad does not exist"
+    body = await resp.json()
+    assert body["message"] == "Interface bad does not exist"
