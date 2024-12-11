@@ -747,3 +747,65 @@ async def test_backup_not_found(api_client: TestClient, method: str, url: str):
     assert resp.status == 404
     resp = await resp.json()
     assert resp["message"] == "Backup does not exist"
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_remove_backup_from_location(api_client: TestClient, coresys: CoreSys):
+    """Test removing a backup from one location of multiple."""
+    backup_file = get_fixture_path("backup_example.tar")
+    location_1 = Path(copy(backup_file, coresys.config.path_backup))
+    location_2 = Path(copy(backup_file, coresys.config.path_core_backup))
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+
+    resp = await api_client.delete(
+        "/backups/7fed74c8", json={"location": ".cloud_backup"}
+    )
+    assert resp.status == 200
+
+    assert location_1.exists()
+    assert not location_2.exists()
+    assert coresys.backups.get("7fed74c8")
+    assert backup.all_locations == {None: location_1}
+
+
+async def test_download_backup_from_location(
+    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test downloading a backup from a specific location."""
+    backup_file = get_fixture_path("backup_example.tar")
+    location_1 = Path(copy(backup_file, coresys.config.path_backup))
+    location_2 = Path(copy(backup_file, coresys.config.path_core_backup))
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+
+    # The use case of this is user might want to pick a particular mount if one is flaky
+    # To simulate this, remove the file from one location and show one works and the other doesn't
+    assert backup.location is None
+    location_1.unlink()
+
+    resp = await api_client.get("/backups/7fed74c8/download?location=")
+    assert resp.status == 404
+
+    resp = await api_client.get("/backups/7fed74c8/download?location=.cloud_backup")
+    assert resp.status == 200
+    out_file = tmp_supervisor_data / "backup_example.tar"
+    with out_file.open("wb") as out:
+        out.write(await resp.read())
+
+    out_backup = Backup(coresys, out_file, "out", None)
+    await out_backup.load()
+    assert backup == out_backup
+
+
+@pytest.mark.usefixtures("mock_full_backup")
+async def test_download_backup_from_invalid_location(api_client: TestClient):
+    """Test error for invalid download location."""
+    resp = await api_client.get("/backups/test/download?location=.cloud_backup")
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "Backup test is not in location .cloud_backup"

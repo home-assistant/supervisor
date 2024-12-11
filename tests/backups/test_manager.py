@@ -1977,9 +1977,8 @@ async def test_partial_reload_multiple_locations(
     assert backup.all_locations.keys() == {".cloud_backup", None, "backup_test"}
 
 
-async def test_backup_remove_multiple_locations(
-    coresys: CoreSys, tmp_supervisor_data: Path
-):
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_backup_remove_multiple_locations(coresys: CoreSys):
     """Test removing a backup that exists in multiple locations."""
     backup_file = get_fixture_path("backup_example.tar")
     location_1 = Path(copy(backup_file, coresys.config.path_backup))
@@ -1995,9 +1994,8 @@ async def test_backup_remove_multiple_locations(
     assert not coresys.backups.get("7fed74c8")
 
 
-async def test_backup_remove_one_location_of_multiple(
-    coresys: CoreSys, tmp_supervisor_data: Path
-):
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
     """Test removing a backup that exists in multiple locations from one location."""
     backup_file = get_fixture_path("backup_example.tar")
     location_1 = Path(copy(backup_file, coresys.config.path_backup))

@@ -126,6 +126,14 @@ SCHEMA_FREEZE = vol.Schema(
     }
 )
 
+SCHEMA_REMOVE = vol.Schema(
+    {
+        vol.Optional(ATTR_LOCATION): vol.All(
+            _ensure_list, [vol.Maybe(str)], vol.Unique()
+        ),
+    }
+)
+
 
 class APIBackups(CoreSysAttributes):
     """Handle RESTful API for backups functions."""
@@ -411,17 +419,29 @@ class APIBackups(CoreSysAttributes):
     async def remove(self, request: web.Request):
         """Remove a backup."""
         backup = self._extract_slug(request)
-        self._validate_cloud_backup_location(request, backup.location)
-        return self.sys_backups.remove(backup)
+        body = await api_validate(SCHEMA_REMOVE, request)
+        locations: list[LOCATION_TYPE] | None = None
+
+        if ATTR_LOCATION in body:
+            self._validate_cloud_backup_location(request, body[ATTR_LOCATION])
+            locations = [self._location_to_mount(name) for name in body[ATTR_LOCATION]]
+        else:
+            self._validate_cloud_backup_location(request, backup.location)
+
+        return self.sys_backups.remove(backup, locations=locations)
 
     @api_process
     async def download(self, request: web.Request):
         """Download a backup file."""
         backup = self._extract_slug(request)
-        self._validate_cloud_backup_location(request, backup.location)
+        # Query will give us '' for /backups, convert value to None
+        location = request.query.get(ATTR_LOCATION, backup.location) or None
+        self._validate_cloud_backup_location(request, location)
+        if location not in backup.all_locations:
+            raise APIError(f"Backup {backup.slug} is not in location {location}")
 
         _LOGGER.info("Downloading backup %s", backup.slug)
-        response = web.FileResponse(backup.tarfile)
+        response = web.FileResponse(backup.all_locations[location])
         response.content_type = CONTENT_TYPE_TAR
         response.headers[CONTENT_DISPOSITION] = (
             f"attachment; filename={RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
