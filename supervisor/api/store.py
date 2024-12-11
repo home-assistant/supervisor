@@ -82,7 +82,7 @@ class APIStore(CoreSysAttributes):
             raise APIError(f"Addon {addon_slug} is not installed")
 
         if not installed:
-            return addon.store_addon
+            return addon.addon_store
         return addon
 
     def _extract_repository(self, request: web.Request) -> Repository:
