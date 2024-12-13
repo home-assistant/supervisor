@@ -17,9 +17,9 @@ from supervisor.exceptions import (
 )
 from supervisor.utils.dbus import DBus
 
-from tests.const import TEST_INTERFACE, TEST_INTERFACE_WLAN
+from tests.const import TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_WLAN_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
-from tests.dbus_service_mocks.network_connection_settings import SETTINGS_FIXTURE
+from tests.dbus_service_mocks.network_connection_settings import SETTINGS_1_FIXTURE
 from tests.dbus_service_mocks.network_manager import (
     NetworkManager as NetworkManagerService,
 )
@@ -43,7 +43,7 @@ async def test_network_manager(
 
     await network_manager.connect(dbus_session_bus)
 
-    assert TEST_INTERFACE in network_manager
+    assert TEST_INTERFACE_ETH_NAME in network_manager
     assert network_manager.connectivity_enabled is True
 
     network_manager_service.emit_properties_changed({"ConnectivityCheckEnabled": False})
@@ -113,7 +113,7 @@ async def test_add_and_activate_connection(
     network_manager_service.AddAndActivateConnection.calls.clear()
 
     settings, connection = await network_manager.add_and_activate_connection(
-        SETTINGS_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1"
+        SETTINGS_1_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1"
     )
     assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
     assert settings.ipv4.method == "auto"
@@ -122,7 +122,7 @@ async def test_add_and_activate_connection(
         connection.settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
     )
     assert network_manager_service.AddAndActivateConnection.calls == [
-        (SETTINGS_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1", "/")
+        (SETTINGS_1_FIXTURE, "/org/freedesktop/NetworkManager/Devices/1", "/")
     ]
 
 
@@ -130,13 +130,13 @@ async def test_removed_devices_disconnect(
     network_manager_service: NetworkManagerService, network_manager: NetworkManager
 ):
     """Test removed devices are disconnected."""
-    wlan = network_manager.get(TEST_INTERFACE_WLAN)
+    wlan = network_manager.get(TEST_INTERFACE_WLAN_NAME)
     assert wlan.is_connected is True
 
     network_manager_service.emit_properties_changed({"Devices": []})
     await network_manager_service.ping()
 
-    assert TEST_INTERFACE_WLAN not in network_manager
+    assert TEST_INTERFACE_WLAN_NAME not in network_manager
     assert wlan.is_connected is False
 
 

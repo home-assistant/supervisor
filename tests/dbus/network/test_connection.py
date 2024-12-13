@@ -7,7 +7,7 @@ from supervisor.dbus.const import ConnectionStateFlags
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.connection import NetworkConnection
 
-from tests.const import TEST_INTERFACE
+from tests.const import TEST_INTERFACE_ETH_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_active_connection import (
     ActiveConnection as ActiveConnectionService,
@@ -57,7 +57,7 @@ async def test_old_ipv4_disconnect(
     network_manager: NetworkManager, active_connection_service: ActiveConnectionService
 ):
     """Test old ipv4 disconnects on ipv4 change."""
-    connection = network_manager.get(TEST_INTERFACE).connection
+    connection = network_manager.get(TEST_INTERFACE_ETH_NAME).connection
     ipv4 = connection.ipv4
     assert ipv4.is_connected is True
 
@@ -72,7 +72,7 @@ async def test_old_ipv6_disconnect(
     network_manager: NetworkManager, active_connection_service: ActiveConnectionService
 ):
     """Test old ipv6 disconnects on ipv6 change."""
-    connection = network_manager.get(TEST_INTERFACE).connection
+    connection = network_manager.get(TEST_INTERFACE_ETH_NAME).connection
     ipv6 = connection.ipv6
     assert ipv6.is_connected is True
 
@@ -87,7 +87,7 @@ async def test_old_settings_disconnect(
     network_manager: NetworkManager, active_connection_service: ActiveConnectionService
 ):
     """Test old settings disconnects on settings change."""
-    connection = network_manager.get(TEST_INTERFACE).connection
+    connection = network_manager.get(TEST_INTERFACE_ETH_NAME).connection
     settings = connection.settings
     assert settings.is_connected is True
 

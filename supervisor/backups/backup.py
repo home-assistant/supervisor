@@ -14,7 +14,7 @@ from pathlib import Path
 import tarfile
 from tempfile import TemporaryDirectory
 import time
-from typing import Any
+from typing import Any, Self
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
@@ -32,6 +32,7 @@ from ..const import (
     ATTR_DATE,
     ATTR_DOCKER,
     ATTR_EXCLUDE_DATABASE,
+    ATTR_EXTRA,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
@@ -55,11 +56,16 @@ from ..jobs.job_group import JobGroup
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
-from .const import BUF_SIZE, BackupType
+from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
 from .utils import key_to_iv, password_to_key
 from .validate import SCHEMA_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+def location_sort_key(value: str | None) -> str:
+    """Sort locations, None is always first else alphabetical."""
+    return value if value else ""
 
 
 class Backup(JobGroup):
@@ -70,19 +76,20 @@ class Backup(JobGroup):
         coresys: CoreSys,
         tar_file: Path,
         slug: str,
+        location: str | None,
         data: dict[str, Any] | None = None,
     ):
         """Initialize a backup."""
         super().__init__(
             coresys, JOB_GROUP_BACKUP.format_map(defaultdict(str, slug=slug)), slug
         )
-        self._tarfile: Path = tar_file
         self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
         self._tmp = None
         self._outer_secure_tarfile: SecureTarFile | None = None
         self._outer_secure_tarfile_tarfile: tarfile.TarFile | None = None
         self._key: bytes | None = None
         self._aes: Cipher | None = None
+        self._locations: dict[str | None, Path] = {location: tar_file}
 
     @property
     def version(self) -> int:
@@ -169,6 +176,11 @@ class Backup(JobGroup):
         return self._data[ATTR_SUPERVISOR_VERSION]
 
     @property
+    def extra(self) -> dict:
+        """Get extra metadata added by client."""
+        return self._data[ATTR_EXTRA]
+
+    @property
     def docker(self) -> dict[str, Any]:
         """Return backup Docker config data."""
         return self._data.get(ATTR_DOCKER, {})
@@ -178,20 +190,41 @@ class Backup(JobGroup):
         """Set the Docker config data."""
         self._data[ATTR_DOCKER] = value
 
-    @cached_property
+    @property
     def location(self) -> str | None:
         """Return the location of the backup."""
-        for backup_mount in self.sys_mounts.backup_mounts:
-            if self.tarfile.is_relative_to(backup_mount.local_where):
-                return backup_mount.name
-        return None
+        return self.locations[0]
 
     @property
+    def all_locations(self) -> dict[str | None, Path]:
+        """Return all locations this backup was found in."""
+        return self._locations
+
+    @property
+    def locations(self) -> list[str | None]:
+        """Return locations this backup was found in except cloud backup (unless that's the only one)."""
+        if len(self._locations) == 1:
+            return list(self._locations)
+        return sorted(
+            [
+                location
+                for location in self._locations
+                if location != LOCATION_CLOUD_BACKUP
+            ],
+            key=location_sort_key,
+        )
+
+    @cached_property
     def size(self) -> float:
         """Return backup size."""
+        return round(self.size_bytes / 1048576, 2)  # calc mbyte
+
+    @cached_property
+    def size_bytes(self) -> int:
+        """Return backup size in bytes."""
         if not self.tarfile.is_file():
             return 0
-        return round(self.tarfile.stat().st_size / 1048576, 2)  # calc mbyte
+        return self.tarfile.stat().st_size
 
     @property
     def is_new(self) -> bool:
@@ -201,7 +234,7 @@ class Backup(JobGroup):
     @property
     def tarfile(self) -> Path:
         """Return path to backup tarfile."""
-        return self._tarfile
+        return self._locations[self.location]
 
     @property
     def is_current(self) -> bool:
@@ -215,6 +248,22 @@ class Backup(JobGroup):
         """Returns a copy of the data."""
         return deepcopy(self._data)
 
+    def __eq__(self, other: Any) -> bool:
+        """Return true if backups have same metadata."""
+        return isinstance(other, Backup) and self._data == other._data
+
+    def consolidate(self, backup: Self) -> None:
+        """Consolidate two backups with same slug in different locations."""
+        if self.slug != backup.slug:
+            raise ValueError(
+                f"Backup {self.slug} and {backup.slug} are not the same backup"
+            )
+        if self != backup:
+            raise BackupInvalidError(
+                f"Backup in {backup.location} and {self.location} both have slug {self.slug} but are not the same!"
+            )
+        self._locations.update(backup.all_locations)
+
     def new(
         self,
         name: str,
@@ -222,6 +271,7 @@ class Backup(JobGroup):
         sys_type: BackupType,
         password: str | None = None,
         compressed: bool = True,
+        extra: dict | None = None,
     ):
         """Initialize a new backup."""
         # Init metadata
@@ -230,6 +280,7 @@ class Backup(JobGroup):
         self._data[ATTR_DATE] = date
         self._data[ATTR_TYPE] = sys_type
         self._data[ATTR_SUPERVISOR_VERSION] = self.sys_supervisor.version
+        self._data[ATTR_EXTRA] = extra or {}
 
         # Add defaults
         self._data = SCHEMA_BACKUP(self._data)

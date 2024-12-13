@@ -1,0 +1,26 @@
+# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
+name: Example add-on with image
+version: "1.2.0"
+slug: example_image
+description: Example add-on
+url: "https://github.com/home-assistant/addons-example/tree/main/example"
+arch:
+  - armhf
+  - armv7
+  - aarch64
+  - amd64
+  - i386
+init: false
+map:
+  - share:rw
+  - addon_config
+options:
+  message: "Hello world..."
+schema:
+  message: "str?"
+ingress: true
+ingress_port: 0
+breaking_versions:
+  - test
+  - 1.0
+image: example/with-image

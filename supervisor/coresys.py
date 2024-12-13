@@ -63,7 +63,7 @@ class CoreSys:
 
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
-        self._websession: aiohttp.ClientSession = aiohttp.ClientSession()
+        self._websession = None
 
         # Global objects
         self._config: CoreConfig = CoreConfig()
@@ -96,10 +96,8 @@ class CoreSys:
         self._bus: Bus | None = None
         self._mounts: MountManager | None = None
 
-        # Set default header for aiohttp
-        self._websession._default_headers = MappingProxyType(
-            {aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE}
-        )
+        # Setup aiohttp session
+        self.create_websession()
 
         # Task factory attributes
         self._set_task_context: list[Callable[[Context], Context]] = []
@@ -547,6 +545,16 @@ class CoreSys:
             funct = partial(funct, **kwargs)
 
         return self.loop.run_in_executor(None, funct, *args)
+
+    def create_websession(self) -> None:
+        """Create a new aiohttp session."""
+        if self._websession:
+            self.create_task(self._websession.close())
+
+        # Create session and set default header for aiohttp
+        self._websession: aiohttp.ClientSession = aiohttp.ClientSession(
+            headers=MappingProxyType({aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE})
+        )
 
     def _create_context(self) -> Context:
         """Create a new context for a task."""

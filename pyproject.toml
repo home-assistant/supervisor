@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools~=68.0.0", "wheel~=0.40.0"]
+requires = ["setuptools~=75.6.0", "wheel~=0.45.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -214,6 +214,9 @@ expected-line-ending-format = "LF"
 
 [tool.pylint.EXCEPTIONS]
 overgeneral-exceptions = ["builtins.BaseException", "builtins.Exception"]
+
+[tool.pylint.DESIGN]
+max-positional-arguments = 10
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

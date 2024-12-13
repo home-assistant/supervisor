@@ -170,6 +170,11 @@ def initialize_system(coresys: CoreSys) -> None:
         _LOGGER.debug("Creating Supervisor backup folder at '%s'", config.path_backup)
         config.path_backup.mkdir()
 
+    # Core backup folder
+    if not config.path_core_backup.is_dir():
+        _LOGGER.debug("Creating Core backup folder at '%s", config.path_core_backup)
+        config.path_core_backup.mkdir(parents=True)
+
     # Share folder
     if not config.path_share.is_dir():
         _LOGGER.debug("Creating Supervisor share folder at '%s'", config.path_share)

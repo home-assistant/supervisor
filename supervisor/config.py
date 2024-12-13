@@ -50,6 +50,7 @@ MOUNTS_FOLDER = PurePath("mounts")
 MOUNTS_CREDENTIALS = PurePath(".mounts_credentials")
 EMERGENCY_DATA = PurePath("emergency")
 ADDON_CONFIGS = PurePath("addon_configs")
+CORE_BACKUP_DATA = PurePath("core/backup")
 
 DEFAULT_BOOT_TIME = datetime.fromtimestamp(0, UTC).isoformat()
 
@@ -272,6 +273,16 @@ class CoreConfig(FileConfiguration):
     def path_extern_backup(self) -> PurePath:
         """Return root backup data folder external for Docker."""
         return PurePath(self.path_extern_supervisor, BACKUP_DATA)
+
+    @property
+    def path_core_backup(self) -> Path:
+        """Return core specific backup folder (cloud backup)."""
+        return self.path_supervisor / CORE_BACKUP_DATA
+
+    @property
+    def path_extern_core_backup(self) -> PurePath:
+        """Return core specific backup folder (cloud backup) external for Docker."""
+        return PurePath(self.path_extern_supervisor, CORE_BACKUP_DATA)
 
     @property
     def path_share(self) -> Path:

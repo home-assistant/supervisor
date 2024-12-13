@@ -81,6 +81,7 @@ async def test_api_create_mount(
             "share": "backups",
             "state": "active",
             "read_only": False,
+            "user_path": None,
         }
     ]
     coresys.mounts.save_data.assert_called_once()
@@ -257,6 +258,7 @@ async def test_api_update_mount(
             "share": "new_backups",
             "state": "active",
             "read_only": False,
+            "user_path": None,
         }
     ]
     coresys.mounts.save_data.assert_called_once()
@@ -325,6 +327,7 @@ async def test_api_update_dbus_error_mount_remains(
             "share": "backups",
             "state": None,
             "read_only": False,
+            "user_path": None,
         }
     ]
 
@@ -372,6 +375,7 @@ async def test_api_update_dbus_error_mount_remains(
             "share": "backups",
             "state": None,
             "read_only": False,
+            "user_path": None,
         }
     ]
 
@@ -828,6 +832,7 @@ async def test_api_create_read_only_cifs_mount(
             "share": "media",
             "state": "active",
             "read_only": True,
+            "user_path": "/media/media_test",
         }
     ]
     coresys.mounts.save_data.assert_called_once()
@@ -868,6 +873,7 @@ async def test_api_create_read_only_nfs_mount(
             "path": "/media/camera",
             "state": "active",
             "read_only": True,
+            "user_path": "/media/media_test",
         }
     ]
     coresys.mounts.save_data.assert_called_once()

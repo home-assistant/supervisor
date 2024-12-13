@@ -4,7 +4,7 @@ import asyncio
 import errno
 from functools import partial
 from pathlib import Path
-from shutil import rmtree
+from shutil import copy, rmtree
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -15,7 +15,7 @@ from supervisor.addons.addon import Addon
 from supervisor.addons.const import AddonBackupMode
 from supervisor.addons.model import AddonModel
 from supervisor.backups.backup import Backup
-from supervisor.backups.const import BackupType
+from supervisor.backups.const import LOCATION_TYPE, BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, AddonState, CoreState
 from supervisor.coresys import CoreSys
@@ -38,6 +38,7 @@ from supervisor.jobs.const import JobCondition
 from supervisor.mounts.mount import Mount
 from supervisor.utils.json import read_json_file, write_json_file
 
+from tests.common import get_fixture_path
 from tests.const import TEST_ADDON_SLUG
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
@@ -626,7 +627,8 @@ async def test_full_backup_to_mount(
         },
     )
     await coresys.mounts.create_mount(mount)
-    assert mount_dir in coresys.backups.backup_locations
+    assert "backup_test" in coresys.backups.backup_locations
+    assert coresys.backups.backup_locations["backup_test"] == mount_dir
 
     # Make a backup and add it to mounts. Confirm it exists in the right place
     coresys.core.state = CoreState.RUNNING
@@ -671,7 +673,8 @@ async def test_partial_backup_to_mount(
         },
     )
     await coresys.mounts.create_mount(mount)
-    assert mount_dir in coresys.backups.backup_locations
+    assert "backup_test" in coresys.backups.backup_locations
+    assert coresys.backups.backup_locations["backup_test"] == mount_dir
 
     # Make a backup and add it to mounts. Confirm it exists in the right place
     coresys.core.state = CoreState.RUNNING
@@ -723,7 +726,8 @@ async def test_backup_to_down_mount_error(
         },
     )
     await coresys.mounts.create_mount(mount)
-    assert mount_dir in coresys.backups.backup_locations
+    assert "backup_test" in coresys.backups.backup_locations
+    assert coresys.backups.backup_locations["backup_test"] == mount_dir
 
     # Attempt to make a backup which fails because is_mount on directory is false
     mock_is_mount.return_value = False
@@ -1713,29 +1717,35 @@ async def test_skip_homeassistant_database(
     assert not test_db_shm.exists()
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 @pytest.mark.parametrize(
-    "tar_parent,healthy_expected",
+    ("backup_locations", "location_name", "healthy_expected"),
     [
-        (Path("/data/mounts/test"), True),
-        (Path("/data/backup"), False),
+        (["test"], "test", True),
+        ([None], None, False),
     ],
+    indirect=["backup_locations"],
 )
-def test_backup_remove_error(
+async def test_backup_remove_error(
     coresys: CoreSys,
-    full_backup_mock: Backup,
-    tar_parent: Path,
+    backup_locations: list[LOCATION_TYPE],
+    location_name: str | None,
     healthy_expected: bool,
 ):
     """Test removing a backup error."""
-    full_backup_mock.tarfile.unlink.side_effect = (err := OSError())
-    full_backup_mock.tarfile.parent = tar_parent
+    copy(get_fixture_path("backup_example.tar"), coresys.config.path_backup)
+    await coresys.backups.reload(location=None, filename="backup_example.tar")
+    assert (backup := coresys.backups.get("7fed74c8"))
+
+    backup.all_locations[location_name] = (tar_mock := MagicMock())
+    tar_mock.unlink.side_effect = (err := OSError())
 
     err.errno = errno.EBUSY
-    assert coresys.backups.remove(full_backup_mock) is False
+    assert coresys.backups.remove(backup) is False
     assert coresys.core.healthy is True
 
     err.errno = errno.EBADMSG
-    assert coresys.backups.remove(full_backup_mock) is False
+    assert coresys.backups.remove(backup) is False
     assert coresys.core.healthy is healthy_expected
 
 
@@ -1866,3 +1876,137 @@ async def test_core_pre_backup_actions_failed(
         f"Preparing backup of Home Assistant Core failed due to: {pre_backup_error['message']}"
         in caplog.text
     )
+
+
+@pytest.mark.usefixtures("mount_propagation", "mock_is_mount", "path_extern")
+async def test_reload_multiple_locations(coresys: CoreSys, tmp_supervisor_data: Path):
+    """Test reload with a backup that exists in multiple locations."""
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    assert not coresys.backups.list_backups
+
+    backup_file = get_fixture_path("backup_example.tar")
+    copy(backup_file, tmp_supervisor_data / "core/backup")
+    await coresys.backups.reload()
+
+    assert coresys.backups.list_backups
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.location == ".cloud_backup"
+    assert backup.locations == [".cloud_backup"]
+    assert backup.all_locations.keys() == {".cloud_backup"}
+
+    copy(backup_file, tmp_supervisor_data / "backup")
+    await coresys.backups.reload()
+
+    assert coresys.backups.list_backups
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.location is None
+    assert backup.locations == [None]
+    assert backup.all_locations.keys() == {".cloud_backup", None}
+
+    copy(backup_file, mount_dir)
+    await coresys.backups.reload()
+
+    assert coresys.backups.list_backups
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.location in {None, "backup_test"}
+    assert None in backup.locations
+    assert "backup_test" in backup.locations
+    assert backup.all_locations.keys() == {".cloud_backup", None, "backup_test"}
+
+
+@pytest.mark.usefixtures("mount_propagation", "mock_is_mount", "path_extern")
+async def test_partial_reload_multiple_locations(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test a partial reload with a backup that exists in multiple locations."""
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    assert not coresys.backups.list_backups
+
+    backup_file = get_fixture_path("backup_example.tar")
+    copy(backup_file, tmp_supervisor_data / "core/backup")
+    await coresys.backups.reload()
+
+    assert coresys.backups.list_backups
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.location == ".cloud_backup"
+    assert backup.locations == [".cloud_backup"]
+    assert backup.all_locations.keys() == {".cloud_backup"}
+
+    copy(backup_file, tmp_supervisor_data / "backup")
+    await coresys.backups.reload(location=None, filename="backup_example.tar")
+
+    assert coresys.backups.list_backups
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.location is None
+    assert backup.locations == [None]
+    assert backup.all_locations.keys() == {".cloud_backup", None}
+
+    copy(backup_file, mount_dir)
+    await coresys.backups.reload(location=mount, filename="backup_example.tar")
+
+    assert coresys.backups.list_backups
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.location is None
+    assert backup.locations == [None, "backup_test"]
+    assert backup.all_locations.keys() == {".cloud_backup", None, "backup_test"}
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_backup_remove_multiple_locations(coresys: CoreSys):
+    """Test removing a backup that exists in multiple locations."""
+    backup_file = get_fixture_path("backup_example.tar")
+    location_1 = Path(copy(backup_file, coresys.config.path_backup))
+    location_2 = Path(copy(backup_file, coresys.config.path_core_backup))
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+
+    coresys.backups.remove(backup)
+    assert not location_1.exists()
+    assert not location_2.exists()
+    assert not coresys.backups.get("7fed74c8")
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
+    """Test removing a backup that exists in multiple locations from one location."""
+    backup_file = get_fixture_path("backup_example.tar")
+    location_1 = Path(copy(backup_file, coresys.config.path_backup))
+    location_2 = Path(copy(backup_file, coresys.config.path_core_backup))
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+
+    coresys.backups.remove(backup, locations=[".cloud_backup"])
+    assert location_1.exists()
+    assert not location_2.exists()
+    assert coresys.backups.get("7fed74c8")
+    assert backup.all_locations == {None: location_1}

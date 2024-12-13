@@ -4,7 +4,7 @@ import asyncio
 from contextlib import suppress
 import logging
 
-from aiohttp import web
+from aiohttp import ClientConnectionResetError, web
 from aiohttp.hdrs import ACCEPT, RANGE
 import voluptuous as vol
 from voluptuous.error import CoerceInvalid
@@ -61,7 +61,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 IDENTIFIER = "identifier"
 BOOTID = "bootid"
-DEFAULT_RANGE = 100
+DEFAULT_LINES = 100
 
 SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_HOSTNAME): str})
 
@@ -222,13 +222,30 @@ class APIHost(CoreSysAttributes):
                 "supported for now."
             )
 
-        if request.headers[ACCEPT] == CONTENT_TYPE_X_LOG:
+        if "verbose" in request.query or request.headers[ACCEPT] == CONTENT_TYPE_X_LOG:
             log_formatter = LogFormatter.VERBOSE
 
-        if RANGE in request.headers:
+        if "lines" in request.query:
+            lines = request.query.get("lines", DEFAULT_LINES)
+            try:
+                lines = int(lines)
+            except ValueError:
+                # If the user passed a non-integer value, just use the default instead of error.
+                lines = DEFAULT_LINES
+            finally:
+                # We can't use the entries= Range header syntax to refer to the last 1 line,
+                # and passing 1 to the calculation below would return the 1st line of the logs
+                # instead. Since this is really an edge case that doesn't matter much, we'll just
+                # return 2 lines at minimum.
+                lines = max(2, lines)
+            # entries=cursor[[:num_skip]:num_entries]
+            range_header = f"entries=:-{lines-1}:{'' if follow else lines}"
+        elif RANGE in request.headers:
             range_header = request.headers.get(RANGE)
         else:
-            range_header = f"entries=:-{DEFAULT_RANGE}:"
+            range_header = (
+                f"entries=:-{DEFAULT_LINES-1}:{'' if follow else DEFAULT_LINES}"
+            )
 
         async with self.sys_host.logs.journald_logs(
             params=params, range_header=range_header, accept=LogFormat.JOURNAL
@@ -236,9 +253,17 @@ class APIHost(CoreSysAttributes):
             try:
                 response = web.StreamResponse()
                 response.content_type = CONTENT_TYPE_TEXT
-                await response.prepare(request)
-                async for line in journal_logs_reader(resp, log_formatter):
-                    await response.write(line.encode("utf-8") + b"\n")
+                headers_returned = False
+                async for cursor, line in journal_logs_reader(resp, log_formatter):
+                    if not headers_returned:
+                        if cursor:
+                            response.headers["X-First-Cursor"] = cursor
+                        await response.prepare(request)
+                        headers_returned = True
+                    # When client closes the connection while reading busy logs, we
+                    # sometimes get this exception. It should be safe to ignore it.
+                    with suppress(ClientConnectionResetError):
+                        await response.write(line.encode("utf-8") + b"\n")
             except ConnectionResetError as ex:
                 raise APIError(
                     "Connection reset when trying to fetch data from systemd-journald."

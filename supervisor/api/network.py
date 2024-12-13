@@ -2,8 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable
-from dataclasses import replace
-from ipaddress import ip_address, ip_interface
+from ipaddress import IPv4Address, IPv4Interface, IPv6Address, IPv6Interface
 from typing import Any
 
 from aiohttp import web
@@ -56,12 +55,21 @@ from ..host.configuration import (
 from ..host.const import AuthMethod, InterfaceType, WifiMode
 from .utils import api_process, api_validate
 
-_SCHEMA_IP_CONFIG = vol.Schema(
+_SCHEMA_IPV4_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_ADDRESS): [vol.Coerce(ip_interface)],
+        vol.Optional(ATTR_ADDRESS): [vol.Coerce(IPv4Interface)],
         vol.Optional(ATTR_METHOD): vol.Coerce(InterfaceMethod),
-        vol.Optional(ATTR_GATEWAY): vol.Coerce(ip_address),
-        vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(ip_address)],
+        vol.Optional(ATTR_GATEWAY): vol.Coerce(IPv4Address),
+        vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(IPv4Address)],
+    }
+)
+
+_SCHEMA_IPV6_CONFIG = vol.Schema(
+    {
+        vol.Optional(ATTR_ADDRESS): [vol.Coerce(IPv6Interface)],
+        vol.Optional(ATTR_METHOD): vol.Coerce(InterfaceMethod),
+        vol.Optional(ATTR_GATEWAY): vol.Coerce(IPv6Address),
+        vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(IPv6Address)],
     }
 )
 
@@ -78,8 +86,8 @@ _SCHEMA_WIFI_CONFIG = vol.Schema(
 # pylint: disable=no-value-for-parameter
 SCHEMA_UPDATE = vol.Schema(
     {
-        vol.Optional(ATTR_IPV4): _SCHEMA_IP_CONFIG,
-        vol.Optional(ATTR_IPV6): _SCHEMA_IP_CONFIG,
+        vol.Optional(ATTR_IPV4): _SCHEMA_IPV4_CONFIG,
+        vol.Optional(ATTR_IPV6): _SCHEMA_IPV6_CONFIG,
         vol.Optional(ATTR_WIFI): _SCHEMA_WIFI_CONFIG,
         vol.Optional(ATTR_ENABLED): vol.Boolean(),
     }
@@ -199,24 +207,26 @@ class APINetwork(CoreSysAttributes):
         # Apply config
         for key, config in body.items():
             if key == ATTR_IPV4:
-                interface.ipv4setting = replace(
-                    interface.ipv4setting
-                    or IpSetting(InterfaceMethod.STATIC, [], None, []),
-                    **config,
+                interface.ipv4setting = IpSetting(
+                    config.get(ATTR_METHOD, InterfaceMethod.STATIC),
+                    config.get(ATTR_ADDRESS, []),
+                    config.get(ATTR_GATEWAY),
+                    config.get(ATTR_NAMESERVERS, []),
                 )
             elif key == ATTR_IPV6:
-                interface.ipv6setting = replace(
-                    interface.ipv6setting
-                    or IpSetting(InterfaceMethod.STATIC, [], None, []),
-                    **config,
+                interface.ipv6setting = IpSetting(
+                    config.get(ATTR_METHOD, InterfaceMethod.STATIC),
+                    config.get(ATTR_ADDRESS, []),
+                    config.get(ATTR_GATEWAY),
+                    config.get(ATTR_NAMESERVERS, []),
                 )
             elif key == ATTR_WIFI:
-                interface.wifi = replace(
-                    interface.wifi
-                    or WifiConfig(
-                        WifiMode.INFRASTRUCTURE, "", AuthMethod.OPEN, None, None
-                    ),
-                    **config,
+                interface.wifi = WifiConfig(
+                    config.get(ATTR_MODE, WifiMode.INFRASTRUCTURE),
+                    config.get(ATTR_SSID, ""),
+                    config.get(ATTR_AUTH, AuthMethod.OPEN),
+                    config.get(ATTR_PSK, None),
+                    None,
                 )
             elif key == ATTR_ENABLED:
                 interface.enabled = config

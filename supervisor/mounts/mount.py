@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 import asyncio
+from functools import cached_property
 import logging
 from pathlib import Path, PurePath
 
@@ -29,6 +30,7 @@ from ..dbus.const import (
     UnitActiveState,
 )
 from ..dbus.systemd import SystemdUnit
+from ..docker.const import PATH_MEDIA, PATH_SHARE
 from ..exceptions import (
     DBusError,
     DBusSystemdNoSuchUnit,
@@ -68,6 +70,9 @@ class Mount(CoreSysAttributes, ABC):
         self._data: MountData = data
         self._unit: SystemdUnit | None = None
         self._state: UnitActiveState | None = None
+        self._failed_issue = Issue(
+            IssueType.MOUNT_FAILED, ContextType.MOUNT, reference=self.name
+        )
 
     @classmethod
     def from_dict(cls, coresys: CoreSys, data: MountData) -> "Mount":
@@ -147,7 +152,7 @@ class Mount(CoreSysAttributes, ABC):
         """Get state of mount."""
         return self._state
 
-    @property
+    @cached_property
     def local_where(self) -> Path | None:
         """Return where this is mounted within supervisor container.
 
@@ -160,9 +165,22 @@ class Mount(CoreSysAttributes, ABC):
         )
 
     @property
+    def container_where(self) -> PurePath | None:
+        """Return where this is made available in managed containers (core, addons, etc.).
+
+        This returns none if it is not made available in managed containers.
+        """
+        match self.usage:
+            case MountUsage.MEDIA:
+                return PurePath(PATH_MEDIA, self.name)
+            case MountUsage.SHARE:
+                return PurePath(PATH_SHARE, self.name)
+        return None
+
+    @property
     def failed_issue(self) -> Issue:
         """Get issue used if this mount has failed."""
-        return Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference=self.name)
+        return self._failed_issue
 
     async def is_mounted(self) -> bool:
         """Return true if successfully mounted and available."""

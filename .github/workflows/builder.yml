@@ -53,7 +53,7 @@ jobs:
       requirements: ${{ steps.requirements.outputs.changed }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
 
@@ -92,7 +92,7 @@ jobs:
         arch: ${{ fromJson(needs.init.outputs.architectures) }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
 
@@ -106,7 +106,7 @@ jobs:
 
       - name: Build wheels
         if: needs.init.outputs.requirements == 'true'
-        uses: home-assistant/wheels@2024.07.1
+        uses: home-assistant/wheels@2024.11.0
         with:
           abi: cp312
           tag: musllinux_1_2
@@ -125,13 +125,13 @@ jobs:
 
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         if: needs.init.outputs.publish == 'true'
-        uses: actions/setup-python@v5.1.1
+        uses: actions/setup-python@v5.3.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
       - name: Install Cosign
         if: needs.init.outputs.publish == 'true'
-        uses: sigstore/cosign-installer@v3.6.0
+        uses: sigstore/cosign-installer@v3.7.0
         with:
           cosign-release: "v2.4.0"
 
@@ -178,7 +178,7 @@ jobs:
     steps:
       - name: Checkout the repository
         if: needs.init.outputs.publish == 'true'
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.2
 
       - name: Initialize git
         if: needs.init.outputs.publish == 'true'
@@ -203,7 +203,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.2.2
 
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'

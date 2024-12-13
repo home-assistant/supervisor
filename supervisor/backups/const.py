@@ -1,9 +1,15 @@
 """Backup consts."""
 
 from enum import StrEnum
+from typing import Literal
+
+from ..mounts.mount import Mount
 
 BUF_SIZE = 2**20 * 4  # 4MB
 DEFAULT_FREEZE_TIMEOUT = 600
+LOCATION_CLOUD_BACKUP = ".cloud_backup"
+
+LOCATION_TYPE = Mount | Literal[LOCATION_CLOUD_BACKUP] | None
 
 
 class BackupType(StrEnum):
@@ -22,6 +28,7 @@ class BackupJobStage(StrEnum):
     FINISHING_FILE = "finishing_file"
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
+    COPY_ADDITONAL_LOCATIONS = "copy_additional_locations"
     AWAIT_ADDON_RESTARTS = "await_addon_restarts"
 
 

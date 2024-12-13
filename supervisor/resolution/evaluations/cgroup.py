@@ -2,11 +2,8 @@
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ..const import UnsupportedReason
+from ..const import CGROUP_V1_VERSION, CGROUP_V2_VERSION, UnsupportedReason
 from .base import EvaluateBase
-
-CGROUP_V1_VERSION = "1"
-CGROUP_V2_VERSION = "2"
 
 
 def setup(coresys: CoreSys) -> EvaluateBase:
@@ -20,9 +17,7 @@ class EvaluateCGroupVersion(EvaluateBase):
     @property
     def expected_versions(self) -> set[str]:
         """Return expected cgroup versions."""
-        if self.coresys.os.available:
-            return {CGROUP_V1_VERSION, CGROUP_V2_VERSION}
-        return {CGROUP_V1_VERSION}
+        return {CGROUP_V1_VERSION, CGROUP_V2_VERSION}
 
     @property
     def reason(self) -> UnsupportedReason:

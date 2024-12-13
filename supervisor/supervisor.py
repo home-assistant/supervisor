@@ -41,7 +41,7 @@ def _check_connectivity_throttle_period(coresys: CoreSys, *_) -> timedelta:
     if coresys.supervisor.connectivity:
         return timedelta(minutes=10)
 
-    return timedelta()
+    return timedelta(seconds=30)
 
 
 class Supervisor(CoreSysAttributes):
@@ -205,7 +205,7 @@ class Supervisor(CoreSysAttributes):
             )
             capture_exception(err)
             raise SupervisorUpdateError(
-                f"Update of Supervisor failed: {err!s}", _LOGGER.error
+                f"Update of Supervisor failed: {err!s}", _LOGGER.critical
             ) from err
 
         self.sys_config.version = version
@@ -274,6 +274,8 @@ class Supervisor(CoreSysAttributes):
                 "https://checkonline.home-assistant.io/online.txt", timeout=timeout
             )
         except (ClientError, TimeoutError):
+            # Need to recreate the websession to avoid stale connection checks
+            self.coresys.create_websession()
             self.connectivity = False
         else:
             self.connectivity = True

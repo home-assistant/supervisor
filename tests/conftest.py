@@ -30,6 +30,7 @@ from supervisor.const import (
     ATTR_ADDONS,
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_DATE,
+    ATTR_EXCLUDE_DATABASE,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
@@ -418,31 +419,30 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
         coresys.config.path_addons_data.mkdir(parents=True)
         coresys.config.path_addon_configs.mkdir(parents=True)
         coresys.config.path_ssl.mkdir()
+        coresys.config.path_core_backup.mkdir(parents=True)
         yield tmp_path
 
 
 @pytest.fixture
-async def journald_gateway() -> MagicMock:
+async def journald_gateway() -> AsyncGenerator[MagicMock]:
     """Mock logs control."""
     with (
         patch("supervisor.host.logs.Path.is_socket", return_value=True),
         patch("supervisor.host.logs.ClientSession.get") as get,
     ):
         reader = asyncio.StreamReader(loop=asyncio.get_running_loop())
+        client_response = MagicMock(content=reader, get=get)
 
         async def response_text():
-            return (await reader.read()).decode("utf-8")
+            return (await client_response.content.read()).decode("utf-8")
 
-        client_response = MagicMock(
-            content=reader,
-            text=response_text,
-        )
+        client_response.text = response_text
 
         get.return_value.__aenter__.return_value = client_response
         get.return_value.__aenter__.return_value.__aenter__.return_value = (
             client_response
         )
-        yield reader
+        yield client_response
 
 
 @pytest.fixture
@@ -581,7 +581,7 @@ def install_addon_example(coresys: CoreSys, repository):
 @pytest.fixture
 async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a full backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test")
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup.tar"), "test", None)
     mock_backup.new("Test", utcnow().isoformat(), BackupType.FULL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
@@ -597,6 +597,7 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     mock_backup._data[ATTR_HOMEASSISTANT] = {
         ATTR_VERSION: AwesomeVersion("2022.8.0"),
         ATTR_SIZE: 0,
+        ATTR_EXCLUDE_DATABASE: False,
     }
     coresys.backups._backups = {"test": mock_backup}
     yield mock_backup
@@ -605,7 +606,7 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
 @pytest.fixture
 async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a partial backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup"), "test")
+    mock_backup = Backup(coresys, Path(tmp_path, "test_backup.tar"), "test", None)
     mock_backup.new("Test", utcnow().isoformat(), BackupType.PARTIAL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
@@ -621,6 +622,7 @@ async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     mock_backup._data[ATTR_HOMEASSISTANT] = {
         ATTR_VERSION: AwesomeVersion("2022.8.0"),
         ATTR_SIZE: 0,
+        ATTR_EXCLUDE_DATABASE: False,
     }
     coresys.backups._backups = {"test": mock_backup}
     yield mock_backup
@@ -636,7 +638,7 @@ async def backups(
         temp_tar = Path(tmp_path, f"{slug}.tar")
         with SecureTarFile(temp_tar, "w"):
             pass
-        backup = Backup(coresys, temp_tar, slug)
+        backup = Backup(coresys, temp_tar, slug, None)
         backup._data = {  # pylint: disable=protected-access
             ATTR_SLUG: slug,
             ATTR_DATE: utcnow().isoformat(),

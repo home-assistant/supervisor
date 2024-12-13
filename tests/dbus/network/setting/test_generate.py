@@ -9,12 +9,12 @@ from supervisor.host.configuration import IpConfig, IpSetting, VlanConfig
 from supervisor.host.const import InterfaceMethod, InterfaceType
 from supervisor.host.network import Interface
 
-from tests.const import TEST_INTERFACE
+from tests.const import TEST_INTERFACE_ETH_NAME
 
 
 async def test_get_connection_from_interface(network_manager: NetworkManager):
     """Test network interface."""
-    dbus_interface = network_manager.get(TEST_INTERFACE)
+    dbus_interface = network_manager.get(TEST_INTERFACE_ETH_NAME)
     interface = Interface.from_dbus_interface(dbus_interface)
     connection_payload = get_connection_from_interface(interface, network_manager)
 
@@ -33,7 +33,7 @@ async def test_get_connection_from_interface(network_manager: NetworkManager):
 
 async def test_get_connection_no_path(network_manager: NetworkManager):
     """Test network interface without a path."""
-    dbus_interface = network_manager.get(TEST_INTERFACE)
+    dbus_interface = network_manager.get(TEST_INTERFACE_ETH_NAME)
     with patch.object(NetworkInterface, "path", new=PropertyMock(return_value=None)):
         interface = Interface.from_dbus_interface(dbus_interface)
 

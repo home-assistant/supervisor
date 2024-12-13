@@ -1,5 +1,6 @@
 """Test Host API."""
 
+from collections.abc import AsyncGenerator
 from unittest.mock import ANY, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
@@ -14,12 +15,13 @@ from supervisor.host.control import SystemControl
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
-DEFAULT_RANGE = "entries=:-100:"
+DEFAULT_RANGE = "entries=:-99:100"
+DEFAULT_RANGE_FOLLOW = "entries=:-99:"
 # pylint: disable=protected-access
 
 
 @pytest.fixture(name="coresys_disk_info")
-async def fixture_coresys_disk_info(coresys: CoreSys) -> CoreSys:
+async def fixture_coresys_disk_info(coresys: CoreSys) -> AsyncGenerator[CoreSys]:
     """Mock basic disk information for host APIs."""
     coresys.hardware.disk.get_disk_life_time = lambda _: 0
     coresys.hardware.disk.get_disk_free_space = lambda _: 5000
@@ -233,9 +235,54 @@ async def test_advanced_logs(
             "SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers,
             "follow": "",
         },
+        range_header=DEFAULT_RANGE_FOLLOW,
+        accept=LogFormat.JOURNAL,
+    )
+
+
+async def test_advaced_logs_query_parameters(
+    api_client: TestClient,
+    coresys: CoreSys,
+    journald_logs: MagicMock,
+    journal_logs_reader: MagicMock,
+):
+    """Test advanced logging API entries controlled by query parameters."""
+    # Check lines query parameter
+    await api_client.get("/host/logs?lines=53")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
+        range_header="entries=:-52:53",
+        accept=LogFormat.JOURNAL,
+    )
+
+    journald_logs.reset_mock()
+
+    # Check verbose logs formatter via query parameter
+    await api_client.get("/host/logs?verbose")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
         range_header=DEFAULT_RANGE,
         accept=LogFormat.JOURNAL,
     )
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE)
+
+    journal_logs_reader.reset_mock()
+    journald_logs.reset_mock()
+
+    # Query parameters should take precedence over headers
+    await api_client.get(
+        "/host/logs?lines=53&verbose",
+        headers={
+            "Range": "entries=:-19:10",
+            "Accept": "text/plain",
+        },
+    )
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
+        range_header="entries=:-52:53",
+        accept=LogFormat.JOURNAL,
+    )
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE)
 
 
 async def test_advanced_logs_boot_id_offset(

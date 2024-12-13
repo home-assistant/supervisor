@@ -55,7 +55,7 @@ from ..const import (
     ATTR_KERNEL_MODULES,
     ATTR_LABELS,
     ATTR_LEGACY,
-    ATTR_LOCATON,
+    ATTR_LOCATION,
     ATTR_MACHINE,
     ATTR_MAP,
     ATTR_NAME,
@@ -98,6 +98,7 @@ from ..const import (
     ROLE_ALL,
     ROLE_DEFAULT,
     AddonBoot,
+    AddonBootConfig,
     AddonStage,
     AddonStartup,
     AddonState,
@@ -321,7 +322,9 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_STARTUP, default=AddonStartup.APPLICATION): vol.Coerce(
             AddonStartup
         ),
-        vol.Optional(ATTR_BOOT, default=AddonBoot.AUTO): vol.Coerce(AddonBoot),
+        vol.Optional(ATTR_BOOT, default=AddonBootConfig.AUTO): vol.Coerce(
+            AddonBootConfig
+        ),
         vol.Optional(ATTR_INIT, default=True): vol.Boolean(),
         vol.Optional(ATTR_ADVANCED, default=False): vol.Boolean(),
         vol.Optional(ATTR_STAGE, default=AddonStage.STABLE): vol.Coerce(AddonStage),
@@ -480,7 +483,7 @@ SCHEMA_ADDON_SYSTEM = vol.All(
     _migrate_addon_config(),
     _SCHEMA_ADDON_CONFIG.extend(
         {
-            vol.Required(ATTR_LOCATON): str,
+            vol.Required(ATTR_LOCATION): str,
             vol.Required(ATTR_REPOSITORY): str,
             vol.Required(ATTR_TRANSLATIONS, default=dict): {
                 str: SCHEMA_ADDON_TRANSLATIONS

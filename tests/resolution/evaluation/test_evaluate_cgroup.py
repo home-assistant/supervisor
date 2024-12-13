@@ -26,7 +26,7 @@ async def test_evaluation(coresys: CoreSys):
 
     coresys.docker.info.cgroup = CGROUP_V2_VERSION
     await cgroup_version()
-    assert cgroup_version.reason in coresys.resolution.unsupported
+    assert cgroup_version.reason not in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
     coresys.docker.info.cgroup = CGROUP_V1_VERSION

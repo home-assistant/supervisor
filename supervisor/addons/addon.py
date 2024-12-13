@@ -57,6 +57,7 @@ from ..const import (
     ATTR_WATCHDOG,
     DNS_SUFFIX,
     AddonBoot,
+    AddonBootConfig,
     AddonStartup,
     AddonState,
     BusEvent,
@@ -80,7 +81,8 @@ from ..hardware.data import Device
 from ..homeassistant.const import WSEvent, WSType
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
-from ..resolution.const import UnhealthyReason
+from ..resolution.const import ContextType, IssueType, UnhealthyReason
+from ..resolution.data import Issue
 from ..store.addon import AddonStore
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
@@ -143,10 +145,26 @@ class Addon(AddonModel):
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._startup_task: asyncio.Task | None = None
+        self._boot_failed_issue = Issue(
+            IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug
+        )
+        self._device_access_missing_issue = Issue(
+            IssueType.DEVICE_ACCESS_MISSING, ContextType.ADDON, reference=self.slug
+        )
 
     def __repr__(self) -> str:
         """Return internal representation."""
         return f"<Addon: {self.slug}>"
+
+    @property
+    def boot_failed_issue(self) -> Issue:
+        """Get issue used if start on boot failed."""
+        return self._boot_failed_issue
+
+    @property
+    def device_access_missing_issue(self) -> Issue:
+        """Get issue used if device access is missing and can't be automatically added."""
+        return self._device_access_missing_issue
 
     @property
     def state(self) -> AddonState:
@@ -164,6 +182,20 @@ class Addon(AddonModel):
         # Signal listeners about addon state change
         if new_state == AddonState.STARTED or old_state == AddonState.STARTUP:
             self._startup_event.set()
+
+        # Dismiss boot failed issue if present and we started
+        if (
+            new_state == AddonState.STARTED
+            and self.boot_failed_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self.boot_failed_issue)
+
+        # Dismiss device access missing issue if present and we stopped
+        if (
+            new_state == AddonState.STOPPED
+            and self.device_access_missing_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self.device_access_missing_issue)
 
         self.sys_homeassistant.websocket.send_message(
             {
@@ -311,13 +343,22 @@ class Addon(AddonModel):
 
     @property
     def boot(self) -> AddonBoot:
-        """Return boot config with prio local settings."""
+        """Return boot config with prio local settings unless config is forced."""
+        if self.boot_config == AddonBootConfig.MANUAL_ONLY:
+            return super().boot
         return self.persist.get(ATTR_BOOT, super().boot)
 
     @boot.setter
     def boot(self, value: AddonBoot) -> None:
         """Store user boot options."""
         self.persist[ATTR_BOOT] = value
+
+        # Dismiss boot failed issue if present and boot at start disabled
+        if (
+            value == AddonBoot.MANUAL
+            and self._boot_failed_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self._boot_failed_issue)
 
     @property
     def auto_update(self) -> bool:

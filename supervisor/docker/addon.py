@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from attr import evolve
 from awesomeversion import AwesomeVersion
 import docker
 from docker.types import Mount
@@ -40,7 +41,7 @@ from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
 from ..utils.sentry import capture_exception
 from .const import (
     ENV_TIME,
@@ -50,6 +51,16 @@ from .const import (
     MOUNT_DEV,
     MOUNT_DOCKER,
     MOUNT_UDEV,
+    PATH_ALL_ADDON_CONFIGS,
+    PATH_BACKUP,
+    PATH_HOMEASSISTANT_CONFIG,
+    PATH_HOMEASSISTANT_CONFIG_LEGACY,
+    PATH_LOCAL_ADDONS,
+    PATH_MEDIA,
+    PATH_PRIVATE_DATA,
+    PATH_PUBLIC_CONFIG,
+    PATH_SHARE,
+    PATH_SSL,
     Capabilities,
     MountType,
     PropagationMode,
@@ -334,7 +345,7 @@ class DockerAddon(DockerInterface):
             Mount(
                 type=MountType.BIND,
                 source=self.addon.path_extern_data.as_posix(),
-                target=target_data_path or "/data",
+                target=target_data_path or PATH_PRIVATE_DATA.as_posix(),
                 read_only=False,
             ),
         ]
@@ -345,7 +356,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
-                    target=addon_mapping[MappingType.CONFIG].path or "/config",
+                    target=addon_mapping[MappingType.CONFIG].path
+                    or PATH_HOMEASSISTANT_CONFIG_LEGACY.as_posix(),
                     read_only=addon_mapping[MappingType.CONFIG].read_only,
                 )
             )
@@ -358,7 +370,7 @@ class DockerAddon(DockerInterface):
                         type=MountType.BIND,
                         source=self.addon.path_extern_config.as_posix(),
                         target=addon_mapping[MappingType.ADDON_CONFIG].path
-                        or "/config",
+                        or PATH_PUBLIC_CONFIG.as_posix(),
                         read_only=addon_mapping[MappingType.ADDON_CONFIG].read_only,
                     )
                 )
@@ -370,7 +382,7 @@ class DockerAddon(DockerInterface):
                         type=MountType.BIND,
                         source=self.sys_config.path_extern_homeassistant.as_posix(),
                         target=addon_mapping[MappingType.HOMEASSISTANT_CONFIG].path
-                        or "/homeassistant",
+                        or PATH_HOMEASSISTANT_CONFIG.as_posix(),
                         read_only=addon_mapping[
                             MappingType.HOMEASSISTANT_CONFIG
                         ].read_only,
@@ -383,7 +395,7 @@ class DockerAddon(DockerInterface):
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_addon_configs.as_posix(),
                     target=addon_mapping[MappingType.ALL_ADDON_CONFIGS].path
-                    or "/addon_configs",
+                    or PATH_ALL_ADDON_CONFIGS.as_posix(),
                     read_only=addon_mapping[MappingType.ALL_ADDON_CONFIGS].read_only,
                 )
             )
@@ -393,7 +405,7 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
-                    target=addon_mapping[MappingType.SSL].path or "/ssl",
+                    target=addon_mapping[MappingType.SSL].path or PATH_SSL.as_posix(),
                     read_only=addon_mapping[MappingType.SSL].read_only,
                 )
             )
@@ -403,7 +415,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_addons_local.as_posix(),
-                    target=addon_mapping[MappingType.ADDONS].path or "/addons",
+                    target=addon_mapping[MappingType.ADDONS].path
+                    or PATH_LOCAL_ADDONS.as_posix(),
                     read_only=addon_mapping[MappingType.ADDONS].read_only,
                 )
             )
@@ -413,7 +426,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_backup.as_posix(),
-                    target=addon_mapping[MappingType.BACKUP].path or "/backup",
+                    target=addon_mapping[MappingType.BACKUP].path
+                    or PATH_BACKUP.as_posix(),
                     read_only=addon_mapping[MappingType.BACKUP].read_only,
                 )
             )
@@ -423,7 +437,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
-                    target=addon_mapping[MappingType.SHARE].path or "/share",
+                    target=addon_mapping[MappingType.SHARE].path
+                    or PATH_SHARE.as_posix(),
                     read_only=addon_mapping[MappingType.SHARE].read_only,
                     propagation=PropagationMode.RSLAVE,
                 )
@@ -434,7 +449,8 @@ class DockerAddon(DockerInterface):
                 Mount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_media.as_posix(),
-                    target=addon_mapping[MappingType.MEDIA].path or "/media",
+                    target=addon_mapping[MappingType.MEDIA].path
+                    or PATH_MEDIA.as_posix(),
                     read_only=addon_mapping[MappingType.MEDIA].read_only,
                     propagation=PropagationMode.RSLAVE,
                 )
@@ -709,6 +725,28 @@ class DockerAddon(DockerInterface):
             with suppress(DockerError):
                 await self.cleanup()
 
+    @Job(name="docker_addon_cleanup", limit=JobExecutionLimit.GROUP_WAIT)
+    async def cleanup(
+        self,
+        old_image: str | None = None,
+        image: str | None = None,
+        version: AwesomeVersion | None = None,
+    ) -> None:
+        """Check if old version exists and cleanup other versions of image not in use."""
+        await self.sys_run_in_executor(
+            self.sys_docker.cleanup_old_images,
+            (image := image or self.image),
+            version or self.version,
+            {old_image} if old_image else None,
+            keep_images={
+                f"{addon.image}:{addon.version}"
+                for addon in self.sys_addons.installed
+                if addon.slug != self.addon.slug
+                and addon.image
+                and addon.image in {old_image, image}
+            },
+        )
+
     @Job(
         name="docker_addon_write_stdin",
         limit=JobExecutionLimit.GROUP_ONCE,
@@ -765,6 +803,13 @@ class DockerAddon(DockerInterface):
 
         await super().stop(remove_container)
 
+        # If there is a device access issue and the container is removed, clear it
+        if (
+            remove_container
+            and self.addon.device_access_missing_issue in self.sys_resolution.issues
+        ):
+            self.sys_resolution.dismiss_issue(self.addon.device_access_missing_issue)
+
     async def _validate_trust(
         self, image_id: str, image: str, version: AwesomeVersion
     ) -> None:
@@ -801,6 +846,16 @@ class DockerAddon(DockerInterface):
             raise DockerError(
                 f"Can't process Hardware Event on {self.name}: {err!s}", _LOGGER.error
             ) from err
+
+        if (
+            self.sys_docker.info.cgroup == CGROUP_V2_VERSION
+            and not self.sys_os.available
+        ):
+            self.sys_resolution.add_issue(
+                evolve(self.addon.device_access_missing_issue),
+                suggestions=[SuggestionType.EXECUTE_RESTART],
+            )
+            return
 
         permission = self.sys_hardware.policy.get_cgroups_rule(device)
         try:

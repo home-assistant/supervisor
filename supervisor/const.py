@@ -173,6 +173,7 @@ ATTR_ENABLED = "enabled"
 ATTR_ENVIRONMENT = "environment"
 ATTR_EVENT = "event"
 ATTR_EXCLUDE_DATABASE = "exclude_database"
+ATTR_EXTRA = "extra"
 ATTR_FEATURES = "features"
 ATTR_FILENAME = "filename"
 ATTR_FLAGS = "flags"
@@ -220,6 +221,7 @@ ATTR_IP_ADDRESS = "ip_address"
 ATTR_IPV4 = "ipv4"
 ATTR_IPV6 = "ipv6"
 ATTR_ISSUES = "issues"
+ATTR_JOB_ID = "job_id"
 ATTR_JOURNALD = "journald"
 ATTR_KERNEL = "kernel"
 ATTR_KERNEL_MODULES = "kernel_modules"
@@ -227,7 +229,7 @@ ATTR_LABELS = "labels"
 ATTR_LAST_BOOT = "last_boot"
 ATTR_LEGACY = "legacy"
 ATTR_LOCALS = "locals"
-ATTR_LOCATON = "location"
+ATTR_LOCATION = "location"
 ATTR_LOGGING = "logging"
 ATTR_LOGO = "logo"
 ATTR_LONG_DESCRIPTION = "long_description"
@@ -259,6 +261,7 @@ ATTR_PANEL_TITLE = "panel_title"
 ATTR_PANELS = "panels"
 ATTR_PARENT = "parent"
 ATTR_PASSWORD = "password"
+ATTR_PATH = "path"
 ATTR_PLUGINS = "plugins"
 ATTR_PORT = "port"
 ATTR_PORTS = "ports"
@@ -382,11 +385,26 @@ ROLE_ADMIN = "admin"
 ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
 
 
+class AddonBootConfig(StrEnum):
+    """Boot mode config for the add-on."""
+
+    AUTO = "auto"
+    MANUAL = "manual"
+    MANUAL_ONLY = "manual_only"
+
+
 class AddonBoot(StrEnum):
     """Boot mode for the add-on."""
 
     AUTO = "auto"
     MANUAL = "manual"
+
+    @classmethod
+    def _missing_(cls, value: str) -> Self | None:
+        """Convert 'forced' config values to their counterpart."""
+        if value == AddonBootConfig.MANUAL_ONLY:
+            return AddonBoot.MANUAL
+        return None
 
 
 class AddonStartup(StrEnum):

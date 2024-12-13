@@ -38,6 +38,7 @@
 - This PR is related to issue:
 - Link to documentation pull request:
 - Link to cli pull request:
+- Link to client library pull request:
 
 ## Checklist
 
@@ -55,9 +56,11 @@
 - [ ] The code has been formatted using Ruff (`ruff format supervisor tests`)
 - [ ] Tests have been added to verify that the new code works.
 
-If API endpoints of add-on configuration are added/changed:
+If API endpoints or add-on configuration are added/changed:
 
 - [ ] Documentation added/updated for [developers.home-assistant.io][docs-repository]
+- [ ] [CLI][cli-repository] updated (if necessary)
+- [ ] [Client library][client-library-repository] updated (if necessary)
 
 <!--
   Thank you for contributing <3
@@ -67,3 +70,5 @@ If API endpoints of add-on configuration are added/changed:
 
 [dev-checklist]: https://developers.home-assistant.io/docs/en/development_checklist.html
 [docs-repository]: https://github.com/home-assistant/developers.home-assistant
+[cli-repository]: https://github.com/home-assistant/cli
+[client-library-repository]: https://github.com/home-assistant-libs/python-supervisor-client/

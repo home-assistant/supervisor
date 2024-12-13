@@ -2,15 +2,16 @@
 
 import asyncio
 from collections.abc import Awaitable
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 
 from ..addons.const import ADDON_UPDATE_CONDITIONS
+from ..backups.const import LOCATION_CLOUD_BACKUP
 from ..const import AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import AddonsError, HomeAssistantError, ObserverError
 from ..homeassistant.const import LANDINGPAGE
-from ..jobs.decorator import Job, JobCondition
+from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 from ..utils.dt import utcnow
 from ..utils.sentry import capture_exception
@@ -33,7 +34,7 @@ RUN_UPDATE_OBSERVER = 30400
 RUN_RELOAD_ADDONS = 10800
 RUN_RELOAD_BACKUPS = 72000
 RUN_RELOAD_HOST = 7600
-RUN_RELOAD_UPDATER = 7200
+RUN_RELOAD_UPDATER = 27100
 RUN_RELOAD_INGRESS = 930
 RUN_RELOAD_MOUNTS = 900
 
@@ -42,7 +43,11 @@ RUN_WATCHDOG_HOMEASSISTANT_API = 120
 RUN_WATCHDOG_ADDON_APPLICATON = 120
 RUN_WATCHDOG_OBSERVER_APPLICATION = 180
 
+RUN_CORE_BACKUP_CLEANUP = 86200
+
 PLUGIN_AUTO_UPDATE_CONDITIONS = PLUGIN_UPDATE_CONDITIONS + [JobCondition.RUNNING]
+
+OLD_BACKUP_THRESHOLD = timedelta(days=2)
 
 
 class Tasks(CoreSysAttributes):
@@ -66,7 +71,7 @@ class Tasks(CoreSysAttributes):
 
         # Reload
         self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_ADDONS)
-        self.sys_scheduler.register_task(self.sys_updater.reload, RUN_RELOAD_UPDATER)
+        self.sys_scheduler.register_task(self._reload_updater, RUN_RELOAD_UPDATER)
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
         self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
         self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
@@ -81,6 +86,11 @@ class Tasks(CoreSysAttributes):
         )
         self.sys_scheduler.register_task(
             self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
+        )
+
+        # Cleanup
+        self.sys_scheduler.register_task(
+            self._core_backup_cleanup, RUN_CORE_BACKUP_CLEANUP
         )
 
         _LOGGER.info("All core tasks are scheduled")
@@ -136,6 +146,7 @@ class Tasks(CoreSysAttributes):
             JobCondition.INTERNET_HOST,
             JobCondition.RUNNING,
         ],
+        limit=JobExecutionLimit.ONCE,
     )
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""
@@ -333,3 +344,24 @@ class Tasks(CoreSysAttributes):
     async def _reload_store(self) -> None:
         """Reload store and check for addon updates."""
         await self.sys_store.reload()
+
+    @Job(name="tasks_reload_updater")
+    async def _reload_updater(self) -> None:
+        """Check for new versions of Home Assistant, Supervisor, OS, etc."""
+        await self.sys_updater.reload()
+
+        # If there's a new version of supervisor, start update immediately
+        if self.sys_supervisor.need_update:
+            await self._update_supervisor()
+
+    @Job(name="tasks_core_backup_cleanup", conditions=[JobCondition.HEALTHY])
+    async def _core_backup_cleanup(self) -> None:
+        """Core backup is intended for transient use, remove any old backups that got left behind."""
+        old_backups = [
+            backup
+            for backup in self.sys_backups.list_backups
+            if LOCATION_CLOUD_BACKUP in backup.all_locations
+            and datetime.fromisoformat(backup.date) < utcnow() - OLD_BACKUP_THRESHOLD
+        ]
+        for backup in old_backups:
+            self.sys_backups.remove(backup, [LOCATION_CLOUD_BACKUP])

@@ -336,6 +336,12 @@ class APIForbidden(APIError):
     status = 403
 
 
+class APINotFound(APIError):
+    """API not found error."""
+
+    status = 404
+
+
 class APIAddonNotInstalled(APIError):
     """Not installed addon requested at addons API."""
 
@@ -643,6 +649,10 @@ class BackupInvalidError(BackupError):
 
 class BackupMountDownError(BackupError):
     """Raise if mount specified for backup is down."""
+
+
+class BackupDataDiskBadMessageError(BackupError):
+    """Raise if bad message error received from data disk during backup."""
 
 
 class BackupJobError(BackupError, JobException):

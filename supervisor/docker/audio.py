@@ -17,6 +17,7 @@ from .const import (
     MOUNT_DEV,
     MOUNT_MACHINE_ID,
     MOUNT_UDEV,
+    PATH_PRIVATE_DATA,
     Capabilities,
     MountType,
 )
@@ -48,7 +49,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
             Mount(
                 type=MountType.BIND,
                 source=self.sys_config.path_extern_audio.as_posix(),
-                target="/data",
+                target=PATH_PRIVATE_DATA.as_posix(),
                 read_only=False,
             ),
             MOUNT_DBUS,

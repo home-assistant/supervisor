@@ -1,22 +1,32 @@
 """Test scheduled tasks."""
 
-from unittest.mock import MagicMock, Mock, patch
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from pathlib import Path
+from shutil import copy
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.const import LANDINGPAGE
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.misc.tasks import Tasks
+from supervisor.supervisor import Supervisor
+
+from tests.common import get_fixture_path, load_fixture
 
 # pylint: disable=protected-access
 
 
 @pytest.fixture(name="tasks")
-async def fixture_tasks(coresys: CoreSys, container: MagicMock) -> Tasks:
+async def fixture_tasks(
+    coresys: CoreSys, container: MagicMock
+) -> AsyncGenerator[Tasks]:
     """Return task manager."""
     coresys.homeassistant.watchdog = True
     coresys.homeassistant.version = AwesomeVersion("2023.12.0")
@@ -159,3 +169,73 @@ async def test_watchdog_homeassistant_api_reanimation_limit(
         assert not caplog.text
         restart.assert_not_called()
         rebuild.assert_not_called()
+
+
+async def test_reload_updater_triggers_supervisor_update(
+    tasks: Tasks, coresys: CoreSys
+):
+    """Test an updater reload triggers a supervisor update if there is one."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.core.state = CoreState.RUNNING
+    coresys.security.content_trust = False
+
+    version_data = load_fixture("version_stable.json")
+    version_resp = AsyncMock()
+    version_resp.status = 200
+    version_resp.read.return_value = version_data
+
+    @asynccontextmanager
+    async def mock_get_for_version(*args, **kwargs) -> AsyncGenerator[AsyncMock]:
+        """Mock get call for version information."""
+        yield version_resp
+
+    with (
+        patch("supervisor.coresys.aiohttp.ClientSession.get", new=mock_get_for_version),
+        patch.object(
+            Supervisor,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.10.0")),
+        ),
+        patch.object(Supervisor, "update") as update,
+    ):
+        # Set supervisor's version intially
+        await coresys.updater.reload()
+        assert coresys.supervisor.latest_version == AwesomeVersion("2024.10.0")
+
+        # No change in version means no update
+        await tasks._reload_updater()
+        update.assert_not_called()
+
+        # Version change causes an update
+        version_resp.read.return_value = version_data.replace("2024.10.0", "2024.10.1")
+        await tasks._reload_updater()
+        update.assert_called_once()
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_core_backup_cleanup(
+    tasks: Tasks, coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test core backup task cleans up old backup files."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    # Put an old and new backup in folder
+    copy(get_fixture_path("backup_example.tar"), coresys.config.path_core_backup)
+    await coresys.backups.reload(
+        location=".cloud_backup", filename="backup_example.tar"
+    )
+    assert (old_backup := coresys.backups.get("7fed74c8"))
+    new_backup = await coresys.backups.do_backup_partial(
+        name="test", folders=["ssl"], location=".cloud_backup"
+    )
+
+    old_tar = old_backup.tarfile
+    new_tar = new_backup.tarfile
+    # pylint: disable-next=protected-access
+    await tasks._core_backup_cleanup()
+
+    assert coresys.backups.get(new_backup.slug)
+    assert not coresys.backups.get("7fed74c8")
+    assert new_tar.exists()
+    assert not old_tar.exists()
