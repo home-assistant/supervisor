@@ -61,6 +61,8 @@ from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+ALL_ADDONS_FLAG = "ALL"
+
 RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 RE_BACKUP_FILENAME = re.compile(r"^[^\\\/]+\.tar$")
 
@@ -108,7 +110,9 @@ SCHEMA_BACKUP_FULL = vol.Schema(
 
 SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
     {
-        vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
+        vol.Optional(ATTR_ADDONS): vol.Or(
+            ALL_ADDONS_FLAG, vol.All([str], vol.Unique())
+        ),
         vol.Optional(ATTR_FOLDERS): vol.All([vol.In(_ALL_FOLDERS)], vol.Unique()),
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     }
@@ -351,6 +355,9 @@ class APIBackups(CoreSysAttributes):
             body[ATTR_LOCATION] = locations.pop(0)
             if locations:
                 body[ATTR_ADDITIONAL_LOCATIONS] = locations
+
+        if body.get(ATTR_ADDONS) == ALL_ADDONS_FLAG:
+            body[ATTR_ADDONS] = list(self.sys_addons.local)
 
         background = body.pop(ATTR_BACKGROUND)
         backup_task, job_id = await self._background_backup_task(

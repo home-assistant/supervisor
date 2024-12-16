@@ -25,9 +25,8 @@ from tests.common import get_fixture_path
 from tests.const import TEST_ADDON_SLUG
 
 
-async def test_info(
-    api_client, coresys: CoreSys, mock_full_backup: Backup, tmp_path: Path
-):
+@pytest.mark.usefixtures("mock_full_backup")
+async def test_info(api_client: TestClient, coresys: CoreSys, tmp_path: Path):
     """Test info endpoint."""
     copy(get_fixture_path("backup_example.tar"), tmp_path / "test_backup.tar")
 
@@ -43,8 +42,9 @@ async def test_info(
     assert result["data"]["backups"][0]["size_bytes"] == 10240
 
 
+@pytest.mark.usefixtures("mock_full_backup")
 async def test_backup_more_info(
-    api_client, coresys: CoreSys, mock_full_backup: Backup, tmp_path: Path
+    api_client: TestClient, coresys: CoreSys, tmp_path: Path
 ):
     """Test info endpoint."""
     copy(get_fixture_path("backup_example.tar"), tmp_path / "test_backup.tar")
@@ -65,9 +65,8 @@ async def test_backup_more_info(
     assert result["data"]["homeassistant_exclude_database"] is False
 
 
-async def test_list(
-    api_client, coresys: CoreSys, mock_full_backup: Backup, tmp_path: Path
-):
+@pytest.mark.usefixtures("mock_full_backup")
+async def test_list(api_client: TestClient, coresys: CoreSys, tmp_path: Path):
     """Test list endpoint."""
     copy(get_fixture_path("backup_example.tar"), tmp_path / "test_backup.tar")
 
@@ -82,7 +81,7 @@ async def test_list(
     assert result["data"]["backups"][0]["size_bytes"] == 10240
 
 
-async def test_options(api_client, coresys: CoreSys):
+async def test_options(api_client: TestClient, coresys: CoreSys):
     """Test options endpoint."""
     assert coresys.backups.days_until_stale == 30
 
@@ -102,15 +101,13 @@ async def test_options(api_client, coresys: CoreSys):
     "location,backup_dir",
     [("backup_test", PurePath("mounts", "backup_test")), (None, PurePath("backup"))],
 )
+@pytest.mark.usefixtures("path_extern", "mount_propagation", "mock_is_mount")
 async def test_backup_to_location(
     api_client: TestClient,
     coresys: CoreSys,
     location: str | None,
     backup_dir: PurePath,
     tmp_supervisor_data: Path,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
 ):
     """Test making a backup to a specific location with default mount."""
     await coresys.mounts.load()
@@ -149,14 +146,10 @@ async def test_backup_to_location(
     assert result["data"]["location"] == location
 
 
-async def test_backup_to_default(
-    api_client: TestClient,
-    coresys: CoreSys,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
-):
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mount_propagation", "mock_is_mount"
+)
+async def test_backup_to_default(api_client: TestClient, coresys: CoreSys):
     """Test making backup to default mount."""
     await coresys.mounts.load()
     (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
@@ -186,12 +179,9 @@ async def test_backup_to_default(
     assert (mount_dir / f"{slug}.tar").exists()
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_api_freeze_thaw(
-    api_client: TestClient,
-    coresys: CoreSys,
-    ha_ws_client: AsyncMock,
-    tmp_supervisor_data,
-    path_extern,
+    api_client: TestClient, coresys: CoreSys, ha_ws_client: AsyncMock
 ):
     """Test manual freeze and thaw for external backup via API."""
     coresys.core.state = CoreState.RUNNING
@@ -220,13 +210,12 @@ async def test_api_freeze_thaw(
     "partial_backup,exclude_db_setting",
     [(False, True), (True, True), (False, False), (True, False)],
 )
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_api_backup_exclude_database(
     api_client: TestClient,
     coresys: CoreSys,
     partial_backup: bool,
     exclude_db_setting: bool,
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test backups exclude the database when specified."""
     coresys.core.state = CoreState.RUNNING
@@ -268,13 +257,13 @@ async def _get_job_info(api_client: TestClient, job_id: str) -> dict[str, Any]:
         ),
     ],
 )
+@pytest.mark.usefixtures("path_extern")
 async def test_api_backup_restore_background(
     api_client: TestClient,
     coresys: CoreSys,
     backup_type: str,
     options: dict[str, Any],
     tmp_supervisor_data: Path,
-    path_extern,
 ):
     """Test background option on backup/restore APIs."""
     coresys.core.state = CoreState.RUNNING
@@ -354,14 +343,13 @@ async def test_api_backup_restore_background(
         ),
     ],
 )
+@pytest.mark.usefixtures("install_addon_ssh", "path_extern")
 async def test_api_backup_errors(
     api_client: TestClient,
     coresys: CoreSys,
     backup_type: str,
     options: dict[str, Any],
     tmp_supervisor_data: Path,
-    install_addon_ssh,
-    path_extern,
 ):
     """Test error reporting in backup job."""
     coresys.core.state = CoreState.RUNNING
@@ -604,14 +592,13 @@ async def test_upload_download(
     assert backup == out_backup
 
 
-@pytest.mark.usefixtures("path_extern")
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 @pytest.mark.parametrize(
     ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
 )
 async def test_backup_to_multiple_locations(
     api_client: TestClient,
     coresys: CoreSys,
-    tmp_supervisor_data: Path,
     backup_type: str,
     inputs: dict[str, Any],
 ):
@@ -643,10 +630,10 @@ async def test_backup_to_multiple_locations(
 @pytest.mark.parametrize(
     ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
 )
+@pytest.mark.usefixtures("tmp_supervisor_data")
 async def test_backup_with_extras(
     api_client: TestClient,
     coresys: CoreSys,
-    tmp_supervisor_data: Path,
     backup_type: str,
     inputs: dict[str, Any],
 ):
@@ -671,11 +658,8 @@ async def test_backup_with_extras(
     slug = result["data"]["extra"] == {"user": "test", "scheduled": True}
 
 
-async def test_upload_to_multiple_locations(
-    api_client: TestClient,
-    coresys: CoreSys,
-    tmp_supervisor_data: Path,
-):
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_upload_to_multiple_locations(api_client: TestClient, coresys: CoreSys):
     """Test uploading a backup to multiple locations."""
     backup_file = get_fixture_path("backup_example.tar")
 
@@ -700,10 +684,9 @@ async def test_upload_to_multiple_locations(
     assert coresys.backups.get("7fed74c8").location is None
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
 async def test_upload_duplicate_backup_new_location(
-    api_client: TestClient,
-    coresys: CoreSys,
-    tmp_supervisor_data: Path,
+    api_client: TestClient, coresys: CoreSys
 ):
     """Test uploading a backup that already exists to a new location."""
     backup_file = get_fixture_path("backup_example.tar")
@@ -809,3 +792,21 @@ async def test_download_backup_from_invalid_location(api_client: TestClient):
     assert resp.status == 400
     body = await resp.json()
     assert body["message"] == "Backup test is not in location .cloud_backup"
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_partial_backup_all_addons(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+):
+    """Test backup including extra metdata."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch.object(Backup, "store_addons") as store_addons:
+        resp = await api_client.post(
+            "/backups/new/partial", json={"name": "All addons test", "addons": "ALL"}
+        )
+        assert resp.status == 200
+        store_addons.assert_called_once_with([install_addon_ssh])
