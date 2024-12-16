@@ -216,7 +216,7 @@ async def test_job_manual_cleanup(api_client: TestClient, coresys: CoreSys):
     resp = await api_client.get(f"/jobs/{test.job_id}")
     assert resp.status == 404
     result = await resp.json()
-    assert result["message"] == f"No job found with id {test.job_id}"
+    assert result["message"] == "Job does not exist"
 
 
 @pytest.mark.parametrize(

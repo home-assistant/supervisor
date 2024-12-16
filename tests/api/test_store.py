@@ -236,7 +236,7 @@ async def test_api_detached_addon_changelog(
     resp = await api_client.get(f"/{resource}/{install_addon_ssh.slug}/changelog")
     assert resp.status == 200
     result = await resp.text()
-    assert result == "Addon local_ssh with version latest does not exist in the store"
+    assert result == "Addon local_ssh does not exist in the store"
 
 
 @pytest.mark.parametrize("resource", ["store/addons", "addons"])
@@ -280,7 +280,7 @@ async def test_api_detached_addon_documentation(
     resp = await api_client.get(f"/{resource}/{install_addon_ssh.slug}/documentation")
     assert resp.status == 200
     result = await resp.text()
-    assert result == "Addon local_ssh with version latest does not exist in the store"
+    assert result == "Addon local_ssh does not exist in the store"
 
 
 async def get_message(resp: ClientResponse, json_expected: bool) -> str:
@@ -315,10 +315,7 @@ async def test_store_addon_not_found(
     """Test store addon not found error."""
     resp = await api_client.request(method, url)
     assert resp.status == 404
-    assert (
-        await get_message(resp, json_expected)
-        == "Addon bad does not exist in the store"
-    )
+    assert await get_message(resp, json_expected) == "Addon bad does not exist"
 
 
 @pytest.mark.parametrize(

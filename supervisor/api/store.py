@@ -76,13 +76,16 @@ class APIStore(CoreSysAttributes):
         addon_slug: str = request.match_info.get("addon")
 
         if not (addon := self.sys_addons.get(addon_slug)):
-            raise APINotFound(f"Addon {addon_slug} does not exist in the store")
+            raise APINotFound(f"Addon {addon_slug} does not exist")
 
         if installed and not addon.is_installed:
             raise APIError(f"Addon {addon_slug} is not installed")
 
         if not installed and addon.is_installed:
+            if not addon.addon_store:
+                raise APINotFound(f"Addon {addon_slug} does not exist in the store")
             return addon.addon_store
+
         return addon
 
     def _extract_repository(self, request: web.Request) -> Repository:
