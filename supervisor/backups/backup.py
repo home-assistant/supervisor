@@ -3,7 +3,8 @@
 import asyncio
 from base64 import b64decode, b64encode
 from collections import defaultdict
-from collections.abc import Awaitable
+from collections.abc import AsyncGenerator, Awaitable
+from contextlib import asynccontextmanager
 from copy import deepcopy
 from datetime import timedelta
 from functools import cached_property
@@ -12,6 +13,7 @@ import json
 import logging
 from pathlib import Path
 import tarfile
+from tarfile import TarFile
 from tempfile import TemporaryDirectory
 import time
 from typing import Any, Self
@@ -56,6 +58,7 @@ from ..jobs.job_group import JobGroup
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
+from ..utils.sentinel import DEFAULT
 from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
 from .utils import key_to_iv, password_to_key
 from .validate import SCHEMA_BACKUP
@@ -86,7 +89,6 @@ class Backup(JobGroup):
         self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
         self._tmp = None
         self._outer_secure_tarfile: SecureTarFile | None = None
-        self._outer_secure_tarfile_tarfile: tarfile.TarFile | None = None
         self._key: bytes | None = None
         self._aes: Cipher | None = None
         self._locations: dict[str | None, Path] = {location: tar_file}
@@ -375,59 +377,68 @@ class Backup(JobGroup):
 
         return True
 
-    async def __aenter__(self):
-        """Async context to open a backup."""
-
-        # create a backup
-        if not self.tarfile.is_file():
-            self._outer_secure_tarfile = SecureTarFile(
-                self.tarfile,
-                "w",
-                gzip=False,
-                bufsize=BUF_SIZE,
+    @asynccontextmanager
+    async def create(self) -> AsyncGenerator[None]:
+        """Create new backup file."""
+        if self.tarfile.is_file():
+            raise BackupError(
+                f"Cannot make new backup at {self.tarfile.as_posix()}, file already exists!",
+                _LOGGER.error,
             )
-            self._outer_secure_tarfile_tarfile = self._outer_secure_tarfile.__enter__()
-            return
+
+        self._outer_secure_tarfile = SecureTarFile(
+            self.tarfile,
+            "w",
+            gzip=False,
+            bufsize=BUF_SIZE,
+        )
+        try:
+            with self._outer_secure_tarfile as outer_tarfile:
+                yield
+                await self._create_cleanup(outer_tarfile)
+        finally:
+            self._outer_secure_tarfile = None
+
+    @asynccontextmanager
+    async def open(self, location: str | None | type[DEFAULT]) -> AsyncGenerator[None]:
+        """Open backup for restore."""
+        if location != DEFAULT and location not in self.all_locations:
+            raise BackupError(
+                f"Backup {self.slug} does not exist in location {location}",
+                _LOGGER.error,
+            )
+
+        backup_tarfile = (
+            self.tarfile if location == DEFAULT else self.all_locations[location]
+        )
+        if not backup_tarfile.is_file():
+            raise BackupError(
+                f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
+                _LOGGER.error,
+            )
 
         # extract an existing backup
-        self._tmp = TemporaryDirectory(dir=str(self.tarfile.parent))
+        self._tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
 
         def _extract_backup():
             """Extract a backup."""
-            with tarfile.open(self.tarfile, "r:") as tar:
+            with tarfile.open(backup_tarfile, "r:") as tar:
                 tar.extractall(
                     path=self._tmp.name,
                     members=secure_path(tar),
                     filter="fully_trusted",
                 )
 
-        await self.sys_run_in_executor(_extract_backup)
+        with self._tmp:
+            await self.sys_run_in_executor(_extract_backup)
+            yield
 
-    async def __aexit__(self, exception_type, exception_value, traceback):
-        """Async context to close a backup."""
-        # exists backup or exception on build
-        try:
-            await self._aexit(exception_type, exception_value, traceback)
-        finally:
-            if self._tmp:
-                self._tmp.cleanup()
-            if self._outer_secure_tarfile:
-                self._outer_secure_tarfile.__exit__(
-                    exception_type, exception_value, traceback
-                )
-                self._outer_secure_tarfile = None
-                self._outer_secure_tarfile_tarfile = None
-
-    async def _aexit(self, exception_type, exception_value, traceback):
+    async def _create_cleanup(self, outer_tarfile: TarFile) -> None:
         """Cleanup after backup creation.
 
-        This is a separate method to allow it to be called from __aexit__ to ensure
+        Separate method to be called from create to ensure
         that cleanup is always performed, even if an exception is raised.
         """
-        # If we're not creating a new backup, or if an exception was raised, we're done
-        if not self._outer_secure_tarfile or exception_type is not None:
-            return
-
         # validate data
         try:
             self._data = SCHEMA_BACKUP(self._data)
@@ -445,7 +456,7 @@ class Backup(JobGroup):
             tar_info = tarfile.TarInfo(name="./backup.json")
             tar_info.size = len(raw_bytes)
             tar_info.mtime = int(time.time())
-            self._outer_secure_tarfile_tarfile.addfile(tar_info, fileobj=fileobj)
+            outer_tarfile.addfile(tar_info, fileobj=fileobj)
 
         try:
             await self.sys_run_in_executor(_add_backup_json)

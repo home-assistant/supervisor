@@ -810,3 +810,50 @@ async def test_partial_backup_all_addons(
         )
         assert resp.status == 200
         store_addons.assert_called_once_with([install_addon_ssh])
+
+
+async def test_restore_backup_from_location(
+    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test restoring a backup from a specific location."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    # Make a backup and a file to test with
+    (test_file := coresys.config.path_share / "test.txt").touch()
+    resp = await api_client.post(
+        "/backups/new/partial",
+        json={
+            "name": "Test",
+            "folders": ["share"],
+            "location": [None, ".cloud_backup"],
+        },
+    )
+    assert resp.status == 200
+    body = await resp.json()
+    backup = coresys.backups.get(body["data"]["slug"])
+    assert set(backup.all_locations) == {None, ".cloud_backup"}
+
+    # The use case of this is user might want to pick a particular mount if one is flaky
+    # To simulate this, remove the file from one location and show one works and the other doesn't
+    assert backup.location is None
+    backup.all_locations[None].unlink()
+    test_file.unlink()
+
+    resp = await api_client.post(
+        f"/backups/{backup.slug}/restore/partial",
+        json={"location": None, "folders": ["share"]},
+    )
+    assert resp.status == 400
+    body = await resp.json()
+    assert (
+        body["message"]
+        == f"Cannot open backup at {backup.all_locations[None].as_posix()}, file does not exist!"
+    )
+
+    resp = await api_client.post(
+        f"/backups/{backup.slug}/restore/partial",
+        json={"location": ".cloud_backup", "folders": ["share"]},
+    )
+    assert resp.status == 200
+    assert test_file.is_file()

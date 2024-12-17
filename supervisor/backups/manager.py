@@ -405,7 +405,7 @@ class BackupManager(FileConfiguration, JobGroup):
         try:
             self.sys_core.state = CoreState.FREEZE
 
-            async with backup:
+            async with backup.create():
                 # HomeAssistant Folder is for v1
                 if homeassistant:
                     self._change_stage(BackupJobStage.HOME_ASSISTANT, backup)
@@ -575,6 +575,7 @@ class BackupManager(FileConfiguration, JobGroup):
         folder_list: list[str],
         homeassistant: bool,
         replace: bool,
+        location: str | None | type[DEFAULT],
     ) -> bool:
         """Restore from a backup.
 
@@ -585,7 +586,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         try:
             task_hass: asyncio.Task | None = None
-            async with backup:
+            async with backup.open(location):
                 # Restore docker config
                 self._change_stage(RestoreJobStage.DOCKER_CONFIG, backup)
                 backup.restore_dockerconfig(replace)
@@ -671,7 +672,10 @@ class BackupManager(FileConfiguration, JobGroup):
         cleanup=False,
     )
     async def do_restore_full(
-        self, backup: Backup, password: str | None = None
+        self,
+        backup: Backup,
+        password: str | None = None,
+        location: str | None | type[DEFAULT] = DEFAULT,
     ) -> bool:
         """Restore a backup."""
         # Add backup ID to job
@@ -702,7 +706,12 @@ class BackupManager(FileConfiguration, JobGroup):
             await self.sys_core.shutdown()
 
             success = await self._do_restore(
-                backup, backup.addon_list, backup.folders, True, True
+                backup,
+                backup.addon_list,
+                backup.folders,
+                homeassistant=True,
+                replace=True,
+                location=location,
             )
         finally:
             self.sys_core.state = CoreState.RUNNING
@@ -731,6 +740,7 @@ class BackupManager(FileConfiguration, JobGroup):
         addons: list[str] | None = None,
         folders: list[Path] | None = None,
         password: str | None = None,
+        location: str | None | type[DEFAULT] = DEFAULT,
     ) -> bool:
         """Restore a backup."""
         # Add backup ID to job
@@ -766,7 +776,12 @@ class BackupManager(FileConfiguration, JobGroup):
 
         try:
             success = await self._do_restore(
-                backup, addon_list, folder_list, homeassistant, False
+                backup,
+                addon_list,
+                folder_list,
+                homeassistant=homeassistant,
+                replace=False,
+                location=location,
             )
         finally:
             self.sys_core.state = CoreState.RUNNING
