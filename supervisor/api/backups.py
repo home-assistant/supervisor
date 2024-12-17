@@ -83,6 +83,7 @@ SCHEMA_RESTORE_FULL = vol.Schema(
     {
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_BACKGROUND, default=False): vol.Boolean(),
+        vol.Optional(ATTR_LOCATION): vol.Maybe(str),
     }
 )
 
@@ -379,8 +380,10 @@ class APIBackups(CoreSysAttributes):
     async def restore_full(self, request: web.Request):
         """Full restore of a backup."""
         backup = self._extract_slug(request)
-        self._validate_cloud_backup_location(request, backup.location)
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
+        self._validate_cloud_backup_location(
+            request, body.get(ATTR_LOCATION, backup.location)
+        )
         background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await self._background_backup_task(
             self.sys_backups.do_restore_full, backup, **body
@@ -397,8 +400,10 @@ class APIBackups(CoreSysAttributes):
     async def restore_partial(self, request: web.Request):
         """Partial restore a backup."""
         backup = self._extract_slug(request)
-        self._validate_cloud_backup_location(request, backup.location)
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
+        self._validate_cloud_backup_location(
+            request, body.get(ATTR_LOCATION, backup.location)
+        )
         background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await self._background_backup_task(
             self.sys_backups.do_restore_partial, backup, **body
