@@ -51,7 +51,7 @@ from ..const import (
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APIForbidden
+from ..exceptions import APIError, APIForbidden, APINotFound
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
@@ -74,19 +74,17 @@ class APIStore(CoreSysAttributes):
     def _extract_addon(self, request: web.Request, installed=False) -> AnyAddon:
         """Return add-on, throw an exception it it doesn't exist."""
         addon_slug: str = request.match_info.get("addon")
-        addon_version: str = request.match_info.get("version", "latest")
 
-        if installed:
-            addon = self.sys_addons.local.get(addon_slug)
-            if addon is None or not addon.is_installed:
-                raise APIError(f"Addon {addon_slug} is not installed")
-        else:
-            addon = self.sys_addons.store.get(addon_slug)
+        if not (addon := self.sys_addons.get(addon_slug)):
+            raise APINotFound(f"Addon {addon_slug} does not exist")
 
-        if not addon:
-            raise APIError(
-                f"Addon {addon_slug} with version {addon_version} does not exist in the store"
-            )
+        if installed and not addon.is_installed:
+            raise APIError(f"Addon {addon_slug} is not installed")
+
+        if not installed and addon.is_installed:
+            if not addon.addon_store:
+                raise APINotFound(f"Addon {addon_slug} does not exist in the store")
+            return addon.addon_store
 
         return addon
 
@@ -94,11 +92,12 @@ class APIStore(CoreSysAttributes):
         """Return repository, throw an exception it it doesn't exist."""
         repository_slug: str = request.match_info.get("repository")
 
-        repository = self.sys_store.get(repository_slug)
-        if not repository:
-            raise APIError(f"Repository {repository_slug} does not exist in the store")
+        if repository_slug not in self.sys_store.repositories:
+            raise APINotFound(
+                f"Repository {repository_slug} does not exist in the store"
+            )
 
-        return repository
+        return self.sys_store.get(repository_slug)
 
     def _generate_addon_information(
         self, addon: AddonStore, extended: bool = False

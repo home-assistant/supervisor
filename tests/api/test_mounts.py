@@ -264,25 +264,6 @@ async def test_api_update_mount(
     coresys.mounts.save_data.assert_called_once()
 
 
-async def test_api_update_error_mount_missing(
-    api_client: TestClient, mount_propagation
-):
-    """Test update mount API errors when mount does not exist."""
-    resp = await api_client.put(
-        "/mounts/backup_test",
-        json={
-            "type": "cifs",
-            "usage": "backup",
-            "server": "backup.local",
-            "share": "new_backups",
-        },
-    )
-    assert resp.status == 400
-    result = await resp.json()
-    assert result["result"] == "error"
-    assert result["message"] == "No mount exists with name backup_test"
-
-
 async def test_api_update_dbus_error_mount_remains(
     api_client: TestClient,
     all_dbus_services: dict[str, DBusServiceMock],
@@ -399,20 +380,6 @@ async def test_api_reload_mount(
     ]
 
 
-async def test_api_reload_error_mount_missing(
-    api_client: TestClient, mount_propagation
-):
-    """Test reload mount API errors when mount does not exist."""
-    resp = await api_client.post("/mounts/backup_test/reload")
-    assert resp.status == 400
-    result = await resp.json()
-    assert result["result"] == "error"
-    assert (
-        result["message"]
-        == "Cannot reload 'backup_test', no mount exists with that name"
-    )
-
-
 async def test_api_delete_mount(
     api_client: TestClient,
     coresys: CoreSys,
@@ -433,20 +400,6 @@ async def test_api_delete_mount(
     assert result["data"]["mounts"] == []
 
     coresys.mounts.save_data.assert_called_once()
-
-
-async def test_api_delete_error_mount_missing(
-    api_client: TestClient, mount_propagation
-):
-    """Test delete mount API errors when mount does not exist."""
-    resp = await api_client.delete("/mounts/backup_test")
-    assert resp.status == 400
-    result = await resp.json()
-    assert result["result"] == "error"
-    assert (
-        result["message"]
-        == "Cannot remove 'backup_test', no mount exists with that name"
-    )
 
 
 async def test_api_create_backup_mount_sets_default(
@@ -903,3 +856,19 @@ async def test_api_read_only_backup_mount_invalid(
     result = await resp.json()
     assert result["result"] == "error"
     assert "Backup mounts cannot be read only" in result["message"]
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [
+        ("put", "/mounts/bad"),
+        ("delete", "/mounts/bad"),
+        ("post", "/mounts/bad/reload"),
+    ],
+)
+async def test_mount_not_found(api_client: TestClient, method: str, url: str):
+    """Test mount not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    resp = await resp.json()
+    assert resp["message"] == "No mount exists with name bad"
