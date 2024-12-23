@@ -252,7 +252,7 @@ jobs:
 
   lint-pylint:
     name: Check pylint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: prepare
     steps:
       - name: Check out code from GitHub
@@ -279,6 +279,7 @@ jobs:
           echo "::add-matcher::.github/workflows/matchers/pylint.json"
       - name: Run pylint
         run: |
+          dpkg -l
           . venv/bin/activate
           pylint supervisor tests
 
