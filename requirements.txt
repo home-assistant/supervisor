@@ -16,7 +16,7 @@ faust-cchardet==2.1.19
 gitpython==3.1.43
 jinja2==3.1.5
 orjson==3.10.12
-pulsectl==24.11.0
+pulsectl==24.12.0
 pyudev==0.24.3
 PyYAML==6.0.2
 requests==2.32.3
