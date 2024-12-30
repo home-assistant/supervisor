@@ -263,9 +263,10 @@ class BackupManager(FileConfiguration, JobGroup):
         """Remove a backup."""
         targets = (
             [
-                self._get_location_name(location)
+                location_name
                 for location in locations
-                if location in backup.all_locations
+                if (location_name := self._get_location_name(location))
+                in backup.all_locations
             ]
             if locations
             else list(backup.all_locations.keys())
