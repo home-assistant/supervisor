@@ -687,10 +687,12 @@ class BackupManager(FileConfiguration, JobGroup):
                 f"{backup.slug} is only a partial backup!", _LOGGER.error
             )
 
-        if backup.protected and not backup.set_password(password):
-            raise BackupInvalidError(
-                f"Invalid password for backup {backup.slug}", _LOGGER.error
-            )
+        if backup.protected:
+            backup.set_password(password)
+            if not await backup.validate_password():
+                raise BackupInvalidError(
+                    f"Invalid password for backup {backup.slug}", _LOGGER.error
+                )
 
         if backup.supervisor_version > self.sys_supervisor.version:
             raise BackupInvalidError(
@@ -755,10 +757,12 @@ class BackupManager(FileConfiguration, JobGroup):
             folder_list.remove(FOLDER_HOMEASSISTANT)
             homeassistant = True
 
-        if backup.protected and not backup.set_password(password):
-            raise BackupInvalidError(
-                f"Invalid password for backup {backup.slug}", _LOGGER.error
-            )
+        if backup.protected:
+            backup.set_password(password)
+            if not await backup.validate_password():
+                raise BackupInvalidError(
+                    f"Invalid password for backup {backup.slug}", _LOGGER.error
+                )
 
         if backup.homeassistant is None and homeassistant:
             raise BackupInvalidError(

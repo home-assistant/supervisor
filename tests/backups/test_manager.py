@@ -209,6 +209,7 @@ async def test_do_restore_full(coresys: CoreSys, full_backup_mock, install_addon
     manager = BackupManager(coresys)
 
     backup_instance = full_backup_mock.return_value
+    backup_instance.protected = False
     backup_instance.sys_addons = coresys.addons
     backup_instance.remove_delta_addons = partial(
         Backup.remove_delta_addons, backup_instance
@@ -241,6 +242,7 @@ async def test_do_restore_full_different_addon(
     manager = BackupManager(coresys)
 
     backup_instance = full_backup_mock.return_value
+    backup_instance.protected = False
     backup_instance.addon_list = ["differentslug"]
     backup_instance.sys_addons = coresys.addons
     backup_instance.remove_delta_addons = partial(
@@ -273,6 +275,7 @@ async def test_do_restore_partial_minimal(
     manager = BackupManager(coresys)
 
     backup_instance = partial_backup_mock.return_value
+    backup_instance.protected = False
     assert await manager.do_restore_partial(backup_instance, homeassistant=False)
 
     backup_instance.restore_homeassistant.assert_not_called()
@@ -297,6 +300,7 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
     manager = BackupManager(coresys)
 
     backup_instance = partial_backup_mock.return_value
+    backup_instance.protected = False
     assert await manager.do_restore_partial(
         backup_instance,
         addons=[TEST_ADDON_SLUG],
@@ -330,7 +334,7 @@ async def test_fail_invalid_full_backup(
 
     backup_instance = full_backup_mock.return_value
     backup_instance.protected = True
-    backup_instance.set_password.return_value = False
+    backup_instance.validate_password = AsyncMock(return_value=False)
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_full(backup_instance)
@@ -359,7 +363,7 @@ async def test_fail_invalid_partial_backup(
 
     backup_instance = partial_backup_mock.return_value
     backup_instance.protected = True
-    backup_instance.set_password.return_value = False
+    backup_instance.validate_password = AsyncMock(return_value=False)
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_partial(backup_instance)
@@ -407,6 +411,7 @@ async def test_restore_error(
     coresys.homeassistant.core.start = AsyncMock(return_value=None)
 
     backup_instance = full_backup_mock.return_value
+    backup_instance.protected = False
     backup_instance.restore_dockerconfig.side_effect = BackupError()
     with pytest.raises(BackupError):
         await coresys.backups.do_restore_full(backup_instance)
@@ -1818,6 +1823,7 @@ async def test_monitoring_after_full_restore(
     manager = BackupManager(coresys)
 
     backup_instance = full_backup_mock.return_value
+    backup_instance.protected = False
     assert await manager.do_restore_full(backup_instance)
 
     backup_instance.restore_addons.assert_called_once_with([TEST_ADDON_SLUG])
@@ -1835,6 +1841,7 @@ async def test_monitoring_after_partial_restore(
     manager = BackupManager(coresys)
 
     backup_instance = partial_backup_mock.return_value
+    backup_instance.protected = False
     assert await manager.do_restore_partial(backup_instance, addons=[TEST_ADDON_SLUG])
 
     backup_instance.restore_addons.assert_called_once_with([TEST_ADDON_SLUG])
