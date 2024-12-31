@@ -296,13 +296,18 @@ class APIBackups(CoreSysAttributes):
             BusEvent.SUPERVISOR_STATE_CHANGE, release_on_freeze
         )
         try:
-            await asyncio.wait(
+            event_task = self.sys_create_task(event.wait())
+            _, pending = await asyncio.wait(
                 (
                     backup_task,
-                    self.sys_create_task(event.wait()),
+                    event_task,
                 ),
                 return_when=asyncio.FIRST_COMPLETED,
             )
+            # It seems backup returned early (error or something), make sure to cancel
+            # the event task to avoid "Task was destroyed but it is pending!" errors.
+            if event_task in pending:
+                event_task.cancel()
             return (backup_task, job.uuid)
         finally:
             self.sys_bus.remove_listener(listener)
