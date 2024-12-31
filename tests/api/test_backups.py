@@ -478,7 +478,7 @@ async def test_restore_immediate_errors(
 
     with (
         patch.object(Backup, "protected", new=PropertyMock(return_value=True)),
-        patch.object(Backup, "set_password", return_value=False),
+        patch.object(Backup, "validate_password", return_value=False),
     ):
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
