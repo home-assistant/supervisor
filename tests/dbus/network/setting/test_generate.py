@@ -6,7 +6,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
 from supervisor.host.configuration import Ip6Setting, IpConfig, IpSetting, VlanConfig
-from supervisor.host.const import InterfaceMethod, InterfaceType
+from supervisor.host.const import InterfaceMethod, InterfaceType, MulticastDnsMode
 from supervisor.host.network import Interface
 
 from tests.const import TEST_INTERFACE_ETH_NAME
@@ -22,6 +22,8 @@ async def test_get_connection_from_interface(network_manager: NetworkManager):
 
     assert "interface-name" not in connection_payload["connection"]
     assert connection_payload["connection"]["type"].value == "802-3-ethernet"
+    assert connection_payload["connection"]["mdns"].value == 2
+    assert connection_payload["connection"]["llmnr"].value == 2
     assert connection_payload["match"]["path"].value == ["platform-ff3f0000.ethernet"]
 
     assert connection_payload["ipv4"]["method"].value == "auto"
@@ -61,11 +63,15 @@ async def test_generate_from_vlan(network_manager: NetworkManager):
         ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, []),
         wifi=None,
         vlan=VlanConfig(1, "eth0"),
+        mdns=MulticastDnsMode.RESOLVE,
+        llmnr=MulticastDnsMode.OFF,
     )
 
     connection_payload = get_connection_from_interface(vlan_interface, network_manager)
     assert connection_payload["connection"]["id"].value == "Supervisor eth0.1"
     assert connection_payload["connection"]["type"].value == "vlan"
+    assert connection_payload["connection"]["mdns"].value == 1  # resolve
+    assert connection_payload["connection"]["llmnr"].value == 0  # off
     assert "uuid" in connection_payload["connection"]
     assert "match" not in connection_payload["connection"]
     assert "interface-name" not in connection_payload["connection"]

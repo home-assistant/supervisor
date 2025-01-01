@@ -26,7 +26,9 @@ from ..const import (
     ATTR_IP6_PRIVACY,
     ATTR_IPV4,
     ATTR_IPV6,
+    ATTR_LLMNR,
     ATTR_MAC,
+    ATTR_MDNS,
     ATTR_METHOD,
     ATTR_MODE,
     ATTR_NAMESERVERS,
@@ -54,6 +56,7 @@ from ..host.configuration import (
     Ip6Setting,
     IpConfig,
     IpSetting,
+    MulticastDnsMode,
     VlanConfig,
     WifiConfig,
 )
@@ -97,6 +100,8 @@ SCHEMA_UPDATE = vol.Schema(
         vol.Optional(ATTR_IPV6): _SCHEMA_IPV6_CONFIG,
         vol.Optional(ATTR_WIFI): _SCHEMA_WIFI_CONFIG,
         vol.Optional(ATTR_ENABLED): vol.Boolean(),
+        vol.Optional(ATTR_MDNS): vol.Coerce(MulticastDnsMode),
+        vol.Optional(ATTR_LLMNR): vol.Coerce(MulticastDnsMode),
     }
 )
 
@@ -160,6 +165,8 @@ def interface_struct(interface: Interface) -> dict[str, Any]:
         else None,
         ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
         ATTR_VLAN: vlan_struct(interface.vlan) if interface.vlan else None,
+        ATTR_MDNS: interface.mdns,
+        ATTR_LLMNR: interface.llmnr,
     }
 
 
@@ -260,6 +267,10 @@ class APINetwork(CoreSysAttributes):
                 )
             elif key == ATTR_ENABLED:
                 interface.enabled = config
+            elif key == ATTR_MDNS:
+                interface.mdns = config
+            elif key == ATTR_LLMNR:
+                interface.llmnr = config
 
         await asyncio.shield(self.sys_host.network.apply_changes(interface))
 
@@ -300,6 +311,15 @@ class APINetwork(CoreSysAttributes):
 
         vlan_config = VlanConfig(vlan, interface.name)
 
+        mdns_mode = MulticastDnsMode.DEFAULT
+        llmnr_mode = MulticastDnsMode.DEFAULT
+
+        if ATTR_MDNS in body:
+            mdns_mode = body[ATTR_MDNS]
+
+        if ATTR_LLMNR in body:
+            llmnr_mode = body[ATTR_LLMNR]
+
         ipv4_setting = None
         if ATTR_IPV4 in body:
             ipv4_setting = IpSetting(
@@ -338,5 +358,7 @@ class APINetwork(CoreSysAttributes):
             ipv6_setting,
             None,
             vlan_config,
+            mdns=mdns_mode,
+            llmnr=llmnr_mode,
         )
         await asyncio.shield(self.sys_host.network.create_vlan(vlan_interface))
