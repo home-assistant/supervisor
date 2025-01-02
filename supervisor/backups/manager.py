@@ -200,18 +200,19 @@ class BackupManager(FileConfiguration, JobGroup):
         return backup
 
     def load(self) -> Awaitable[None]:
-        """Load exists backups data.
+        """Load existing backups data.
 
         Return a coroutine.
         """
         return self.reload()
 
+    @Job(name="backup_reload")
     async def reload(
         self,
         location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
         filename: str | None = None,
     ) -> bool:
-        """Load exists backups."""
+        """Load existing backups."""
 
         async def _load_backup(location: str | None, tar_file: Path) -> bool:
             """Load the backup."""
