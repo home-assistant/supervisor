@@ -9,10 +9,17 @@ from ..dbus.const import (
     ConnectionStateType,
     DeviceType,
     InterfaceMethod as NMInterfaceMethod,
+    MulticastDnsValue,
 )
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
-from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
+from .const import (
+    AuthMethod,
+    InterfaceMethod,
+    InterfaceType,
+    MulticastDnsMode,
+    WifiMode,
+)
 
 
 @dataclass(slots=True)
@@ -82,6 +89,8 @@ class Interface:
     ipv6setting: IpSetting | None
     wifi: WifiConfig | None
     vlan: VlanConfig | None
+    mdns: MulticastDnsMode | None
+    llmnr: MulticastDnsMode | None
 
     def equals_dbus_interface(self, inet: NetworkInterface) -> bool:
         """Return true if this represents the dbus interface."""
@@ -145,6 +154,13 @@ class Interface:
             and ConnectionStateFlags.IP6_READY in inet.connection.state_flags
         )
 
+        if inet.settings and inet.settings.connection:
+            mdns = inet.settings.connection.mdns
+            lldmp = inet.settings.connection.lldmp
+        else:
+            mdns = None
+            lldmp = None
+
         return Interface(
             inet.name,
             inet.hw_address,
@@ -181,6 +197,8 @@ class Interface:
             ipv6_setting,
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
+            Interface._map_nm_multicast_dns(mdns),
+            Interface._map_nm_multicast_dns(lldmp),
         )
 
     @staticmethod
@@ -258,3 +276,13 @@ class Interface:
             return None
 
         return VlanConfig(inet.settings.vlan.id, inet.settings.vlan.parent)
+
+    @staticmethod
+    def _map_nm_multicast_dns(mode: int | None) -> MulticastDnsMode | None:
+        mapping = {
+            MulticastDnsValue.OFF: MulticastDnsMode.OFF,
+            MulticastDnsValue.RESOLVE: MulticastDnsMode.RESOLVE,
+            MulticastDnsValue.ANNOUNCE: MulticastDnsMode.ANNOUNCE,
+        }
+
+        return mapping[mode]

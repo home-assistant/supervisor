@@ -24,7 +24,9 @@ from ..const import (
     ATTR_INTERFACES,
     ATTR_IPV4,
     ATTR_IPV6,
+    ATTR_LLMNR,
     ATTR_MAC,
+    ATTR_MDNS,
     ATTR_METHOD,
     ATTR_MODE,
     ATTR_NAMESERVERS,
@@ -49,6 +51,7 @@ from ..host.configuration import (
     InterfaceMethod,
     IpConfig,
     IpSetting,
+    MulticastDnsMode,
     VlanConfig,
     WifiConfig,
 )
@@ -90,6 +93,8 @@ SCHEMA_UPDATE = vol.Schema(
         vol.Optional(ATTR_IPV6): _SCHEMA_IPV6_CONFIG,
         vol.Optional(ATTR_WIFI): _SCHEMA_WIFI_CONFIG,
         vol.Optional(ATTR_ENABLED): vol.Boolean(),
+        vol.Optional(ATTR_MDNS): vol.Coerce(MulticastDnsMode),
+        vol.Optional(ATTR_LLMNR): vol.Coerce(MulticastDnsMode),
     }
 )
 
@@ -136,6 +141,8 @@ def interface_struct(interface: Interface) -> dict[str, Any]:
         ATTR_IPV6: ipconfig_struct(interface.ipv6, interface.ipv6setting),
         ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
         ATTR_VLAN: vlan_struct(interface.vlan) if interface.vlan else None,
+        ATTR_MDNS: interface.mdns,
+        ATTR_LLMNR: interface.lldmp,
     }
 
 
@@ -230,6 +237,10 @@ class APINetwork(CoreSysAttributes):
                 )
             elif key == ATTR_ENABLED:
                 interface.enabled = config
+            elif key == ATTR_MDNS:
+                interface.mdns = config
+            elif key == ATTR_LLMNR:
+                interface.llmnr = config
 
         await asyncio.shield(self.sys_host.network.apply_changes(interface))
 
