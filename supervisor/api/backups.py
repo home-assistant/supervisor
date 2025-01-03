@@ -143,11 +143,26 @@ SCHEMA_REMOVE = vol.Schema(
 class APIBackups(CoreSysAttributes):
     """Handle RESTful API for backups functions."""
 
-    def _extract_slug(self, request):
+    async def _extract_slug(self, request):
         """Return backup, throw an exception if it doesn't exist."""
         backup = self.sys_backups.get(request.match_info.get("slug"))
         if not backup:
             raise APINotFound("Backup does not exist")
+
+        # Reload in case locations of this backup are no longer in sync
+        # This usually means the user
+        def _check_need_reload():
+            for location in backup.all_locations:
+                if not Path(location).exists():
+                    return False
+            return True
+
+        if not await self.sys_run_in_executor(_check_need_reload):
+            _LOGGER.warning("Backup %s missing in at least one location, scheduling reload", backup.slug)
+            # Schedule a reload
+            self.sys_jobs.schedule_job(self.sys_backups.reload, JobSchedulerOptions())
+            raise APINotFound("Backup does not exist")
+
         return backup
 
     def _list_backups(self):
@@ -212,7 +227,7 @@ class APIBackups(CoreSysAttributes):
     @api_process
     async def backup_info(self, request):
         """Return backup info."""
-        backup = self._extract_slug(request)
+        backup = await self._extract_slug(request)
 
         data_addons = []
         for addon_data in backup.addons:
@@ -384,7 +399,7 @@ class APIBackups(CoreSysAttributes):
     @api_process
     async def restore_full(self, request: web.Request):
         """Full restore of a backup."""
-        backup = self._extract_slug(request)
+        backup = await self._extract_slug(request)
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
         self._validate_cloud_backup_location(
             request, body.get(ATTR_LOCATION, backup.location)
@@ -404,7 +419,7 @@ class APIBackups(CoreSysAttributes):
     @api_process
     async def restore_partial(self, request: web.Request):
         """Partial restore a backup."""
-        backup = self._extract_slug(request)
+        backup = await self._extract_slug(request)
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
         self._validate_cloud_backup_location(
             request, body.get(ATTR_LOCATION, backup.location)
@@ -435,7 +450,7 @@ class APIBackups(CoreSysAttributes):
     @api_process
     async def remove(self, request: web.Request):
         """Remove a backup."""
-        backup = self._extract_slug(request)
+        backup = await self._extract_slug(request)
         body = await api_validate(SCHEMA_REMOVE, request)
         locations: list[LOCATION_TYPE] | None = None
 
