@@ -69,5 +69,6 @@ jobs:
           commit-message: "Autoupdate frontend to version ${{ needs.check-version.outputs.latest_tag }}"
           branch: autoupdate-frontend
           base: main
+          draft: true
           sign-commits: true
           title: "Autoupdate frontend to version ${{ needs.check-version.outputs.latest_tag }}"
