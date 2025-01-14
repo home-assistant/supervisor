@@ -1252,22 +1252,17 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="await_home_assistant_restart",
-        ),
-        _make_backup_message_for_assert(
-            action="full_restore",
-            reference=full_backup.slug,
             stage="await_addon_restarts",
         ),
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="check_home_assistant",
+            stage="await_home_assistant_restart",
         ),
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="check_home_assistant",
+            stage="await_home_assistant_restart",
             done=True,
         ),
     ]

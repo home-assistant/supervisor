@@ -15,9 +15,11 @@ from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import AddonsError, HomeAssistantBackupError
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
+from supervisor.homeassistant.websocket import HomeAssistantWebSocket
 from supervisor.mounts.mount import Mount
 from supervisor.supervisor import Supervisor
 
@@ -857,3 +859,58 @@ async def test_restore_backup_from_location(
     )
     assert resp.status == 200
     assert test_file.is_file()
+
+
+@pytest.mark.parametrize(
+    ("backup_type", "postbody"), [("partial", {"homeassistant": True}), ("full", {})]
+)
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_restore_homeassistant_adds_env(
+    api_client: TestClient,
+    coresys: CoreSys,
+    docker: DockerAPI,
+    backup_type: str,
+    postbody: dict[str, Any],
+):
+    """Test restoring home assistant from backup adds env to container."""
+    event = asyncio.Event()
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.1.0")
+    backup = await coresys.backups.do_backup_full()
+
+    async def mock_async_send_message(_, message: dict[str, Any]):
+        """Mock of async send message in ws client."""
+        if (
+            message["data"]["event"] == "job"
+            and message["data"]["data"]["name"]
+            == f"backup_manager_{backup_type}_restore"
+            and message["data"]["data"]["reference"] == backup.slug
+            and message["data"]["data"]["done"]
+        ):
+            event.set()
+
+    with (
+        patch.object(HomeAssistantCore, "_block_till_run"),
+        patch.object(
+            HomeAssistantWebSocket, "async_send_message", new=mock_async_send_message
+        ),
+    ):
+        resp = await api_client.post(
+            f"/backups/{backup.slug}/restore/{backup_type}",
+            json={"background": True} | postbody,
+        )
+        assert resp.status == 200
+        body = await resp.json()
+        job = coresys.jobs.get_job(body["data"]["job_id"])
+
+        if not job.done:
+            await asyncio.wait_for(event.wait(), 5)
+
+    assert docker.containers.create.call_args.kwargs["name"] == "homeassistant"
+    assert (
+        docker.containers.create.call_args.kwargs["environment"][
+            "SUPERVISOR_RESTORE_JOB_ID"
+        ]
+        == job.uuid
+    )

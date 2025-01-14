@@ -316,6 +316,18 @@ class HomeAssistantCore(JobGroup):
             self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
             raise HomeAssistantUpdateError()
 
+    def _is_restore(self) -> str | None:
+        """Return id of current restore job if a restore job is in progress."""
+        job = self.sys_jobs.current
+        while job.parent_id:
+            job = self.sys_jobs.get_job(job.parent_id)
+            if job.name in {
+                "backup_manager_full_restore",
+                "backup_manager_partial_restore",
+            }:
+                return job.uuid
+        return None
+
     @Job(
         name="home_assistant_core_start",
         limit=JobExecutionLimit.GROUP_ONCE,
@@ -345,7 +357,7 @@ class HomeAssistantCore(JobGroup):
             self.sys_homeassistant.write_pulse()
 
             try:
-                await self.instance.run()
+                await self.instance.run(restore_job_id=self._is_restore())
             except DockerError as err:
                 raise HomeAssistantError() from err
 
@@ -356,10 +368,10 @@ class HomeAssistantCore(JobGroup):
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
     )
-    async def stop(self) -> None:
+    async def stop(self, *, remove_container: bool = False) -> None:
         """Stop Home Assistant Docker."""
         try:
-            return await self.instance.stop(remove_container=False)
+            return await self.instance.stop(remove_container=remove_container)
         except DockerError as err:
             raise HomeAssistantError() from err
 

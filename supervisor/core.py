@@ -333,7 +333,7 @@ class Core(CoreSysAttributes):
         _LOGGER.info("Supervisor is down - %d", self.exit_code)
         self.sys_loop.stop()
 
-    async def shutdown(self):
+    async def shutdown(self, *, remove_homeassistant_container: bool = False):
         """Shutdown all running containers in correct order."""
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
@@ -344,7 +344,9 @@ class Core(CoreSysAttributes):
 
         # Close Home Assistant
         with suppress(HassioError):
-            await self.sys_homeassistant.core.stop()
+            await self.sys_homeassistant.core.stop(
+                remove_container=remove_homeassistant_container
+            )
 
         # Shutdown System Add-ons
         await self.sys_addons.shutdown(AddonStartup.SERVICES)

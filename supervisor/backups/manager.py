@@ -619,9 +619,6 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
-                    self._change_stage(
-                        RestoreJobStage.AWAIT_HOME_ASSISTANT_RESTART, backup
-                    )
                     await task_hass
         except BackupError:
             raise
@@ -644,7 +641,7 @@ class BackupManager(FileConfiguration, JobGroup):
         finally:
             # Leave Home Assistant alone if it wasn't part of the restore
             if homeassistant:
-                self._change_stage(RestoreJobStage.CHECK_HOME_ASSISTANT, backup)
+                self._change_stage(RestoreJobStage.AWAIT_HOME_ASSISTANT_RESTART, backup)
 
                 # Do we need start Home Assistant Core?
                 if not await self.sys_homeassistant.core.is_running():
@@ -706,7 +703,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         try:
             # Stop Home-Assistant / Add-ons
-            await self.sys_core.shutdown()
+            await self.sys_core.shutdown(remove_homeassistant_container=True)
 
             success = await self._do_restore(
                 backup,

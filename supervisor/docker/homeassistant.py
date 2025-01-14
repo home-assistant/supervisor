@@ -35,6 +35,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 _VERIFY_TRUST: AwesomeVersion = AwesomeVersion("2021.5.0")
 _HASS_DOCKER_NAME: str = "homeassistant"
 ENV_S6_GRACETIME = re.compile(r"^S6_SERVICES_GRACETIME=([0-9]+)$")
+ENV_RESTORE_JOB_ID = "SUPERVISOR_RESTORE_JOB_ID"
 
 
 class DockerHomeAssistant(DockerInterface):
@@ -163,8 +164,17 @@ class DockerHomeAssistant(DockerInterface):
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
     )
-    async def run(self) -> None:
+    async def run(self, *, restore_job_id: str | None = None) -> None:
         """Run Docker image."""
+        environment = {
+            "SUPERVISOR": self.sys_docker.network.supervisor,
+            "HASSIO": self.sys_docker.network.supervisor,
+            ENV_TIME: self.sys_timezone,
+            ENV_TOKEN: self.sys_homeassistant.supervisor_token,
+            ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
+        }
+        if restore_job_id:
+            environment[ENV_RESTORE_JOB_ID] = restore_job_id
         await self._run(
             tag=(self.sys_homeassistant.version),
             name=self.name,
@@ -180,13 +190,7 @@ class DockerHomeAssistant(DockerInterface):
                 "supervisor": self.sys_docker.network.supervisor,
                 "observer": self.sys_docker.network.observer,
             },
-            environment={
-                "SUPERVISOR": self.sys_docker.network.supervisor,
-                "HASSIO": self.sys_docker.network.supervisor,
-                ENV_TIME: self.sys_timezone,
-                ENV_TOKEN: self.sys_homeassistant.supervisor_token,
-                ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
-            },
+            environment=environment,
             tmpfs={"/tmp": ""},  # noqa: S108
             oom_score_adj=-300,
         )

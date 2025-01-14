@@ -39,7 +39,6 @@ class RestoreJobStage(StrEnum):
     ADDONS = "addons"
     AWAIT_ADDON_RESTARTS = "await_addon_restarts"
     AWAIT_HOME_ASSISTANT_RESTART = "await_home_assistant_restart"
-    CHECK_HOME_ASSISTANT = "check_home_assistant"
     DOCKER_CONFIG = "docker_config"
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
