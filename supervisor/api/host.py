@@ -239,12 +239,12 @@ class APIHost(CoreSysAttributes):
                 # return 2 lines at minimum.
                 lines = max(2, lines)
             # entries=cursor[[:num_skip]:num_entries]
-            range_header = f"entries=:-{lines-1}:{'' if follow else lines}"
+            range_header = f"entries=:-{lines - 1}:{'' if follow else lines}"
         elif RANGE in request.headers:
             range_header = request.headers.get(RANGE)
         else:
             range_header = (
-                f"entries=:-{DEFAULT_LINES-1}:{'' if follow else DEFAULT_LINES}"
+                f"entries=:-{DEFAULT_LINES - 1}:{'' if follow else DEFAULT_LINES}"
             )
 
         async with self.sys_host.logs.journald_logs(

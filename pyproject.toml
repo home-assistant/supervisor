@@ -147,7 +147,7 @@ disable = [
     # "pointless-statement", # B018, ruff catches new occurrences, needs more work
     "raise-missing-from", # TRY200
     # "redefined-builtin", # A001, ruff is way more stricter, needs work
-    "try-except-raise",               # TRY302
+    "try-except-raise",               # TRY203
     "unused-argument",                # ARG001, we don't use it
     "unused-format-string-argument",  #F507
     "unused-format-string-key",       # F504
@@ -289,7 +289,7 @@ lint.select = [
     "T20",     # flake8-print
     "TID251",  # Banned imports
     "TRY004",  # Prefer TypeError exception for invalid type
-    "TRY302",  # Remove exception handler; error is immediately re-raised
+    "TRY203",  # Remove exception handler; error is immediately re-raised
     "UP",      # pyupgrade
     "W",       # pycodestyle
 ]

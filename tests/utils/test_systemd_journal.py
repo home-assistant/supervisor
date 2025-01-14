@@ -50,9 +50,9 @@ def test_format_verbose_timestamp():
         "MESSAGE": "x",
     }
     formatted = journal_verbose_formatter(fields)
-    assert formatted.startswith(
-        "1970-01-01 00:00:00.001 "
-    ), f"Invalid log timestamp: {formatted}"
+    assert formatted.startswith("1970-01-01 00:00:00.001 "), (
+        f"Invalid log timestamp: {formatted}"
+    )
 
 
 def test_format_verbose():
@@ -143,10 +143,7 @@ async def test_parsing_two_messages():
     """Test reading multiple messages."""
     journal_logs, stream = _journal_logs_mock()
     stream.feed_data(
-        b"MESSAGE=Hello, world!\n"
-        b"ID=1\n\n"
-        b"MESSAGE=Hello again, world!\n"
-        b"ID=2\n\n"
+        b"MESSAGE=Hello, world!\nID=1\n\nMESSAGE=Hello again, world!\nID=2\n\n"
     )
     stream.feed_eof()
 
@@ -184,9 +181,7 @@ async def test_parsing_malformed_binary_message():
     """Test that malformed binary message raises MalformedBinaryEntryError."""
     journal_logs, stream = _journal_logs_mock()
     stream.feed_data(
-        b"ID=1\n"
-        b"MESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello, world!"
-        b"AFTER=after\n\n"
+        b"ID=1\nMESSAGE\n\x0d\x00\x00\x00\x00\x00\x00\x00Hello, world!AFTER=after\n\n"
     )
 
     with pytest.raises(MalformedBinaryEntryError):
