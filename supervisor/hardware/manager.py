@@ -16,6 +16,33 @@ from .policy import HwPolicy
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# Some device nodes get created system on startup by kmod-static-nodes.service,
+# which in turn uses /usr/bin/kmod to get a list of static device nodes which
+# are provided by kernel modules. These type of devices are not listed by udev
+# and hence not listed through pyudev. However, on first access the kernel
+# module is loaded automatically.
+# Which nodes are exposed by module is system specific, so ideally Supervisor
+# should read the output of kmod (e.g. /run/tmpfiles.d/static-nodes.conf). But
+# this seems a bit overkill, since we are currently only interested in tun.
+_STATIC_NODES: list[Device] = [
+    Device(
+        "tun",
+        Path("/dev/net/tun"),
+        Path("/sys/devices/virtual/misc/tun"),
+        "misc",
+        None,
+        [],
+        {
+            "DEVNAME": "/dev/net/tun",
+            "DEVPATH": "/devices/virtual/misc/tun",
+            "MAJOR": "10",
+            "MINOR": "200",
+            "SUBSYSTEM": "misc",
+        },
+        [],
+    )
+]
+
 
 class HardwareManager(CoreSysAttributes):
     """Hardware manager for supervisor."""
@@ -113,6 +140,11 @@ class HardwareManager(CoreSysAttributes):
                 _LOGGER.warning("Ignoring udev device due to error: %s", err)
                 continue
             self._devices[device.sys_name] = Device.import_udev(device)
+
+        # Add static nodes if not found through udev (e.g. module not yet loaded)
+        for device in _STATIC_NODES:
+            if device.name not in self._devices:
+                self._devices[device.name] = device
 
     async def load(self) -> None:
         """Load hardware backend."""
