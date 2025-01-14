@@ -104,6 +104,7 @@ async def test_notify_on_change(coresys: CoreSys):
                     "done": None,
                     "parent_id": None,
                     "errors": [],
+                    "created": ANY,
                 },
             },
         }
@@ -125,6 +126,7 @@ async def test_notify_on_change(coresys: CoreSys):
                     "done": None,
                     "parent_id": None,
                     "errors": [],
+                    "created": ANY,
                 },
             },
         }
@@ -146,6 +148,7 @@ async def test_notify_on_change(coresys: CoreSys):
                     "done": None,
                     "parent_id": None,
                     "errors": [],
+                    "created": ANY,
                 },
             },
         }
@@ -167,6 +170,7 @@ async def test_notify_on_change(coresys: CoreSys):
                         "done": False,
                         "parent_id": None,
                         "errors": [],
+                        "created": ANY,
                     },
                 },
             }
@@ -193,6 +197,7 @@ async def test_notify_on_change(coresys: CoreSys):
                                 "message": "Unknown error, see supervisor logs",
                             }
                         ],
+                        "created": ANY,
                     },
                 },
             }
@@ -218,6 +223,7 @@ async def test_notify_on_change(coresys: CoreSys):
                             "message": "Unknown error, see supervisor logs",
                         }
                     ],
+                    "created": ANY,
                 },
             },
         }
