@@ -12,7 +12,7 @@ authors = [
     { name = "The Home Assistant Authors", email = "hello@home-assistant.io" },
 ]
 keywords = ["docker", "home-assistant", "api"]
-requires-python = ">=3.12.0"
+requires-python = ">=3.13.0"
 
 [project.urls]
 "Homepage" = "https://www.home-assistant.io/"
@@ -31,7 +31,7 @@ include-package-data = true
 include = ["supervisor*"]
 
 [tool.pylint.MAIN]
-py-version = "3.12"
+py-version = "3.13"
 # Use a conservative default here; 2 should speed up most setups and not hurt
 # any too bad. Override on command line as appropriate.
 jobs = 2
