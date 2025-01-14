@@ -277,6 +277,7 @@ class APIIngress(CoreSysAttributes):
             response.content_type = content_type
 
             try:
+                response.headers["X-Accel-Buffering"] = "no"
                 await response.prepare(request)
                 async for data in result.content.iter_chunked(4096):
                     await response.write(data)
