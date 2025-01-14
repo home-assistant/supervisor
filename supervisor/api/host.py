@@ -258,6 +258,7 @@ class APIHost(CoreSysAttributes):
                     if not headers_returned:
                         if cursor:
                             response.headers["X-First-Cursor"] = cursor
+                        response.headers["X-Accel-Buffering"] = "no"
                         await response.prepare(request)
                         headers_returned = True
                     # When client closes the connection while reading busy logs, we
