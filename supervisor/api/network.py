@@ -142,7 +142,7 @@ def interface_struct(interface: Interface) -> dict[str, Any]:
         ATTR_WIFI: wifi_struct(interface.wifi) if interface.wifi else None,
         ATTR_VLAN: vlan_struct(interface.vlan) if interface.vlan else None,
         ATTR_MDNS: interface.mdns,
-        ATTR_LLMNR: interface.lldmp,
+        ATTR_LLMNR: interface.llmnr,
     }
 
 
