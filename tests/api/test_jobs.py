@@ -103,6 +103,17 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
     assert result["data"]["jobs"] == [
         {
             "created": ANY,
+            "name": "test_jobs_tree_alt",
+            "reference": None,
+            "uuid": ANY,
+            "progress": 0,
+            "stage": "init",
+            "done": False,
+            "child_jobs": [],
+            "errors": [],
+        },
+        {
+            "created": ANY,
             "name": "test_jobs_tree_outer",
             "reference": None,
             "uuid": ANY,
@@ -123,17 +134,6 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
                     "errors": [],
                 },
             ],
-        },
-        {
-            "created": ANY,
-            "name": "test_jobs_tree_alt",
-            "reference": None,
-            "uuid": ANY,
-            "progress": 0,
-            "stage": "init",
-            "done": False,
-            "child_jobs": [],
-            "errors": [],
         },
     ]
 

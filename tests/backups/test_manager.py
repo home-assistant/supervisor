@@ -1066,6 +1066,7 @@ def _make_backup_message_for_assert(
                 "done": done,
                 "parent_id": None,
                 "errors": [],
+                "created": ANY,
             },
         },
     }

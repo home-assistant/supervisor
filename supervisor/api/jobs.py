@@ -38,6 +38,7 @@ class APIJobs(CoreSysAttributes):
         the order they occurred within the parent. For the list as a whole, sort from newest
         to oldest as its likely any client is most interested in the newer ones.
         """
+        # Initially sort oldest to newest so all child lists end up in correct order
         jobs_by_parent: dict[str | None, list[SupervisorJob]] = {}
         for job in sorted(self.sys_jobs.jobs):
             if job.internal:
@@ -48,11 +49,15 @@ class APIJobs(CoreSysAttributes):
             else:
                 jobs_by_parent[job.parent_id].append(job)
 
+        # After parent-child organization, sort the root jobs only from newest to oldest
         job_list: list[dict[str, Any]] = []
         queue: list[tuple[list[dict[str, Any]], SupervisorJob]] = (
             [(job_list, start)]
             if start
-            else [(job_list, job) for job in jobs_by_parent.get(None, [])]
+            else [
+                (job_list, job)
+                for job in sorted(jobs_by_parent.get(None, []), reverse=True)
+            ]
         )
 
         while queue:
@@ -62,7 +67,7 @@ class APIJobs(CoreSysAttributes):
             # We remove parent_id and instead use that info to represent jobs as a tree
             job_dict = current_job.as_dict() | {"child_jobs": child_jobs}
             job_dict.pop("parent_id")
-            current_list.insert(0, job_dict)
+            current_list.append(job_dict)
 
             if current_job.uuid in jobs_by_parent:
                 queue.extend(
