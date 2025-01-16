@@ -997,6 +997,7 @@ async def test_internal_jobs_no_notify(coresys: CoreSys):
                     "done": True,
                     "parent_id": None,
                     "errors": [],
+                    "created": ANY,
                 },
             },
         }

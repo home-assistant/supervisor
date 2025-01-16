@@ -31,9 +31,16 @@ class APIJobs(CoreSysAttributes):
             raise APINotFound("Job does not exist") from None
 
     def _list_jobs(self, start: SupervisorJob | None = None) -> list[dict[str, Any]]:
-        """Return current job tree."""
+        """Return current job tree.
+
+        Jobs are added to cache as they are created so by default they are in oldest to newest.
+        This is correct ordering for child jobs as it makes logical sense to present those in
+        the order they occurred within the parent. For the list as a whole, sort from newest
+        to oldest as its likely any client is most interested in the newer ones.
+        """
+        # Initially sort oldest to newest so all child lists end up in correct order
         jobs_by_parent: dict[str | None, list[SupervisorJob]] = {}
-        for job in self.sys_jobs.jobs:
+        for job in sorted(self.sys_jobs.jobs):
             if job.internal:
                 continue
 
@@ -42,11 +49,15 @@ class APIJobs(CoreSysAttributes):
             else:
                 jobs_by_parent[job.parent_id].append(job)
 
+        # After parent-child organization, sort the root jobs only from newest to oldest
         job_list: list[dict[str, Any]] = []
         queue: list[tuple[list[dict[str, Any]], SupervisorJob]] = (
             [(job_list, start)]
             if start
-            else [(job_list, job) for job in jobs_by_parent.get(None, [])]
+            else [
+                (job_list, job)
+                for job in sorted(jobs_by_parent.get(None, []), reverse=True)
+            ]
         )
 
         while queue:

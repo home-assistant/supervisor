@@ -19,6 +19,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError, JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
+from ..utils.dt import utcnow
 from ..utils.sentry import capture_exception
 from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
 from .validate import SCHEMA_JOBS_CONFIG
@@ -79,10 +80,12 @@ class SupervisorJobError:
         return {"type": self.type_.__name__, "message": self.message}
 
 
-@define
+@define(order=True)
 class SupervisorJob:
     """Representation of a job running in supervisor."""
 
+    created: datetime = field(init=False, factory=utcnow, on_setattr=frozen)
+    uuid: UUID = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
     name: str | None = field(default=None, validator=[_invalid_if_started])
     reference: str | None = field(default=None, on_setattr=_on_change)
     progress: float = field(
@@ -94,7 +97,6 @@ class SupervisorJob:
     stage: str | None = field(
         default=None, validator=[_invalid_if_done], on_setattr=_on_change
     )
-    uuid: UUID = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
     parent_id: UUID | None = field(
         factory=lambda: _CURRENT_JOB.get(None), on_setattr=frozen
     )
@@ -119,6 +121,7 @@ class SupervisorJob:
             "done": self.done,
             "parent_id": self.parent_id,
             "errors": [err.as_dict() for err in self.errors],
+            "created": self.created.isoformat(),
         }
 
     def capture_error(self, err: HassioError | None = None) -> None:

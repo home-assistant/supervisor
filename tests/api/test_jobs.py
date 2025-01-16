@@ -102,6 +102,18 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
     result = await resp.json()
     assert result["data"]["jobs"] == [
         {
+            "created": ANY,
+            "name": "test_jobs_tree_alt",
+            "reference": None,
+            "uuid": ANY,
+            "progress": 0,
+            "stage": "init",
+            "done": False,
+            "child_jobs": [],
+            "errors": [],
+        },
+        {
+            "created": ANY,
             "name": "test_jobs_tree_outer",
             "reference": None,
             "uuid": ANY,
@@ -111,6 +123,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "errors": [],
             "child_jobs": [
                 {
+                    "created": ANY,
                     "name": "test_jobs_tree_inner",
                     "reference": None,
                     "uuid": ANY,
@@ -122,16 +135,6 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
                 },
             ],
         },
-        {
-            "name": "test_jobs_tree_alt",
-            "reference": None,
-            "uuid": ANY,
-            "progress": 0,
-            "stage": "init",
-            "done": False,
-            "child_jobs": [],
-            "errors": [],
-        },
     ]
 
     test.event.set()
@@ -141,6 +144,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
     result = await resp.json()
     assert result["data"]["jobs"] == [
         {
+            "created": ANY,
             "name": "test_jobs_tree_alt",
             "reference": None,
             "uuid": ANY,
@@ -182,6 +186,7 @@ async def test_job_manual_cleanup(api_client: TestClient, coresys: CoreSys):
     assert resp.status == 200
     result = await resp.json()
     assert result["data"] == {
+        "created": ANY,
         "name": "test_job_manual_cleanup",
         "reference": None,
         "uuid": test.job_id,
@@ -229,3 +234,86 @@ async def test_job_not_found(api_client: TestClient, method: str, url: str):
     assert resp.status == 404
     body = await resp.json()
     assert body["message"] == "Job does not exist"
+
+
+async def test_jobs_sorted(api_client: TestClient, coresys: CoreSys):
+    """Test jobs are sorted by datetime in results."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name="test_jobs_sorted_1", cleanup=False)
+        async def test_jobs_sorted_1(self):
+            """Sorted test method 1."""
+            await self.test_jobs_sorted_inner_1()
+            await self.test_jobs_sorted_inner_2()
+
+        @Job(name="test_jobs_sorted_inner_1", cleanup=False)
+        async def test_jobs_sorted_inner_1(self):
+            """Sorted test inner method 1."""
+
+        @Job(name="test_jobs_sorted_inner_2", cleanup=False)
+        async def test_jobs_sorted_inner_2(self):
+            """Sorted test inner method 2."""
+
+        @Job(name="test_jobs_sorted_2", cleanup=False)
+        async def test_jobs_sorted_2(self):
+            """Sorted test method 2."""
+
+    test = TestClass(coresys)
+    await test.test_jobs_sorted_1()
+    await test.test_jobs_sorted_2()
+
+    resp = await api_client.get("/jobs/info")
+    result = await resp.json()
+    assert result["data"]["jobs"] == [
+        {
+            "created": ANY,
+            "name": "test_jobs_sorted_2",
+            "reference": None,
+            "uuid": ANY,
+            "progress": 0,
+            "stage": None,
+            "done": True,
+            "errors": [],
+            "child_jobs": [],
+        },
+        {
+            "created": ANY,
+            "name": "test_jobs_sorted_1",
+            "reference": None,
+            "uuid": ANY,
+            "progress": 0,
+            "stage": None,
+            "done": True,
+            "errors": [],
+            "child_jobs": [
+                {
+                    "created": ANY,
+                    "name": "test_jobs_sorted_inner_1",
+                    "reference": None,
+                    "uuid": ANY,
+                    "progress": 0,
+                    "stage": None,
+                    "done": True,
+                    "errors": [],
+                    "child_jobs": [],
+                },
+                {
+                    "created": ANY,
+                    "name": "test_jobs_sorted_inner_2",
+                    "reference": None,
+                    "uuid": ANY,
+                    "progress": 0,
+                    "stage": None,
+                    "done": True,
+                    "errors": [],
+                    "child_jobs": [],
+                },
+            ],
+        },
+    ]
