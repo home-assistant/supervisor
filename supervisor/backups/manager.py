@@ -47,6 +47,9 @@ from .validate import ALL_FOLDERS, SCHEMA_BACKUPS_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+JOB_FULL_RESTORE = "backup_manager_full_restore"
+JOB_PARTIAL_RESTORE = "backup_manager_partial_restore"
+
 
 class BackupManager(FileConfiguration, JobGroup):
     """Manage backups."""
@@ -85,6 +88,16 @@ class BackupManager(FileConfiguration, JobGroup):
             for mount in self.sys_mounts.backup_mounts
             if mount.state == UnitActiveState.ACTIVE
         }
+
+    @property
+    def current_restore(self) -> str | None:
+        """Return id of current restore job if a restore job is in progress."""
+        job = self.sys_jobs.current
+        while job.parent_id:
+            job = self.sys_jobs.get_job(job.parent_id)
+            if job.name in {JOB_FULL_RESTORE, JOB_PARTIAL_RESTORE}:
+                return job.uuid
+        return None
 
     def get(self, slug: str) -> Backup:
         """Return backup object."""
@@ -619,9 +632,6 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
-                    self._change_stage(
-                        RestoreJobStage.AWAIT_HOME_ASSISTANT_RESTART, backup
-                    )
                     await task_hass
         except BackupError:
             raise
@@ -644,7 +654,7 @@ class BackupManager(FileConfiguration, JobGroup):
         finally:
             # Leave Home Assistant alone if it wasn't part of the restore
             if homeassistant:
-                self._change_stage(RestoreJobStage.CHECK_HOME_ASSISTANT, backup)
+                self._change_stage(RestoreJobStage.AWAIT_HOME_ASSISTANT_RESTART, backup)
 
                 # Do we need start Home Assistant Core?
                 if not await self.sys_homeassistant.core.is_running():
@@ -660,7 +670,7 @@ class BackupManager(FileConfiguration, JobGroup):
                     )
 
     @Job(
-        name="backup_manager_full_restore",
+        name=JOB_FULL_RESTORE,
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
@@ -706,7 +716,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         try:
             # Stop Home-Assistant / Add-ons
-            await self.sys_core.shutdown()
+            await self.sys_core.shutdown(remove_homeassistant_container=True)
 
             success = await self._do_restore(
                 backup,
@@ -724,7 +734,7 @@ class BackupManager(FileConfiguration, JobGroup):
         return success
 
     @Job(
-        name="backup_manager_partial_restore",
+        name=JOB_PARTIAL_RESTORE,
         conditions=[
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,

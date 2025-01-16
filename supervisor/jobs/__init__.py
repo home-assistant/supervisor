@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 from attrs import Attribute, define, field
 from attrs.setters import convert as attr_convert, frozen, validate as attr_validate
@@ -28,7 +28,7 @@ from .validate import SCHEMA_JOBS_CONFIG
 # When a new asyncio task is started the current context is copied over.
 # Modifications to it in one task are not visible to others though.
 # This allows us to track what job is currently in progress in each task.
-_CURRENT_JOB: ContextVar[UUID] = ContextVar("current_job")
+_CURRENT_JOB: ContextVar[str] = ContextVar("current_job")
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ class SupervisorJob:
     """Representation of a job running in supervisor."""
 
     created: datetime = field(init=False, factory=utcnow, on_setattr=frozen)
-    uuid: UUID = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
+    uuid: str = field(init=False, factory=lambda: uuid4().hex, on_setattr=frozen)
     name: str | None = field(default=None, validator=[_invalid_if_started])
     reference: str | None = field(default=None, on_setattr=_on_change)
     progress: float = field(
@@ -97,7 +97,7 @@ class SupervisorJob:
     stage: str | None = field(
         default=None, validator=[_invalid_if_done], on_setattr=_on_change
     )
-    parent_id: UUID | None = field(
+    parent_id: str | None = field(
         factory=lambda: _CURRENT_JOB.get(None), on_setattr=frozen
     )
     done: bool | None = field(init=False, default=None, on_setattr=_on_change)
@@ -146,7 +146,7 @@ class SupervisorJob:
             raise JobStartException("Job has a different parent from current job")
 
         self.done = False
-        token: Token[UUID] | None = None
+        token: Token[str] | None = None
         try:
             token = _CURRENT_JOB.set(self.uuid)
             yield self
@@ -237,7 +237,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         self._jobs[job.uuid] = job
         return job
 
-    def get_job(self, uuid: UUID) -> SupervisorJob:
+    def get_job(self, uuid: str) -> SupervisorJob:
         """Return a job by uuid. Raises if it does not exist."""
         if uuid not in self._jobs:
             raise JobNotFound(f"No job found with id {uuid}")

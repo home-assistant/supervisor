@@ -772,7 +772,7 @@ class Backup(JobGroup):
     @Job(name="backup_restore_homeassistant", cleanup=False)
     async def restore_homeassistant(self) -> Awaitable[None]:
         """Restore Home Assistant Core configuration folder."""
-        await self.sys_homeassistant.core.stop()
+        await self.sys_homeassistant.core.stop(remove_container=True)
 
         # Restore Home Assistant Core config directory
         tar_name = Path(

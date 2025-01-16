@@ -345,7 +345,7 @@ class HomeAssistantCore(JobGroup):
             self.sys_homeassistant.write_pulse()
 
             try:
-                await self.instance.run()
+                await self.instance.run(restore_job_id=self.sys_backups.current_restore)
             except DockerError as err:
                 raise HomeAssistantError() from err
 
@@ -356,10 +356,10 @@ class HomeAssistantCore(JobGroup):
         limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
     )
-    async def stop(self) -> None:
+    async def stop(self, *, remove_container: bool = False) -> None:
         """Stop Home Assistant Docker."""
         try:
-            return await self.instance.stop(remove_container=False)
+            return await self.instance.stop(remove_container=remove_container)
         except DockerError as err:
             raise HomeAssistantError() from err
 
