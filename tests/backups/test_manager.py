@@ -2013,3 +2013,29 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
     assert not location_2.exists()
     assert coresys.backups.get("7fed74c8")
     assert backup.all_locations == {None: location_1}
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_addon_backup_excludes(coresys: CoreSys, install_addon_example: Addon):
+    """Test backup excludes option for addons."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    install_addon_example.path_data.mkdir(parents=True)
+    (test1 := install_addon_example.path_data / "test1").touch()
+    (test_dir := install_addon_example.path_data / "test_dir").mkdir()
+    (test2 := test_dir / "test2").touch()
+    (test3 := test_dir / "test3").touch()
+
+    install_addon_example.data["backup_exclude"] = ["test1", "*/test2"]
+    backup = await coresys.backups.do_backup_partial(addons=["local_example"])
+    test1.unlink()
+    test2.unlink()
+    test3.unlink()
+    test_dir.rmdir()
+
+    await coresys.backups.do_restore_partial(backup, addons=["local_example"])
+    assert not test1.exists()
+    assert not test2.exists()
+    assert test_dir.is_dir()
+    assert test3.exists()
