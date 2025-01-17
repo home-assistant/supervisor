@@ -11,7 +11,7 @@ from functools import cached_property
 import io
 import json
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 import tarfile
 from tarfile import TarFile
 from tempfile import TemporaryDirectory
@@ -640,6 +640,22 @@ class Backup(JobGroup):
             # Take backup
             _LOGGER.info("Backing up folder %s", name)
 
+            def is_excluded_by_filter(item_arcpath: PurePath) -> bool:
+                """Filter out bind mounts in folders being backed up."""
+                full_path = origin_dir / item_arcpath.relative_to(".")
+
+                for bound in self.sys_mounts.bound_mounts:
+                    if full_path != bound.bind_mount.local_where:
+                        continue
+                    _LOGGER.debug(
+                        "Ignoring %s because of %s",
+                        full_path,
+                        bound.bind_mount.local_where.as_posix(),
+                    )
+                    return True
+
+                return False
+
             with self._outer_secure_tarfile.create_inner_tar(
                 f"./{tar_name}",
                 gzip=self.compressed,
@@ -648,11 +664,7 @@ class Backup(JobGroup):
                 atomic_contents_add(
                     tar_file,
                     origin_dir,
-                    excludes=[
-                        bound.bind_mount.local_where.as_posix()
-                        for bound in self.sys_mounts.bound_mounts
-                        if bound.bind_mount.local_where
-                    ],
+                    file_filter=is_excluded_by_filter,
                     arcname=".",
                 )
 

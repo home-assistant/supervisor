@@ -6,6 +6,7 @@ from contextlib import suppress
 from copy import deepcopy
 from datetime import datetime
 import errno
+from functools import partial
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path, PurePath
@@ -1207,6 +1208,25 @@ class Addon(AddonModel):
             await self._backup_command(self.backup_post)
         return None
 
+    def _is_excluded_by_filter(
+        self, origin_path: Path, arcname: str, item_arcpath: PurePath
+    ) -> bool:
+        """Filter out files from backup based on filters provided by addon developer.
+
+        This tests the dev provided filters against the full path of the file as
+        Supervisor sees them using match. This is done for legacy reasons, testing
+        against the relative path makes more sense and may be changed in the future.
+        """
+        full_path = origin_path / item_arcpath.relative_to(arcname)
+
+        for exclude in self.backup_exclude:
+            if not full_path.match(exclude):
+                continue
+            _LOGGER.debug("Ignoring %s because of %s", full_path, exclude)
+            return True
+
+        return False
+
     @Job(
         name="addon_backup",
         limit=JobExecutionLimit.GROUP_ONCE,
@@ -1266,7 +1286,9 @@ class Addon(AddonModel):
                     atomic_contents_add(
                         backup,
                         self.path_data,
-                        excludes=self.backup_exclude,
+                        file_filter=partial(
+                            self._is_excluded_by_filter, self.path_data, "data"
+                        ),
                         arcname="data",
                     )
 
@@ -1275,7 +1297,9 @@ class Addon(AddonModel):
                         atomic_contents_add(
                             backup,
                             self.path_config,
-                            excludes=self.backup_exclude,
+                            file_filter=partial(
+                                self._is_excluded_by_filter, self.path_config, "config"
+                            ),
                             arcname="config",
                         )
 
