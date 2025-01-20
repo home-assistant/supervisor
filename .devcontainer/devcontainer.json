@@ -1,6 +1,6 @@
 {
   "name": "Supervisor dev",
-  "image": "ghcr.io/home-assistant/devcontainer:supervisor",
+  "image": "ghcr.io/home-assistant/devcontainer:2-supervisor",
   "containerEnv": {
     "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
   },
@@ -44,5 +44,8 @@
       }
     }
   },
-  "mounts": ["type=volume,target=/var/lib/docker"]
+  "mounts": [
+    "type=volume,target=/var/lib/docker",
+    "type=volume,target=/mnt/supervisor"
+  ]
 }
