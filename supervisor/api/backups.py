@@ -26,6 +26,7 @@ from ..const import (
     ATTR_DATE,
     ATTR_DAYS_UNTIL_STALE,
     ATTR_EXTRA,
+    ATTR_FILENAME,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_HOMEASSISTANT_EXCLUDE_DATABASE,
@@ -98,6 +99,7 @@ SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
 SCHEMA_BACKUP_FULL = vol.Schema(
     {
         vol.Optional(ATTR_NAME): str,
+        vol.Optional(ATTR_FILENAME): str,
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_COMPRESSED): vol.Maybe(vol.Boolean()),
         vol.Optional(ATTR_LOCATION): vol.All(
