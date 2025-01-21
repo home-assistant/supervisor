@@ -117,7 +117,7 @@ async def docker() -> DockerAPI:
 
 
 @pytest.fixture(scope="session")
-def dbus_session() -> Generator[str, None, None]:
+def dbus_session() -> Generator[str]:
     """Start a dbus session.
 
     Returns session address.
