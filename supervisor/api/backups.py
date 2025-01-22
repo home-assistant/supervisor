@@ -99,7 +99,7 @@ SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
 SCHEMA_BACKUP_FULL = vol.Schema(
     {
         vol.Optional(ATTR_NAME): str,
-        vol.Optional(ATTR_FILENAME): str,
+        vol.Optional(ATTR_FILENAME): vol.Match(RE_BACKUP_FILENAME),
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_COMPRESSED): vol.Maybe(vol.Boolean()),
         vol.Optional(ATTR_LOCATION): vol.All(
