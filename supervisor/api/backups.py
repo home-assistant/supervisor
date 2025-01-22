@@ -503,6 +503,10 @@ class APIBackups(CoreSysAttributes):
             if location and location != LOCATION_CLOUD_BACKUP:
                 tmp_path = location.local_where
 
+        filename: str | None = None
+        if ATTR_FILENAME in request.query:
+            filename = request.query.get(ATTR_FILENAME)
+
         with TemporaryDirectory(dir=tmp_path.as_posix()) as temp_dir:
             tar_file = Path(temp_dir, "backup.tar")
             reader = await request.multipart()
@@ -529,7 +533,7 @@ class APIBackups(CoreSysAttributes):
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
-                    tar_file, location=location, additional_locations=locations
+                    tar_file, filename, location=location, additional_locations=locations
                 )
             )
 
