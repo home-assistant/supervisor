@@ -2011,7 +2011,10 @@ async def test_backup_remove_multiple_locations(coresys: CoreSys):
 
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
-    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+    assert backup.all_locations == {
+        None: {"path": location_1, "protected": False},
+        ".cloud_backup": {"path": location_2, "protected": False},
+    }
 
     coresys.backups.remove(backup)
     assert not location_1.exists()
@@ -2028,13 +2031,16 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
 
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
-    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+    assert backup.all_locations == {
+        None: {"path": location_1, "protected": False},
+        ".cloud_backup": {"path": location_2, "protected": False},
+    }
 
     coresys.backups.remove(backup, locations=[".cloud_backup"])
     assert location_1.exists()
     assert not location_2.exists()
     assert coresys.backups.get("7fed74c8")
-    assert backup.all_locations == {None: location_1}
+    assert backup.all_locations == {None: {"path": location_1, "protected": False}}
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")

@@ -39,6 +39,7 @@ from ..const import (
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
     ATTR_PASSWORD,
+    ATTR_PATH,
     ATTR_PROTECTED,
     ATTR_REGISTRIES,
     ATTR_REPOSITORIES,
@@ -91,7 +92,12 @@ class Backup(JobGroup):
         self._outer_secure_tarfile: SecureTarFile | None = None
         self._key: bytes | None = None
         self._aes: Cipher | None = None
-        self._locations: dict[str | None, Path] = {location: tar_file}
+        self._locations: dict[str | None, dict[str, Path | bool]] = {
+            location: {
+                ATTR_PATH: tar_file,
+                ATTR_PROTECTED: data.get(ATTR_PROTECTED, False) if data else False,
+            }
+        }
 
     @property
     def version(self) -> int:
@@ -121,7 +127,7 @@ class Backup(JobGroup):
     @property
     def protected(self) -> bool:
         """Return backup date."""
-        return self._data[ATTR_PROTECTED]
+        return self._locations[self.location][ATTR_PROTECTED]
 
     @property
     def compressed(self) -> bool:
@@ -198,7 +204,7 @@ class Backup(JobGroup):
         return self.locations[0]
 
     @property
-    def all_locations(self) -> dict[str | None, Path]:
+    def all_locations(self) -> dict[str | None, dict[str, Path | bool]]:
         """Return all locations this backup was found in."""
         return self._locations
 
@@ -236,7 +242,7 @@ class Backup(JobGroup):
     @property
     def tarfile(self) -> Path:
         """Return path to backup tarfile."""
-        return self._locations[self.location]
+        return self._locations[self.location][ATTR_PATH]
 
     @property
     def is_current(self) -> bool:
@@ -252,7 +258,27 @@ class Backup(JobGroup):
 
     def __eq__(self, other: Any) -> bool:
         """Return true if backups have same metadata."""
-        return isinstance(other, Backup) and self._data == other._data
+        if not isinstance(other, Backup):
+            return False
+
+        # Compare all fields except ones about protection. Current encryption status does not affect equality
+        keys = self._data.keys() | other._data.keys()
+        for k in keys - {ATTR_PROTECTED, ATTR_CRYPTO}:
+            if (
+                k not in self._data
+                or k not in other._data
+                or self._data[k] != other._data[k]
+            ):
+                _LOGGER.debug(
+                    "Backup %s and %s not equal because %s field has different value: %s and %s",
+                    self.slug,
+                    other.slug,
+                    k,
+                    self._data.get(k),
+                    other._data.get(k),
+                )
+                return False
+        return True
 
     def consolidate(self, backup: Self) -> None:
         """Consolidate two backups with same slug in different locations."""
@@ -263,6 +289,20 @@ class Backup(JobGroup):
         if self != backup:
             raise BackupInvalidError(
                 f"Backup in {backup.location} and {self.location} both have slug {self.slug} but are not the same!"
+            )
+
+        # In case of conflict we always ignore the ones from the first one. But log them to let the user know
+
+        if conflict := {
+            loc: val[ATTR_PATH]
+            for loc, val in self.all_locations.items()
+            if loc in backup.all_locations and backup.all_locations[loc] != val
+        }:
+            _LOGGER.warning(
+                "Backup %s exists in two files in locations %s. Ignoring %s",
+                self.slug,
+                ", ".join(str(loc) for loc in conflict),
+                ", ".join([path.as_posix() for path in conflict.values()]),
             )
         self._locations.update(backup.all_locations)
 
@@ -292,6 +332,7 @@ class Backup(JobGroup):
             self._init_password(password)
             self._data[ATTR_PROTECTED] = True
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
+            self._locations[self.location][ATTR_PROTECTED] = True
 
         if not compressed:
             self._data[ATTR_COMPRESSED] = False
@@ -418,6 +459,9 @@ class Backup(JobGroup):
             )
             return False
 
+        if self._data[ATTR_PROTECTED]:
+            self._locations[self.location][ATTR_PROTECTED] = True
+
         return True
 
     @asynccontextmanager
@@ -452,7 +496,9 @@ class Backup(JobGroup):
             )
 
         backup_tarfile = (
-            self.tarfile if location == DEFAULT else self.all_locations[location]
+            self.tarfile
+            if location == DEFAULT
+            else self.all_locations[location][ATTR_PATH]
         )
         if not backup_tarfile.is_file():
             raise BackupError(
