@@ -464,9 +464,12 @@ class APIBackups(CoreSysAttributes):
         response = web.FileResponse(filename)
         response.content_type = CONTENT_TYPE_TAR
 
-        if filename == f"{backup.slug}.tar":
-            filename = f"{RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
-        response.headers[CONTENT_DISPOSITION] = f"attachment; filename={filename}"
+        download_filename = filename.name
+        if download_filename == f"{backup.slug}.tar":
+            download_filename = f"{RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
+        response.headers[CONTENT_DISPOSITION] = (
+            f"attachment; filename={download_filename}"
+        )
         return response
 
     @api_process
