@@ -533,7 +533,10 @@ class APIBackups(CoreSysAttributes):
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
-                    tar_file, filename, location=location, additional_locations=locations
+                    tar_file,
+                    filename,
+                    location=location,
+                    additional_locations=locations,
                 )
             )
 

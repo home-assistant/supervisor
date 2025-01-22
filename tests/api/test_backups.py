@@ -725,9 +725,7 @@ async def test_upload_with_filename(api_client: TestClient, coresys: CoreSys):
 
     with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
         mp.append(file)
-        resp = await api_client.post(
-            "/backups/new/upload?filename=abc.tar", data=mp
-        )
+        resp = await api_client.post("/backups/new/upload?filename=abc.tar", data=mp)
 
     assert resp.status == 200
     body = await resp.json()
