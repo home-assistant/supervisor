@@ -466,9 +466,7 @@ class APIBackups(CoreSysAttributes):
 
         if filename == f"{backup.slug}.tar":
             filename = f"{RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
-        response.headers[CONTENT_DISPOSITION] = (
-            f"attachment; filename={filename}"
-        )
+        response.headers[CONTENT_DISPOSITION] = f"attachment; filename={filename}"
         return response
 
     @api_process
