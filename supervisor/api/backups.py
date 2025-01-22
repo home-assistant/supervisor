@@ -460,10 +460,14 @@ class APIBackups(CoreSysAttributes):
             raise APIError(f"Backup {backup.slug} is not in location {location}")
 
         _LOGGER.info("Downloading backup %s", backup.slug)
-        response = web.FileResponse(backup.all_locations[location])
+        filename = backup.all_locations[location]
+        response = web.FileResponse(filename)
         response.content_type = CONTENT_TYPE_TAR
+
+        if filename == f"{backup.slug}.tar":
+            filename = f"{RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
         response.headers[CONTENT_DISPOSITION] = (
-            f"attachment; filename={RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
+            f"attachment; filename={filename}"
         )
         return response
 
