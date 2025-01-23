@@ -1756,14 +1756,11 @@ async def test_backup_remove_error(
     healthy_expected: bool,
 ):
     """Test removing a backup error."""
-    backup_file = get_fixture_path("backup_example.tar")
-    if location_name is None:
-        copy(backup_file, coresys.config.path_backup)
-        location = None
-    else:
-        (mount_dir := coresys.config.path_mounts / location_name).mkdir()
-        copy(backup_file, mount_dir)
-        location = coresys.mounts.get(location_name)
+    location: LOCATION_TYPE = backup_locations[0]
+    backup_base_path = coresys.backups._get_base_path(location)
+    backup_base_path.mkdir(exist_ok=True)
+    copy(get_fixture_path("backup_example.tar"), backup_base_path)
+
     await coresys.backups.reload(location=location, filename="backup_example.tar")
     assert (backup := coresys.backups.get("7fed74c8"))
 
