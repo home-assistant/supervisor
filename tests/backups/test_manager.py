@@ -1757,7 +1757,7 @@ async def test_backup_remove_error(
 ):
     """Test removing a backup error."""
     location: LOCATION_TYPE = backup_locations[0]
-    backup_base_path = coresys.backups._get_base_path(location)
+    backup_base_path = coresys.backups._get_base_path(location)  # pylint: disable=protected-access
     backup_base_path.mkdir(exist_ok=True)
     copy(get_fixture_path("backup_example.tar"), backup_base_path)
 
