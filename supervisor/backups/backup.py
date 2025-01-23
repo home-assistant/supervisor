@@ -263,7 +263,7 @@ class Backup(JobGroup):
 
         # Compare all fields except ones about protection. Current encryption status does not affect equality
         keys = self._data.keys() | other._data.keys()
-        for k in keys - {ATTR_PROTECTED, ATTR_CRYPTO}:
+        for k in keys - {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}:
             if (
                 k not in self._data
                 or k not in other._data
