@@ -9,7 +9,7 @@ from typing import Self
 
 from aiohttp import __version__ as aiohttpversion
 
-SUPERVISOR_VERSION = "2099.09.9.dev9999"
+SUPERVISOR_VERSION = "9999.09.9.dev9999"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/addons"
