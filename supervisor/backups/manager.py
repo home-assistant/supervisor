@@ -184,6 +184,7 @@ class BackupManager(FileConfiguration, JobGroup):
     def _create_backup(
         self,
         name: str,
+        filename: str | None,
         sys_type: BackupType,
         password: str | None,
         compressed: bool = True,
@@ -196,7 +197,11 @@ class BackupManager(FileConfiguration, JobGroup):
         """
         date_str = utcnow().isoformat()
         slug = create_slug(name, date_str)
-        tar_file = Path(self._get_base_path(location), f"{slug}.tar")
+
+        if filename:
+            tar_file = Path(self._get_base_path(location), Path(filename).name)
+        else:
+            tar_file = Path(self._get_base_path(location), f"{slug}.tar")
 
         # init object
         backup = Backup(self.coresys, tar_file, slug, self._get_location_name(location))
@@ -482,6 +487,7 @@ class BackupManager(FileConfiguration, JobGroup):
     async def do_backup_full(
         self,
         name: str = "",
+        filename: str | None = None,
         *,
         password: str | None = None,
         compressed: bool = True,
@@ -500,7 +506,7 @@ class BackupManager(FileConfiguration, JobGroup):
             )
 
         backup = self._create_backup(
-            name, BackupType.FULL, password, compressed, location, extra
+            name, filename, BackupType.FULL, password, compressed, location, extra
         )
 
         _LOGGER.info("Creating new full backup with slug %s", backup.slug)
@@ -526,6 +532,7 @@ class BackupManager(FileConfiguration, JobGroup):
     async def do_backup_partial(
         self,
         name: str = "",
+        filename: str | None = None,
         *,
         addons: list[str] | None = None,
         folders: list[str] | None = None,
@@ -558,7 +565,7 @@ class BackupManager(FileConfiguration, JobGroup):
             _LOGGER.error("Nothing to create backup for")
 
         backup = self._create_backup(
-            name, BackupType.PARTIAL, password, compressed, location, extra
+            name, filename, BackupType.PARTIAL, password, compressed, location, extra
         )
 
         _LOGGER.info("Creating new partial backup with slug %s", backup.slug)

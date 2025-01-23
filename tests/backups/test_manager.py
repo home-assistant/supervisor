@@ -73,6 +73,28 @@ async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
     assert coresys.core.state == CoreState.RUNNING
 
 
+@pytest.mark.parametrize(
+    ("filename", "filename_expected"),
+    [("../my file.tar", "/data/backup/my file.tar"), (None, "/data/backup/{}.tar")],
+)
+async def test_do_backup_full_with_filename(
+    coresys: CoreSys, filename: str, filename_expected: str, backup_mock
+):
+    """Test creating Backup with a specific file name."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    manager = BackupManager(coresys)
+
+    # backup_mock fixture causes Backup() to be a MagicMock
+    await manager.do_backup_full(filename=filename)
+
+    slug = backup_mock.call_args[0][2]
+    assert str(backup_mock.call_args[0][1]) == filename_expected.format(slug)
+
+    assert coresys.core.state == CoreState.RUNNING
+
+
 async def test_do_backup_full_uncompressed(
     coresys: CoreSys, backup_mock, install_addon_ssh
 ):

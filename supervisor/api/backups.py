@@ -26,6 +26,7 @@ from ..const import (
     ATTR_DATE,
     ATTR_DAYS_UNTIL_STALE,
     ATTR_EXTRA,
+    ATTR_FILENAME,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_HOMEASSISTANT_EXCLUDE_DATABASE,
@@ -98,6 +99,7 @@ SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
 SCHEMA_BACKUP_FULL = vol.Schema(
     {
         vol.Optional(ATTR_NAME): str,
+        vol.Optional(ATTR_FILENAME): vol.Match(RE_BACKUP_FILENAME),
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_COMPRESSED): vol.Maybe(vol.Boolean()),
         vol.Optional(ATTR_LOCATION): vol.All(
@@ -458,10 +460,15 @@ class APIBackups(CoreSysAttributes):
             raise APIError(f"Backup {backup.slug} is not in location {location}")
 
         _LOGGER.info("Downloading backup %s", backup.slug)
-        response = web.FileResponse(backup.all_locations[location])
+        filename = backup.all_locations[location]
+        response = web.FileResponse(filename)
         response.content_type = CONTENT_TYPE_TAR
+
+        download_filename = filename.name
+        if download_filename == f"{backup.slug}.tar":
+            download_filename = f"{RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
         response.headers[CONTENT_DISPOSITION] = (
-            f"attachment; filename={RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
+            f"attachment; filename={download_filename}"
         )
         return response
 
