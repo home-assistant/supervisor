@@ -12,6 +12,8 @@ from shutil import copy
 from ..addons.addon import Addon
 from ..const import (
     ATTR_DAYS_UNTIL_STALE,
+    ATTR_PATH,
+    ATTR_PROTECTED,
     FILE_HASSIO_BACKUPS,
     FOLDER_HOMEASSISTANT,
     CoreState,
@@ -291,7 +293,7 @@ class BackupManager(FileConfiguration, JobGroup):
         )
         for location in targets:
             try:
-                backup.all_locations[location].unlink()
+                backup.all_locations[location][ATTR_PATH].unlink()
                 del backup.all_locations[location]
             except OSError as err:
                 if err.errno == errno.EBADMSG and location in {
@@ -345,12 +347,19 @@ class BackupManager(FileConfiguration, JobGroup):
             return all_locations
 
         try:
-            backup.all_locations.update(
-                await self.sys_run_in_executor(copy_to_additional_locations)
+            all_new_locations = await self.sys_run_in_executor(
+                copy_to_additional_locations
             )
         except BackupDataDiskBadMessageError:
             self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             raise
+
+        backup.all_locations.update(
+            {
+                loc: {ATTR_PATH: path, ATTR_PROTECTED: backup.protected}
+                for loc, path in all_new_locations.items()
+            }
+        )
 
     @Job(name="backup_manager_import_backup")
     async def import_backup(
@@ -676,6 +685,30 @@ class BackupManager(FileConfiguration, JobGroup):
                         _job_override__cleanup=False
                     )
 
+    async def _validate_location_password(
+        self,
+        backup: Backup,
+        password: str | None = None,
+        location: str | None | type[DEFAULT] = DEFAULT,
+    ) -> None:
+        """Validate location and password for backup, raise if invalid."""
+        if location != DEFAULT and location not in backup.all_locations:
+            raise BackupInvalidError(
+                f"Backup {backup.slug} does not exist in {location}", _LOGGER.error
+            )
+
+        if (
+            location == DEFAULT
+            and backup.protected
+            or location != DEFAULT
+            and backup.all_locations[location][ATTR_PROTECTED]
+        ):
+            backup.set_password(password)
+            if not await backup.validate_password():
+                raise BackupInvalidError(
+                    f"Invalid password for backup {backup.slug}", _LOGGER.error
+                )
+
     @Job(
         name=JOB_FULL_RESTORE,
         conditions=[
@@ -704,12 +737,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 f"{backup.slug} is only a partial backup!", _LOGGER.error
             )
 
-        if backup.protected:
-            backup.set_password(password)
-            if not await backup.validate_password():
-                raise BackupInvalidError(
-                    f"Invalid password for backup {backup.slug}", _LOGGER.error
-                )
+        await self._validate_location_password(backup, password, location)
 
         if backup.supervisor_version > self.sys_supervisor.version:
             raise BackupInvalidError(
@@ -774,12 +802,7 @@ class BackupManager(FileConfiguration, JobGroup):
             folder_list.remove(FOLDER_HOMEASSISTANT)
             homeassistant = True
 
-        if backup.protected:
-            backup.set_password(password)
-            if not await backup.validate_password():
-                raise BackupInvalidError(
-                    f"Invalid password for backup {backup.slug}", _LOGGER.error
-                )
+        await self._validate_location_password(backup, password, location)
 
         if backup.homeassistant is None and homeassistant:
             raise BackupInvalidError(

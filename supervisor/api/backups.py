@@ -34,6 +34,7 @@ from ..const import (
     ATTR_LOCATION,
     ATTR_NAME,
     ATTR_PASSWORD,
+    ATTR_PATH,
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
@@ -55,6 +56,7 @@ from .const import (
     ATTR_ADDITIONAL_LOCATIONS,
     ATTR_BACKGROUND,
     ATTR_LOCATIONS,
+    ATTR_PROTECTED_LOCATIONS,
     ATTR_SIZE_BYTES,
     CONTENT_TYPE_TAR,
 )
@@ -165,6 +167,11 @@ class APIBackups(CoreSysAttributes):
                 ATTR_LOCATION: backup.location,
                 ATTR_LOCATIONS: backup.locations,
                 ATTR_PROTECTED: backup.protected,
+                ATTR_PROTECTED_LOCATIONS: [
+                    loc
+                    for loc in backup.locations
+                    if backup.all_locations[loc][ATTR_PROTECTED]
+                ],
                 ATTR_COMPRESSED: backup.compressed,
                 ATTR_CONTENT: {
                     ATTR_HOMEASSISTANT: backup.homeassistant_version is not None,
@@ -236,6 +243,11 @@ class APIBackups(CoreSysAttributes):
             ATTR_SIZE_BYTES: backup.size_bytes,
             ATTR_COMPRESSED: backup.compressed,
             ATTR_PROTECTED: backup.protected,
+            ATTR_PROTECTED_LOCATIONS: [
+                loc
+                for loc in backup.locations
+                if backup.all_locations[loc][ATTR_PROTECTED]
+            ],
             ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
             ATTR_HOMEASSISTANT: backup.homeassistant_version,
             ATTR_LOCATION: backup.location,
@@ -460,7 +472,7 @@ class APIBackups(CoreSysAttributes):
             raise APIError(f"Backup {backup.slug} is not in location {location}")
 
         _LOGGER.info("Downloading backup %s", backup.slug)
-        filename = backup.all_locations[location]
+        filename = backup.all_locations[location][ATTR_PATH]
         response = web.FileResponse(filename)
         response.content_type = CONTENT_TYPE_TAR
 
