@@ -19,7 +19,7 @@ def _get_supervisor_version():
     for line in CONSTANTS.split("/n"):
         if match := RE_SUPERVISOR_VERSION.match(line):
             return match.group(1)
-    return "99.9.9dev"
+    return "2099.09.9.dev9999"
 
 
 setup(
