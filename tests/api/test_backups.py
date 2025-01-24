@@ -731,9 +731,6 @@ async def test_upload_with_filename(
 
     with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
         mp.append(file)
-        import logging
-
-        logging.warning(f"Testing with {filename}")
         resp = await api_client.post(
             f"/backups/new/upload?filename={filename}", data=mp
         )
