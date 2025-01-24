@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 import json
 import logging
+import os
 from pathlib import Path
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
@@ -53,7 +54,9 @@ class LogsControl(CoreSysAttributes):
 
     @property
     def available(self) -> bool:
-        """Return True if Unix socket to systemd-journal-gatwayd is available."""
+        """Check if systemd-journal-gatwayd is available."""
+        if os.environ.get("SUPERVISOR_SYSTEMD_JOURNAL_GATEWAYD_URL"):
+            return True
         return SYSTEMD_JOURNAL_GATEWAYD_SOCKET.is_socket()
 
     @property
@@ -162,14 +165,17 @@ class LogsControl(CoreSysAttributes):
             )
 
         try:
-            async with ClientSession(
-                connector=UnixConnector(path=str(SYSTEMD_JOURNAL_GATEWAYD_SOCKET))
-            ) as session:
+            if base_url := os.environ.get("SUPERVISOR_SYSTEMD_JOURNAL_GATEWAYD_URL"):
+                connector = None
+            else:
+                base_url = "http://localhost/"
+                connector = UnixConnector(path=str(SYSTEMD_JOURNAL_GATEWAYD_SOCKET))
+            async with ClientSession(base_url=base_url, connector=connector) as session:
                 headers = {ACCEPT: accept}
                 if range_header:
                     headers[RANGE] = range_header
                 async with session.get(
-                    f"http://localhost{path}",
+                    f"{path}",
                     headers=headers,
                     params=params or {},
                     timeout=timeout,
