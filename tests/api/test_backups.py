@@ -718,23 +718,42 @@ async def test_upload_duplicate_backup_new_location(
     assert coresys.backups.get("7fed74c8").location is None
 
 
+@pytest.mark.parametrize(
+    ("filename", "expected_status"),
+    [("good.tar", 200), ("../bad.tar", 400), ("bad", 400)],
+)
 @pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_upload_with_filename(api_client: TestClient, coresys: CoreSys):
+async def test_upload_with_filename(
+    api_client: TestClient, coresys: CoreSys, filename: str, expected_status: int
+):
     """Test uploading a backup to multiple locations."""
     backup_file = get_fixture_path("backup_example.tar")
 
     with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
         mp.append(file)
-        resp = await api_client.post("/backups/new/upload?filename=abc.tar", data=mp)
+        import logging
 
-    assert resp.status == 200
+        logging.warning(f"Testing with {filename}")
+        resp = await api_client.post(
+            f"/backups/new/upload?filename={filename}", data=mp
+        )
+
+    assert resp.status == expected_status
     body = await resp.json()
+    if expected_status != 200:
+        assert (
+            body["message"]
+            == r"does not match regular expression ^[^\\\/]+\.tar$."
+            + f" Got '{filename}'"
+        )
+        return
+
     assert body["data"]["slug"] == "7fed74c8"
 
-    orig_backup = coresys.config.path_backup / "abc.tar"
+    orig_backup = coresys.config.path_backup / filename
     assert orig_backup.exists()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: orig_backup,
+        None: {"path": orig_backup, "protected": False}
     }
     assert coresys.backups.get("7fed74c8").location is None
 

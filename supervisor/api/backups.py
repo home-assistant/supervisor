@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
+from voluptuous.humanize import humanize_error
 from typing import Any
 
 from aiohttp import web
@@ -506,6 +507,10 @@ class APIBackups(CoreSysAttributes):
         filename: str | None = None
         if ATTR_FILENAME in request.query:
             filename = request.query.get(ATTR_FILENAME)
+            try:
+                vol.Match(RE_BACKUP_FILENAME)(filename)
+            except vol.Invalid as ex:
+                raise APIError(humanize_error(filename, ex)) from None
 
         with TemporaryDirectory(dir=tmp_path.as_posix()) as temp_dir:
             tar_file = Path(temp_dir, "backup.tar")
