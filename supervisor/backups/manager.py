@@ -365,6 +365,7 @@ class BackupManager(FileConfiguration, JobGroup):
     async def import_backup(
         self,
         tar_file: Path,
+        filename: str | None = None,
         location: LOCATION_TYPE = None,
         additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
@@ -376,9 +377,13 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
 
         # Move backup to destination folder
-        tar_origin = Path(self._get_base_path(location), f"{backup.slug}.tar")
+        if filename:
+            tar_file = Path(self._get_base_path(location), Path(filename).name)
+        else:
+            tar_file = Path(self._get_base_path(location), f"{backup.slug}.tar")
+
         try:
-            backup.tarfile.rename(tar_origin)
+            backup.tarfile.rename(tar_file)
 
         except OSError as err:
             if err.errno == errno.EBADMSG and location in {LOCATION_CLOUD_BACKUP, None}:
@@ -387,7 +392,7 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
 
         # Load new backup
-        backup = Backup(self.coresys, tar_origin, backup.slug, location, backup.data)
+        backup = Backup(self.coresys, tar_file, backup.slug, location, backup.data)
         if not await backup.load():
             # Remove invalid backup from location it was moved to
             backup.tarfile.unlink()
