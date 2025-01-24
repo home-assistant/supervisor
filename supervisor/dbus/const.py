@@ -296,6 +296,14 @@ class MulticastProtocolEnabled(StrEnum):
     RESOLVE = "resolve"
 
 
+class MulticastDnsValue(IntEnum):
+    """Connection MulticastDNS (mdns/lldmp) values."""
+
+    OFF = 0
+    RESOLVE = 1
+    ANNOUNCE = 2
+
+
 class DNSOverTLSEnabled(StrEnum):
     """DNS over TLS enabled."""
 
