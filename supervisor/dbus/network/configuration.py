@@ -33,6 +33,8 @@ class WirelessProperties:
     assigned_mac: str | None
     mode: str | None
     powersave: int | None
+    band: str | None
+    channel: int | None
 
 
 @dataclass(slots=True)

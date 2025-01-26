@@ -13,6 +13,7 @@ class InterfaceMethod(StrEnum):
     DISABLED = "disabled"
     STATIC = "static"
     AUTO = "auto"
+    SHARED = "shared"
 
 
 class InterfaceType(StrEnum):
@@ -29,6 +30,13 @@ class AuthMethod(StrEnum):
     OPEN = "open"
     WEP = "wep"
     WPA_PSK = "wpa-psk"
+
+
+class WifiBand(StrEnum):
+    """Wifi band."""
+
+    A = "a"
+    BG = "bg"
 
 
 class WifiMode(StrEnum):

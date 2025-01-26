@@ -12,6 +12,8 @@ from ..const import (
     ATTR_ACCESSPOINTS,
     ATTR_ADDRESS,
     ATTR_AUTH,
+    ATTR_BAND,
+    ATTR_CHANNEL,
     ATTR_CONNECTED,
     ATTR_DNS,
     ATTR_DOCKER,
@@ -52,7 +54,7 @@ from ..host.configuration import (
     VlanConfig,
     WifiConfig,
 )
-from ..host.const import AuthMethod, InterfaceType, WifiMode
+from ..host.const import AuthMethod, InterfaceType, WifiBand, WifiMode
 from .utils import api_process, api_validate
 
 _SCHEMA_IPV4_CONFIG = vol.Schema(
@@ -79,6 +81,8 @@ _SCHEMA_WIFI_CONFIG = vol.Schema(
         vol.Optional(ATTR_AUTH): vol.Coerce(AuthMethod),
         vol.Optional(ATTR_SSID): str,
         vol.Optional(ATTR_PSK): str,
+        vol.Optional(ATTR_BAND): vol.Coerce(WifiBand),
+        vol.Optional(ATTR_CHANNEL): vol.Coerce(int),
     }
 )
 
@@ -112,6 +116,8 @@ def wifi_struct(config: WifiConfig) -> dict[str, Any]:
         ATTR_AUTH: config.auth,
         ATTR_SSID: config.ssid,
         ATTR_SIGNAL: config.signal,
+        ATTR_BAND: config.band,
+        ATTR_CHANNEL: config.channel,
     }
 
 
@@ -227,6 +233,8 @@ class APINetwork(CoreSysAttributes):
                     config.get(ATTR_AUTH, AuthMethod.OPEN),
                     config.get(ATTR_PSK, None),
                     None,
+                    config.get(ATTR_BAND, None),
+                    config.get(ATTR_CHANNEL, None),
                 )
             elif key == ATTR_ENABLED:
                 interface.enabled = config
