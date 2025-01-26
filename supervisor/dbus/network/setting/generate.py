@@ -15,6 +15,8 @@ from . import (
     CONF_ATTR_802_ETHERNET_ASSIGNED_MAC,
     CONF_ATTR_802_WIRELESS,
     CONF_ATTR_802_WIRELESS_ASSIGNED_MAC,
+    CONF_ATTR_802_WIRELESS_BAND,
+    CONF_ATTR_802_WIRELESS_CHANNEL,
     CONF_ATTR_802_WIRELESS_MODE,
     CONF_ATTR_802_WIRELESS_POWERSAVE,
     CONF_ATTR_802_WIRELESS_SECURITY,
@@ -56,8 +58,12 @@ def _get_ipv4_connection_settings(ipv4setting) -> dict:
         ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "auto")
     elif ipv4setting.method == InterfaceMethod.DISABLED:
         ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "disabled")
-    elif ipv4setting.method == InterfaceMethod.STATIC:
-        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "manual")
+    elif ipv4setting.method in {InterfaceMethod.STATIC, InterfaceMethod.SHARED}:
+        ipv4[CONF_ATTR_IPV4_METHOD] = (
+            Variant("s", "manual")
+            if ipv4setting.method == InterfaceMethod.STATIC
+            else Variant("s", "shared")
+        )
 
         address_data = []
         for address in ipv4setting.address:
@@ -199,12 +205,23 @@ def get_connection_from_interface(
     elif interface.type == InterfaceType.WIRELESS:
         wireless = {
             CONF_ATTR_802_WIRELESS_ASSIGNED_MAC: Variant("s", "preserve"),
-            CONF_ATTR_802_WIRELESS_MODE: Variant("s", "infrastructure"),
+            CONF_ATTR_802_WIRELESS_MODE: Variant(
+                "s",
+                interface.wifi.mode
+                if interface.wifi and interface.wifi.mode
+                else "infrastructure",
+            ),
             CONF_ATTR_802_WIRELESS_POWERSAVE: Variant("i", 1),
         }
         if interface.wifi and interface.wifi.ssid:
             wireless[CONF_ATTR_802_WIRELESS_SSID] = Variant(
                 "ay", interface.wifi.ssid.encode("UTF-8")
+            )
+        if interface.wifi and interface.wifi.band:
+            wireless[CONF_ATTR_802_WIRELESS_BAND] = Variant("s", interface.wifi.band)
+        if interface.wifi and interface.wifi.channel:
+            wireless[CONF_ATTR_802_WIRELESS_CHANNEL] = Variant(
+                "u", interface.wifi.channel
             )
 
         conn[CONF_ATTR_802_WIRELESS] = wireless

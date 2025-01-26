@@ -12,7 +12,7 @@ from ..dbus.const import (
 )
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
-from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
+from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiBand, WifiMode
 
 
 @dataclass(slots=True)
@@ -55,6 +55,8 @@ class WifiConfig:
     auth: AuthMethod
     psk: str | None
     signal: int | None
+    band: WifiBand | None
+    channel: int | None
 
 
 @dataclass(slots=True)
@@ -191,6 +193,7 @@ class Interface:
             NMInterfaceMethod.DISABLED: InterfaceMethod.DISABLED,
             NMInterfaceMethod.MANUAL: InterfaceMethod.STATIC,
             NMInterfaceMethod.LINK_LOCAL: InterfaceMethod.DISABLED,
+            NMInterfaceMethod.SHARED: InterfaceMethod.SHARED,
         }
 
         return mapping.get(method, InterfaceMethod.DISABLED)
@@ -237,6 +240,12 @@ class Interface:
         if inet.settings.wireless.mode:
             mode = WifiMode(inet.settings.wireless.mode)
 
+        # Band and Channel
+        band = channel = None
+        if mode == WifiMode.AP:
+            band = WifiBand(inet.settings.wireless.band)
+            channel = inet.settings.wireless.channel
+
         # Signal
         if inet.wireless and inet.wireless.active:
             signal = inet.wireless.active.strength
@@ -249,10 +258,12 @@ class Interface:
             auth,
             psk,
             signal,
+            band,
+            channel,
         )
 
     @staticmethod
-    def _map_nm_vlan(inet: NetworkInterface) -> WifiConfig | None:
+    def _map_nm_vlan(inet: NetworkInterface) -> VlanConfig | None:
         """Create mapping to nm vlan property."""
         if inet.type != DeviceType.VLAN or not inet.settings:
             return None
