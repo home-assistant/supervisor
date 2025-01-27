@@ -297,7 +297,7 @@ class MulticastProtocolEnabled(StrEnum):
 
 
 class MulticastDnsValue(IntEnum):
-    """Connection MulticastDNS (mdns/lldmp) values."""
+    """Connection MulticastDNS (mdns/llmnr) values."""
 
     OFF = 0
     RESOLVE = 1

@@ -156,10 +156,10 @@ class Interface:
 
         if inet.settings and inet.settings.connection:
             mdns = inet.settings.connection.mdns
-            lldmp = inet.settings.connection.lldmp
+            llmnr = inet.settings.connection.llmnr
         else:
             mdns = None
-            lldmp = None
+            llmnr = None
 
         return Interface(
             inet.name,
@@ -198,7 +198,7 @@ class Interface:
             Interface._map_nm_wifi(inet),
             Interface._map_nm_vlan(inet),
             Interface._map_nm_multicast_dns(mdns),
-            Interface._map_nm_multicast_dns(lldmp),
+            Interface._map_nm_multicast_dns(llmnr),
         )
 
     @staticmethod
