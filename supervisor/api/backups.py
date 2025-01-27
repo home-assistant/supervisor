@@ -14,6 +14,7 @@ from typing import Any
 from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from ..backups.backup import Backup
 from ..backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE
@@ -503,6 +504,14 @@ class APIBackups(CoreSysAttributes):
             if location and location != LOCATION_CLOUD_BACKUP:
                 tmp_path = location.local_where
 
+        filename: str | None = None
+        if ATTR_FILENAME in request.query:
+            filename = request.query.get(ATTR_FILENAME)
+            try:
+                vol.Match(RE_BACKUP_FILENAME)(filename)
+            except vol.Invalid as ex:
+                raise APIError(humanize_error(filename, ex)) from None
+
         with TemporaryDirectory(dir=tmp_path.as_posix()) as temp_dir:
             tar_file = Path(temp_dir, "backup.tar")
             reader = await request.multipart()
@@ -529,7 +538,10 @@ class APIBackups(CoreSysAttributes):
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
-                    tar_file, location=location, additional_locations=locations
+                    tar_file,
+                    filename,
+                    location=location,
+                    additional_locations=locations,
                 )
             )
 
