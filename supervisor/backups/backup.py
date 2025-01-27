@@ -7,7 +7,7 @@ from collections.abc import AsyncGenerator, Awaitable
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from datetime import timedelta
-from functools import cached_property
+from functools import lru_cache
 import io
 import json
 import logging
@@ -65,6 +65,12 @@ from .utils import key_to_iv, password_to_key
 from .validate import SCHEMA_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+@lru_cache
+def _backup_file_size(backup: Path) -> int:
+    """Get backup file size."""
+    return backup.stat().st_size if backup.is_file() else 0
 
 
 def location_sort_key(value: str | None) -> str:
@@ -222,17 +228,15 @@ class Backup(JobGroup):
             key=location_sort_key,
         )
 
-    @cached_property
+    @property
     def size(self) -> float:
         """Return backup size."""
         return round(self.size_bytes / 1048576, 2)  # calc mbyte
 
-    @cached_property
+    @property
     def size_bytes(self) -> int:
         """Return backup size in bytes."""
-        if not self.tarfile.is_file():
-            return 0
-        return self.tarfile.stat().st_size
+        return self.location_size(self.location)
 
     @property
     def is_new(self) -> bool:
@@ -255,6 +259,14 @@ class Backup(JobGroup):
     def data(self) -> dict[str, Any]:
         """Returns a copy of the data."""
         return deepcopy(self._data)
+
+    def location_size(self, location: str | None) -> int:
+        """Get size of backup in a location."""
+        if location not in self.all_locations:
+            return 0
+
+        backup = self.all_locations[location][ATTR_PATH]
+        return _backup_file_size(backup)
 
     def __eq__(self, other: Any) -> bool:
         """Return true if backups have same metadata."""
