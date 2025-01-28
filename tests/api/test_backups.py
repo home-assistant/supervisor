@@ -100,8 +100,13 @@ async def test_options(api_client: TestClient, coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    "location,backup_dir",
-    [("backup_test", PurePath("mounts", "backup_test")), (None, PurePath("backup"))],
+    ("location", "backup_dir", "api_location"),
+    [
+        ("backup_test", PurePath("mounts", "backup_test"), "backup_test"),
+        (None, PurePath("backup"), None),
+        ("", PurePath("backup"), None),
+        (".local", PurePath("backup"), None),
+    ],
 )
 @pytest.mark.usefixtures("path_extern", "mount_propagation", "mock_is_mount")
 async def test_backup_to_location(
@@ -109,6 +114,7 @@ async def test_backup_to_location(
     coresys: CoreSys,
     location: str | None,
     backup_dir: PurePath,
+    api_location: str | None,
     tmp_supervisor_data: Path,
 ):
     """Test making a backup to a specific location with default mount."""
@@ -145,7 +151,7 @@ async def test_backup_to_location(
     resp = await api_client.get(f"/backups/{slug}/info")
     result = await resp.json()
     assert result["result"] == "ok"
-    assert result["data"]["location"] == location
+    assert result["data"]["location"] == api_location
 
 
 @pytest.mark.usefixtures(
@@ -661,14 +667,18 @@ async def test_backup_with_extras(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_upload_to_multiple_locations(api_client: TestClient, coresys: CoreSys):
+@pytest.mark.parametrize("local_location", ["", ".local"])
+async def test_upload_to_multiple_locations(
+    api_client: TestClient, coresys: CoreSys, local_location: str
+):
     """Test uploading a backup to multiple locations."""
     backup_file = get_fixture_path("backup_example.tar")
 
     with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
         mp.append(file)
         resp = await api_client.post(
-            "/backups/new/upload?location=&location=.cloud_backup", data=mp
+            f"/backups/new/upload?location={local_location}&location=.cloud_backup",
+            data=mp,
         )
 
     assert resp.status == 200
@@ -798,8 +808,12 @@ async def test_remove_backup_from_location(api_client: TestClient, coresys: Core
     assert backup.all_locations == {None: {"path": location_1, "protected": False}}
 
 
+@pytest.mark.parametrize("local_location", ["", ".local"])
 async def test_download_backup_from_location(
-    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data: Path
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    local_location: str,
 ):
     """Test downloading a backup from a specific location."""
     backup_file = get_fixture_path("backup_example.tar")
@@ -816,12 +830,12 @@ async def test_download_backup_from_location(
     # The use case of this is user might want to pick a particular mount if one is flaky
     # To simulate this, remove the file from one location and show one works and the other doesn't
     assert backup.location is None
-    location_1.unlink()
-
-    resp = await api_client.get("/backups/7fed74c8/download?location=")
-    assert resp.status == 404
+    location_2.unlink()
 
     resp = await api_client.get("/backups/7fed74c8/download?location=.cloud_backup")
+    assert resp.status == 404
+
+    resp = await api_client.get(f"/backups/7fed74c8/download?location={local_location}")
     assert resp.status == 200
     out_file = tmp_supervisor_data / "backup_example.tar"
     with out_file.open("wb") as out:
@@ -859,8 +873,12 @@ async def test_partial_backup_all_addons(
         store_addons.assert_called_once_with([install_addon_ssh])
 
 
+@pytest.mark.parametrize("local_location", [None, "", ".local"])
 async def test_restore_backup_from_location(
-    api_client: TestClient, coresys: CoreSys, tmp_supervisor_data: Path
+    api_client: TestClient,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    local_location: str | None,
 ):
     """Test restoring a backup from a specific location."""
     coresys.core.state = CoreState.RUNNING
@@ -889,7 +907,7 @@ async def test_restore_backup_from_location(
 
     resp = await api_client.post(
         f"/backups/{backup.slug}/restore/partial",
-        json={"location": None, "folders": ["share"]},
+        json={"location": local_location, "folders": ["share"]},
     )
     assert resp.status == 400
     body = await resp.json()
@@ -983,7 +1001,12 @@ async def test_backup_mixed_encryption(api_client: TestClient, coresys: CoreSys)
     assert body["data"]["backups"][0]["location"] is None
     assert body["data"]["backups"][0]["locations"] == [None]
     assert body["data"]["backups"][0]["protected"] is True
-    assert body["data"]["backups"][0]["protected_locations"] == [None]
+    assert body["data"]["backups"][0]["location_attributes"] == {
+        ".local": {
+            "protected": True,
+            "size_bytes": 10240,
+        }
+    }
 
 
 @pytest.mark.parametrize(
@@ -1012,7 +1035,12 @@ async def test_protected_backup(
     assert body["data"]["backups"][0]["location"] is None
     assert body["data"]["backups"][0]["locations"] == [None]
     assert body["data"]["backups"][0]["protected"] is True
-    assert body["data"]["backups"][0]["protected_locations"] == [None]
+    assert body["data"]["backups"][0]["location_attributes"] == {
+        ".local": {
+            "protected": True,
+            "size_bytes": 10240,
+        }
+    }
 
     resp = await api_client.get(f"/backups/{slug}/info")
     assert resp.status == 200
@@ -1020,4 +1048,9 @@ async def test_protected_backup(
     assert body["data"]["location"] is None
     assert body["data"]["locations"] == [None]
     assert body["data"]["protected"] is True
-    assert body["data"]["protected_locations"] == [None]
+    assert body["data"]["location_attributes"] == {
+        ".local": {
+            "protected": True,
+            "size_bytes": 10240,
+        }
+    }
