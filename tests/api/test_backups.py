@@ -1054,3 +1054,40 @@ async def test_protected_backup(
             "size_bytes": 10240,
         }
     }
+
+
+@pytest.mark.usefixtures(
+    "path_extern", "mount_propagation", "mock_is_mount", "tmp_supervisor_data"
+)
+async def test_upload_to_mount(api_client: TestClient, coresys: CoreSys):
+    """Test uploading a backup to a specific mount."""
+    await coresys.mounts.load()
+    (coresys.config.path_mounts / "backup_test").mkdir()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    # Capture our backup initially
+    backup_file = get_fixture_path("backup_example.tar")
+    backup = Backup(coresys, backup_file, "in", None)
+    await backup.load()
+
+    # Upload it and confirm it matches what we had
+    with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
+        mp.append(file)
+        resp = await api_client.post(
+            "/backups/new/upload?location=backup_test", data=mp
+        )
+
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["data"]["slug"] == "7fed74c8"
+    assert backup == coresys.backups.get("7fed74c8")

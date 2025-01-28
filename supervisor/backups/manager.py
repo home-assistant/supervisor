@@ -233,9 +233,9 @@ class BackupManager(FileConfiguration, JobGroup):
     ) -> bool:
         """Load exists backups."""
 
-        async def _load_backup(location: str | None, tar_file: Path) -> bool:
+        async def _load_backup(location_name: str | None, tar_file: Path) -> bool:
             """Load the backup."""
-            backup = Backup(self.coresys, tar_file, "temp", location)
+            backup = Backup(self.coresys, tar_file, "temp", location_name)
             if await backup.load():
                 if backup.slug in self._backups:
                     try:
@@ -251,7 +251,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 else:
                     self._backups[backup.slug] = Backup(
-                        self.coresys, tar_file, backup.slug, location, backup.data
+                        self.coresys, tar_file, backup.slug, location_name, backup.data
                     )
                 return True
 
@@ -392,7 +392,13 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
 
         # Load new backup
-        backup = Backup(self.coresys, tar_file, backup.slug, location, backup.data)
+        backup = Backup(
+            self.coresys,
+            tar_file,
+            backup.slug,
+            self._get_location_name(location),
+            backup.data,
+        )
         if not await backup.load():
             # Remove invalid backup from location it was moved to
             backup.tarfile.unlink()
