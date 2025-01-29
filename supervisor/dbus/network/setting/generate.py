@@ -52,31 +52,33 @@ if TYPE_CHECKING:
     from ....host.configuration import Interface
 
 
+def _get_address_data(ipv4setting) -> Variant:
+    address_data = []
+    for address in ipv4setting.address:
+        address_data.append(
+            {
+                "address": Variant("s", str(address.ip)),
+                "prefix": Variant("u", int(address.with_prefixlen.split("/")[-1])),
+            }
+        )
+
+    return Variant("aa{sv}", address_data)
+
+
 def _get_ipv4_connection_settings(ipv4setting) -> dict:
     ipv4 = {}
     if not ipv4setting or ipv4setting.method == InterfaceMethod.AUTO:
         ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "auto")
     elif ipv4setting.method == InterfaceMethod.DISABLED:
         ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "disabled")
-    elif ipv4setting.method in {InterfaceMethod.STATIC, InterfaceMethod.SHARED}:
-        ipv4[CONF_ATTR_IPV4_METHOD] = (
-            Variant("s", "manual")
-            if ipv4setting.method == InterfaceMethod.STATIC
-            else Variant("s", "shared")
-        )
-
-        address_data = []
-        for address in ipv4setting.address:
-            address_data.append(
-                {
-                    "address": Variant("s", str(address.ip)),
-                    "prefix": Variant("u", int(address.with_prefixlen.split("/")[-1])),
-                }
-            )
-
-        ipv4[CONF_ATTR_IPV4_ADDRESS_DATA] = Variant("aa{sv}", address_data)
+    elif ipv4setting.method == InterfaceMethod.STATIC:
+        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "manual")
+        ipv4[CONF_ATTR_IPV4_ADDRESS_DATA] = _get_address_data(ipv4setting)
         if ipv4setting.gateway:
             ipv4[CONF_ATTR_IPV4_GATEWAY] = Variant("s", str(ipv4setting.gateway))
+    elif ipv4setting.method == InterfaceMethod.SHARED:
+        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "shared")
+        ipv4[CONF_ATTR_IPV4_ADDRESS_DATA] = _get_address_data(ipv4setting)
     else:
         raise RuntimeError("Invalid IPv4 InterfaceMethod")
 
