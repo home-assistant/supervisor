@@ -412,7 +412,7 @@ class APIBackups(CoreSysAttributes):
             if background and not restore_task.done() or await restore_task:
                 return {ATTR_JOB_ID: job_id}
         except BackupFileNotFoundError as err:
-            raise APIError(str(err)) from err
+            raise APINotFound(str(err)) from err
         raise APIError(
             f"An error occurred during restore of {backup.slug}, check job '{job_id}' or supervisor logs for details",
             job_id=job_id,
