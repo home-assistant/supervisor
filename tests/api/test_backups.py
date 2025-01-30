@@ -832,7 +832,10 @@ async def test_remove_backup_file_not_found(api_client: TestClient, coresys: Cor
     resp = await api_client.delete("/backups/7fed74c8")
     assert resp.status == 404
     body = await resp.json()
-    assert body["message"] == f"[Errno 2] No such file or directory: '{str(location)}'"
+    assert (
+        body["message"]
+        == f"Cannot open backup at {str(location)}, file does not exist!"
+    )
 
 
 @pytest.mark.parametrize("local_location", ["", ".local"])
@@ -936,7 +939,7 @@ async def test_restore_backup_from_location(
         f"/backups/{backup.slug}/restore/partial",
         json={"location": local_location, "folders": ["share"]},
     )
-    assert resp.status == 400
+    assert resp.status == 404
     body = await resp.json()
     assert (
         body["message"]
