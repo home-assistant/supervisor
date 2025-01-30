@@ -49,7 +49,7 @@ from ..const import (
     CoreState,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APIForbidden, APINotFound, BackupFileNotFoundError
+from ..exceptions import APIError, APIForbidden, APINotFound
 from ..jobs import JobSchedulerOptions
 from ..mounts.const import MountUsage
 from ..resolution.const import UnhealthyReason
@@ -321,8 +321,6 @@ class APIBackups(CoreSysAttributes):
             if event_task in pending:
                 event_task.cancel()
             return (backup_task, job.uuid)
-        except BackupFileNotFoundError as err:
-            raise APINotFound(str(err)) from err
         finally:
             self.sys_bus.remove_listener(listener)
 
@@ -408,11 +406,8 @@ class APIBackups(CoreSysAttributes):
             self.sys_backups.do_restore_full, backup, **body
         )
 
-        try:
-            if background and not restore_task.done() or await restore_task:
-                return {ATTR_JOB_ID: job_id}
-        except BackupFileNotFoundError as err:
-            raise APINotFound(str(err)) from err
+        if background and not restore_task.done() or await restore_task:
+            return {ATTR_JOB_ID: job_id}
         raise APIError(
             f"An error occurred during restore of {backup.slug}, check job '{job_id}' or supervisor logs for details",
             job_id=job_id,
@@ -430,11 +425,9 @@ class APIBackups(CoreSysAttributes):
         restore_task, job_id = await self._background_backup_task(
             self.sys_backups.do_restore_partial, backup, **body
         )
-        try:
-            if background and not restore_task.done() or await restore_task:
-                return {ATTR_JOB_ID: job_id}
-        except BackupFileNotFoundError as err:
-            raise APINotFound(str(err)) from err
+
+        if background and not restore_task.done() or await restore_task:
+            return {ATTR_JOB_ID: job_id}
         raise APIError(
             f"An error occurred during restore of {backup.slug}, check job '{job_id}' or supervisor logs for details",
             job_id=job_id,
@@ -464,10 +457,7 @@ class APIBackups(CoreSysAttributes):
         else:
             self._validate_cloud_backup_location(request, backup.location)
 
-        try:
-            self.sys_backups.remove(backup, locations=locations)
-        except BackupFileNotFoundError as err:
-            raise APINotFound(str(err)) from err
+        self.sys_backups.remove(backup, locations=locations)
 
     @api_process
     async def download(self, request: web.Request):
