@@ -364,4 +364,7 @@ class Tasks(CoreSysAttributes):
             and datetime.fromisoformat(backup.date) < utcnow() - OLD_BACKUP_THRESHOLD
         ]
         for backup in old_backups:
-            self.sys_backups.remove(backup, [LOCATION_CLOUD_BACKUP])
+            try:
+                self.sys_backups.remove(backup, [LOCATION_CLOUD_BACKUP])
+            except FileNotFoundError as err:
+                _LOGGER.debug("Can't remove backup %s: %s", backup.slug, err)

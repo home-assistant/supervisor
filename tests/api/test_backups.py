@@ -808,6 +808,25 @@ async def test_remove_backup_from_location(api_client: TestClient, coresys: Core
     assert backup.all_locations == {None: {"path": location_1, "protected": False}}
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_remove_backup_file_not_found(api_client: TestClient, coresys: CoreSys):
+    """Test removing a backup from one location of multiple."""
+    backup_file = get_fixture_path("backup_example.tar")
+    location = Path(copy(backup_file, coresys.config.path_backup))
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations == {
+        None: {"path": location, "protected": False},
+    }
+
+    location.unlink()
+    resp = await api_client.delete("/backups/7fed74c8")
+    assert resp.status == 404
+    body = await resp.json()
+    assert body["message"] == f"[Errno 2] No such file or directory: '{str(location)}'"
+
+
 @pytest.mark.parametrize("local_location", ["", ".local"])
 async def test_download_backup_from_location(
     api_client: TestClient,

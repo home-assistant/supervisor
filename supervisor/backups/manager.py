@@ -279,7 +279,7 @@ class BackupManager(FileConfiguration, JobGroup):
         self,
         backup: Backup,
         locations: list[LOCATION_TYPE] | None = None,
-    ) -> bool:
+    ):
         """Remove a backup."""
         targets = (
             [
@@ -301,14 +301,11 @@ class BackupManager(FileConfiguration, JobGroup):
                     LOCATION_CLOUD_BACKUP,
                 }:
                     self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-                _LOGGER.error("Can't remove backup %s: %s", backup.slug, err)
-                return False
+                raise err
 
         # If backup has been removed from all locations, remove it from cache
         if not backup.all_locations:
             del self._backups[backup.slug]
-
-        return True
 
     async def _copy_to_additional_locations(
         self,

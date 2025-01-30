@@ -321,6 +321,8 @@ class APIBackups(CoreSysAttributes):
             if event_task in pending:
                 event_task.cancel()
             return (backup_task, job.uuid)
+        except FileNotFoundError as err:
+            raise APINotFound(str(err)) from err
         finally:
             self.sys_bus.remove_listener(listener)
 
@@ -457,7 +459,10 @@ class APIBackups(CoreSysAttributes):
         else:
             self._validate_cloud_backup_location(request, backup.location)
 
-        return self.sys_backups.remove(backup, locations=locations)
+        try:
+            self.sys_backups.remove(backup, locations=locations)
+        except FileNotFoundError as err:
+            raise APINotFound(str(err)) from err
 
     @api_process
     async def download(self, request: web.Request):
