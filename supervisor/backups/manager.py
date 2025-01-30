@@ -299,16 +299,17 @@ class BackupManager(FileConfiguration, JobGroup):
                 del backup.all_locations[location]
             except FileNotFoundError as err:
                 raise BackupFileNotFoundError(
-                    f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
+                    f"Cannot delete backup at {backup_tarfile.as_posix()}, file does not exist!",
                     _LOGGER.error,
                 ) from err
             except OSError as err:
+                msg = f"Could delete backup at {backup_tarfile.as_posix()}: {err!s}"
                 if err.errno == errno.EBADMSG and location in {
                     None,
                     LOCATION_CLOUD_BACKUP,
                 }:
                     self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-                raise err
+                raise BackupError(msg, _LOGGER.error) from err
 
         # If backup has been removed from all locations, remove it from cache
         if not backup.all_locations:
