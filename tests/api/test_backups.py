@@ -834,7 +834,7 @@ async def test_remove_backup_file_not_found(api_client: TestClient, coresys: Cor
     body = await resp.json()
     assert (
         body["message"]
-        == f"Cannot open backup at {str(location)}, file does not exist!"
+        == f"Cannot delete backup at {str(location)}, file does not exist!"
     )
 
 
