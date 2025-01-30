@@ -25,6 +25,7 @@ from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     BackupError,
+    BackupFileNotFoundError,
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
@@ -2094,5 +2095,5 @@ async def test_remove_non_existing_backup_raises(
     tar_file_mock.unlink.side_effect = (err := FileNotFoundError())
     err.errno = errno.ENOENT
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(BackupFileNotFoundError):
         coresys.backups.remove(backup)

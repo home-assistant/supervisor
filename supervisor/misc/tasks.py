@@ -9,7 +9,12 @@ from ..addons.const import ADDON_UPDATE_CONDITIONS
 from ..backups.const import LOCATION_CLOUD_BACKUP
 from ..const import AddonState
 from ..coresys import CoreSysAttributes
-from ..exceptions import AddonsError, HomeAssistantError, ObserverError
+from ..exceptions import (
+    AddonsError,
+    BackupFileNotFoundError,
+    HomeAssistantError,
+    ObserverError,
+)
 from ..homeassistant.const import LANDINGPAGE
 from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
@@ -366,5 +371,5 @@ class Tasks(CoreSysAttributes):
         for backup in old_backups:
             try:
                 self.sys_backups.remove(backup, [LOCATION_CLOUD_BACKUP])
-            except FileNotFoundError as err:
+            except BackupFileNotFoundError as err:
                 _LOGGER.debug("Can't remove backup %s: %s", backup.slug, err)

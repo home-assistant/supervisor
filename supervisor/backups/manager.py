@@ -22,6 +22,7 @@ from ..dbus.const import UnitActiveState
 from ..exceptions import (
     BackupDataDiskBadMessageError,
     BackupError,
+    BackupFileNotFoundError,
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
@@ -292,9 +293,15 @@ class BackupManager(FileConfiguration, JobGroup):
             else list(backup.all_locations.keys())
         )
         for location in targets:
+            backup_tarfile = backup.all_locations[location][ATTR_PATH]
             try:
-                backup.all_locations[location][ATTR_PATH].unlink()
+                backup_tarfile.unlink()
                 del backup.all_locations[location]
+            except FileNotFoundError as err:
+                raise BackupFileNotFoundError(
+                    f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
+                    _LOGGER.error,
+                ) from err
             except OSError as err:
                 if err.errno == errno.EBADMSG and location in {
                     None,

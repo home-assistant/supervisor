@@ -503,6 +503,14 @@ async def test_restore_immediate_errors(
     assert resp.status == 400
     assert "No Home Assistant" in (await resp.json())["message"]
 
+    # mock_partial_backup._locations[None]["path"].unlink()
+    resp = await api_client.post(
+        f"/backups/{mock_partial_backup.slug}/restore/partial",
+        json={"background": True},
+    )
+    assert resp.status == 404
+    assert "file does not exist" in (await resp.json())["message"]
+
 
 @pytest.mark.parametrize(
     ("folder", "location"), [("backup", None), ("core/backup", ".cloud_backup")]

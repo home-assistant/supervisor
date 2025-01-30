@@ -52,7 +52,12 @@ from ..const import (
     CRYPTO_AES128,
 )
 from ..coresys import CoreSys
-from ..exceptions import AddonsError, BackupError, BackupInvalidError
+from ..exceptions import (
+    AddonsError,
+    BackupError,
+    BackupFileNotFoundError,
+    BackupInvalidError,
+)
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
@@ -513,7 +518,7 @@ class Backup(JobGroup):
             else self.all_locations[location][ATTR_PATH]
         )
         if not backup_tarfile.is_file():
-            raise BackupError(
+            raise BackupFileNotFoundError(
                 f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
                 _LOGGER.error,
             )

@@ -2,6 +2,8 @@
 
 import logging
 
+from supervisor.exceptions import BackupFileNotFoundError
+
 from ...backups.const import BackupType
 from ...coresys import CoreSys
 from ..const import MINIMUM_FULL_BACKUPS, ContextType, IssueType, SuggestionType
@@ -33,7 +35,7 @@ class FixupSystemClearFullBackup(FixupBase):
         ]:
             try:
                 self.sys_backups.remove(backup)
-            except FileNotFoundError as err:
+            except BackupFileNotFoundError as err:
                 _LOGGER.debug("Can't remove backup %s: %s", backup.slug, err)
 
     @property

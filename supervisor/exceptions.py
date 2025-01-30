@@ -659,6 +659,10 @@ class BackupJobError(BackupError, JobException):
     """Raise on Backup job error."""
 
 
+class BackupFileNotFoundError(BackupError):
+    """Raise if the backup file hasn't been found."""
+
+
 # Security
 
 
