@@ -1,12 +1,10 @@
 """Test schema validation."""
 
-from typing import Any
 
 import pytest
 from voluptuous import Invalid
 
-from supervisor.const import ATTR_REPOSITORIES
-from supervisor.store.validate import SCHEMA_STORE_FILE, repositories
+from supervisor.store.validate import repositories
 
 
 @pytest.mark.parametrize(
