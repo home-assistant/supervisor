@@ -111,25 +111,29 @@ class LogsControl(CoreSysAttributes):
                 _LOGGER.error,
             ) from err
 
-        # If a system has not been rebooted in a long time query can come back with zero results
-        # Fallback is to get latest log line and its boot ID so we always have at least one.
-        if not text:
-            try:
-                async with self.journald_logs(
-                    range_header="entries=:-1:1",
-                    accept=LogFormat.JSON,
-                    timeout=ClientTimeout(total=20),
-                ) as resp:
-                    text = await resp.text()
-            except (ClientError, TimeoutError) as err:
-                raise HostLogError(
-                    "Could not get a list of boot IDs from systemd-journal-gatewayd",
-                    _LOGGER.error,
-                ) from err
+        # Get the oldest log entry. This makes sure that its ID is included
+        # if the start of the oldest boot was rotated out of the journal.
+        try:
+            async with self.journald_logs(
+                range_header="entries=:0:1",
+                accept=LogFormat.JSON,
+                timeout=ClientTimeout(total=20),
+            ) as resp:
+                text = await resp.text() + text
+        except (ClientError, TimeoutError) as err:
+            raise HostLogError(
+                "Could not get a list of boot IDs from systemd-journal-gatewayd",
+                _LOGGER.error,
+            ) from err
 
-        self._boot_ids = [
-            json.loads(entry)[PARAM_BOOT_ID] for entry in text.split("\n") if entry
-        ]
+        self._boot_ids = []
+        for entry in text.split("\n"):
+            if (
+                entry
+                and (boot_id := json.loads(entry)[PARAM_BOOT_ID]) not in self._boot_ids
+            ):
+                self._boot_ids.append(boot_id)
+
         return self._boot_ids
 
     async def get_identifiers(self) -> list[str]:
