@@ -18,7 +18,6 @@ from supervisor.store.validate import repositories
 async def test_repository_validate(repo_list: list[str], valid: bool):
     """Test repository list validate."""
     if valid:
-        processed = repositories(repo_list)
         assert repositories(repo_list) == repo_list
     else:
         with pytest.raises(Invalid):
