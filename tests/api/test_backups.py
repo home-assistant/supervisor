@@ -1036,8 +1036,9 @@ async def test_protected_backup(
     assert body["data"]["backups"][0]["locations"] == [None]
     assert body["data"]["backups"][0]["protected"] is True
 
-    # NOTE: Maybe it is not safe to compare size here, as random data in the
-    # backup might change the size (due to gzip).
+    # NOTE: It might not be safe to check size here, as random data in the
+    # backup (e.g. isntance UUID, backup slug) might change the size (due
+    # to gzip).
     assert body["data"]["backups"][0]["location_attributes"] == {
         ".local": {
             "protected": True,
