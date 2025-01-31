@@ -1049,10 +1049,8 @@ async def test_protected_backup(
     assert body["data"]["location"] is None
     assert body["data"]["locations"] == [None]
     assert body["data"]["protected"] is True
-    assert (
-        body["data"]["backups"][0]["location_attributes"][".local"]["protected"] is True
-    )
-    assert body["data"]["backups"][0]["location_attributes"][".local"]["size_bytes"] > 0
+    assert body["data"]["location_attributes"][".local"]["protected"] is True
+    assert body["data"]["location_attributes"][".local"]["size_bytes"] > 0
 
 
 @pytest.mark.usefixtures(
