@@ -2087,7 +2087,7 @@ async def test_remove_non_existing_backup_raises(
     backup_base_path.mkdir(exist_ok=True)
     copy(get_fixture_path("backup_example.tar"), backup_base_path)
 
-    await coresys.backups.reload(location=location, filename="backup_example.tar")
+    await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
 
     assert None in backup.all_locations
