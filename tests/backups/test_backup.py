@@ -45,3 +45,30 @@ async def test_consolidate_conflict_varied_encryption(
         in caplog.text
     )
     assert enc_backup.all_locations == {None: {"path": unc_tar, "protected": False}}
+
+
+async def test_consolidate(
+    coresys: CoreSys,
+    tmp_path: Path,
+    tmp_supervisor_data: Path,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test consolidate with two backups in different location and varied encryption."""
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    enc_tar = Path(copy(get_fixture_path("test_consolidate.tar"), tmp_path))
+    enc_backup = Backup(coresys, enc_tar, "test", None)
+    await enc_backup.load()
+
+    unc_tar = Path(copy(get_fixture_path("test_consolidate_unc.tar"), mount_dir))
+    unc_backup = Backup(coresys, unc_tar, "test", "backup_test")
+    await unc_backup.load()
+
+    enc_backup.consolidate(unc_backup)
+    assert (
+        "Backup in backup_test and None both have slug d9c48f8b but are not the same!"
+        not in caplog.text
+    )
+    assert enc_backup.all_locations == {
+        None: {"path": enc_tar, "protected": True},
+        "backup_test": {"path": unc_tar, "protected": False},
+    }

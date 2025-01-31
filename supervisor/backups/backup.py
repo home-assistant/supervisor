@@ -162,12 +162,12 @@ class Backup(JobGroup):
 
     @property
     def repositories(self) -> list[str]:
-        """Return backup date."""
+        """Return add-on store repositories."""
         return self._data[ATTR_REPOSITORIES]
 
     @repositories.setter
     def repositories(self, value: list[str]) -> None:
-        """Set backup date."""
+        """Set add-on store repositories."""
         self._data[ATTR_REPOSITORIES] = value
 
     @property
@@ -286,7 +286,7 @@ class Backup(JobGroup):
                 or k not in other._data
                 or self._data[k] != other._data[k]
             ):
-                _LOGGER.debug(
+                _LOGGER.info(
                     "Backup %s and %s not equal because %s field has different value: %s and %s",
                     self.slug,
                     other.slug,
