@@ -240,6 +240,15 @@ class NetworkManager(DBusServiceMock):
                     "org.freedesktop.NetworkManager.Device.InvalidConnection",
                     "A 'wireless' setting with a valid SSID is required if no AP path was given.",
                 )
+            if (
+                "channel" in connection["802-11-wireless"]
+                and connection["802-11-wireless"]["channel"].value > 14
+            ):
+                raise DBusError(
+                    "org.freedesktop.NetworkManager.Device.InvalidConnection",
+                    # this is the actual error from NetworkManager
+                    f"802-11-wireless.channel: '{connection['802-11-wireless']['channel'].value}' is not a valid channel",
+                )
 
         return [
             "/org/freedesktop/NetworkManager/Settings/1",
