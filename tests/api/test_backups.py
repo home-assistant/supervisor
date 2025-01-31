@@ -1035,12 +1035,13 @@ async def test_protected_backup(
     assert body["data"]["backups"][0]["location"] is None
     assert body["data"]["backups"][0]["locations"] == [None]
     assert body["data"]["backups"][0]["protected"] is True
-    assert body["data"]["backups"][0]["location_attributes"] == {
-        ".local": {
-            "protected": True,
-            "size_bytes": 10240,
-        }
-    }
+    assert (
+        body["data"]["backups"][0]["location_attributes"][".local"]["protected"] is True
+    )
+    # NOTE: It is not safe to check size exactly here, as order of keys in
+    # `homeassistant.json` and potentially other random data (e.g. isntance UUID,
+    # backup slug) does change the size of the backup (due to gzip).
+    assert body["data"]["backups"][0]["location_attributes"][".local"]["size_bytes"] > 0
 
     resp = await api_client.get(f"/backups/{slug}/info")
     assert resp.status == 200
@@ -1048,12 +1049,10 @@ async def test_protected_backup(
     assert body["data"]["location"] is None
     assert body["data"]["locations"] == [None]
     assert body["data"]["protected"] is True
-    assert body["data"]["location_attributes"] == {
-        ".local": {
-            "protected": True,
-            "size_bytes": 10240,
-        }
-    }
+    assert (
+        body["data"]["backups"][0]["location_attributes"][".local"]["protected"] is True
+    )
+    assert body["data"]["backups"][0]["location_attributes"][".local"]["size_bytes"] > 0
 
 
 @pytest.mark.usefixtures(
