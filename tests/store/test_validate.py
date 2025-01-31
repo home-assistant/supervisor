@@ -19,8 +19,7 @@ async def test_repository_validate(repo_list: list[str], valid: bool):
     """Test repository list validate."""
     if valid:
         processed = repositories(repo_list)
-        assert len(processed) == len(repo_list)
-        assert set(repositories(repo_list)) == set(repo_list)
+        assert repositories(repo_list) == repo_list
     else:
         with pytest.raises(Invalid):
             repositories(repo_list)
