@@ -55,7 +55,8 @@ def write_json_file(jsonfile: Path, data: Any) -> None:
                 orjson.dumps(  # pylint: disable=no-member
                     data,
                     option=orjson.OPT_INDENT_2  # pylint: disable=no-member
-                    | orjson.OPT_NON_STR_KEYS,  # pylint: disable=no-member
+                    | orjson.OPT_NON_STR_KEYS  # pylint: disable=no-member
+                    | orjson.OPT_SORT_KEYS,  # pylint: disable=no-member
                     default=json_encoder_default,
                 ).decode("utf-8")
             )
