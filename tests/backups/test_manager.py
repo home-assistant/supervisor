@@ -1762,7 +1762,7 @@ async def test_backup_remove_error(
     backup_base_path.mkdir(exist_ok=True)
     copy(get_fixture_path("backup_example.tar"), backup_base_path)
 
-    await coresys.backups.reload(location=location, filename="backup_example.tar")
+    await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
 
     assert location_name in backup.all_locations
@@ -1992,7 +1992,7 @@ async def test_partial_reload_multiple_locations(
     assert backup.all_locations.keys() == {".cloud_backup"}
 
     copy(backup_file, tmp_supervisor_data / "backup")
-    await coresys.backups.reload(location=None, filename="backup_example.tar")
+    await coresys.backups.reload()
 
     assert coresys.backups.list_backups
     assert (backup := coresys.backups.get("7fed74c8"))
@@ -2001,7 +2001,7 @@ async def test_partial_reload_multiple_locations(
     assert backup.all_locations.keys() == {".cloud_backup", None}
 
     copy(backup_file, mount_dir)
-    await coresys.backups.reload(location=mount, filename="backup_example.tar")
+    await coresys.backups.reload()
 
     assert coresys.backups.list_backups
     assert (backup := coresys.backups.get("7fed74c8"))
