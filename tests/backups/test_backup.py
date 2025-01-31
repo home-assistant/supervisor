@@ -65,7 +65,7 @@ async def test_consolidate(
 
     enc_backup.consolidate(unc_backup)
     assert (
-        f"Backup in backup_test and None both have slug d9c48f8b but are not the same!"
+        "Backup in backup_test and None both have slug d9c48f8b but are not the same!"
         not in caplog.text
     )
     assert enc_backup.all_locations == {
