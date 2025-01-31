@@ -22,6 +22,7 @@ from ..dbus.const import UnitActiveState
 from ..exceptions import (
     BackupDataDiskBadMessageError,
     BackupError,
+    BackupFileNotFoundError,
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
@@ -279,7 +280,7 @@ class BackupManager(FileConfiguration, JobGroup):
         self,
         backup: Backup,
         locations: list[LOCATION_TYPE] | None = None,
-    ) -> bool:
+    ):
         """Remove a backup."""
         targets = (
             [
@@ -292,23 +293,27 @@ class BackupManager(FileConfiguration, JobGroup):
             else list(backup.all_locations.keys())
         )
         for location in targets:
+            backup_tarfile = backup.all_locations[location][ATTR_PATH]
             try:
-                backup.all_locations[location][ATTR_PATH].unlink()
+                backup_tarfile.unlink()
                 del backup.all_locations[location]
+            except FileNotFoundError as err:
+                raise BackupFileNotFoundError(
+                    f"Cannot delete backup at {backup_tarfile.as_posix()}, file does not exist!",
+                    _LOGGER.error,
+                ) from err
             except OSError as err:
+                msg = f"Could delete backup at {backup_tarfile.as_posix()}: {err!s}"
                 if err.errno == errno.EBADMSG and location in {
                     None,
                     LOCATION_CLOUD_BACKUP,
                 }:
                     self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-                _LOGGER.error("Can't remove backup %s: %s", backup.slug, err)
-                return False
+                raise BackupError(msg, _LOGGER.error) from err
 
         # If backup has been removed from all locations, remove it from cache
         if not backup.all_locations:
             del self._backups[backup.slug]
-
-        return True
 
     async def _copy_to_additional_locations(
         self,

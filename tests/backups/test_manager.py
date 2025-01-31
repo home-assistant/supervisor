@@ -25,6 +25,7 @@ from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     BackupError,
+    BackupFileNotFoundError,
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
@@ -1769,11 +1770,13 @@ async def test_backup_remove_error(
     tar_file_mock.unlink.side_effect = (err := OSError())
 
     err.errno = errno.EBUSY
-    assert coresys.backups.remove(backup) is False
+    with pytest.raises(BackupError):
+        coresys.backups.remove(backup)
     assert coresys.core.healthy is True
 
     err.errno = errno.EBADMSG
-    assert coresys.backups.remove(backup) is False
+    with pytest.raises(BackupError):
+        coresys.backups.remove(backup)
     assert coresys.core.healthy is healthy_expected
 
 
@@ -2072,3 +2075,25 @@ async def test_addon_backup_excludes(coresys: CoreSys, install_addon_example: Ad
     assert not test2.exists()
     assert test_dir.is_dir()
     assert test3.exists()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_remove_non_existing_backup_raises(
+    coresys: CoreSys,
+):
+    """Test removing a backup error."""
+    location: LOCATION_TYPE = None
+    backup_base_path = coresys.backups._get_base_path(location)  # pylint: disable=protected-access
+    backup_base_path.mkdir(exist_ok=True)
+    copy(get_fixture_path("backup_example.tar"), backup_base_path)
+
+    await coresys.backups.reload(location=location, filename="backup_example.tar")
+    assert (backup := coresys.backups.get("7fed74c8"))
+
+    assert None in backup.all_locations
+    backup.all_locations[None]["path"] = (tar_file_mock := MagicMock())
+    tar_file_mock.unlink.side_effect = (err := FileNotFoundError())
+    err.errno = errno.ENOENT
+
+    with pytest.raises(BackupFileNotFoundError):
+        coresys.backups.remove(backup)

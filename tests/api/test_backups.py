@@ -503,6 +503,13 @@ async def test_restore_immediate_errors(
     assert resp.status == 400
     assert "No Home Assistant" in (await resp.json())["message"]
 
+    resp = await api_client.post(
+        f"/backups/{mock_partial_backup.slug}/restore/partial",
+        json={"background": True, "folders": ["ssl"]},
+    )
+    assert resp.status == 404
+    assert "file does not exist" in (await resp.json())["message"]
+
 
 @pytest.mark.parametrize(
     ("folder", "location"), [("backup", None), ("core/backup", ".cloud_backup")]
@@ -808,6 +815,28 @@ async def test_remove_backup_from_location(api_client: TestClient, coresys: Core
     assert backup.all_locations == {None: {"path": location_1, "protected": False}}
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_remove_backup_file_not_found(api_client: TestClient, coresys: CoreSys):
+    """Test removing a backup from one location of multiple."""
+    backup_file = get_fixture_path("backup_example.tar")
+    location = Path(copy(backup_file, coresys.config.path_backup))
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+    assert backup.all_locations == {
+        None: {"path": location, "protected": False},
+    }
+
+    location.unlink()
+    resp = await api_client.delete("/backups/7fed74c8")
+    assert resp.status == 404
+    body = await resp.json()
+    assert (
+        body["message"]
+        == f"Cannot delete backup at {str(location)}, file does not exist!"
+    )
+
+
 @pytest.mark.parametrize("local_location", ["", ".local"])
 async def test_download_backup_from_location(
     api_client: TestClient,
@@ -909,7 +938,7 @@ async def test_restore_backup_from_location(
         f"/backups/{backup.slug}/restore/partial",
         json={"location": local_location, "folders": ["share"]},
     )
-    assert resp.status == 400
+    assert resp.status == 404
     body = await resp.json()
     assert (
         body["message"]
