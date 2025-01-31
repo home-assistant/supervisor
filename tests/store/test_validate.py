@@ -1,6 +1,5 @@
 """Test schema validation."""
 
-
 import pytest
 from voluptuous import Invalid
 
