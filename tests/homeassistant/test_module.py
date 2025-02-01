@@ -2,11 +2,14 @@
 
 import asyncio
 import errno
-from pathlib import Path
+import logging
+from pathlib import Path, PurePath
 from unittest.mock import AsyncMock, patch
 
-from pytest import LogCaptureFixture, raises
+import pytest
 
+from supervisor.backups.backup import Backup
+from supervisor.backups.const import BackupType
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
@@ -14,15 +17,19 @@ from supervisor.exceptions import (
     HomeAssistantBackupError,
     HomeAssistantWSConnectionError,
 )
+from supervisor.homeassistant.module import HomeAssistant
 from supervisor.homeassistant.secrets import HomeAssistantSecrets
 from supervisor.homeassistant.websocket import HomeAssistantWebSocket
+from supervisor.utils.dt import utcnow
 
 
 async def test_load(
     coresys: CoreSys, tmp_supervisor_data: Path, ha_ws_client: AsyncMock
 ):
     """Test homeassistant module load."""
-    with open(tmp_supervisor_data / "homeassistant" / "secrets.yaml", "w") as secrets:
+    with open(
+        tmp_supervisor_data / "homeassistant" / "secrets.yaml", "w", encoding="utf-8"
+    ) as secrets:
         secrets.write("hello: world\n")
 
     # Unwrap read_secrets to prevent throttling between tests
@@ -32,7 +39,7 @@ async def test_load(
         patch.object(
             HomeAssistantSecrets,
             "_read_secrets",
-            new=HomeAssistantSecrets._read_secrets.__wrapped__,
+            new=HomeAssistantSecrets._read_secrets.__wrapped__,  # pylint: disable=protected-access,no-member
         ),
     ):
         await coresys.homeassistant.load()
@@ -59,7 +66,7 @@ async def test_get_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
     )
 
 
-def test_write_pulse_error(coresys: CoreSys, caplog: LogCaptureFixture):
+def test_write_pulse_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test errors writing pulse config."""
     with patch(
         "supervisor.homeassistant.module.Path.write_text",
@@ -87,7 +94,7 @@ async def test_begin_backup_ws_error(coresys: CoreSys):
     )
     with (
         patch.object(HomeAssistantWebSocket, "_can_send", return_value=True),
-        raises(
+        pytest.raises(
             HomeAssistantBackupError,
             match="Preparing backup of Home Assistant Core failed. Check HA Core logs.",
         ),
@@ -95,7 +102,7 @@ async def test_begin_backup_ws_error(coresys: CoreSys):
         await coresys.homeassistant.begin_backup()
 
 
-async def test_end_backup_ws_error(coresys: CoreSys, caplog: LogCaptureFixture):
+async def test_end_backup_ws_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test WS error when ending backup."""
     # pylint: disable-next=protected-access
     coresys.homeassistant.websocket._client.async_send_command.side_effect = (
@@ -108,3 +115,67 @@ async def test_end_backup_ws_error(coresys: CoreSys, caplog: LogCaptureFixture):
         "Error resuming normal operations after backup of Home Assistant Core. Check HA Core logs."
         in caplog.text
     )
+
+
+@pytest.mark.parametrize(
+    ("filename", "exclude_db", "expect_excluded", "subfolder"),
+    [
+        ("home-assistant.log", False, True, None),
+        ("home-assistant.log.1", False, True, None),
+        ("home-assistant.log.fault", False, True, None),
+        ("home-assistant.log", False, False, "subfolder"),
+        ("OZW_Log.txt", False, True, None),
+        ("OZW_Log.txt", False, False, "subfolder"),
+        ("home-assistant_v2.db-shm", False, True, None),
+        ("home-assistant_v2.db-shm", False, False, "subfolder"),
+        ("home-assistant_v2.db", False, False, None),
+        ("home-assistant_v2.db", True, True, None),
+        ("home-assistant_v2.db", True, False, "subfolder"),
+        ("home-assistant_v2.db-wal", False, False, None),
+        ("home-assistant_v2.db-wal", True, True, None),
+        ("home-assistant_v2.db-wal", True, False, "subfolder"),
+        ("test.tar", False, True, "backups"),
+        ("test.tar", False, False, "subfolder/backups"),
+        ("test.tar", False, True, "tmp_backups"),
+        ("test.tar", False, False, "subfolder/tmp_backups"),
+        ("test", False, True, "tts"),
+        ("test", False, False, "subfolder/tts"),
+        ("test.cpython-312.pyc", False, True, "__pycache__"),
+        ("test.cpython-312.pyc", False, True, "subfolder/__pycache__"),
+        (".DS_Store", False, True, None),
+        (".DS_Store", False, True, "subfolder"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_backup_excludes(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    filename: str,
+    exclude_db: bool,
+    expect_excluded: bool,
+    subfolder: str | None,
+):
+    """Test excludes in backup."""
+    parent = coresys.config.path_homeassistant
+    if subfolder:
+        test_path = PurePath(subfolder, filename)
+        parent = coresys.config.path_homeassistant / subfolder
+        parent.mkdir(parents=True)
+    else:
+        test_path = PurePath(filename)
+
+    (parent / filename).touch()
+
+    backup = Backup(coresys, coresys.config.path_backup / "test.tar", "test", None)
+    backup.new("test", utcnow().isoformat(), BackupType.PARTIAL)
+    async with backup.create():
+        with (
+            patch.object(HomeAssistant, "begin_backup"),
+            patch.object(HomeAssistant, "end_backup"),
+            caplog.at_level(logging.DEBUG, logger="supervisor.homeassistant.module"),
+        ):
+            await backup.store_homeassistant(exclude_database=exclude_db)
+
+    assert (
+        f"Ignoring data/{test_path.as_posix()} because of " in caplog.text
+    ) is expect_excluded
