@@ -518,6 +518,7 @@ class Backup(JobGroup):
             else self.all_locations[location][ATTR_PATH]
         )
         if not backup_tarfile.is_file():
+            self.sys_create_task(self.sys_backups.reload(location))
             raise BackupFileNotFoundError(
                 f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
                 _LOGGER.error,

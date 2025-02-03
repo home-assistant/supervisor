@@ -473,6 +473,11 @@ class APIBackups(CoreSysAttributes):
 
         _LOGGER.info("Downloading backup %s", backup.slug)
         filename = backup.all_locations[location][ATTR_PATH]
+        # If the file is missing, return 404 and trigger reload of location
+        if not filename.is_file():
+            self.sys_create_task(self.sys_backups.reload(location))
+            return web.Response(status=404)
+
         response = web.FileResponse(filename)
         response.content_type = CONTENT_TYPE_TAR
 

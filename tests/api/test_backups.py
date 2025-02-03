@@ -710,7 +710,7 @@ async def test_upload_duplicate_backup_new_location(
     """Test uploading a backup that already exists to a new location."""
     backup_file = get_fixture_path("backup_example.tar")
     orig_backup = Path(copy(backup_file, coresys.config.path_backup))
-    await coresys.backups.reload(None, "backup_example.tar")
+    await coresys.backups.reload()
     assert coresys.backups.get("7fed74c8").all_locations == {
         None: {"path": orig_backup, "protected": False}
     }
@@ -931,7 +931,7 @@ async def test_restore_backup_from_location(
     # The use case of this is user might want to pick a particular mount if one is flaky
     # To simulate this, remove the file from one location and show one works and the other doesn't
     assert backup.location is None
-    backup.all_locations[None]["path"].unlink()
+    (backup_local_path := backup.all_locations[None]["path"]).unlink()
     test_file.unlink()
 
     resp = await api_client.post(
@@ -942,7 +942,7 @@ async def test_restore_backup_from_location(
     body = await resp.json()
     assert (
         body["message"]
-        == f"Cannot open backup at {backup.all_locations[None]['path'].as_posix()}, file does not exist!"
+        == f"Cannot open backup at {backup_local_path.as_posix()}, file does not exist!"
     )
 
     resp = await api_client.post(
@@ -1117,3 +1117,87 @@ async def test_upload_to_mount(api_client: TestClient, coresys: CoreSys):
     body = await resp.json()
     assert body["data"]["slug"] == "7fed74c8"
     assert backup == coresys.backups.get("7fed74c8")
+
+
+@pytest.mark.parametrize(
+    ("method", "url_path", "body"),
+    [
+        ("delete", "/backups/7fed74c8", {"location": ".cloud_backup"}),
+        (
+            "post",
+            "/backups/7fed74c8/restore/partial",
+            {"location": ".cloud_backup", "folders": ["ssl"]},
+        ),
+        ("get", "/backups/7fed74c8/download?location=.cloud_backup", None),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_missing_file_removes_location_from_cache(
+    api_client: TestClient,
+    coresys: CoreSys,
+    method: str,
+    url_path: str,
+    body: dict[str, Any] | None,
+):
+    """Test finding a missing file removes the location from cache."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup_file = get_fixture_path("backup_example.tar")
+    copy(backup_file, coresys.config.path_backup)
+    bad_location = Path(copy(backup_file, coresys.config.path_core_backup))
+    await coresys.backups.reload()
+
+    # After reload, remove one of the file and confirm we have an out of date cache
+    bad_location.unlink()
+    assert coresys.backups.get("7fed74c8").all_locations.keys() == {
+        None,
+        ".cloud_backup",
+    }
+
+    resp = await api_client.request(method, url_path, json=body)
+    assert resp.status == 404
+
+    # Wait for reload task to complete and confirm location is removed
+    await asyncio.sleep(0)
+    assert coresys.backups.get("7fed74c8").all_locations.keys() == {None}
+
+
+@pytest.mark.parametrize(
+    ("method", "url_path", "body"),
+    [
+        ("delete", "/backups/7fed74c8", {"location": ".local"}),
+        (
+            "post",
+            "/backups/7fed74c8/restore/partial",
+            {"location": ".local", "folders": ["ssl"]},
+        ),
+        ("get", "/backups/7fed74c8/download?location=.local", None),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_missing_file_removes_backup_from_cache(
+    api_client: TestClient,
+    coresys: CoreSys,
+    method: str,
+    url_path: str,
+    body: dict[str, Any] | None,
+):
+    """Test finding a missing file removes the backup from cache if its the only one."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup_file = get_fixture_path("backup_example.tar")
+    bad_location = Path(copy(backup_file, coresys.config.path_backup))
+    await coresys.backups.reload()
+
+    # After reload, remove one of the file and confirm we have an out of date cache
+    bad_location.unlink()
+    assert coresys.backups.get("7fed74c8").all_locations.keys() == {None}
+
+    resp = await api_client.request(method, url_path, json=body)
+    assert resp.status == 404
+
+    # Wait for reload task to complete and confirm backup is removed
+    await asyncio.sleep(0)
+    assert not coresys.backups.list_backups
