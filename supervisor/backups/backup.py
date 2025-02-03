@@ -433,7 +433,13 @@ class Backup(JobGroup):
                     _LOGGER.exception("Unexpected error validating password")
                     return True
 
-        return await self.sys_run_in_executor(_validate_file)
+        try:
+            await self.sys_run_in_executor(_validate_file)
+        except FileNotFoundError as err:
+            raise BackupFileNotFoundError(
+                f"Cannot validate backup at {self.tarfile.as_posix()}, file does not exist!",
+                _LOGGER.error,
+            ) from err
 
     async def load(self):
         """Read backup.json from tar file."""

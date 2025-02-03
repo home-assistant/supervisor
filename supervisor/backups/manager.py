@@ -727,10 +727,14 @@ class BackupManager(FileConfiguration, JobGroup):
             and backup.all_locations[location][ATTR_PROTECTED]
         ):
             backup.set_password(password)
-            if not await backup.validate_password():
-                raise BackupInvalidError(
-                    f"Invalid password for backup {backup.slug}", _LOGGER.error
-                )
+            try:
+                if not await backup.validate_password():
+                    raise BackupInvalidError(
+                        f"Invalid password for backup {backup.slug}", _LOGGER.error
+                    )
+            except BackupFileNotFoundError:
+                self.sys_create_task(self.sys_backups.reload(location))
+                raise
 
     @Job(
         name=JOB_FULL_RESTORE,
