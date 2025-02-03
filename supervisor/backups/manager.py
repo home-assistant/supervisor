@@ -733,7 +733,7 @@ class BackupManager(FileConfiguration, JobGroup):
                         f"Invalid password for backup {backup.slug}", _LOGGER.error
                     )
             except BackupFileNotFoundError:
-                self.sys_create_task(self.sys_backups.reload(location))
+                self.sys_create_task(self.reload(location))
                 raise
 
     @Job(
