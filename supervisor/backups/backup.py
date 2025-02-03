@@ -393,16 +393,17 @@ class Backup(JobGroup):
         data = padder.update(decrypt.update(b64decode(data))) + padder.finalize()
         return data.decode()
 
-    async def validate_password(self) -> bool:
+    async def validate_password(self, location: str | None) -> bool:
         """Validate backup password.
 
         Returns false only when the password is known to be wrong.
         """
+        backup_file: Path = self.all_locations[location][ATTR_PATH]
 
         def _validate_file() -> bool:
             ending = f".tar{'.gz' if self.compressed else ''}"
 
-            with tarfile.open(self.tarfile, "r:") as backup:
+            with tarfile.open(backup_file, "r:") as backup:
                 test_tar_name = next(
                     (
                         entry.name
@@ -436,8 +437,9 @@ class Backup(JobGroup):
         try:
             await self.sys_run_in_executor(_validate_file)
         except FileNotFoundError as err:
+            self.sys_create_task(self.sys_backups.reload(location))
             raise BackupFileNotFoundError(
-                f"Cannot validate backup at {self.tarfile.as_posix()}, file does not exist!",
+                f"Cannot validate backup at {backup_file.as_posix()}, file does not exist!",
                 _LOGGER.error,
             ) from err
 
