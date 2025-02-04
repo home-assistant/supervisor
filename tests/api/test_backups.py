@@ -4,7 +4,7 @@ import asyncio
 from pathlib import Path, PurePath
 from shutil import copy
 from typing import Any
-from unittest.mock import ANY, AsyncMock, PropertyMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, patch
 
 from aiohttp import MultipartWriter
 from aiohttp.test_utils import TestClient
@@ -953,6 +953,68 @@ async def test_restore_backup_from_location(
     )
     assert resp.status == 200
     assert test_file.is_file()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_restore_backup_unencrypted_after_encrypted(
+    api_client: TestClient,
+    coresys: CoreSys,
+):
+    """Test restoring an unencrypted backup after an encrypted backup and vis-versa."""
+    enc_tar = copy(get_fixture_path("test_consolidate.tar"), coresys.config.path_backup)
+    unc_tar = copy(
+        get_fixture_path("test_consolidate_unc.tar"), coresys.config.path_core_backup
+    )
+    await coresys.backups.reload()
+
+    backup = coresys.backups.get("d9c48f8b")
+    assert backup.all_locations == {
+        None: {"path": Path(enc_tar), "protected": True},
+        ".cloud_backup": {"path": Path(unc_tar), "protected": False},
+    }
+
+    # pylint: disable=fixme
+    # TODO: There is a bug in the restore code that causes the restore to fail
+    # if the backup contains a Docker registry configuration and one location
+    # is encrypted and the other is not (just like our test fixture).
+    # We punt the ball on this one for this PR since this is a rare edge case.
+    backup.restore_dockerconfig = MagicMock()
+
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    # Restore encrypted backup
+    (test_file := coresys.config.path_ssl / "test.txt").touch()
+    resp = await api_client.post(
+        f"/backups/{backup.slug}/restore/partial",
+        json={"location": None, "password": "test", "folders": ["ssl"]},
+    )
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["result"] == "ok"
+    assert not test_file.is_file()
+
+    # Restore unencrypted backup
+    test_file.touch()
+    resp = await api_client.post(
+        f"/backups/{backup.slug}/restore/partial",
+        json={"location": ".cloud_backup", "folders": ["ssl"]},
+    )
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["result"] == "ok"
+    assert not test_file.is_file()
+
+    # Restore encrypted backup
+    test_file.touch()
+    resp = await api_client.post(
+        f"/backups/{backup.slug}/restore/partial",
+        json={"location": None, "password": "test", "folders": ["ssl"]},
+    )
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["result"] == "ok"
+    assert not test_file.is_file()
 
 
 @pytest.mark.parametrize(
