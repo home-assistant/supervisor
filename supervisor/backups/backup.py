@@ -202,12 +202,12 @@ class Backup(JobGroup):
     @property
     def docker(self) -> dict[str, Any]:
         """Return backup Docker config data."""
-        return self._data.get(ATTR_DOCKER, {})
+        return self._locations[self.location].get(ATTR_DOCKER, {})
 
     @docker.setter
     def docker(self, value: dict[str, Any]) -> None:
         """Set the Docker config data."""
-        self._data[ATTR_DOCKER] = value
+        self._locations[self.location][ATTR_DOCKER] = value
 
     @property
     def location(self) -> str | None:
@@ -389,7 +389,7 @@ class Backup(JobGroup):
 
         decrypt = self._aes.decryptor()
         padder = padding.PKCS7(128).unpadder()
-
+        _LOGGER.info("Decrypting data: %s", data)
         data = padder.update(decrypt.update(b64decode(data))) + padder.finalize()
         return data.decode()
 
@@ -486,6 +486,8 @@ class Backup(JobGroup):
 
         if self._data[ATTR_PROTECTED]:
             self._locations[self.location][ATTR_PROTECTED] = True
+        if self._data[ATTR_DOCKER]:
+            self._locations[self.location][ATTR_DOCKER] = self._data[ATTR_DOCKER]
 
         return True
 

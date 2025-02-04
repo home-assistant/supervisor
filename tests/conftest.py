@@ -584,7 +584,6 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     mock_backup = Backup(coresys, Path(tmp_path, "test_backup.tar"), "test", None)
     mock_backup.new("Test", utcnow().isoformat(), BackupType.FULL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
-    mock_backup.docker = {}
     mock_backup._data[ATTR_ADDONS] = [
         {
             ATTR_SLUG: "local_ssh",
@@ -609,7 +608,6 @@ async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     mock_backup = Backup(coresys, Path(tmp_path, "test_backup.tar"), "test", None)
     mock_backup.new("Test", utcnow().isoformat(), BackupType.PARTIAL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
-    mock_backup.docker = {}
     mock_backup._data[ATTR_ADDONS] = [
         {
             ATTR_SLUG: "local_ssh",

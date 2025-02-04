@@ -486,7 +486,9 @@ async def test_restore_immediate_errors(
 
     with (
         patch.object(
-            Backup, "all_locations", new={None: {"path": None, "protected": True}}
+            Backup,
+            "all_locations",
+            new={None: {"path": None, "protected": True, "docker": {}}},
         ),
         patch.object(Backup, "validate_password", return_value=False),
     ):
@@ -638,8 +640,12 @@ async def test_backup_to_multiple_locations(
     assert orig_backup.exists()
     assert copy_backup.exists()
     assert coresys.backups.get(slug).all_locations == {
-        None: {"path": orig_backup, "protected": False},
-        ".cloud_backup": {"path": copy_backup, "protected": False},
+        None: {"path": orig_backup, "protected": False, "docker": {"registries": {}}},
+        ".cloud_backup": {
+            "path": copy_backup,
+            "protected": False,
+            "docker": {"registries": {}},
+        },
     }
     assert coresys.backups.get(slug).location is None
 
@@ -699,8 +705,16 @@ async def test_upload_to_multiple_locations(
     assert orig_backup.exists()
     assert copy_backup.exists()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: {"path": orig_backup, "protected": False},
-        ".cloud_backup": {"path": copy_backup, "protected": False},
+        None: {
+            "path": orig_backup,
+            "protected": False,
+            "docker": {"registries": {}},
+        },
+        ".cloud_backup": {
+            "path": copy_backup,
+            "protected": False,
+            "docker": {"registries": {}},
+        },
     }
     assert coresys.backups.get("7fed74c8").location is None
 
@@ -714,7 +728,7 @@ async def test_upload_duplicate_backup_new_location(
     orig_backup = Path(copy(backup_file, coresys.config.path_backup))
     await coresys.backups.reload()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: {"path": orig_backup, "protected": False}
+        None: {"path": orig_backup, "protected": False, "docker": {"registries": {}}}
     }
 
     with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
@@ -731,8 +745,12 @@ async def test_upload_duplicate_backup_new_location(
     assert orig_backup.exists()
     assert copy_backup.exists()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: {"path": orig_backup, "protected": False},
-        ".cloud_backup": {"path": copy_backup, "protected": False},
+        None: {"path": orig_backup, "protected": False, "docker": {"registries": {}}},
+        ".cloud_backup": {
+            "path": copy_backup,
+            "protected": False,
+            "docker": {"registries": {}},
+        },
     }
     assert coresys.backups.get("7fed74c8").location is None
 
@@ -769,7 +787,7 @@ async def test_upload_with_filename(
     orig_backup = coresys.config.path_backup / filename
     assert orig_backup.exists()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: {"path": orig_backup, "protected": False}
+        None: {"path": orig_backup, "protected": False, "docker": {"registries": {}}}
     }
     assert coresys.backups.get("7fed74c8").location is None
 
@@ -802,8 +820,12 @@ async def test_remove_backup_from_location(api_client: TestClient, coresys: Core
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False},
-        ".cloud_backup": {"path": location_2, "protected": False},
+        None: {"path": location_1, "protected": False, "docker": {"registries": {}}},
+        ".cloud_backup": {
+            "path": location_2,
+            "protected": False,
+            "docker": {"registries": {}},
+        },
     }
 
     resp = await api_client.delete(
@@ -814,7 +836,9 @@ async def test_remove_backup_from_location(api_client: TestClient, coresys: Core
     assert location_1.exists()
     assert not location_2.exists()
     assert coresys.backups.get("7fed74c8")
-    assert backup.all_locations == {None: {"path": location_1, "protected": False}}
+    assert backup.all_locations == {
+        None: {"path": location_1, "protected": False, "docker": {"registries": {}}}
+    }
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
@@ -973,11 +997,6 @@ async def test_restore_backup_unencrypted_after_encrypted(
         ".cloud_backup": {"path": Path(unc_tar), "protected": False},
     }
 
-    # pylint: disable=fixme
-    # TODO: There is a bug in the restore code that causes the restore to fail
-    # if the backup contains a Docker registry configuration and one location
-    # is encrypted and the other is not (just like our test fixture).
-    # We punt the ball on this one for this PR since this is a rare edge case.
     backup.restore_dockerconfig = MagicMock()
 
     coresys.core.state = CoreState.RUNNING

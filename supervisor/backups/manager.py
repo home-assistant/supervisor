@@ -12,6 +12,7 @@ from shutil import copy
 from ..addons.addon import Addon
 from ..const import (
     ATTR_DAYS_UNTIL_STALE,
+    ATTR_DOCKER,
     ATTR_PATH,
     ATTR_PROTECTED,
     FILE_HASSIO_BACKUPS,
@@ -368,7 +369,11 @@ class BackupManager(FileConfiguration, JobGroup):
 
         backup.all_locations.update(
             {
-                loc: {ATTR_PATH: path, ATTR_PROTECTED: backup.protected}
+                loc: {
+                    ATTR_PATH: path,
+                    ATTR_PROTECTED: backup.protected,
+                    ATTR_DOCKER: backup.docker,
+                }
                 for loc, path in all_new_locations.items()
             }
         )
