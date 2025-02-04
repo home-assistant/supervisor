@@ -4,6 +4,7 @@ from contextlib import suppress
 from datetime import timedelta
 import json
 import logging
+from typing import Any
 
 import aiohttp
 from awesomeversion import AwesomeVersion
@@ -26,6 +27,11 @@ from .const import (
     UpdateChannel,
 )
 from .coresys import CoreSysAttributes
+from .dbus.const import (
+    DBUS_ATTR_CONNECTION_ENABLED,
+    DBUS_ATTR_CONNECTIVITY,
+    DBUS_IFACE_NM,
+)
 from .exceptions import (
     CodeNotaryError,
     CodeNotaryUntrusted,
@@ -50,6 +56,16 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
     async def load(self) -> None:
         """Update internal data."""
+        # If connectivity checks allowed and host not connected, delay initial version fetch
+        if (
+            self.sys_dbus.network.connectivity_enabled
+            and not self.sys_host.network.connectivity
+        ):
+            self.sys_dbus.network.dbus.properties.on_properties_changed(
+                self._check_connectivity
+            )
+            return
+
         with suppress(UpdaterError):
             await self.fetch_data()
 
@@ -179,6 +195,25 @@ class Updater(FileConfiguration, CoreSysAttributes):
     def auto_update(self, value: bool) -> None:
         """Set Supervisor auto updates enabled."""
         self._data[ATTR_AUTO_UPDATE] = value
+
+    async def _check_connectivity(
+        self, interface: str, changed: dict[str, Any], invalidated: list[str]
+    ):
+        """Check if connectivity is true and fetch data."""
+        if interface != DBUS_IFACE_NM:
+            return
+
+        connectivity_check: bool | None = changed.get(DBUS_ATTR_CONNECTION_ENABLED)
+        connectivity: bool | None = changed.get(DBUS_ATTR_CONNECTIVITY)
+
+        # If there's no connectivity checks, stop waiting for connection
+        # Else when host says we're online, attempt to fetch version data and disable listener
+        if not connectivity_check or connectivity:
+            self.sys_dbus.network.dbus.properties.off_properties_changed(
+                self._check_connectivity
+            )
+            with suppress(UpdaterError):
+                await self.fetch_data()
 
     @Job(
         name="updater_fetch_data",
