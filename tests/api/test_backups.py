@@ -1300,3 +1300,52 @@ async def test_missing_file_removes_backup_from_cache(
     # Wait for reload task to complete and confirm backup is removed
     await asyncio.sleep(0)
     assert not coresys.backups.list_backups
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_immediate_list_after_missing_file_restore(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test race with reload for missing file on restore does not error."""
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    backup_file = get_fixture_path("backup_example.tar")
+    bad_location = Path(copy(backup_file, coresys.config.path_backup))
+    # Copy a second backup in so there's something to reload later
+    copy(get_fixture_path("backup_example_enc.tar"), coresys.config.path_backup)
+    await coresys.backups.reload()
+
+    # After reload, remove one of the file and confirm we have an out of date cache
+    bad_location.unlink()
+    assert coresys.backups.get("7fed74c8").all_locations.keys() == {None}
+
+    event = asyncio.Event()
+    orig_wait = asyncio.wait
+
+    async def mock_wait(tasks: list[asyncio.Task], *args, **kwargs):
+        """Mock for asyncio wait that allows force of race condition."""
+        if tasks[0].get_coro().__qualname__.startswith("BackupManager.reload"):
+            await event.wait()
+        return await orig_wait(tasks, *args, **kwargs)
+
+    with patch("supervisor.backups.manager.asyncio.wait", new=mock_wait):
+        resp = await api_client.post(
+            "/backups/7fed74c8/restore/partial",
+            json={"location": ".local", "folders": ["ssl"]},
+        )
+        assert resp.status == 404
+
+    await asyncio.sleep(0)
+    resp = await api_client.get("/backups")
+    assert resp.status == 200
+    result = await resp.json()
+    assert len(result["data"]["backups"]) == 2
+
+    event.set()
+    await asyncio.sleep(0.1)
+    resp = await api_client.get("/backups")
+    assert resp.status == 200
+    result = await resp.json()
+    assert len(result["data"]["backups"]) == 1
+    assert result["data"]["backups"][0]["slug"] == "93b462f8"
