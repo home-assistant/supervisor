@@ -3,12 +3,15 @@
 from os import listdir
 from pathlib import Path
 from shutil import copy
+import tarfile
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import BackupFileNotFoundError
 
 from tests.common import get_fixture_path
 
@@ -72,3 +75,54 @@ async def test_consolidate(
         None: {"path": enc_tar, "protected": True},
         "backup_test": {"path": unc_tar, "protected": False},
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tarfile_side_effect, securetar_side_effect, expected_result, expect_exception",
+    [
+        (None, None, True, False),  # Successful validation
+        (FileNotFoundError, None, None, True),  # File not found
+        (None, tarfile.ReadError, False, False),  # Invalid password
+    ],
+)
+async def test_validate_password(
+    coresys: CoreSys,
+    tmp_path: Path,
+    tarfile_side_effect,
+    securetar_side_effect,
+    expected_result,
+    expect_exception,
+):
+    """Parameterized test for validate_password."""
+    enc_tar = Path(copy(get_fixture_path("backup_example_enc.tar"), tmp_path))
+    enc_backup = Backup(coresys, enc_tar, "test", None)
+    await enc_backup.load()
+
+    backup_tar_mock = MagicMock()
+    backup_tar_mock.getmembers.return_value = [
+        MagicMock(name="test.tar.gz")
+    ]  # Fake tar entries
+    backup_tar_mock.extractfile.return_value = MagicMock()
+    backup_context_mock = MagicMock()
+    backup_context_mock.__enter__.return_value = backup_tar_mock
+    backup_context_mock.__exit__.return_value = False
+
+    with (
+        patch(
+            "tarfile.open",
+            MagicMock(
+                return_value=backup_context_mock, side_effect=tarfile_side_effect
+            ),
+        ),
+        patch(
+            "supervisor.backups.backup.SecureTarFile",
+            MagicMock(side_effect=securetar_side_effect),
+        ),
+    ):
+        if expect_exception:
+            with pytest.raises(BackupFileNotFoundError):
+                await enc_backup.validate_password(None)
+        else:
+            result = await enc_backup.validate_password(None)
+            assert result == expected_result

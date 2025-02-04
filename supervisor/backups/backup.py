@@ -435,7 +435,7 @@ class Backup(JobGroup):
                     return True
 
         try:
-            await self.sys_run_in_executor(_validate_file)
+            return await self.sys_run_in_executor(_validate_file)
         except FileNotFoundError as err:
             self.sys_create_task(self.sys_backups.reload(location))
             raise BackupFileNotFoundError(
