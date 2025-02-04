@@ -973,6 +973,7 @@ async def test_restore_backup_unencrypted_after_encrypted(
         ".cloud_backup": {"path": Path(unc_tar), "protected": False},
     }
 
+    # pylint: disable=fixme
     # TODO: There is a bug in the restore code that causes the restore to fail
     # if the backup contains a Docker registry configuration and one location
     # is encrypted and the other is not (just like our test fixture).
