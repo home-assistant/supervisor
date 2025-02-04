@@ -727,6 +727,8 @@ class BackupManager(FileConfiguration, JobGroup):
                 raise BackupInvalidError(
                     f"Invalid password for backup {backup.slug}", _LOGGER.error
                 )
+        else:
+            backup.set_password(None)
 
     @Job(
         name=JOB_FULL_RESTORE,
