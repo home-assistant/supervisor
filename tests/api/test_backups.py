@@ -955,6 +955,61 @@ async def test_restore_backup_from_location(
     assert test_file.is_file()
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_restore_backup_unencrypted_after_encrypted(
+    api_client: TestClient,
+    coresys: CoreSys,
+):
+    """Test restoring an unencrypted backup after an encrypted backup and vis-versa."""
+    enc_tar = copy(get_fixture_path("test_consolidate.tar"), coresys.config.path_backup)
+    unc_tar = copy(
+        get_fixture_path("test_consolidate_unc.tar"), coresys.config.path_core_backup
+    )
+    await coresys.backups.reload()
+
+    backup = coresys.backups.get("d9c48f8b")
+    assert backup.all_locations == {
+        None: {"path": Path(enc_tar), "protected": True},
+        ".cloud_backup": {"path": Path(unc_tar), "protected": False},
+    }
+
+    coresys.core.state = CoreState.RUNNING
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    # Restore encrypted backup
+    (test_file := coresys.config.path_ssl / "test.txt").touch()
+    resp = await api_client.post(
+        f"/backups/{backup.slug}/restore/partial",
+        json={"location": None, "password": "test", "folders": ["ssl"]},
+    )
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["result"] == "ok"
+    assert not test_file.is_file()
+
+    # Restore unencrypted backup
+    test_file.touch()
+    resp = await api_client.post(
+        f"/backups/{backup.slug}/restore/partial",
+        json={"location": ".cloud_backup", "folders": ["ssl"]},
+    )
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["result"] == "ok"
+    assert not test_file.is_file()
+
+    # Restore encrypted backup
+    test_file.touch()
+    resp = await api_client.post(
+        f"/backups/{backup.slug}/restore/partial",
+        json={"location": None, "password": "test", "folders": ["ssl"]},
+    )
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["result"] == "ok"
+    assert not test_file.is_file()
+
+
 @pytest.mark.parametrize(
     ("backup_type", "postbody"), [("partial", {"homeassistant": True}), ("full", {})]
 )
