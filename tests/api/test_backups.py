@@ -485,7 +485,9 @@ async def test_restore_immediate_errors(
     assert "Must update supervisor" in (await resp.json())["message"]
 
     with (
-        patch.object(Backup, "protected", new=PropertyMock(return_value=True)),
+        patch.object(
+            Backup, "all_locations", new={None: {"path": None, "protected": True}}
+        ),
         patch.object(Backup, "validate_password", return_value=False),
     ):
         resp = await api_client.post(
