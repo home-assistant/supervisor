@@ -40,6 +40,8 @@ def partial_backup_mock(backup_mock):
     backup_instance.folders = []
     backup_instance.addon_list = [TEST_ADDON_SLUG]
     backup_instance.supervisor_version = "9999.09.9.dev9999"
+    backup_instance.location = None
+    backup_instance.all_locations = {None: {"protected": False}}
     yield backup_mock
 
 
@@ -51,6 +53,8 @@ def full_backup_mock(backup_mock):
     backup_instance.folders = ALL_FOLDERS
     backup_instance.addon_list = [TEST_ADDON_SLUG]
     backup_instance.supervisor_version = "9999.09.9.dev9999"
+    backup_instance.location = None
+    backup_instance.all_locations = {None: {"protected": False}}
     yield backup_mock
 
 
