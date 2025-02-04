@@ -322,8 +322,6 @@ class Backup(JobGroup):
                 ", ".join([path.as_posix() for path in conflict.values()]),
             )
         self._locations.update(backup.all_locations)
-        # Use the just reloaded backup's Docker config
-        self._data[ATTR_DOCKER] = backup.docker
 
     def new(
         self,

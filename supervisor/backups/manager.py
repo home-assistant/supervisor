@@ -638,11 +638,6 @@ class BackupManager(FileConfiguration, JobGroup):
         success = True
 
         try:
-            # Make sure we have the location specific docker config. Since docker config
-            # is part of the metadata, and can be encrypted or unencrypted, we need to
-            # make sure we have the right one in cache when restoring the backup.
-            await self.reload(location)
-
             task_hass: asyncio.Task | None = None
             async with backup.open(location):
                 # Restore docker config
