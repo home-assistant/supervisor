@@ -215,8 +215,6 @@ class BackupManager(FileConfiguration, JobGroup):
 
         self._change_stage(BackupJobStage.ADDON_REPOSITORIES, backup)
         backup.store_repositories()
-        self._change_stage(BackupJobStage.DOCKER_CONFIG, backup)
-        backup.store_dockerconfig()
 
         return backup
 
@@ -655,10 +653,6 @@ class BackupManager(FileConfiguration, JobGroup):
         try:
             task_hass: asyncio.Task | None = None
             async with backup.open(location):
-                # Restore docker config
-                self._change_stage(RestoreJobStage.DOCKER_CONFIG, backup)
-                backup.restore_dockerconfig(replace)
-
                 # Process folders
                 if folder_list:
                     self._change_stage(RestoreJobStage.FOLDERS, backup)

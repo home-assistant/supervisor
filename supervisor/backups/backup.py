@@ -38,16 +38,13 @@ from ..const import (
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
-    ATTR_PASSWORD,
     ATTR_PATH,
     ATTR_PROTECTED,
-    ATTR_REGISTRIES,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
-    ATTR_USERNAME,
     ATTR_VERSION,
     CRYPTO_AES128,
 )
@@ -899,32 +896,3 @@ class Backup(JobGroup):
         return self.sys_store.update_repositories(
             self.repositories, add_with_errors=True, replace=replace
         )
-
-    def store_dockerconfig(self):
-        """Store the configuration for Docker."""
-        self.docker = {
-            ATTR_REGISTRIES: {
-                registry: {
-                    ATTR_USERNAME: credentials[ATTR_USERNAME],
-                    ATTR_PASSWORD: self._encrypt_data(credentials[ATTR_PASSWORD]),
-                }
-                for registry, credentials in self.sys_docker.config.registries.items()
-            }
-        }
-
-    def restore_dockerconfig(self, replace: bool = False):
-        """Restore the configuration for Docker."""
-        if replace:
-            self.sys_docker.config.registries.clear()
-
-        if ATTR_REGISTRIES in self.docker:
-            self.sys_docker.config.registries.update(
-                {
-                    registry: {
-                        ATTR_USERNAME: credentials[ATTR_USERNAME],
-                        ATTR_PASSWORD: self._decrypt_data(credentials[ATTR_PASSWORD]),
-                    }
-                    for registry, credentials in self.docker[ATTR_REGISTRIES].items()
-                }
-            )
-            self.sys_docker.config.save_data()
