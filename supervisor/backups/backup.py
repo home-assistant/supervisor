@@ -1,7 +1,6 @@
 """Representation of a backup file."""
 
 import asyncio
-from base64 import b64decode, b64encode
 from collections import defaultdict
 from collections.abc import AsyncGenerator, Awaitable
 from contextlib import asynccontextmanager
@@ -20,7 +19,6 @@ from typing import Any, Self
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from securetar import SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
@@ -367,28 +365,6 @@ class Backup(JobGroup):
             modes.CBC(key_to_iv(self._key)),
             backend=default_backend(),
         )
-
-    def _encrypt_data(self, data: str) -> str:
-        """Make data secure."""
-        if not self._key or data is None:
-            return data
-
-        encrypt = self._aes.encryptor()
-        padder = padding.PKCS7(128).padder()
-
-        data = padder.update(data.encode()) + padder.finalize()
-        return b64encode(encrypt.update(data)).decode()
-
-    def _decrypt_data(self, data: str) -> str:
-        """Make data readable."""
-        if not self._key or data is None:
-            return data
-
-        decrypt = self._aes.decryptor()
-        padder = padding.PKCS7(128).unpadder()
-
-        data = padder.update(decrypt.update(b64decode(data))) + padder.finalize()
-        return data.decode()
 
     async def validate_password(self, location: str | None) -> bool:
         """Validate backup password.
