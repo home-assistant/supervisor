@@ -4,11 +4,11 @@ from contextlib import suppress
 from datetime import timedelta
 import json
 import logging
-from typing import Any
 
 import aiohttp
 from awesomeversion import AwesomeVersion
 
+from .bus import EventListener
 from .const import (
     ATTR_AUDIO,
     ATTR_AUTO_UPDATE,
@@ -24,15 +24,10 @@ from .const import (
     ATTR_SUPERVISOR,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
+    BusEvent,
     UpdateChannel,
 )
 from .coresys import CoreSysAttributes
-from .dbus.const import (
-    DBUS_ATTR_CONNECTION_ENABLED,
-    DBUS_ATTR_CONNECTIVITY,
-    DBUS_IFACE_NM,
-    ConnectivityState,
-)
 from .exceptions import (
     CodeNotaryError,
     CodeNotaryUntrusted,
@@ -54,21 +49,18 @@ class Updater(FileConfiguration, CoreSysAttributes):
         """Initialize updater."""
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.coresys = coresys
+        self._connectivity_listener: EventListener | None = None
 
     async def load(self) -> None:
         """Update internal data."""
-        # If connectivity checks allowed and host not connected, delay initial version fetch
-        if (
-            self.sys_dbus.network.connectivity_enabled
-            and not self.sys_host.network.connectivity
-        ):
-            self.sys_dbus.network.dbus.properties.on_properties_changed(
-                self._check_connectivity
+        # If there's no connectivity, delay initial version fetch
+        if not self.sys_supervisor.connectivity:
+            self._connectivity_listener = self.sys_bus.register_event(
+                BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
             )
             return
 
-        with suppress(UpdaterError):
-            await self.fetch_data()
+        await self.reload()
 
     async def reload(self) -> None:
         """Update internal data."""
@@ -197,27 +189,10 @@ class Updater(FileConfiguration, CoreSysAttributes):
         """Set Supervisor auto updates enabled."""
         self._data[ATTR_AUTO_UPDATE] = value
 
-    async def _check_connectivity(
-        self, interface: str, changed: dict[str, Any], invalidated: list[str]
-    ):
-        """Check if connectivity is true and fetch data."""
-        if interface != DBUS_IFACE_NM:
-            return
-
-        connectivity_check: bool | None = changed.get(DBUS_ATTR_CONNECTION_ENABLED)
-        connectivity: bool | None = changed.get(DBUS_ATTR_CONNECTIVITY)
-
-        # If there's no connectivity checks, stop waiting for connection
-        # Else when host says we're online, attempt to fetch version data and disable listener
-        if (
-            not connectivity_check
-            or connectivity == ConnectivityState.CONNECTIVITY_FULL
-        ):
-            self.sys_dbus.network.dbus.properties.off_properties_changed(
-                self._check_connectivity
-            )
-            with suppress(UpdaterError):
-                await self.fetch_data()
+    async def _check_connectivity(self, connectivity: bool):
+        """Fetch data once connectivity is true."""
+        if connectivity:
+            await self.reload()
 
     @Job(
         name="updater_fetch_data",
@@ -252,6 +227,11 @@ class Updater(FileConfiguration, CoreSysAttributes):
                 f"Can't fetch versions from {url}: {str(err) or 'Timeout'}",
                 _LOGGER.warning,
             ) from err
+
+        # Fetch was successful. If there's a connectivity listener, time to remove it
+        if self._connectivity_listener:
+            self.sys_bus.remove_listener(self._connectivity_listener)
+            self._connectivity_listener = None
 
         # Validate
         try:

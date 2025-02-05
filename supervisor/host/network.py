@@ -67,6 +67,8 @@ class NetworkManager(CoreSysAttributes):
         self.sys_homeassistant.websocket.supervisor_update_event(
             "network", {ATTR_HOST_INTERNET: state}
         )
+        if state and not self.sys_supervisor.connectivity:
+            self.sys_create_task(self.sys_supervisor.check_connectivity())
 
     @property
     def interfaces(self) -> list[Interface]:

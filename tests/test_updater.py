@@ -1,5 +1,6 @@
 """Test updater files."""
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -78,24 +79,15 @@ async def test_os_update_path(coresys: CoreSys, version: str, expected: str):
         assert coresys.updater.version_hassos == AwesomeVersion(expected)
 
 
-@pytest.mark.parametrize(
-    ("connectivity", "check_enabled"),
-    [
-        (ConnectivityState.CONNECTIVITY_FULL, True),
-        (ConnectivityState.CONNECTIVITY_NONE, False),
-    ],
-)
 async def test_delayed_fetch_for_connectivity(
-    coresys: CoreSys,
-    network_manager_service: NetworkManagerService,
-    connectivity: ConnectivityState,
-    check_enabled: bool,
+    coresys: CoreSys, network_manager_service: NetworkManagerService
 ):
     """Test initial version fetch waits for connectivity on load."""
     coresys.websession.get = AsyncMock()
 
+    coresys.supervisor.connectivity = False
     network_manager_service.connectivity = ConnectivityState.CONNECTIVITY_NONE.value
-    network_manager_service.connectivity_check_enabled = True
+    await coresys.host.network.load()
     await coresys.host.network.check_connectivity()
 
     # No connectivity means no data fetch on load
@@ -104,9 +96,10 @@ async def test_delayed_fetch_for_connectivity(
 
     # Version info fetched when connectivity established or check disabled
     network_manager_service.emit_properties_changed(
-        {"Connectivity": connectivity.value, "ConnectivityCheckEnabled": check_enabled}
+        {"Connectivity": ConnectivityState.CONNECTIVITY_FULL}
     )
     await network_manager_service.ping()
+    await asyncio.sleep(0.1)
     coresys.websession.get.assert_called_once()
     assert (
         coresys.websession.get.call_args[0][0]
