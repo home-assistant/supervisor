@@ -31,6 +31,7 @@ from .dbus.const import (
     DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_CONNECTIVITY,
     DBUS_IFACE_NM,
+    ConnectivityState,
 )
 from .exceptions import (
     CodeNotaryError,
@@ -208,7 +209,10 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
         # If there's no connectivity checks, stop waiting for connection
         # Else when host says we're online, attempt to fetch version data and disable listener
-        if not connectivity_check or connectivity:
+        if (
+            not connectivity_check
+            or connectivity == ConnectivityState.CONNECTIVITY_FULL
+        ):
             self.sys_dbus.network.dbus.properties.off_properties_changed(
                 self._check_connectivity
             )

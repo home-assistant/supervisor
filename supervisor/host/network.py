@@ -148,7 +148,7 @@ class NetworkManager(CoreSysAttributes):
             return
 
         connectivity_check: bool | None = changed.get(DBUS_ATTR_CONNECTION_ENABLED)
-        connectivity: bool | None = changed.get(DBUS_ATTR_CONNECTIVITY)
+        connectivity: int | None = changed.get(DBUS_ATTR_CONNECTIVITY)
 
         # This potentially updated the DNS configuration. Make sure the DNS plug-in
         # picks up the latest settings.

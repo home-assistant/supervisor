@@ -1,11 +1,16 @@
 """Test updater files."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.dbus.const import ConnectivityState
+
+from tests.dbus_service_mocks.network_manager import (
+    NetworkManager as NetworkManagerService,
+)
 
 URL_TEST = "https://version.home-assistant.io/stable.json"
 
@@ -71,3 +76,39 @@ async def test_os_update_path(coresys: CoreSys, version: str, expected: str):
         await coresys.updater.fetch_data()
 
         assert coresys.updater.version_hassos == AwesomeVersion(expected)
+
+
+@pytest.mark.parametrize(
+    ("connectivity", "check_enabled"),
+    [
+        (ConnectivityState.CONNECTIVITY_FULL, True),
+        (ConnectivityState.CONNECTIVITY_NONE, False),
+    ],
+)
+async def test_delayed_fetch_for_connectivity(
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    connectivity: ConnectivityState,
+    check_enabled: bool,
+):
+    """Test initial version fetch waits for connectivity on load."""
+    coresys._websession = MagicMock()  # pylint: disable=protected-access
+
+    network_manager_service.connectivity = ConnectivityState.CONNECTIVITY_NONE.value
+    network_manager_service.connectivity_check_enabled = True
+    await coresys.host.network.check_connectivity()
+
+    # No connectivity means no data fetch on load
+    await coresys.updater.load()
+    coresys.websession.get.assert_not_called()
+
+    # Version info fetched when connectivity established or check disabled
+    network_manager_service.emit_properties_changed(
+        {"Connectivity": connectivity.value, "ConnectivityCheckEnabled": check_enabled}
+    )
+    await network_manager_service.ping()
+    coresys.websession.get.assert_called_once()
+    assert (
+        coresys.websession.get.call_args[0][0]
+        == "https://version.home-assistant.io/stable.json"
+    )
