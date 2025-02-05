@@ -1,6 +1,6 @@
 """Test updater files."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -92,7 +92,7 @@ async def test_delayed_fetch_for_connectivity(
     check_enabled: bool,
 ):
     """Test initial version fetch waits for connectivity on load."""
-    coresys._websession = MagicMock()  # pylint: disable=protected-access
+    coresys.websession.get = AsyncMock()
 
     network_manager_service.connectivity = ConnectivityState.CONNECTIVITY_NONE.value
     network_manager_service.connectivity_check_enabled = True
