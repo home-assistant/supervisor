@@ -2,8 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncGenerator, Generator
-from functools import partial
-from inspect import unwrap
+from datetime import datetime
 import os
 from pathlib import Path
 import subprocess
@@ -379,11 +378,6 @@ async def coresys(
     )
     coresys_obj.homeassistant._websocket._client = AsyncMock(
         ha_version=AwesomeVersion("2021.2.4")
-    )
-
-    # Remove rate limiting decorator from fetch_data
-    coresys_obj.updater.fetch_data = partial(
-        unwrap(coresys_obj.updater.fetch_data), coresys_obj.updater
     )
 
     # Don't remove files/folders related to addons and stores
@@ -765,3 +759,10 @@ def mock_is_mount() -> MagicMock:
     """Mock is_mount in mounts."""
     with patch("supervisor.mounts.mount.Path.is_mount", return_value=True) as is_mount:
         yield is_mount
+
+
+@pytest.fixture
+def no_job_throttle():
+    """Remove job throttle for tests."""
+    with patch("supervisor.jobs.decorator.Job.last_call", return_value=datetime.min):
+        yield

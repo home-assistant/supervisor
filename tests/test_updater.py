@@ -10,7 +10,6 @@ from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
 from supervisor.jobs import SupervisorJob
-from supervisor.updater import Updater
 
 from tests.common import load_binary_fixture
 from tests.dbus_service_mocks.network_manager import (
@@ -20,7 +19,7 @@ from tests.dbus_service_mocks.network_manager import (
 URL_TEST = "https://version.home-assistant.io/stable.json"
 
 
-@pytest.mark.asyncio
+@pytest.mark.usefixtures("no_job_throttle")
 async def test_fetch_versions(coresys: CoreSys) -> None:
     """Test download and sync version."""
 
@@ -63,6 +62,7 @@ async def test_fetch_versions(coresys: CoreSys) -> None:
     )
 
 
+@pytest.mark.usefixtures("no_job_throttle")
 @pytest.mark.parametrize(
     "version, expected",
     [
@@ -83,14 +83,11 @@ async def test_os_update_path(coresys: CoreSys, version: str, expected: str):
         assert coresys.updater.version_hassos == AwesomeVersion(expected)
 
 
+@pytest.mark.usefixtures("no_job_throttle")
 async def test_delayed_fetch_for_connectivity(
     coresys: CoreSys, network_manager_service: NetworkManagerService
 ):
     """Test initial version fetch waits for connectivity on load."""
-    # coresys fixture specifically unwraps fetch_data to remove the throttle for tests
-    # Job fixture is needed to listen for event so return it to normal
-    coresys._updater = Updater(coresys)  # pylint: disable=protected-access
-
     coresys.websession.get = MagicMock()
     coresys.websession.get.return_value.__aenter__.return_value.status = 200
     coresys.websession.get.return_value.__aenter__.return_value.read.return_value = (

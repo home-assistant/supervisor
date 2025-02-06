@@ -16,7 +16,7 @@ from tests.dbus_service_mocks.rauc import Rauc as RaucService
 # pylint: disable=protected-access
 
 
-@pytest.mark.asyncio
+@pytest.mark.usefixtures("no_job_throttle")
 async def test_ota_url_generic_x86_64_rename(coresys: CoreSys) -> None:
     """Test download URL generated."""
     coresys.os._board = "intel-nuc"

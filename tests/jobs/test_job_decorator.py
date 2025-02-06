@@ -1196,13 +1196,13 @@ async def test_job_scheduled_at(coresys: CoreSys):
     started = False
     ended = False
 
-    async def start_listener(job_id: str):
+    async def start_listener(evt_job: SupervisorJob):
         nonlocal started
-        started = started or job_id == job.uuid
+        started = started or evt_job.uuid == job.uuid
 
-    async def end_listener(job_id: str):
+    async def end_listener(evt_job: SupervisorJob):
         nonlocal ended
-        ended = ended or job_id == job.uuid
+        ended = ended or evt_job.uuid == job.uuid
 
     coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_START, start_listener)
     coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, end_listener)
