@@ -112,7 +112,7 @@ async def test_end_backup_ws_error(coresys: CoreSys, caplog: pytest.LogCaptureFi
         await coresys.homeassistant.end_backup()
 
     assert (
-        "Preparing backup of Home Assistant Core failed. Failed to inform HA Core: Connection was closed."
+        "Error resuming normal operations after backup of Home Assistant Core. Failed to inform HA Core: Connection was closed."
         in caplog.text
     )
 
