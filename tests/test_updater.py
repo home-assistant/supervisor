@@ -1,14 +1,18 @@
 """Test updater files."""
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
+from supervisor.jobs import SupervisorJob
+from supervisor.updater import Updater
 
+from tests.common import load_binary_fixture
 from tests.dbus_service_mocks.network_manager import (
     NetworkManager as NetworkManagerService,
 )
@@ -83,23 +87,46 @@ async def test_delayed_fetch_for_connectivity(
     coresys: CoreSys, network_manager_service: NetworkManagerService
 ):
     """Test initial version fetch waits for connectivity on load."""
-    coresys.websession.get = AsyncMock()
+    # coresys fixture specifically unwraps fetch_data to remove the throttle for tests
+    # Job fixture is needed to listen for event so return it to normal
+    coresys._updater = Updater(coresys)  # pylint: disable=protected-access
 
+    coresys.websession.get = MagicMock()
+    coresys.websession.get.return_value.__aenter__.return_value.status = 200
+    coresys.websession.get.return_value.__aenter__.return_value.read.return_value = (
+        load_binary_fixture("version_stable.json")
+    )
+    coresys.websession.head = AsyncMock()
+    coresys.security.verify_own_content = AsyncMock()
+
+    # Network connectivity change causes a series of async tasks to eventually do a version fetch
+    # Rather then use some kind of sleep loop, set up listener for start of fetch data job
+    event = asyncio.Event()
+
+    async def find_fetch_data_job_start(job: SupervisorJob):
+        if job.name == "updater_fetch_data":
+            event.set()
+
+    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_START, find_fetch_data_job_start)
+
+    # Start with no connectivity and confirm there is no version fetch on load
     coresys.supervisor.connectivity = False
     network_manager_service.connectivity = ConnectivityState.CONNECTIVITY_NONE.value
     await coresys.host.network.load()
     await coresys.host.network.check_connectivity()
 
-    # No connectivity means no data fetch on load
     await coresys.updater.load()
     coresys.websession.get.assert_not_called()
 
-    # Version info fetched when connectivity established or check disabled
+    # Now signal host has connectivity and wait for fetch data to complete to assert
     network_manager_service.emit_properties_changed(
         {"Connectivity": ConnectivityState.CONNECTIVITY_FULL}
     )
     await network_manager_service.ping()
-    await asyncio.sleep(0.1)
+    async with asyncio.timeout(5):
+        await event.wait()
+    await asyncio.sleep(0)
+
     coresys.websession.get.assert_called_once()
     assert (
         coresys.websession.get.call_args[0][0]
