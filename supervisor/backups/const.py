@@ -24,7 +24,6 @@ class BackupJobStage(StrEnum):
 
     ADDON_REPOSITORIES = "addon_repositories"
     ADDONS = "addons"
-    DOCKER_CONFIG = "docker_config"
     FINISHING_FILE = "finishing_file"
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
@@ -39,7 +38,6 @@ class RestoreJobStage(StrEnum):
     ADDONS = "addons"
     AWAIT_ADDON_RESTARTS = "await_addon_restarts"
     AWAIT_HOME_ASSISTANT_RESTART = "await_home_assistant_restart"
-    DOCKER_CONFIG = "docker_config"
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
     REMOVE_DELTA_ADDONS = "remove_delta_addons"
