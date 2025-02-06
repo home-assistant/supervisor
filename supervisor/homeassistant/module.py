@@ -376,9 +376,9 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             resp = await self.websocket.async_send_command(
                 {ATTR_TYPE: WSType.BACKUP_END}
             )
-        except HomeAssistantWSError:
+        except HomeAssistantWSError as err:
             _LOGGER.warning(
-                "Error resuming normal operations after backup of Home Assistant Core. Check HA Core logs."
+                f"Preparing backup of Home Assistant Core failed. Failed to inform HA Core: {str(err)}.",
             )
         else:
             if resp and not resp.get(ATTR_SUCCESS):
