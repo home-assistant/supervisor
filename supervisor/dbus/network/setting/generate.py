@@ -208,10 +208,7 @@ def get_connection_from_interface(
         wireless = {
             CONF_ATTR_802_WIRELESS_ASSIGNED_MAC: Variant("s", "preserve"),
             CONF_ATTR_802_WIRELESS_MODE: Variant(
-                "s",
-                interface.wifi.mode
-                if interface.wifi and interface.wifi.mode
-                else "infrastructure",
+                "s", (interface.wifi and interface.wifi.mode) or "infrastructure"
             ),
             CONF_ATTR_802_WIRELESS_POWERSAVE: Variant("i", 1),
         }
