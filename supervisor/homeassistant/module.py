@@ -378,7 +378,8 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             )
         except HomeAssistantWSError as err:
             _LOGGER.warning(
-                f"Error resuming normal operations after backup of Home Assistant Core. Failed to inform HA Core: {str(err)}.",
+                "Error resuming normal operations after backup of Home Assistant Core. Failed to inform HA Core: %s.",
+                str(err),
             )
         else:
             if resp and not resp.get(ATTR_SUCCESS):
