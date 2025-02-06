@@ -63,7 +63,6 @@ async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_called_once()
     assert install_addon_ssh in backup_instance.store_addons.call_args[0][0]
@@ -115,7 +114,6 @@ async def test_do_backup_full_uncompressed(
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_called_once()
     assert install_addon_ssh in backup_instance.store_addons.call_args[0][0]
@@ -146,7 +144,6 @@ async def test_do_backup_partial_minimal(
 
     backup_instance.store_homeassistant.assert_not_called()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_not_called()
 
@@ -176,7 +173,6 @@ async def test_do_backup_partial_minimal_uncompressed(
 
     backup_instance.store_homeassistant.assert_not_called()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_not_called()
 
@@ -208,7 +204,6 @@ async def test_do_backup_partial_maximal(
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_called_once()
     assert install_addon_ssh in backup_instance.store_addons.call_args[0][0]
@@ -240,7 +235,6 @@ async def test_do_restore_full(coresys: CoreSys, full_backup_mock, install_addon
 
     backup_instance.restore_homeassistant.assert_called_once()
     backup_instance.restore_repositories.assert_called_once()
-    backup_instance.restore_dockerconfig.assert_called_once()
 
     backup_instance.restore_addons.assert_called_once()
     install_addon_ssh.uninstall.assert_not_called()
@@ -273,7 +267,6 @@ async def test_do_restore_full_different_addon(
 
     backup_instance.restore_homeassistant.assert_called_once()
     backup_instance.restore_repositories.assert_called_once()
-    backup_instance.restore_dockerconfig.assert_called_once()
 
     backup_instance.restore_addons.assert_called_once()
     install_addon_ssh.uninstall.assert_called_once()
@@ -300,7 +293,6 @@ async def test_do_restore_partial_minimal(
 
     backup_instance.restore_homeassistant.assert_not_called()
     backup_instance.restore_repositories.assert_not_called()
-    backup_instance.restore_dockerconfig.assert_called_once()
 
     backup_instance.restore_addons.assert_not_called()
 
@@ -329,7 +321,6 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
 
     backup_instance.restore_homeassistant.assert_called_once()
     backup_instance.restore_repositories.assert_called_once()
-    backup_instance.restore_dockerconfig.assert_called_once()
 
     backup_instance.restore_addons.assert_called_once()
 
@@ -431,12 +422,12 @@ async def test_restore_error(
 
     backup_instance = full_backup_mock.return_value
     backup_instance.protected = False
-    backup_instance.restore_dockerconfig.side_effect = BackupError()
+    backup_instance.restore_homeassistant.side_effect = BackupError()
     with pytest.raises(BackupError):
         await coresys.backups.do_restore_full(backup_instance)
     capture_exception.assert_not_called()
 
-    backup_instance.restore_dockerconfig.side_effect = (err := DockerError())
+    backup_instance.restore_homeassistant.side_effect = (err := DockerError())
     with pytest.raises(BackupError):
         await coresys.backups.do_restore_full(backup_instance)
     capture_exception.assert_called_once_with(err)
@@ -1130,9 +1121,6 @@ async def test_backup_progress(
             reference=full_backup.slug, stage="addon_repositories"
         ),
         _make_backup_message_for_assert(
-            reference=full_backup.slug, stage="docker_config"
-        ),
-        _make_backup_message_for_assert(
             reference=full_backup.slug, stage="home_assistant"
         ),
         _make_backup_message_for_assert(reference=full_backup.slug, stage="addons"),
@@ -1172,11 +1160,6 @@ async def test_backup_progress(
             action="partial_backup",
             reference=partial_backup.slug,
             stage="addon_repositories",
-        ),
-        _make_backup_message_for_assert(
-            action="partial_backup",
-            reference=partial_backup.slug,
-            stage="docker_config",
         ),
         _make_backup_message_for_assert(
             action="partial_backup", reference=partial_backup.slug, stage="addons"
@@ -1245,9 +1228,6 @@ async def test_restore_progress(
             action="full_restore", reference=full_backup.slug, stage=None
         ),
         _make_backup_message_for_assert(
-            action="full_restore", reference=full_backup.slug, stage="docker_config"
-        ),
-        _make_backup_message_for_assert(
             action="full_restore", reference=full_backup.slug, stage="folders"
         ),
         _make_backup_message_for_assert(
@@ -1314,11 +1294,6 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="partial_restore",
             reference=folders_backup.slug,
-            stage="docker_config",
-        ),
-        _make_backup_message_for_assert(
-            action="partial_restore",
-            reference=folders_backup.slug,
             stage="folders",
         ),
         _make_backup_message_for_assert(
@@ -1356,11 +1331,6 @@ async def test_restore_progress(
             action="partial_restore",
             reference=addon_backup.slug,
             stage=None,
-        ),
-        _make_backup_message_for_assert(
-            action="partial_restore",
-            reference=addon_backup.slug,
-            stage="docker_config",
         ),
         _make_backup_message_for_assert(
             action="partial_restore",
