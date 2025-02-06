@@ -359,7 +359,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             )
         except HomeAssistantWSError as err:
             raise HomeAssistantBackupError(
-                "Preparing backup of Home Assistant Core failed. Check HA Core logs.",
+                f"Preparing backup of Home Assistant Core failed. Failed to inform HA Core: {str(err)}.",
                 _LOGGER.error,
             ) from err
 
