@@ -222,6 +222,7 @@ class HomeAssistantCore(JobGroup):
             JobCondition.INTERNET_HOST,
             JobCondition.PLUGINS_UPDATED,
             JobCondition.SUPERVISOR_UPDATED,
+            JobCondition.ARCHITECTURE_SUPPORTED,
         ],
         on_condition=HomeAssistantJobError,
         concurrency=JobConcurrency.GROUP_REJECT,

@@ -242,9 +242,10 @@ class Updater(FileConfiguration, CoreSysAttributes):
     @Job(
         name="updater_fetch_data",
         conditions=[
+            JobCondition.ARCHITECTURE_SUPPORTED,
             JobCondition.INTERNET_SYSTEM,
-            JobCondition.OS_SUPPORTED,
             JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
+            JobCondition.OS_SUPPORTED,
         ],
         on_condition=UpdaterJobError,
         throttle_period=timedelta(seconds=30),
