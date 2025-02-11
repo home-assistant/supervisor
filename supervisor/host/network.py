@@ -67,6 +67,8 @@ class NetworkManager(CoreSysAttributes):
         self.sys_homeassistant.websocket.supervisor_update_event(
             "network", {ATTR_HOST_INTERNET: state}
         )
+        if state and not self.sys_supervisor.connectivity:
+            self.sys_create_task(self.sys_supervisor.check_connectivity())
 
     @property
     def interfaces(self) -> list[Interface]:
@@ -148,7 +150,7 @@ class NetworkManager(CoreSysAttributes):
             return
 
         connectivity_check: bool | None = changed.get(DBUS_ATTR_CONNECTION_ENABLED)
-        connectivity: bool | None = changed.get(DBUS_ATTR_CONNECTIVITY)
+        connectivity: int | None = changed.get(DBUS_ATTR_CONNECTIVITY)
 
         # This potentially updated the DNS configuration. Make sure the DNS plug-in
         # picks up the latest settings.

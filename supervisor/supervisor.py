@@ -13,7 +13,12 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from .const import ATTR_SUPERVISOR_INTERNET, SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
+from .const import (
+    ATTR_SUPERVISOR_INTERNET,
+    SUPERVISOR_VERSION,
+    URL_HASSIO_APPARMOR,
+    BusEvent,
+)
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
@@ -74,6 +79,7 @@ class Supervisor(CoreSysAttributes):
         if self._connectivity == state:
             return
         self._connectivity = state
+        self.sys_bus.fire_event(BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, state)
         self.sys_homeassistant.websocket.supervisor_update_event(
             "network", {ATTR_SUPERVISOR_INTERNET: state}
         )

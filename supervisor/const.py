@@ -484,6 +484,7 @@ class BusEvent(StrEnum):
     DOCKER_CONTAINER_STATE_CHANGE = "docker_container_state_change"
     HARDWARE_NEW_DEVICE = "hardware_new_device"
     HARDWARE_REMOVE_DEVICE = "hardware_remove_device"
+    SUPERVISOR_CONNECTIVITY_CHANGE = "supervisor_connectivity_change"
     SUPERVISOR_JOB_END = "supervisor_job_end"
     SUPERVISOR_JOB_START = "supervisor_job_start"
     SUPERVISOR_STATE_CHANGE = "supervisor_state_change"

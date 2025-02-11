@@ -22,6 +22,7 @@ class NetworkManager(DBusServiceMock):
     interface = "org.freedesktop.NetworkManager"
     object_path = "/org/freedesktop/NetworkManager"
     version = "1.22.10"
+    connectivity_check_enabled = True
     connectivity = 4
     devices = [
         "/org/freedesktop/NetworkManager/Devices/1",
@@ -155,7 +156,7 @@ class NetworkManager(DBusServiceMock):
     @dbus_property()
     def ConnectivityCheckEnabled(self) -> "b":
         """Get ConnectivityCheckEnabled."""
-        return True
+        return self.connectivity_check_enabled
 
     @ConnectivityCheckEnabled.setter
     def ConnectivityCheckEnabled(self, value: "b"):

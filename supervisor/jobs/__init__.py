@@ -213,9 +213,9 @@ class JobManager(FileConfiguration, CoreSysAttributes):
 
         if attribute.name == "done":
             if value is False:
-                self.sys_bus.fire_event(BusEvent.SUPERVISOR_JOB_START, job.uuid)
+                self.sys_bus.fire_event(BusEvent.SUPERVISOR_JOB_START, job)
             if value is True:
-                self.sys_bus.fire_event(BusEvent.SUPERVISOR_JOB_END, job.uuid)
+                self.sys_bus.fire_event(BusEvent.SUPERVISOR_JOB_END, job)
 
     def new_job(
         self,

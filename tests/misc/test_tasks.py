@@ -171,6 +171,7 @@ async def test_watchdog_homeassistant_api_reanimation_limit(
         rebuild.assert_not_called()
 
 
+@pytest.mark.usefixtures("no_job_throttle")
 async def test_reload_updater_triggers_supervisor_update(
     tasks: Tasks, coresys: CoreSys
 ):

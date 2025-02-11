@@ -8,6 +8,7 @@ import logging
 import aiohttp
 from awesomeversion import AwesomeVersion
 
+from .bus import EventListener
 from .const import (
     ATTR_AUDIO,
     ATTR_AUTO_UPDATE,
@@ -23,6 +24,7 @@ from .const import (
     ATTR_SUPERVISOR,
     FILE_HASSIO_UPDATER,
     URL_HASSIO_VERSION,
+    BusEvent,
     UpdateChannel,
 )
 from .coresys import CoreSysAttributes
@@ -47,11 +49,18 @@ class Updater(FileConfiguration, CoreSysAttributes):
         """Initialize updater."""
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.coresys = coresys
+        self._connectivity_listener: EventListener | None = None
 
     async def load(self) -> None:
         """Update internal data."""
-        with suppress(UpdaterError):
-            await self.fetch_data()
+        # If there's no connectivity, delay initial version fetch
+        if not self.sys_supervisor.connectivity:
+            self._connectivity_listener = self.sys_bus.register_event(
+                BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
+            )
+            return
+
+        await self.reload()
 
     async def reload(self) -> None:
         """Update internal data."""
@@ -180,6 +189,11 @@ class Updater(FileConfiguration, CoreSysAttributes):
         """Set Supervisor auto updates enabled."""
         self._data[ATTR_AUTO_UPDATE] = value
 
+    async def _check_connectivity(self, connectivity: bool):
+        """Fetch data once connectivity is true."""
+        if connectivity:
+            await self.reload()
+
     @Job(
         name="updater_fetch_data",
         conditions=[JobCondition.INTERNET_SYSTEM],
@@ -213,6 +227,11 @@ class Updater(FileConfiguration, CoreSysAttributes):
                 f"Can't fetch versions from {url}: {str(err) or 'Timeout'}",
                 _LOGGER.warning,
             ) from err
+
+        # Fetch was successful. If there's a connectivity listener, time to remove it
+        if self._connectivity_listener:
+            self.sys_bus.remove_listener(self._connectivity_listener)
+            self._connectivity_listener = None
 
         # Validate
         try:
