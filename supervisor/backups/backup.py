@@ -679,17 +679,16 @@ class Backup(JobGroup):
     async def _folder_save(self, name: str):
         """Take backup of a folder."""
         self.sys_jobs.current.reference = name
-
         slug_name = name.replace("/", "_")
         tar_name = f"{slug_name}.tar{'.gz' if self.compressed else ''}"
         origin_dir = Path(self.sys_config.path_supervisor, name)
 
-        # Check if exists
-        if not origin_dir.is_dir():
-            _LOGGER.warning("Can't find backup folder %s", name)
-            return
+        def _save() -> bool:
+            # Check if exists
+            if not origin_dir.is_dir():
+                _LOGGER.warning("Can't find backup folder %s", name)
+                return False
 
-        def _save() -> None:
             # Take backup
             _LOGGER.info("Backing up folder %s", name)
 
@@ -722,15 +721,15 @@ class Backup(JobGroup):
                 )
 
             _LOGGER.info("Backup folder %s done", name)
+            return True
 
         try:
-            await self.sys_run_in_executor(_save)
+            if await self.sys_run_in_executor(_save):
+                self._data[ATTR_FOLDERS].append(name)
         except (tarfile.TarError, OSError) as err:
             raise BackupError(
                 f"Can't backup folder {name}: {str(err)}", _LOGGER.error
             ) from err
-
-        self._data[ATTR_FOLDERS].append(name)
 
     @Job(name="backup_store_folders", cleanup=False)
     async def store_folders(self, folder_list: list[str]):
