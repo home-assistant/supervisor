@@ -98,6 +98,7 @@ class WSClient:
 
     async def start_listener(self) -> None:
         """Start listening to the websocket."""
+        _LOGGER.debug("Starting WebSocket listener")
         if not self.connected:
             raise HomeAssistantWSConnectionError("Not connected when start listening")
 
@@ -202,6 +203,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 return self._client
 
             await self.sys_homeassistant.api.ensure_access_token()
+            _LOGGER.debug("Connecting via WebSocket to Home Assistant Core")
             client = await WSClient.connect_with_auth(
                 self.sys_websession,
                 self.sys_loop,
