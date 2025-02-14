@@ -23,4 +23,5 @@ PLUGIN_UPDATE_CONDITIONS = [
     JobCondition.HEALTHY,
     JobCondition.INTERNET_HOST,
     JobCondition.SUPERVISOR_UPDATED,
+    JobCondition.ARCHITECTURE_SUPPORTED,
 ]

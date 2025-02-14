@@ -17,7 +17,12 @@ from ..exceptions import (
     JobGroupExecutionLimitExceeded,
 )
 from ..host.const import HostFeature
-from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
+from ..resolution.const import (
+    MINIMUM_FREE_SPACE_THRESHOLD,
+    ContextType,
+    IssueType,
+    UnsupportedReason,
+)
 from ..utils.sentry import capture_exception
 from . import SupervisorJob
 from .const import JobCondition, JobExecutionLimit
@@ -434,6 +439,14 @@ class Job(CoreSysAttributes):
         ):
             raise JobConditionException(
                 f"'{method_name}' blocked from execution, supervisor needs to be updated first"
+            )
+        if (
+            JobCondition.ARCHITECTURE_SUPPORTED in used_conditions
+            and UnsupportedReason.SYSTEM_ARCHITECTURE
+            in coresys.sys_resolution.unsupported
+        ):
+            raise JobConditionException(
+                f"'{method_name}' blocked from execution, unsupported system architecture"
             )
 
         if JobCondition.PLUGINS_UPDATED in used_conditions and (
