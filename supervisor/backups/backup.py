@@ -749,28 +749,18 @@ class Backup(JobGroup):
         )
         origin_dir = Path(self.sys_config.path_supervisor, name)
 
-        # Check if exists inside backup
-        if not tar_name.exists():
-            raise BackupInvalidError(
-                f"Can't find restore folder {name}", _LOGGER.warning
-            )
-
-        # Unmount any mounts within folder
-        bind_mounts = [
-            bound.bind_mount
-            for bound in self.sys_mounts.bound_mounts
-            if bound.bind_mount.local_where
-            and bound.bind_mount.local_where.is_relative_to(origin_dir)
-        ]
-        if bind_mounts:
-            await asyncio.gather(*[bind_mount.unmount() for bind_mount in bind_mounts])
-
-        # Clean old stuff
-        if origin_dir.is_dir():
-            await remove_folder(origin_dir, content_only=True)
-
         # Perform a restore
         def _restore() -> bool:
+            # Check if exists inside backup
+            if not tar_name.exists():
+                raise BackupInvalidError(
+                    f"Can't find restore folder {name}", _LOGGER.warning
+                )
+
+            # Clean old stuff
+            if origin_dir.is_dir():
+                remove_folder(origin_dir, content_only=True)
+
             try:
                 _LOGGER.info("Restore folder %s", name)
                 with SecureTarFile(
@@ -789,6 +779,16 @@ class Backup(JobGroup):
                     f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
             return True
+
+        # Unmount any mounts within folder
+        bind_mounts = [
+            bound.bind_mount
+            for bound in self.sys_mounts.bound_mounts
+            if bound.bind_mount.local_where
+            and bound.bind_mount.local_where.is_relative_to(origin_dir)
+        ]
+        if bind_mounts:
+            await asyncio.gather(*[bind_mount.unmount() for bind_mount in bind_mounts])
 
         try:
             return await self.sys_run_in_executor(_restore)

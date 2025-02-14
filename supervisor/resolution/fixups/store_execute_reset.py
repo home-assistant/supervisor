@@ -40,7 +40,7 @@ class FixupStoreExecuteReset(FixupBase):
             _LOGGER.warning("Can't find store %s for fixup", reference)
             return
 
-        await remove_folder(repository.git.path)
+        await self.sys_run_in_executor(remove_folder, repository.git.path)
 
         # Load data again
         try:
