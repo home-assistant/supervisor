@@ -386,7 +386,7 @@ class Backup(JobGroup):
                     None,
                 )
                 if not test_tar_name:
-                    _LOGGER.warning("No tar file found to validate password with")
+                    # From Supervisor perspective, a metadata only backup only is valid.
                     return
 
                 test_tar_file = backup.extractfile(test_tar_name)
