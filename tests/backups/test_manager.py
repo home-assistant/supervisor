@@ -344,7 +344,7 @@ async def test_fail_invalid_full_backup(
 
     backup_instance = full_backup_mock.return_value
     backup_instance.all_locations[None]["protected"] = True
-    backup_instance.validate_password = AsyncMock(return_value=False)
+    backup_instance.validate_backup.side_effect = BackupInvalidError()
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_full(backup_instance)
@@ -373,7 +373,7 @@ async def test_fail_invalid_partial_backup(
 
     backup_instance = partial_backup_mock.return_value
     backup_instance.all_locations[None]["protected"] = True
-    backup_instance.validate_password = AsyncMock(return_value=False)
+    backup_instance.validate_backup.side_effect = BackupInvalidError()
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_partial(backup_instance)

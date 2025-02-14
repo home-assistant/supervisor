@@ -11,7 +11,7 @@ import pytest
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import BackupFileNotFoundError
+from supervisor.exceptions import BackupFileNotFoundError, BackupInvalidError
 
 from tests.common import get_fixture_path
 
@@ -79,22 +79,21 @@ async def test_consolidate(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "tarfile_side_effect, securetar_side_effect, expected_result, expect_exception",
+    "tarfile_side_effect, securetar_side_effect, expected_exception",
     [
-        (None, None, True, False),  # Successful validation
-        (FileNotFoundError, None, None, True),  # File not found
-        (None, tarfile.ReadError, False, False),  # Invalid password
+        (None, None, None),  # Successful validation
+        (FileNotFoundError, None, BackupFileNotFoundError),  # File not found
+        (None, tarfile.ReadError, BackupInvalidError),  # Invalid password
     ],
 )
-async def test_validate_password(
+async def test_validate_backup(
     coresys: CoreSys,
     tmp_path: Path,
     tarfile_side_effect,
     securetar_side_effect,
-    expected_result,
-    expect_exception,
+    expected_exception,
 ):
-    """Parameterized test for validate_password."""
+    """Parameterized test for validate_backup."""
     enc_tar = Path(copy(get_fixture_path("backup_example_enc.tar"), tmp_path))
     enc_backup = Backup(coresys, enc_tar, "test", None)
     await enc_backup.load()
@@ -120,9 +119,8 @@ async def test_validate_password(
             MagicMock(side_effect=securetar_side_effect),
         ),
     ):
-        if expect_exception:
-            with pytest.raises(BackupFileNotFoundError):
-                await enc_backup.validate_password(None)
+        if expected_exception:
+            with pytest.raises(expected_exception):
+                await enc_backup.validate_backup(None)
         else:
-            result = await enc_backup.validate_password(None)
-            assert result == expected_result
+            await enc_backup.validate_backup(None)

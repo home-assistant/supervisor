@@ -366,14 +366,14 @@ class Backup(JobGroup):
             backend=default_backend(),
         )
 
-    async def validate_password(self, location: str | None) -> bool:
-        """Validate backup password.
+    async def validate_backup(self, location: str | None) -> None:
+        """Validate backup.
 
-        Returns false only when the password is known to be wrong.
+        Checks if we can access the backup file and decrypt if necessary.
         """
         backup_file: Path = self.all_locations[location][ATTR_PATH]
 
-        def _validate_file() -> bool:
+        def _validate_file() -> None:
             ending = f".tar{'.gz' if self.compressed else ''}"
 
             with tarfile.open(backup_file, "r:") as backup:
@@ -386,8 +386,8 @@ class Backup(JobGroup):
                     None,
                 )
                 if not test_tar_name:
-                    _LOGGER.warning("No tar file found to validate password with")
-                    return True
+                    # From Supervisor perspective, a metadata only backup only is valid.
+                    return
 
                 test_tar_file = backup.extractfile(test_tar_name)
                 try:
@@ -399,16 +399,14 @@ class Backup(JobGroup):
                         fileobj=test_tar_file,
                     ):
                         # If we can read the tar file, the password is correct
-                        return True
-                except tarfile.ReadError:
-                    _LOGGER.debug("Invalid password")
-                    return False
-                except Exception:  # pylint: disable=broad-exception-caught
-                    _LOGGER.exception("Unexpected error validating password")
-                    return True
+                        return
+                except tarfile.ReadError as ex:
+                    raise BackupInvalidError(
+                        f"Invalid password for backup {backup.slug}", _LOGGER.error
+                    ) from ex
 
         try:
-            return await self.sys_run_in_executor(_validate_file)
+            await self.sys_run_in_executor(_validate_file)
         except FileNotFoundError as err:
             self.sys_create_task(self.sys_backups.reload(location))
             raise BackupFileNotFoundError(
