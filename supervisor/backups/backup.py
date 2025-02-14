@@ -463,23 +463,29 @@ class Backup(JobGroup):
     @asynccontextmanager
     async def create(self) -> AsyncGenerator[None]:
         """Create new backup file."""
-        if self.tarfile.is_file():
-            raise BackupError(
-                f"Cannot make new backup at {self.tarfile.as_posix()}, file already exists!",
-                _LOGGER.error,
-            )
 
-        self._outer_secure_tarfile = SecureTarFile(
-            self.tarfile,
-            "w",
-            gzip=False,
-            bufsize=BUF_SIZE,
-        )
+        def _open_outer_tarfile():
+            """Create and open outer tarfile."""
+            if self.tarfile.is_file():
+                raise BackupError(
+                    f"Cannot make new backup at {self.tarfile.as_posix()}, file already exists!",
+                    _LOGGER.error,
+                )
+
+            self._outer_secure_tarfile = SecureTarFile(
+                self.tarfile,
+                "w",
+                gzip=False,
+                bufsize=BUF_SIZE,
+            )
+            return self._outer_secure_tarfile.open()
+
+        outer_tarfile = await self.sys_run_in_executor(_open_outer_tarfile)
         try:
-            with self._outer_secure_tarfile as outer_tarfile:
-                yield
-                await self._create_cleanup(outer_tarfile)
+            yield
         finally:
+            await self._create_cleanup(outer_tarfile)
+            await self.sys_run_in_executor(self._outer_secure_tarfile.close)
             self._outer_secure_tarfile = None
 
     @asynccontextmanager
