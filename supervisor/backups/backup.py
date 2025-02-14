@@ -373,7 +373,7 @@ class Backup(JobGroup):
         """
         backup_file: Path = self.all_locations[location][ATTR_PATH]
 
-        def _validate_file() -> bool:
+        def _validate_file() -> None:
             ending = f".tar{'.gz' if self.compressed else ''}"
 
             with tarfile.open(backup_file, "r:") as backup:
@@ -399,14 +399,14 @@ class Backup(JobGroup):
                         fileobj=test_tar_file,
                     ):
                         # If we can read the tar file, the password is correct
-                        return True
+                        return
                 except tarfile.ReadError as ex:
                     raise BackupInvalidError(
                         f"Invalid password for backup {backup.slug}", _LOGGER.error
                     ) from ex
 
         try:
-            return await self.sys_run_in_executor(_validate_file)
+            await self.sys_run_in_executor(_validate_file)
         except FileNotFoundError as err:
             self.sys_create_task(self.sys_backups.reload(location))
             raise BackupFileNotFoundError(
