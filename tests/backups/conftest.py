@@ -42,6 +42,7 @@ def partial_backup_mock(backup_mock):
     backup_instance.supervisor_version = "9999.09.9.dev9999"
     backup_instance.location = None
     backup_instance.all_locations = {None: {"protected": False}}
+    backup_instance.validate_backup = AsyncMock()
     yield backup_mock
 
 
@@ -55,6 +56,7 @@ def full_backup_mock(backup_mock):
     backup_instance.supervisor_version = "9999.09.9.dev9999"
     backup_instance.location = None
     backup_instance.all_locations = {None: {"protected": False}}
+    backup_instance.validate_backup = AsyncMock()
     yield backup_mock
 
 

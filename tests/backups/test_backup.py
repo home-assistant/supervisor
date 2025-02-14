@@ -93,7 +93,7 @@ async def test_validate_backup(
     securetar_side_effect,
     expected_exception,
 ):
-    """Parameterized test for validate_password."""
+    """Parameterized test for validate_backup."""
     enc_tar = Path(copy(get_fixture_path("backup_example_enc.tar"), tmp_path))
     enc_backup = Backup(coresys, enc_tar, "test", None)
     await enc_backup.load()
