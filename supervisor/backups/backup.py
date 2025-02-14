@@ -94,7 +94,7 @@ class Backup(JobGroup):
             coresys, JOB_GROUP_BACKUP.format_map(defaultdict(str, slug=slug)), slug
         )
         self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
-        self._tmp = None
+        self._tmp: TemporaryDirectory = None
         self._outer_secure_tarfile: SecureTarFile | None = None
         self._key: bytes | None = None
         self._aes: Cipher | None = None
@@ -502,18 +502,16 @@ class Backup(JobGroup):
             if location == DEFAULT
             else self.all_locations[location][ATTR_PATH]
         )
-        if not backup_tarfile.is_file():
-            self.sys_create_task(self.sys_backups.reload(location))
-            raise BackupFileNotFoundError(
-                f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
-                _LOGGER.error,
-            )
 
         # extract an existing backup
-        self._tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
-
         def _extract_backup():
-            """Extract a backup."""
+            if not backup_tarfile.is_file():
+                raise BackupFileNotFoundError(
+                    f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
+                    _LOGGER.error,
+                )
+            self._tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
+
             with tarfile.open(backup_tarfile, "r:") as tar:
                 tar.extractall(
                     path=self._tmp.name,
@@ -521,9 +519,15 @@ class Backup(JobGroup):
                     filter="fully_trusted",
                 )
 
-        with self._tmp:
+        try:
             await self.sys_run_in_executor(_extract_backup)
             yield
+        except BackupFileNotFoundError as err:
+            self.sys_create_task(self.sys_backups.reload(location))
+            raise err
+        finally:
+            if self._tmp:
+                self._tmp.cleanup()
 
     async def _create_cleanup(self, outer_tarfile: TarFile) -> None:
         """Cleanup after backup creation.
