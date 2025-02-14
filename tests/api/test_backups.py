@@ -16,7 +16,11 @@ from supervisor.backups.backup import Backup
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.manager import DockerAPI
-from supervisor.exceptions import AddonsError, HomeAssistantBackupError
+from supervisor.exceptions import (
+    AddonsError,
+    BackupInvalidError,
+    HomeAssistantBackupError,
+)
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.homeassistant.websocket import HomeAssistantWebSocket
@@ -466,6 +470,7 @@ async def test_restore_immediate_errors(
     assert "only a partial backup" in (await resp.json())["message"]
 
     with (
+        patch.object(Backup, "validate_backup"),
         patch.object(
             Backup,
             "supervisor_version",
@@ -488,7 +493,11 @@ async def test_restore_immediate_errors(
         patch.object(
             Backup, "all_locations", new={None: {"path": None, "protected": True}}
         ),
-        patch.object(Backup, "validate_password", return_value=False),
+        patch.object(
+            Backup,
+            "validate_backup",
+            side_effect=BackupInvalidError("Invalid password"),
+        ),
     ):
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
@@ -497,7 +506,10 @@ async def test_restore_immediate_errors(
     assert resp.status == 400
     assert "Invalid password" in (await resp.json())["message"]
 
-    with patch.object(Backup, "homeassistant", new=PropertyMock(return_value=None)):
+    with (
+        patch.object(Backup, "validate_backup"),
+        patch.object(Backup, "homeassistant", new=PropertyMock(return_value=None)),
+    ):
         resp = await api_client.post(
             f"/backups/{mock_partial_backup.slug}/restore/partial",
             json={"background": True, "homeassistant": True},
@@ -944,7 +956,7 @@ async def test_restore_backup_from_location(
     body = await resp.json()
     assert (
         body["message"]
-        == f"Cannot open backup at {backup_local_path.as_posix()}, file does not exist!"
+        == f"Cannot validate backup at {backup_local_path.as_posix()}, file does not exist!"
     )
 
     resp = await api_client.post(

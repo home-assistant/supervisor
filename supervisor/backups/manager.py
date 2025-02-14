@@ -717,7 +717,7 @@ class BackupManager(FileConfiguration, JobGroup):
                         _job_override__cleanup=False
                     )
 
-    async def _set_location_password(
+    async def _validate_backup_location(
         self,
         backup: Backup,
         password: str | None = None,
@@ -732,12 +732,10 @@ class BackupManager(FileConfiguration, JobGroup):
         location = location if location != DEFAULT else backup.location
         if backup.all_locations[location][ATTR_PROTECTED]:
             backup.set_password(password)
-            if not await backup.validate_password(location):
-                raise BackupInvalidError(
-                    f"Invalid password for backup {backup.slug}", _LOGGER.error
-                )
         else:
             backup.set_password(None)
+
+        await backup.validate_backup(location)
 
     @Job(
         name=JOB_FULL_RESTORE,
@@ -767,7 +765,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 f"{backup.slug} is only a partial backup!", _LOGGER.error
             )
 
-        await self._set_location_password(backup, password, location)
+        await self._validate_backup_location(backup, password, location)
 
         if backup.supervisor_version > self.sys_supervisor.version:
             raise BackupInvalidError(
@@ -832,7 +830,7 @@ class BackupManager(FileConfiguration, JobGroup):
             folder_list.remove(FOLDER_HOMEASSISTANT)
             homeassistant = True
 
-        await self._set_location_password(backup, password, location)
+        await self._validate_backup_location(backup, password, location)
 
         if backup.homeassistant is None and homeassistant:
             raise BackupInvalidError(

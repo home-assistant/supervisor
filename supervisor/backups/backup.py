@@ -366,10 +366,10 @@ class Backup(JobGroup):
             backend=default_backend(),
         )
 
-    async def validate_password(self, location: str | None) -> bool:
-        """Validate backup password.
+    async def validate_backup(self, location: str | None) -> None:
+        """Validate backup.
 
-        Returns false only when the password is known to be wrong.
+        Checks if we can access the backup file and decrypt if necessary.
         """
         backup_file: Path = self.all_locations[location][ATTR_PATH]
 
@@ -387,7 +387,7 @@ class Backup(JobGroup):
                 )
                 if not test_tar_name:
                     _LOGGER.warning("No tar file found to validate password with")
-                    return True
+                    return
 
                 test_tar_file = backup.extractfile(test_tar_name)
                 try:
@@ -400,12 +400,10 @@ class Backup(JobGroup):
                     ):
                         # If we can read the tar file, the password is correct
                         return True
-                except tarfile.ReadError:
-                    _LOGGER.debug("Invalid password")
-                    return False
-                except Exception:  # pylint: disable=broad-exception-caught
-                    _LOGGER.exception("Unexpected error validating password")
-                    return True
+                except tarfile.ReadError as ex:
+                    raise BackupInvalidError(
+                        f"Invalid password for backup {backup.slug}", _LOGGER.error
+                    ) from ex
 
         try:
             return await self.sys_run_in_executor(_validate_file)
