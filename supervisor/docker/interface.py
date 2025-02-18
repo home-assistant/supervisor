@@ -176,6 +176,11 @@ class DockerInterface(JobGroup):
         """Healthcheck of instance if it has one."""
         return self.meta_config.get("Healthcheck")
 
+    @property
+    def id(self) -> str:
+        """Return id of container (if running) or image (if not)."""
+        return self._meta["Id"]
+
     def _get_credentials(self, image: str) -> dict:
         """Return a dictionay with credentials for docker login."""
         registry = None

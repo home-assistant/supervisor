@@ -16,7 +16,7 @@ from .audio import APIAudio
 from .auth import APIAuth
 from .backups import APIBackups
 from .cli import APICli
-from .const import CONTENT_TYPE_TEXT
+from .const import CONTENT_TYPE_TEXT, QUERY_CURRENT_START_ONLY
 from .discovery import APIDiscovery
 from .dns import APICoreDNS
 from .docker import APIDocker
@@ -525,7 +525,13 @@ class RestAPI(CoreSysAttributes):
         @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
         async def get_addon_logs(request, *args, **kwargs):
             addon = api_addons.get_addon_for_request(request)
-            kwargs["identifier"] = f"addon_{addon.slug}"
+            if (
+                QUERY_CURRENT_START_ONLY in request.query
+                and await addon.instance.is_running()
+            ):
+                kwargs["container_id_full"] = addon.instance.id
+            else:
+                kwargs["identifier"] = f"addon_{addon.slug}"
             return await self._api_host.advanced_logs(request, *args, **kwargs)
 
         self.webapp.add_routes(

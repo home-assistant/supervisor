@@ -31,6 +31,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIDBMigrationInProgress, APIError, HostLogError
 from ..host.const import (
     PARAM_BOOT_ID,
+    PARAM_CONTAINER_ID_FULL,
     PARAM_FOLLOW,
     PARAM_SYSLOG_IDENTIFIER,
     LogFormat,
@@ -191,7 +192,11 @@ class APIHost(CoreSysAttributes):
         return possible_offset
 
     async def advanced_logs_handler(
-        self, request: web.Request, identifier: str | None = None, follow: bool = False
+        self,
+        request: web.Request,
+        identifier: str | None = None,
+        follow: bool = False,
+        container_id_full: str | None = None,
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
         log_formatter = LogFormatter.PLAIN
@@ -211,6 +216,8 @@ class APIHost(CoreSysAttributes):
             )
         if follow:
             params[PARAM_FOLLOW] = ""
+        if container_id_full:
+            params[PARAM_CONTAINER_ID_FULL] = container_id_full
 
         if ACCEPT in request.headers and request.headers[ACCEPT] not in [
             CONTENT_TYPE_TEXT,
@@ -273,7 +280,13 @@ class APIHost(CoreSysAttributes):
 
     @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
     async def advanced_logs(
-        self, request: web.Request, identifier: str | None = None, follow: bool = False
+        self,
+        request: web.Request,
+        identifier: str | None = None,
+        follow: bool = False,
+        container_id_full: str | None = None,
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
-        return await self.advanced_logs_handler(request, identifier, follow)
+        return await self.advanced_logs_handler(
+            request, identifier, follow, container_id_full
+        )

@@ -5,6 +5,7 @@ from enum import StrEnum
 PARAM_BOOT_ID = "_BOOT_ID"
 PARAM_FOLLOW = "follow"
 PARAM_SYSLOG_IDENTIFIER = "SYSLOG_IDENTIFIER"
+PARAM_CONTAINER_ID_FULL = "CONTAINER_ID_FULL"
 
 
 class InterfaceMethod(StrEnum):

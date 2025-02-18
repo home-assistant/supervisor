@@ -75,6 +75,8 @@ ATTR_USER_PATH = "user_path"
 ATTR_VENDOR = "vendor"
 ATTR_VIRTUALIZATION = "virtualization"
 
+QUERY_CURRENT_START_ONLY = "current_start_only"
+
 
 class BootSlot(StrEnum):
     """Boot slots used by HAOS."""
