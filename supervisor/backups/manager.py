@@ -529,7 +529,7 @@ class BackupManager(FileConfiguration, JobGroup):
                         backup, additional_locations
                     )
                 except BackupError as err:
-                    self.sys_jobs.capture_error(err)
+                    self.sys_jobs.current.capture_error(err)
 
             if addon_start_tasks:
                 self._change_stage(BackupJobStage.AWAIT_ADDON_RESTARTS, backup)
