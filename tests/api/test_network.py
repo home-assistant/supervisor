@@ -276,6 +276,31 @@ async def test_api_network_interface_update_wifi_error(api_client: TestClient):
     )
 
 
+async def test_api_network_interface_update_wifi_bad_channel(api_client: TestClient):
+    """Test network interface WiFi API error handling for bad channel."""
+    # Simulate frontend WiFi interface edit where the user selects a bad channel.
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_WLAN_NAME}/update",
+        json={
+            "enabled": True,
+            "ipv4": {
+                "method": "shared",
+                "address": ["10.42.0.1/24"],
+            },
+            "ipv6": {
+                "method": "auto",
+            },
+            "wifi": {"mode": "ap", "ssid": "HotSpot", "band": "bg", "channel": 17},
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert (
+        result["message"]
+        == "Can't create config and activate wlan0: 802-11-wireless.channel: '17' is not a valid channel"
+    )
+
+
 async def test_api_network_interface_update_remove(api_client: TestClient):
     """Test network manager api."""
     resp = await api_client.post(
