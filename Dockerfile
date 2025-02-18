@@ -43,7 +43,7 @@ RUN \
 # Install Home Assistant Supervisor
 COPY . supervisor
 RUN \
-    pip3 install -e ./supervisor \
+    uv pip install -e ./supervisor \
     && python3 -m compileall ./supervisor/supervisor
 
 
