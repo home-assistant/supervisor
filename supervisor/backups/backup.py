@@ -472,15 +472,17 @@ class Backup(JobGroup):
                     _LOGGER.error,
                 )
 
-            self._outer_secure_tarfile = SecureTarFile(
+            outer_secure_tarfile = SecureTarFile(
                 self.tarfile,
                 "w",
                 gzip=False,
                 bufsize=BUF_SIZE,
             )
-            return self._outer_secure_tarfile.open()
+            return outer_secure_tarfile, outer_secure_tarfile.open()
 
-        outer_tarfile = await self.sys_run_in_executor(_open_outer_tarfile)
+        self._outer_secure_tarfile, outer_tarfile = await self.sys_run_in_executor(
+            _open_outer_tarfile
+        )
         try:
             yield
         finally:
@@ -510,7 +512,7 @@ class Backup(JobGroup):
                     f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
                     _LOGGER.error,
                 )
-            self._tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
+            tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
 
             with tarfile.open(backup_tarfile, "r:") as tar:
                 tar.extractall(
@@ -519,8 +521,10 @@ class Backup(JobGroup):
                     filter="fully_trusted",
                 )
 
+            return tmp
+
         try:
-            await self.sys_run_in_executor(_extract_backup)
+            self._tmp = await self.sys_run_in_executor(_extract_backup)
             yield
         except BackupFileNotFoundError as err:
             self.sys_create_task(self.sys_backups.reload(location))
