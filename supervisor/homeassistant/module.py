@@ -532,7 +532,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         except vol.Invalid as err:
             raise HomeAssistantError(
                 f"Can't validate backup data: {humanize_error(data, err)}",
-                _LOGGER.err,
+                _LOGGER.error,
             ) from err
 
         # Restore metadata
