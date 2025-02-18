@@ -118,13 +118,23 @@ class BackupManager(FileConfiguration, JobGroup):
             location = self.sys_mounts.default_backup_mount
 
         if location:
-            if not location.local_where.is_mount():
-                raise BackupMountDownError(
-                    f"{location.name} is down, cannot back-up to it", _LOGGER.error
-                )
-            return location.local_where
+            location_mount: Mount = location
+            return location_mount.local_where
 
         return self.sys_config.path_backup
+
+    async def _check_location(self, location: LOCATION_TYPE | type[DEFAULT] = DEFAULT):
+        """Check if backup location is accessible."""
+        if location == DEFAULT and self.sys_mounts.default_backup_mount:
+            location = self.sys_mounts.default_backup_mount
+
+        if location not in (DEFAULT, LOCATION_CLOUD_BACKUP, None):
+            location_mount: Mount = location
+            if not await location_mount.is_mounted():
+                raise BackupMountDownError(
+                    f"{location_mount.name} is down, cannot back-up to it",
+                    _LOGGER.error,
+                )
 
     def _get_location_name(
         self,
@@ -352,8 +362,14 @@ class BackupManager(FileConfiguration, JobGroup):
                             copy(backup.tarfile, self.sys_config.path_core_backup)
                         )
                     elif location:
-                        all_locations[location.name] = Path(
-                            copy(backup.tarfile, location.local_where)
+                        location_mount: Mount = location
+                        if not location_mount.local_where.is_mount():
+                            raise BackupMountDownError(
+                                f"{location_mount.name} is down, cannot copy to it",
+                                _LOGGER.error,
+                            )
+                        all_locations[location_mount.name] = Path(
+                            copy(backup.tarfile, location_mount.local_where)
                         )
                     else:
                         all_locations[None] = Path(
@@ -395,6 +411,8 @@ class BackupManager(FileConfiguration, JobGroup):
         additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Check backup tarfile and import it."""
+        await self._check_location(location)
+
         backup = Backup(self.coresys, tar_file, "temp", None)
 
         # Read meta data
@@ -542,6 +560,8 @@ class BackupManager(FileConfiguration, JobGroup):
         additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Create a full backup."""
+        await self._check_location(location)
+
         if self._get_base_path(location) in {
             self.sys_config.path_backup,
             self.sys_config.path_core_backup,
@@ -590,6 +610,8 @@ class BackupManager(FileConfiguration, JobGroup):
         additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Create a partial backup."""
+        await self._check_location(location)
+
         if self._get_base_path(location) in {
             self.sys_config.path_backup,
             self.sys_config.path_core_backup,

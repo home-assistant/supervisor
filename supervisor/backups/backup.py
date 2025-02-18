@@ -94,7 +94,7 @@ class Backup(JobGroup):
             coresys, JOB_GROUP_BACKUP.format_map(defaultdict(str, slug=slug)), slug
         )
         self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
-        self._tmp = None
+        self._tmp: TemporaryDirectory = None
         self._outer_secure_tarfile: SecureTarFile | None = None
         self._key: bytes | None = None
         self._aes: Cipher | None = None
@@ -463,23 +463,31 @@ class Backup(JobGroup):
     @asynccontextmanager
     async def create(self) -> AsyncGenerator[None]:
         """Create new backup file."""
-        if self.tarfile.is_file():
-            raise BackupError(
-                f"Cannot make new backup at {self.tarfile.as_posix()}, file already exists!",
-                _LOGGER.error,
-            )
 
-        self._outer_secure_tarfile = SecureTarFile(
-            self.tarfile,
-            "w",
-            gzip=False,
-            bufsize=BUF_SIZE,
+        def _open_outer_tarfile():
+            """Create and open outer tarfile."""
+            if self.tarfile.is_file():
+                raise BackupError(
+                    f"Cannot make new backup at {self.tarfile.as_posix()}, file already exists!",
+                    _LOGGER.error,
+                )
+
+            outer_secure_tarfile = SecureTarFile(
+                self.tarfile,
+                "w",
+                gzip=False,
+                bufsize=BUF_SIZE,
+            )
+            return outer_secure_tarfile, outer_secure_tarfile.open()
+
+        self._outer_secure_tarfile, outer_tarfile = await self.sys_run_in_executor(
+            _open_outer_tarfile
         )
         try:
-            with self._outer_secure_tarfile as outer_tarfile:
-                yield
-                await self._create_cleanup(outer_tarfile)
+            yield
         finally:
+            await self._create_cleanup(outer_tarfile)
+            await self.sys_run_in_executor(self._outer_secure_tarfile.close)
             self._outer_secure_tarfile = None
 
     @asynccontextmanager
@@ -496,28 +504,34 @@ class Backup(JobGroup):
             if location == DEFAULT
             else self.all_locations[location][ATTR_PATH]
         )
-        if not backup_tarfile.is_file():
-            self.sys_create_task(self.sys_backups.reload(location))
-            raise BackupFileNotFoundError(
-                f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
-                _LOGGER.error,
-            )
 
         # extract an existing backup
-        self._tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
-
         def _extract_backup():
-            """Extract a backup."""
+            if not backup_tarfile.is_file():
+                raise BackupFileNotFoundError(
+                    f"Cannot open backup at {backup_tarfile.as_posix()}, file does not exist!",
+                    _LOGGER.error,
+                )
+            tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
+
             with tarfile.open(backup_tarfile, "r:") as tar:
                 tar.extractall(
-                    path=self._tmp.name,
+                    path=tmp.name,
                     members=secure_path(tar),
                     filter="fully_trusted",
                 )
 
-        with self._tmp:
-            await self.sys_run_in_executor(_extract_backup)
+            return tmp
+
+        try:
+            self._tmp = await self.sys_run_in_executor(_extract_backup)
             yield
+        except BackupFileNotFoundError as err:
+            self.sys_create_task(self.sys_backups.reload(location))
+            raise err
+        finally:
+            if self._tmp:
+                self._tmp.cleanup()
 
     async def _create_cleanup(self, outer_tarfile: TarFile) -> None:
         """Cleanup after backup creation.
@@ -669,17 +683,16 @@ class Backup(JobGroup):
     async def _folder_save(self, name: str):
         """Take backup of a folder."""
         self.sys_jobs.current.reference = name
-
         slug_name = name.replace("/", "_")
         tar_name = f"{slug_name}.tar{'.gz' if self.compressed else ''}"
         origin_dir = Path(self.sys_config.path_supervisor, name)
 
-        # Check if exists
-        if not origin_dir.is_dir():
-            _LOGGER.warning("Can't find backup folder %s", name)
-            return
+        def _save() -> bool:
+            # Check if exists
+            if not origin_dir.is_dir():
+                _LOGGER.warning("Can't find backup folder %s", name)
+                return False
 
-        def _save() -> None:
             # Take backup
             _LOGGER.info("Backing up folder %s", name)
 
@@ -712,15 +725,15 @@ class Backup(JobGroup):
                 )
 
             _LOGGER.info("Backup folder %s done", name)
+            return True
 
         try:
-            await self.sys_run_in_executor(_save)
+            if await self.sys_run_in_executor(_save):
+                self._data[ATTR_FOLDERS].append(name)
         except (tarfile.TarError, OSError) as err:
             raise BackupError(
                 f"Can't backup folder {name}: {str(err)}", _LOGGER.error
             ) from err
-
-        self._data[ATTR_FOLDERS].append(name)
 
     @Job(name="backup_store_folders", cleanup=False)
     async def store_folders(self, folder_list: list[str]):
@@ -740,28 +753,18 @@ class Backup(JobGroup):
         )
         origin_dir = Path(self.sys_config.path_supervisor, name)
 
-        # Check if exists inside backup
-        if not tar_name.exists():
-            raise BackupInvalidError(
-                f"Can't find restore folder {name}", _LOGGER.warning
-            )
-
-        # Unmount any mounts within folder
-        bind_mounts = [
-            bound.bind_mount
-            for bound in self.sys_mounts.bound_mounts
-            if bound.bind_mount.local_where
-            and bound.bind_mount.local_where.is_relative_to(origin_dir)
-        ]
-        if bind_mounts:
-            await asyncio.gather(*[bind_mount.unmount() for bind_mount in bind_mounts])
-
-        # Clean old stuff
-        if origin_dir.is_dir():
-            await remove_folder(origin_dir, content_only=True)
-
         # Perform a restore
         def _restore() -> bool:
+            # Check if exists inside backup
+            if not tar_name.exists():
+                raise BackupInvalidError(
+                    f"Can't find restore folder {name}", _LOGGER.warning
+                )
+
+            # Clean old stuff
+            if origin_dir.is_dir():
+                remove_folder(origin_dir, content_only=True)
+
             try:
                 _LOGGER.info("Restore folder %s", name)
                 with SecureTarFile(
@@ -780,6 +783,16 @@ class Backup(JobGroup):
                     f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
             return True
+
+        # Unmount any mounts within folder
+        bind_mounts = [
+            bound.bind_mount
+            for bound in self.sys_mounts.bound_mounts
+            if bound.bind_mount.local_where
+            and bound.bind_mount.local_where.is_relative_to(origin_dir)
+        ]
+        if bind_mounts:
+            await asyncio.gather(*[bind_mount.unmount() for bind_mount in bind_mounts])
 
         try:
             return await self.sys_run_in_executor(_restore)

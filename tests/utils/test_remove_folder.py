@@ -3,13 +3,10 @@
 from pathlib import Path
 import shutil
 
-import pytest
-
 from supervisor.utils import remove_folder
 
 
-@pytest.mark.asyncio
-async def test_remove_all(tmp_path):
+def test_remove_all(tmp_path):
     """Test remove folder."""
     # Prepair test folder
     temp_orig = tmp_path.joinpath("orig")
@@ -17,12 +14,11 @@ async def test_remove_all(tmp_path):
     shutil.copytree(fixture_data, temp_orig, symlinks=True)
 
     assert temp_orig.exists()
-    await remove_folder(temp_orig)
+    remove_folder(temp_orig)
     assert not temp_orig.exists()
 
 
-@pytest.mark.asyncio
-async def test_remove_content(tmp_path):
+def test_remove_content(tmp_path):
     """Test remove content of folder."""
     # Prepair test folder
     temp_orig = tmp_path.joinpath("orig")
@@ -38,8 +34,7 @@ async def test_remove_content(tmp_path):
     assert test_folder.exists()
     assert test_file.exists()
     assert test_hidden.exists()
-
-    await remove_folder(temp_orig, content_only=True)
+    remove_folder(temp_orig, content_only=True)
 
     assert not test_folder.exists()
     assert not test_file.exists()
