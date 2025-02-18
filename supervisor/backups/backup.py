@@ -516,7 +516,7 @@ class Backup(JobGroup):
 
             with tarfile.open(backup_tarfile, "r:") as tar:
                 tar.extractall(
-                    path=self._tmp.name,
+                    path=tmp.name,
                     members=secure_path(tar),
                     filter="fully_trusted",
                 )
