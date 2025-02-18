@@ -189,9 +189,13 @@ class GitRepo(CoreSysAttributes):
             _LOGGER.warning("There is already a task in progress")
             return
 
-        if not self.path.is_dir():
-            return
-        await remove_folder(self.path)
+        def _remove_git_dir(path: Path) -> None:
+            if not path.is_dir():
+                return
+            remove_folder(path)
+
+        async with self.lock:
+            await self.sys_run_in_executor(_remove_git_dir, self.path)
 
 
 class GitRepoHassIO(GitRepo):
