@@ -123,6 +123,19 @@ class BackupManager(FileConfiguration, JobGroup):
 
         return self.sys_config.path_backup
 
+    async def _check_location(self, location: LOCATION_TYPE | type[DEFAULT] = DEFAULT):
+        """Check if backup location is accessible."""
+        if location == DEFAULT and self.sys_mounts.default_backup_mount:
+            location = self.sys_mounts.default_backup_mount
+
+        if location not in (DEFAULT, LOCATION_CLOUD_BACKUP, None):
+            location_mount: Mount = location
+            if not await location_mount.is_mounted():
+                raise BackupMountDownError(
+                    f"{location_mount.name} is down, cannot back-up to it",
+                    _LOGGER.error,
+                )
+
     def _get_location_name(
         self,
         location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
@@ -398,6 +411,8 @@ class BackupManager(FileConfiguration, JobGroup):
         additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Check backup tarfile and import it."""
+        await self._check_location(location)
+
         backup = Backup(self.coresys, tar_file, "temp", None)
 
         # Read meta data
@@ -461,7 +476,6 @@ class BackupManager(FileConfiguration, JobGroup):
         folder_list: list[str],
         homeassistant: bool,
         homeassistant_exclude_database: bool | None,
-        location: LOCATION_TYPE | type[DEFAULT] = DEFAULT,
         additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Create a backup.
@@ -469,18 +483,6 @@ class BackupManager(FileConfiguration, JobGroup):
         Must be called from an existing backup job.
         """
         addon_start_tasks: list[Awaitable[None]] | None = None
-
-        # Before starting, check if the location is mounted, if a backup mount
-        if location == DEFAULT and self.sys_mounts.default_backup_mount:
-            location = self.sys_mounts.default_backup_mount
-
-        if location not in (DEFAULT, LOCATION_CLOUD_BACKUP, None):
-            location_mount: Mount = location
-            if not await self.sys_run_in_executor(location_mount.local_where.is_mount):
-                raise BackupMountDownError(
-                    f"{location_mount.name} is down, cannot back-up to it",
-                    _LOGGER.error,
-                )
 
         try:
             self.sys_core.state = CoreState.FREEZE
@@ -558,6 +560,8 @@ class BackupManager(FileConfiguration, JobGroup):
         additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Create a full backup."""
+        await self._check_location(location)
+
         if self._get_base_path(location) in {
             self.sys_config.path_backup,
             self.sys_config.path_core_backup,
@@ -577,7 +581,6 @@ class BackupManager(FileConfiguration, JobGroup):
             ALL_FOLDERS,
             True,
             homeassistant_exclude_database,
-            location,
             additional_locations,
         )
         if backup:
@@ -607,6 +610,8 @@ class BackupManager(FileConfiguration, JobGroup):
         additional_locations: list[LOCATION_TYPE] | None = None,
     ) -> Backup | None:
         """Create a partial backup."""
+        await self._check_location(location)
+
         if self._get_base_path(location) in {
             self.sys_config.path_backup,
             self.sys_config.path_core_backup,
@@ -645,7 +650,6 @@ class BackupManager(FileConfiguration, JobGroup):
             folders,
             homeassistant,
             homeassistant_exclude_database,
-            location,
             additional_locations,
         )
         if backup:
