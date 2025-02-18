@@ -28,15 +28,15 @@ RUN \
     \
     && curl -Lso /usr/bin/cosign "https://github.com/home-assistant/cosign/releases/download/${COSIGN_VERSION}/cosign_${BUILD_ARCH}" \
     && chmod a+x /usr/bin/cosign \
-    && pip3 install uv==0.2.21
+    && pip3 install uv==0.6.0
 
 # Install requirements
 COPY requirements.txt .
 RUN \
     if [ "${BUILD_ARCH}" = "i386" ]; then \
-        linux32 uv pip install --compile --no-build -r requirements.txt; \
+        linux32 uv pip install --compile-bytecode --no-build -r requirements.txt; \
     else \
-        uv pip install --compile --no-build -r requirements.txt; \
+        uv pip install --compile-bytecode --no-build -r requirements.txt; \
     fi \
     && rm -f requirements.txt
 
