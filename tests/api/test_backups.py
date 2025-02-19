@@ -1267,7 +1267,7 @@ async def test_missing_file_removes_location_from_cache(
     assert resp.status == 404
 
     # Wait for reload task to complete and confirm location is removed
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
     assert coresys.backups.get(slug).all_locations.keys() == {None}
 
 
@@ -1322,7 +1322,7 @@ async def test_missing_file_removes_backup_from_cache(
     assert resp.status == 404
 
     # Wait for reload task to complete and confirm backup is removed
-    await asyncio.sleep(0)
+    await asyncio.sleep(0.01)
     assert not coresys.backups.list_backups
 
 

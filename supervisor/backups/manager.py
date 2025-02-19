@@ -278,7 +278,9 @@ class BackupManager(FileConfiguration, JobGroup):
         tasks = [
             self.sys_create_task(_load_backup(_location, tar_file))
             for _location, path in locations.items()
-            for tar_file in self._list_backup_files(path)
+            for tar_file in await self.sys_run_in_executor(
+                self._list_backup_files, path
+            )
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))
