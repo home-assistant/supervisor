@@ -393,63 +393,60 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def backup(
         self, tar_file: tarfile.TarFile, exclude_database: bool = False
     ) -> None:
-        """Backup Home Assistant Core config/ directory."""
-        await self.begin_backup()
-        try:
+        """Backup Home Assistant Core config/directory."""
+
+        excludes = HOMEASSISTANT_BACKUP_EXCLUDE.copy()
+        if exclude_database:
+            excludes += HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE
+
+        def _is_excluded_by_filter(path: PurePath) -> bool:
+            """Filter function to filter out excluded files from the backup."""
+            for exclude in excludes:
+                if not path.full_match(f"data/{exclude}"):
+                    continue
+                _LOGGER.debug("Ignoring %s because of %s", path, exclude)
+                return True
+
+            return False
+
+        # Backup data config folder
+        def _write_tarfile(metadata: dict[str, Any]) -> None:
+            """Write tarfile."""
             with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
                 temp_path = Path(temp)
 
                 # Store local configs/state
                 try:
-                    write_json_file(
-                        temp_path.joinpath("homeassistant.json"), self._data
-                    )
+                    write_json_file(temp_path.joinpath("homeassistant.json"), metadata)
                 except ConfigurationFileError as err:
                     raise HomeAssistantError(
                         f"Can't save meta for Home Assistant Core: {err!s}",
                         _LOGGER.error,
                     ) from err
 
-                # Backup data config folder
-                def _write_tarfile():
+                try:
                     with tar_file as backup:
                         # Backup metadata
                         backup.add(temp, arcname=".")
-
-                        # Set excludes
-                        excludes = HOMEASSISTANT_BACKUP_EXCLUDE.copy()
-                        if exclude_database:
-                            excludes += HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE
-
-                        def is_excluded_by_filter(path: PurePath) -> bool:
-                            """Filter to filter excludes."""
-                            for exclude in excludes:
-                                if not path.full_match(f"data/{exclude}"):
-                                    continue
-                                _LOGGER.debug(
-                                    "Ignoring %s because of %s", path, exclude
-                                )
-                                return True
-
-                            return False
 
                         # Backup data
                         atomic_contents_add(
                             backup,
                             self.sys_config.path_homeassistant,
-                            file_filter=is_excluded_by_filter,
+                            file_filter=_is_excluded_by_filter,
                             arcname="data",
                         )
-
-                try:
-                    _LOGGER.info("Backing up Home Assistant Core config folder")
-                    await self.sys_run_in_executor(_write_tarfile)
-                    _LOGGER.info("Backup Home Assistant Core config folder done")
                 except (tarfile.TarError, OSError) as err:
                     raise HomeAssistantBackupError(
                         f"Can't backup Home Assistant Core config folder: {str(err)}",
                         _LOGGER.error,
                     ) from err
+
+        await self.begin_backup()
+        try:
+            _LOGGER.info("Backing up Home Assistant Core config folder")
+            await self.sys_run_in_executor(_write_tarfile, self._data)
+            _LOGGER.info("Backup Home Assistant Core config folder done")
         finally:
             await self.end_backup()
 
