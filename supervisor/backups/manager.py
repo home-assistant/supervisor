@@ -14,6 +14,7 @@ from ..const import (
     ATTR_DAYS_UNTIL_STALE,
     ATTR_PATH,
     ATTR_PROTECTED,
+    ATTR_SIZE_BYTES,
     FILE_HASSIO_BACKUPS,
     FOLDER_HOMEASSISTANT,
     CoreState,
@@ -258,7 +259,12 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 else:
                     backups[backup.slug] = Backup(
-                        self.coresys, tar_file, backup.slug, location_name, backup.data
+                        self.coresys,
+                        tar_file,
+                        backup.slug,
+                        location_name,
+                        backup.data,
+                        backup.size_bytes,
                     )
                 return True
 
@@ -272,7 +278,9 @@ class BackupManager(FileConfiguration, JobGroup):
         tasks = [
             self.sys_create_task(_load_backup(_location, tar_file))
             for _location, path in locations.items()
-            for tar_file in self._list_backup_files(path)
+            for tar_file in await self.sys_run_in_executor(
+                self._list_backup_files, path
+            )
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))
@@ -305,7 +313,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         return True
 
-    def remove(
+    async def remove(
         self,
         backup: Backup,
         locations: list[LOCATION_TYPE] | None = None,
@@ -324,7 +332,7 @@ class BackupManager(FileConfiguration, JobGroup):
         for location in targets:
             backup_tarfile = backup.all_locations[location][ATTR_PATH]
             try:
-                backup_tarfile.unlink()
+                await self.sys_run_in_executor(backup_tarfile.unlink)
                 del backup.all_locations[location]
             except FileNotFoundError as err:
                 self.sys_create_task(self.reload(location))
@@ -397,7 +405,11 @@ class BackupManager(FileConfiguration, JobGroup):
 
         backup.all_locations.update(
             {
-                loc: {ATTR_PATH: path, ATTR_PROTECTED: backup.protected}
+                loc: {
+                    ATTR_PATH: path,
+                    ATTR_PROTECTED: backup.protected,
+                    ATTR_SIZE_BYTES: backup.size_bytes,
+                }
                 for loc, path in all_new_locations.items()
             }
         )
@@ -426,8 +438,7 @@ class BackupManager(FileConfiguration, JobGroup):
             tar_file = Path(self._get_base_path(location), f"{backup.slug}.tar")
 
         try:
-            backup.tarfile.rename(tar_file)
-
+            await self.sys_run_in_executor(backup.tarfile.rename, tar_file)
         except OSError as err:
             if err.errno == errno.EBADMSG and location in {LOCATION_CLOUD_BACKUP, None}:
                 self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
@@ -444,7 +455,7 @@ class BackupManager(FileConfiguration, JobGroup):
         )
         if not await backup.load():
             # Remove invalid backup from location it was moved to
-            backup.tarfile.unlink()
+            await self.sys_run_in_executor(backup.tarfile.unlink)
             return None
         _LOGGER.info("Successfully imported %s", backup.slug)
 

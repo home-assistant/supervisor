@@ -6,7 +6,6 @@ from collections.abc import AsyncGenerator, Awaitable
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from datetime import timedelta
-from functools import lru_cache
 import io
 import json
 import logging
@@ -40,6 +39,7 @@ from ..const import (
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
+    ATTR_SIZE_BYTES,
     ATTR_SLUG,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
@@ -67,12 +67,6 @@ from .validate import SCHEMA_BACKUP
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-@lru_cache
-def _backup_file_size(backup: Path) -> int:
-    """Get backup file size."""
-    return backup.stat().st_size if backup.is_file() else 0
-
-
 def location_sort_key(value: str | None) -> str:
     """Sort locations, None is always first else alphabetical."""
     return value if value else ""
@@ -88,6 +82,7 @@ class Backup(JobGroup):
         slug: str,
         location: str | None,
         data: dict[str, Any] | None = None,
+        size_bytes: int = 0,
     ):
         """Initialize a backup."""
         super().__init__(
@@ -102,6 +97,7 @@ class Backup(JobGroup):
             location: {
                 ATTR_PATH: tar_file,
                 ATTR_PROTECTED: data.get(ATTR_PROTECTED, False) if data else False,
+                ATTR_SIZE_BYTES: size_bytes,
             }
         }
 
@@ -236,7 +232,7 @@ class Backup(JobGroup):
     @property
     def size_bytes(self) -> int:
         """Return backup size in bytes."""
-        return self.location_size(self.location)
+        return self._locations[self.location][ATTR_SIZE_BYTES]
 
     @property
     def is_new(self) -> bool:
@@ -259,14 +255,6 @@ class Backup(JobGroup):
     def data(self) -> dict[str, Any]:
         """Returns a copy of the data."""
         return deepcopy(self._data)
-
-    def location_size(self, location: str | None) -> int:
-        """Get size of backup in a location."""
-        if location not in self.all_locations:
-            return 0
-
-        backup = self.all_locations[location][ATTR_PATH]
-        return _backup_file_size(backup)
 
     def __eq__(self, other: Any) -> bool:
         """Return true if backups have same metadata."""
@@ -416,23 +404,24 @@ class Backup(JobGroup):
 
     async def load(self):
         """Read backup.json from tar file."""
-        if not self.tarfile.is_file():
-            _LOGGER.error("No tarfile located at %s", self.tarfile)
-            return False
 
-        def _load_file():
-            """Read backup.json."""
-            with tarfile.open(self.tarfile, "r:") as backup:
+        def _load_file(tarfile_path: Path):
+            """Get backup size and read backup metadata."""
+            size_bytes = tarfile_path.stat().st_size
+            with tarfile.open(tarfile_path, "r:") as backup:
                 if "./snapshot.json" in [entry.name for entry in backup.getmembers()]:
                     # Old backups stil uses "snapshot.json", we need to support that forever
                     json_file = backup.extractfile("./snapshot.json")
                 else:
                     json_file = backup.extractfile("./backup.json")
-                return json_file.read()
+                return size_bytes, json_file.read()
 
         # read backup.json
         try:
-            raw = await self.sys_run_in_executor(_load_file)
+            size_bytes, raw = await self.sys_run_in_executor(_load_file, self.tarfile)
+        except FileNotFoundError:
+            _LOGGER.error("No tarfile located at %s", self.tarfile)
+            return False
         except (tarfile.TarError, KeyError) as err:
             _LOGGER.error("Can't read backup tarfile %s: %s", self.tarfile, err)
             return False
@@ -457,6 +446,7 @@ class Backup(JobGroup):
 
         if self._data[ATTR_PROTECTED]:
             self._locations[self.location][ATTR_PROTECTED] = True
+        self._locations[self.location][ATTR_SIZE_BYTES] = size_bytes
 
         return True
 
@@ -480,6 +470,11 @@ class Backup(JobGroup):
             )
             return outer_secure_tarfile, outer_secure_tarfile.open()
 
+        def _close_outer_tarfile() -> int:
+            """Close outer tarfile."""
+            self._outer_secure_tarfile.close()
+            return self.tarfile.stat().st_size
+
         self._outer_secure_tarfile, outer_tarfile = await self.sys_run_in_executor(
             _open_outer_tarfile
         )
@@ -487,7 +482,8 @@ class Backup(JobGroup):
             yield
         finally:
             await self._create_cleanup(outer_tarfile)
-            await self.sys_run_in_executor(self._outer_secure_tarfile.close)
+            size_bytes = await self.sys_run_in_executor(_close_outer_tarfile)
+            self._locations[self.location][ATTR_SIZE_BYTES] = size_bytes
             self._outer_secure_tarfile = None
 
     @asynccontextmanager

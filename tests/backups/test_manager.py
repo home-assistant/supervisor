@@ -1737,12 +1737,12 @@ async def test_backup_remove_error(
 
     err.errno = errno.EBUSY
     with pytest.raises(BackupError):
-        coresys.backups.remove(backup)
+        await coresys.backups.remove(backup)
     assert coresys.core.healthy is True
 
     err.errno = errno.EBADMSG
     with pytest.raises(BackupError):
-        coresys.backups.remove(backup)
+        await coresys.backups.remove(backup)
     assert coresys.core.healthy is healthy_expected
 
 
@@ -1986,11 +1986,11 @@ async def test_backup_remove_multiple_locations(coresys: CoreSys):
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False},
-        ".cloud_backup": {"path": location_2, "protected": False},
+        None: {"path": location_1, "protected": False, "size_bytes": 10240},
+        ".cloud_backup": {"path": location_2, "protected": False, "size_bytes": 10240},
     }
 
-    coresys.backups.remove(backup)
+    await coresys.backups.remove(backup)
     assert not location_1.exists()
     assert not location_2.exists()
     assert not coresys.backups.get("7fed74c8")
@@ -2006,15 +2006,17 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False},
-        ".cloud_backup": {"path": location_2, "protected": False},
+        None: {"path": location_1, "protected": False, "size_bytes": 10240},
+        ".cloud_backup": {"path": location_2, "protected": False, "size_bytes": 10240},
     }
 
-    coresys.backups.remove(backup, locations=[".cloud_backup"])
+    await coresys.backups.remove(backup, locations=[".cloud_backup"])
     assert location_1.exists()
     assert not location_2.exists()
     assert coresys.backups.get("7fed74c8")
-    assert backup.all_locations == {None: {"path": location_1, "protected": False}}
+    assert backup.all_locations == {
+        None: {"path": location_1, "protected": False, "size_bytes": 10240}
+    }
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
@@ -2062,4 +2064,4 @@ async def test_remove_non_existing_backup_raises(
     err.errno = errno.ENOENT
 
     with pytest.raises(BackupFileNotFoundError):
-        coresys.backups.remove(backup)
+        await coresys.backups.remove(backup)
