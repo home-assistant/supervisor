@@ -47,7 +47,9 @@ async def test_consolidate_conflict_varied_encryption(
         f"Backup d9c48f8b exists in two files in locations None. Ignoring {enc_tar.as_posix()}"
         in caplog.text
     )
-    assert enc_backup.all_locations == {None: {"path": unc_tar, "protected": False}}
+    assert enc_backup.all_locations == {
+        None: {"path": unc_tar, "protected": False, "size_bytes": 10240}
+    }
 
 
 async def test_consolidate(
@@ -72,8 +74,8 @@ async def test_consolidate(
         not in caplog.text
     )
     assert enc_backup.all_locations == {
-        None: {"path": enc_tar, "protected": True},
-        "backup_test": {"path": unc_tar, "protected": False},
+        None: {"path": enc_tar, "protected": True, "size_bytes": 10240},
+        "backup_test": {"path": unc_tar, "protected": False, "size_bytes": 10240},
     }
 
 

@@ -575,7 +575,9 @@ def install_addon_example(coresys: CoreSys, repository):
 @pytest.fixture
 async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a full backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup.tar"), "test", None)
+    mock_backup = Backup(
+        coresys, Path(tmp_path, "test_backup.tar"), "test", None, None, 10240
+    )
     mock_backup.new("Test", utcnow().isoformat(), BackupType.FULL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
@@ -600,7 +602,9 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
 @pytest.fixture
 async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     """Mock a partial backup."""
-    mock_backup = Backup(coresys, Path(tmp_path, "test_backup.tar"), "test", None)
+    mock_backup = Backup(
+        coresys, Path(tmp_path, "test_backup.tar"), "test", None, None, 10240
+    )
     mock_backup.new("Test", utcnow().isoformat(), BackupType.PARTIAL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
