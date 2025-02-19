@@ -34,16 +34,17 @@ RUN \
 COPY requirements.txt .
 RUN \
     if [ "${BUILD_ARCH}" = "i386" ]; then \
-        linux32 uv pip install --compile-bytecode --no-build -r requirements.txt; \
+        setarch="linux32"; \
     else \
-        uv pip install --compile-bytecode --no-build -r requirements.txt; \
+        setarch=""; \
     fi \
+    && ${setarch} uv pip install --compile-bytecode --no-cache --no-build -r requirements.txt \
     && rm -f requirements.txt
 
 # Install Home Assistant Supervisor
 COPY . supervisor
 RUN \
-    uv pip install -e ./supervisor \
+    uv pip install --no-cache -e ./supervisor \
     && python3 -m compileall ./supervisor/supervisor
 
 
