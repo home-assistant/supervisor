@@ -438,8 +438,7 @@ class BackupManager(FileConfiguration, JobGroup):
             tar_file = Path(self._get_base_path(location), f"{backup.slug}.tar")
 
         try:
-            backup.tarfile.rename(tar_file)
-
+            await self.sys_run_in_executor(backup.tarfile.rename, tar_file)
         except OSError as err:
             if err.errno == errno.EBADMSG and location in {LOCATION_CLOUD_BACKUP, None}:
                 self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
@@ -456,7 +455,7 @@ class BackupManager(FileConfiguration, JobGroup):
         )
         if not await backup.load():
             # Remove invalid backup from location it was moved to
-            backup.tarfile.unlink()
+            await self.sys_run_in_executor(backup.tarfile.unlink)
             return None
         _LOGGER.info("Successfully imported %s", backup.slug)
 
