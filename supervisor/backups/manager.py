@@ -305,7 +305,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
         return True
 
-    def remove(
+    async def remove(
         self,
         backup: Backup,
         locations: list[LOCATION_TYPE] | None = None,
@@ -324,7 +324,7 @@ class BackupManager(FileConfiguration, JobGroup):
         for location in targets:
             backup_tarfile = backup.all_locations[location][ATTR_PATH]
             try:
-                backup_tarfile.unlink()
+                await self.sys_run_in_executor(backup_tarfile.unlink)
                 del backup.all_locations[location]
             except FileNotFoundError as err:
                 self.sys_create_task(self.reload(location))

@@ -34,7 +34,7 @@ class FixupSystemClearFullBackup(FixupBase):
             : -1 * MINIMUM_FULL_BACKUPS
         ]:
             try:
-                self.sys_backups.remove(backup)
+                await self.sys_backups.remove(backup)
             except BackupFileNotFoundError as err:
                 _LOGGER.debug("Can't remove backup %s: %s", backup.slug, err)
 

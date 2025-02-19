@@ -370,6 +370,6 @@ class Tasks(CoreSysAttributes):
         ]
         for backup in old_backups:
             try:
-                self.sys_backups.remove(backup, [LOCATION_CLOUD_BACKUP])
+                await self.sys_backups.remove(backup, [LOCATION_CLOUD_BACKUP])
             except BackupFileNotFoundError as err:
                 _LOGGER.debug("Can't remove backup %s: %s", backup.slug, err)

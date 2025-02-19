@@ -1737,12 +1737,12 @@ async def test_backup_remove_error(
 
     err.errno = errno.EBUSY
     with pytest.raises(BackupError):
-        coresys.backups.remove(backup)
+        await coresys.backups.remove(backup)
     assert coresys.core.healthy is True
 
     err.errno = errno.EBADMSG
     with pytest.raises(BackupError):
-        coresys.backups.remove(backup)
+        await coresys.backups.remove(backup)
     assert coresys.core.healthy is healthy_expected
 
 
@@ -1990,7 +1990,7 @@ async def test_backup_remove_multiple_locations(coresys: CoreSys):
         ".cloud_backup": {"path": location_2, "protected": False},
     }
 
-    coresys.backups.remove(backup)
+    await coresys.backups.remove(backup)
     assert not location_1.exists()
     assert not location_2.exists()
     assert not coresys.backups.get("7fed74c8")
@@ -2010,7 +2010,7 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
         ".cloud_backup": {"path": location_2, "protected": False},
     }
 
-    coresys.backups.remove(backup, locations=[".cloud_backup"])
+    await coresys.backups.remove(backup, locations=[".cloud_backup"])
     assert location_1.exists()
     assert not location_2.exists()
     assert coresys.backups.get("7fed74c8")
@@ -2062,4 +2062,4 @@ async def test_remove_non_existing_backup_raises(
     err.errno = errno.ENOENT
 
     with pytest.raises(BackupFileNotFoundError):
-        coresys.backups.remove(backup)
+        await coresys.backups.remove(backup)

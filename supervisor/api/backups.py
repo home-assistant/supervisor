@@ -457,7 +457,7 @@ class APIBackups(CoreSysAttributes):
         else:
             self._validate_cloud_backup_location(request, backup.location)
 
-        self.sys_backups.remove(backup, locations=locations)
+        await self.sys_backups.remove(backup, locations=locations)
 
     @api_process
     async def download(self, request: web.Request):
