@@ -394,7 +394,6 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         self, tar_file: tarfile.TarFile, exclude_database: bool = False
     ) -> None:
         """Backup Home Assistant Core config/directory."""
-
         excludes = HOMEASSISTANT_BACKUP_EXCLUDE.copy()
         if exclude_database:
             excludes += HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE
