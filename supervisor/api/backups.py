@@ -39,6 +39,7 @@ from ..const import (
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
+    ATTR_SIZE_BYTES,
     ATTR_SLUG,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TIMEOUT,
@@ -58,7 +59,6 @@ from .const import (
     ATTR_BACKGROUND,
     ATTR_LOCATION_ATTRIBUTES,
     ATTR_LOCATIONS,
-    ATTR_SIZE_BYTES,
     CONTENT_TYPE_TAR,
 )
 from .utils import api_process, api_validate
@@ -155,7 +155,7 @@ class APIBackups(CoreSysAttributes):
         return {
             loc if loc else LOCATION_LOCAL: {
                 ATTR_PROTECTED: backup.all_locations[loc][ATTR_PROTECTED],
-                ATTR_SIZE_BYTES: backup.location_size(loc),
+                ATTR_SIZE_BYTES: backup.all_locations[loc][ATTR_SIZE_BYTES],
             }
             for loc in backup.locations
         }

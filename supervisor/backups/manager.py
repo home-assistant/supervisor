@@ -14,6 +14,7 @@ from ..const import (
     ATTR_DAYS_UNTIL_STALE,
     ATTR_PATH,
     ATTR_PROTECTED,
+    ATTR_SIZE_BYTES,
     FILE_HASSIO_BACKUPS,
     FOLDER_HOMEASSISTANT,
     CoreState,
@@ -258,7 +259,12 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 else:
                     backups[backup.slug] = Backup(
-                        self.coresys, tar_file, backup.slug, location_name, backup.data
+                        self.coresys,
+                        tar_file,
+                        backup.slug,
+                        location_name,
+                        backup.data,
+                        backup.size_bytes,
                     )
                 return True
 
@@ -397,7 +403,11 @@ class BackupManager(FileConfiguration, JobGroup):
 
         backup.all_locations.update(
             {
-                loc: {ATTR_PATH: path, ATTR_PROTECTED: backup.protected}
+                loc: {
+                    ATTR_PATH: path,
+                    ATTR_PROTECTED: backup.protected,
+                    ATTR_SIZE_BYTES: backup.size_bytes,
+                }
                 for loc, path in all_new_locations.items()
             }
         )
