@@ -73,7 +73,7 @@ class PluginCli(PluginBase):
         """Run cli."""
         # Create new API token
         self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
-        self.save_data()
+        await self.save_data()
 
         # Start Instance
         _LOGGER.info("Starting CLI plugin")

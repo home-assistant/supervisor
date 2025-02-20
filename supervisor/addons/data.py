@@ -38,7 +38,7 @@ class AddonsData(FileConfiguration, CoreSysAttributes):
         """Return local add-on data."""
         return self._data[ATTR_SYSTEM]
 
-    def install(self, addon: AddonStore) -> None:
+    async def install(self, addon: AddonStore) -> None:
         """Set addon as installed."""
         self.system[addon.slug] = deepcopy(addon.data)
         self.user[addon.slug] = {
@@ -46,26 +46,28 @@ class AddonsData(FileConfiguration, CoreSysAttributes):
             ATTR_VERSION: addon.version,
             ATTR_IMAGE: addon.image,
         }
-        self.save_data()
+        await self.save_data()
 
-    def uninstall(self, addon: Addon) -> None:
+    async def uninstall(self, addon: Addon) -> None:
         """Set add-on as uninstalled."""
         self.system.pop(addon.slug, None)
         self.user.pop(addon.slug, None)
-        self.save_data()
+        await self.save_data()
 
-    def update(self, addon: AddonStore) -> None:
+    async def update(self, addon: AddonStore) -> None:
         """Update version of add-on."""
         self.system[addon.slug] = deepcopy(addon.data)
         self.user[addon.slug].update(
             {ATTR_VERSION: addon.version, ATTR_IMAGE: addon.image}
         )
-        self.save_data()
+        await self.save_data()
 
-    def restore(self, slug: str, user: Config, system: Config, image: str) -> None:
+    async def restore(
+        self, slug: str, user: Config, system: Config, image: str
+    ) -> None:
         """Restore data to add-on."""
         self.user[slug] = deepcopy(user)
         self.system[slug] = deepcopy(system)
 
         self.user[slug][ATTR_IMAGE] = image
-        self.save_data()
+        await self.save_data()

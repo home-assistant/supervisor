@@ -664,7 +664,7 @@ class DockerAddon(DockerInterface):
 
     async def _build(self, version: AwesomeVersion, image: str | None = None) -> None:
         """Build a Docker container."""
-        build_env = AddonBuild(self.coresys, self.addon)
+        build_env = await AddonBuild(self.coresys, self.addon).load_config()
         if not build_env.is_valid:
             _LOGGER.error("Invalid build environment, can't build this add-on!")
             raise DockerError()

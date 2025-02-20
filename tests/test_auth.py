@@ -60,7 +60,7 @@ async def test_auth_request_without_backend_cache(
     mock_auth_backend.return_value = True
     mock_api_state.return_value = False
 
-    coresys.auth._update_cache("username", "password")
+    await coresys.auth._update_cache("username", "password")
 
     assert await coresys.auth.check_login(addon, "username", "password")
     assert not mock_auth_backend.called
@@ -76,12 +76,12 @@ async def test_auth_request_with_backend_cache_update(
     mock_auth_backend.return_value = False
     mock_api_state.return_value = True
 
-    coresys.auth._update_cache("username", "password")
+    await coresys.auth._update_cache("username", "password")
 
     assert await coresys.auth.check_login(addon, "username", "password")
 
     await asyncio.sleep(0)
 
     assert mock_auth_backend.called
-    coresys.auth._dismatch_cache("username", "password")
+    await coresys.auth._dismatch_cache("username", "password")
     assert not await coresys.auth.check_login(addon, "username", "password")

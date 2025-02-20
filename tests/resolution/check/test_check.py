@@ -111,8 +111,8 @@ async def test_get_checks(coresys: CoreSys):
     assert coresys.resolution.check.get("free_space")
 
 
-def test_dynamic_check_loader(coresys: CoreSys):
+async def test_dynamic_check_loader(coresys: CoreSys):
     """Test dynamic check loader, this ensures that all checks have defined a setup function."""
-    coresys.resolution.check._load()
+    await coresys.resolution.check.load()
     for check in get_valid_modules("checks"):
         assert check in coresys.resolution.check._checks

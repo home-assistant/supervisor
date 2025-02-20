@@ -70,11 +70,11 @@ class BoardManager(DBusInterfaceProxy):
         await super().connect(bus)
 
         if self.board == BOARD_NAME_YELLOW:
-            self._board_proxy = Yellow()
+            self._board_proxy = await Yellow().load_config()
         elif self.board == BOARD_NAME_GREEN:
-            self._board_proxy = Green()
+            self._board_proxy = await Green().load_config()
         elif self.board == BOARD_NAME_SUPERVISED:
-            self._board_proxy = Supervised()
+            self._board_proxy = await Supervised().load_config()
         else:
             return
 

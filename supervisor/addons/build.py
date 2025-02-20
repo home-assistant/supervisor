@@ -34,16 +34,29 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.addon = addon
 
+        # Search for build file later in executor
+        super().__init__(None, SCHEMA_BUILD_CONFIG)
+
+    def _get_build_file(self) -> Path:
+        """Get build file.
+
+        Must be run in executor.
+        """
         try:
-            build_file = find_one_filetype(
+            return find_one_filetype(
                 self.addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
             )
         except ConfigurationFileError:
-            build_file = self.addon.path_location / "build.json"
+            return self.addon.path_location / "build.json"
 
-        super().__init__(build_file, SCHEMA_BUILD_CONFIG)
+    async def read_data(self) -> None:
+        """Load data from file."""
+        if not self._file:
+            self._file = await self.sys_run_in_executor(self._get_build_file)
 
-    def save_data(self):
+        await super().read_data()
+
+    async def save_data(self):
         """Ignore save function."""
         raise RuntimeError()
 

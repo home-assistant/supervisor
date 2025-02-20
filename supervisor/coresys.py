@@ -10,7 +10,7 @@ from functools import partial
 import logging
 import os
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 import aiohttp
 
@@ -101,6 +101,11 @@ class CoreSys:
 
         # Task factory attributes
         self._set_task_context: list[Callable[[Context], Context]] = []
+
+    async def load_config(self) -> Self:
+        """Load config in executor."""
+        await self.config.read_data()
+        return self
 
     @property
     def dev(self) -> bool:

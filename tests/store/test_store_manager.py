@@ -24,7 +24,7 @@ from tests.common import load_yaml_fixture
 
 async def test_default_load(coresys: CoreSys):
     """Test default load from config."""
-    store_manager = StoreManager(coresys)
+    store_manager = await StoreManager(coresys).load_config()
     refresh_cache_calls: set[str] = set()
 
     async def mock_refresh_cache(obj: AddonStore):
@@ -77,7 +77,7 @@ async def test_load_with_custom_repository(coresys: CoreSys):
         ),
         patch("pathlib.Path.is_file", return_value=True),
     ):
-        store_manager = StoreManager(coresys)
+        store_manager = await StoreManager(coresys).load_config()
 
     with (
         patch("supervisor.store.repository.Repository.load", return_value=None),
@@ -113,7 +113,7 @@ async def test_load_from_core_config(coresys: CoreSys):
     coresys.config._data[ATTR_ADDONS_CUSTOM_LIST] = ["http://example.com"]
     assert coresys.config.addons_repositories == ["http://example.com"]
 
-    migrate_system_env(coresys)
+    await migrate_system_env(coresys)
 
     with (
         patch("supervisor.store.repository.Repository.load", return_value=None),

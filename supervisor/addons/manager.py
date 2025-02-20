@@ -5,7 +5,7 @@ from collections.abc import Awaitable
 from contextlib import suppress
 import logging
 import tarfile
-from typing import Union
+from typing import Self, Union
 
 from attr import evolve
 
@@ -73,6 +73,11 @@ class AddonManager(CoreSysAttributes):
             if token == addon.supervisor_token:
                 return addon
         return None
+
+    async def load_config(self) -> Self:
+        """Load config in executor."""
+        await self.data.read_data()
+        return self
 
     async def load(self) -> None:
         """Start up add-on management."""
