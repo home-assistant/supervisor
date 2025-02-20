@@ -697,16 +697,9 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Build %s:%s done", self.image, version)
 
-    @Job(
-        name="docker_addon_export_image",
-        limit=JobExecutionLimit.GROUP_ONCE,
-        on_condition=DockerJobError,
-    )
     def export_image(self, tar_file: Path) -> Awaitable[None]:
         """Export current images into a tar file."""
-        return self.sys_run_in_executor(
-            self.sys_docker.export_image, self.image, self.version, tar_file
-        )
+        return self.sys_docker.export_image(self.image, self.version, tar_file)
 
     @Job(
         name="docker_addon_import_image",

@@ -1238,46 +1238,45 @@ class Addon(AddonModel):
         Returns a Task that completes when addon has state 'started' (see start)
         for cold backup. Else nothing is returned.
         """
-        wait_for_start: Awaitable[None] | None = None
 
-        with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
-            temp_path = Path(temp)
+        def _addon_backup(
+            store_image: bool,
+            metadata: dict[str, Any],
+            apparmor_profile: str | None,
+            addon_config_used: bool,
+        ):
+            """Start the backup process."""
+            with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
+                temp_path = Path(temp)
 
-            # store local image
-            if self.need_build:
+                # store local image
+                if store_image:
+                    try:
+                        self.instance.export_image(temp_path.joinpath("image.tar"))
+                    except DockerError as err:
+                        raise AddonsError() from err
+
+                # Store local configs/state
                 try:
-                    await self.instance.export_image(temp_path.joinpath("image.tar"))
-                except DockerError as err:
-                    raise AddonsError() from err
-
-            data = {
-                ATTR_USER: self.persist,
-                ATTR_SYSTEM: self.data,
-                ATTR_VERSION: self.version,
-                ATTR_STATE: _MAP_ADDON_STATE.get(self.state, self.state),
-            }
-
-            # Store local configs/state
-            try:
-                write_json_file(temp_path.joinpath("addon.json"), data)
-            except ConfigurationFileError as err:
-                raise AddonsError(
-                    f"Can't save meta for {self.slug}", _LOGGER.error
-                ) from err
-
-            # Store AppArmor Profile
-            if self.sys_host.apparmor.exists(self.slug):
-                profile = temp_path.joinpath("apparmor.txt")
-                try:
-                    await self.sys_host.apparmor.backup_profile(self.slug, profile)
-                except HostAppArmorError as err:
+                    write_json_file(temp_path.joinpath("addon.json"), metadata)
+                except ConfigurationFileError as err:
                     raise AddonsError(
-                        "Can't backup AppArmor profile", _LOGGER.error
+                        f"Can't save meta for {self.slug}", _LOGGER.error
                     ) from err
 
-            # write into tarfile
-            def _write_tarfile():
-                """Write tar inside loop."""
+                # Store AppArmor Profile
+                if apparmor_profile:
+                    profile_backup_file = temp_path.joinpath("apparmor.txt")
+                    try:
+                        self.sys_host.apparmor.backup_profile(
+                            apparmor_profile, profile_backup_file
+                        )
+                    except HostAppArmorError as err:
+                        raise AddonsError(
+                            "Can't backup AppArmor profile", _LOGGER.error
+                        ) from err
+
+                # Write tarfile
                 with tar_file as backup:
                     # Backup metadata
                     backup.add(temp, arcname=".")
@@ -1293,7 +1292,7 @@ class Addon(AddonModel):
                     )
 
                     # Backup config
-                    if self.addon_config_used:
+                    if addon_config_used:
                         atomic_contents_add(
                             backup,
                             self.path_config,
@@ -1303,19 +1302,39 @@ class Addon(AddonModel):
                             arcname="config",
                         )
 
-            is_running = await self.begin_backup()
-            try:
-                _LOGGER.info("Building backup for add-on %s", self.slug)
-                await self.sys_run_in_executor(_write_tarfile)
-            except (tarfile.TarError, OSError) as err:
-                raise AddonsError(
-                    f"Can't write tarfile {tar_file}: {err}", _LOGGER.error
-                ) from err
-            finally:
-                if is_running:
-                    wait_for_start = await self.end_backup()
+        wait_for_start: Awaitable[None] | None = None
 
-        _LOGGER.info("Finish backup for addon %s", self.slug)
+        data = {
+            ATTR_USER: self.persist,
+            ATTR_SYSTEM: self.data,
+            ATTR_VERSION: self.version,
+            ATTR_STATE: _MAP_ADDON_STATE.get(self.state, self.state),
+        }
+        apparmor_profile = (
+            self.slug if self.sys_host.apparmor.exists(self.slug) else None
+        )
+
+        was_running = await self.begin_backup()
+        try:
+            _LOGGER.info("Building backup for add-on %s", self.slug)
+            await self.sys_run_in_executor(
+                partial(
+                    _addon_backup,
+                    store_image=self.need_build,
+                    metadata=data,
+                    apparmor_profile=apparmor_profile,
+                    addon_config_used=self.addon_config_used,
+                )
+            )
+            _LOGGER.info("Finish backup for addon %s", self.slug)
+        except (tarfile.TarError, OSError) as err:
+            raise AddonsError(
+                f"Can't write tarfile {tar_file}: {err}", _LOGGER.error
+            ) from err
+        finally:
+            if was_running:
+                wait_for_start = await self.end_backup()
+
         return wait_for_start
 
     @Job(
@@ -1330,30 +1349,36 @@ class Addon(AddonModel):
         if addon is started after restore. Else nothing is returned.
         """
         wait_for_start: Awaitable[None] | None = None
-        with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
-            # extract backup
-            def _extract_tarfile():
-                """Extract tar backup."""
+
+        # Extract backup
+        def _extract_tarfile() -> tuple[TemporaryDirectory, dict[str, Any]]:
+            """Extract tar backup."""
+            tmp = TemporaryDirectory(dir=self.sys_config.path_tmp)
+            try:
                 with tar_file as backup:
                     backup.extractall(
-                        path=Path(temp),
+                        path=tmp.name,
                         members=secure_path(backup),
                         filter="fully_trusted",
                     )
 
-            try:
-                await self.sys_run_in_executor(_extract_tarfile)
-            except tarfile.TarError as err:
-                raise AddonsError(
-                    f"Can't read tarfile {tar_file}: {err}", _LOGGER.error
-                ) from err
+                data = read_json_file(Path(tmp.name, "addon.json"))
+            except:
+                tmp.cleanup()
+                raise
 
-            # Read backup data
-            try:
-                data = read_json_file(Path(temp, "addon.json"))
-            except ConfigurationFileError as err:
-                raise AddonsError() from err
+            return tmp, data
 
+        try:
+            tmp, data = await self.sys_run_in_executor(_extract_tarfile)
+        except tarfile.TarError as err:
+            raise AddonsError(
+                f"Can't read tarfile {tar_file}: {err}", _LOGGER.error
+            ) from err
+        except ConfigurationFileError as err:
+            raise AddonsError() from err
+
+        try:
             # Validate
             try:
                 data = SCHEMA_ADDON_BACKUP(data)
@@ -1387,7 +1412,7 @@ class Addon(AddonModel):
                 if not await self.instance.exists():
                     _LOGGER.info("Restore/Install of image for addon %s", self.slug)
 
-                    image_file = Path(temp, "image.tar")
+                    image_file = Path(tmp.name, "image.tar")
                     if image_file.is_file():
                         with suppress(DockerError):
                             await self.instance.import_image(image_file)
@@ -1406,13 +1431,13 @@ class Addon(AddonModel):
                 # Restore data and config
                 def _restore_data():
                     """Restore data and config."""
-                    temp_data = Path(temp, "data")
+                    temp_data = Path(tmp.name, "data")
                     if temp_data.is_dir():
                         shutil.copytree(temp_data, self.path_data, symlinks=True)
                     else:
                         self.path_data.mkdir()
 
-                    temp_config = Path(temp, "config")
+                    temp_config = Path(tmp.name, "config")
                     if temp_config.is_dir():
                         shutil.copytree(temp_config, self.path_config, symlinks=True)
                     elif self.addon_config_used:
@@ -1432,7 +1457,7 @@ class Addon(AddonModel):
                     ) from err
 
                 # Restore AppArmor
-                profile_file = Path(temp, "apparmor.txt")
+                profile_file = Path(tmp.name, "apparmor.txt")
                 if profile_file.exists():
                     try:
                         await self.sys_host.apparmor.load_profile(
@@ -1440,7 +1465,8 @@ class Addon(AddonModel):
                         )
                     except HostAppArmorError as err:
                         _LOGGER.error(
-                            "Can't restore AppArmor profile for add-on %s", self.slug
+                            "Can't restore AppArmor profile for add-on %s",
+                            self.slug,
                         )
                         raise AddonsError() from err
 
@@ -1452,7 +1478,8 @@ class Addon(AddonModel):
                 # Run add-on
                 if data[ATTR_STATE] == AddonState.STARTED:
                     wait_for_start = await self.start()
-
+        finally:
+            tmp.cleanup()
         _LOGGER.info("Finished restore for add-on %s", self.slug)
         return wait_for_start
 
