@@ -1318,11 +1318,13 @@ class Addon(AddonModel):
         try:
             _LOGGER.info("Building backup for add-on %s", self.slug)
             await self.sys_run_in_executor(
-                _addon_backup,
-                self.need_build,
-                data,
-                apparmor_profile,
-                self.addon_config_used,
+                partial(
+                    _addon_backup,
+                    store_image=self.need_build,
+                    metadata=data,
+                    apparmor_profile=apparmor_profile,
+                    addon_config_used=self.addon_config_used,
+                )
             )
             _LOGGER.info("Finish backup for addon %s", self.slug)
         except (tarfile.TarError, OSError) as err:
