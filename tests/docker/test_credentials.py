@@ -8,7 +8,7 @@ from supervisor.docker.interface import DOCKER_HUB, DockerInterface
 def test_no_credentials(coresys: CoreSys):
     """Test no credentials."""
     docker = DockerInterface(coresys)
-    coresys.docker.config.registries = {
+    coresys.docker.config._data["registries"] = {
         DOCKER_HUB: {"username": "Spongebob Squarepants", "password": "Password1!"}
     }
     assert not docker._get_credentials("ghcr.io/homeassistant")
@@ -18,7 +18,7 @@ def test_no_credentials(coresys: CoreSys):
 def test_no_matching_credentials(coresys: CoreSys):
     """Test no matching credentials."""
     docker = DockerInterface(coresys)
-    coresys.docker.config.registries = {
+    coresys.docker.config._data["registries"] = {
         DOCKER_HUB: {"username": "Spongebob Squarepants", "password": "Password1!"}
     }
     assert not docker._get_credentials("ghcr.io/homeassistant")
