@@ -468,7 +468,7 @@ async def test_save_data(
 ):
     """Test saving mount config data."""
     # Replace mount manager with one that doesn't have save_data mocked
-    coresys._mounts = MountManager(coresys)  # pylint: disable=protected-access
+    coresys._mounts = await MountManager(coresys).load_config()  # pylint: disable=protected-access
 
     path = tmp_supervisor_data / "mounts.json"
     assert not path.exists()
@@ -488,7 +488,7 @@ async def test_save_data(
             },
         )
     )
-    coresys.mounts.save_data()
+    await coresys.mounts.save_data()
 
     assert path.exists()
     with path.open() as file:

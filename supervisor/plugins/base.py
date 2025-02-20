@@ -179,7 +179,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         else:
             self.version = self.instance.version
             self.image = self.default_image
-            self.save_data()
+            await self.save_data()
 
         # Run plugin
         with suppress(PluginError):
@@ -208,7 +208,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         _LOGGER.info("%s plugin now installed", self.slug)
         self.version = self.instance.version
         self.image = self.default_image
-        self.save_data()
+        await self.save_data()
 
     async def update(self, version: str | None = None) -> None:
         """Update system plugin."""
@@ -224,7 +224,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         await self.instance.update(version, image=self.default_image)
         self.version = self.instance.version
         self.image = self.default_image
-        self.save_data()
+        await self.save_data()
 
         # Cleanup
         with suppress(DockerError):

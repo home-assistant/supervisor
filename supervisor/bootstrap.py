@@ -55,35 +55,35 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 async def initialize_coresys() -> CoreSys:
     """Initialize supervisor coresys/objects."""
-    coresys = CoreSys()
+    coresys = await CoreSys().load_config()
 
     # Initialize core objects
-    coresys.docker = DockerAPI(coresys)
-    coresys.resolution = ResolutionManager(coresys)
-    coresys.jobs = JobManager(coresys)
+    coresys.docker = await DockerAPI(coresys).load_config()
+    coresys.resolution = await ResolutionManager(coresys).load_config()
+    coresys.jobs = await JobManager(coresys).load_config()
     coresys.core = Core(coresys)
-    coresys.plugins = PluginManager(coresys)
+    coresys.plugins = await PluginManager(coresys).load_config()
     coresys.arch = CpuArch(coresys)
-    coresys.auth = Auth(coresys)
-    coresys.updater = Updater(coresys)
+    coresys.auth = await Auth(coresys).load_config()
+    coresys.updater = await Updater(coresys).load_config()
     coresys.api = RestAPI(coresys)
     coresys.supervisor = Supervisor(coresys)
-    coresys.homeassistant = HomeAssistant(coresys)
-    coresys.addons = AddonManager(coresys)
-    coresys.backups = BackupManager(coresys)
+    coresys.homeassistant = await HomeAssistant(coresys).load_config()
+    coresys.addons = await AddonManager(coresys).load_config()
+    coresys.backups = await BackupManager(coresys).load_config()
     coresys.host = HostManager(coresys)
     coresys.hardware = HardwareManager(coresys)
-    coresys.ingress = Ingress(coresys)
+    coresys.ingress = await Ingress(coresys).load_config()
     coresys.tasks = Tasks(coresys)
-    coresys.services = ServiceManager(coresys)
-    coresys.store = StoreManager(coresys)
-    coresys.discovery = Discovery(coresys)
+    coresys.services = await ServiceManager(coresys).load_config()
+    coresys.store = await StoreManager(coresys).load_config()
+    coresys.discovery = await Discovery(coresys).load_config()
     coresys.dbus = DBusManager(coresys)
     coresys.os = OSManager(coresys)
     coresys.scheduler = Scheduler(coresys)
-    coresys.security = Security(coresys)
+    coresys.security = await Security(coresys).load_config()
     coresys.bus = Bus(coresys)
-    coresys.mounts = MountManager(coresys)
+    coresys.mounts = await MountManager(coresys).load_config()
 
     # diagnostics
     if coresys.config.diagnostics:
@@ -237,7 +237,7 @@ def initialize_system(coresys: CoreSys) -> None:
         config.path_addon_configs.mkdir()
 
 
-def migrate_system_env(coresys: CoreSys) -> None:
+async def migrate_system_env(coresys: CoreSys) -> None:
     """Cleanup some stuff after update."""
     config = coresys.config
 
@@ -256,8 +256,8 @@ def migrate_system_env(coresys: CoreSys) -> None:
             coresys.config.addons_repositories
         )
         coresys.config._data[ATTR_ADDONS_CUSTOM_LIST] = []
-        coresys.store.save_data()
-        coresys.config.save_data()
+        await coresys.store.save_data()
+        await coresys.config.save_data()
 
 
 def initialize_logging() -> None:

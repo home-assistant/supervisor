@@ -109,7 +109,7 @@ class Core(CoreSysAttributes):
 
         # Fix wrong version in config / avoid boot loop on OS
         self.sys_config.version = self.sys_supervisor.version
-        self.sys_config.save_data()
+        await self.sys_config.save_data()
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
@@ -225,7 +225,7 @@ class Core(CoreSysAttributes):
                 return
 
             # reset register services / discovery
-            self.sys_services.reset()
+            await self.sys_services.reset()
 
             # start addon mark as system
             await self.sys_addons.boot(AddonStartup.SYSTEM)
@@ -264,7 +264,7 @@ class Core(CoreSysAttributes):
             await self.sys_addons.boot(AddonStartup.APPLICATION)
 
             # store new last boot
-            self._update_last_boot()
+            await self._update_last_boot()
 
         finally:
             # Add core tasks into scheduler
@@ -289,7 +289,7 @@ class Core(CoreSysAttributes):
         """Stop a running orchestration."""
         # store new last boot / prevent time adjustments
         if self.state in (CoreState.RUNNING, CoreState.SHUTDOWN):
-            self._update_last_boot()
+            await self._update_last_boot()
         if self.state in (CoreState.STOPPING, CoreState.CLOSE):
             return
 
@@ -357,10 +357,10 @@ class Core(CoreSysAttributes):
         if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
             await self.sys_plugins.shutdown()
 
-    def _update_last_boot(self):
+    async def _update_last_boot(self):
         """Update last boot time."""
         self.sys_config.last_boot = self.sys_hardware.helper.last_boot
-        self.sys_config.save_data()
+        await self.sys_config.save_data()
 
     async def _retrieve_whoami(self, with_ssl: bool) -> WhoamiData | None:
         try:

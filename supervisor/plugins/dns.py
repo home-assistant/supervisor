@@ -226,7 +226,7 @@ class PluginDns(PluginBase):
         # Reset manually defined DNS
         self.servers.clear()
         self.fallback = True
-        self.save_data()
+        await self.save_data()
 
         # Resets hosts
         with suppress(OSError):

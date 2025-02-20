@@ -195,6 +195,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     async def load(self):
         """Load the resoulution manager."""
+        await self.check.load()
+        await self.fixup.load()
+        await self.evaluate.load()
+
         # Initial healthcheck when the manager is loaded
         await self.healthcheck()
 

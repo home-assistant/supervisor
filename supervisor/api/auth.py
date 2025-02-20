@@ -99,7 +99,7 @@ class APIAuth(CoreSysAttributes):
     @api_process
     async def cache(self, request: web.Request) -> None:
         """Process cache reset request."""
-        self.sys_auth.reset_data()
+        await self.sys_auth.reset_data()
 
     @api_process
     async def list_users(self, request: web.Request) -> dict[str, list[dict[str, Any]]]:

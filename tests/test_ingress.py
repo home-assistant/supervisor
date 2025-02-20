@@ -74,11 +74,11 @@ async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
     """Test saving ingress data to file."""
     config_file = tmp_supervisor_data / "ingress.json"
     with patch("supervisor.ingress.FILE_HASSIO_INGRESS", new=config_file):
-        ingress = Ingress(coresys)
+        ingress = await Ingress(coresys).load_config()
         session = ingress.create_session(
             IngressSessionData(IngressSessionDataUser("123", "Test", "test"))
         )
-        ingress.save_data()
+        await ingress.save_data()
 
     assert config_file.exists()
     data = read_json_file(config_file)
