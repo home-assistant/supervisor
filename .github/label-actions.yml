@@ -1,0 +1,58 @@
+assume-fixed:
+  comment: >
+    :wave: @{issue-author}, thanks for reporting an issue!
+
+
+    This issue is assumed to be fixed in the latest stable release. Please
+    reopen in case you can still reproduce the issue with the latest stable
+    release.
+  close: true
+  close-reason: not planned
+
+core-issue:
+  comment: >
+    :wave: @{issue-author}, thanks for reporting an issue!
+
+
+    It looks like this issue is related to Home Assistant Core. Please check
+    the [Home Assistant Core](https://github.com/home-assistant/core/issues)
+    repository, the issue might have been reported already. Open a new issue
+    in that repository if you can't find a matching issue.
+  close: true
+  close-reason: not planned
+
+frontend-issue:
+  comment: >
+    :wave: @{issue-author}, thanks for reporting an issue!
+
+
+    It looks like this issue is related to Home Assistant Frontend. Please
+    check the [Home Assistant Frontend](https://github.com/home-assistant/frontend/issues)
+    repository, the issue might have been reported already. Open a new issue
+    in that repository if you can't find a matching issue.
+  close: true
+  close-reason: not planned
+
+operating-system-issue:
+  comment: >
+    :wave: @{issue-author}, thanks for reporting an issue!
+
+
+    It looks like this issue is related to Home Assistant Operating System. Please
+    check the [Home Assistant Operating System](https://github.com/home-assistant/operating-system/issues)
+    repository, the issue might have been reported already. Open a new issue
+    in that repository if you can't find a matching issue.
+  close: true
+  close-reason: not planned
+
+new-feature:
+  comment: >
+    :wave: @{issue-author}, thanks for your input!
+
+    We use this issue tracker to track issues of currently supported features.
+    Your request appears to request a new feature. We track potential new
+    features in the [Feature Request section of our Community Forum](https://community.home-assistant.io/c/feature-requests/13).
+    Please check if someone already requested a similar feature, or create
+    a new feature request with the "supervisor" tag in that forum. Thank you!
+  close: true
+  close-reason: not planned
