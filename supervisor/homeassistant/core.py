@@ -110,7 +110,7 @@ class HomeAssistantCore(JobGroup):
         else:
             self.sys_homeassistant.version = self.instance.version
             self.sys_homeassistant.image = self.instance.image
-            self.sys_homeassistant.save_data()
+            await self.sys_homeassistant.save_data()
 
         # Start landingpage
         if self.instance.version != LANDINGPAGE:
@@ -139,7 +139,7 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.info("Using preinstalled landingpage")
             self.sys_homeassistant.version = LANDINGPAGE
             self.sys_homeassistant.image = self.instance.image
-            self.sys_homeassistant.save_data()
+            await self.sys_homeassistant.save_data()
             return
 
         _LOGGER.info("Setting up Home Assistant landingpage")
@@ -167,7 +167,7 @@ class HomeAssistantCore(JobGroup):
 
         self.sys_homeassistant.version = LANDINGPAGE
         self.sys_homeassistant.image = self.sys_updater.image_homeassistant
-        self.sys_homeassistant.save_data()
+        await self.sys_homeassistant.save_data()
 
     @Job(
         name="home_assistant_core_install",
@@ -200,7 +200,7 @@ class HomeAssistantCore(JobGroup):
         _LOGGER.info("Home Assistant docker now installed")
         self.sys_homeassistant.version = self.instance.version
         self.sys_homeassistant.image = self.sys_updater.image_homeassistant
-        self.sys_homeassistant.save_data()
+        await self.sys_homeassistant.save_data()
 
         # finishing
         try:
@@ -270,7 +270,7 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.info("Successfully started Home Assistant %s", to_version)
 
             # Successfull - last step
-            self.sys_homeassistant.save_data()
+            await self.sys_homeassistant.save_data()
             with suppress(DockerError):
                 await self.instance.cleanup(old_image=old_image)
 
@@ -339,7 +339,7 @@ class HomeAssistantCore(JobGroup):
         else:
             # Create new API token
             self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
-            self.sys_homeassistant.save_data()
+            await self.sys_homeassistant.save_data()
 
             # Write audio settings
             self.sys_homeassistant.write_pulse()

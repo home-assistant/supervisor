@@ -55,7 +55,7 @@ if __name__ == "__main__":
     loop.run_until_complete(coresys.core.connect())
 
     bootstrap.supervisor_debugger(coresys)
-    bootstrap.migrate_system_env(coresys)
+    loop.run_until_complete(bootstrap.migrate_system_env(coresys))
 
     # Signal health startup for container
     run_os_startup_check_cleanup()

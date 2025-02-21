@@ -99,7 +99,7 @@ class APIJobs(CoreSysAttributes):
     @api_process
     async def reset(self, request: web.Request) -> None:
         """Reset options for JobManager."""
-        self.sys_jobs.reset_data()
+        await self.sys_jobs.reset_data()
 
     @api_process
     async def job_info(self, request: web.Request) -> dict[str, Any]:

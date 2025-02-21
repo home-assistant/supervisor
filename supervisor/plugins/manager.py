@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from typing import Self
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError
@@ -29,6 +30,11 @@ class PluginManager(CoreSysAttributes):
         self._audio: PluginAudio = PluginAudio(coresys)
         self._observer: PluginObserver = PluginObserver(coresys)
         self._multicast: PluginMulticast = PluginMulticast(coresys)
+
+    async def load_config(self) -> Self:
+        """Load config in executor."""
+        await asyncio.gather(*[plugin.read_data() for plugin in self.all_plugins])
+        return self
 
     @property
     def all_plugins(self) -> list[PluginBase]:

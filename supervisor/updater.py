@@ -310,7 +310,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
                 f"Can't process version data: {err}", _LOGGER.warning
             ) from err
 
-        self.save_data()
+        await self.save_data()
 
         # Send status update to core
         for event in events:

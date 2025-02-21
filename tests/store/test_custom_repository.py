@@ -212,7 +212,7 @@ async def test_remove_used_repository(
     use_update: bool,
 ):
     """Test removing used custom repository."""
-    coresys.addons.data.install(store_addon)
+    await coresys.addons.data.install(store_addon)
     addon = Addon(coresys, store_addon.slug)
     coresys.addons.local[addon.slug] = addon
 

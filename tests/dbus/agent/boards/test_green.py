@@ -21,7 +21,7 @@ async def fixture_green_service(dbus_session_bus: MessageBus) -> GreenService:
 
 async def test_dbus_green(green_service: GreenService, dbus_session_bus: MessageBus):
     """Test Green board load."""
-    green = Green()
+    green = await Green().load_config()
     await green.connect(dbus_session_bus)
 
     assert green.name == "Green"
@@ -36,7 +36,7 @@ async def test_dbus_green(green_service: GreenService, dbus_session_bus: Message
             return_value={"activity_led": False, "user_led": False},
         ),
     ):
-        green = Green()
+        green = await Green().load_config()
     await green.connect(dbus_session_bus)
 
     assert green.activity_led is False
@@ -47,7 +47,7 @@ async def test_dbus_green_set_activity_led(
     green_service: GreenService, dbus_session_bus: MessageBus
 ):
     """Test setting activity led for Green board."""
-    green = Green()
+    green = await Green().load_config()
     await green.connect(dbus_session_bus)
 
     await green.set_activity_led(False)
@@ -59,7 +59,7 @@ async def test_dbus_green_set_power_led(
     green_service: GreenService, dbus_session_bus: MessageBus
 ):
     """Test setting power led for Green board."""
-    green = Green()
+    green = await Green().load_config()
     await green.connect(dbus_session_bus)
 
     await green.set_power_led(False)
@@ -71,7 +71,7 @@ async def test_dbus_green_set_user_led(
     green_service: GreenService, dbus_session_bus: MessageBus
 ):
     """Test setting user led for Green board."""
-    green = Green()
+    green = await Green().load_config()
     await green.connect(dbus_session_bus)
 
     await green.set_user_led(False)

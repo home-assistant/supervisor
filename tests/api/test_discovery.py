@@ -54,7 +54,7 @@ async def test_api_list_discovery(
         ),
         patch("supervisor.utils.common.Path.is_file", return_value=True),
     ):
-        coresys.discovery.read_data()
+        await coresys.discovery.read_data()
 
     await coresys.discovery.load()
     assert coresys.discovery.list_messages == [

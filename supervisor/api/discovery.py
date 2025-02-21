@@ -83,7 +83,7 @@ class APIDiscovery(CoreSysAttributes):
             )
 
         # Process discovery message
-        message = self.sys_discovery.send(addon, **body)
+        message = await self.sys_discovery.send(addon, **body)
 
         return {ATTR_UUID: message.uuid}
 
@@ -110,5 +110,5 @@ class APIDiscovery(CoreSysAttributes):
         if message.addon != addon.slug:
             raise APIForbidden("Can't remove discovery message")
 
-        self.sys_discovery.remove(message)
+        await self.sys_discovery.remove(message)
         return True

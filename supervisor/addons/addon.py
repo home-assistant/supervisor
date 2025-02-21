@@ -243,7 +243,7 @@ class Addon(AddonModel):
                 await self.instance.install(self.version, default_image, arch=self.arch)
 
         self.persist[ATTR_IMAGE] = default_image
-        self.save_persist()
+        await self.save_persist()
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -667,9 +667,9 @@ class Addon(AddonModel):
         """Is add-on loaded."""
         return bool(self._listeners)
 
-    def save_persist(self) -> None:
+    async def save_persist(self) -> None:
         """Save data of add-on."""
-        self.sys_addons.data.save_data()
+        await self.sys_addons.data.save_data()
 
     async def watchdog_application(self) -> bool:
         """Return True if application is running."""
@@ -772,7 +772,7 @@ class Addon(AddonModel):
     )
     async def install(self) -> None:
         """Install and setup this addon."""
-        self.sys_addons.data.install(self.addon_store)
+        await self.sys_addons.data.install(self.addon_store)
         await self.load()
 
         if not self.path_data.is_dir():
@@ -790,7 +790,7 @@ class Addon(AddonModel):
                 self.latest_version, self.addon_store.image, arch=self.arch
             )
         except DockerError as err:
-            self.sys_addons.data.uninstall(self)
+            await self.sys_addons.data.uninstall(self)
             raise AddonsError() from err
 
         # Add to addon manager
@@ -839,14 +839,14 @@ class Addon(AddonModel):
 
         # Cleanup Ingress dynamic port assignment
         if self.with_ingress:
+            await self.sys_ingress.del_dynamic_port(self.slug)
             self.sys_create_task(self.sys_ingress.reload())
-            self.sys_ingress.del_dynamic_port(self.slug)
 
         # Cleanup discovery data
         for message in self.sys_discovery.list_messages:
             if message.addon != self.slug:
                 continue
-            self.sys_discovery.remove(message)
+            await self.sys_discovery.remove(message)
 
         # Cleanup services data
         for service in self.sys_services.list_services:
@@ -855,7 +855,7 @@ class Addon(AddonModel):
             service.del_service_data(self)
 
         # Remove from addon manager
-        self.sys_addons.data.uninstall(self)
+        await self.sys_addons.data.uninstall(self)
         self.sys_addons.local.pop(self.slug)
 
     @Job(
@@ -884,7 +884,7 @@ class Addon(AddonModel):
 
         try:
             _LOGGER.info("Add-on '%s' successfully updated", self.slug)
-            self.sys_addons.data.update(store)
+            await self.sys_addons.data.update(store)
             await self._check_ingress_port()
 
             # Cleanup
@@ -925,7 +925,7 @@ class Addon(AddonModel):
             except DockerError as err:
                 raise AddonsError() from err
 
-            self.sys_addons.data.update(self.addon_store)
+            await self.sys_addons.data.update(self.addon_store)
             await self._check_ingress_port()
             _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
 
@@ -1053,7 +1053,7 @@ class Addon(AddonModel):
 
         # Access Token
         self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
-        self.save_persist()
+        await self.save_persist()
 
         # Options
         await self.write_options()
@@ -1398,7 +1398,7 @@ class Addon(AddonModel):
             # Restore local add-on information
             _LOGGER.info("Restore config for addon %s", self.slug)
             restore_image = self._image(data[ATTR_SYSTEM])
-            self.sys_addons.data.restore(
+            await self.sys_addons.data.restore(
                 self.slug, data[ATTR_USER], data[ATTR_SYSTEM], restore_image
             )
 

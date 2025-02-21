@@ -28,20 +28,25 @@ class ResolutionEvaluation(CoreSysAttributes):
         self.cached_images: set[str] = set()
         self._evalutions: dict[str, EvaluateBase] = {}
 
-        self._load()
-
     @property
     def all_evaluations(self) -> list[EvaluateBase]:
         """Return all list of all checks."""
         return list(self._evalutions.values())
 
-    def _load(self):
-        """Load all checks."""
-        package = f"{__package__}.evaluations"
-        for module in get_valid_modules("evaluations"):
-            check_module = import_module(f"{package}.{module}")
-            check = check_module.setup(self.coresys)
-            self._evalutions[check.slug] = check
+    async def load(self) -> None:
+        """Load all evaluations."""
+
+        def _load() -> dict[str, EvaluateBase]:
+            """Load and setup evaluations in executor."""
+            package = f"{__package__}.evaluations"
+            evaluations: dict[str, EvaluateBase] = {}
+            for module in get_valid_modules("evaluations"):
+                evaluate_module = import_module(f"{package}.{module}")
+                evaluation = evaluate_module.setup(self.coresys)
+                evaluations[evaluation.slug] = evaluation
+            return evaluations
+
+        self._evalutions = await self.sys_run_in_executor(_load)
 
     def get(self, slug: str) -> EvaluateBase:
         """Return check based on slug."""

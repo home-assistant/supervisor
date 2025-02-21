@@ -11,7 +11,7 @@ from supervisor.coresys import CoreSys
 
 async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
-    build = AddonBuild(coresys, install_addon_ssh)
+    build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
             type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])
@@ -27,7 +27,7 @@ async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
 
 async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
-    build = AddonBuild(coresys, install_addon_ssh)
+    build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
             type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])
@@ -45,7 +45,7 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon)
 
 async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
-    build = AddonBuild(coresys, install_addon_ssh)
+    build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
             type(coresys.arch), "supported", new=PropertyMock(return_value=["aarch64"])
@@ -65,7 +65,7 @@ async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: A
 
 async def test_build_valid(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
-    build = AddonBuild(coresys, install_addon_ssh)
+    build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
             type(coresys.arch), "supported", new=PropertyMock(return_value=["aarch64"])
@@ -79,7 +79,7 @@ async def test_build_valid(coresys: CoreSys, install_addon_ssh: Addon):
 
 async def test_build_invalid(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in docker args."""
-    build = AddonBuild(coresys, install_addon_ssh)
+    build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
             type(coresys.arch), "supported", new=PropertyMock(return_value=["amd64"])

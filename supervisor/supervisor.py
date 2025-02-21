@@ -216,7 +216,7 @@ class Supervisor(CoreSysAttributes):
 
         self.sys_config.version = version
         self.sys_config.image = self.sys_updater.image_supervisor
-        self.sys_config.save_data()
+        await self.sys_config.save_data()
 
         self.sys_create_task(self.sys_core.stop())
 

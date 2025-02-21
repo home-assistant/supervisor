@@ -322,7 +322,7 @@ class APIAddons(CoreSysAttributes):
         if ATTR_WATCHDOG in body:
             addon.watchdog = body[ATTR_WATCHDOG]
 
-        addon.save_persist()
+        await addon.save_persist()
 
     @api_process
     async def sys_options(self, request: web.Request) -> None:
@@ -336,7 +336,7 @@ class APIAddons(CoreSysAttributes):
         if ATTR_SYSTEM_MANAGED_CONFIG_ENTRY in body:
             addon.system_managed_config_entry = body[ATTR_SYSTEM_MANAGED_CONFIG_ENTRY]
 
-        addon.save_persist()
+        await addon.save_persist()
 
     @api_process
     async def options_validate(self, request: web.Request) -> None:
@@ -402,7 +402,7 @@ class APIAddons(CoreSysAttributes):
             _LOGGER.warning("Changing protected flag for %s!", addon.slug)
             addon.protected = body[ATTR_PROTECTED]
 
-        addon.save_persist()
+        await addon.save_persist()
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
