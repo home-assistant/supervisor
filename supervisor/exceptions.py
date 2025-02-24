@@ -663,6 +663,14 @@ class BackupFileNotFoundError(BackupError):
     """Raise if the backup file hasn't been found."""
 
 
+class BackupPermissionError(BackupError):
+    """Raise if we could not write the backup due to permission error."""
+
+
+class BackupFileExistError(BackupError):
+    """Raise if the backup file already exists."""
+
+
 # Security
 
 
