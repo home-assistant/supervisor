@@ -50,8 +50,10 @@ from ..coresys import CoreSys
 from ..exceptions import (
     AddonsError,
     BackupError,
+    BackupFileExistError,
     BackupFileNotFoundError,
     BackupInvalidError,
+    BackupPermissionError,
 )
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
@@ -457,18 +459,31 @@ class Backup(JobGroup):
         def _open_outer_tarfile():
             """Create and open outer tarfile."""
             if self.tarfile.is_file():
-                raise BackupError(
+                raise BackupFileExistError(
                     f"Cannot make new backup at {self.tarfile.as_posix()}, file already exists!",
                     _LOGGER.error,
                 )
 
-            outer_secure_tarfile = SecureTarFile(
+            _outer_secure_tarfile = SecureTarFile(
                 self.tarfile,
                 "w",
                 gzip=False,
                 bufsize=BUF_SIZE,
             )
-            return outer_secure_tarfile, outer_secure_tarfile.open()
+            try:
+                _outer_tarfile = _outer_secure_tarfile.open()
+            except PermissionError as ex:
+                raise BackupPermissionError(
+                    f"Cannot open backup file {self.tarfile.as_posix()}, permission error!",
+                    _LOGGER.error,
+                ) from ex
+            except OSError as ex:
+                raise BackupError(
+                    f"Cannot open backup file {self.tarfile.as_posix()} for writing",
+                    _LOGGER.error,
+                ) from ex
+
+            return _outer_secure_tarfile, _outer_tarfile
 
         def _close_outer_tarfile() -> int:
             """Close outer tarfile."""

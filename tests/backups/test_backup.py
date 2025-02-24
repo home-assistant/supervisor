@@ -11,7 +11,12 @@ import pytest
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import BackupFileNotFoundError, BackupInvalidError
+from supervisor.exceptions import (
+    BackupFileExistError,
+    BackupFileNotFoundError,
+    BackupInvalidError,
+    BackupPermissionError,
+)
 
 from tests.common import get_fixture_path
 
@@ -28,6 +33,38 @@ async def test_new_backup_stays_in_folder(coresys: CoreSys, tmp_path: Path):
 
     assert len(listdir(tmp_path)) == 1
     assert backup.tarfile.exists()
+
+
+async def test_new_backup_permission_error(coresys: CoreSys, tmp_path: Path):
+    """Test if a permission error is correctly handled when a new backup is created."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+    assert not listdir(tmp_path)
+
+    with (
+        patch(
+            "tarfile.open",
+            MagicMock(side_effect=PermissionError),
+        ),
+        pytest.raises(BackupPermissionError),
+    ):
+        async with backup.create():
+            assert len(listdir(tmp_path)) == 1
+            assert backup.tarfile.exists()
+
+
+async def test_new_backup_exists_error(coresys: CoreSys, tmp_path: Path):
+    """Test if a permission error is correctly handled when a new backup is created."""
+    backup_file = tmp_path / "my_backup.tar"
+    backup = Backup(coresys, backup_file, "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+    backup_file.touch()
+
+    with (
+        pytest.raises(BackupFileExistError),
+    ):
+        async with backup.create():
+            pass
 
 
 async def test_consolidate_conflict_varied_encryption(
