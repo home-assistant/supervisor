@@ -189,12 +189,13 @@ class DataDisk(CoreSysAttributes):
             await self.sys_dbus.agent.datadisk.reload_device()
 
         # Register for signals on devices added/removed
-        self.sys_dbus.udisks2.udisks2_object_manager.dbus.object_manager.on_interfaces_added(
-            self._udisks2_interface_added
-        )
-        self.sys_dbus.udisks2.udisks2_object_manager.dbus.object_manager.on_interfaces_removed(
-            self._udisks2_interface_removed
-        )
+        if self.sys_dbus.udisks2.is_connected:
+            self.sys_dbus.udisks2.udisks2_object_manager.dbus.object_manager.on_interfaces_added(
+                self._udisks2_interface_added
+            )
+            self.sys_dbus.udisks2.udisks2_object_manager.dbus.object_manager.on_interfaces_removed(
+                self._udisks2_interface_removed
+            )
 
     @Job(
         name="data_disk_migrate",
