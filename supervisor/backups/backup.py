@@ -468,12 +468,12 @@ class Backup(JobGroup):
                 _outer_tarfile = _outer_secure_tarfile.open()
             except PermissionError as ex:
                 raise BackupPermissionError(
-                    f"Cannot open backup file {self.tarfile.as_posix()} for writing, permission error!",
+                    f"Cannot open backup file {self.tarfile.as_posix()}, permission error!",
                     _LOGGER.error,
                 ) from ex
             except FileExistsError as ex:
                 raise BackupFileExistError(
-                    f"Cannot open backup file {self.tarfile.as_posix()} because it already exists!",
+                    f"Cannot open backup file {self.tarfile.as_posix()}, file already exists!",
                     _LOGGER.error,
                 ) from ex
             except OSError as ex:
