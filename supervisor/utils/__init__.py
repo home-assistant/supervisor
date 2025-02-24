@@ -95,7 +95,7 @@ def remove_folder(
     if content_only:
         find_args.extend(["-mindepth", "1"])
     try:
-        proc = subprocess.run(
+        subprocess.run(
             ["/usr/bin/find", str(folder), "-xdev", *find_args, "-delete"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
@@ -103,10 +103,11 @@ def remove_folder(
             text=True,
             check=True,
         )
-        if proc.returncode != 0:
-            _LOGGER.error("Can't remove folder %s: %s", folder, proc.stderr.strip())
     except OSError as err:
         _LOGGER.exception("Can't remove folder %s: %s", folder, err)
+    except subprocess.CalledProcessError as procerr:
+        _LOGGER.error("Can't remove folder %s: %s", folder, procerr.stderr.strip())
+        raise procerr
 
 
 def remove_folder_with_excludes(
