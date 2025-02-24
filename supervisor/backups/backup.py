@@ -462,13 +462,21 @@ class Backup(JobGroup):
                     _LOGGER.error,
                 )
 
-            outer_secure_tarfile = SecureTarFile(
+            _outer_secure_tarfile = SecureTarFile(
                 self.tarfile,
                 "w",
                 gzip=False,
                 bufsize=BUF_SIZE,
             )
-            return outer_secure_tarfile, outer_secure_tarfile.open()
+            try:
+                _outer_tarfile = _outer_secure_tarfile.open()
+            except PermissionError as ex:
+                raise BackupError(
+                    f"Cannot open backup file {self.tarfile.as_posix()} for writing",
+                    _LOGGER.error,
+                ) from ex
+
+            return _outer_secure_tarfile, _outer_tarfile
 
         def _close_outer_tarfile() -> int:
             """Close outer tarfile."""
