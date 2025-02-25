@@ -219,9 +219,9 @@ class Core(CoreSysAttributes):
         await self.sys_addons.boot(AddonStartup.INITIALIZE)
 
         try:
-            # HomeAssistant is already running / supervisor have only reboot
+            # HomeAssistant is already running, only Supervisor restarted
             if self.sys_hardware.helper.last_boot == self.sys_config.last_boot:
-                _LOGGER.info("Supervisor reboot detected")
+                _LOGGER.info("Detected Supervisor restart")
                 return
 
             # reset register services / discovery
