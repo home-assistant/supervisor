@@ -20,7 +20,7 @@ from typing import Any, Final
 import aiohttp
 from awesomeversion import AwesomeVersionCompareException
 from deepmerge import Merger
-from securetar import atomic_contents_add, secure_path
+from securetar import AddFileError, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -1327,7 +1327,7 @@ class Addon(AddonModel):
                 )
             )
             _LOGGER.info("Finish backup for addon %s", self.slug)
-        except (tarfile.TarError, OSError) as err:
+        except (tarfile.TarError, OSError, AddFileError) as err:
             raise AddonsError(
                 f"Can't write tarfile {tar_file}: {err}", _LOGGER.error
             ) from err
