@@ -31,6 +31,7 @@ from ..exceptions import (
     DBusObjectError,
     DBusParseError,
     DBusServiceUnkownError,
+    DBusTimedOutError,
     DBusTimeoutError,
     HassioNotSupportedError,
 )
@@ -87,6 +88,8 @@ class DBus:
             return DBusNotConnectedError(err.text)
         if err.type == ErrorType.TIMEOUT:
             return DBusTimeoutError(err.text)
+        if err.type == ErrorType.TIMED_OUT:
+            return DBusTimedOutError(err.text)
         if err.type == ErrorType.NO_REPLY:
             return DBusNoReplyError(err.text)
         return DBusFatalError(err.text, type_=err.type)
