@@ -1,6 +1,7 @@
 """Test evaluation base."""
 
 # pylint: disable=import-error,protected-access
+from os import listdir
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -25,16 +26,18 @@ async def test_fixup(coresys: CoreSys, tmp_path):
     )
 
     test_repo.mkdir()
+    (test_repo / ".git").mkdir()
     assert test_repo.exists()
 
     mock_repositorie = AsyncMock()
     mock_repositorie.git.path = test_repo
     coresys.store.repositories["test"] = mock_repositorie
+    assert len(listdir(test_repo)) > 0
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         await store_execute_reset()
 
-    assert not test_repo.exists()
+    assert len(listdir(test_repo)) == 0
     assert mock_repositorie.load.called
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0
