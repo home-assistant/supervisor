@@ -403,7 +403,11 @@ class DBusParseError(DBusError):
 
 
 class DBusTimeoutError(DBusError):
-    """D-Bus call timed out."""
+    """D-Bus call timeout."""
+
+
+class DBusTimedOutError(DBusError):
+    """D-Bus call timed out (typically when systemd D-Bus service activation fail)."""
 
 
 class DBusNoReplyError(DBusError):

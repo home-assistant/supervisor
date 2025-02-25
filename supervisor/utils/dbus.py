@@ -31,6 +31,7 @@ from ..exceptions import (
     DBusObjectError,
     DBusParseError,
     DBusServiceUnkownError,
+    DBusTimedOutError,
     DBusTimeoutError,
     HassioNotSupportedError,
 )
@@ -87,6 +88,8 @@ class DBus:
             return DBusNotConnectedError(err.text)
         if err.type == ErrorType.TIMEOUT:
             return DBusTimeoutError(err.text)
+        if err.type == ErrorType.TIMED_OUT:
+            return DBusTimedOutError(err.text)
         if err.type == ErrorType.NO_REPLY:
             return DBusNoReplyError(err.text)
         return DBusFatalError(err.text, type_=err.type)
@@ -136,7 +139,7 @@ class DBus:
         for _ in range(3):
             try:
                 return await self._bus.introspect(
-                    self.bus_name, self.object_path, timeout=10
+                    self.bus_name, self.object_path, timeout=30
                 )
             except InvalidIntrospectionError as err:
                 raise DBusParseError(
@@ -144,7 +147,13 @@ class DBus:
                 ) from err
             except DBusFastDBusError as err:
                 raise DBus.from_dbus_error(err) from None
-            except (EOFError, TimeoutError):
+            except TimeoutError:
+                # The systemd D-Bus activate service has a timeout of 25s, which will raise. We should
+                # not end up here unless the D-Bus broker is majorly overwhelmed.
+                _LOGGER.critical(
+                    "Timeout connecting to %s - %s", self.bus_name, self.object_path
+                )
+            except EOFError:
                 _LOGGER.warning(
                     "Busy system at %s - %s", self.bus_name, self.object_path
                 )
