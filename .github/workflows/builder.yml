@@ -108,7 +108,7 @@ jobs:
         if: needs.init.outputs.requirements == 'true'
         uses: home-assistant/wheels@2024.11.0
         with:
-          abi: cp312
+          abi: cp313
           tag: musllinux_1_2
           arch: ${{ matrix.arch }}
           wheels-key: ${{ secrets.WHEELS_KEY }}
