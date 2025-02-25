@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from securetar import atomic_contents_add, secure_path
+from securetar import AddFileError, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -435,7 +435,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                             file_filter=_is_excluded_by_filter,
                             arcname="data",
                         )
-                except (tarfile.TarError, OSError) as err:
+                except (tarfile.TarError, OSError, AddFileError) as err:
                     raise HomeAssistantBackupError(
                         f"Can't backup Home Assistant Core config folder: {str(err)}",
                         _LOGGER.error,
