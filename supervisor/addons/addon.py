@@ -977,11 +977,21 @@ class Addon(AddonModel):
             return
 
         # Need install/update
-        with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_folder:
-            profile_file = Path(tmp_folder, "apparmor.txt")
+        tmp_folder: TemporaryDirectory | None = None
 
+        def install_update_profile() -> Path:
+            nonlocal tmp_folder
+            tmp_folder = TemporaryDirectory(dir=self.sys_config.path_tmp)
+            profile_file = Path(tmp_folder, "apparmor.txt")
             adjust_profile(self.slug, self.path_apparmor, profile_file)
+            return profile_file
+
+        try:
+            profile_file = await self.sys_run_in_executor(install_update_profile)
             await self.sys_host.apparmor.load_profile(self.slug, profile_file)
+        finally:
+            if tmp_folder:
+                await self.sys_run_in_executor(tmp_folder.cleanup)
 
     async def uninstall_apparmor(self) -> None:
         """Remove AppArmor profile for Add-on."""

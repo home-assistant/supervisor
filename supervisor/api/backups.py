@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 import errno
+from io import IOBase
 import logging
 from pathlib import Path
 import re
@@ -518,29 +519,28 @@ class APIBackups(CoreSysAttributes):
             except vol.Invalid as ex:
                 raise APIError(humanize_error(filename, ex)) from None
 
-        with TemporaryDirectory(dir=tmp_path.as_posix()) as temp_dir:
-            tar_file = Path(temp_dir, "backup.tar")
+        temp_dir: TemporaryDirectory | None = None
+        backup_file_stream: IOBase | None = None
+
+        def open_backup_file() -> Path:
+            nonlocal temp_dir, backup_file_stream
+            temp_dir = TemporaryDirectory(dir=tmp_path.as_posix())
+            tar_file = Path(temp_dir.name, "backup.tar")
+            backup_file_stream = tar_file.open("wb")
+            return tar_file
+
+        def close_backup_file() -> None:
+            if backup_file_stream:
+                backup_file_stream.close()
+            if temp_dir:
+                temp_dir.cleanup()
+
+        try:
             reader = await request.multipart()
             contents = await reader.next()
-            try:
-                with tar_file.open("wb") as backup:
-                    while True:
-                        chunk = await contents.read_chunk()
-                        if not chunk:
-                            break
-                        backup.write(chunk)
-
-            except OSError as err:
-                if err.errno == errno.EBADMSG and location in {
-                    LOCATION_CLOUD_BACKUP,
-                    None,
-                }:
-                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-                _LOGGER.error("Can't write new backup file: %s", err)
-                return False
-
-            except asyncio.CancelledError:
-                return False
+            tar_file = await self.sys_run_in_executor(open_backup_file)
+            while chunk := await contents.read_chunk(size=2**16):
+                await self.sys_run_in_executor(backup_file_stream.write, chunk)
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
@@ -550,6 +550,21 @@ class APIBackups(CoreSysAttributes):
                     additional_locations=locations,
                 )
             )
+        except OSError as err:
+            if err.errno == errno.EBADMSG and location in {
+                LOCATION_CLOUD_BACKUP,
+                None,
+            }:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+            _LOGGER.error("Can't write new backup file: %s", err)
+            return False
+
+        except asyncio.CancelledError:
+            return False
+
+        finally:
+            if temp_dir or backup:
+                await self.sys_run_in_executor(close_backup_file)
 
         if backup:
             return {ATTR_SLUG: backup.slug}
