@@ -1,5 +1,5 @@
 aiodns==3.2.0
-aiohttp==3.11.12
+aiohttp==3.11.13
 atomicwrites-homeassistant==1.4.1
 attrs==25.1.0
 awesomeversion==24.6.0
