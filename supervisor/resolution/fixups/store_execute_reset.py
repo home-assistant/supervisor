@@ -1,5 +1,6 @@
 """Helpers to check and fix issues with free space."""
 
+from functools import partial
 import logging
 
 from ...coresys import CoreSys
@@ -40,7 +41,9 @@ class FixupStoreExecuteReset(FixupBase):
             _LOGGER.warning("Can't find store %s for fixup", reference)
             return
 
-        await self.sys_run_in_executor(remove_folder, repository.git.path)
+        await self.sys_run_in_executor(
+            partial(remove_folder, folder=repository.git.path, content_only=True)
+        )
 
         # Load data again
         try:
