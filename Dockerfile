@@ -9,7 +9,8 @@ ENV \
 
 ARG \
     COSIGN_VERSION \
-    BUILD_ARCH
+    BUILD_ARCH \
+    QEMU_CPU
 
 # Install base
 WORKDIR /usr/src
