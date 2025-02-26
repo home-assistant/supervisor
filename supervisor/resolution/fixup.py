@@ -22,15 +22,20 @@ class ResolutionFixup(CoreSysAttributes):
         self.coresys = coresys
         self._fixups: dict[str, FixupBase] = {}
 
-        self._load()
+    async def load(self) -> None:
+        """Load all fixups."""
 
-    def _load(self):
-        """Load all checks."""
-        package = f"{__package__}.fixups"
-        for module in get_valid_modules("fixups"):
-            fixup_module = import_module(f"{package}.{module}")
-            fixup = fixup_module.setup(self.coresys)
-            self._fixups[fixup.slug] = fixup
+        def _load() -> dict[str, FixupBase]:
+            """Load and setup fixups in executor."""
+            package = f"{__package__}.fixups"
+            fixups: dict[str, FixupBase] = {}
+            for module in get_valid_modules("fixups"):
+                fixup_module = import_module(f"{package}.{module}")
+                fixup = fixup_module.setup(self.coresys)
+                fixups[fixup.slug] = fixup
+            return fixups
+
+        self._fixups = await self.sys_run_in_executor(_load)
 
     @property
     def all_fixes(self) -> list[FixupBase]:

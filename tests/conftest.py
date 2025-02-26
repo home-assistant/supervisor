@@ -96,21 +96,16 @@ async def docker() -> DockerAPI:
             "supervisor.docker.manager.DockerAPI.info",
             return_value=MagicMock(),
         ),
-        patch(
-            "supervisor.docker.manager.DockerConfig",
-            return_value=MagicMock(),
-        ),
         patch("supervisor.docker.manager.DockerAPI.unload"),
     ):
         docker_obj = DockerAPI(MagicMock())
+        docker_obj.config._data = {"registries": {}}
         with patch("supervisor.docker.monitor.DockerMonitor.load"):
             await docker_obj.load()
 
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
         docker_obj.info.version = "1.0.0"
-
-        docker_obj.config.registries = {}
 
         yield docker_obj
 
@@ -323,15 +318,18 @@ async def coresys(
         coresys_obj = await initialize_coresys()
 
     # Mock save json
-    coresys_obj._ingress.save_data = MagicMock()
-    coresys_obj._auth.save_data = MagicMock()
-    coresys_obj._updater.save_data = MagicMock()
-    coresys_obj._config.save_data = MagicMock()
-    coresys_obj._jobs.save_data = MagicMock()
-    coresys_obj._resolution.save_data = MagicMock()
-    coresys_obj._addons.data.save_data = MagicMock()
-    coresys_obj._store.save_data = MagicMock()
-    coresys_obj._mounts.save_data = MagicMock()
+    coresys_obj._ingress.save_data = AsyncMock()
+    coresys_obj._auth.save_data = AsyncMock()
+    coresys_obj._updater.save_data = AsyncMock()
+    coresys_obj._config.save_data = AsyncMock()
+    coresys_obj._jobs.save_data = AsyncMock()
+    coresys_obj._resolution.save_data = AsyncMock()
+    coresys_obj._addons.data.save_data = AsyncMock()
+    coresys_obj._store.save_data = AsyncMock()
+    coresys_obj._mounts.save_data = AsyncMock()
+
+    # Load resolution center
+    await coresys_obj.resolution.load()
 
     # Mock test client
     coresys_obj._supervisor.instance._meta = {
@@ -549,10 +547,10 @@ async def repository(coresys: CoreSys):
 
 
 @pytest.fixture
-def install_addon_ssh(coresys: CoreSys, repository):
+async def install_addon_ssh(coresys: CoreSys, repository):
     """Install local_ssh add-on."""
     store = coresys.addons.store[TEST_ADDON_SLUG]
-    coresys.addons.data.install(store)
+    await coresys.addons.data.install(store)
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 
     addon = Addon(coresys, store.slug)
@@ -561,10 +559,10 @@ def install_addon_ssh(coresys: CoreSys, repository):
 
 
 @pytest.fixture
-def install_addon_example(coresys: CoreSys, repository):
+async def install_addon_example(coresys: CoreSys, repository):
     """Install local_example add-on."""
     store = coresys.addons.store["local_example"]
-    coresys.addons.data.install(store)
+    await coresys.addons.data.install(store)
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 
     addon = Addon(coresys, store.slug)

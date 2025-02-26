@@ -82,7 +82,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
     async def unload(self) -> None:
         """Shutdown sessions."""
-        self.save_data()
+        await self.save_data()
 
     def _cleanup_sessions(self) -> None:
         """Remove not used sessions."""
@@ -170,16 +170,16 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
         # Save port for next time
         self.ports[addon_slug] = port
-        self.save_data()
+        await self.save_data()
         return port
 
-    def del_dynamic_port(self, addon_slug: str) -> None:
+    async def del_dynamic_port(self, addon_slug: str) -> None:
         """Remove a previously assigned dynamic port."""
         if addon_slug not in self.ports:
             return
 
         del self.ports[addon_slug]
-        self.save_data()
+        await self.save_data()
 
     async def update_hass_panel(self, addon: Addon):
         """Return True if Home Assistant up and running."""

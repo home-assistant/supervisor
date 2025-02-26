@@ -246,7 +246,7 @@ async def test_watchdog_during_attach(
 ):
     """Test host reboot treated as manual stop but not supervisor restart."""
     store = coresys.addons.store[TEST_ADDON_SLUG]
-    coresys.addons.data.install(store)
+    await coresys.addons.data.install(store)
 
     with (
         patch.object(Addon, "restart") as restart,

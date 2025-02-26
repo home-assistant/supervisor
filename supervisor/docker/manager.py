@@ -5,7 +5,7 @@ from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, Self
 
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -112,6 +112,11 @@ class DockerAPI:
         self._info: DockerInfo = DockerInfo.new(self.docker.info())
         self.config: DockerConfig = DockerConfig()
         self._monitor: DockerMonitor = DockerMonitor(coresys)
+
+    async def load_config(self) -> Self:
+        """Load config in executor."""
+        await self.config.read_data()
+        return self
 
     @property
     def images(self) -> ImageCollection:

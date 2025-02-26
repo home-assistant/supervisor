@@ -9,8 +9,6 @@ import pytest
 from supervisor.addons.addon import Addon
 from supervisor.arch import CpuArch
 from supervisor.backups.manager import BackupManager
-from supervisor.bootstrap import migrate_system_env
-from supervisor.const import ATTR_ADDONS_CUSTOM_LIST
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import AddonsNotSupportedError, StoreJobError
 from supervisor.homeassistant.module import HomeAssistant
@@ -24,7 +22,7 @@ from tests.common import load_yaml_fixture
 
 async def test_default_load(coresys: CoreSys):
     """Test default load from config."""
-    store_manager = StoreManager(coresys)
+    store_manager = await StoreManager(coresys).load_config()
     refresh_cache_calls: set[str] = set()
 
     async def mock_refresh_cache(obj: AddonStore):
@@ -77,7 +75,7 @@ async def test_load_with_custom_repository(coresys: CoreSys):
         ),
         patch("pathlib.Path.is_file", return_value=True),
     ):
-        store_manager = StoreManager(coresys)
+        store_manager = await StoreManager(coresys).load_config()
 
     with (
         patch("supervisor.store.repository.Repository.load", return_value=None),
@@ -105,45 +103,6 @@ async def test_load_with_custom_repository(coresys: CoreSys):
         in store_manager.repository_urls
     )
     assert "http://example.com" in store_manager.repository_urls
-
-
-async def test_load_from_core_config(coresys: CoreSys):
-    """Test custom repositories loaded from core config when present."""
-    # pylint: disable=protected-access
-    coresys.config._data[ATTR_ADDONS_CUSTOM_LIST] = ["http://example.com"]
-    assert coresys.config.addons_repositories == ["http://example.com"]
-
-    migrate_system_env(coresys)
-
-    with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
-        patch("supervisor.store.repository.Repository.validate", return_value=True),
-        patch("pathlib.Path.exists", return_value=True),
-    ):
-        await coresys.store.load()
-
-    assert len(coresys.store.all) == 6
-    assert isinstance(coresys.store.get("core"), Repository)
-    assert isinstance(coresys.store.get("local"), Repository)
-
-    assert len(coresys.store.repository_urls) == 4
-    assert (
-        "https://github.com/hassio-addons/repository" in coresys.store.repository_urls
-    )
-    assert (
-        "https://github.com/esphome/home-assistant-addon"
-        in coresys.store.repository_urls
-    )
-    assert (
-        "https://github.com/music-assistant/home-assistant-addon"
-        in coresys.store.repository_urls
-    )
-    assert "http://example.com" in coresys.store.repository_urls
-
-    assert coresys.config.addons_repositories == []
-
-    coresys.config.save_data.assert_called_once()
-    coresys.store.save_data.assert_called_once()
 
 
 async def test_reload_fails_if_out_of_date(coresys: CoreSys):

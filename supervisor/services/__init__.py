@@ -1,5 +1,7 @@
 """Handle internal services discovery."""
 
+from typing import Self
+
 from ..coresys import CoreSys, CoreSysAttributes
 from .const import SERVICE_MQTT, SERVICE_MYSQL
 from .data import ServicesData
@@ -19,6 +21,11 @@ class ServiceManager(CoreSysAttributes):
         self.data: ServicesData = ServicesData()
         self.services_obj: dict[str, ServiceInterface] = {}
 
+    async def load_config(self) -> Self:
+        """Load config in executor."""
+        await self.data.read_data()
+        return self
+
     @property
     def list_services(self) -> list[ServiceInterface]:
         """Return a list of services."""
@@ -33,6 +40,6 @@ class ServiceManager(CoreSysAttributes):
         for slug, service in AVAILABLE_SERVICES.items():
             self.services_obj[slug] = service(self.coresys)
 
-    def reset(self) -> None:
+    async def reset(self) -> None:
         """Reset available data."""
-        self.data.reset_data()
+        await self.data.reset_data()
