@@ -982,7 +982,7 @@ class Addon(AddonModel):
         def install_update_profile() -> Path:
             nonlocal tmp_folder
             tmp_folder = TemporaryDirectory(dir=self.sys_config.path_tmp)
-            profile_file = Path(tmp_folder, "apparmor.txt")
+            profile_file = Path(tmp_folder.name, "apparmor.txt")
             adjust_profile(self.slug, self.path_apparmor, profile_file)
             return profile_file
 
