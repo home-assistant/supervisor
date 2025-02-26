@@ -19,7 +19,7 @@ from typing import Any, Self
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from securetar import SecureTarFile, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -741,7 +741,7 @@ class Backup(JobGroup):
         try:
             if await self.sys_run_in_executor(_save):
                 self._data[ATTR_FOLDERS].append(name)
-        except (tarfile.TarError, OSError) as err:
+        except (tarfile.TarError, OSError, AddFileError) as err:
             raise BackupError(
                 f"Can't backup folder {name}: {str(err)}", _LOGGER.error
             ) from err
