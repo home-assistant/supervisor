@@ -106,7 +106,7 @@ jobs:
 
       - name: Build wheels
         if: needs.init.outputs.requirements == 'true'
-        uses: home-assistant/wheels@2024.11.0
+        uses: home-assistant/wheels@check-if-qemu-is-required
         with:
           abi: cp313
           tag: musllinux_1_2
