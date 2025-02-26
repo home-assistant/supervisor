@@ -19,7 +19,10 @@ _DEFAULT: dict[str, Any] = {}
 
 
 def find_one_filetype(path: Path, filename: str, filetypes: list[str]) -> Path:
-    """Find first file matching filetypes."""
+    """Find first file matching filetypes.
+
+    Must be run in executor.
+    """
     for file in path.glob(f"**/{filename}.*"):
         if file.suffix in filetypes:
             return file
@@ -27,7 +30,10 @@ def find_one_filetype(path: Path, filename: str, filetypes: list[str]) -> Path:
 
 
 def read_json_or_yaml_file(path: Path) -> dict:
-    """Read JSON or YAML file."""
+    """Read JSON or YAML file.
+
+    Must be run in executor.
+    """
     if path.suffix == ".json":
         return read_json_file(path)
 
@@ -38,7 +44,10 @@ def read_json_or_yaml_file(path: Path) -> dict:
 
 
 def write_json_or_yaml_file(path: Path, data: dict) -> None:
-    """Write JSON or YAML file."""
+    """Write JSON or YAML file.
+
+    Must be run in executor.
+    """
     if path.suffix == ".json":
         return write_json_file(path, data)
 

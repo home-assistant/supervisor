@@ -12,7 +12,10 @@ RE_PROFILE = re.compile(r"^profile ([^ ]+).*$")
 
 
 def get_profile_name(profile_file: Path) -> str:
-    """Read the profile name from file."""
+    """Read the profile name from file.
+
+    Must be run in executor.
+    """
     profiles = set()
 
     try:
@@ -42,14 +45,20 @@ def get_profile_name(profile_file: Path) -> str:
 
 
 def validate_profile(profile_name: str, profile_file: Path) -> bool:
-    """Check if profile from file is valid with profile name."""
+    """Check if profile from file is valid with profile name.
+
+    Must be run in executor.
+    """
     if profile_name == get_profile_name(profile_file):
         return True
     return False
 
 
 def adjust_profile(profile_name: str, profile_file: Path, profile_new: Path) -> None:
-    """Fix the profile name."""
+    """Fix the profile name.
+
+    Must be run in executor.
+    """
     org_profile = get_profile_name(profile_file)
     profile_data = []
 
