@@ -74,7 +74,10 @@ def _read_addon_translations(addon_path: Path) -> dict:
 
 
 def _read_git_repository(path: Path) -> ProcessedRepository | None:
-    """Process a custom repository folder."""
+    """Process a custom repository folder.
+
+    Must be run in executor.
+    """
     slug = extract_hash_from_path(path)
 
     # exists repository json
