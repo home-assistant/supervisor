@@ -18,7 +18,6 @@ from .const import (
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
     ENV_SUPERVISOR_SHARE,
-    MACHINE_ID,
     SOCKET_DOCKER,
     LogLevel,
     UpdateChannel,
@@ -81,16 +80,15 @@ async def initialize_coresys() -> CoreSys:
     coresys.bus = Bus(coresys)
     coresys.mounts = await MountManager(coresys).load_config()
 
+    # Set Machine/Host ID
+    await coresys.init_machine()
+
     # diagnostics
     if coresys.config.diagnostics:
         init_sentry(coresys)
 
     # bootstrap config
     initialize_system(coresys)
-
-    # Set Machine/Host ID
-    if MACHINE_ID.exists():
-        coresys.machine_id = MACHINE_ID.read_text(encoding="utf-8").strip()
 
     # Check if ENV is in development mode
     if coresys.dev:
@@ -104,16 +102,6 @@ async def initialize_coresys() -> CoreSys:
 
     # Convert datetime
     logging.Formatter.converter = lambda *args: coresys.now().timetuple()
-
-    # Set machine type
-    if os.environ.get(ENV_SUPERVISOR_MACHINE):
-        coresys.machine = os.environ[ENV_SUPERVISOR_MACHINE]
-    elif os.environ.get(ENV_HOMEASSISTANT_REPOSITORY):
-        coresys.machine = os.environ[ENV_HOMEASSISTANT_REPOSITORY][14:-14]
-        _LOGGER.warning(
-            "Missing SUPERVISOR_MACHINE environment variable. Fallback to deprecated extraction!"
-        )
-    _LOGGER.info("Setting up coresys for machine: %s", coresys.machine)
 
     return coresys
 
