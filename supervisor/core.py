@@ -57,10 +57,10 @@ class Core(CoreSysAttributes):
         """Return true if the installation is healthy."""
         return len(self.sys_resolution.unhealthy) == 0
 
-    def _write_run_state(self, new_state: str):
+    def _write_run_state(self, new_state: CoreState):
         """Write run state for s6 service supervisor."""
         try:
-            RUN_SUPERVISOR_STATE.write_text(new_state, encoding="utf-8")
+            RUN_SUPERVISOR_STATE.write_text(str(new_state), encoding="utf-8")
         except OSError as err:
             _LOGGER.warning(
                 "Can't update the Supervisor state to %s: %s", new_state, err
