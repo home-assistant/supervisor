@@ -48,7 +48,7 @@ class APISecurity(CoreSysAttributes):
         if ATTR_FORCE_SECURITY in body:
             self.sys_security.force = body[ATTR_FORCE_SECURITY]
 
-        self.sys_security.save_data()
+        await self.sys_security.save_data()
 
         await self.sys_resolution.evaluate.evaluate_system()
 

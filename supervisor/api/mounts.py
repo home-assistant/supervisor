@@ -66,7 +66,7 @@ class APIMounts(CoreSysAttributes):
             else:
                 self.sys_mounts.default_backup_mount = mount
 
-        self.sys_mounts.save_data()
+        await self.sys_mounts.save_data()
 
     @api_process
     async def create_mount(self, request: web.Request) -> None:
@@ -87,7 +87,7 @@ class APIMounts(CoreSysAttributes):
             if not self.sys_mounts.default_backup_mount:
                 self.sys_mounts.default_backup_mount = mount
 
-        self.sys_mounts.save_data()
+        await self.sys_mounts.save_data()
 
     @api_process
     async def update_mount(self, request: web.Request) -> None:
@@ -110,7 +110,7 @@ class APIMounts(CoreSysAttributes):
         elif self.sys_mounts.default_backup_mount == mount:
             self.sys_mounts.default_backup_mount = None
 
-        self.sys_mounts.save_data()
+        await self.sys_mounts.save_data()
 
     @api_process
     async def delete_mount(self, request: web.Request) -> None:
@@ -122,7 +122,7 @@ class APIMounts(CoreSysAttributes):
         if mount.usage == MountUsage.BACKUP:
             self.sys_create_task(self.sys_backups.reload())
 
-        self.sys_mounts.save_data()
+        await self.sys_mounts.save_data()
 
     @api_process
     async def reload_mount(self, request: web.Request) -> None:

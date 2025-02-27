@@ -25,7 +25,7 @@ class FixupMountExecuteRemove(FixupBase):
         except MountNotFound:
             _LOGGER.warning("Can't find mount %s for fixup", reference)
         else:
-            self.sys_mounts.save_data()
+            await self.sys_mounts.save_data()
 
     @property
     def suggestion(self) -> SuggestionType:

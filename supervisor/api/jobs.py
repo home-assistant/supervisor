@@ -92,7 +92,7 @@ class APIJobs(CoreSysAttributes):
         if ATTR_IGNORE_CONDITIONS in body:
             self.sys_jobs.ignore_conditions = body[ATTR_IGNORE_CONDITIONS]
 
-        self.sys_jobs.save_data()
+        await self.sys_jobs.save_data()
 
         await self.sys_resolution.evaluate.evaluate_system()
 

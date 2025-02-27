@@ -149,7 +149,7 @@ class APIHomeAssistant(CoreSysAttributes):
                 ATTR_BACKUPS_EXCLUDE_DATABASE
             ]
 
-        self.sys_homeassistant.save_data()
+        await self.sys_homeassistant.save_data()
 
     @api_process
     async def stats(self, request: web.Request) -> dict[Any, str]:

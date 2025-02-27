@@ -47,7 +47,7 @@ class APIServices(CoreSysAttributes):
         addon = request[REQUEST_FROM]
 
         _check_access(request, service.slug)
-        service.set_service_data(addon, body)
+        await service.set_service_data(addon, body)
 
     @api_process
     async def get_service(self, request):
@@ -69,7 +69,7 @@ class APIServices(CoreSysAttributes):
 
         # Access
         _check_access(request, service.slug, True)
-        service.del_service_data(addon)
+        await service.del_service_data(addon)
 
 
 def _check_access(request, service, provide=False):

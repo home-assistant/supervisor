@@ -53,7 +53,7 @@ class APIDocker(CoreSysAttributes):
         for hostname, registry in body.items():
             self.sys_docker.config.registries[hostname] = registry
 
-        self.sys_docker.config.save_data()
+        await self.sys_docker.config.save_data()
 
     @api_process
     async def remove_registry(self, request: web.Request):
@@ -63,7 +63,7 @@ class APIDocker(CoreSysAttributes):
             raise APINotFound(f"Hostname {hostname} does not exist in registries")
 
         del self.sys_docker.config.registries[hostname]
-        self.sys_docker.config.save_data()
+        await self.sys_docker.config.save_data()
 
     @api_process
     async def info(self, request: web.Request):

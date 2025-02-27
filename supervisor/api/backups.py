@@ -212,7 +212,7 @@ class APIBackups(CoreSysAttributes):
         if ATTR_DAYS_UNTIL_STALE in body:
             self.sys_backups.days_until_stale = body[ATTR_DAYS_UNTIL_STALE]
 
-        self.sys_backups.save_data()
+        await self.sys_backups.save_data()
 
     @api_process
     async def reload(self, _):
