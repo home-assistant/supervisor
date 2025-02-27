@@ -60,7 +60,7 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     )
 
     # Not full startup - missing information
-    if coresys.core.state in (CoreState.INITIALIZE, CoreState.SETUP):
+    if coresys.core.state in (None, CoreState.INITIALIZE, CoreState.SETUP):
         return event
 
     # List installed addons
