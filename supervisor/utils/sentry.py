@@ -1,10 +1,12 @@
 """Utilities for sentry."""
 
+from functools import partial
 import logging
 from typing import Any
 
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
 from sentry_sdk.integrations.atexit import AtexitIntegration
 from sentry_sdk.integrations.dedupe import DedupeIntegration
 from sentry_sdk.integrations.excepthook import ExcepthookIntegration
@@ -26,11 +28,12 @@ def init_sentry(coresys: CoreSys) -> None:
         _LOGGER.info("Initializing Supervisor Sentry")
         sentry_sdk.init(
             dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
-            before_send=lambda event, hint: filter_data(coresys, event, hint),
+            before_send=partial(filter_data, coresys),
             auto_enabling_integrations=False,
             default_integrations=False,
             integrations=[
                 AioHttpIntegration(),
+                AsyncioIntegration(),
                 ExcepthookIntegration(),
                 DedupeIntegration(),
                 AtexitIntegration(),
