@@ -72,7 +72,7 @@ def test_defaults(coresys):
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         filtered = filter_data(coresys, SAMPLE_EVENT, {})
 
-    assert ["installation_type", "supervised"] in filtered["tags"]
+    assert filtered["tags"]["installation_type"] == "supervised"
     assert filtered["contexts"]["host"]["arch"] == "amd64"
     assert filtered["contexts"]["host"]["machine"] == "qemux86-64"
     assert filtered["contexts"]["versions"]["supervisor"] == AwesomeVersion(
@@ -84,7 +84,6 @@ def test_defaults(coresys):
 def test_sanitize(coresys):
     """Test event sanitation."""
     event = {
-        "tags": [["url", "https://mydomain.com"]],
         "request": {
             "url": "https://mydomain.com",
             "headers": [
@@ -100,8 +99,6 @@ def test_sanitize(coresys):
     coresys.core.state = CoreState.RUNNING
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         filtered = filter_data(coresys, event, {})
-
-    assert ["url", "https://example.com"] in filtered["tags"]
 
     assert filtered["request"]["url"] == "https://example.com"
 

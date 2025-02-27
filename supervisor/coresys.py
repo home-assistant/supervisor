@@ -15,7 +15,13 @@ from typing import TYPE_CHECKING, Any, Self, TypeVar
 import aiohttp
 
 from .config import CoreConfig
-from .const import ENV_SUPERVISOR_DEV, SERVER_SOFTWARE
+from .const import (
+    ENV_HOMEASSISTANT_REPOSITORY,
+    ENV_SUPERVISOR_DEV,
+    ENV_SUPERVISOR_MACHINE,
+    MACHINE_ID,
+    SERVER_SOFTWARE,
+)
 from .utils.dt import UTC, get_time_zone
 
 if TYPE_CHECKING:
@@ -106,6 +112,26 @@ class CoreSys:
         """Load config in executor."""
         await self.config.read_data()
         return self
+
+    async def init_machine(self):
+        """Initialize machine information."""
+
+        def _load_machine_id() -> str | None:
+            if MACHINE_ID.exists():
+                return MACHINE_ID.read_text(encoding="utf-8").strip()
+            return None
+
+        self.machine_id = await self.run_in_executor(_load_machine_id)
+
+        # Set machine type
+        if os.environ.get(ENV_SUPERVISOR_MACHINE):
+            self.machine = os.environ[ENV_SUPERVISOR_MACHINE]
+        elif os.environ.get(ENV_HOMEASSISTANT_REPOSITORY):
+            self.machine = os.environ[ENV_HOMEASSISTANT_REPOSITORY][14:-14]
+            _LOGGER.warning(
+                "Missing SUPERVISOR_MACHINE environment variable. Fallback to deprecated extraction!"
+            )
+        _LOGGER.info("Setting up coresys for machine: %s", self.machine)
 
     @property
     def dev(self) -> bool:
