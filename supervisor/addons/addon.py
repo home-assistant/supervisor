@@ -852,7 +852,7 @@ class Addon(AddonModel):
         for service in self.sys_services.list_services:
             if self.slug not in service.active:
                 continue
-            service.del_service_data(self)
+            await service.del_service_data(self)
 
         # Remove from addon manager
         await self.sys_addons.data.uninstall(self)

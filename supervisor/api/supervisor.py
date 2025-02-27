@@ -159,8 +159,8 @@ class APISupervisor(CoreSysAttributes):
             self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
 
         # Save changes before processing addons in case of errors
-        self.sys_updater.save_data()
-        self.sys_config.save_data()
+        await self.sys_updater.save_data()
+        await self.sys_config.save_data()
 
         # Remove: 2022.9
         if ATTR_ADDONS_REPOSITORIES in body:

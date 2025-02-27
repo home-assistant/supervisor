@@ -206,7 +206,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         # On start-up we add the saved repos to force a load. But they're already in data
         if url not in self._data[ATTR_REPOSITORIES]:
             self._data[ATTR_REPOSITORIES].append(url)
-            self.save_data()
+            await self.save_data()
 
         # Persist changes
         if persist:
@@ -227,7 +227,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             )
         await self.repositories.pop(repository.slug).remove()
         self._data[ATTR_REPOSITORIES].remove(repository.source)
-        self.save_data()
+        await self.save_data()
 
         if persist:
             await self.data.update()

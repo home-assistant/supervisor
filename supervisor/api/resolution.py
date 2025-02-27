@@ -126,7 +126,7 @@ class APIResoulution(CoreSysAttributes):
         if ATTR_ENABLED in body:
             check.enabled = body[ATTR_ENABLED]
 
-        self.sys_resolution.save_data()
+        await self.sys_resolution.save_data()
 
     @api_process
     async def run_check(self, request: web.Request) -> None:
