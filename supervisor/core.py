@@ -38,7 +38,8 @@ class Core(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
-        self._state: CoreState | None = None
+        self._state: CoreState = CoreState.INITIALIZE
+        self._write_run_state(self._state)
         self.exit_code: int = 0
 
     @property
@@ -56,34 +57,36 @@ class Core(CoreSysAttributes):
         """Return true if the installation is healthy."""
         return len(self.sys_resolution.unhealthy) == 0
 
+    def _write_run_state(self, new_state: CoreState):
+        """Write run state for s6 service supervisor."""
+        try:
+            RUN_SUPERVISOR_STATE.write_text(str(new_state), encoding="utf-8")
+        except OSError as err:
+            _LOGGER.warning(
+                "Can't update the Supervisor state to %s: %s", new_state, err
+            )
+
     @state.setter
     def state(self, new_state: CoreState) -> None:
         """Set core into new state."""
         if self._state == new_state:
             return
-        try:
-            RUN_SUPERVISOR_STATE.write_text(new_state, encoding="utf-8")
-        except OSError as err:
-            _LOGGER.warning(
-                "Can't update the Supervisor state to %s: %s", new_state, err
-            )
-        finally:
-            self._state = new_state
 
-            # Don't attempt to notify anyone on CLOSE as we're about to stop the event loop
-            if new_state != CoreState.CLOSE:
-                self.sys_bus.fire_event(BusEvent.SUPERVISOR_STATE_CHANGE, new_state)
+        self._write_run_state(new_state)
+        self._state = new_state
 
-                # These will be received by HA after startup has completed which won't make sense
-                if new_state not in STARTING_STATES:
-                    self.sys_homeassistant.websocket.supervisor_update_event(
-                        "info", {"state": new_state}
-                    )
+        # Don't attempt to notify anyone on CLOSE as we're about to stop the event loop
+        if new_state != CoreState.CLOSE:
+            self.sys_bus.fire_event(BusEvent.SUPERVISOR_STATE_CHANGE, new_state)
+
+            # These will be received by HA after startup has completed which won't make sense
+            if new_state not in STARTING_STATES:
+                self.sys_homeassistant.websocket.supervisor_update_event(
+                    "info", {"state": new_state}
+                )
 
     async def connect(self):
         """Connect Supervisor container."""
-        self.state = CoreState.INITIALIZE
-
         # Load information from container
         await self.sys_supervisor.load()
 

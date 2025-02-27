@@ -93,4 +93,4 @@ def test_write_state_failure(run_dir, coresys: CoreSys, caplog: LogCaptureFixtur
         coresys.core.state = CoreState.RUNNING
 
         assert "Can't update the Supervisor state" in caplog.text
-        assert coresys.core.healthy is True
+        assert coresys.core.state == CoreState.RUNNING
