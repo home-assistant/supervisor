@@ -150,6 +150,7 @@ class Tasks(CoreSysAttributes):
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
             JobCondition.RUNNING,
+            JobCondition.ARCHITECTURE_SUPPORTED,
         ],
         limit=JobExecutionLimit.ONCE,
     )
