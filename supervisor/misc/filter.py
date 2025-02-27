@@ -35,6 +35,12 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
         return None
 
     event.setdefault("extra", {}).update({"os.environ": dict(os.environ)})
+    event.setdefault("user", {}).update({"id": coresys.machine_id})
+    event.setdefault("tags", {}).update(
+        {
+            "machine": coresys.machine,
+        }
+    )
 
     # Not full startup - missing information
     if coresys.core.state in (CoreState.INITIALIZE, CoreState.SETUP):
@@ -47,7 +53,6 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
     ]
 
     # Update information
-    event.setdefault("user", {}).update({"id": coresys.machine_id})
     event.setdefault("contexts", {}).update(
         {
             "supervisor": {
@@ -92,18 +97,11 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
         {plugin.slug: plugin.version for plugin in coresys.plugins.all_plugins}
     )
 
-    event.setdefault("tags", []).extend(
-        [
-            ["installation_type", "os" if coresys.os.available else "supervised"],
-            ["machine", coresys.machine],
-        ],
+    event["tags"].update(
+        {
+            "installation_type": "os" if coresys.os.available else "supervised",
+        }
     )
-
-    # Sanitize event
-    for i, tag in enumerate(event.get("tags", [])):
-        key, value = tag
-        if key == "url":
-            event["tags"][i] = [key, sanitize_url(value)]
 
     if event.get("request"):
         if event["request"].get("url"):
