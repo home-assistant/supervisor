@@ -18,6 +18,60 @@ from supervisor.resolution.const import (
 )
 
 SAMPLE_EVENT = {"sample": "event", "extra": {"Test": "123"}}
+SAMPLE_EVENT_AIOHTTP_INTERNAL = {
+    "level": "error",
+    "request": {
+        "url": "http://172.30.32.2/supervisor/options",
+        "query_string": "",
+        "method": "POST",
+        "env": {"REMOTE_ADDR": "172.30.32.1"},
+        "headers": {
+            "Host": "172.30.32.2",
+            "User-Agent": "HomeAssistant/2025.3.0.dev202501310226 aiohttp/3.11.11 Python/3.13",
+            "Authorization": "[Filtered]",
+            "X-Hass-Source": "core.handler",
+            "Accept": "*/*",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Content-Length": "20",
+            "Content-Type": "application/json",
+        },
+        "data": '{"diagnostics":true}',
+    },
+    "platform": "python",
+}
+SAMPLE_EVENT_AIOHTTP_EXTERNAL = {
+    "level": "error",
+    "request": {
+        "url": "http://debian-supervised-dev.lan:8123/ingress/SRtKwGqE15nF6jbzGCjkM7Nn3_uQlZ08RrJLzLJJQKc/ws",
+        "query_string": "",
+        "method": "GET",
+        "env": {"REMOTE_ADDR": "172.30.32.1"},
+        "headers": {
+            "Host": "debian-supervised-dev.lan:8123",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0",
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Origin": "http://debian-supervised-dev.lan:8123",
+            "Connection": "keep-alive, Upgrade",
+            "Cookie": "[Filtered]",
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache",
+            "Upgrade": "websocket",
+            "X-Hass-Source": "core.ingress",
+            "X-Ingress-Path": "/api/hassio_ingress/SRtKwGqE15nF6jbzGCjkM7Nn3_uQlZ08RrJLzLJJQKc",
+            "X-Forwarded-For": "",
+            "X-Forwarded-Host": "debian-supervised-dev.lan:8123",
+            "X-Forwarded-Proto": "http",
+            "Sec-WebSocket-Version": "13",
+            "Sec-WebSocket-Key": "BD239eBT8pDIxStE6QO+Qw==",
+            "Sec-WebSocket-Protocol": "tty",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Referer": "http://debian-supervised-dev.lan:8123/somehwere",
+        },
+        "data": None,
+    },
+    "platform": "python",
+}
 
 
 @pytest.fixture
@@ -81,33 +135,35 @@ def test_defaults(coresys):
     assert filtered["user"]["id"] == coresys.machine_id
 
 
-def test_sanitize(coresys):
-    """Test event sanitation."""
-    event = {
-        "request": {
-            "url": "https://mydomain.com",
-            "headers": [
-                ["Host", "mydomain.com"],
-                ["Referer", "https://mydomain.com/api/hassio_ingress/xxx-xxx/"],
-                ["X-Forwarded-Host", "mydomain.com"],
-                ["X-Supervisor-Key", "xxx"],
-            ],
-        },
-    }
+def test_sanitize_user_hostname(coresys):
+    """Test user hostname event sanitation."""
+    event = SAMPLE_EVENT_AIOHTTP_EXTERNAL
     coresys.config.diagnostics = True
 
     coresys.core.state = CoreState.RUNNING
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         filtered = filter_data(coresys, event, {})
 
-    assert filtered["request"]["url"] == "https://example.com"
+    assert "debian-supervised-dev.lan" not in filtered["request"]["url"]
 
-    assert ["Host", "example.com"] in filtered["request"]["headers"]
-    assert ["Referer", "https://example.com/api/hassio_ingress/xxx-xxx/"] in filtered[
-        "request"
-    ]["headers"]
-    assert ["X-Forwarded-Host", "example.com"] in filtered["request"]["headers"]
-    assert ["X-Supervisor-Key", "xxx"] in filtered["request"]["headers"]
+    assert "debian-supervised-dev.lan" not in filtered["request"]["headers"]["Host"]
+    assert "debian-supervised-dev.lan" not in filtered["request"]["headers"]["Referer"]
+    assert (
+        "debian-supervised-dev.lan"
+        not in filtered["request"]["headers"]["X-Forwarded-Host"]
+    )
+
+
+def test_sanitize_internal(coresys):
+    """Test internal event sanitation."""
+    event = SAMPLE_EVENT_AIOHTTP_INTERNAL
+    coresys.config.diagnostics = True
+
+    coresys.core.state = CoreState.RUNNING
+    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
+        filtered = filter_data(coresys, event, {})
+
+    assert filtered == event
 
 
 def test_issues_on_report(coresys):

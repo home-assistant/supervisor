@@ -1,25 +1,42 @@
 """Filter tools."""
 
+import ipaddress
 import os
 import re
 
 from aiohttp import hdrs
 import attr
 
-from ..const import HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
+from ..const import DOCKER_NETWORK_MASK, HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
 from ..exceptions import AddonConfigurationError
 
 RE_URL: re.Pattern = re.compile(r"(\w+:\/\/)(.*\.\w+)(.*)")
 
 
+def sanitize_host(host: str) -> str:
+    """Return a sanitized host."""
+    try:
+        # Allow internal URLs
+        ip = ipaddress.ip_address(host)
+        if ip in ipaddress.ip_network(DOCKER_NETWORK_MASK):
+            return host
+    except ValueError:
+        pass
+
+    return "sanitized-host.invalid"
+
+
 def sanitize_url(url: str) -> str:
     """Return a sanitized url."""
-    if not re.match(RE_URL, url):
+    match = re.match(RE_URL, url)
+    if not match:
         # Not a URL, just return it back
         return url
 
-    return re.sub(RE_URL, r"\1example.com\3", url)
+    host = sanitize_host(match.group(2))
+
+    return f"{match.group(1)}{host}{match.group(3)}"
 
 
 def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
@@ -107,18 +124,18 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
         if event["request"].get("url"):
             event["request"]["url"] = sanitize_url(event["request"]["url"])
 
-        for i, header in enumerate(event["request"].get("headers", [])):
-            key, value = header
-            if key == hdrs.REFERER:
-                event["request"]["headers"][i] = [key, sanitize_url(value)]
-
-            if key == HEADER_TOKEN:
-                event["request"]["headers"][i] = [key, "XXXXXXXXXXXXXXXXXXX"]
-
-            if key == HEADER_TOKEN_OLD:
-                event["request"]["headers"][i] = [key, "XXXXXXXXXXXXXXXXXXX"]
-
-            if key in [hdrs.HOST, hdrs.X_FORWARDED_HOST]:
-                event["request"]["headers"][i] = [key, "example.com"]
+        headers = event["request"].get("headers", {})
+        if hdrs.REFERER in headers:
+            headers[hdrs.REFERER] = sanitize_url(headers[hdrs.REFERER])
+        if HEADER_TOKEN in headers:
+            headers[HEADER_TOKEN] = "XXXXXXXXXXXXXXXXXXX"
+        if HEADER_TOKEN_OLD in headers:
+            headers[HEADER_TOKEN_OLD] = "XXXXXXXXXXXXXXXXXXX"
+        if hdrs.HOST in headers:
+            headers[hdrs.HOST] = sanitize_host(headers[hdrs.HOST])
+        if hdrs.X_FORWARDED_HOST in headers:
+            headers[hdrs.X_FORWARDED_HOST] = sanitize_host(
+                headers[hdrs.X_FORWARDED_HOST]
+            )
 
     return event
