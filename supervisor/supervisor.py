@@ -158,25 +158,35 @@ class Supervisor(CoreSysAttributes):
             ) from err
 
         # Load
-        with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
-            profile_file = Path(tmp_dir, "apparmor.txt")
-            try:
-                profile_file.write_text(data, encoding="utf-8")
-            except OSError as err:
-                if err.errno == errno.EBADMSG:
-                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-                raise SupervisorAppArmorError(
-                    f"Can't write temporary profile: {err!s}", _LOGGER.error
-                ) from err
+        temp_dir: TemporaryDirectory | None = None
 
-            try:
-                await self.sys_host.apparmor.load_profile(
-                    "hassio-supervisor", profile_file
-                )
-            except HostAppArmorError as err:
-                raise SupervisorAppArmorError(
-                    "Can't update AppArmor profile!", _LOGGER.error
-                ) from err
+        def write_profile() -> Path:
+            nonlocal temp_dir
+            temp_dir = TemporaryDirectory(dir=self.sys_config.path_tmp)
+            profile_file = Path(temp_dir.name, "apparmor.txt")
+            profile_file.write_text(data, encoding="utf-8")
+            return profile_file
+
+        try:
+            profile_file = await self.sys_run_in_executor(write_profile)
+
+            await self.sys_host.apparmor.load_profile("hassio-supervisor", profile_file)
+
+        except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+            raise SupervisorAppArmorError(
+                f"Can't write temporary profile: {err!s}", _LOGGER.error
+            ) from err
+
+        except HostAppArmorError as err:
+            raise SupervisorAppArmorError(
+                "Can't update AppArmor profile!", _LOGGER.error
+            ) from err
+
+        finally:
+            if temp_dir:
+                await self.sys_run_in_executor(temp_dir.cleanup)
 
     async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Supervisor version."""
