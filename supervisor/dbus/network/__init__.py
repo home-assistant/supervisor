@@ -1,5 +1,6 @@
 """Network Manager implementation for DBUS."""
 
+import asyncio
 import logging
 from typing import Any
 
