@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.check_version.outputs.skip || steps.check_existing_pr.outputs.skip }}
-      latest_tag: ${{ steps.latest_frontend_version.outputs.latest_tag }}
+      current_version: ${{ steps.check_version.outputs.current_version }}
+      latest_version: ${{ steps.latest_frontend_version.outputs.latest_tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,11 +24,11 @@ jobs:
       - name: Check if version is up to date
         id: check_version
         run: |
-          SUPERVISOR_VERSION=$(cat .ha-frontend-version)
-          LATEST_VERSION=${{ steps.latest_frontend_version.outputs.latest_tag }}
-          echo "SUPERVISOR_VERSION=$SUPERVISOR_VERSION" >> $GITHUB_ENV
-          echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
-          if [[ ! "$SUPERVISOR_VERSION" < "$LATEST_VERSION" ]]; then
+          current_version="$(cat .ha-frontend-version)"
+          latest_version="${{ steps.latest_frontend_version.outputs.latest_tag }}"
+          echo "current_version=${current_version}" >> $GITHUB_OUTPUT
+          echo "LATEST_VERSION=${latest_version}" >> $GITHUB_ENV
+          if [[ ! "$current_version" < "$latest_version" ]]; then
             echo "Frontend version is up to date"
             echo "skip=true" >> $GITHUB_OUTPUT
           fi
@@ -37,7 +38,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          PR=$(gh pr list --state open --base main --json title --search "Autoupdate frontend to version $LATEST_VERSION")
+          PR=$(gh pr list --state open --base main --json title --search "Update frontend to version $LATEST_VERSION")
           if [[ "$PR" != "[]" ]]; then
             echo "Skipping - There is already a PR open for version $LATEST_VERSION"
             echo "skip=true" >> $GITHUB_OUTPUT
@@ -54,21 +55,26 @@ jobs:
           rm -rf supervisor/api/panel/*
       - name: Update version file
         run: |
-          echo "${{ needs.check-version.outputs.latest_tag }}" > .ha-frontend-version
+          echo "${{ needs.check-version.outputs.latest_version }}" > .ha-frontend-version
       - name: Download release assets
         uses: robinraju/release-downloader@v1
         with:
           repository: 'home-assistant/frontend'
-          tag: ${{ needs.check-version.outputs.latest_tag }}
-          fileName: home_assistant_frontend_supervisor-${{ needs.check-version.outputs.latest_tag }}.tar.gz
+          tag: ${{ needs.check-version.outputs.latest_version }}
+          fileName: home_assistant_frontend_supervisor-${{ needs.check-version.outputs.latest_version }}.tar.gz
           extract: true
           out-file-path: supervisor/api/panel/
       - name: Create PR
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: "Autoupdate frontend to version ${{ needs.check-version.outputs.latest_tag }}"
+          commit-message: "Update frontend to version ${{ needs.check-version.outputs.latest_version }}"
           branch: autoupdate-frontend
           base: main
           draft: true
           sign-commits: true
-          title: "Autoupdate frontend to version ${{ needs.check-version.outputs.latest_tag }}"
+          title: "Update frontend to version ${{ needs.check-version.outputs.latest_version }}"
+          body: >
+            Update frontend from ${{ needs.check-version.outputs.current_version }} to
+            [${{ needs.check-version.outputs.latest_version }}]
+            (https://github.com/home-assistant/frontend/releases/tag/${{ needs.check-version.outputs.latest_version }})
+
