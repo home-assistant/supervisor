@@ -4,8 +4,10 @@
 import logging
 import os
 import signal
+import warnings
 
 from colorlog import ColoredFormatter
+from sentry_sdk import capture_exception
 
 from .addons.manager import AddonManager
 from .api import RestAPI
@@ -222,6 +224,13 @@ def initialize_system(coresys: CoreSys) -> None:
         config.path_addon_configs.mkdir()
 
 
+def warning_handler(message, category, filename, lineno, file=None, line=None):
+    """Warning handler which logs warnings using the logging module."""
+    _LOGGER.warning("%s:%s: %s: %s", filename, lineno, category.__name__, message)
+    if isinstance(message, Exception):
+        capture_exception(message)
+
+
 def initialize_logging() -> None:
     """Initialize the logging."""
     logging.basicConfig(level=logging.INFO)
@@ -248,6 +257,7 @@ def initialize_logging() -> None:
             },
         )
     )
+    warnings.showwarning = warning_handler
 
 
 def check_environment() -> None:
