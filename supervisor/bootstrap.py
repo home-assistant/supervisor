@@ -55,6 +55,7 @@ async def initialize_coresys() -> CoreSys:
     # Initialize core objects
     coresys.docker = await DockerAPI(coresys).load_config()
     coresys.resolution = await ResolutionManager(coresys).load_config()
+    await coresys.resolution.load_modules()
     coresys.jobs = await JobManager(coresys).load_config()
     coresys.core = Core(coresys)
     coresys.plugins = await PluginManager(coresys).load_config()
