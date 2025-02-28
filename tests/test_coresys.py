@@ -9,7 +9,7 @@ from supervisor.dbus.timedate import TimeDate
 from supervisor.utils.dt import utcnow
 
 
-async def test_timezone(run_dir, coresys: CoreSys):
+async def test_timezone(coresys: CoreSys):
     """Test write corestate to /run/supervisor."""
     # pylint: disable=protected-access
     coresys.host.sys_dbus._timedate = TimeDate()

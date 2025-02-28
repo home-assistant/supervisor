@@ -23,7 +23,7 @@ async def mock_handler(request):
 
 
 @pytest.fixture
-async def api_system(aiohttp_client, run_dir, coresys: CoreSys) -> TestClient:
+async def api_system(aiohttp_client, coresys: CoreSys) -> TestClient:
     """Fixture for RestAPI client."""
     api = RestAPI(coresys)
     api.webapp = web.Application()
@@ -39,7 +39,7 @@ async def api_system(aiohttp_client, run_dir, coresys: CoreSys) -> TestClient:
 
 
 @pytest.fixture
-async def api_token_validation(aiohttp_client, run_dir, coresys: CoreSys) -> TestClient:
+async def api_token_validation(aiohttp_client, coresys: CoreSys) -> TestClient:
     """Fixture for RestAPI client with token validation middleware."""
     api = RestAPI(coresys)
     api.webapp = web.Application()

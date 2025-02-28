@@ -39,6 +39,7 @@ from supervisor.const import (
     ATTR_TYPE,
     ATTR_VERSION,
     REQUEST_FROM,
+    CoreState,
 )
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
@@ -307,7 +308,7 @@ async def coresys(
     dbus_session_bus,
     all_dbus_services,
     aiohttp_client,
-    run_dir,
+    run_supervisor_state,
     supervisor_name,
 ) -> CoreSys:
     """Create a CoreSys Mock."""
@@ -330,12 +331,16 @@ async def coresys(
 
     # Mock test client
     coresys_obj._supervisor.instance._meta = {
-        "Config": {"Labels": {"io.hass.arch": "amd64"}}
+        "Config": {"Labels": {"io.hass.arch": "amd64"}},
+        "HostConfig": {"Privileged": True},
     }
     coresys_obj.arch._default_arch = "amd64"
     coresys_obj.arch._supported_set = {"amd64"}
     coresys_obj._machine = "qemux86-64"
     coresys_obj._machine_id = uuid4()
+
+    # Load resolution center
+    await coresys_obj.resolution.load()
 
     # Mock host communication
     with (
@@ -384,9 +389,14 @@ async def coresys(
 
 
 @pytest.fixture
-def ha_ws_client(coresys: CoreSys) -> AsyncMock:
+async def ha_ws_client(coresys: CoreSys) -> AsyncMock:
     """Return HA WS client mock for assertions."""
-    return coresys.homeassistant.websocket._client
+    # Set Supervisor Core state to RUNNING, otherwise WS events won't be delivered
+    coresys.core.state = CoreState.RUNNING
+    await asyncio.sleep(0)
+    client = coresys.homeassistant.websocket._client
+    client.async_send_command.reset_mock()
+    return client
 
 
 @pytest.fixture
@@ -494,12 +504,10 @@ def store_manager(coresys: CoreSys):
 
 
 @pytest.fixture
-def run_dir(tmp_path):
-    """Fixture to inject hassio env."""
+def run_supervisor_state() -> Generator[MagicMock]:
+    """Fixture to simulate Supervisor state file in /run/supervisor."""
     with patch("supervisor.core.RUN_SUPERVISOR_STATE") as mock_run:
-        tmp_state = Path(tmp_path, "supervisor")
-        mock_run.write_text = tmp_state.write_text
-        yield tmp_state
+        yield mock_run
 
 
 @pytest.fixture
