@@ -14,7 +14,7 @@ RE_BIND_FAILED = re.compile(
 
 
 async def format_message(message: str) -> str:
-    """Return a formated message if it's known."""
+    """Return a formatted message if it's known."""
     try:
         match = RE_BIND_FAILED.match(message)
         if match:
