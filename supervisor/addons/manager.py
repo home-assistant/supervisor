@@ -23,7 +23,7 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .addon import Addon
 from .const import ADDON_UPDATE_CONDITIONS
 from .data import AddonsData
@@ -170,7 +170,7 @@ class AddonManager(CoreSysAttributes):
                 await addon.stop()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
-                await self.sys_run_in_executor(capture_exception, err)
+                await async_capture_exception(err)
 
     @Job(
         name="addon_manager_install",
@@ -388,7 +388,7 @@ class AddonManager(CoreSysAttributes):
                     reference=addon.slug,
                     suggestions=[SuggestionType.EXECUTE_REPAIR],
                 )
-                await self.sys_run_in_executor(capture_exception, err)
+                await async_capture_exception(err)
             else:
                 add_host_coros.append(
                     self.sys_plugins.dns.add_host(

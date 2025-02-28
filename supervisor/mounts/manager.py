@@ -18,7 +18,7 @@ from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.const import SuggestionType
 from ..utils.common import FileConfiguration
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     ATTR_DEFAULT_BACKUP_MOUNT,
     ATTR_MOUNTS,
@@ -177,7 +177,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
             if not isinstance(errors[i], MountError):
-                await self.sys_run_in_executor(capture_exception, errors[i])
+                await async_capture_exception(errors[i])
 
             self.sys_resolution.add_issue(
                 evolve(mounts[i].failed_issue),

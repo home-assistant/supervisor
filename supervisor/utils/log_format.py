@@ -1,10 +1,9 @@
 """Custom log messages."""
 
-import asyncio
 import logging
 import re
 
-from .sentry import capture_exception
+from .sentry import async_capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -21,6 +20,6 @@ async def format_message(message: str) -> str:
             return f"Port '{match.group(1)}' is already in use by something else on the host."
     except TypeError as err:
         _LOGGER.error("The type of message is not a string - %s", err)
-        await asyncio.get_running_loop().run_in_executor(None, capture_exception, err)
+        await async_capture_exception(err)
 
     return message

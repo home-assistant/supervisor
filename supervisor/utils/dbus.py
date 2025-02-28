@@ -35,7 +35,7 @@ from ..exceptions import (
     DBusTimeoutError,
     HassioNotSupportedError,
 )
-from .sentry import capture_exception
+from .sentry import async_capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -124,9 +124,7 @@ class DBus:
             )
             raise DBus.from_dbus_error(err) from None
         except Exception as err:  # pylint: disable=broad-except
-            await asyncio.get_running_loop().run_in_executor(
-                None, capture_exception, err
-            )
+            await async_capture_exception(err)
             raise DBusFatalError(str(err)) from err
 
     def _add_interfaces(self):

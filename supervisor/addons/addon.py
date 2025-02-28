@@ -88,7 +88,7 @@ from ..store.addon import AddonStore
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.json import read_json_file, write_json_file
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     WATCHDOG_MAX_ATTEMPTS,
     WATCHDOG_RETRY_SECONDS,
@@ -1530,7 +1530,7 @@ class Addon(AddonModel):
                 except AddonsError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of addon %s failed!", self.name)
-                    await self.sys_run_in_executor(capture_exception, err)
+                    await async_capture_exception(err)
                 else:
                     break
 

@@ -18,7 +18,7 @@ from ..exceptions import (
 )
 from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from . import SupervisorJob
 from .const import JobCondition, JobExecutionLimit
 from .job_group import JobGroup
@@ -313,7 +313,7 @@ class Job(CoreSysAttributes):
                     except Exception as err:
                         _LOGGER.exception("Unhandled exception: %s", err)
                         job.capture_error()
-                        await self.sys_run_in_executor(capture_exception, err)
+                        await async_capture_exception(err)
                         raise JobException() from err
                     finally:
                         self._release_exception_limits()

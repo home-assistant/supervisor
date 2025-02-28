@@ -26,7 +26,7 @@ from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.checks.disabled_data_disk import CheckDisabledDataDisk
 from ..resolution.checks.multiple_data_disks import CheckMultipleDataDisks
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     FILESYSTEM_LABEL_DATA_DISK,
     FILESYSTEM_LABEL_DISABLED_DATA_DISK,
@@ -337,7 +337,7 @@ class DataDisk(CoreSysAttributes):
         try:
             await block_device.format(FormatType.GPT)
         except DBusError as err:
-            await self.sys_run_in_executor(capture_exception, err)
+            await async_capture_exception(err)
             raise HassOSDataDiskError(
                 f"Could not format {new_disk.id}: {err!s}", _LOGGER.error
             ) from err
@@ -354,7 +354,7 @@ class DataDisk(CoreSysAttributes):
                 0, 0, LINUX_DATA_PARTITION_GUID, PARTITION_NAME_EXTERNAL_DATA_DISK
             )
         except DBusError as err:
-            await self.sys_run_in_executor(capture_exception, err)
+            await async_capture_exception(err)
             raise HassOSDataDiskError(
                 f"Could not create new data partition: {err!s}", _LOGGER.error
             ) from err

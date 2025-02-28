@@ -15,7 +15,7 @@ from ..docker.interface import DockerInterface
 from ..docker.monitor import DockerContainerStateEvent
 from ..exceptions import DockerError, PluginError
 from ..utils.common import FileConfiguration
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import WATCHDOG_MAX_ATTEMPTS, WATCHDOG_RETRY_SECONDS
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -129,7 +129,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                 except PluginError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of %s plugin failed!", self.slug)
-                    await self.sys_run_in_executor(capture_exception, err)
+                    await async_capture_exception(err)
                 else:
                     break
 

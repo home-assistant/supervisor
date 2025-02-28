@@ -33,7 +33,7 @@ from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType
 from ..utils import convert_to_ascii
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     LANDINGPAGE,
     SAFE_MODE_FILENAME,
@@ -160,7 +160,7 @@ class HomeAssistantCore(JobGroup):
             except (DockerError, JobException):
                 pass
             except Exception as err:  # pylint: disable=broad-except
-                await self.sys_run_in_executor(capture_exception, err)
+                await async_capture_exception(err)
 
             _LOGGER.warning("Failed to install landingpage, retrying after 30sec")
             await asyncio.sleep(30)
@@ -192,7 +192,7 @@ class HomeAssistantCore(JobGroup):
                 except (DockerError, JobException):
                     pass
                 except Exception as err:  # pylint: disable=broad-except
-                    await self.sys_run_in_executor(capture_exception, err)
+                    await async_capture_exception(err)
 
             _LOGGER.warning("Error on Home Assistant installation. Retrying in 30sec")
             await asyncio.sleep(30)
@@ -557,7 +557,7 @@ class HomeAssistantCore(JobGroup):
                     try:
                         await self.start()
                     except HomeAssistantError as err:
-                        await self.sys_run_in_executor(capture_exception, err)
+                        await async_capture_exception(err)
                     else:
                         break
 
@@ -569,7 +569,7 @@ class HomeAssistantCore(JobGroup):
                 except HomeAssistantError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of Home Assistant failed!")
-                    await self.sys_run_in_executor(capture_exception, err)
+                    await async_capture_exception(err)
                 else:
                     break
 
