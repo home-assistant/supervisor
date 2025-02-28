@@ -223,7 +223,7 @@ class Core(CoreSysAttributes):
 
         try:
             # HomeAssistant is already running, only Supervisor restarted
-            if self.sys_hardware.helper.last_boot == self.sys_config.last_boot:
+            if await self.sys_hardware.helper.last_boot() == self.sys_config.last_boot:
                 _LOGGER.info("Detected Supervisor restart")
                 return
 
@@ -362,7 +362,7 @@ class Core(CoreSysAttributes):
 
     async def _update_last_boot(self):
         """Update last boot time."""
-        self.sys_config.last_boot = self.sys_hardware.helper.last_boot
+        self.sys_config.last_boot = await self.sys_hardware.helper.last_boot()
         await self.sys_config.save_data()
 
     async def _retrieve_whoami(self, with_ssl: bool) -> WhoamiData | None:

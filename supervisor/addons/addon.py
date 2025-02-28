@@ -140,9 +140,7 @@ class Addon(AddonModel):
         super().__init__(coresys, slug)
         self.instance: DockerAddon = DockerAddon(coresys, self)
         self._state: AddonState = AddonState.UNKNOWN
-        self._manual_stop: bool = (
-            self.sys_hardware.helper.last_boot != self.sys_config.last_boot
-        )
+        self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
         self._startup_task: asyncio.Task | None = None
@@ -216,6 +214,10 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
+        self._manual_stop = (
+            await self.sys_hardware.helper.last_boot() != self.sys_config.last_boot
+        )
+
         if self.is_detached:
             await super().refresh_path_cache()
 

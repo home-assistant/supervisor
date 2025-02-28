@@ -152,15 +152,16 @@ class PluginDns(PluginBase):
         # Initialize CoreDNS Template
         try:
             self.resolv_template = jinja2.Template(
-                RESOLV_TMPL.read_text(encoding="utf-8")
+                await self.sys_run_in_executor(RESOLV_TMPL.read_text, encoding="utf-8")
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
+
         try:
             self.hosts_template = jinja2.Template(
-                HOSTS_TMPL.read_text(encoding="utf-8")
+                await self.sys_run_in_executor(HOSTS_TMPL.read_text, encoding="utf-8")
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
@@ -171,7 +172,7 @@ class PluginDns(PluginBase):
         await super().load()
 
         # Update supervisor
-        self._write_resolv(HOST_RESOLV)
+        await self._write_resolv(HOST_RESOLV)
         await self.sys_supervisor.check_connectivity()
 
     async def install(self) -> None:
@@ -412,7 +413,7 @@ class PluginDns(PluginBase):
             _LOGGER.error("Repair of CoreDNS failed")
             await async_capture_exception(err)
 
-    def _write_resolv(self, resolv_conf: Path) -> None:
+    async def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""
         if not self.resolv_template:
             _LOGGER.warning(
@@ -427,7 +428,7 @@ class PluginDns(PluginBase):
 
         # Write config back to resolv
         try:
-            resolv_conf.write_text(data)
+            await self.sys_run_in_executor(resolv_conf.write_text, data)
         except OSError as err:
             if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE

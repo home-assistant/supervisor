@@ -20,6 +20,7 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
+from supervisor.hardware.helper import HwHelper
 from supervisor.ingress import Ingress
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
@@ -250,11 +251,7 @@ async def test_watchdog_during_attach(
 
     with (
         patch.object(Addon, "restart") as restart,
-        patch.object(
-            type(coresys.hardware.helper),
-            "last_boot",
-            new=PropertyMock(return_value=utcnow()),
-        ),
+        patch.object(HwHelper, "last_boot", return_value=utcnow()),
         patch.object(DockerAddon, "attach"),
         patch.object(
             DockerAddon,
@@ -262,7 +259,9 @@ async def test_watchdog_during_attach(
             return_value=ContainerState.STOPPED,
         ),
     ):
-        coresys.config.last_boot = coresys.hardware.helper.last_boot + boot_timedelta
+        coresys.config.last_boot = (
+            await coresys.hardware.helper.last_boot() + boot_timedelta
+        )
         addon = Addon(coresys, store.slug)
         coresys.addons.local[addon.slug] = addon
         addon.watchdog = True

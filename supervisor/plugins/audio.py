@@ -88,7 +88,9 @@ class PluginAudio(PluginBase):
         # Initialize Client Template
         try:
             self.client_template = jinja2.Template(
-                PULSE_CLIENT_TMPL.read_text(encoding="utf-8")
+                await self.sys_run_in_executor(
+                    PULSE_CLIENT_TMPL.read_text, encoding="utf-8"
+                )
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
@@ -100,13 +102,17 @@ class PluginAudio(PluginBase):
 
         # Setup default asound config
         asound = self.sys_config.path_audio.joinpath("asound")
-        if not asound.exists():
-            try:
+
+        def setup_default_asound():
+            if not asound.exists():
                 shutil.copy(ASOUND_TMPL, asound)
-            except OSError as err:
-                if err.errno == errno.EBADMSG:
-                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-                _LOGGER.error("Can't create default asound: %s", err)
+
+        try:
+            await self.sys_run_in_executor(setup_default_asound)
+        except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+            _LOGGER.error("Can't create default asound: %s", err)
 
     @Job(
         name="plugin_audio_update",
