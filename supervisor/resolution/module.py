@@ -48,9 +48,14 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     async def load_modules(self):
         """Load resolution evaluation, check and fixup modules."""
-        await self._evaluate.load_modules()
-        await self._check.load_modules()
-        await self._fixup.load_modules()
+
+        def _load_modules():
+            """Load and setup all resolution modules."""
+            self._evaluate.load_modules()
+            self._check.load_modules()
+            self._fixup.load_modules()
+
+        await self.sys_run_in_executor(_load_modules)
 
     @property
     def data(self) -> dict[str, Any]:

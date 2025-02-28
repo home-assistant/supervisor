@@ -32,20 +32,18 @@ class ResolutionCheck(CoreSysAttributes):
         """Return all list of all checks."""
         return list(self._checks.values())
 
-    async def load_modules(self) -> None:
-        """Load all checks."""
+    def load_modules(self) -> None:
+        """Load and setup all checks.
 
-        def _load_modules() -> dict[str, CheckBase]:
-            """Load and setup checks in executor."""
-            package = f"{__package__}.checks"
-            checks: dict[str, CheckBase] = {}
-            for module in get_valid_modules("checks"):
-                check_module = import_module(f"{package}.{module}")
-                check = check_module.setup(self.coresys)
-                checks[check.slug] = check
-            return checks
-
-        self._checks = await self.sys_run_in_executor(_load_modules)
+        Must be run in executor.
+        """
+        package = f"{__package__}.checks"
+        checks: dict[str, CheckBase] = {}
+        for module in get_valid_modules("checks"):
+            check_module = import_module(f"{package}.{module}")
+            check = check_module.setup(self.coresys)
+            checks[check.slug] = check
+        self._checks = checks
 
     def get(self, slug: str) -> CheckBase:
         """Return check based on slug."""
