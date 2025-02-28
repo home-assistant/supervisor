@@ -1530,7 +1530,7 @@ class Addon(AddonModel):
                 except AddonsError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of addon %s failed!", self.name)
-                    capture_exception(err)
+                    await self.sys_run_in_executor(capture_exception, err)
                 else:
                     break
 

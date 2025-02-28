@@ -1,5 +1,6 @@
 """Network Manager implementation for DBUS."""
 
+import asyncio
 import logging
 from typing import Any
 
@@ -223,13 +224,17 @@ class NetworkManager(DBusInterfaceProxy):
                         device,
                         err,
                     )
-                    capture_exception(err)
+                    await asyncio.get_running_loop().run_in_executor(
+                        None, capture_exception, err
+                    )
                     return
                 except Exception as err:  # pylint: disable=broad-except
                     _LOGGER.exception(
                         "Unkown error while processing %s: %s", device, err
                     )
-                    capture_exception(err)
+                    await asyncio.get_running_loop().run_in_executor(
+                        None, capture_exception, err
+                    )
                     continue
 
             # Skeep interface

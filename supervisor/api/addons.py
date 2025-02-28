@@ -212,7 +212,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_HOSTNAME: addon.hostname,
             ATTR_DNS: addon.dns,
             ATTR_DESCRIPTON: addon.description,
-            ATTR_LONG_DESCRIPTION: addon.long_description,
+            ATTR_LONG_DESCRIPTION: await addon.long_description(),
             ATTR_ADVANCED: addon.advanced,
             ATTR_STAGE: addon.stage,
             ATTR_REPOSITORY: addon.repository,

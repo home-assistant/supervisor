@@ -208,7 +208,7 @@ class Mount(CoreSysAttributes, ABC):
         try:
             self._state = await self.unit.get_active_state()
         except DBusError as err:
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
             raise MountError(
                 f"Could not get active state of mount due to: {err!s}"
             ) from err
@@ -221,7 +221,7 @@ class Mount(CoreSysAttributes, ABC):
             self._unit = None
             self._state = None
         except DBusError as err:
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
             raise MountError(f"Could not get mount unit due to: {err!s}") from err
         return self.unit
 

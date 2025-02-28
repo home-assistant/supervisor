@@ -109,7 +109,7 @@ class APIStore(CoreSysAttributes):
 
         return self.sys_store.get(repository_slug)
 
-    def _generate_addon_information(
+    async def _generate_addon_information(
         self, addon: AddonStore, extended: bool = False
     ) -> dict[str, Any]:
         """Generate addon information."""
@@ -156,7 +156,7 @@ class APIStore(CoreSysAttributes):
                     ATTR_HOST_NETWORK: addon.host_network,
                     ATTR_HOST_PID: addon.host_pid,
                     ATTR_INGRESS: addon.with_ingress,
-                    ATTR_LONG_DESCRIPTION: addon.long_description,
+                    ATTR_LONG_DESCRIPTION: await addon.long_description(),
                     ATTR_RATING: rating_security(addon),
                     ATTR_SIGNED: addon.signed,
                 }
@@ -185,10 +185,12 @@ class APIStore(CoreSysAttributes):
     async def store_info(self, request: web.Request) -> dict[str, Any]:
         """Return store information."""
         return {
-            ATTR_ADDONS: [
-                self._generate_addon_information(self.sys_addons.store[addon])
-                for addon in self.sys_addons.store
-            ],
+            ATTR_ADDONS: await asyncio.gather(
+                *[
+                    self._generate_addon_information(self.sys_addons.store[addon])
+                    for addon in self.sys_addons.store
+                ]
+            ),
             ATTR_REPOSITORIES: [
                 self._generate_repository_information(repository)
                 for repository in self.sys_store.all
@@ -199,10 +201,12 @@ class APIStore(CoreSysAttributes):
     async def addons_list(self, request: web.Request) -> dict[str, Any]:
         """Return all store add-ons."""
         return {
-            ATTR_ADDONS: [
-                self._generate_addon_information(self.sys_addons.store[addon])
-                for addon in self.sys_addons.store
-            ]
+            ATTR_ADDONS: await asyncio.gather(
+                *[
+                    self._generate_addon_information(self.sys_addons.store[addon])
+                    for addon in self.sys_addons.store
+                ]
+            )
         }
 
     @api_process
@@ -234,7 +238,7 @@ class APIStore(CoreSysAttributes):
     async def addons_addon_info_wrapped(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information directly (not api)."""
         addon: AddonStore = self._extract_addon(request)
-        return self._generate_addon_information(addon, True)
+        return await self._generate_addon_information(addon, True)
 
     @api_process_raw(CONTENT_TYPE_PNG)
     async def addons_addon_icon(self, request: web.Request) -> bytes:

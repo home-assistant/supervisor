@@ -170,7 +170,7 @@ class AddonManager(CoreSysAttributes):
                 await addon.stop()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
 
     @Job(
         name="addon_manager_install",
@@ -388,7 +388,7 @@ class AddonManager(CoreSysAttributes):
                     reference=addon.slug,
                     suggestions=[SuggestionType.EXECUTE_REPAIR],
                 )
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
             else:
                 add_host_coros.append(
                     self.sys_plugins.dns.add_host(

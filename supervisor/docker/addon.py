@@ -606,7 +606,7 @@ class DockerAddon(DockerInterface):
             )
         except CoreDNSError as err:
             _LOGGER.warning("Can't update DNS for %s", self.name)
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
 
         # Hardware Access
         if self.addon.static_devices:
@@ -787,7 +787,7 @@ class DockerAddon(DockerInterface):
                 await self.sys_plugins.dns.delete_host(self.addon.hostname)
             except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
 
         # Hardware
         if self._hw_listener:

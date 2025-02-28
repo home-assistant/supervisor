@@ -42,7 +42,7 @@ class CheckDNSServer(CheckBase):
                 ContextType.DNS_SERVER,
                 reference=dns_servers[i],
             )
-            capture_exception(results[i])
+            await self.sys_run_in_executor(capture_exception, results[i])
 
     @Job(name="check_dns_server_approve", conditions=[JobCondition.INTERNET_SYSTEM])
     async def approve_check(self, reference: str | None = None) -> bool:

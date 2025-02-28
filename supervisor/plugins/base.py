@@ -129,7 +129,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                 except PluginError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of %s plugin failed!", self.slug)
-                    capture_exception(err)
+                    await self.sys_run_in_executor(capture_exception, err)
                 else:
                     break
 

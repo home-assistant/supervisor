@@ -47,7 +47,7 @@ class CheckDNSServerIPv6(CheckBase):
                 ContextType.DNS_SERVER,
                 reference=dns_servers[i],
             )
-            capture_exception(results[i])
+            await self.sys_run_in_executor(capture_exception, results[i])
 
     @Job(
         name="check_dns_server_ipv6_approve", conditions=[JobCondition.INTERNET_SYSTEM]

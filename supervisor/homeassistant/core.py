@@ -160,7 +160,7 @@ class HomeAssistantCore(JobGroup):
             except (DockerError, JobException):
                 pass
             except Exception as err:  # pylint: disable=broad-except
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
 
             _LOGGER.warning("Failed to install landingpage, retrying after 30sec")
             await asyncio.sleep(30)
@@ -192,7 +192,7 @@ class HomeAssistantCore(JobGroup):
                 except (DockerError, JobException):
                     pass
                 except Exception as err:  # pylint: disable=broad-except
-                    capture_exception(err)
+                    await self.sys_run_in_executor(capture_exception, err)
 
             _LOGGER.warning("Error on Home Assistant installation. Retrying in 30sec")
             await asyncio.sleep(30)
@@ -557,7 +557,7 @@ class HomeAssistantCore(JobGroup):
                     try:
                         await self.start()
                     except HomeAssistantError as err:
-                        capture_exception(err)
+                        await self.sys_run_in_executor(capture_exception, err)
                     else:
                         break
 
@@ -569,7 +569,7 @@ class HomeAssistantCore(JobGroup):
                 except HomeAssistantError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of Home Assistant failed!")
-                    capture_exception(err)
+                    await self.sys_run_in_executor(capture_exception, err)
                 else:
                     break
 

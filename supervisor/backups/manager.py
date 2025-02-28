@@ -525,7 +525,7 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Backup %s error", backup.slug)
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
             self.sys_jobs.current.capture_error(
                 BackupError(f"Backup {backup.slug} error, see supervisor logs")
             )
@@ -718,7 +718,7 @@ class BackupManager(FileConfiguration, JobGroup):
             raise
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", backup.slug)
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
             raise BackupError(
                 f"Restore {backup.slug} error, see supervisor logs"
             ) from err

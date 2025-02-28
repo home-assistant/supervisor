@@ -412,7 +412,7 @@ class RestAPI(CoreSysAttributes):
                 if not isinstance(err, HostNotSupportedError):
                     # No need to capture HostNotSupportedError to Sentry, the cause
                     # is known and reported to the user using the resolution center.
-                    capture_exception(err)
+                    await self.sys_run_in_executor(capture_exception, err)
                 kwargs.pop("follow", None)  # Follow is not supported for Docker logs
                 return await api_supervisor.logs(*args, **kwargs)
 

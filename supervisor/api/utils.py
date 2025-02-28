@@ -63,11 +63,11 @@ def api_process(method):
         try:
             answer = await method(api, *args, **kwargs)
         except BackupFileNotFoundError as err:
-            return api_return_error(err, status=404)
+            return await api_return_error(err, status=404)
         except APIError as err:
-            return api_return_error(err, status=err.status, job_id=err.job_id)
+            return await api_return_error(err, status=err.status, job_id=err.job_id)
         except HassioError as err:
-            return api_return_error(err)
+            return await api_return_error(err)
 
         if isinstance(answer, (dict, list)):
             return api_return_ok(data=answer)
@@ -76,7 +76,7 @@ def api_process(method):
         if isinstance(answer, web.StreamResponse):
             return answer
         elif isinstance(answer, bool) and not answer:
-            return api_return_error()
+            return await api_return_error()
         return api_return_ok()
 
     return wrap_api
@@ -107,14 +107,14 @@ def api_process_raw(content, *, error_type=None):
             try:
                 msg_data = await method(api, *args, **kwargs)
             except APIError as err:
-                return api_return_error(
+                return await api_return_error(
                     err,
                     error_type=error_type or const.CONTENT_TYPE_BINARY,
                     status=err.status,
                     job_id=err.job_id,
                 )
             except HassioError as err:
-                return api_return_error(
+                return await api_return_error(
                     err, error_type=error_type or const.CONTENT_TYPE_BINARY
                 )
 
@@ -128,7 +128,7 @@ def api_process_raw(content, *, error_type=None):
     return wrap_method
 
 
-def api_return_error(
+async def api_return_error(
     error: Exception | None = None,
     message: str | None = None,
     error_type: str | None = None,
@@ -139,7 +139,7 @@ def api_return_error(
     if error and not message:
         message = get_message_from_exception_chain(error)
         if check_exception_chain(error, DockerAPIError):
-            message = format_message(message)
+            message = await format_message(message)
     if not message:
         message = "Unknown error, see supervisor"
 

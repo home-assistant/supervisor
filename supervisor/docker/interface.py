@@ -278,7 +278,7 @@ class DockerInterface(JobGroup):
                 f"Can't install {image}:{version!s}: {err}", _LOGGER.error
             ) from err
         except (docker.errors.DockerException, requests.RequestException) as err:
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
             raise DockerError(
                 f"Unknown error with {image}:{version!s} -> {err!s}", _LOGGER.error
             ) from err
@@ -394,7 +394,7 @@ class DockerInterface(JobGroup):
             )
         except DockerNotFound as err:
             # If image is missing, capture the exception as this shouldn't happen
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
             raise
 
         # Store metadata

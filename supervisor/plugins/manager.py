@@ -80,7 +80,7 @@ class PluginManager(CoreSysAttributes):
                     reference=plugin.slug,
                     suggestions=[SuggestionType.EXECUTE_REPAIR],
                 )
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
 
         # Exit if supervisor out of date. Plugins can't update until then
         if self.sys_supervisor.need_update:
@@ -114,7 +114,7 @@ class PluginManager(CoreSysAttributes):
                 )
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't update plugin %s: %s", plugin.slug, err)
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
 
     async def repair(self) -> None:
         """Repair Supervisor plugins."""
@@ -132,4 +132,4 @@ class PluginManager(CoreSysAttributes):
                 await plugin.stop()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't stop plugin %s: %s", plugin.slug, err)
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)

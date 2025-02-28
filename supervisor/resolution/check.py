@@ -64,6 +64,6 @@ class ResolutionCheck(CoreSysAttributes):
                 await check()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.error("Error during processing %s: %s", check.issue, err)
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
 
         _LOGGER.info("System checks complete")

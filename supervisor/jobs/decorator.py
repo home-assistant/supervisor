@@ -313,7 +313,7 @@ class Job(CoreSysAttributes):
                     except Exception as err:
                         _LOGGER.exception("Unhandled exception: %s", err)
                         job.capture_error()
-                        capture_exception(err)
+                        await self.sys_run_in_executor(capture_exception, err)
                         raise JobException() from err
                     finally:
                         self._release_exception_limits()
@@ -373,7 +373,7 @@ class Job(CoreSysAttributes):
 
         if (
             JobCondition.FREE_SPACE in used_conditions
-            and coresys.sys_host.info.free_space < MINIMUM_FREE_SPACE_THRESHOLD
+            and await coresys.sys_host.info.free_space() < MINIMUM_FREE_SPACE_THRESHOLD
         ):
             coresys.sys_resolution.create_issue(
                 IssueType.FREE_SPACE, ContextType.SYSTEM

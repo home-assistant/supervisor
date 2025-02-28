@@ -103,37 +103,37 @@ class InfoCenter(CoreSysAttributes):
         return self.sys_dbus.systemd.boot_timestamp
 
     @property
-    def total_space(self) -> float:
-        """Return total space (GiB) on disk for supervisor data directory."""
-        return self.sys_hardware.disk.get_disk_total_space(
-            self.coresys.config.path_supervisor
-        )
-
-    @property
-    def used_space(self) -> float:
-        """Return used space (GiB) on disk for supervisor data directory."""
-        return self.sys_hardware.disk.get_disk_used_space(
-            self.coresys.config.path_supervisor
-        )
-
-    @property
-    def free_space(self) -> float:
-        """Return available space (GiB) on disk for supervisor data directory."""
-        return self.sys_hardware.disk.get_disk_free_space(
-            self.coresys.config.path_supervisor
-        )
-
-    @property
-    def disk_life_time(self) -> float:
-        """Return the estimated life-time usage (in %) of the SSD storing the data directory."""
-        return self.sys_hardware.disk.get_disk_life_time(
-            self.coresys.config.path_supervisor
-        )
-
-    @property
     def virtualization(self) -> str | None:
         """Return virtualization hypervisor being used."""
         return self.sys_dbus.systemd.virtualization
+
+    async def total_space(self) -> float:
+        """Return total space (GiB) on disk for supervisor data directory."""
+        return await self.sys_run_in_executor(
+            self.sys_hardware.disk.get_disk_total_space,
+            self.coresys.config.path_supervisor,
+        )
+
+    async def used_space(self) -> float:
+        """Return used space (GiB) on disk for supervisor data directory."""
+        return await self.sys_run_in_executor(
+            self.sys_hardware.disk.get_disk_used_space,
+            self.coresys.config.path_supervisor,
+        )
+
+    async def free_space(self) -> float:
+        """Return available space (GiB) on disk for supervisor data directory."""
+        return await self.sys_run_in_executor(
+            self.sys_hardware.disk.get_disk_free_space,
+            self.coresys.config.path_supervisor,
+        )
+
+    async def disk_life_time(self) -> float:
+        """Return the estimated life-time usage (in %) of the SSD storing the data directory."""
+        return await self.sys_run_in_executor(
+            self.sys_hardware.disk.get_disk_life_time,
+            self.coresys.config.path_supervisor,
+        )
 
     async def get_dmesg(self) -> bytes:
         """Return host dmesg output."""

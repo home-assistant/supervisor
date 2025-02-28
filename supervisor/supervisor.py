@@ -219,7 +219,7 @@ class Supervisor(CoreSysAttributes):
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
             )
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
             raise SupervisorUpdateError(
                 f"Update of Supervisor failed: {err!s}", _LOGGER.critical
             ) from err

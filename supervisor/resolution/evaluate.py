@@ -64,7 +64,7 @@ class ResolutionEvaluation(CoreSysAttributes):
                 _LOGGER.warning(
                     "Error during processing %s: %s", evaluation.reason, err
                 )
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
 
         if any(reason in self.sys_resolution.unsupported for reason in UNHEALTHY):
             self.sys_resolution.unhealthy = UnhealthyReason.DOCKER

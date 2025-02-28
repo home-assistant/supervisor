@@ -163,7 +163,7 @@ class PluginAudio(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of Audio failed")
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
 
     def pulse_client(self, input_profile=None, output_profile=None) -> str:
         """Generate an /etc/pulse/client.conf data."""

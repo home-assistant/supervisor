@@ -109,7 +109,7 @@ class PluginMulticast(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of Multicast failed")
-            capture_exception(err)
+            await self.sys_run_in_executor(capture_exception, err)
 
     @Job(
         name="plugin_multicast_restart_after_problem",

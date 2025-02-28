@@ -55,7 +55,7 @@ class ResolutionFixup(CoreSysAttributes):
                 await fix()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
-                capture_exception(err)
+                await self.sys_run_in_executor(capture_exception, err)
 
         _LOGGER.info("System autofix complete")
 

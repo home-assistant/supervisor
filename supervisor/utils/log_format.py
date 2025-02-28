@@ -1,5 +1,6 @@
 """Custom log messages."""
 
+import asyncio
 import logging
 import re
 
@@ -12,7 +13,7 @@ RE_BIND_FAILED = re.compile(
 )
 
 
-def format_message(message: str) -> str:
+async def format_message(message: str) -> str:
     """Return a formated message if it's known."""
     try:
         match = RE_BIND_FAILED.match(message)
@@ -20,6 +21,6 @@ def format_message(message: str) -> str:
             return f"Port '{match.group(1)}' is already in use by something else on the host."
     except TypeError as err:
         _LOGGER.error("The type of message is not a string - %s", err)
-        capture_exception(err)
+        await asyncio.get_running_loop().run_in_executor(None, capture_exception, err)
 
     return message

@@ -124,7 +124,9 @@ class DBus:
             )
             raise DBus.from_dbus_error(err) from None
         except Exception as err:  # pylint: disable=broad-except
-            capture_exception(err)
+            await asyncio.get_running_loop().run_in_executor(
+                None, capture_exception, err
+            )
             raise DBusFatalError(str(err)) from err
 
     def _add_interfaces(self):

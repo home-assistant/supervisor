@@ -177,7 +177,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
             if not isinstance(errors[i], MountError):
-                capture_exception(errors[i])
+                await self.sys_run_in_executor(capture_exception, errors[i])
 
             self.sys_resolution.add_issue(
                 evolve(mounts[i].failed_issue),
