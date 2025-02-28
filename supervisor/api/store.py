@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable
+from pathlib import Path
 from typing import Any
 
 from aiohttp import web
@@ -66,6 +67,15 @@ SCHEMA_UPDATE = vol.Schema(
 SCHEMA_ADD_REPOSITORY = vol.Schema(
     {vol.Required(ATTR_REPOSITORY): vol.All(str, validate_repository)}
 )
+
+
+def _read_static_file(path: Path) -> Any:
+    """Read in a static file asset for API output.
+
+    Must be run in executor.
+    """
+    with path.open("r") as asset:
+        return asset.read()
 
 
 class APIStore(CoreSysAttributes):
@@ -233,8 +243,7 @@ class APIStore(CoreSysAttributes):
         if not addon.with_icon:
             raise APIError(f"No icon found for add-on {addon.slug}!")
 
-        with addon.path_icon.open("rb") as png:
-            return png.read()
+        return await self.sys_run_in_executor(_read_static_file, addon.path_icon)
 
     @api_process_raw(CONTENT_TYPE_PNG)
     async def addons_addon_logo(self, request: web.Request) -> bytes:
@@ -243,8 +252,7 @@ class APIStore(CoreSysAttributes):
         if not addon.with_logo:
             raise APIError(f"No logo found for add-on {addon.slug}!")
 
-        with addon.path_logo.open("rb") as png:
-            return png.read()
+        return await self.sys_run_in_executor(_read_static_file, addon.path_logo)
 
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def addons_addon_changelog(self, request: web.Request) -> str:
@@ -258,8 +266,7 @@ class APIStore(CoreSysAttributes):
         if not addon.with_changelog:
             return f"No changelog found for add-on {addon.slug}!"
 
-        with addon.path_changelog.open("r") as changelog:
-            return changelog.read()
+        return await self.sys_run_in_executor(_read_static_file, addon.path_changelog)
 
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def addons_addon_documentation(self, request: web.Request) -> str:
@@ -273,8 +280,9 @@ class APIStore(CoreSysAttributes):
         if not addon.with_documentation:
             return f"No documentation found for add-on {addon.slug}!"
 
-        with addon.path_documentation.open("r") as documentation:
-            return documentation.read()
+        return await self.sys_run_in_executor(
+            _read_static_file, addon.path_documentation
+        )
 
     @api_process
     async def repositories_list(self, request: web.Request) -> list[dict[str, Any]]:

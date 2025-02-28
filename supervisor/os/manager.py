@@ -217,12 +217,15 @@ class OSManager(CoreSysAttributes):
                     )
 
                 # Download RAUCB file
-                with raucb.open("wb") as ota_file:
+                ota_file = await self.sys_run_in_executor(raucb.open, "wb")
+                try:
                     while True:
                         chunk = await request.content.read(1_048_576)
                         if not chunk:
                             break
-                        ota_file.write(chunk)
+                        await self.sys_run_in_executor(ota_file.write, chunk)
+                finally:
+                    await self.sys_run_in_executor(ota_file.close)
 
             _LOGGER.info("Completed download of OTA update file %s", raucb)
 

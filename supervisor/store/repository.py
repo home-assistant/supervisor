@@ -74,7 +74,10 @@ class Repository(CoreSysAttributes):
         return self.data.get(ATTR_MAINTAINER, UNKNOWN)
 
     def validate(self) -> bool:
-        """Check if store is valid."""
+        """Check if store is valid.
+
+        Must be run in executor.
+        """
         if self.type != StoreType.GIT:
             return True
 
@@ -104,7 +107,7 @@ class Repository(CoreSysAttributes):
 
     async def update(self) -> bool:
         """Update add-on repository."""
-        if not self.validate():
+        if not await self.sys_run_in_executor(self.validate):
             return False
         return self.type == StoreType.LOCAL or await self.git.pull()
 
