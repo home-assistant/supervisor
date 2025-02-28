@@ -81,7 +81,7 @@ async def async_capture_exception(err: Exception) -> None:
 
     Safe to call in event loop.
     """
-    await async_capture_exception(err)
+    await asyncio.get_running_loop().run_in_executor(None, capture_exception, err)
 
 
 def close_sentry() -> None:
