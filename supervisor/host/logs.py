@@ -72,7 +72,9 @@ class LogsControl(CoreSysAttributes):
     async def load(self) -> None:
         """Load log control."""
         try:
-            self._default_identifiers = read_json_file(SYSLOG_IDENTIFIERS_JSON)
+            self._default_identifiers = await self.sys_run_in_executor(
+                read_json_file, SYSLOG_IDENTIFIERS_JSON
+            )
         except ConfigurationFileError:
             _LOGGER.warning(
                 "Can't read syslog identifiers json file from %s",

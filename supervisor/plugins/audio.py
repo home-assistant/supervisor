@@ -129,7 +129,7 @@ class PluginAudio(PluginBase):
     async def restart(self) -> None:
         """Restart Audio plugin."""
         _LOGGER.info("Restarting Audio plugin")
-        self._write_config()
+        await self._write_config()
         try:
             await self.instance.restart()
         except DockerError as err:
@@ -138,7 +138,7 @@ class PluginAudio(PluginBase):
     async def start(self) -> None:
         """Run Audio plugin."""
         _LOGGER.info("Starting Audio plugin")
-        self._write_config()
+        await self._write_config()
         try:
             await self.instance.run()
         except DockerError as err:
@@ -183,10 +183,11 @@ class PluginAudio(PluginBase):
             default_sink=output_profile,
         )
 
-    def _write_config(self):
+    async def _write_config(self):
         """Write pulse audio config."""
         try:
-            write_json_file(
+            await self.sys_run_in_executor(
+                write_json_file,
                 self.pulse_audio_config,
                 {
                     "debug": self.sys_config.logging == LogLevel.DEBUG,

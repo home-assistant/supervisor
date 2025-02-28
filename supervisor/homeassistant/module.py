@@ -313,19 +313,20 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             BusEvent.HARDWARE_REMOVE_DEVICE, self._hardware_events
         )
 
-    def write_pulse(self):
+    async def write_pulse(self):
         """Write asound config to file and return True on success."""
         pulse_config = self.sys_plugins.audio.pulse_client(
             input_profile=self.audio_input, output_profile=self.audio_output
         )
 
-        # Cleanup wrong maps
-        if self.path_pulse.is_dir():
-            shutil.rmtree(self.path_pulse, ignore_errors=True)
-
-        # Write pulse config
-        try:
+        def write_pulse_config():
+            # Cleanup wrong maps
+            if self.path_pulse.is_dir():
+                shutil.rmtree(self.path_pulse, ignore_errors=True)
             self.path_pulse.write_text(pulse_config, encoding="utf-8")
+
+        try:
+            await self.sys_run_in_executor(write_pulse_config)
         except OSError as err:
             if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
