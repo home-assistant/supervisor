@@ -307,7 +307,7 @@ async def coresys(
     dbus_session_bus,
     all_dbus_services,
     aiohttp_client,
-    run_dir,
+    run_supervisor_state,
     supervisor_name,
 ) -> CoreSys:
     """Create a CoreSys Mock."""
@@ -498,12 +498,10 @@ def store_manager(coresys: CoreSys):
 
 
 @pytest.fixture
-def run_dir(tmp_path):
-    """Fixture to inject hassio env."""
+def run_supervisor_state() -> Generator[MagicMock]:
+    """Fixture to simulate Supervisor state file in /run/supervisor."""
     with patch("supervisor.core.RUN_SUPERVISOR_STATE") as mock_run:
-        tmp_state = Path(tmp_path, "supervisor")
-        mock_run.write_text = tmp_state.write_text
-        yield tmp_state
+        yield mock_run
 
 
 @pytest.fixture
