@@ -93,17 +93,18 @@ class PluginManager(CoreSysAttributes):
                 continue
 
             _LOGGER.info(
-                "%s does not have the latest version %s, updating",
+                "Plugin %s is not up-to-date, latest version %s, updating",
                 plugin.slug,
                 plugin.latest_version,
             )
             try:
                 await plugin.update()
-            except HassioError:
+            except HassioError as ex:
                 _LOGGER.error(
-                    "Can't update %s to %s, the Supervisor healthy could be compromised!",
+                    "Can't update %s to %s: %s",
                     plugin.slug,
                     plugin.latest_version,
+                    str(ex),
                 )
                 self.sys_resolution.create_issue(
                     IssueType.UPDATE_FAILED,
