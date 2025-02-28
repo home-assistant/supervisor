@@ -951,7 +951,7 @@ async def test_execution_limit_group_throttle_rate_limit(
     assert test2.call == 3
 
 
-async def test_internal_jobs_no_notify(coresys: CoreSys):
+async def test_internal_jobs_no_notify(coresys: CoreSys, ha_ws_client: AsyncMock):
     """Test internal jobs do not send any notifications."""
 
     class TestClass:
@@ -972,18 +972,15 @@ async def test_internal_jobs_no_notify(coresys: CoreSys):
             return True
 
     test1 = TestClass(coresys)
-    # pylint: disable-next=protected-access
-    client = coresys.homeassistant.websocket._client
-    client.async_send_command.reset_mock()
 
     await test1.execute_internal()
     await asyncio.sleep(0)
-    client.async_send_command.assert_not_called()
+    ha_ws_client.async_send_command.assert_not_called()
 
     await test1.execute_default()
     await asyncio.sleep(0)
-    assert client.async_send_command.call_count == 2
-    client.async_send_command.assert_called_with(
+    assert ha_ws_client.async_send_command.call_count == 2
+    ha_ws_client.async_send_command.assert_called_with(
         {
             "type": "supervisor/event",
             "data": {

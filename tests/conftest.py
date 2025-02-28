@@ -39,6 +39,7 @@ from supervisor.const import (
     ATTR_TYPE,
     ATTR_VERSION,
     REQUEST_FROM,
+    CoreState,
 )
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
@@ -388,9 +389,14 @@ async def coresys(
 
 
 @pytest.fixture
-def ha_ws_client(coresys: CoreSys) -> AsyncMock:
+async def ha_ws_client(coresys: CoreSys) -> AsyncMock:
     """Return HA WS client mock for assertions."""
-    return coresys.homeassistant.websocket._client
+    # Set Supervisor Core state to RUNNING, otherwise WS events won't be delivered
+    coresys.core.state = CoreState.RUNNING
+    await asyncio.sleep(0)
+    client = coresys.homeassistant.websocket._client
+    client.async_send_command.reset_mock()
+    return client
 
 
 @pytest.fixture
