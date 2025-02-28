@@ -75,6 +75,5 @@ jobs:
           title: "Update frontend to version ${{ needs.check-version.outputs.latest_version }}"
           body: >
             Update frontend from ${{ needs.check-version.outputs.current_version }} to
-            [${{ needs.check-version.outputs.latest_version }}]
-            (https://github.com/home-assistant/frontend/releases/tag/${{ needs.check-version.outputs.latest_version }})
+            [${{ needs.check-version.outputs.latest_version }}](https://github.com/home-assistant/frontend/releases/tag/${{ needs.check-version.outputs.latest_version }})
 
