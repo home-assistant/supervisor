@@ -330,12 +330,16 @@ async def coresys(
 
     # Mock test client
     coresys_obj._supervisor.instance._meta = {
-        "Config": {"Labels": {"io.hass.arch": "amd64"}}
+        "Config": {"Labels": {"io.hass.arch": "amd64"}},
+        "HostConfig": {"Privileged": True},
     }
     coresys_obj.arch._default_arch = "amd64"
     coresys_obj.arch._supported_set = {"amd64"}
     coresys_obj._machine = "qemux86-64"
     coresys_obj._machine_id = uuid4()
+
+    # Load resolution center
+    await coresys_obj.resolution.load()
 
     # Mock host communication
     with (
