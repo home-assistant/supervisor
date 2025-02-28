@@ -373,13 +373,14 @@ class Job(CoreSysAttributes):
 
         if (
             JobCondition.FREE_SPACE in used_conditions
-            and await coresys.sys_host.info.free_space() < MINIMUM_FREE_SPACE_THRESHOLD
+            and (free_space := await coresys.sys_host.info.free_space())
+            < MINIMUM_FREE_SPACE_THRESHOLD
         ):
             coresys.sys_resolution.create_issue(
                 IssueType.FREE_SPACE, ContextType.SYSTEM
             )
             raise JobConditionException(
-                f"'{method_name}' blocked from execution, not enough free space ({coresys.sys_host.info.free_space}GB) left on the device"
+                f"'{method_name}' blocked from execution, not enough free space ({free_space}GB) left on the device"
             )
 
         if JobCondition.INTERNET_SYSTEM in used_conditions:
