@@ -33,10 +33,10 @@ class ResolutionEvaluation(CoreSysAttributes):
         """Return all list of all checks."""
         return list(self._evalutions.values())
 
-    async def load(self) -> None:
+    async def load_modules(self) -> None:
         """Load all evaluations."""
 
-        def _load() -> dict[str, EvaluateBase]:
+        def _load_modules() -> dict[str, EvaluateBase]:
             """Load and setup evaluations in executor."""
             package = f"{__package__}.evaluations"
             evaluations: dict[str, EvaluateBase] = {}
@@ -46,7 +46,7 @@ class ResolutionEvaluation(CoreSysAttributes):
                 evaluations[evaluation.slug] = evaluation
             return evaluations
 
-        self._evalutions = await self.sys_run_in_executor(_load)
+        self._evalutions = await self.sys_run_in_executor(_load_modules)
 
     def get(self, slug: str) -> EvaluateBase:
         """Return check based on slug."""

@@ -328,9 +328,6 @@ async def coresys(
     coresys_obj._store.save_data = AsyncMock()
     coresys_obj._mounts.save_data = AsyncMock()
 
-    # Load resolution center
-    await coresys_obj.resolution.load()
-
     # Mock test client
     coresys_obj._supervisor.instance._meta = {
         "Config": {"Labels": {"io.hass.arch": "amd64"}}

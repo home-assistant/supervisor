@@ -46,6 +46,12 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._unsupported: list[UnsupportedReason] = []
         self._unhealthy: list[UnhealthyReason] = []
 
+    async def load_modules(self):
+        """Load resolution evaluation, check and fixup modules."""
+        await self._evaluate.load_modules()
+        await self._check.load_modules()
+        await self._fixup.load_modules()
+
     @property
     def data(self) -> dict[str, Any]:
         """Return data."""
@@ -195,10 +201,6 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     async def load(self):
         """Load the resoulution manager."""
-        await self.check.load()
-        await self.fixup.load()
-        await self.evaluate.load()
-
         # Initial healthcheck when the manager is loaded
         await self.healthcheck()
 

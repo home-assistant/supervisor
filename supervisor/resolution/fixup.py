@@ -22,10 +22,10 @@ class ResolutionFixup(CoreSysAttributes):
         self.coresys = coresys
         self._fixups: dict[str, FixupBase] = {}
 
-    async def load(self) -> None:
+    async def load_modules(self) -> None:
         """Load all fixups."""
 
-        def _load() -> dict[str, FixupBase]:
+        def _load_modules() -> dict[str, FixupBase]:
             """Load and setup fixups in executor."""
             package = f"{__package__}.fixups"
             fixups: dict[str, FixupBase] = {}
@@ -35,7 +35,7 @@ class ResolutionFixup(CoreSysAttributes):
                 fixups[fixup.slug] = fixup
             return fixups
 
-        self._fixups = await self.sys_run_in_executor(_load)
+        self._fixups = await self.sys_run_in_executor(_load_modules)
 
     @property
     def all_fixes(self) -> list[FixupBase]:
