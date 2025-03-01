@@ -62,9 +62,10 @@ async def async_capture_event(event: dict[str, Any], only_once: str | None = Non
 
     Safe to call from event loop.
     """
-    await asyncio.get_running_loop().run_in_executor(
-        None, capture_event, event, only_once
-    )
+    if sentry_sdk.is_initialized():
+        await asyncio.get_running_loop().run_in_executor(
+            None, capture_event, event, only_once
+        )
 
 
 def capture_exception(err: Exception) -> None:
@@ -81,7 +82,10 @@ async def async_capture_exception(err: Exception) -> None:
 
     Safe to call in event loop.
     """
-    await asyncio.get_running_loop().run_in_executor(None, capture_exception, err)
+    if sentry_sdk.is_initialized():
+        await asyncio.get_running_loop().run_in_executor(
+            None, sentry_sdk.capture_exception, err
+        )
 
 
 def close_sentry() -> None:
