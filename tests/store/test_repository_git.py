@@ -90,7 +90,7 @@ async def test_git_load(coresys: CoreSys, tmp_path: Path):
     with patch("git.Repo") as mock_repo:
         await repo.load()
         assert repo.clone.call_count == 0
-        mock_repo.call_count == 1
+        assert mock_repo.call_count == 1
 
 
 @pytest.mark.parametrize(
