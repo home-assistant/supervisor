@@ -25,7 +25,7 @@ from ..coresys import CoreSys
 from ..exceptions import APIError, BackupFileNotFoundError, DockerAPIError, HassioError
 from ..utils import check_exception_chain, get_message_from_exception_chain
 from ..utils.json import json_dumps, json_loads as json_loads_util
-from ..utils.log_format import format_message
+from ..utils.log_format import async_format_message
 from . import const
 
 
@@ -139,7 +139,7 @@ def api_return_error(
     if error and not message:
         message = get_message_from_exception_chain(error)
         if check_exception_chain(error, DockerAPIError):
-            message = format_message(message)
+            message = async_format_message(message)
     if not message:
         message = "Unknown error, see supervisor"
 
