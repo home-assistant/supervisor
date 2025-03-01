@@ -339,9 +339,6 @@ async def coresys(
     coresys_obj._machine = "qemux86-64"
     coresys_obj._machine_id = uuid4()
 
-    # Load resolution center
-    await coresys_obj.resolution.load()
-
     # Mock host communication
     with (
         patch("supervisor.dbus.manager.MessageBus") as message_bus,
