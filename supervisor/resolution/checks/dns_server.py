@@ -10,7 +10,7 @@ from ...const import CoreState
 from ...coresys import CoreSys
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
-from ...utils.sentry import capture_exception
+from ...utils.sentry import async_capture_exception
 from ..const import DNS_CHECK_HOST, ContextType, IssueType
 from .base import CheckBase
 
@@ -42,7 +42,7 @@ class CheckDNSServer(CheckBase):
                 ContextType.DNS_SERVER,
                 reference=dns_servers[i],
             )
-            capture_exception(results[i])
+            await async_capture_exception(results[i])
 
     @Job(name="check_dns_server_approve", conditions=[JobCondition.INTERNET_SYSTEM])
     async def approve_check(self, reference: str | None = None) -> bool:

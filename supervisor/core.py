@@ -26,7 +26,7 @@ from .exceptions import (
 from .homeassistant.core import LANDINGPAGE
 from .resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from .utils.dt import utcnow
-from .utils.sentry import capture_exception
+from .utils.sentry import async_capture_exception
 from .utils.whoami import WhoamiData, retrieve_whoami
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -172,7 +172,7 @@ class Core(CoreSysAttributes):
                     "Fatal error happening on load Task %s: %s", setup_task, err
                 )
                 self.sys_resolution.unhealthy = UnhealthyReason.SETUP
-                capture_exception(err)
+                await async_capture_exception(err)
 
         # Set OS Agent diagnostics if needed
         if (
@@ -189,7 +189,7 @@ class Core(CoreSysAttributes):
                     self.sys_config.diagnostics,
                     err,
                 )
-                capture_exception(err)
+                await async_capture_exception(err)
 
         # Evaluate the system
         await self.sys_resolution.evaluate.evaluate_system()
@@ -246,12 +246,12 @@ class Core(CoreSysAttributes):
                     await self.sys_homeassistant.core.start()
                 except HomeAssistantCrashError as err:
                     _LOGGER.error("Can't start Home Assistant Core - rebuiling")
-                    capture_exception(err)
+                    await async_capture_exception(err)
 
                     with suppress(HomeAssistantError):
                         await self.sys_homeassistant.core.rebuild()
                 except HomeAssistantError as err:
-                    capture_exception(err)
+                    await async_capture_exception(err)
             else:
                 _LOGGER.info("Skipping start of Home Assistant")
 

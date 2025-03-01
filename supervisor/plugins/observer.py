@@ -22,7 +22,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_OBSERVER,
@@ -121,7 +121,7 @@ class PluginObserver(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of HA observer failed")
-            capture_exception(err)
+            await async_capture_exception(err)
 
     @Job(
         name="plugin_observer_restart_after_problem",

@@ -23,7 +23,7 @@ class CheckFreeSpace(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
-        if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
+        if await self.sys_host.info.free_space() > MINIMUM_FREE_SPACE_THRESHOLD:
             return
 
         suggestions: list[SuggestionType] = []
@@ -45,7 +45,7 @@ class CheckFreeSpace(CheckBase):
 
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
-        if self.sys_host.info.free_space > MINIMUM_FREE_SPACE_THRESHOLD:
+        if await self.sys_host.info.free_space() > MINIMUM_FREE_SPACE_THRESHOLD:
             return False
         return True
 

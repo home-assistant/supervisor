@@ -10,7 +10,7 @@ from aiohttp import web
 from ..const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import APIAddonNotInstalled, HostNotSupportedError
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .addons import APIAddons
 from .audio import APIAudio
 from .auth import APIAuth
@@ -412,7 +412,7 @@ class RestAPI(CoreSysAttributes):
                 if not isinstance(err, HostNotSupportedError):
                     # No need to capture HostNotSupportedError to Sentry, the cause
                     # is known and reported to the user using the resolution center.
-                    capture_exception(err)
+                    await async_capture_exception(err)
                 kwargs.pop("follow", None)  # Follow is not supported for Docker logs
                 return await api_supervisor.logs(*args, **kwargs)
 

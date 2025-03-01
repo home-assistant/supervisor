@@ -1,6 +1,7 @@
 """Bootstrap Supervisor."""
 
 # ruff: noqa: T100
+from importlib import import_module
 import logging
 import os
 import signal
@@ -306,12 +307,12 @@ def reg_signal(loop, coresys: CoreSys) -> None:
         _LOGGER.warning("Could not bind to SIGINT")
 
 
-def supervisor_debugger(coresys: CoreSys) -> None:
+async def supervisor_debugger(coresys: CoreSys) -> None:
     """Start debugger if needed."""
     if not coresys.config.debug:
         return
-    # pylint: disable=import-outside-toplevel
-    import debugpy
+
+    debugpy = await coresys.run_in_executor(import_module, "debugpy")
 
     _LOGGER.info("Initializing Supervisor debugger")
 

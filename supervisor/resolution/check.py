@@ -7,7 +7,7 @@ from typing import Any
 from ..const import ATTR_CHECKS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionNotFound
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .checks.base import CheckBase
 from .validate import get_valid_modules
 
@@ -64,6 +64,6 @@ class ResolutionCheck(CoreSysAttributes):
                 await check()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.error("Error during processing %s: %s", check.issue, err)
-                capture_exception(err)
+                await async_capture_exception(err)
 
         _LOGGER.info("System checks complete")

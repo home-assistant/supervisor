@@ -1,5 +1,6 @@
 """Utilities for sentry."""
 
+import asyncio
 from functools import partial
 import logging
 from typing import Any
@@ -46,17 +47,41 @@ def init_sentry(coresys: CoreSys) -> None:
 
 
 def capture_event(event: dict[str, Any], only_once: str | None = None):
-    """Capture an event and send to sentry."""
+    """Capture an event and send to sentry.
+
+    Must be called in executor.
+    """
     if sentry_sdk.is_initialized():
         if only_once and only_once not in only_once_events:
             only_once_events.add(only_once)
             sentry_sdk.capture_event(event)
 
 
+async def async_capture_event(event: dict[str, Any], only_once: str | None = None):
+    """Capture an event and send to sentry.
+
+    Safe to call from event loop.
+    """
+    await asyncio.get_running_loop().run_in_executor(
+        None, capture_event, event, only_once
+    )
+
+
 def capture_exception(err: Exception) -> None:
-    """Capture an exception and send to sentry."""
+    """Capture an exception and send to sentry.
+
+    Must be called in executor.
+    """
     if sentry_sdk.is_initialized():
         sentry_sdk.capture_exception(err)
+
+
+async def async_capture_exception(err: Exception) -> None:
+    """Capture an exception and send to sentry.
+
+    Safe to call in event loop.
+    """
+    await asyncio.get_running_loop().run_in_executor(None, capture_exception, err)
 
 
 def close_sentry() -> None:

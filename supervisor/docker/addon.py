@@ -42,7 +42,7 @@ from ..hardware.data import Device
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     ENV_TIME,
     ENV_TOKEN,
@@ -606,7 +606,7 @@ class DockerAddon(DockerInterface):
             )
         except CoreDNSError as err:
             _LOGGER.warning("Can't update DNS for %s", self.name)
-            capture_exception(err)
+            await async_capture_exception(err)
 
         # Hardware Access
         if self.addon.static_devices:
@@ -787,7 +787,7 @@ class DockerAddon(DockerInterface):
                 await self.sys_plugins.dns.delete_host(self.addon.hostname)
             except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
-                capture_exception(err)
+                await async_capture_exception(err)
 
         # Hardware
         if self._hw_listener:

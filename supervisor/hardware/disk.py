@@ -49,17 +49,26 @@ class HwDisk(CoreSysAttributes):
         return False
 
     def get_disk_total_space(self, path: str | Path) -> float:
-        """Return total space (GiB) on disk for path."""
+        """Return total space (GiB) on disk for path.
+
+        Must be run in executor.
+        """
         total, _, _ = shutil.disk_usage(path)
         return round(total / (1024.0**3), 1)
 
     def get_disk_used_space(self, path: str | Path) -> float:
-        """Return used space (GiB) on disk for path."""
+        """Return used space (GiB) on disk for path.
+
+        Must be run in executor.
+        """
         _, used, _ = shutil.disk_usage(path)
         return round(used / (1024.0**3), 1)
 
     def get_disk_free_space(self, path: str | Path) -> float:
-        """Return free space (GiB) on disk for path."""
+        """Return free space (GiB) on disk for path.
+
+        Must be run in executor.
+        """
         _, _, free = shutil.disk_usage(path)
         return round(free / (1024.0**3), 1)
 
@@ -113,7 +122,10 @@ class HwDisk(CoreSysAttributes):
         return life_time_value * 10.0
 
     def get_disk_life_time(self, path: str | Path) -> float:
-        """Return life time estimate of the underlying SSD drive."""
+        """Return life time estimate of the underlying SSD drive.
+
+        Must be run in executor.
+        """
         mount_source = self._get_mount_source(str(path))
         if mount_source == "overlay":
             return None

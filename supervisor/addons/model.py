@@ -211,18 +211,6 @@ class AddonModel(JobGroup, ABC):
         return self.data[ATTR_DESCRIPTON]
 
     @property
-    def long_description(self) -> str | None:
-        """Return README.md as long_description."""
-        readme = Path(self.path_location, "README.md")
-
-        # If readme not exists
-        if not readme.exists():
-            return None
-
-        # Return data
-        return readme.read_text(encoding="utf-8")
-
-    @property
     def repository(self) -> str:
         """Return repository of add-on."""
         return self.data[ATTR_REPOSITORY]
@@ -645,6 +633,21 @@ class AddonModel(JobGroup, ABC):
     def breaking_versions(self) -> list[AwesomeVersion]:
         """Return breaking versions of addon."""
         return self.data[ATTR_BREAKING_VERSIONS]
+
+    async def long_description(self) -> str | None:
+        """Return README.md as long_description."""
+
+        def read_readme() -> str | None:
+            readme = Path(self.path_location, "README.md")
+
+            # If readme not exists
+            if not readme.exists():
+                return None
+
+            # Return data
+            return readme.read_text(encoding="utf-8")
+
+        return await self.sys_run_in_executor(read_readme)
 
     def refresh_path_cache(self) -> Awaitable[None]:
         """Refresh cache of existing paths."""

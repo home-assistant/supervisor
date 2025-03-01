@@ -80,7 +80,9 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
                 "arch": coresys.arch.default,
                 "board": coresys.os.board,
                 "deployment": coresys.host.info.deployment,
-                "disk_free_space": coresys.host.info.free_space,
+                "disk_free_space": coresys.hardware.disk.get_disk_free_space(
+                    coresys.config.path_supervisor
+                ),
                 "host": coresys.host.info.operating_system,
                 "kernel": coresys.host.info.kernel,
                 "machine": coresys.machine,

@@ -36,7 +36,7 @@ from ..resolution.const import UnhealthyReason
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
 from ..utils.sentinel import DEFAULT
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .backup import Backup
 from .const import (
     DEFAULT_FREEZE_TIMEOUT,
@@ -525,7 +525,7 @@ class BackupManager(FileConfiguration, JobGroup):
             return None
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Backup %s error", backup.slug)
-            capture_exception(err)
+            await async_capture_exception(err)
             self.sys_jobs.current.capture_error(
                 BackupError(f"Backup {backup.slug} error, see supervisor logs")
             )
@@ -718,7 +718,7 @@ class BackupManager(FileConfiguration, JobGroup):
             raise
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.exception("Restore %s error", backup.slug)
-            capture_exception(err)
+            await async_capture_exception(err)
             raise BackupError(
                 f"Restore {backup.slug} error, see supervisor logs"
             ) from err
