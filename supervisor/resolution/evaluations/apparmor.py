@@ -36,7 +36,7 @@ class EvaluateAppArmor(EvaluateBase):
     async def evaluate(self) -> None:
         """Run evaluation."""
         try:
-            apparmor = self.sys_run_in_executor(
+            apparmor = await self.sys_run_in_executor(
                 _APPARMOR_KERNEL.read_text, encoding="utf-8"
             )
         except OSError:
