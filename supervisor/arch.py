@@ -50,7 +50,7 @@ class CpuArch(CoreSysAttributes):
     async def load(self) -> None:
         """Load data and initialize default arch."""
         try:
-            arch_data = read_json_file(ARCH_JSON)
+            arch_data = await self.sys_run_in_executor(read_json_file, ARCH_JSON)
         except ConfigurationFileError:
             _LOGGER.warning("Can't read arch json file from %s", ARCH_JSON)
             return

@@ -208,7 +208,7 @@ class SecurityMiddleware(CoreSysAttributes):
             CoreState.RUNNING,
             CoreState.FREEZE,
         ):
-            return api_return_error(
+            return await api_return_error(
                 message=f"System is not ready with state: {self.sys_core.state}"
             )
 
