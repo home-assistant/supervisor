@@ -49,7 +49,7 @@ class GitRepo(CoreSysAttributes):
 
     async def load(self) -> None:
         """Init Git add-on repository."""
-        if not self.path.is_dir():
+        if not (self.path / ".git").is_dir():
             await self.clone()
             return
 

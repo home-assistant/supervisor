@@ -67,17 +67,30 @@ async def test_git_clone_error(
 
 async def test_git_load(coresys: CoreSys, tmp_path: Path):
     """Test git load."""
-    repo = GitRepo(coresys, tmp_path, REPO_URL)
+    repo_dir = tmp_path / "repo"
+    repo = GitRepo(coresys, repo_dir, REPO_URL)
+    repo.clone = AsyncMock()
 
-    with (
-        patch("pathlib.Path.is_dir", return_value=True),
-        patch.object(
-            GitRepo, "sys_run_in_executor", new_callable=AsyncMock
-        ) as run_in_executor,
-    ):
+    # Test with non-existing git repo root directory
+    await repo.load()
+    assert repo.clone.call_count == 1
+
+    repo.clone.reset_mock()
+
+    # Test with existing git repo root directory, but empty
+    repo_dir.mkdir()
+    await repo.load()
+    assert repo.clone.call_count == 1
+
+    repo.clone.reset_mock()
+
+    # Pretend we have a repo
+    (repo_dir / ".git").mkdir()
+
+    with patch("git.Repo") as mock_repo:
         await repo.load()
-
-        assert run_in_executor.call_count == 2
+        assert repo.clone.call_count == 0
+        mock_repo.call_count == 1
 
 
 @pytest.mark.parametrize(
@@ -87,21 +100,22 @@ async def test_git_load(coresys: CoreSys, tmp_path: Path):
         NoSuchPathError(),
         GitCommandError("init"),
         UnicodeDecodeError("decode", b"", 0, 0, ""),
-        [AsyncMock(), GitCommandError("fsck")],
+        GitCommandError("fsck"),
     ],
 )
 async def test_git_load_error(coresys: CoreSys, tmp_path: Path, git_errors: Exception):
     """Test git load error."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     repo = GitRepo(coresys, tmp_path, REPO_URL)
 
+    # Pretend we have a repo
+    (tmp_path / ".git").mkdir()
+
     with (
-        patch("pathlib.Path.is_dir", return_value=True),
-        patch.object(
-            GitRepo, "sys_run_in_executor", new_callable=AsyncMock
-        ) as run_in_executor,
+        patch("git.Repo") as mock_repo,
         pytest.raises(StoreGitError),
     ):
-        run_in_executor.side_effect = git_errors
+        mock_repo.side_effect = git_errors
         await repo.load()
 
     assert len(coresys.resolution.suggestions) == 0
