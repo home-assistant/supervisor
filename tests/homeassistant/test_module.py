@@ -66,21 +66,21 @@ async def test_get_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
     )
 
 
-def test_write_pulse_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
+async def test_write_pulse_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test errors writing pulse config."""
     with patch(
         "supervisor.homeassistant.module.Path.write_text",
         side_effect=(err := OSError()),
     ):
         err.errno = errno.EBUSY
-        coresys.homeassistant.write_pulse()
+        await coresys.homeassistant.write_pulse()
 
         assert "can't write pulse/client.config" in caplog.text
         assert coresys.core.healthy is True
 
         caplog.clear()
         err.errno = errno.EBADMSG
-        coresys.homeassistant.write_pulse()
+        await coresys.homeassistant.write_pulse()
 
         assert "can't write pulse/client.config" in caplog.text
         assert coresys.core.healthy is False

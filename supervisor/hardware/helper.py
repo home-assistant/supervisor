@@ -25,6 +25,7 @@ class HwHelper(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Init hardware object."""
         self.coresys = coresys
+        self._last_boot: datetime | None = None
 
     @property
     def support_audio(self) -> bool:
@@ -41,11 +42,15 @@ class HwHelper(CoreSysAttributes):
         """Return True if the device have USB ports."""
         return bool(self.sys_hardware.filter_devices(subsystem=UdevSubsystem.USB))
 
-    @property
-    def last_boot(self) -> datetime | None:
+    async def last_boot(self) -> datetime | None:
         """Return last boot time."""
+        if self._last_boot:
+            return self._last_boot
+
         try:
-            stats: str = _PROC_STAT.read_text(encoding="utf-8")
+            stats: str = await self.sys_run_in_executor(
+                _PROC_STAT.read_text, encoding="utf-8"
+            )
         except OSError as err:
             _LOGGER.error("Can't read stat data: %s", err)
             return None
@@ -56,7 +61,8 @@ class HwHelper(CoreSysAttributes):
             _LOGGER.error("Can't found last boot time!")
             return None
 
-        return datetime.fromtimestamp(int(found.group(1)), UTC)
+        self._last_boot = datetime.fromtimestamp(int(found.group(1)), UTC)
+        return self._last_boot
 
     def hide_virtual_device(self, udev_device: pyudev.Device) -> bool:
         """Small helper to hide not needed Devices."""

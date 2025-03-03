@@ -342,7 +342,7 @@ class HomeAssistantCore(JobGroup):
             await self.sys_homeassistant.save_data()
 
             # Write audio settings
-            self.sys_homeassistant.write_pulse()
+            await self.sys_homeassistant.write_pulse()
 
             try:
                 await self.instance.run(restore_job_id=self.sys_backups.current_restore)
