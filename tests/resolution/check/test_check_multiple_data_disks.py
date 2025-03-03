@@ -36,7 +36,7 @@ async def test_base(coresys: CoreSys):
 async def test_check(coresys: CoreSys, sda1_block_service: BlockService):
     """Test check."""
     multiple_data_disks = CheckMultipleDataDisks(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     await multiple_data_disks.run_check()
 
@@ -64,7 +64,7 @@ async def test_check(coresys: CoreSys, sda1_block_service: BlockService):
 async def test_approve(coresys: CoreSys, sda1_block_service: BlockService):
     """Test approve."""
     multiple_data_disks = CheckMultipleDataDisks(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert not await multiple_data_disks.approve_check(reference="/dev/sda1")
 
@@ -88,13 +88,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as check:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await multiple_data_disks()
             check.assert_called_once()
             check.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await multiple_data_disks()
             check.assert_not_called()
             check.reset_mock()

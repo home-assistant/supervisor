@@ -334,7 +334,7 @@ async def test_multiple_datadisk_add_remove_signals(
     ]
 
     await coresys.os.datadisk.load()
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
@@ -386,7 +386,7 @@ async def test_disabled_datadisk_add_remove_signals(
     ]
 
     await coresys.os.datadisk.load()
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []

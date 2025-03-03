@@ -11,7 +11,7 @@ from supervisor.resolution.evaluations.dns_server import EvaluateDNSServer
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     dns_server = EvaluateDNSServer(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert dns_server.reason not in coresys.resolution.unsupported
     assert coresys.plugins.dns.fallback is True
@@ -48,13 +48,13 @@ async def test_did_run(coresys: CoreSys):
 
     with patch.object(EvaluateDNSServer, "evaluate", return_value=None) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await dns_server()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await dns_server()
             evaluate.assert_not_called()
             evaluate.reset_mock()

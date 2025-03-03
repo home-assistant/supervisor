@@ -128,7 +128,7 @@ async def test_api_resolution_check_options(coresys: CoreSys, api_client: TestCl
 @pytest.mark.asyncio
 async def test_api_resolution_check_run(coresys: CoreSys, api_client: TestClient):
     """Test client API with run check."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     free_space = coresys.resolution.check.get("free_space")
 
     free_space.run_check = AsyncMock()

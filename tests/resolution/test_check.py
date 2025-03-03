@@ -10,7 +10,7 @@ from supervisor.utils import check_exception_chain
 
 async def test_check_system_error(coresys: CoreSys, capture_exception: Mock):
     """Test error while checking system."""
-    coresys.core.state = CoreState.STARTUP
+    await coresys.core.set_state(CoreState.STARTUP)
 
     with (
         patch.object(CheckCoreSecurity, "run_check", side_effect=ValueError),

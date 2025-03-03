@@ -5,7 +5,7 @@ import datetime
 import errno
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
-from pytest import LogCaptureFixture
+import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -16,15 +16,18 @@ from supervisor.supervisor import Supervisor
 from supervisor.utils.whoami import WhoamiData
 
 
-def test_write_state(run_supervisor_state, coresys: CoreSys):
+@pytest.mark.parametrize("run_supervisor_state", ["test_file"], indirect=True)
+async def test_write_state(run_supervisor_state: MagicMock, coresys: CoreSys):
     """Test write corestate to /run/supervisor."""
-    coresys.core.state = CoreState.RUNNING
+    run_supervisor_state.reset_mock()
+
+    await coresys.core.set_state(CoreState.RUNNING)
 
     run_supervisor_state.write_text.assert_called_with(
         str(CoreState.RUNNING), encoding="utf-8"
     )
 
-    coresys.core.state = CoreState.SHUTDOWN
+    await coresys.core.set_state(CoreState.SHUTDOWN)
 
     run_supervisor_state.write_text.assert_called_with(
         str(CoreState.SHUTDOWN), encoding="utf-8"
@@ -87,14 +90,14 @@ async def test_adjust_system_datetime_if_time_behind(coresys: CoreSys):
         mock_check_connectivity.assert_called_once()
 
 
-def test_write_state_failure(
-    run_supervisor_state: MagicMock, coresys: CoreSys, caplog: LogCaptureFixture
+async def test_write_state_failure(
+    run_supervisor_state: MagicMock, coresys: CoreSys, caplog: pytest.LogCaptureFixture
 ):
     """Test failure to write corestate to /run/supervisor."""
     err = OSError()
     err.errno = errno.EBADMSG
     run_supervisor_state.write_text.side_effect = err
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert "Can't update the Supervisor state" in caplog.text
     assert coresys.core.state == CoreState.RUNNING

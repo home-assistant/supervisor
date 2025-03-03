@@ -10,7 +10,7 @@ from supervisor.resolution.const import UnsupportedReason
 
 async def test_evaluation_initialize(coresys: CoreSys):
     """Test evaluation for initialize."""
-    coresys.core.state = CoreState.INITIALIZE
+    await coresys.core.set_state(CoreState.INITIALIZE)
     with (
         patch(
             "supervisor.resolution.evaluations.dbus.EvaluateDbus.evaluate",
@@ -43,7 +43,7 @@ async def test_evaluation_initialize(coresys: CoreSys):
 
 async def test_evaluation_setup(coresys: CoreSys):
     """Test evaluation for setup."""
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
     with (
         patch(
             "supervisor.resolution.evaluations.operating_system.EvaluateOperatingSystem.evaluate",
@@ -66,7 +66,7 @@ async def test_evaluation_setup(coresys: CoreSys):
 
 async def test_evaluation_running(coresys: CoreSys):
     """Test evaluation for running."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     with (
         patch(
             "supervisor.resolution.evaluations.container.EvaluateContainer.evaluate",
@@ -84,7 +84,7 @@ async def test_evaluation_running(coresys: CoreSys):
 
 async def test_adding_and_removing_unsupported_reason(coresys: CoreSys):
     """Test adding and removing unsupported reason."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     assert UnsupportedReason.NETWORK_MANAGER not in coresys.resolution.unsupported
 
     with patch(

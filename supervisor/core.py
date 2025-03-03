@@ -5,6 +5,7 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
 import logging
+from typing import Self
 
 from .const import (
     ATTR_STARTUP,
@@ -39,7 +40,6 @@ class Core(CoreSysAttributes):
         """Initialize Supervisor object."""
         self.coresys: CoreSys = coresys
         self._state: CoreState = CoreState.INITIALIZE
-        self._write_run_state(self._state)
         self.exit_code: int = 0
 
     @property
@@ -57,32 +57,38 @@ class Core(CoreSysAttributes):
         """Return true if the installation is healthy."""
         return len(self.sys_resolution.unhealthy) == 0
 
-    def _write_run_state(self, new_state: CoreState):
+    async def _write_run_state(self):
         """Write run state for s6 service supervisor."""
         try:
-            RUN_SUPERVISOR_STATE.write_text(str(new_state), encoding="utf-8")
+            await self.sys_run_in_executor(
+                RUN_SUPERVISOR_STATE.write_text, str(self._state), encoding="utf-8"
+            )
         except OSError as err:
             _LOGGER.warning(
-                "Can't update the Supervisor state to %s: %s", new_state, err
+                "Can't update the Supervisor state to %s: %s", self._state, err
             )
 
-    @state.setter
-    def state(self, new_state: CoreState) -> None:
+    async def post_init(self) -> Self:
+        """Post init actions that must be done in event loop."""
+        await self._write_run_state()
+        return self
+
+    async def set_state(self, new_state: CoreState) -> None:
         """Set core into new state."""
         if self._state == new_state:
             return
 
-        self._write_run_state(new_state)
         self._state = new_state
+        await self._write_run_state()
 
         # Don't attempt to notify anyone on CLOSE as we're about to stop the event loop
-        if new_state != CoreState.CLOSE:
-            self.sys_bus.fire_event(BusEvent.SUPERVISOR_STATE_CHANGE, new_state)
+        if self._state != CoreState.CLOSE:
+            self.sys_bus.fire_event(BusEvent.SUPERVISOR_STATE_CHANGE, self._state)
 
             # These will be received by HA after startup has completed which won't make sense
-            if new_state not in STARTING_STATES:
+            if self._state not in STARTING_STATES:
                 self.sys_homeassistant.websocket.supervisor_update_event(
-                    "info", {"state": new_state}
+                    "info", {"state": self._state}
                 )
 
     async def connect(self):
@@ -116,7 +122,7 @@ class Core(CoreSysAttributes):
 
     async def setup(self):
         """Start setting up supervisor orchestration."""
-        self.state = CoreState.SETUP
+        await self.set_state(CoreState.SETUP)
 
         # Check internet on startup
         await self.sys_supervisor.check_connectivity()
@@ -196,7 +202,7 @@ class Core(CoreSysAttributes):
 
     async def start(self):
         """Start Supervisor orchestration."""
-        self.state = CoreState.STARTUP
+        await self.set_state(CoreState.STARTUP)
 
         # Check if system is healthy
         if not self.supported:
@@ -282,7 +288,7 @@ class Core(CoreSysAttributes):
             self.sys_create_task(self.sys_updater.reload())
             self.sys_create_task(self.sys_resolution.healthcheck())
 
-            self.state = CoreState.RUNNING
+            await self.set_state(CoreState.RUNNING)
             self.sys_homeassistant.websocket.supervisor_update_event(
                 "supervisor", {ATTR_STARTUP: "complete"}
             )
@@ -297,7 +303,7 @@ class Core(CoreSysAttributes):
             return
 
         # don't process scheduler anymore
-        self.state = CoreState.STOPPING
+        await self.set_state(CoreState.STOPPING)
 
         # Stage 1
         try:
@@ -332,7 +338,7 @@ class Core(CoreSysAttributes):
         except TimeoutError:
             _LOGGER.warning("Stage 2: Force Shutdown!")
 
-        self.state = CoreState.CLOSE
+        await self.set_state(CoreState.CLOSE)
         _LOGGER.info("Supervisor is down - %d", self.exit_code)
         self.sys_loop.stop()
 
@@ -340,7 +346,7 @@ class Core(CoreSysAttributes):
         """Shutdown all running containers in correct order."""
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
-            self.state = CoreState.SHUTDOWN
+            await self.set_state(CoreState.SHUTDOWN)
 
         # Shutdown Application Add-ons, using Home Assistant API
         await self.sys_addons.shutdown(AddonStartup.APPLICATION)

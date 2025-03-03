@@ -36,7 +36,7 @@ async def test_check(
 ):
     """Test check."""
     network_interface = CheckNetworkInterfaceIPV4(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert len(coresys.resolution.issues) == 0
 
@@ -65,7 +65,7 @@ async def test_approve(
 ):
     """Test check."""
     network_interface = CheckNetworkInterfaceIPV4(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert not await network_interface.approve_check("eth0")
 
@@ -89,13 +89,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as check:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await network_interface()
             check.assert_called_once()
             check.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await network_interface()
             check.assert_not_called()
             check.reset_mock()

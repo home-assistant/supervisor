@@ -234,7 +234,7 @@ async def test_host_connectivity_disabled(
     """Test host connectivity check disabled."""
     await coresys.host.network.load()
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     await asyncio.sleep(0)
     ha_ws_client.async_send_command.reset_mock()
 

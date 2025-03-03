@@ -315,6 +315,7 @@ async def coresys(
     with (
         patch("supervisor.bootstrap.initialize_system"),
         patch("supervisor.utils.sentry.sentry_sdk.init"),
+        patch("supervisor.core.Core._write_run_state"),
     ):
         coresys_obj = await initialize_coresys()
 
@@ -389,7 +390,7 @@ async def coresys(
 async def ha_ws_client(coresys: CoreSys) -> AsyncMock:
     """Return HA WS client mock for assertions."""
     # Set Supervisor Core state to RUNNING, otherwise WS events won't be delivered
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     await asyncio.sleep(0)
     client = coresys.homeassistant.websocket._client
     client.async_send_command.reset_mock()
@@ -501,10 +502,14 @@ def store_manager(coresys: CoreSys):
 
 
 @pytest.fixture
-def run_supervisor_state() -> Generator[MagicMock]:
+def run_supervisor_state(request: pytest.FixtureRequest) -> Generator[MagicMock]:
     """Fixture to simulate Supervisor state file in /run/supervisor."""
-    with patch("supervisor.core.RUN_SUPERVISOR_STATE") as mock_run:
-        yield mock_run
+    if getattr(request, "param", "test_file"):
+        with patch("supervisor.core.RUN_SUPERVISOR_STATE") as mock_run:
+            yield mock_run
+    else:
+        with patch("supervisor.core.Core._write_run_state") as mock_write_state:
+            yield mock_write_state
 
 
 @pytest.fixture

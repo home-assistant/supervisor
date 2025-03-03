@@ -11,7 +11,7 @@ from supervisor.resolution.evaluations.systemd_journal import EvaluateSystemdJou
 async def test_evaluation(coresys: CoreSys, journald_gateway: MagicMock):
     """Test evaluation."""
     systemd_journal = EvaluateSystemdJournal(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     assert systemd_journal.reason not in coresys.resolution.unsupported
 
@@ -38,13 +38,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await systemd_journal()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await systemd_journal()
             evaluate.assert_not_called()
             evaluate.reset_mock()

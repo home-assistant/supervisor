@@ -11,7 +11,7 @@ from supervisor.resolution.evaluations.docker_version import EvaluateDockerVersi
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     docker_version = EvaluateDockerVersion(coresys)
-    coresys.core.state = CoreState.INITIALIZE
+    await coresys.core.set_state(CoreState.INITIALIZE)
 
     assert docker_version.reason not in coresys.resolution.unsupported
 
@@ -37,13 +37,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await docker_version()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await docker_version()
             evaluate.assert_not_called()
             evaluate.reset_mock()

@@ -25,7 +25,7 @@ def _make_image_attr(image: str) -> MagicMock:
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     container = EvaluateContainer(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert container.reason not in coresys.resolution.unsupported
     assert UnhealthyReason.DOCKER not in coresys.resolution.unhealthy
@@ -57,7 +57,7 @@ async def test_evaluation(coresys: CoreSys):
 async def test_corrupt_docker(coresys: CoreSys):
     """Test corrupt docker issue."""
     container = EvaluateContainer(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     corrupt_docker = Issue(IssueType.CORRUPT_DOCKER, ContextType.SYSTEM)
     assert corrupt_docker not in coresys.resolution.issues
@@ -80,13 +80,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await container()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await container()
             evaluate.assert_not_called()
             evaluate.reset_mock()

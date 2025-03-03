@@ -75,7 +75,7 @@ async def test_internet(
     system_result: bool | None,
 ):
     """Test the internet decorator."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     reset_last_call(Supervisor.check_connectivity)
 
     class TestClass:
@@ -241,10 +241,10 @@ async def test_running(coresys: CoreSys):
 
     test = TestClass(coresys)
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     assert await test.execute()
 
-    coresys.core.state = CoreState.FREEZE
+    await coresys.core.set_state(CoreState.FREEZE)
     assert not await test.execute()
 
     coresys.jobs.ignore_conditions = [JobCondition.RUNNING]
@@ -272,10 +272,10 @@ async def test_exception_conditions(coresys: CoreSys):
 
     test = TestClass(coresys)
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     assert await test.execute()
 
-    coresys.core.state = CoreState.FREEZE
+    await coresys.core.set_state(CoreState.FREEZE)
     with pytest.raises(HassioError):
         await test.execute()
 
