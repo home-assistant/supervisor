@@ -75,8 +75,6 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
     async def load(self) -> None:
         """Start up add-on management."""
-        await self.data.update()
-
         # Init custom repositories and load add-ons
         await self.update_repositories(
             self._data[ATTR_REPOSITORIES], add_with_errors=True

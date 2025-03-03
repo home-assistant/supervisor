@@ -97,7 +97,9 @@ class GitRepo(CoreSysAttributes):
             }
 
             try:
-                _LOGGER.info("Cloning add-on %s repository", self.url)
+                _LOGGER.info(
+                    "Cloning add-on %s repository from %s", self.path, self.url
+                )
                 self.repo = await self.sys_run_in_executor(
                     ft.partial(
                         git.Repo.clone_from, self.url, str(self.path), **git_args
@@ -128,7 +130,7 @@ class GitRepo(CoreSysAttributes):
             return
 
         async with self.lock:
-            _LOGGER.info("Update add-on %s repository", self.url)
+            _LOGGER.info("Update add-on %s repository from %s", self.path, self.url)
 
             try:
                 branch = self.repo.active_branch.name
