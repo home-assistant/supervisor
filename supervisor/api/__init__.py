@@ -9,7 +9,7 @@ from aiohttp import web
 
 from ..const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import APIAddonNotInstalled, HostNotSupportedError
+from ..exceptions import APIAddonNotInstalled, APIError, HostNotSupportedError
 from ..utils.sentry import async_capture_exception
 from .addons import APIAddons
 from .audio import APIAudio
@@ -403,6 +403,10 @@ class RestAPI(CoreSysAttributes):
                 return await self._api_host.advanced_logs_handler(
                     *args, identifier="hassio_supervisor", **kwargs
                 )
+            except APIError as err:
+                # Advanced logs are generally available, but we did encounter an error
+                # (e.g. connection reset). Those errors should bubble up to the API.
+                raise err
             except Exception as err:  # pylint: disable=broad-exception-caught
                 # Supervisor logs are critical, so catch everything, log the exception
                 # and try to return Docker container logs as the fallback
