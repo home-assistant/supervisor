@@ -39,7 +39,7 @@ class FixupAddonExecuteRepair(FixupBase):
             )
             return
 
-        _LOGGER.info("Installing image for addon %s")
+        _LOGGER.info("Installing image for addon %s", reference)
         self.attempts += 1
         await addon.instance.install(addon.version)
 
