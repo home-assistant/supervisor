@@ -86,6 +86,7 @@ def _read_static_binary_file(path: Path) -> Any:
     with path.open("rb") as asset:
         return asset.read()
 
+
 class APIStore(CoreSysAttributes):
     """Handle RESTful API for store functions."""
 
@@ -278,7 +279,9 @@ class APIStore(CoreSysAttributes):
         if not addon.with_changelog:
             return f"No changelog found for add-on {addon.slug}!"
 
-        return await self.sys_run_in_executor(_read_static_text_file, addon.path_changelog)
+        return await self.sys_run_in_executor(
+            _read_static_text_file, addon.path_changelog
+        )
 
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def addons_addon_documentation(self, request: web.Request) -> str:
