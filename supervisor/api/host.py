@@ -255,9 +255,7 @@ class APIHost(CoreSysAttributes):
                 response.content_type = CONTENT_TYPE_TEXT
                 headers_returned = False
                 async for cursor, line in journal_logs_reader(resp, log_formatter):
-                    # When client closes the connection while reading busy logs, we
-                    # sometimes get this exception. It should be safe to ignore it.
-                    with suppress(ClientConnectionResetError):
+                    try:
                         if not headers_returned:
                             if cursor:
                                 response.headers["X-First-Cursor"] = cursor
@@ -265,6 +263,13 @@ class APIHost(CoreSysAttributes):
                             await response.prepare(request)
                             headers_returned = True
                         await response.write(line.encode("utf-8") + b"\n")
+                    except ClientConnectionResetError as err:
+                        # When client closes the connection while reading busy logs, we
+                        # sometimes get this exception. It should be safe to ignore it.
+                        _LOGGER.debug(
+                            "ClientConnectionResetError raised when returning journal logs: %s",
+                            err,
+                        )
             except ConnectionResetError as ex:
                 raise APIError(
                     "Connection reset when trying to fetch data from systemd-journald."
