@@ -255,15 +255,15 @@ class APIHost(CoreSysAttributes):
                 response.content_type = CONTENT_TYPE_TEXT
                 headers_returned = False
                 async for cursor, line in journal_logs_reader(resp, log_formatter):
-                    if not headers_returned:
-                        if cursor:
-                            response.headers["X-First-Cursor"] = cursor
-                        response.headers["X-Accel-Buffering"] = "no"
-                        await response.prepare(request)
-                        headers_returned = True
                     # When client closes the connection while reading busy logs, we
                     # sometimes get this exception. It should be safe to ignore it.
                     with suppress(ClientConnectionResetError):
+                        if not headers_returned:
+                            if cursor:
+                                response.headers["X-First-Cursor"] = cursor
+                            response.headers["X-Accel-Buffering"] = "no"
+                            await response.prepare(request)
+                            headers_returned = True
                         await response.write(line.encode("utf-8") + b"\n")
             except ConnectionResetError as ex:
                 raise APIError(
