@@ -516,6 +516,7 @@ def store_addon(coresys: CoreSys, tmp_path, repository):
     coresys.store.data.addons[addon_obj.slug] = SCHEMA_ADDON_SYSTEM(
         load_json_fixture("add-on.json")
     )
+    coresys.store.data.addons[addon_obj.slug]["location"] = tmp_path
     yield addon_obj
 
 

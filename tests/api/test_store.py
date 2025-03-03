@@ -349,3 +349,41 @@ async def test_repository_not_found(api_client: TestClient, method: str, url: st
     assert resp.status == 404
     body = await resp.json()
     assert body["message"] == "Repository bad does not exist in the store"
+
+
+@pytest.mark.parametrize("resource", ["store/addons", "addons"])
+async def test_api_store_addons_documentation_corrupted(
+    api_client: TestClient, coresys: CoreSys, store_addon: AddonStore, resource: str
+):
+    """Test /store/addons/{addon}/documentation REST API.
+
+    Test add-on with documentation file with byte sequences which cannot be decoded
+    using UTF-8.
+    """
+    store_addon.path_documentation.write_bytes(b"Text with an invalid UTF-8 char: \xff")
+    await store_addon.refresh_path_cache()
+    assert store_addon.with_documentation is True
+
+    resp = await api_client.get(f"/{resource}/{store_addon.slug}/documentation")
+    assert resp.status == 200
+    result = await resp.text()
+    assert result == "Text with an invalid UTF-8 char: �"
+
+
+@pytest.mark.parametrize("resource", ["store/addons", "addons"])
+async def test_api_store_addons_changelog_corrupted(
+    api_client: TestClient, coresys: CoreSys, store_addon: AddonStore, resource: str
+):
+    """Test /store/addons/{addon}/changelog REST API.
+
+    Test add-on with changelog file with byte sequences which cannot be decoded
+    using UTF-8.
+    """
+    store_addon.path_changelog.write_bytes(b"Text with an invalid UTF-8 char: \xff")
+    await store_addon.refresh_path_cache()
+    assert store_addon.with_changelog is True
+
+    resp = await api_client.get(f"/{resource}/{store_addon.slug}/changelog")
+    assert resp.status == 200
+    result = await resp.text()
+    assert result == "Text with an invalid UTF-8 char: �"
