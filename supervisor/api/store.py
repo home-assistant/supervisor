@@ -255,7 +255,7 @@ class APIStore(CoreSysAttributes):
         if not addon.with_icon:
             raise APIError(f"No icon found for add-on {addon.slug}!")
 
-        return await self.sys_run_in_executor(_read_static_binary_file, addon.path_icon, True)
+        return await self.sys_run_in_executor(_read_static_binary_file, addon.path_icon)
 
     @api_process_raw(CONTENT_TYPE_PNG)
     async def addons_addon_logo(self, request: web.Request) -> bytes:
@@ -264,7 +264,7 @@ class APIStore(CoreSysAttributes):
         if not addon.with_logo:
             raise APIError(f"No logo found for add-on {addon.slug}!")
 
-        return await self.sys_run_in_executor(_read_static_binary_file, addon.path_logo, True)
+        return await self.sys_run_in_executor(_read_static_binary_file, addon.path_logo)
 
     @api_process_raw(CONTENT_TYPE_TEXT)
     async def addons_addon_changelog(self, request: web.Request) -> str:
