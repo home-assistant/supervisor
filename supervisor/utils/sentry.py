@@ -5,6 +5,7 @@ from functools import partial
 import logging
 from typing import Any
 
+from aiohttp.web_exceptions import HTTPBadGateway, HTTPServiceUnavailable
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
@@ -33,7 +34,15 @@ def init_sentry(coresys: CoreSys) -> None:
             auto_enabling_integrations=False,
             default_integrations=False,
             integrations=[
-                AioHttpIntegration(),
+                AioHttpIntegration(
+                    failed_request_status_codes=frozenset(range(500, 600))
+                    - set(
+                        {
+                            HTTPBadGateway.status_code,
+                            HTTPServiceUnavailable.status_code,
+                        }
+                    )
+                ),
                 AsyncioIntegration(),
                 ExcepthookIntegration(),
                 DedupeIntegration(),
