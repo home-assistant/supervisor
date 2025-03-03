@@ -4,11 +4,8 @@ import asyncio
 from functools import partial
 import logging
 from typing import Any
-from aiohttp.web_exceptions import (
-    HTTPBadGateway,
-    HTTPServiceUnavailable,
-)
 
+from aiohttp.web_exceptions import HTTPBadGateway, HTTPServiceUnavailable
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
