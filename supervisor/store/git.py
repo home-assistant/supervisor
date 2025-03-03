@@ -131,8 +131,6 @@ class GitRepo(CoreSysAttributes):
             _LOGGER.info("Update add-on %s repository", self.url)
 
             try:
-                branch = self.repo.active_branch.name
-
                 # Download data
                 await self.sys_run_in_executor(
                     ft.partial(
@@ -140,6 +138,12 @@ class GitRepo(CoreSysAttributes):
                         **{"update-shallow": True, "depth": 1},
                     )
                 )
+            except git.CommandError as err:
+                _LOGGER.warning("Wasn't able to update %s repo: %s.", self.url, err)
+                raise StoreGitError() from err
+
+            try:
+                branch = self.repo.active_branch.name
 
                 if changed := self.repo.commit(branch) != self.repo.commit(
                     f"origin/{branch}"
