@@ -87,13 +87,13 @@ def test_hide_virtual_device(coresys: CoreSys):
     assert coresys.hardware.helper.hide_virtual_device(udev_device)
 
 
-def test_last_boot_error(coresys: CoreSys, caplog: LogCaptureFixture):
+async def test_last_boot_error(coresys: CoreSys, caplog: LogCaptureFixture):
     """Test error reading last boot."""
     with patch(
         "supervisor.hardware.helper.Path.read_text", side_effect=(err := OSError())
     ):
         err.errno = errno.EBADMSG
-        assert coresys.hardware.helper.last_boot is None
+        assert await coresys.hardware.helper.last_boot() is None
 
         assert coresys.core.healthy is True
         assert "Can't read stat data" in caplog.text

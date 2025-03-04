@@ -20,6 +20,7 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
+from supervisor.hardware.helper import HwHelper
 from supervisor.ingress import Ingress
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
@@ -250,11 +251,7 @@ async def test_watchdog_during_attach(
 
     with (
         patch.object(Addon, "restart") as restart,
-        patch.object(
-            type(coresys.hardware.helper),
-            "last_boot",
-            new=PropertyMock(return_value=utcnow()),
-        ),
+        patch.object(HwHelper, "last_boot", return_value=utcnow()),
         patch.object(DockerAddon, "attach"),
         patch.object(
             DockerAddon,
@@ -262,7 +259,9 @@ async def test_watchdog_during_attach(
             return_value=ContainerState.STOPPED,
         ),
     ):
-        coresys.config.last_boot = coresys.hardware.helper.last_boot + boot_timedelta
+        coresys.config.last_boot = (
+            await coresys.hardware.helper.last_boot() + boot_timedelta
+        )
         addon = Addon(coresys, store.slug)
         coresys.addons.local[addon.slug] = addon
         addon.watchdog = True
@@ -739,7 +738,7 @@ async def test_local_example_ingress_port_set(
     assert install_addon_example.ingress_port != 0
 
 
-def test_addon_pulse_error(
+async def test_addon_pulse_error(
     coresys: CoreSys,
     install_addon_example: Addon,
     caplog: pytest.LogCaptureFixture,
@@ -750,14 +749,14 @@ def test_addon_pulse_error(
         "supervisor.addons.addon.Path.write_text", side_effect=(err := OSError())
     ):
         err.errno = errno.EBUSY
-        install_addon_example.write_pulse()
+        await install_addon_example.write_pulse()
 
         assert "can't write pulse/client.config" in caplog.text
         assert coresys.core.healthy is True
 
         caplog.clear()
         err.errno = errno.EBADMSG
-        install_addon_example.write_pulse()
+        await install_addon_example.write_pulse()
 
         assert "can't write pulse/client.config" in caplog.text
         assert coresys.core.healthy is False

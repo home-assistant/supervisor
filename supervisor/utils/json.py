@@ -48,7 +48,10 @@ json_loads = orjson.loads  # pylint: disable=no-member
 
 
 def write_json_file(jsonfile: Path, data: Any) -> None:
-    """Write a JSON file."""
+    """Write a JSON file.
+
+    Must be run in executor.
+    """
     try:
         with atomic_write(jsonfile, overwrite=True) as fp:
             fp.write(
@@ -67,7 +70,10 @@ def write_json_file(jsonfile: Path, data: Any) -> None:
 
 
 def read_json_file(jsonfile: Path) -> Any:
-    """Read a JSON file and return a dict."""
+    """Read a JSON file and return a dict.
+
+    Must be run in executor.
+    """
     try:
         return json_loads(jsonfile.read_bytes())
     except (OSError, ValueError, TypeError, UnicodeDecodeError) as err:
