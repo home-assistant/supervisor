@@ -531,6 +531,8 @@ class APIBackups(CoreSysAttributes):
 
         def close_backup_file() -> None:
             if backup_file_stream:
+                # Make sure it got closed, in case of exception. It is safe to
+                # close the file stream twice.
                 backup_file_stream.close()
             if temp_dir:
                 temp_dir.cleanup()
