@@ -134,7 +134,7 @@ class GitRepo(CoreSysAttributes):
 
             try:
                 git_cmd = git.Git()
-                git_cmd.ls_remote("--heads", self.url)
+                await self.sys_run_in_executor(git_cmd.ls_remote, "--heads", self.url)
             except git.CommandError as err:
                 _LOGGER.warning("Wasn't able to update %s repo: %s.", self.url, err)
                 raise StoreGitError() from err
