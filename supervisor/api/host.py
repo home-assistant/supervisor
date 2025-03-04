@@ -270,6 +270,7 @@ class APIHost(CoreSysAttributes):
                             "ClientConnectionResetError raised when returning journal logs: %s",
                             err,
                         )
+                        break
             except ConnectionResetError as ex:
                 raise APIError(
                     "Connection reset when trying to fetch data from systemd-journald."
