@@ -9,7 +9,7 @@ from supervisor.utils import check_exception_chain
 
 async def test_evaluate_system_error(coresys: CoreSys, capture_exception: Mock):
     """Test error while evaluating system."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     with patch(
         "supervisor.resolution.evaluations.source_mods.calc_checksum_path_sourcecode",

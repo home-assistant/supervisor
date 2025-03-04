@@ -21,7 +21,7 @@ async def test_evaluation(coresys: CoreSys):
         Path(f"{os.getcwd()}/supervisor"),
     ):
         sourcemods = EvaluateSourceMods(coresys)
-        coresys.core.state = CoreState.RUNNING
+        await coresys.core.set_state(CoreState.RUNNING)
 
         assert sourcemods.reason not in coresys.resolution.unsupported
         coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryUntrusted)
@@ -50,13 +50,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await sourcemods()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await sourcemods()
             evaluate.assert_not_called()
             evaluate.reset_mock()
@@ -65,7 +65,7 @@ async def test_did_run(coresys: CoreSys):
 async def test_evaluation_error(coresys: CoreSys):
     """Test error reading file during evaluation."""
     sourcemods = EvaluateSourceMods(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     corrupt_fs = Issue(IssueType.CORRUPT_FILESYSTEM, ContextType.SYSTEM)
 
     assert sourcemods.reason not in coresys.resolution.unsupported

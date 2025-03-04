@@ -21,7 +21,7 @@ async def test_evaluation(
     """Test evaluation."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     virtualization = EvaluateVirtualizationImage(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     with patch(
         "supervisor.os.manager.CPE.get_target_hardware", return_value=["generic-x86-64"]
@@ -53,7 +53,7 @@ async def test_evaluation_supported_images(
     """Test supported images for virtualization do not trigger unsupported."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     virtualization = EvaluateVirtualizationImage(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     with patch("supervisor.os.manager.CPE.get_target_hardware", return_value=[board]):
         systemd_service.virtualization = "vmware"
@@ -77,13 +77,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await virtualization()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await virtualization()
             evaluate.assert_not_called()
             evaluate.reset_mock()

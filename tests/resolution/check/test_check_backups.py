@@ -22,7 +22,7 @@ async def test_base(coresys: CoreSys):
 async def test_check_no_backups(coresys: CoreSys):
     """Test check creates issue with no backups."""
     backups = CheckBackups(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert len(coresys.resolution.issues) == 0
     await backups.run_check()
@@ -35,7 +35,7 @@ async def test_check_only_partial_backups(
 ):
     """Test check creates issue with only partial backups."""
     backups = CheckBackups(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert len(coresys.resolution.issues) == 0
     await backups.run_check()
@@ -46,7 +46,7 @@ async def test_check_only_partial_backups(
 async def test_check_with_backup(coresys: CoreSys, mock_full_backup: Backup):
     """Test check only creates issue if full backup not current."""
     backups = CheckBackups(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert len(coresys.resolution.issues) == 0
     await backups.run_check()
@@ -72,13 +72,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=False,
     ) as check:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await backups()
             check.assert_called_once()
             check.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await backups()
             check.assert_not_called()
             check.reset_mock()

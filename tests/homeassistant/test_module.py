@@ -49,11 +49,11 @@ async def test_load(
 
     assert coresys.homeassistant.secrets.secrets == {"hello": "world"}
 
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
     await coresys.homeassistant.websocket.async_send_message({"lorem": "ipsum"})
     ha_ws_client.async_send_command.assert_not_called()
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     await asyncio.sleep(0)
     assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}
 

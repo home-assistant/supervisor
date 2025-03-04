@@ -25,7 +25,7 @@ async def test_check(
 ):
     """Test check for detached addons."""
     detached_addon_removed = CheckDetachedAddonRemoved(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     await detached_addon_removed()
     assert len(coresys.resolution.issues) == 0
@@ -55,7 +55,7 @@ async def test_approve(
 ):
     """Test approve existing detached addon issues."""
     detached_addon_removed = CheckDetachedAddonRemoved(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     assert (
         await detached_addon_removed.approve_check(reference=install_addon_ssh.slug)
@@ -86,13 +86,13 @@ async def test_did_run(coresys: CoreSys):
         CheckDetachedAddonRemoved, "run_check", return_value=None
     ) as check:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await detached_addon_removed()
             check.assert_called_once()
             check.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await detached_addon_removed()
             check.assert_not_called()
             check.reset_mock()

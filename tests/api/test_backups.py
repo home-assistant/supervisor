@@ -137,7 +137,7 @@ async def test_backup_to_location(
     await coresys.mounts.create_mount(mount)
     coresys.mounts.default_backup_mount = mount
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     resp = await api_client.post(
         "/backups/new/full",
@@ -178,7 +178,7 @@ async def test_backup_to_default(api_client: TestClient, coresys: CoreSys):
     await coresys.mounts.create_mount(mount)
     coresys.mounts.default_backup_mount = mount
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     resp = await api_client.post(
         "/backups/new/full",
@@ -196,7 +196,7 @@ async def test_api_freeze_thaw(
     api_client: TestClient, coresys: CoreSys, ha_ws_client: AsyncMock
 ):
     """Test manual freeze and thaw for external backup via API."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     ha_ws_client.ha_version = AwesomeVersion("2022.1.0")
 
@@ -230,7 +230,7 @@ async def test_api_backup_exclude_database(
     exclude_db_setting: bool,
 ):
     """Test backups exclude the database when specified."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
     coresys.homeassistant.backups_exclude_database = exclude_db_setting
@@ -278,7 +278,7 @@ async def test_api_backup_restore_background(
     tmp_supervisor_data: Path,
 ):
     """Test background option on backup/restore APIs."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
     (tmp_supervisor_data / "addons/local").mkdir(parents=True)
@@ -364,7 +364,7 @@ async def test_api_backup_errors(
     tmp_supervisor_data: Path,
 ):
     """Test error reporting in backup job."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
     (tmp_supervisor_data / "addons/local").mkdir(parents=True)
@@ -435,7 +435,7 @@ async def test_api_backup_errors(
 
 async def test_backup_immediate_errors(api_client: TestClient, coresys: CoreSys):
     """Test backup errors that return immediately even in background mode."""
-    coresys.core.state = CoreState.FREEZE
+    await coresys.core.set_state(CoreState.FREEZE)
     resp = await api_client.post(
         "/backups/new/full",
         json={"name": "Test", "background": True},
@@ -443,7 +443,7 @@ async def test_backup_immediate_errors(api_client: TestClient, coresys: CoreSys)
     assert resp.status == 400
     assert "freeze" in (await resp.json())["message"]
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 0.5
     resp = await api_client.post(
         "/backups/new/partial",
@@ -460,7 +460,7 @@ async def test_restore_immediate_errors(
     mock_partial_backup: Backup,
 ):
     """Test restore errors that return immediately even in background mode."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     resp = await api_client.post(
@@ -634,7 +634,7 @@ async def test_backup_to_multiple_locations(
     inputs: dict[str, Any],
 ):
     """Test making a backup to multiple locations."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     resp = await api_client.post(
@@ -669,7 +669,7 @@ async def test_backup_with_extras(
     inputs: dict[str, Any],
 ):
     """Test backup including extra metdata."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     resp = await api_client.post(
@@ -909,7 +909,7 @@ async def test_partial_backup_all_addons(
     install_addon_ssh: Addon,
 ):
     """Test backup including extra metdata."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(Backup, "store_addons") as store_addons:
@@ -928,7 +928,7 @@ async def test_restore_backup_from_location(
     local_location: str | None,
 ):
     """Test restoring a backup from a specific location."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     # Make a backup and a file to test with
@@ -1000,7 +1000,7 @@ async def test_restore_backup_unencrypted_after_encrypted(
     # We punt the ball on this one for this PR since this is a rare edge case.
     backup.restore_dockerconfig = MagicMock()
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     # Restore encrypted backup
@@ -1050,7 +1050,7 @@ async def test_restore_homeassistant_adds_env(
 ):
     """Test restoring home assistant from backup adds env to container."""
     event = asyncio.Event()
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2025.1.0")
     backup = await coresys.backups.do_backup_full()
@@ -1134,7 +1134,7 @@ async def test_protected_backup(
     api_client: TestClient, coresys: CoreSys, backup_type: str, options: dict[str, Any]
 ):
     """Test creating a protected backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     resp = await api_client.post(
@@ -1246,7 +1246,7 @@ async def test_missing_file_removes_location_from_cache(
     backup_file: str,
 ):
     """Test finding a missing file removes the location from cache."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     backup_file = get_fixture_path(backup_file)
@@ -1305,7 +1305,7 @@ async def test_missing_file_removes_backup_from_cache(
     backup_file: str,
 ):
     """Test finding a missing file removes the backup from cache if its the only one."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     backup_file = get_fixture_path(backup_file)
@@ -1331,7 +1331,7 @@ async def test_immediate_list_after_missing_file_restore(
     api_client: TestClient, coresys: CoreSys
 ):
     """Test race with reload for missing file on restore does not error."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     backup_file = get_fixture_path("backup_example.tar")

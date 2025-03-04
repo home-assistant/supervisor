@@ -17,7 +17,7 @@ TEST_VERSION = AwesomeVersion("1.0.0")
 async def test_evaluation(coresys: CoreSys, install_addon_ssh: Addon):
     """Test evaluation."""
     restart_policy = EvaluateRestartPolicy(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     await restart_policy()
     assert restart_policy.reason not in coresys.resolution.unsupported
@@ -69,13 +69,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=False,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await restart_policy()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await restart_policy()
             evaluate.assert_not_called()
             evaluate.reset_mock()

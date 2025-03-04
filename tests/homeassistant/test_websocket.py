@@ -57,14 +57,14 @@ async def test_send_command_old_core_version(
 async def test_send_message_during_startup(coresys: CoreSys, ha_ws_client: AsyncMock):
     """Test websocket messages queue during startup."""
     await coresys.homeassistant.websocket.load()
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     await coresys.homeassistant.websocket.async_supervisor_update_event(
         "test", {"lorem": "ipsum"}
     )
     ha_ws_client.async_send_command.assert_not_called()
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     await asyncio.sleep(0)
 
     assert ha_ws_client.async_send_command.call_count == 2

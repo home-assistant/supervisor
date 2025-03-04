@@ -7,7 +7,7 @@ from supervisor.const import CoreState
 
 async def test_simple_task(coresys):
     """Schedule a simple task."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     trigger = []
 
     async def test_task():
@@ -22,7 +22,7 @@ async def test_simple_task(coresys):
 
 async def test_simple_task_repeat(coresys):
     """Schedule a simple task and repeat."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     trigger = []
 
     async def test_task():
@@ -41,7 +41,7 @@ async def test_simple_task_repeat(coresys):
 
 async def test_simple_task_shutdown(coresys):
     """Schedule a simple task with shudown."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     trigger = []
 
     async def test_task():
@@ -62,7 +62,7 @@ async def test_simple_task_shutdown(coresys):
 
 async def test_simple_task_repeat_block(coresys):
     """Schedule a simple task with repeat and block."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     trigger = []
 
     async def test_task():

@@ -58,7 +58,7 @@ async def test_check(
         await coresys.addons.load()
 
     docker_config = CheckDockerConfig(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
 
@@ -131,13 +131,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as check:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await docker_config()
             check.assert_called_once()
             check.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await docker_config()
             check.assert_not_called()
             check.reset_mock()

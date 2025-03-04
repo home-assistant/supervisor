@@ -12,7 +12,7 @@ from supervisor.resolution.evaluations.os_agent import EvaluateOSAgent
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     agent = EvaluateOSAgent(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     assert agent.reason not in coresys.resolution.unsupported
 
@@ -42,13 +42,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await agent()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await agent()
             evaluate.assert_not_called()
             evaluate.reset_mock()

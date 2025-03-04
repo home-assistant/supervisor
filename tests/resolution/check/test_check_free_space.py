@@ -45,7 +45,7 @@ async def test_base(coresys: CoreSys):
 async def test_check(coresys: CoreSys, suggestion: SuggestionType | None):
     """Test check."""
     free_space = CheckFreeSpace(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     assert len(coresys.resolution.issues) == 0
 
@@ -68,7 +68,7 @@ async def test_check(coresys: CoreSys, suggestion: SuggestionType | None):
 async def test_approve(coresys: CoreSys):
     """Test check."""
     free_space = CheckFreeSpace(coresys)
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         assert await free_space.approve_check()
@@ -90,13 +90,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as check:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await free_space()
             check.assert_called_once()
             check.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await free_space()
             check.assert_not_called()
             check.reset_mock()

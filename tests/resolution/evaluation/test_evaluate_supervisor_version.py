@@ -14,7 +14,7 @@ async def test_evaluation(coresys: CoreSys):
     need_update_mock = PropertyMock()
     with patch.object(type(coresys.supervisor), "need_update", new=need_update_mock):
         supervisor_version = EvaluateSupervisorVersion(coresys)
-        coresys.core.state = CoreState.RUNNING
+        await coresys.core.set_state(CoreState.RUNNING)
         need_update_mock.return_value = False
 
         # Only unsupported if out of date and auto update is off
@@ -41,13 +41,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await supervisor_version()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await supervisor_version()
             evaluate.assert_not_called()
             evaluate.reset_mock()

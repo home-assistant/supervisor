@@ -12,7 +12,7 @@ from supervisor.resolution.validate import get_valid_modules
 
 async def test_check_autofix(coresys: CoreSys):
     """Test check for setup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     coresys.resolution.fixup._fixups[
         "system_create_full_backup"

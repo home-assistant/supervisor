@@ -107,22 +107,22 @@ def test_is_dev(coresys):
         assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
-def test_not_started(coresys):
+async def test_not_started(coresys):
     """Test if supervisor not fully started."""
     coresys.config.diagnostics = True
 
-    coresys.core.state = CoreState.INITIALIZE
+    await coresys.core.set_state(CoreState.INITIALIZE)
     assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
 
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
     assert filter_data(coresys, SAMPLE_EVENT, {}) == SAMPLE_EVENT
 
 
-def test_defaults(coresys):
+async def test_defaults(coresys):
     """Test event defaults."""
     coresys.config.diagnostics = True
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         filtered = filter_data(coresys, SAMPLE_EVENT, {})
 
@@ -135,12 +135,12 @@ def test_defaults(coresys):
     assert filtered["user"]["id"] == coresys.machine_id
 
 
-def test_sanitize_user_hostname(coresys):
+async def test_sanitize_user_hostname(coresys):
     """Test user hostname event sanitation."""
     event = SAMPLE_EVENT_AIOHTTP_EXTERNAL
     coresys.config.diagnostics = True
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         filtered = filter_data(coresys, event, {})
 
@@ -154,25 +154,25 @@ def test_sanitize_user_hostname(coresys):
     )
 
 
-def test_sanitize_internal(coresys):
+async def test_sanitize_internal(coresys):
     """Test internal event sanitation."""
     event = SAMPLE_EVENT_AIOHTTP_INTERNAL
     coresys.config.diagnostics = True
 
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         filtered = filter_data(coresys, event, {})
 
     assert filtered == event
 
 
-def test_issues_on_report(coresys):
+async def test_issues_on_report(coresys):
     """Attach issue to report."""
 
     coresys.resolution.create_issue(IssueType.FATAL_ERROR, ContextType.SYSTEM)
 
     coresys.config.diagnostics = True
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})
@@ -182,7 +182,7 @@ def test_issues_on_report(coresys):
     assert event["contexts"]["resolution"]["issues"][0]["context"] == ContextType.SYSTEM
 
 
-def test_suggestions_on_report(coresys):
+async def test_suggestions_on_report(coresys):
     """Attach suggestion to report."""
 
     coresys.resolution.create_issue(
@@ -192,7 +192,7 @@ def test_suggestions_on_report(coresys):
     )
 
     coresys.config.diagnostics = True
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})
@@ -210,11 +210,11 @@ def test_suggestions_on_report(coresys):
     )
 
 
-def test_unhealthy_on_report(coresys):
+async def test_unhealthy_on_report(coresys):
     """Attach unhealthy to report."""
 
     coresys.config.diagnostics = True
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.resolution.unhealthy = UnhealthyReason.DOCKER
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
@@ -224,11 +224,11 @@ def test_unhealthy_on_report(coresys):
     assert event["contexts"]["resolution"]["unhealthy"][-1] == UnhealthyReason.DOCKER
 
 
-def test_images_report(coresys):
+async def test_images_report(coresys):
     """Attach image to report."""
 
     coresys.config.diagnostics = True
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.resolution.evaluate.cached_images.add("my/test:image")
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):

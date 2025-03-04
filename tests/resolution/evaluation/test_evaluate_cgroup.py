@@ -15,7 +15,7 @@ from supervisor.resolution.evaluations.cgroup import (
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     cgroup_version = EvaluateCGroupVersion(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     assert cgroup_version.reason not in coresys.resolution.unsupported
 
@@ -37,7 +37,7 @@ async def test_evaluation(coresys: CoreSys):
 async def test_evaluation_os_available(coresys: CoreSys, os_available):
     """Test evaluation with OS available."""
     cgroup_version = EvaluateCGroupVersion(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     coresys.docker.info.cgroup = CGROUP_V2_VERSION
     await cgroup_version()
@@ -61,13 +61,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await cgroup_version()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await cgroup_version()
             evaluate.assert_not_called()
             evaluate.reset_mock()
