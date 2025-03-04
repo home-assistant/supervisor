@@ -541,7 +541,7 @@ class APIBackups(CoreSysAttributes):
             tar_file = await self.sys_run_in_executor(open_backup_file)
             while chunk := await contents.read_chunk(size=2**16):
                 await self.sys_run_in_executor(backup_file_stream.write, chunk)
-            backup_file_stream.close()
+            await self.sys_run_in_executor(backup_file_stream.close)
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
