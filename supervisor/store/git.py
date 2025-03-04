@@ -133,6 +133,13 @@ class GitRepo(CoreSysAttributes):
             _LOGGER.info("Update add-on %s repository from %s", self.path, self.url)
 
             try:
+                git_cmd = git.Git()
+                await self.sys_run_in_executor(git_cmd.ls_remote, "--heads", self.url)
+            except git.CommandError as err:
+                _LOGGER.warning("Wasn't able to update %s repo: %s.", self.url, err)
+                raise StoreGitError() from err
+
+            try:
                 branch = self.repo.active_branch.name
 
                 # Download data
