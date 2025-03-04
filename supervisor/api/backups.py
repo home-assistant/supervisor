@@ -541,6 +541,7 @@ class APIBackups(CoreSysAttributes):
             tar_file = await self.sys_run_in_executor(open_backup_file)
             while chunk := await contents.read_chunk(size=2**16):
                 await self.sys_run_in_executor(backup_file_stream.write, chunk)
+            backup_file_stream.close()
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
@@ -563,8 +564,7 @@ class APIBackups(CoreSysAttributes):
             return False
 
         finally:
-            if temp_dir or backup:
-                await self.sys_run_in_executor(close_backup_file)
+            await self.sys_run_in_executor(close_backup_file)
 
         if backup:
             return {ATTR_SLUG: backup.slug}
