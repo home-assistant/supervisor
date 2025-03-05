@@ -156,7 +156,7 @@ async def test_identifiers(journald_gateway: MagicMock, coresys: CoreSys):
 
 
 async def test_connection_refused_handled(
-    coresys: CoreSys, journald_gateway: MagicMock
+    journald_gateway: MagicMock, coresys: CoreSys
 ):
     """Test connection refused is handled with HostServiceError."""
     with patch("supervisor.host.logs.ClientSession.get") as get:

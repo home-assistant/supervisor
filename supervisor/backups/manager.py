@@ -187,6 +187,7 @@ class BackupManager(FileConfiguration, JobGroup):
             # Returning an iterator causes I/O while iterating, coerce into list here
             if path.is_dir():
                 return list(path.glob("*.tar"))
+            return []
 
         try:
             return await self.sys_run_in_executor(find_backups)
