@@ -8,6 +8,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import Self
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 from aiohttp.client_exceptions import UnixClientConnectorError
@@ -51,13 +52,19 @@ class LogsControl(CoreSysAttributes):
         self._profiles: set[str] = set()
         self._boot_ids: list[str] = []
         self._default_identifiers: list[str] = []
+        self._available: bool = False
+
+    async def post_init(self) -> Self:
+        """Post init actions that must occur in event loop."""
+        self._available = bool(
+            os.environ.get("SUPERVISOR_SYSTEMD_JOURNAL_GATEWAYD_URL")
+        ) or await self.sys_run_in_executor(SYSTEMD_JOURNAL_GATEWAYD_SOCKET.is_socket)
+        return self
 
     @property
     def available(self) -> bool:
         """Check if systemd-journal-gatwayd is available."""
-        if os.environ.get("SUPERVISOR_SYSTEMD_JOURNAL_GATEWAYD_URL"):
-            return True
-        return SYSTEMD_JOURNAL_GATEWAYD_SOCKET.is_socket()
+        return self._available
 
     @property
     def boot_ids(self) -> list[str]:

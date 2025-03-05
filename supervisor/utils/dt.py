@@ -69,7 +69,10 @@ def utc_from_timestamp(timestamp: float) -> datetime:
 
 
 def get_time_zone(time_zone_str: str) -> tzinfo | None:
-    """Get time zone from string. Return None if unable to determine."""
+    """Get time zone from string. Return None if unable to determine.
+
+    Must be run in executor.
+    """
     try:
         return zoneinfo.ZoneInfo(time_zone_str)
     except zoneinfo.ZoneInfoNotFoundError:

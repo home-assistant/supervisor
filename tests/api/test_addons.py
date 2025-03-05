@@ -234,7 +234,7 @@ async def test_api_addon_rebuild_healthcheck(
         _container_events_task = asyncio.create_task(container_events())
 
     with (
-        patch.object(AddonBuild, "is_valid", new=PropertyMock(return_value=True)),
+        patch.object(AddonBuild, "is_valid", return_value=True),
         patch.object(DockerAddon, "is_running", return_value=False),
         patch.object(Addon, "need_build", new=PropertyMock(return_value=True)),
         patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),

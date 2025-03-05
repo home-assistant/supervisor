@@ -3,6 +3,7 @@
 from contextlib import suppress
 from functools import lru_cache
 import logging
+from typing import Self
 
 from awesomeversion import AwesomeVersion
 
@@ -37,6 +38,11 @@ class HostManager(CoreSysAttributes):
         self._network: NetworkManager = NetworkManager(coresys)
         self._sound: SoundControl = SoundControl(coresys)
         self._logs: LogsControl = LogsControl(coresys)
+
+    async def post_init(self) -> Self:
+        """Post init actions that must occur in event loop."""
+        await self._logs.post_init()
+        return self
 
     @property
     def apparmor(self) -> AppArmorControl:

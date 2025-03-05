@@ -327,9 +327,9 @@ async def test_advanced_logs_boot_id_offset(
 
 
 async def test_advanced_logs_formatters(
+    journald_gateway: MagicMock,
     api_client: TestClient,
     coresys: CoreSys,
-    journald_gateway: MagicMock,
     journal_logs_reader: MagicMock,
 ):
     """Test advanced logs formatters varying on Accept header."""
