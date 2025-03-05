@@ -8,7 +8,7 @@ import re
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker.types import Mount
 
-from ..const import LABEL_MACHINE, MACHINE_ID
+from ..const import LABEL_MACHINE
 from ..exceptions import DockerJobError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
@@ -154,7 +154,7 @@ class DockerHomeAssistant(DockerInterface):
             )
 
         # Machine ID
-        if MACHINE_ID.exists():
+        if self.sys_machine_id:
             mounts.append(MOUNT_MACHINE_ID)
 
         return mounts

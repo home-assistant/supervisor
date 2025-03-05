@@ -49,18 +49,21 @@ class HomeAssistantSecrets(CoreSysAttributes):
     )
     async def _read_secrets(self):
         """Read secrets.yaml into memory."""
-        if not self.path_secrets.exists():
-            _LOGGER.debug("Home Assistant secrets.yaml does not exist")
-            return
 
-        # Read secrets
-        try:
-            secrets = await self.sys_run_in_executor(read_yaml_file, self.path_secrets)
-        except YamlFileError as err:
-            _LOGGER.warning("Can't read Home Assistant secrets: %s", err)
-            return
+        def read_secrets_yaml() -> dict | None:
+            if not self.path_secrets.exists():
+                _LOGGER.debug("Home Assistant secrets.yaml does not exist")
+                return None
 
-        if not isinstance(secrets, dict):
+            # Read secrets
+            try:
+                return read_yaml_file(self.path_secrets)
+            except YamlFileError as err:
+                _LOGGER.warning("Can't read Home Assistant secrets: %s", err)
+                return None
+
+        secrets = await self.sys_run_in_executor(read_secrets_yaml)
+        if secrets is None or not isinstance(secrets, dict):
             return
 
         # Process secrets

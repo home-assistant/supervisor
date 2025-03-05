@@ -8,21 +8,22 @@ from supervisor.coresys import CoreSys
 from supervisor.resolution.evaluations.systemd_journal import EvaluateSystemdJournal
 
 
-async def test_evaluation(coresys: CoreSys, journald_gateway: MagicMock):
-    """Test evaluation."""
+async def test_evaluation_supported(journald_gateway: MagicMock, coresys: CoreSys):
+    """Test evaluation for supported system."""
     systemd_journal = EvaluateSystemdJournal(coresys)
     await coresys.core.set_state(CoreState.SETUP)
 
-    assert systemd_journal.reason not in coresys.resolution.unsupported
-
-    with patch("supervisor.host.logs.Path.is_socket", return_value=False):
-        await systemd_journal()
-        assert systemd_journal.reason in coresys.resolution.unsupported
-
-    coresys.host.supported_features.cache_clear()  # pylint: disable=no-member
-
     await systemd_journal()
     assert systemd_journal.reason not in coresys.resolution.unsupported
+
+
+async def test_evaluation_unsupported(coresys: CoreSys):
+    """Test evaluation for unsupported system."""
+    systemd_journal = EvaluateSystemdJournal(coresys)
+    await coresys.core.set_state(CoreState.SETUP)
+
+    await systemd_journal()
+    assert systemd_journal.reason in coresys.resolution.unsupported
 
 
 async def test_did_run(coresys: CoreSys):

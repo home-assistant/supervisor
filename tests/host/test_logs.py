@@ -33,7 +33,7 @@ async def test_load(coresys: CoreSys):
         assert identifier in coresys.host.logs.default_identifiers
 
 
-async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
+async def test_logs(journald_gateway: MagicMock, coresys: CoreSys):
     """Test getting logs and errors."""
     assert coresys.host.logs.available is True
 
@@ -63,7 +63,7 @@ async def test_logs(coresys: CoreSys, journald_gateway: MagicMock):
             pass
 
 
-async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
+async def test_logs_coloured(journald_gateway: MagicMock, coresys: CoreSys):
     """Test ANSI control sequences being preserved in binary messages."""
     journald_gateway.content.feed_data(
         load_fixture("logs_export_supervisor.txt").encode("utf-8")
@@ -82,7 +82,7 @@ async def test_logs_coloured(coresys: CoreSys, journald_gateway: MagicMock):
         )
 
 
-async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
+async def test_boot_ids(journald_gateway: MagicMock, coresys: CoreSys):
     """Test getting boot ids."""
     journald_gateway.content.feed_data(
         load_fixture("logs_boot_ids.txt").encode("utf-8")
@@ -109,7 +109,7 @@ async def test_boot_ids(coresys: CoreSys, journald_gateway: MagicMock):
         await coresys.host.logs.get_boot_id(3)
 
 
-async def test_boot_ids_fallback(coresys: CoreSys, journald_gateway: MagicMock):
+async def test_boot_ids_fallback(journald_gateway: MagicMock, coresys: CoreSys):
     """Test getting boot ids using fallback."""
     # Initial response has no log lines
     journald_gateway.content.feed_data(b"")
@@ -134,7 +134,7 @@ async def test_boot_ids_fallback(coresys: CoreSys, journald_gateway: MagicMock):
     ]
 
 
-async def test_identifiers(coresys: CoreSys, journald_gateway: MagicMock):
+async def test_identifiers(journald_gateway: MagicMock, coresys: CoreSys):
     """Test getting identifiers."""
     journald_gateway.content.feed_data(
         load_fixture("logs_identifiers.txt").encode("utf-8")

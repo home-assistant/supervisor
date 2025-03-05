@@ -16,7 +16,7 @@ async def test_evaluation(coresys: CoreSys):
 
     assert systemd.reason not in coresys.resolution.unsupported
 
-    coresys._host = MagicMock(info=MagicMock(timezone=None))
+    coresys._host = MagicMock(info=MagicMock(timezone=None, timezone_tzinfo=None))
 
     coresys.host.features = [HostFeature.HOSTNAME]
     await systemd()

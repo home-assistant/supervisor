@@ -18,7 +18,10 @@ def schema_or(schema):
 
 
 def validate_timezone(timezone):
-    """Validate voluptuous timezone."""
+    """Validate voluptuous timezone.
+
+    Must be run in executor.
+    """
     if get_time_zone(timezone) is not None:
         return timezone
     raise vol.Invalid(

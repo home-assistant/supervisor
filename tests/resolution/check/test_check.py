@@ -114,5 +114,5 @@ async def test_get_checks(coresys: CoreSys):
 async def test_dynamic_check_loader(coresys: CoreSys):
     """Test dynamic check loader, this ensures that all checks have defined a setup function."""
     coresys.resolution.check.load_modules()
-    for check in get_valid_modules("checks"):
+    for check in await coresys.run_in_executor(get_valid_modules, "checks"):
         assert check in coresys.resolution.check._checks

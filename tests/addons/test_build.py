@@ -20,7 +20,9 @@ async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
             type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
         ),
     ):
-        args = build.get_docker_args(AwesomeVersion("latest"))
+        args = await coresys.run_in_executor(
+            build.get_docker_args, AwesomeVersion("latest")
+        )
 
     assert args["platform"] == "linux/amd64"
 
@@ -36,10 +38,14 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon)
             type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
         ),
     ):
-        args = build.get_docker_args(AwesomeVersion("latest"))
+        args = await coresys.run_in_executor(
+            build.get_docker_args, AwesomeVersion("latest")
+        )
 
     assert args["dockerfile"].endswith("fixtures/addons/local/ssh/Dockerfile")
-    assert str(build.dockerfile).endswith("fixtures/addons/local/ssh/Dockerfile")
+    assert str(await coresys.run_in_executor(build.dockerfile)).endswith(
+        "fixtures/addons/local/ssh/Dockerfile"
+    )
     assert build.arch == "amd64"
 
 
@@ -54,10 +60,12 @@ async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: A
             type(coresys.arch), "default", new=PropertyMock(return_value="aarch64")
         ),
     ):
-        args = build.get_docker_args(AwesomeVersion("latest"))
+        args = await coresys.run_in_executor(
+            build.get_docker_args, AwesomeVersion("latest")
+        )
 
     assert args["dockerfile"].endswith("fixtures/addons/local/ssh/Dockerfile.aarch64")
-    assert str(build.dockerfile).endswith(
+    assert str(await coresys.run_in_executor(build.dockerfile)).endswith(
         "fixtures/addons/local/ssh/Dockerfile.aarch64"
     )
     assert build.arch == "aarch64"
@@ -74,7 +82,7 @@ async def test_build_valid(coresys: CoreSys, install_addon_ssh: Addon):
             type(coresys.arch), "default", new=PropertyMock(return_value="aarch64")
         ),
     ):
-        assert build.is_valid
+        assert await build.is_valid()
 
 
 async def test_build_invalid(coresys: CoreSys, install_addon_ssh: Addon):
@@ -88,4 +96,4 @@ async def test_build_invalid(coresys: CoreSys, install_addon_ssh: Addon):
             type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
         ),
     ):
-        assert not build.is_valid
+        assert not await build.is_valid()

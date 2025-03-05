@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Self
 
 import pyudev
 
@@ -51,17 +52,25 @@ class HardwareManager(CoreSysAttributes):
         """Initialize Hardware Monitor object."""
         self.coresys: CoreSys = coresys
         self._devices: dict[str, Device] = {}
-        self._udev = pyudev.Context()
+        self._udev: pyudev.Context | None = None
 
-        self._montior: HwMonitor = HwMonitor(coresys)
+        self._monitor: HwMonitor | None = None
         self._helper: HwHelper = HwHelper(coresys)
         self._policy: HwPolicy = HwPolicy(coresys)
         self._disk: HwDisk = HwDisk(coresys)
 
+    async def post_init(self) -> Self:
+        """Complete initialization of obect within event loop."""
+        self._udev = await self.sys_run_in_executor(pyudev.Context)
+        self._monitor: HwMonitor = HwMonitor(self.coresys, self._udev)
+        return self
+
     @property
     def monitor(self) -> HwMonitor:
         """Return Hardware Monitor instance."""
-        return self._montior
+        if not self._monitor:
+            raise RuntimeError("Hardware monitor not initialized!")
+        return self._monitor
 
     @property
     def helper(self) -> HwHelper:
