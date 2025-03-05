@@ -8,7 +8,6 @@ from typing import Any
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPServiceUnavailable
 import sentry_sdk
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
-from sentry_sdk.integrations.asyncio import AsyncioIntegration
 from sentry_sdk.integrations.atexit import AtexitIntegration
 from sentry_sdk.integrations.dedupe import DedupeIntegration
 from sentry_sdk.integrations.excepthook import ExcepthookIntegration
@@ -28,6 +27,9 @@ def init_sentry(coresys: CoreSys) -> None:
     """Initialize sentry client."""
     if not sentry_sdk.is_initialized():
         _LOGGER.info("Initializing Supervisor Sentry")
+        # Don't use AsyncioIntegration(). We commonly handle task exceptions
+        # outside of tasks. This would cause exception we gracefully handle to
+        # be captured by sentry.
         sentry_sdk.init(
             dsn="https://9c6ea70f49234442b4746e447b24747e@o427061.ingest.sentry.io/5370612",
             before_send=partial(filter_data, coresys),
@@ -43,7 +45,6 @@ def init_sentry(coresys: CoreSys) -> None:
                         }
                     )
                 ),
-                AsyncioIntegration(),
                 ExcepthookIntegration(),
                 DedupeIntegration(),
                 AtexitIntegration(),
