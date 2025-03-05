@@ -1,12 +1,14 @@
 """Interface to systemd-timedate over D-Bus."""
 
-from datetime import datetime
+import asyncio
+from datetime import datetime, tzinfo
 import logging
+from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
-from ..utils.dt import utc_from_timestamp
+from ..utils.dt import get_time_zone, utc_from_timestamp
 from .const import (
     DBUS_ATTR_NTP,
     DBUS_ATTR_NTPSYNCHRONIZED,
@@ -33,6 +35,11 @@ class TimeDate(DBusInterfaceProxy):
     object_path: str = DBUS_OBJECT_TIMEDATE
     properties_interface: str = DBUS_IFACE_TIMEDATE
 
+    def __init__(self):
+        """Initialize object."""
+        super().__init__()
+        self._timezone_tzinfo: tzinfo | None = None
+
     @property
     @dbus_property
     def timezone(self) -> str:
@@ -57,6 +64,11 @@ class TimeDate(DBusInterfaceProxy):
         """Return the system UTC time."""
         return utc_from_timestamp(self.properties[DBUS_ATTR_TIMEUSEC] / 1000000)
 
+    @property
+    def timezone_tzinfo(self) -> tzinfo | None:
+        """Return timezone as tzinfo object."""
+        return self._timezone_tzinfo
+
     async def connect(self, bus: MessageBus):
         """Connect to D-Bus."""
         _LOGGER.info("Load dbus interface %s", self.name)
@@ -67,6 +79,19 @@ class TimeDate(DBusInterfaceProxy):
         except (DBusServiceUnkownError, DBusInterfaceError):
             _LOGGER.warning(
                 "No timedate support on the host. Time/Date functions have been disabled."
+            )
+
+    @dbus_connected
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus."""
+        timezone = self.timezone
+        await super().update(changed)
+
+        if not self.timezone:
+            self._timezone_tzinfo = None
+        elif timezone != self.timezone:
+            self._timezone_tzinfo = await asyncio.get_running_loop().run_in_executor(
+                None, get_time_zone, self.timezone
             )
 
     @dbus_connected

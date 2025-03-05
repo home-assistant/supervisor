@@ -409,7 +409,7 @@ async def test_repository_file_error(
             in caplog.text
         )
 
-        write_json_file(repo_file, {"invalid": "bad"})
+        await coresys.run_in_executor(write_json_file, repo_file, {"invalid": "bad"})
         await coresys.store.data.update()
         assert f"Repository parse error {repo_dir.as_posix()}" in caplog.text
 

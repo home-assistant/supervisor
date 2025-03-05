@@ -21,13 +21,13 @@ async def test_timezone(coresys: CoreSys):
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
     assert coresys.timezone == "Etc/UTC"
 
-    coresys.config.timezone = "Europe/Zurich"
+    await coresys.config.set_timezone("Europe/Zurich")
     assert coresys.timezone == "Europe/Zurich"
 
 
-def test_now(coresys: CoreSys):
+async def test_now(coresys: CoreSys):
     """Test datetime now with local time."""
-    coresys.config.timezone = "Europe/Zurich"
+    await coresys.config.set_timezone("Europe/Zurich")
 
     zurich = coresys.now()
     utc = utcnow()

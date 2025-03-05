@@ -98,7 +98,7 @@ class RestAPI(CoreSysAttributes):
         self._register_network()
         self._register_observer()
         self._register_os()
-        self._register_panel()
+        await self.sys_run_in_executor(self._register_panel)
         self._register_proxy()
         self._register_resolution()
         self._register_root()
@@ -751,7 +751,10 @@ class RestAPI(CoreSysAttributes):
         )
 
     def _register_panel(self) -> None:
-        """Register panel for Home Assistant."""
+        """Register panel for Home Assistant.
+
+        Must be run in executor.
+        """
         panel_dir = Path(__file__).parent.joinpath("panel")
         self.webapp.add_routes([web.static("/app", panel_dir)])
 

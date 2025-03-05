@@ -183,7 +183,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
                 raise err
 
         else:
-            if not repository.validate():
+            if not await self.sys_run_in_executor(repository.validate):
                 if add_with_errors:
                     _LOGGER.error("%s is not a valid add-on repository", url)
                     self.sys_resolution.create_issue(

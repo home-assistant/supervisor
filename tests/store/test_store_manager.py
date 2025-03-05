@@ -223,6 +223,7 @@ async def test_install_unavailable_addon(
     assert log in caplog.text
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
 async def test_reload(coresys: CoreSys):
     """Test store reload."""
     await coresys.store.load()

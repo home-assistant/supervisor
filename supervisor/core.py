@@ -399,7 +399,7 @@ class Core(CoreSysAttributes):
             _LOGGER.warning("Can't adjust Time/Date settings: %s", err)
             return
 
-        self.sys_config.timezone = self.sys_config.timezone or data.timezone
+        await self.sys_config.set_timezone(self.sys_config.timezone or data.timezone)
 
         # Calculate if system time is out of sync
         delta = data.dt_utc - utcnow()

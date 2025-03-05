@@ -125,13 +125,13 @@ class APISupervisor(CoreSysAttributes):
     @api_process
     async def options(self, request: web.Request) -> None:
         """Set Supervisor options."""
-        body = await api_validate(SCHEMA_OPTIONS, request)
+        body = await api_validate(SCHEMA_OPTIONS, request, use_executor=True)
 
         if ATTR_CHANNEL in body:
             self.sys_updater.channel = body[ATTR_CHANNEL]
 
         if ATTR_TIMEZONE in body:
-            self.sys_config.timezone = body[ATTR_TIMEZONE]
+            await self.sys_config.set_timezone(body[ATTR_TIMEZONE])
 
         if ATTR_DEBUG in body:
             self.sys_config.debug = body[ATTR_DEBUG]

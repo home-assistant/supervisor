@@ -542,7 +542,7 @@ class Backup(JobGroup):
             raise err
         finally:
             if self._tmp:
-                self._tmp.cleanup()
+                await self.sys_run_in_executor(self._tmp.cleanup)
 
     async def _create_cleanup(self, outer_tarfile: TarFile) -> None:
         """Cleanup after backup creation.
@@ -846,7 +846,9 @@ class Backup(JobGroup):
         await self.sys_homeassistant.backup(homeassistant_file, exclude_database)
 
         # Store size
-        self.homeassistant[ATTR_SIZE] = homeassistant_file.size
+        self.homeassistant[ATTR_SIZE] = await self.sys_run_in_executor(
+            getattr, homeassistant_file, "size"
+        )
 
     @Job(name="backup_restore_homeassistant", cleanup=False)
     async def restore_homeassistant(self) -> Awaitable[None]:
