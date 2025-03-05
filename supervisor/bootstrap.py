@@ -60,7 +60,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.resolution = await ResolutionManager(coresys).load_config()
     await coresys.resolution.load_modules()
     coresys.jobs = await JobManager(coresys).load_config()
-    coresys.core = Core(coresys)
+    coresys.core = await Core(coresys).post_init()
     coresys.plugins = await PluginManager(coresys).load_config()
     coresys.arch = CpuArch(coresys)
     coresys.auth = await Auth(coresys).load_config()
