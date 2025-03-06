@@ -96,7 +96,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         """Return additional Docker labels."""
         return self._data[ATTR_LABELS]
 
-    def dockerfile(self) -> Path:
+    def get_dockerfile(self) -> Path:
         """Return Dockerfile path.
 
         Must be run in executor.
@@ -112,7 +112,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             return all(
                 [
                     self.addon.path_location.is_dir(),
-                    self.dockerfile().is_file(),
+                    self.get_dockerfile().is_file(),
                 ]
             )
 
@@ -129,7 +129,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         args = {
             "path": str(self.addon.path_location),
             "tag": f"{image or self.addon.image}:{version!s}",
-            "dockerfile": str(self.dockerfile()),
+            "dockerfile": str(self.get_dockerfile()),
             "pull": True,
             "forcerm": not self.sys_dev,
             "squash": self.squash,

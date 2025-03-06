@@ -43,7 +43,7 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon)
         )
 
     assert args["dockerfile"].endswith("fixtures/addons/local/ssh/Dockerfile")
-    assert str(await coresys.run_in_executor(build.dockerfile)).endswith(
+    assert str(await coresys.run_in_executor(build.get_dockerfile)).endswith(
         "fixtures/addons/local/ssh/Dockerfile"
     )
     assert build.arch == "amd64"
@@ -65,7 +65,7 @@ async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: A
         )
 
     assert args["dockerfile"].endswith("fixtures/addons/local/ssh/Dockerfile.aarch64")
-    assert str(await coresys.run_in_executor(build.dockerfile)).endswith(
+    assert str(await coresys.run_in_executor(build.get_dockerfile)).endswith(
         "fixtures/addons/local/ssh/Dockerfile.aarch64"
     )
     assert build.arch == "aarch64"

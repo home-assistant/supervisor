@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from pathlib import Path
+import subprocess
 from typing import TYPE_CHECKING
 
 from ..const import ROLE_ADMIN, ROLE_MANAGER, SECURITY_DISABLE, SECURITY_PROFILE
@@ -86,18 +86,20 @@ def rating_security(addon: AddonModel) -> int:
     return max(min(8, rating), 1)
 
 
-async def remove_data(folder: Path) -> None:
-    """Remove folder and reset privileged."""
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "rm", "-rf", str(folder), stdout=asyncio.subprocess.DEVNULL
-        )
+def remove_data(folder: Path) -> None:
+    """Remove folder and reset privileged.
 
-        _, error_msg = await proc.communicate()
+    Must be run in executor.
+    """
+    try:
+        subprocess.run(
+            ["rm", "-rf", str(folder)], stdout=subprocess.DEVNULL, text=True, check=True
+        )
     except OSError as err:
         error_msg = str(err)
+    except subprocess.CalledProcessError as procerr:
+        error_msg = procerr.stderr.strip()
     else:
-        if proc.returncode == 0:
-            return
+        return
 
     _LOGGER.error("Can't remove Add-on Data: %s", error_msg)

@@ -753,9 +753,12 @@ class Addon(AddonModel):
         for listener in self._listeners:
             self.sys_bus.remove_listener(listener)
 
-        if await self.sys_run_in_executor(self.path_data.is_dir):
-            _LOGGER.info("Removing add-on data folder %s", self.path_data)
-            await remove_data(self.path_data)
+        def remove_data_dir():
+            if self.path_data.is_dir():
+                _LOGGER.info("Removing add-on data folder %s", self.path_data)
+                remove_data(self.path_data)
+
+        await self.sys_run_in_executor(remove_data_dir)
 
     async def _check_ingress_port(self):
         """Assign a ingress port if dynamic port selection is used."""
@@ -823,17 +826,17 @@ class Addon(AddonModel):
 
         await self.unload()
 
-        # Remove config if present and requested
-        if self.addon_config_used and remove_config:
-            await remove_data(self.path_config)
+        def cleanup_config_and_audio():
+            # Remove config if present and requested
+            if self.addon_config_used and remove_config:
+                remove_data(self.path_config)
 
-        # Cleanup audio settings
-        def cleanup_audio_settings():
+            # Cleanup audio settings
             if self.path_pulse.exists():
                 with suppress(OSError):
                     self.path_pulse.unlink()
 
-        await self.sys_run_in_executor(cleanup_audio_settings)
+        await self.sys_run_in_executor(cleanup_config_and_audio)
 
         # Cleanup AppArmor profile
         with suppress(HostAppArmorError):
@@ -1450,6 +1453,12 @@ class Addon(AddonModel):
                 # Restore data and config
                 def _restore_data():
                     """Restore data and config."""
+                    _LOGGER.info("Restoring data and config for addon %s", self.slug)
+                    if self.path_data.is_dir():
+                        remove_data(self.path_data)
+                    if self.path_config.is_dir():
+                        remove_data(self.path_config)
+
                     temp_data = Path(tmp.name, "data")
                     if temp_data.is_dir():
                         shutil.copytree(temp_data, self.path_data, symlinks=True)
@@ -1461,18 +1470,6 @@ class Addon(AddonModel):
                         shutil.copytree(temp_config, self.path_config, symlinks=True)
                     elif self.addon_config_used:
                         self.path_config.mkdir()
-
-                def check_data_config() -> tuple[bool, bool]:
-                    return (self.path_data.is_dir(), self.path_config.is_dir())
-
-                _LOGGER.info("Restoring data and config for addon %s", self.slug)
-                data_is_dir, config_is_dir = await self.sys_run_in_executor(
-                    check_data_config
-                )
-                if data_is_dir:
-                    await remove_data(self.path_data)
-                if config_is_dir:
-                    await remove_data(self.path_config)
 
                 try:
                     await self.sys_run_in_executor(_restore_data)
