@@ -64,21 +64,16 @@ from .dbus_service_mocks.network_manager import NetworkManager as NetworkManager
 # pylint: disable=redefined-outer-name, protected-access
 
 
-# This commented out code is left in intentionally
-# Intent is to enable this for all tests at all times as an autouse fixture
-# Findings from PR were growing too big so disabling temporarily to create a checkpoint
-# @pytest.fixture(autouse=True)
-def blockbuster(request: pytest.FixtureRequest) -> BlockBuster:
+@pytest.fixture(autouse=True)
+def blockbuster() -> BlockBuster:
     """Raise for blocking I/O in event loop."""
-    # Excluded modules doesn't seem to stop test code from raising for blocking I/O
-    # Defaulting to only scanning supervisor core code seems like the best we can do easily
-    # Added a parameter so we could potentially go module by module in test and eliminate blocking I/O
-    # Then we could tell it to scan everything by default. That will require more follow-up work
+    # Only scanning supervisor code for now as that's our primary interest
+    # This will still raise for tests that call utilities in supervisor code that block
+    # But it will ignore calls to libraries and such that do blocking I/O directly from tests
+    # Removing that would be nice but a todo for the future
 
     # pylint: disable-next=contextmanager-generator-missing-cleanup
-    with blockbuster_ctx(
-        scanned_modules=getattr(request, "param", ["supervisor"])
-    ) as bb:
+    with blockbuster_ctx(scanned_modules=["supervisor"]) as bb:
         yield bb
 
 

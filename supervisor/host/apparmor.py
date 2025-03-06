@@ -54,10 +54,16 @@ class AppArmorControl(CoreSysAttributes):
 
     async def load(self) -> None:
         """Load available profiles."""
-        for content in self.sys_config.path_apparmor.iterdir():
-            if not content.is_file():
-                continue
-            self._profiles.add(content.name)
+
+        def find_profiles() -> set[str]:
+            profiles: set[str] = set()
+            for content in self.sys_config.path_apparmor.iterdir():
+                if not content.is_file():
+                    continue
+                profiles.add(content.name)
+            return profiles
+
+        self._profiles = await self.sys_run_in_executor(find_profiles)
 
         _LOGGER.info("Loading AppArmor Profiles: %s", self._profiles)
 

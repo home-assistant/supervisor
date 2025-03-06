@@ -292,9 +292,12 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 where.as_posix(),
             )
             path = self.sys_config.path_emergency / mount.name
-            if not path.exists():
-                path.mkdir(mode=0o444)
 
+            def emergency_mkdir():
+                if not path.exists():
+                    path.mkdir(mode=0o444)
+
+            await self.sys_run_in_executor(emergency_mkdir)
             path = self.sys_config.local_to_extern_path(path)
 
         self._bound_mounts[mount.name] = bound_mount = BoundMount(

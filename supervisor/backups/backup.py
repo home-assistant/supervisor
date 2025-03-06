@@ -601,7 +601,7 @@ class Backup(JobGroup):
                 ATTR_SLUG: addon.slug,
                 ATTR_NAME: addon.name,
                 ATTR_VERSION: addon.version,
-                ATTR_SIZE: addon_file.size,
+                ATTR_SIZE: await self.sys_run_in_executor(getattr, addon_file, "size"),
             }
         )
 
@@ -640,7 +640,7 @@ class Backup(JobGroup):
         )
 
         # If exists inside backup
-        if not addon_file.path.exists():
+        if not await self.sys_run_in_executor(addon_file.path.exists):
             raise BackupError(f"Can't find backup {addon_slug}", _LOGGER.error)
 
         # Perform a restore

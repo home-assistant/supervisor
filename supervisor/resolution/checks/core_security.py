@@ -30,9 +30,7 @@ class CheckCoreSecurity(CheckBase):
         # Security issue < 2021.1.5 & Custom components
         try:
             if self.sys_homeassistant.version < AwesomeVersion("2021.1.5"):
-                if Path(
-                    self.sys_config.path_homeassistant, "custom_components"
-                ).exists():
+                if await self.sys_run_in_executor(self._custom_components_exists):
                     self.sys_resolution.create_issue(
                         IssueType.SECURITY,
                         ContextType.CORE,
@@ -49,9 +47,14 @@ class CheckCoreSecurity(CheckBase):
                 return False
         except AwesomeVersionException:
             return True
-        if not Path(self.sys_config.path_homeassistant, "custom_components").exists():
-            return False
-        return True
+        return await self.sys_run_in_executor(self._custom_components_exists)
+
+    def _custom_components_exists(self) -> bool:
+        """Return true if custom components folder exists.
+
+        Must be run in executor.
+        """
+        return Path(self.sys_config.path_homeassistant, "custom_components").exists()
 
     @property
     def issue(self) -> IssueType:
