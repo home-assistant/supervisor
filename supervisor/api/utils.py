@@ -1,6 +1,5 @@
 """Init file for Supervisor util for RESTful API."""
 
-import asyncio
 import json
 from typing import Any
 
@@ -178,18 +177,11 @@ async def api_validate(
     schema: vol.Schema,
     request: web.Request,
     origin: list[str] | None = None,
-    *,
-    use_executor: bool = False,
 ) -> dict[str, Any]:
     """Validate request data with schema."""
     data: dict[str, Any] = await request.json(loads=json_loads)
     try:
-        if use_executor:
-            data_validated = await asyncio.get_running_loop().run_in_executor(
-                None, schema, data
-            )
-        else:
-            data_validated = schema(data)
+        data_validated = schema(data)
     except vol.Invalid as ex:
         raise APIError(humanize_error(data, ex)) from None
 
