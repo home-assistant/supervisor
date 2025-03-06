@@ -1,6 +1,5 @@
-
-import sys
 from unittest.mock import patch
+
 from supervisor.bootstrap import initialize_coresys
 
 
