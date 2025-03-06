@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Iterable
+from collections.abc import Awaitable
 import errno
 import logging
 from pathlib import Path
@@ -179,12 +179,18 @@ class BackupManager(FileConfiguration, JobGroup):
         )
         self.sys_jobs.current.stage = stage
 
-    def _list_backup_files(self, path: Path) -> Iterable[Path]:
+    async def _list_backup_files(self, path: Path) -> list[Path]:
         """Return iterable of backup files, suppress and log OSError for network mounts."""
-        try:
+
+        def find_backups() -> list[Path]:
             # is_dir does a stat syscall which raises if the mount is down
+            # Returning an iterator causes I/O while iterating, coerce into list here
             if path.is_dir():
-                return path.glob("*.tar")
+                return list(path.glob("*.tar"))
+            return []
+
+        try:
+            return await self.sys_run_in_executor(find_backups)
         except OSError as err:
             if err.errno == errno.EBADMSG and path in {
                 self.sys_config.path_backup,
@@ -278,9 +284,7 @@ class BackupManager(FileConfiguration, JobGroup):
         tasks = [
             self.sys_create_task(_load_backup(_location, tar_file))
             for _location, path in locations.items()
-            for tar_file in await self.sys_run_in_executor(
-                self._list_backup_files, path
-            )
+            for tar_file in await self._list_backup_files(path)
         ]
 
         _LOGGER.info("Found %d backup files", len(tasks))

@@ -665,17 +665,19 @@ class DockerAddon(DockerInterface):
     async def _build(self, version: AwesomeVersion, image: str | None = None) -> None:
         """Build a Docker container."""
         build_env = await AddonBuild(self.coresys, self.addon).load_config()
-        if not build_env.is_valid:
+        if not await build_env.is_valid():
             _LOGGER.error("Invalid build environment, can't build this add-on!")
             raise DockerError()
 
         _LOGGER.info("Starting build for %s:%s", self.image, version)
-        try:
-            image, log = await self.sys_run_in_executor(
-                self.sys_docker.images.build,
-                use_config_proxy=False,
-                **build_env.get_docker_args(version, image),
+
+        def build_image():
+            return self.sys_docker.images.build(
+                use_config_proxy=False, **build_env.get_docker_args(version, image)
             )
+
+        try:
+            image, log = await self.sys_run_in_executor(build_image)
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, version, log)
 

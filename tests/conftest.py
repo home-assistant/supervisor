@@ -12,6 +12,7 @@ from uuid import uuid4
 from aiohttp import web
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
+from blockbuster import BlockBuster, blockbuster_ctx
 from dbus_fast import BusType
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
@@ -61,6 +62,24 @@ from .dbus_service_mocks.network_connection_settings import (
 from .dbus_service_mocks.network_manager import NetworkManager as NetworkManagerService
 
 # pylint: disable=redefined-outer-name, protected-access
+
+
+# This commented out code is left in intentionally
+# Intent is to enable this for all tests at all times as an autouse fixture
+# Findings from PR were growing too big so disabling temporarily to create a checkpoint
+# @pytest.fixture(autouse=True)
+def blockbuster(request: pytest.FixtureRequest) -> BlockBuster:
+    """Raise for blocking I/O in event loop."""
+    # Excluded modules doesn't seem to stop test code from raising for blocking I/O
+    # Defaulting to only scanning supervisor core code seems like the best we can do easily
+    # Added a parameter so we could potentially go module by module in test and eliminate blocking I/O
+    # Then we could tell it to scan everything by default. That will require more follow-up work
+
+    # pylint: disable-next=contextmanager-generator-missing-cleanup
+    with blockbuster_ctx(
+        scanned_modules=getattr(request, "param", ["supervisor"])
+    ) as bb:
+        yield bb
 
 
 @pytest.fixture

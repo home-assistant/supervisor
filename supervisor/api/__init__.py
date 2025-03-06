@@ -1,5 +1,6 @@
 """Init file for Supervisor RESTful API."""
 
+from dataclasses import dataclass
 from functools import partial
 import logging
 from pathlib import Path
@@ -47,6 +48,14 @@ MAX_CLIENT_SIZE: int = 1024**2 * 16
 MAX_LINE_SIZE: int = 24570
 
 
+@dataclass(slots=True, frozen=True)
+class StaticResourceConfig:
+    """Configuration for a static resource."""
+
+    prefix: str
+    path: Path
+
+
 class RestAPI(CoreSysAttributes):
     """Handle RESTful API for Supervisor."""
 
@@ -77,6 +86,8 @@ class RestAPI(CoreSysAttributes):
 
     async def load(self) -> None:
         """Register REST API Calls."""
+        static_resource_configs: list[StaticResourceConfig] = []
+
         self._api_host = APIHost()
         self._api_host.coresys = self.coresys
 
@@ -98,7 +109,7 @@ class RestAPI(CoreSysAttributes):
         self._register_network()
         self._register_observer()
         self._register_os()
-        self._register_panel()
+        static_resource_configs.extend(self._register_panel())
         self._register_proxy()
         self._register_resolution()
         self._register_root()
@@ -106,6 +117,17 @@ class RestAPI(CoreSysAttributes):
         self._register_services()
         self._register_store()
         self._register_supervisor()
+
+        if static_resource_configs:
+
+            def process_configs() -> list[web.StaticResource]:
+                return [
+                    web.StaticResource(config.prefix, config.path)
+                    for config in static_resource_configs
+                ]
+
+            for resource in await self.sys_run_in_executor(process_configs):
+                self.webapp.router.register_resource(resource)
 
         await self.start()
 
@@ -750,10 +772,9 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
-    def _register_panel(self) -> None:
+    def _register_panel(self) -> list[StaticResourceConfig]:
         """Register panel for Home Assistant."""
-        panel_dir = Path(__file__).parent.joinpath("panel")
-        self.webapp.add_routes([web.static("/app", panel_dir)])
+        return [StaticResourceConfig("/app", Path(__file__).parent.joinpath("panel"))]
 
     def _register_docker(self) -> None:
         """Register docker configuration functions."""

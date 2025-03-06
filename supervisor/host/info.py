@@ -1,7 +1,7 @@
 """Info control for host."""
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, tzinfo
 import logging
 
 from ..coresys import CoreSysAttributes
@@ -71,6 +71,11 @@ class InfoCenter(CoreSysAttributes):
     def timezone(self) -> str | None:
         """Return host timezone."""
         return self.sys_dbus.timedate.timezone
+
+    @property
+    def timezone_tzinfo(self) -> tzinfo | None:
+        """Return host timezone as tzinfo object."""
+        return self.sys_dbus.timedate.timezone_tzinfo
 
     @property
     def dt_utc(self) -> datetime | None:

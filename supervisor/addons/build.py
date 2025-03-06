@@ -82,13 +82,6 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         return self._data[ATTR_BUILD_FROM][self.arch]
 
     @property
-    def dockerfile(self) -> Path:
-        """Return Dockerfile path."""
-        if self.addon.path_location.joinpath(f"Dockerfile.{self.arch}").exists():
-            return self.addon.path_location.joinpath(f"Dockerfile.{self.arch}")
-        return self.addon.path_location.joinpath("Dockerfile")
-
-    @property
     def squash(self) -> bool:
         """Return True or False if squash is active."""
         return self._data[ATTR_SQUASH]
@@ -103,25 +96,40 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         """Return additional Docker labels."""
         return self._data[ATTR_LABELS]
 
-    @property
-    def is_valid(self) -> bool:
+    def get_dockerfile(self) -> Path:
+        """Return Dockerfile path.
+
+        Must be run in executor.
+        """
+        if self.addon.path_location.joinpath(f"Dockerfile.{self.arch}").exists():
+            return self.addon.path_location.joinpath(f"Dockerfile.{self.arch}")
+        return self.addon.path_location.joinpath("Dockerfile")
+
+    async def is_valid(self) -> bool:
         """Return true if the build env is valid."""
-        try:
+
+        def build_is_valid() -> bool:
             return all(
                 [
                     self.addon.path_location.is_dir(),
-                    self.dockerfile.is_file(),
+                    self.get_dockerfile().is_file(),
                 ]
             )
+
+        try:
+            return await self.sys_run_in_executor(build_is_valid)
         except HassioArchNotFound:
             return False
 
     def get_docker_args(self, version: AwesomeVersion, image: str | None = None):
-        """Create a dict with Docker build arguments."""
+        """Create a dict with Docker build arguments.
+
+        Must be run in executor.
+        """
         args = {
             "path": str(self.addon.path_location),
             "tag": f"{image or self.addon.image}:{version!s}",
-            "dockerfile": str(self.dockerfile),
+            "dockerfile": str(self.get_dockerfile()),
             "pull": True,
             "forcerm": not self.sys_dev,
             "squash": self.squash,

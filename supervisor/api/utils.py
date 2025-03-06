@@ -174,7 +174,9 @@ def api_return_ok(data: dict[str, Any] | None = None) -> web.Response:
 
 
 async def api_validate(
-    schema: vol.Schema, request: web.Request, origin: list[str] | None = None
+    schema: vol.Schema,
+    request: web.Request,
+    origin: list[str] | None = None,
 ) -> dict[str, Any]:
     """Validate request data with schema."""
     data: dict[str, Any] = await request.json(loads=json_loads)

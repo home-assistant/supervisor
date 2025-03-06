@@ -753,9 +753,12 @@ class Addon(AddonModel):
         for listener in self._listeners:
             self.sys_bus.remove_listener(listener)
 
-        if self.path_data.is_dir():
-            _LOGGER.info("Removing add-on data folder %s", self.path_data)
-            await remove_data(self.path_data)
+        def remove_data_dir():
+            if self.path_data.is_dir():
+                _LOGGER.info("Removing add-on data folder %s", self.path_data)
+                remove_data(self.path_data)
+
+        await self.sys_run_in_executor(remove_data_dir)
 
     async def _check_ingress_port(self):
         """Assign a ingress port if dynamic port selection is used."""
@@ -777,11 +780,14 @@ class Addon(AddonModel):
         await self.sys_addons.data.install(self.addon_store)
         await self.load()
 
-        if not self.path_data.is_dir():
-            _LOGGER.info(
-                "Creating Home Assistant add-on data folder %s", self.path_data
-            )
-            self.path_data.mkdir()
+        def setup_data():
+            if not self.path_data.is_dir():
+                _LOGGER.info(
+                    "Creating Home Assistant add-on data folder %s", self.path_data
+                )
+                self.path_data.mkdir()
+
+        await self.sys_run_in_executor(setup_data)
 
         # Setup/Fix AppArmor profile
         await self.install_apparmor()
@@ -820,14 +826,17 @@ class Addon(AddonModel):
 
         await self.unload()
 
-        # Remove config if present and requested
-        if self.addon_config_used and remove_config:
-            await remove_data(self.path_config)
+        def cleanup_config_and_audio():
+            # Remove config if present and requested
+            if self.addon_config_used and remove_config:
+                remove_data(self.path_config)
 
-        # Cleanup audio settings
-        if self.path_pulse.exists():
-            with suppress(OSError):
-                self.path_pulse.unlink()
+            # Cleanup audio settings
+            if self.path_pulse.exists():
+                with suppress(OSError):
+                    self.path_pulse.unlink()
+
+        await self.sys_run_in_executor(cleanup_config_and_audio)
 
         # Cleanup AppArmor profile
         with suppress(HostAppArmorError):
@@ -968,7 +977,7 @@ class Addon(AddonModel):
     async def install_apparmor(self) -> None:
         """Install or Update AppArmor profile for Add-on."""
         exists_local = self.sys_host.apparmor.exists(self.slug)
-        exists_addon = self.path_apparmor.exists()
+        exists_addon = await self.sys_run_in_executor(self.path_apparmor.exists)
 
         # Nothing to do
         if not exists_local and not exists_addon:
@@ -1444,6 +1453,12 @@ class Addon(AddonModel):
                 # Restore data and config
                 def _restore_data():
                     """Restore data and config."""
+                    _LOGGER.info("Restoring data and config for addon %s", self.slug)
+                    if self.path_data.is_dir():
+                        remove_data(self.path_data)
+                    if self.path_config.is_dir():
+                        remove_data(self.path_config)
+
                     temp_data = Path(tmp.name, "data")
                     if temp_data.is_dir():
                         shutil.copytree(temp_data, self.path_data, symlinks=True)
@@ -1456,12 +1471,6 @@ class Addon(AddonModel):
                     elif self.addon_config_used:
                         self.path_config.mkdir()
 
-                _LOGGER.info("Restoring data and config for addon %s", self.slug)
-                if self.path_data.is_dir():
-                    await remove_data(self.path_data)
-                if self.path_config.is_dir():
-                    await remove_data(self.path_config)
-
                 try:
                     await self.sys_run_in_executor(_restore_data)
                 except shutil.Error as err:
@@ -1471,7 +1480,7 @@ class Addon(AddonModel):
 
                 # Restore AppArmor
                 profile_file = Path(tmp.name, "apparmor.txt")
-                if profile_file.exists():
+                if await self.sys_run_in_executor(profile_file.exists):
                     try:
                         await self.sys_host.apparmor.load_profile(
                             self.slug, profile_file
@@ -1492,7 +1501,7 @@ class Addon(AddonModel):
                 if data[ATTR_STATE] == AddonState.STARTED:
                     wait_for_start = await self.start()
         finally:
-            tmp.cleanup()
+            await self.sys_run_in_executor(tmp.cleanup)
         _LOGGER.info("Finished restore for add-on %s", self.slug)
         return wait_for_start
 

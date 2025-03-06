@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Coroutine
 from contextvars import Context, copy_context
-from datetime import datetime
+from datetime import UTC, datetime, tzinfo
 from functools import partial
 import logging
 import os
@@ -22,7 +22,6 @@ from .const import (
     MACHINE_ID,
     SERVER_SOFTWARE,
 )
-from .utils.dt import UTC, get_time_zone
 
 if TYPE_CHECKING:
     from .addons.manager import AddonManager
@@ -143,12 +142,18 @@ class CoreSys:
         """Return system timezone."""
         if self.config.timezone:
             return self.config.timezone
-        # pylint bug with python 3.12.4 (https://github.com/pylint-dev/pylint/issues/9811)
-        # pylint: disable=no-member
         if self.host.info.timezone:
             return self.host.info.timezone
-        # pylint: enable=no-member
         return "UTC"
+
+    @property
+    def timezone_tzinfo(self) -> tzinfo:
+        """Return system timezone as tzinfo object."""
+        if self.config.timezone_tzinfo:
+            return self.config.timezone_tzinfo
+        if self.host.info.timezone_tzinfo:
+            return self.host.info.timezone_tzinfo
+        return UTC
 
     @property
     def loop(self) -> asyncio.BaseEventLoop:
@@ -555,7 +560,7 @@ class CoreSys:
 
     def now(self) -> datetime:
         """Return now in local timezone."""
-        return datetime.now(get_time_zone(self.timezone) or UTC)
+        return datetime.now(self.timezone_tzinfo)
 
     def add_set_task_context_callback(
         self, callback: Callable[[Context], Context]
@@ -641,6 +646,11 @@ class CoreSysAttributes:
     def sys_machine(self) -> str | None:
         """Return running machine type of the Supervisor system."""
         return self.coresys.machine
+
+    @property
+    def sys_machine_id(self) -> str | None:
+        """Return machine id."""
+        return self.coresys.machine_id
 
     @property
     def sys_dev(self) -> bool:
