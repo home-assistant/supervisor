@@ -8,7 +8,6 @@ import signal
 import warnings
 
 from colorlog import ColoredFormatter
-from sentry_sdk import capture_exception
 
 from .addons.manager import AddonManager
 from .api import RestAPI
@@ -46,7 +45,7 @@ from .services import ServiceManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .updater import Updater
-from .utils.sentry import init_sentry
+from .utils.sentry import capture_exception, init_sentry
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
