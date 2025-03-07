@@ -113,8 +113,8 @@ class DockerAPI:
         self.config: DockerConfig = DockerConfig()
         self._monitor: DockerMonitor = DockerMonitor(coresys)
 
-    async def load_config(self) -> Self:
-        """Load config in executor."""
+    async def post_init(self) -> Self:
+        """Post init actions that must be done in event loop."""
         self._docker = await asyncio.get_running_loop().run_in_executor(
             None,
             partial(

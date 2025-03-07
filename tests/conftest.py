@@ -113,7 +113,7 @@ async def docker() -> DockerAPI:
         ),
         patch("supervisor.docker.manager.DockerAPI.unload"),
     ):
-        docker_obj = DockerAPI(MagicMock())
+        docker_obj = await DockerAPI(MagicMock()).post_init()
         docker_obj.config._data = {"registries": {}}
         with patch("supervisor.docker.monitor.DockerMonitor.load"):
             await docker_obj.load()
