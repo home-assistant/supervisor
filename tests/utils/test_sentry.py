@@ -2,10 +2,13 @@
 
 from unittest.mock import patch
 
+import pytest
+
 from supervisor.bootstrap import initialize_coresys
 
 
-async def test_sentry_disabled_by_default(supervisor_name):
+@pytest.mark.usefixtures("supervisor_name", "docker")
+async def test_sentry_disabled_by_default():
     """Test diagnostics off by default."""
     with (
         patch("supervisor.bootstrap.initialize_system"),
