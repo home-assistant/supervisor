@@ -146,7 +146,9 @@ async def test_update_unavailable_addon(
 ):
     """Test updating addon when new version not available for system."""
     addon_config = dict(
-        load_yaml_fixture("addons/local/ssh/config.yaml"),
+        await coresys.run_in_executor(
+            load_yaml_fixture, "addons/local/ssh/config.yaml"
+        ),
         version=AwesomeVersion("10.0.0"),
         **config,
     )
@@ -201,7 +203,9 @@ async def test_install_unavailable_addon(
 ):
     """Test updating addon when new version not available for system."""
     addon_config = dict(
-        load_yaml_fixture("addons/local/ssh/config.yaml"),
+        await coresys.run_in_executor(
+            load_yaml_fixture, "addons/local/ssh/config.yaml"
+        ),
         version=AwesomeVersion("10.0.0"),
         **config,
     )

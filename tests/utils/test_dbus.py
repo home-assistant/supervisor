@@ -1,5 +1,6 @@
 """Test dbus utility."""
 
+import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 from dbus_fast import ErrorType
@@ -48,9 +49,11 @@ async def fixture_test_service(dbus_session_bus: MessageBus) -> TestInterface:
 async def test_missing_properties_interface(dbus_session_bus: MessageBus):
     """Test introspection missing properties interface."""
 
-    async def mock_introspect(*args, **kwargs):
+    def mock_introspect(*args, **kwargs):
         """Return introspection without properties."""
-        return load_fixture("test_no_properties_interface.xml")
+        return asyncio.get_running_loop().run_in_executor(
+            None, load_fixture, "test_no_properties_interface.xml"
+        )
 
     with patch.object(MessageBus, "introspect", new=mock_introspect):
         service = await DBus.connect(

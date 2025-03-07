@@ -1679,15 +1679,17 @@ async def test_skip_homeassistant_database(
     coresys.homeassistant.backups_exclude_database = exclude_db_setting
 
     test_file = coresys.config.path_homeassistant / "configuration.yaml"
-    (test_db := coresys.config.path_homeassistant / "home-assistant_v2.db").touch()
-    (
-        test_db_wal := coresys.config.path_homeassistant / "home-assistant_v2.db-wal"
-    ).touch()
-    (
-        test_db_shm := coresys.config.path_homeassistant / "home-assistant_v2.db-shm"
-    ).touch()
+    test_db = coresys.config.path_homeassistant / "home-assistant_v2.db"
+    test_db_wal = coresys.config.path_homeassistant / "home-assistant_v2.db-wal"
+    test_db_shm = coresys.config.path_homeassistant / "home-assistant_v2.db-shm"
 
-    write_json_file(test_file, {"default_config": {}})
+    def setup_1():
+        test_db.touch()
+        test_db_wal.touch()
+        test_db_shm.touch()
+        write_json_file(test_file, {"default_config": {}})
+
+    await coresys.run_in_executor(setup_1)
 
     kwargs = {} if exclude_db_setting else {"homeassistant_exclude_database": True}
     if partial_backup:
@@ -1697,9 +1699,12 @@ async def test_skip_homeassistant_database(
     else:
         backup: Backup = await coresys.backups.do_backup_full(**kwargs)
 
-    test_file.unlink()
-    write_json_file(test_db, {"hello": "world"})
-    write_json_file(test_db_wal, {"hello": "world"})
+    def setup_2():
+        test_file.unlink()
+        write_json_file(test_db, {"hello": "world"})
+        write_json_file(test_db_wal, {"hello": "world"})
+
+    await coresys.run_in_executor(setup_2)
 
     with (
         patch.object(HomeAssistantCore, "update"),
@@ -1707,10 +1712,13 @@ async def test_skip_homeassistant_database(
     ):
         await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
-    assert read_json_file(test_file) == {"default_config": {}}
-    assert read_json_file(test_db) == {"hello": "world"}
-    assert read_json_file(test_db_wal) == {"hello": "world"}
-    assert not test_db_shm.exists()
+    def test_assertions():
+        assert read_json_file(test_file) == {"default_config": {}}
+        assert read_json_file(test_db) == {"hello": "world"}
+        assert read_json_file(test_db_wal) == {"hello": "world"}
+        assert not test_db_shm.exists()
+
+    await coresys.run_in_executor(test_assertions)
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
