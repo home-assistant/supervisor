@@ -601,7 +601,9 @@ class Backup(JobGroup):
                 ATTR_SLUG: addon.slug,
                 ATTR_NAME: addon.name,
                 ATTR_VERSION: addon.version,
-                ATTR_SIZE: await self.sys_run_in_executor(getattr, addon_file, "size"),
+                # Bug - addon_file.size used to give us this information
+                # It always returns 0 in current securetar. Skipping until fixed
+                ATTR_SIZE: 0,
             }
         )
 
