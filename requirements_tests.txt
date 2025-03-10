@@ -1,4 +1,4 @@
-astroid==3.3.8
+astroid==3.3.9
 coverage==7.6.12
 pre-commit==4.1.0
 pylint==3.3.4
