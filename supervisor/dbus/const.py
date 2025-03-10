@@ -204,6 +204,7 @@ class InterfaceMethod(StrEnum):
     MANUAL = "manual"
     DISABLED = "disabled"
     LINK_LOCAL = "link-local"
+    SHARED = "shared"
 
 
 class ConnectionType(StrEnum):
