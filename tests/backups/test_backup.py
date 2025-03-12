@@ -116,21 +116,37 @@ async def test_consolidate(
     }
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "tarfile_side_effect, securetar_side_effect, expected_exception",
+    (
+        "tarfile_side_effect",
+        "securetar_side_effect",
+        "expected_exception",
+        "expected_log",
+    ),
     [
-        (None, None, None),  # Successful validation
-        (FileNotFoundError, None, BackupFileNotFoundError),  # File not found
-        (None, tarfile.ReadError, BackupInvalidError),  # Invalid password
+        (None, None, None, None),  # Successful validation
+        (
+            FileNotFoundError,
+            None,
+            BackupFileNotFoundError,
+            "file does not exist",
+        ),  # File not found
+        (
+            None,
+            tarfile.ReadError,
+            BackupInvalidError,
+            "Invalid password for backup 93b462f8",
+        ),  # Invalid password
     ],
 )
 async def test_validate_backup(
     coresys: CoreSys,
     tmp_path: Path,
-    tarfile_side_effect,
-    securetar_side_effect,
-    expected_exception,
+    caplog: pytest.LogCaptureFixture,
+    tarfile_side_effect: type[Exception] | None,
+    securetar_side_effect: type[Exception] | None,
+    expected_exception: type[Exception] | None,
+    expected_log: str | None,
 ):
     """Parameterized test for validate_backup."""
     enc_tar = Path(copy(get_fixture_path("backup_example_enc.tar"), tmp_path))
@@ -146,6 +162,7 @@ async def test_validate_backup(
     backup_context_mock.__enter__.return_value = backup_tar_mock
     backup_context_mock.__exit__.return_value = False
 
+    caplog.clear()
     with (
         patch(
             "tarfile.open",
@@ -161,5 +178,8 @@ async def test_validate_backup(
         if expected_exception:
             with pytest.raises(expected_exception):
                 await enc_backup.validate_backup(None)
+            assert expected_log in caplog.text
+
         else:
             await enc_backup.validate_backup(None)
+            assert not caplog.text
