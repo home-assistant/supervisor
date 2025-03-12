@@ -1,5 +1,6 @@
 """Test backups."""
 
+from contextlib import AbstractContextManager, nullcontext as does_not_raise
 from os import listdir
 from pathlib import Path
 from shutil import copy
@@ -121,39 +122,39 @@ async def test_consolidate(
         "tarfile_side_effect",
         "securetar_side_effect",
         "expected_exception",
-        "expected_log",
     ),
     [
-        (None, None, None, None),  # Successful validation
+        (None, None, does_not_raise()),  # Successful validation
         (
             FileNotFoundError,
             None,
-            BackupFileNotFoundError,
-            "file does not exist",
+            pytest.raises(
+                BackupFileNotFoundError,
+                match=r"Cannot validate backup at [^, ]+, file does not exist!",
+            ),
         ),  # File not found
         (
             None,
             tarfile.ReadError,
-            BackupInvalidError,
-            "Invalid password for backup 93b462f8",
+            pytest.raises(
+                BackupInvalidError, match="Invalid password for backup 93b462f8"
+            ),
         ),  # Invalid password
     ],
 )
 async def test_validate_backup(
     coresys: CoreSys,
     tmp_path: Path,
-    caplog: pytest.LogCaptureFixture,
     tarfile_side_effect: type[Exception] | None,
     securetar_side_effect: type[Exception] | None,
-    expected_exception: type[Exception] | None,
-    expected_log: str | None,
+    expected_exception: AbstractContextManager,
 ):
     """Parameterized test for validate_backup."""
     enc_tar = Path(copy(get_fixture_path("backup_example_enc.tar"), tmp_path))
     enc_backup = Backup(coresys, enc_tar, "test", None)
     await enc_backup.load()
 
-    backup_tar_mock = MagicMock()
+    backup_tar_mock = MagicMock(spec_set=tarfile.TarFile)
     backup_tar_mock.getmembers.return_value = [
         MagicMock(name="test.tar.gz")
     ]  # Fake tar entries
@@ -162,24 +163,18 @@ async def test_validate_backup(
     backup_context_mock.__enter__.return_value = backup_tar_mock
     backup_context_mock.__exit__.return_value = False
 
-    caplog.clear()
     with (
         patch(
             "tarfile.open",
             MagicMock(
-                return_value=backup_context_mock, side_effect=tarfile_side_effect
+                return_value=backup_context_mock,
+                side_effect=tarfile_side_effect,
             ),
         ),
         patch(
             "supervisor.backups.backup.SecureTarFile",
             MagicMock(side_effect=securetar_side_effect),
         ),
+        expected_exception,
     ):
-        if expected_exception:
-            with pytest.raises(expected_exception):
-                await enc_backup.validate_backup(None)
-            assert expected_log in caplog.text
-
-        else:
-            await enc_backup.validate_backup(None)
-            assert not caplog.text
+        await enc_backup.validate_backup(None)
