@@ -12,6 +12,7 @@ from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
+    ATTR_DETECT_BLOCKING_IO,
     ATTR_DIAGNOSTICS,
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
@@ -141,6 +142,16 @@ class CoreConfig(FileConfiguration):
     def debug_block(self, value: bool) -> None:
         """Set debug wait mode."""
         self._data[ATTR_DEBUG_BLOCK] = value
+
+    @property
+    def detect_blocking_io(self) -> bool:
+        """Return True if blocking I/O in event loop detection enabled at startup."""
+        return self._data[ATTR_DETECT_BLOCKING_IO]
+
+    @detect_blocking_io.setter
+    def detect_blocking_io(self, value: bool) -> None:
+        """Enable/Disable blocking I/O in event loop detection at startup."""
+        self._data[ATTR_DETECT_BLOCKING_IO] = value
 
     @property
     def diagnostics(self) -> bool | None:
