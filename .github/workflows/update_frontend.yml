@@ -66,7 +66,7 @@ jobs:
           out-file-path: supervisor/api/panel/
       - name: Remove release assets archive
         run: |
-          rm -f rootfs/usr/share/www/home_assistant_frontend_supervisor-*.tar.gz
+          rm -f supervisor/api/panel/home_assistant_frontend_supervisor-*.tar.gz
       - name: Create PR
         uses: peter-evans/create-pull-request@v7
         with:
