@@ -392,7 +392,7 @@ class Backup(JobGroup):
                         return
                 except tarfile.ReadError as ex:
                     raise BackupInvalidError(
-                        f"Invalid password for backup {backup.slug}", _LOGGER.error
+                        f"Invalid password for backup {self.slug}", _LOGGER.error
                     ) from ex
 
         try:
