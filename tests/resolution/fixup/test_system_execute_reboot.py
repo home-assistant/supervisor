@@ -20,10 +20,10 @@ async def test_fixup(
     system_execute_reboot = FixupSystemExecuteReboot(coresys)
     assert system_execute_reboot.auto is False
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
     )
-    coresys.resolution.issues = Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+    coresys.resolution.add_issue(Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM))
 
     await system_execute_reboot()
 

@@ -558,7 +558,9 @@ class APIBackups(CoreSysAttributes):
                 LOCATION_CLOUD_BACKUP,
                 None,
             }:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             _LOGGER.error("Can't write new backup file: %s", err)
             return False
 

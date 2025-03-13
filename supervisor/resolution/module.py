@@ -87,28 +87,12 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         """Return a list of issues."""
         return self._issues
 
-    @issues.setter
-    def issues(self, issue: Issue) -> None:
-        """Add issues."""
-        if issue in self._issues:
-            return
-        _LOGGER.info(
-            "Create new issue %s - %s / %s", issue.type, issue.context, issue.reference
-        )
-        self._issues.append(issue)
-
-        # Event on issue creation
-        self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.ISSUE_CHANGED, self._make_issue_message(issue)
-        )
-
     @property
     def suggestions(self) -> list[Suggestion]:
         """Return a list of suggestions that can handled."""
         return self._suggestions
 
-    @suggestions.setter
-    def suggestions(self, suggestion: Suggestion) -> None:
+    def add_suggestion(self, suggestion: Suggestion) -> None:
         """Add suggestion."""
         if suggestion in self._suggestions:
             return
@@ -132,8 +116,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         """Return a list of unsupported reasons."""
         return self._unsupported
 
-    @unsupported.setter
-    def unsupported(self, reason: UnsupportedReason) -> None:
+    def add_unsupported_reason(self, reason: UnsupportedReason) -> None:
         """Add a reason for unsupported."""
         if reason not in self._unsupported:
             self._unsupported.append(reason)
@@ -144,12 +127,11 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     @property
     def unhealthy(self) -> list[UnhealthyReason]:
-        """Return a list of unsupported reasons."""
+        """Return a list of unhealthy reasons."""
         return self._unhealthy
 
-    @unhealthy.setter
-    def unhealthy(self, reason: UnhealthyReason) -> None:
-        """Add a reason for unsupported."""
+    def add_unhealthy_reason(self, reason: UnhealthyReason) -> None:
+        """Add a reason for unhrealthy."""
         if reason not in self._unhealthy:
             self._unhealthy.append(reason)
             self.sys_homeassistant.websocket.supervisor_event(
@@ -198,11 +180,21 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         """Add an issue and suggestions."""
         if suggestions:
             for suggestion in suggestions:
-                self.suggestions = Suggestion(
-                    suggestion, issue.context, issue.reference
+                self.add_suggestion(
+                    Suggestion(suggestion, issue.context, issue.reference)
                 )
 
-        self.issues = issue
+        if issue in self._issues:
+            return
+        _LOGGER.info(
+            "Create new issue %s - %s / %s", issue.type, issue.context, issue.reference
+        )
+        self._issues.append(issue)
+
+        # Event on issue creation
+        self.sys_homeassistant.websocket.supervisor_event(
+            WSEvent.ISSUE_CHANGED, self._make_issue_message(issue)
+        )
 
     async def load(self):
         """Load the resoulution manager."""

@@ -94,7 +94,9 @@ class PluginAudio(PluginBase):
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
 
             _LOGGER.error("Can't read pulse-client.tmpl: %s", err)
 
@@ -111,7 +113,9 @@ class PluginAudio(PluginBase):
             await self.sys_run_in_executor(setup_default_asound)
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             _LOGGER.error("Can't create default asound: %s", err)
 
     @Job(

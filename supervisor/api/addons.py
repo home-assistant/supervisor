@@ -10,7 +10,6 @@ import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..addons.addon import Addon
-from ..addons.manager import AnyAddon
 from ..addons.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
@@ -204,7 +203,7 @@ class APIAddons(CoreSysAttributes):
 
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
-        addon: AnyAddon = self.get_addon_for_request(request)
+        addon: Addon = self.get_addon_for_request(request)
 
         data = {
             ATTR_NAME: addon.name,

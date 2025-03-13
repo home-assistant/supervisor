@@ -17,8 +17,8 @@ async def test_fixup(coresys: CoreSys):
 
     assert not create_full_backup.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM)
     )
 
     mock_backups = AsyncMock()

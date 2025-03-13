@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
 
@@ -15,6 +15,7 @@ from ..const import (
     ATTR_SQUASH,
     FILE_SUFFIX_CONFIGURATION,
     META_ADDON,
+    CpuArch,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.interface import MAP_ARCH
@@ -23,7 +24,7 @@ from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
-    from . import AnyAddon
+    from .manager import AnyAddon
 
 
 class AddonBuild(FileConfiguration, CoreSysAttributes):
@@ -63,7 +64,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
     @cached_property
     def arch(self) -> str:
         """Return arch of the add-on."""
-        return self.sys_arch.match(self.addon.arch)
+        return self.sys_arch.match([self.addon.arch])
 
     @property
     def base_image(self) -> str:
@@ -126,14 +127,14 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
 
         Must be run in executor.
         """
-        args = {
+        args: dict[str, Any] = {
             "path": str(self.addon.path_location),
             "tag": f"{image or self.addon.image}:{version!s}",
             "dockerfile": str(self.get_dockerfile()),
             "pull": True,
             "forcerm": not self.sys_dev,
             "squash": self.squash,
-            "platform": MAP_ARCH[self.arch],
+            "platform": MAP_ARCH[CpuArch[self.arch]],
             "labels": {
                 "io.hass.version": version,
                 "io.hass.arch": self.arch,

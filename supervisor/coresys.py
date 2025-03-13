@@ -807,7 +807,7 @@ class CoreSysAttributes:
         return self.coresys.now()
 
     def sys_run_in_executor(
-        self, funct: Callable[..., T], *args: tuple[Any], **kwargs: dict[str, Any]
+        self, funct: Callable[..., T], *args, **kwargs
     ) -> Coroutine[Any, Any, T]:
         """Add a job to the executor pool."""
         return self.coresys.run_in_executor(funct, *args, **kwargs)
@@ -820,8 +820,8 @@ class CoreSysAttributes:
         self,
         delay: float,
         funct: Callable[..., Coroutine[Any, Any, T]],
-        *args: tuple[Any],
-        **kwargs: dict[str, Any],
+        *args,
+        **kwargs,
     ) -> asyncio.TimerHandle:
         """Start a task after a delay."""
         return self.coresys.call_later(delay, funct, *args, **kwargs)
@@ -830,8 +830,8 @@ class CoreSysAttributes:
         self,
         when: datetime,
         funct: Callable[..., Coroutine[Any, Any, T]],
-        *args: tuple[Any],
-        **kwargs: dict[str, Any],
+        *args,
+        **kwargs,
     ) -> asyncio.TimerHandle:
         """Start a task at the specified datetime."""
         return self.coresys.call_at(when, funct, *args, **kwargs)
