@@ -234,7 +234,7 @@ class Interface:
 
         # WifiMode
         mode = WifiMode.INFRASTRUCTURE
-        if inet.settings.wireless.mode:
+        if inet.settings.wireless and inet.settings.wireless.mode:
             mode = WifiMode(inet.settings.wireless.mode)
 
         # Signal
