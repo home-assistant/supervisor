@@ -10,9 +10,9 @@ import logging
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, cast
 
-from aiohttp import web
+from aiohttp import BodyPartReader, web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -52,8 +52,9 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound
-from ..jobs import JobSchedulerOptions
+from ..jobs import JobSchedulerOptions, SupervisorJob
 from ..mounts.const import MountUsage
+from ..mounts.mount import Mount
 from ..resolution.const import UnhealthyReason
 from .const import (
     ATTR_ADDITIONAL_LOCATIONS,
@@ -187,7 +188,7 @@ class APIBackups(CoreSysAttributes):
         ]
 
     @api_process
-    async def list(self, request):
+    async def list_backups(self, request):
         """Return backup list."""
         data_backups = self._list_backups()
 
@@ -295,8 +296,11 @@ class APIBackups(CoreSysAttributes):
     ) -> tuple[asyncio.Task, str]:
         """Start backup task in  background and return task and job ID."""
         event = asyncio.Event()
-        job, backup_task = self.sys_jobs.schedule_job(
-            backup_method, JobSchedulerOptions(), *args, **kwargs
+        job, backup_task = cast(
+            tuple[SupervisorJob, asyncio.Task],
+            self.sys_jobs.schedule_job(
+                backup_method, JobSchedulerOptions(), *args, **kwargs
+            ),
         )
 
         async def release_on_freeze(new_state: CoreState):
@@ -311,10 +315,7 @@ class APIBackups(CoreSysAttributes):
         try:
             event_task = self.sys_create_task(event.wait())
             _, pending = await asyncio.wait(
-                (
-                    backup_task,
-                    event_task,
-                ),
+                (backup_task, event_task),
                 return_when=asyncio.FIRST_COMPLETED,
             )
             # It seems backup returned early (error or something), make sure to cancel
@@ -497,8 +498,10 @@ class APIBackups(CoreSysAttributes):
         locations: list[LOCATION_TYPE] | None = None
         tmp_path = self.sys_config.path_tmp
         if ATTR_LOCATION in request.query:
-            location_names: list[str] = request.query.getall(ATTR_LOCATION)
-            self._validate_cloud_backup_location(request, location_names)
+            location_names: list[str] = request.query.getall(ATTR_LOCATION, [])
+            self._validate_cloud_backup_location(
+                request, cast(list[str | None], location_names)
+            )
             # Convert empty string to None if necessary
             locations = [
                 self._location_to_mount(location)
@@ -509,7 +512,7 @@ class APIBackups(CoreSysAttributes):
             location = locations.pop(0)
 
             if location and location != LOCATION_CLOUD_BACKUP:
-                tmp_path = location.local_where
+                tmp_path = cast(Mount, location).local_where or tmp_path
 
         filename: str | None = None
         if ATTR_FILENAME in request.query:
@@ -540,10 +543,15 @@ class APIBackups(CoreSysAttributes):
         try:
             reader = await request.multipart()
             contents = await reader.next()
+            if not isinstance(contents, BodyPartReader):
+                raise APIError("Improperly formatted upload, could not read backup")
+
             tar_file = await self.sys_run_in_executor(open_backup_file)
             while chunk := await contents.read_chunk(size=2**16):
-                await self.sys_run_in_executor(backup_file_stream.write, chunk)
-            await self.sys_run_in_executor(backup_file_stream.close)
+                await self.sys_run_in_executor(
+                    cast(IOBase, backup_file_stream).write, chunk
+                )
+            await self.sys_run_in_executor(cast(IOBase, backup_file_stream).close)
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(

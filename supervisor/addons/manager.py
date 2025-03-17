@@ -194,6 +194,7 @@ class AddonManager(CoreSysAttributes):
 
         _LOGGER.info("Add-on '%s' successfully installed", slug)
 
+    @Job(name="addon_manager_uninstall")
     async def uninstall(self, slug: str, *, remove_config: bool = False) -> None:
         """Remove an add-on."""
         if slug not in self.local:

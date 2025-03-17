@@ -15,7 +15,6 @@ from ..const import (
     ATTR_SQUASH,
     FILE_SUFFIX_CONFIGURATION,
     META_ADDON,
-    CpuArch,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.interface import MAP_ARCH
@@ -134,7 +133,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             "pull": True,
             "forcerm": not self.sys_dev,
             "squash": self.squash,
-            "platform": MAP_ARCH[CpuArch[self.arch]],
+            "platform": MAP_ARCH[self.arch],
             "labels": {
                 "io.hass.version": version,
                 "io.hass.arch": self.arch,

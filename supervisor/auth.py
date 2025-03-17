@@ -68,7 +68,9 @@ class Auth(FileConfiguration, CoreSysAttributes):
         self._data.pop(username_h, None)
         await self.save_data()
 
-    async def check_login(self, addon: Addon, username: str, password: str) -> bool:
+    async def check_login(
+        self, addon: Addon, username: str | None, password: str | None
+    ) -> bool:
         """Check username login."""
         if password is None:
             raise AuthError("None as password is not supported!", _LOGGER.error)
