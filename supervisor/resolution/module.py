@@ -131,7 +131,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         return self._unhealthy
 
     def add_unhealthy_reason(self, reason: UnhealthyReason) -> None:
-        """Add a reason for unhrealthy."""
+        """Add a reason for unhealthy."""
         if reason not in self._unhealthy:
             self._unhealthy.append(reason)
             self.sys_homeassistant.websocket.supervisor_event(
