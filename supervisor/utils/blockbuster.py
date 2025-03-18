@@ -1,6 +1,6 @@
 """Activate and deactivate blockbuster for finding blocking I/O."""
 
-from functools import lru_cache
+from functools import cache
 import logging
 
 from blockbuster import BlockBuster
@@ -8,7 +8,7 @@ from blockbuster import BlockBuster
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-@lru_cache(maxsize=1)
+@cache
 def _get_blockbuster() -> BlockBuster:
     """Get blockbuster instance."""
     return BlockBuster()
