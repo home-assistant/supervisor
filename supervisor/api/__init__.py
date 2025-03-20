@@ -256,6 +256,14 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
+        # Config options
+        self.webapp.add_routes(
+            [
+                web.get("/os/config/swap", api_os.config_swap_info),
+                web.post("/os/config/swap", api_os.config_swap_options),
+            ]
+        )
+
     def _register_security(self) -> None:
         """Register Security functions."""
         api_security = APISecurity()

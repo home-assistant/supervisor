@@ -18,6 +18,7 @@ from tests.dbus_service_mocks.agent_boards import Boards as BoardsService
 from tests.dbus_service_mocks.agent_boards_green import Green as GreenService
 from tests.dbus_service_mocks.agent_boards_yellow import Yellow as YellowService
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
+from tests.dbus_service_mocks.agent_swap import Swap as SwapService
 from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.rauc import Rauc as RaucService
@@ -337,3 +338,172 @@ async def test_api_board_other_info(
         assert (await api_client.post("/os/boards/not-real", json={})).status == 405
         assert (await api_client.get("/os/boards/yellow")).status == 400
         assert (await api_client.get("/os/boards/supervised")).status == 400
+
+
+@pytest.mark.parametrize("os_available", ["15.0"], indirect=True)
+async def test_api_config_swap_info(
+    api_client: TestClient, coresys: CoreSys, os_available
+):
+    """Test swap info."""
+    await coresys.dbus.agent.swap.connect(coresys.dbus.bus)
+
+    resp = await api_client.get("/os/config/swap")
+
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["swap_size"] == "1M"
+    assert result["data"]["swappiness"] == 1
+
+
+@pytest.mark.parametrize("os_available", ["15.0"], indirect=True)
+async def test_api_config_swap_options(
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test swap setting."""
+    swap_service: SwapService = os_agent_services["agent_swap"]
+    await coresys.dbus.agent.swap.connect(coresys.dbus.bus)
+
+    assert coresys.dbus.agent.swap.swap_size == "1M"
+    assert coresys.dbus.agent.swap.swappiness == 1
+
+    resp = await api_client.post(
+        "/os/config/swap",
+        json={
+            "swap_size": "2M",
+            "swappiness": 10,
+        },
+    )
+    assert resp.status == 200
+
+    await swap_service.ping()
+
+    assert coresys.dbus.agent.swap.swap_size == "2M"
+    assert coresys.dbus.agent.swap.swappiness == 10
+
+    assert (
+        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+        in coresys.resolution.issues
+    )
+    assert (
+        Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
+        in coresys.resolution.suggestions
+    )
+
+    # test setting only the swap size
+    resp = await api_client.post(
+        "/os/config/swap",
+        json={
+            "swap_size": "10M",
+        },
+    )
+    assert resp.status == 200
+
+    await swap_service.ping()
+
+    assert coresys.dbus.agent.swap.swap_size == "10M"
+    assert coresys.dbus.agent.swap.swappiness == 10
+
+    # test setting only the swappiness
+    resp = await api_client.post(
+        "/os/config/swap",
+        json={
+            "swappiness": 100,
+        },
+    )
+    assert resp.status == 200
+
+    await swap_service.ping()
+
+    assert coresys.dbus.agent.swap.swap_size == "10M"
+    assert coresys.dbus.agent.swap.swappiness == 100
+
+
+@pytest.mark.parametrize("os_available", ["15.0"], indirect=True)
+async def test_api_config_swap_options_no_reboot(
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test no resolution is shown when setting are submitted empty or unchanged."""
+    await coresys.dbus.agent.swap.connect(coresys.dbus.bus)
+
+    # empty options
+    resp = await api_client.post(
+        "/os/config/swap",
+        json={},
+    )
+    assert resp.status == 200
+    assert (
+        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+        not in coresys.resolution.issues
+    )
+    assert (
+        Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
+        not in coresys.resolution.suggestions
+    )
+
+    # no change
+    resp = await api_client.post(
+        "/os/config/swap",
+        json={
+            "swappiness": coresys.dbus.agent.swap.swappiness,
+            "swap_size": coresys.dbus.agent.swap.swap_size,
+        },
+    )
+    assert resp.status == 200
+    assert (
+        Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM)
+        not in coresys.resolution.issues
+    )
+    assert (
+        Suggestion(SuggestionType.EXECUTE_REBOOT, ContextType.SYSTEM)
+        not in coresys.resolution.suggestions
+    )
+
+
+async def test_api_config_swap_not_os(
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+):
+    """Test 404 is returned for swap endpoints if not running on HAOS."""
+    await coresys.dbus.agent.swap.connect(coresys.dbus.bus)
+
+    resp = await api_client.get("/os/config/swap")
+    assert resp.status == 404
+
+    resp = await api_client.post(
+        "/os/config/swap",
+        json={
+            "swap_size": "2M",
+            "swappiness": 10,
+        },
+    )
+    assert resp.status == 404
+
+
+@pytest.mark.parametrize("os_available", ["14.2"], indirect=True)
+async def test_api_config_swap_old_os(
+    api_client: TestClient,
+    coresys: CoreSys,
+    os_agent_services: dict[str, DBusServiceMock],
+    os_available,
+):
+    """Test 404 is returned for swap endpoints if OS is older than 15.0."""
+    await coresys.dbus.agent.swap.connect(coresys.dbus.bus)
+
+    resp = await api_client.get("/os/config/swap")
+    assert resp.status == 404
+
+    resp = await api_client.post(
+        "/os/config/swap",
+        json={
+            "swap_size": "2M",
+            "swappiness": 10,
+        },
+    )
+    assert resp.status == 404

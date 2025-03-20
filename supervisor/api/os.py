@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from aiohttp import web
+from aiohttp.web_exceptions import HTTPNotFound
 import voluptuous as vol
 
 from ..const import (
@@ -21,6 +22,8 @@ from ..const import (
     ATTR_SERIAL,
     ATTR_SIZE,
     ATTR_STATE,
+    ATTR_SWAP_SIZE,
+    ATTR_SWAPPINESS,
     ATTR_UPDATE_AVAILABLE,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
@@ -63,6 +66,13 @@ SCHEMA_GREEN_OPTIONS = vol.Schema(
         vol.Optional(ATTR_ACTIVITY_LED): vol.Boolean(),
         vol.Optional(ATTR_POWER_LED): vol.Boolean(),
         vol.Optional(ATTR_SYSTEM_HEALTH_LED): vol.Boolean(),
+    }
+)
+
+SCHEMA_SWAP_OPTIONS = vol.Schema(
+    {
+        vol.Optional(ATTR_SWAP_SIZE): vol.Coerce(str),
+        vol.Optional(ATTR_SWAPPINESS): vol.Coerce(int),
     }
 )
 # pylint: enable=no-value-for-parameter
@@ -212,3 +222,41 @@ class APIOS(CoreSysAttributes):
             )
 
         return {}
+
+    @api_process
+    async def config_swap_info(self, request: web.Request) -> dict[str, Any]:
+        """Get swap settings."""
+        if not self.coresys.os.available or self.coresys.os.version < "15.0":
+            raise HTTPNotFound()
+
+        return {
+            ATTR_SWAP_SIZE: self.sys_dbus.agent.swap.swap_size,
+            ATTR_SWAPPINESS: self.sys_dbus.agent.swap.swappiness,
+        }
+
+    @api_process
+    async def config_swap_options(self, request: web.Request) -> None:
+        """Update swap settings."""
+        if not self.coresys.os.available or self.coresys.os.version < "15.0":
+            raise HTTPNotFound()
+
+        body = await api_validate(SCHEMA_SWAP_OPTIONS, request)
+
+        reboot_required = False
+
+        if ATTR_SWAP_SIZE in body:
+            old_size = self.sys_dbus.agent.swap.swap_size
+            await self.sys_dbus.agent.swap.set_swap_size(body[ATTR_SWAP_SIZE])
+            reboot_required = old_size != body[ATTR_SWAP_SIZE]
+
+        if ATTR_SWAPPINESS in body:
+            old_swappiness = self.sys_dbus.agent.swap.swappiness
+            await self.sys_dbus.agent.swap.set_swappiness(body[ATTR_SWAPPINESS])
+            reboot_required = old_swappiness != body[ATTR_SWAPPINESS]
+
+        if reboot_required:
+            self.sys_resolution.create_issue(
+                IssueType.REBOOT_REQUIRED,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.EXECUTE_REBOOT],
+            )
