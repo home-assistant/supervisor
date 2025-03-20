@@ -24,6 +24,7 @@ class Swap(DBusInterfaceProxy):
     def swap_size(self) -> str:
         """Get swap size."""
         return self.properties[DBUS_ATTR_SWAP_SIZE]
+
     def set_swap_size(self, size: str) -> Awaitable[None]:
         """Set swap size."""
         return self.dbus.Config.Swap.set_swap_size(size)
@@ -33,6 +34,7 @@ class Swap(DBusInterfaceProxy):
     def swappiness(self) -> int:
         """Get swappiness."""
         return self.properties[DBUS_ATTR_SWAPPINESS]
+
     def set_swappiness(self, swappiness: int) -> Awaitable[None]:
         """Set swappiness."""
         return self.dbus.Config.Swap.set_swappiness(swappiness)
