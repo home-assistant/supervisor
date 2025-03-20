@@ -247,12 +247,12 @@ class APIOS(CoreSysAttributes):
         if ATTR_SWAP_SIZE in body:
             old_size = self.sys_dbus.agent.swap.swap_size
             await self.sys_dbus.agent.swap.set_swap_size(body[ATTR_SWAP_SIZE])
-            reboot_required = old_size != body[ATTR_SWAP_SIZE]
+            reboot_required = reboot_required or old_size != body[ATTR_SWAP_SIZE]
 
         if ATTR_SWAPPINESS in body:
             old_swappiness = self.sys_dbus.agent.swap.swappiness
             await self.sys_dbus.agent.swap.set_swappiness(body[ATTR_SWAPPINESS])
-            reboot_required = old_swappiness != body[ATTR_SWAPPINESS]
+            reboot_required = reboot_required or old_swappiness != body[ATTR_SWAPPINESS]
 
         if reboot_required:
             self.sys_resolution.create_issue(
