@@ -80,3 +80,11 @@ class BootSlot(StrEnum):
 
     A = "A"
     B = "B"
+
+
+class DetectBlockingIO(StrEnum):
+    """Enable/Disable detection for blocking I/O in event loop."""
+
+    OFF = "off"
+    ON = "on"
+    ON_AT_STARTUP = "on_at_startup"
