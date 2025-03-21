@@ -28,8 +28,3 @@ class System(DBusServiceMock):
         if isinstance(self.response_schedule_wipe_device, DBusError):
             raise self.response_schedule_wipe_device  # pylint: disable=raising-bad-type
         return self.response_schedule_wipe_device
-
-    @dbus_method()
-    def WipeDevice(self) -> "b":
-        """Wipe device."""
-        return True
