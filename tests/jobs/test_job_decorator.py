@@ -50,7 +50,7 @@ async def test_healthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     test = TestClass(coresys)
     assert await test.execute()
 
-    coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+    coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER)
     assert not await test.execute()
     assert "blocked from execution, system is not healthy - docker" in caplog.text
 

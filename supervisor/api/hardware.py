@@ -68,7 +68,10 @@ def filesystem_struct(fs_block: UDisks2Block) -> dict[str, Any]:
         ATTR_NAME: fs_block.id_label,
         ATTR_SYSTEM: fs_block.hint_system,
         ATTR_MOUNT_POINTS: [
-            str(mount_point) for mount_point in fs_block.filesystem.mount_points
+            str(mount_point)
+            for mount_point in (
+                fs_block.filesystem.mount_points if fs_block.filesystem else []
+            )
         ],
     }
 

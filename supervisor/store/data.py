@@ -179,7 +179,9 @@ class StoreData(CoreSysAttributes):
         except OSError as err:
             suggestion = None
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             elif path.stem != StoreType.LOCAL:
                 suggestion = [SuggestionType.EXECUTE_RESET]
             self.sys_resolution.create_issue(

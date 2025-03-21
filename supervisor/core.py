@@ -114,7 +114,7 @@ class Core(CoreSysAttributes):
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_ROLLBACK, ContextType.SUPERVISOR
             )
-            self.sys_resolution.unhealthy = UnhealthyReason.SUPERVISOR
+            self.sys_resolution.add_unhealthy_reason(UnhealthyReason.SUPERVISOR)
 
         # Fix wrong version in config / avoid boot loop on OS
         self.sys_config.version = self.sys_supervisor.version
@@ -177,7 +177,7 @@ class Core(CoreSysAttributes):
                 _LOGGER.critical(
                     "Fatal error happening on load Task %s: %s", setup_task, err
                 )
-                self.sys_resolution.unhealthy = UnhealthyReason.SETUP
+                self.sys_resolution.add_unhealthy_reason(UnhealthyReason.SETUP)
                 await async_capture_exception(err)
 
         # Set OS Agent diagnostics if needed

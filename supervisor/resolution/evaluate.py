@@ -67,6 +67,6 @@ class ResolutionEvaluation(CoreSysAttributes):
                 await async_capture_exception(err)
 
         if any(reason in self.sys_resolution.unsupported for reason in UNHEALTHY):
-            self.sys_resolution.unhealthy = UnhealthyReason.DOCKER
+            self.sys_resolution.add_unhealthy_reason(UnhealthyReason.DOCKER)
 
         _LOGGER.info("System evaluation complete")

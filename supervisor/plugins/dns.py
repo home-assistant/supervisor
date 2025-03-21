@@ -156,7 +156,9 @@ class PluginDns(PluginBase):
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
 
         try:
@@ -165,7 +167,9 @@ class PluginDns(PluginBase):
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         await self._init_hosts()
@@ -343,7 +347,9 @@ class PluginDns(PluginBase):
             )
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
     async def add_host(
@@ -432,7 +438,9 @@ class PluginDns(PluginBase):
             await self.sys_run_in_executor(resolv_conf.write_text, data)
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             _LOGGER.warning("Can't write/update %s: %s", resolv_conf, err)
             return
 

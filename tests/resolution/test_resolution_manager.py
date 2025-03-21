@@ -22,7 +22,7 @@ def test_properies_unsupported(coresys: CoreSys):
     """Test resolution manager properties unsupported."""
     assert coresys.core.supported
 
-    coresys.resolution.unsupported = UnsupportedReason.OS
+    coresys.resolution.add_unsupported_reason(UnsupportedReason.OS)
     assert not coresys.core.supported
 
 
@@ -30,15 +30,15 @@ def test_properies_unhealthy(coresys: CoreSys):
     """Test resolution manager properties unhealthy."""
     assert coresys.core.healthy
 
-    coresys.resolution.unhealthy = UnhealthyReason.SUPERVISOR
+    coresys.resolution.add_unhealthy_reason(UnhealthyReason.SUPERVISOR)
     assert not coresys.core.healthy
 
 
 @pytest.mark.asyncio
 async def test_resolution_dismiss_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
-    coresys.resolution.suggestions = clear_backup = Suggestion(
-        SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        clear_backup := Suggestion(SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM)
     )
 
     assert coresys.resolution.suggestions[-1].type == SuggestionType.CLEAR_FULL_BACKUP
@@ -52,11 +52,13 @@ async def test_resolution_dismiss_suggestion(coresys: CoreSys):
 @pytest.mark.asyncio
 async def test_resolution_apply_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
-    coresys.resolution.suggestions = clear_backup = Suggestion(
-        SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        clear_backup := Suggestion(SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM)
     )
-    coresys.resolution.suggestions = create_backup = Suggestion(
-        SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        create_backup := Suggestion(
+            SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM
+        )
     )
 
     mock_backups = AsyncMock()
@@ -80,8 +82,8 @@ async def test_resolution_apply_suggestion(coresys: CoreSys):
 @pytest.mark.asyncio
 async def test_resolution_dismiss_issue(coresys: CoreSys):
     """Test resolution manager issue apply api."""
-    coresys.resolution.issues = updated_failed = Issue(
-        IssueType.UPDATE_FAILED, ContextType.SYSTEM
+    coresys.resolution.add_issue(
+        updated_failed := Issue(IssueType.UPDATE_FAILED, ContextType.SYSTEM)
     )
 
     assert coresys.resolution.issues[-1].type == IssueType.UPDATE_FAILED
@@ -113,7 +115,7 @@ async def test_resolution_create_issue_suggestion(coresys: CoreSys):
 @pytest.mark.asyncio
 async def test_resolution_dismiss_unsupported(coresys: CoreSys):
     """Test resolution manager dismiss unsupported reason."""
-    coresys.resolution.unsupported = UnsupportedReason.SOFTWARE
+    coresys.resolution.add_unsupported_reason(UnsupportedReason.SOFTWARE)
 
     coresys.resolution.dismiss_unsupported(UnsupportedReason.SOFTWARE)
     assert UnsupportedReason.SOFTWARE not in coresys.resolution.unsupported
@@ -124,26 +126,32 @@ async def test_resolution_dismiss_unsupported(coresys: CoreSys):
 
 async def test_suggestions_for_issue(coresys: CoreSys):
     """Test getting suggestions that fix an issue."""
-    coresys.resolution.issues = corrupt_repo = Issue(
-        IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "test_repo"
+    coresys.resolution.add_issue(
+        corrupt_repo := Issue(
+            IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "test_repo"
+        )
     )
 
     # Unrelated suggestions don't appear
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_RESET, ContextType.SUPERVISOR
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.EXECUTE_RESET, ContextType.SUPERVISOR)
     )
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "other_repo"
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "other_repo")
     )
 
     assert coresys.resolution.suggestions_for_issue(corrupt_repo) == set()
 
     # Related suggestions do
-    coresys.resolution.suggestions = execute_remove = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
+    coresys.resolution.add_suggestion(
+        execute_remove := Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
+        )
     )
-    coresys.resolution.suggestions = execute_reset = Suggestion(
-        SuggestionType.EXECUTE_RESET, ContextType.STORE, "test_repo"
+    coresys.resolution.add_suggestion(
+        execute_reset := Suggestion(
+            SuggestionType.EXECUTE_RESET, ContextType.STORE, "test_repo"
+        )
     )
 
     assert coresys.resolution.suggestions_for_issue(corrupt_repo) == {
@@ -154,24 +162,28 @@ async def test_suggestions_for_issue(coresys: CoreSys):
 
 async def test_issues_for_suggestion(coresys: CoreSys):
     """Test getting issues fixed by a suggestion."""
-    coresys.resolution.suggestions = execute_reset = Suggestion(
-        SuggestionType.EXECUTE_RESET, ContextType.STORE, "test_repo"
+    coresys.resolution.add_suggestion(
+        execute_reset := Suggestion(
+            SuggestionType.EXECUTE_RESET, ContextType.STORE, "test_repo"
+        )
     )
 
     # Unrelated issues don't appear
-    coresys.resolution.issues = Issue(IssueType.FATAL_ERROR, ContextType.CORE)
-    coresys.resolution.issues = Issue(
-        IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "other_repo"
+    coresys.resolution.add_issue(Issue(IssueType.FATAL_ERROR, ContextType.CORE))
+    coresys.resolution.add_issue(
+        Issue(IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "other_repo")
     )
 
     assert coresys.resolution.issues_for_suggestion(execute_reset) == set()
 
     # Related issues do
-    coresys.resolution.issues = fatal_error = Issue(
-        IssueType.FATAL_ERROR, ContextType.STORE, "test_repo"
+    coresys.resolution.add_issue(
+        fatal_error := Issue(IssueType.FATAL_ERROR, ContextType.STORE, "test_repo")
     )
-    coresys.resolution.issues = corrupt_repo = Issue(
-        IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "test_repo"
+    coresys.resolution.add_issue(
+        corrupt_repo := Issue(
+            IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "test_repo"
+        )
     )
 
     assert coresys.resolution.issues_for_suggestion(execute_reset) == {
@@ -226,8 +238,10 @@ async def test_events_on_issue_changes(coresys: CoreSys, ha_ws_client: AsyncMock
 
     # Adding a suggestion that fixes the issue changes it
     ha_ws_client.async_send_command.reset_mock()
-    coresys.resolution.suggestions = execute_remove = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
+    coresys.resolution.add_suggestion(
+        execute_remove := Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "test_repo"
+        )
     )
     await asyncio.sleep(0)
     messages = [
@@ -270,14 +284,20 @@ async def test_events_on_issue_changes(coresys: CoreSys, ha_ws_client: AsyncMock
 
 async def test_resolution_apply_suggestion_multiple_copies(coresys: CoreSys):
     """Test resolution manager applies correct suggestion when has multiple that differ by reference."""
-    coresys.resolution.suggestions = remove_store_1 = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_1"
+    coresys.resolution.add_suggestion(
+        remove_store_1 := Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_1"
+        )
     )
-    coresys.resolution.suggestions = remove_store_2 = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_2"
+    coresys.resolution.add_suggestion(
+        remove_store_2 := Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_2"
+        )
     )
-    coresys.resolution.suggestions = remove_store_3 = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_3"
+    coresys.resolution.add_suggestion(
+        remove_store_3 := Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_3"
+        )
     )
 
     await coresys.resolution.apply_suggestion(remove_store_2)
@@ -294,7 +314,7 @@ async def test_events_on_unsupported_changed(coresys: CoreSys):
     ) as send_message:
         # Marking system as unsupported tells HA
         assert coresys.resolution.unsupported == []
-        coresys.resolution.unsupported = UnsupportedReason.CONNECTIVITY_CHECK
+        coresys.resolution.add_unsupported_reason(UnsupportedReason.CONNECTIVITY_CHECK)
         await asyncio.sleep(0)
         assert coresys.resolution.unsupported == [UnsupportedReason.CONNECTIVITY_CHECK]
         send_message.assert_called_once_with(
@@ -306,13 +326,13 @@ async def test_events_on_unsupported_changed(coresys: CoreSys):
 
         # Adding the same reason again does nothing
         send_message.reset_mock()
-        coresys.resolution.unsupported = UnsupportedReason.CONNECTIVITY_CHECK
+        coresys.resolution.add_unsupported_reason(UnsupportedReason.CONNECTIVITY_CHECK)
         await asyncio.sleep(0)
         assert coresys.resolution.unsupported == [UnsupportedReason.CONNECTIVITY_CHECK]
         send_message.assert_not_called()
 
         # Adding and removing additional reasons tells HA unsupported reasons changed
-        coresys.resolution.unsupported = UnsupportedReason.JOB_CONDITIONS
+        coresys.resolution.add_unsupported_reason(UnsupportedReason.JOB_CONDITIONS)
         await asyncio.sleep(0)
         assert coresys.resolution.unsupported == [
             UnsupportedReason.CONNECTIVITY_CHECK,
@@ -358,7 +378,7 @@ async def test_events_on_unhealthy_changed(coresys: CoreSys):
     ) as send_message:
         # Marking system as unhealthy tells HA
         assert coresys.resolution.unhealthy == []
-        coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+        coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER)
         await asyncio.sleep(0)
         assert coresys.resolution.unhealthy == [UnhealthyReason.DOCKER]
         send_message.assert_called_once_with(
@@ -370,13 +390,13 @@ async def test_events_on_unhealthy_changed(coresys: CoreSys):
 
         # Adding the same reason again does nothing
         send_message.reset_mock()
-        coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+        coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER)
         await asyncio.sleep(0)
         assert coresys.resolution.unhealthy == [UnhealthyReason.DOCKER]
         send_message.assert_not_called()
 
         # Adding an additional reason tells HA unhealthy reasons changed
-        coresys.resolution.unhealthy = UnhealthyReason.UNTRUSTED
+        coresys.resolution.add_unhealthy_reason(UnhealthyReason.UNTRUSTED)
         await asyncio.sleep(0)
         assert coresys.resolution.unhealthy == [
             UnhealthyReason.DOCKER,

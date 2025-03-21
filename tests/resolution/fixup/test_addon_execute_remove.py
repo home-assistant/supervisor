@@ -15,15 +15,19 @@ async def test_fixup(coresys: CoreSys, install_addon_ssh: Addon):
 
     assert addon_execute_remove.auto is False
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_REMOVE,
-        ContextType.ADDON,
-        reference=install_addon_ssh.slug,
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.EXECUTE_REMOVE,
+            ContextType.ADDON,
+            reference=install_addon_ssh.slug,
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.DETACHED_ADDON_REMOVED,
-        ContextType.ADDON,
-        reference=install_addon_ssh.slug,
+    coresys.resolution.add_issue(
+        Issue(
+            IssueType.DETACHED_ADDON_REMOVED,
+            ContextType.ADDON,
+            reference=install_addon_ssh.slug,
+        )
     )
 
     with patch.object(Addon, "uninstall") as uninstall:

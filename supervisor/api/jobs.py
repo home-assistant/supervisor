@@ -26,7 +26,7 @@ class APIJobs(CoreSysAttributes):
     def _extract_job(self, request: web.Request) -> SupervisorJob:
         """Extract job from request or raise."""
         try:
-            return self.sys_jobs.get_job(request.match_info.get("uuid"))
+            return self.sys_jobs.get_job(request.match_info.get("uuid", ""))
         except JobNotFound:
             raise APINotFound("Job does not exist") from None
 
@@ -71,7 +71,10 @@ class APIJobs(CoreSysAttributes):
 
             if current_job.uuid in jobs_by_parent:
                 queue.extend(
-                    [(child_jobs, job) for job in jobs_by_parent.get(current_job.uuid)]
+                    [
+                        (child_jobs, job)
+                        for job in jobs_by_parent.get(current_job.uuid, [])
+                    ]
                 )
 
         return job_list

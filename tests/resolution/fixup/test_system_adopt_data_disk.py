@@ -85,11 +85,13 @@ async def test_fixup(
 
     assert not system_adopt_data_disk.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_issue(
+        Issue(IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1")
     )
     udisks2_service.resolved_devices = [
         ["/org/freedesktop/UDisks2/block_devices/sda1"],
@@ -124,11 +126,13 @@ async def test_fixup_device_removed(
 
     assert not system_adopt_data_disk.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_issue(
+        Issue(IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1")
     )
 
     udisks2_service.resolved_devices = []
@@ -159,11 +163,13 @@ async def test_fixup_reboot_failed(
 
     assert not system_adopt_data_disk.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_issue(
+        Issue(IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1")
     )
     udisks2_service.resolved_devices = [
         ["/org/freedesktop/UDisks2/block_devices/sda1"],
@@ -209,11 +215,13 @@ async def test_fixup_disabled_data_disk(
 
     assert not system_adopt_data_disk.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.ADOPT_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.DISABLED_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_issue(
+        Issue(IssueType.DISABLED_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1")
     )
     udisks2_service.resolved_devices = [
         ["/org/freedesktop/UDisks2/block_devices/sda1"],

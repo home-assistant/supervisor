@@ -294,7 +294,7 @@ class AddonModel(JobGroup, ABC):
         return self.data.get(ATTR_WEBUI)
 
     @property
-    def watchdog(self) -> str | None:
+    def watchdog_url(self) -> str | None:
         """Return URL to for watchdog or None."""
         return self.data.get(ATTR_WATCHDOG)
 
@@ -606,7 +606,7 @@ class AddonModel(JobGroup, ABC):
         return AddonOptions(self.coresys, raw_schema, self.name, self.slug)
 
     @property
-    def schema_ui(self) -> list[dict[any, any]] | None:
+    def schema_ui(self) -> list[dict[Any, Any]] | None:
         """Create a UI schema for add-on options."""
         raw_schema = self.data[ATTR_SCHEMA]
 

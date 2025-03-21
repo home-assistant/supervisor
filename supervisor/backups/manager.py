@@ -196,7 +196,9 @@ class BackupManager(FileConfiguration, JobGroup):
                 self.sys_config.path_backup,
                 self.sys_config.path_core_backup,
             }:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             _LOGGER.error("Could not list backups from %s: %s", path.as_posix(), err)
 
         return []
@@ -350,7 +352,9 @@ class BackupManager(FileConfiguration, JobGroup):
                     None,
                     LOCATION_CLOUD_BACKUP,
                 }:
-                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                    self.sys_resolution.add_unhealthy_reason(
+                        UnhealthyReason.OSERROR_BAD_MESSAGE
+                    )
                 raise BackupError(msg, _LOGGER.error) from err
 
         # If backup has been removed from all locations, remove it from cache
@@ -404,7 +408,9 @@ class BackupManager(FileConfiguration, JobGroup):
                 copy_to_additional_locations
             )
         except BackupDataDiskBadMessageError:
-            self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+            self.sys_resolution.add_unhealthy_reason(
+                UnhealthyReason.OSERROR_BAD_MESSAGE
+            )
             raise
 
         backup.all_locations.update(
@@ -445,7 +451,9 @@ class BackupManager(FileConfiguration, JobGroup):
             await self.sys_run_in_executor(backup.tarfile.rename, tar_file)
         except OSError as err:
             if err.errno == errno.EBADMSG and location in {LOCATION_CLOUD_BACKUP, None}:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             _LOGGER.error("Can't move backup file to storage: %s", err)
             return None
 

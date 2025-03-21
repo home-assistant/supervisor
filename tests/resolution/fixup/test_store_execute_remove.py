@@ -16,11 +16,15 @@ async def test_fixup(coresys: CoreSys, repository: Repository):
 
     assert store_execute_remove.auto is False
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, reference=repository.slug
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, reference=repository.slug
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.CORRUPT_REPOSITORY, ContextType.STORE, reference=repository.slug
+    coresys.resolution.add_issue(
+        Issue(
+            IssueType.CORRUPT_REPOSITORY, ContextType.STORE, reference=repository.slug
+        )
     )
 
     with patch.object(type(repository), "remove") as remove_repo:

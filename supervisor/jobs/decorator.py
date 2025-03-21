@@ -35,7 +35,7 @@ class Job(CoreSysAttributes):
         name: str,
         conditions: list[JobCondition] | None = None,
         cleanup: bool = True,
-        on_condition: JobException | None = None,
+        on_condition: type[JobException] | None = None,
         limit: JobExecutionLimit | None = None,
         throttle_period: timedelta
         | Callable[[CoreSys, datetime, list[datetime] | None], timedelta]

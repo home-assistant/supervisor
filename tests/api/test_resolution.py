@@ -27,9 +27,9 @@ from supervisor.resolution.data import Issue, Suggestion
 @pytest.mark.asyncio
 async def test_api_resolution_base(coresys: CoreSys, api_client: TestClient):
     """Test resolution manager api."""
-    coresys.resolution.unsupported = UnsupportedReason.OS
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_unsupported_reason(UnsupportedReason.OS)
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM)
     )
     coresys.resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
 
@@ -47,8 +47,8 @@ async def test_api_resolution_dismiss_suggestion(
     coresys: CoreSys, api_client: TestClient
 ):
     """Test resolution manager suggestion apply api."""
-    coresys.resolution.suggestions = clear_backup = Suggestion(
-        SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        clear_backup := Suggestion(SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM)
     )
 
     assert coresys.resolution.suggestions[-1].type == SuggestionType.CLEAR_FULL_BACKUP
@@ -61,11 +61,13 @@ async def test_api_resolution_apply_suggestion(
     coresys: CoreSys, api_client: TestClient
 ):
     """Test resolution manager suggestion apply api."""
-    coresys.resolution.suggestions = clear_backup = Suggestion(
-        SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        clear_backup := Suggestion(SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM)
     )
-    coresys.resolution.suggestions = create_backup = Suggestion(
-        SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        create_backup := Suggestion(
+            SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM
+        )
     )
 
     mock_backups = AsyncMock()
@@ -89,8 +91,8 @@ async def test_api_resolution_apply_suggestion(
 @pytest.mark.asyncio
 async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client: TestClient):
     """Test resolution manager issue apply api."""
-    coresys.resolution.issues = updated_failed = Issue(
-        IssueType.UPDATE_FAILED, ContextType.SYSTEM
+    coresys.resolution.add_issue(
+        updated_failed := Issue(IssueType.UPDATE_FAILED, ContextType.SYSTEM)
     )
 
     assert coresys.resolution.issues[-1].type == IssueType.UPDATE_FAILED
@@ -101,7 +103,7 @@ async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client: TestCl
 @pytest.mark.asyncio
 async def test_api_resolution_unhealthy(coresys: CoreSys, api_client: TestClient):
     """Test resolution manager api."""
-    coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+    coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER)
 
     resp = await api_client.get("/resolution/info")
     result = await resp.json()
@@ -142,8 +144,8 @@ async def test_api_resolution_suggestions_for_issue(
     coresys: CoreSys, api_client: TestClient
 ):
     """Test getting suggestions that fix an issue."""
-    coresys.resolution.issues = corrupt_repo = Issue(
-        IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "repo_1"
+    coresys.resolution.add_issue(
+        corrupt_repo := Issue(IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "repo_1")
     )
 
     resp = await api_client.get(f"/resolution/issue/{corrupt_repo.uuid}/suggestions")
@@ -151,11 +153,15 @@ async def test_api_resolution_suggestions_for_issue(
 
     assert result["data"]["suggestions"] == []
 
-    coresys.resolution.suggestions = execute_reset = Suggestion(
-        SuggestionType.EXECUTE_RESET, ContextType.STORE, "repo_1"
+    coresys.resolution.add_suggestion(
+        execute_reset := Suggestion(
+            SuggestionType.EXECUTE_RESET, ContextType.STORE, "repo_1"
+        )
     )
-    coresys.resolution.suggestions = execute_remove = Suggestion(
-        SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_1"
+    coresys.resolution.add_suggestion(
+        execute_remove := Suggestion(
+            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, "repo_1"
+        )
     )
 
     resp = await api_client.get(f"/resolution/issue/{corrupt_repo.uuid}/suggestions")

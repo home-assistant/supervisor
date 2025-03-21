@@ -30,7 +30,7 @@ class CheckSupervisorTrust(CheckBase):
         try:
             await self.sys_supervisor.check_trust()
         except CodeNotaryUntrusted:
-            self.sys_resolution.unhealthy = UnhealthyReason.UNTRUSTED
+            self.sys_resolution.add_unhealthy_reason(UnhealthyReason.UNTRUSTED)
             self.sys_resolution.create_issue(IssueType.TRUST, ContextType.SUPERVISOR)
         except CodeNotaryError:
             pass

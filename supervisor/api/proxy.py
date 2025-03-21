@@ -1,6 +1,7 @@
 """Utils for Home Assistant Proxy."""
 
 import asyncio
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import logging
 
@@ -40,7 +41,7 @@ class APIProxy(CoreSysAttributes):
             bearer = request.headers[AUTHORIZATION]
             supervisor_token = bearer.split(" ")[-1]
         else:
-            supervisor_token = request.headers.get(HEADER_HA_ACCESS)
+            supervisor_token = request.headers.get(HEADER_HA_ACCESS, "")
 
         addon = self.sys_addons.from_token(supervisor_token)
         if not addon:
@@ -54,7 +55,9 @@ class APIProxy(CoreSysAttributes):
         raise HTTPUnauthorized()
 
     @asynccontextmanager
-    async def _api_client(self, request: web.Request, path: str, timeout: int = 300):
+    async def _api_client(
+        self, request: web.Request, path: str, timeout: int | None = 300
+    ) -> AsyncIterator[aiohttp.ClientResponse]:
         """Return a client request with proxy origin for Home Assistant."""
         try:
             async with self.sys_homeassistant.api.make_request(
@@ -93,7 +96,7 @@ class APIProxy(CoreSysAttributes):
         _LOGGER.info("Home Assistant EventStream start")
         async with self._api_client(request, "stream", timeout=None) as client:
             response = web.StreamResponse()
-            response.content_type = request.headers.get(CONTENT_TYPE)
+            response.content_type = request.headers.get(CONTENT_TYPE, "")
             try:
                 response.headers["X-Accel-Buffering"] = "no"
                 await response.prepare(request)
@@ -180,21 +183,19 @@ class APIProxy(CoreSysAttributes):
         target: web.WebSocketResponse | ClientWebSocketResponse,
     ) -> None:
         """Proxy a message from client to server or vice versa."""
-        if read_task.exception():
-            raise read_task.exception()
-
         msg: WSMessage = read_task.result()
-        if msg.type == WSMsgType.TEXT:
-            return await target.send_str(msg.data)
-        if msg.type == WSMsgType.BINARY:
-            return await target.send_bytes(msg.data)
-        if msg.type == WSMsgType.CLOSE:
-            _LOGGER.debug("Received close message from WebSocket.")
-            return await target.close()
-
-        raise TypeError(
-            f"Cannot proxy websocket message of unsupported type: {msg.type}"
-        )
+        match msg.type:
+            case WSMsgType.TEXT:
+                await target.send_str(msg.data)
+            case WSMsgType.BINARY:
+                await target.send_bytes(msg.data)
+            case WSMsgType.CLOSE:
+                _LOGGER.debug("Received close message from WebSocket.")
+                await target.close()
+            case _:
+                raise TypeError(
+                    f"Cannot proxy websocket message of unsupported type: {msg.type}"
+                )
 
     async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""

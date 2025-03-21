@@ -137,7 +137,7 @@ class AddonOptions(CoreSysAttributes):
             ) from None
 
         # prepare range
-        range_args = {}
+        range_args: dict[str, Any] = {}
         for group_name in _SCHEMA_LENGTH_PARTS:
             group_value = match.group(group_name)
             if group_value:
@@ -390,14 +390,14 @@ class UiOptions(CoreSysAttributes):
         multiple: bool = False,
     ) -> None:
         """UI nested dict items."""
-        ui_node = {
+        ui_node: dict[str, Any] = {
             "name": key,
             "type": "schema",
             "optional": True,
             "multiple": multiple,
         }
 
-        nested_schema = []
+        nested_schema: list[dict[str, Any]] = []
         for c_key, c_value in option_dict.items():
             # Nested?
             if isinstance(c_value, list):
@@ -413,7 +413,7 @@ def _create_device_filter(str_filter: str) -> dict[str, Any]:
     """Generate device Filter."""
     raw_filter = dict(value.split("=") for value in str_filter.split(";"))
 
-    clean_filter = {}
+    clean_filter: dict[str, Any] = {}
     for key, value in raw_filter.items():
         if key == "subsystem":
             clean_filter[key] = UdevSubsystem(value)

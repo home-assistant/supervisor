@@ -3,6 +3,7 @@
 import asyncio
 from contextlib import suppress
 import logging
+from typing import Any
 
 from aiohttp import ClientConnectionResetError, web
 from aiohttp.hdrs import ACCEPT, RANGE
@@ -195,11 +196,11 @@ class APIHost(CoreSysAttributes):
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
         log_formatter = LogFormatter.PLAIN
-        params = {}
+        params: dict[str, Any] = {}
         if identifier:
             params[PARAM_SYSLOG_IDENTIFIER] = identifier
         elif IDENTIFIER in request.match_info:
-            params[PARAM_SYSLOG_IDENTIFIER] = request.match_info.get(IDENTIFIER)
+            params[PARAM_SYSLOG_IDENTIFIER] = request.match_info.get(IDENTIFIER, "")
         else:
             params[PARAM_SYSLOG_IDENTIFIER] = self.sys_host.logs.default_identifiers
             # host logs should be always verbose, no matter what Accept header is used
@@ -207,7 +208,7 @@ class APIHost(CoreSysAttributes):
 
         if BOOTID in request.match_info:
             params[PARAM_BOOT_ID] = await self._get_boot_id(
-                request.match_info.get(BOOTID)
+                request.match_info.get(BOOTID, "")
             )
         if follow:
             params[PARAM_FOLLOW] = ""
@@ -241,7 +242,7 @@ class APIHost(CoreSysAttributes):
             # entries=cursor[[:num_skip]:num_entries]
             range_header = f"entries=:-{lines - 1}:{'' if follow else lines}"
         elif RANGE in request.headers:
-            range_header = request.headers.get(RANGE)
+            range_header = request.headers.get(RANGE, "")
         else:
             range_header = (
                 f"entries=:-{DEFAULT_LINES - 1}:{'' if follow else DEFAULT_LINES}"

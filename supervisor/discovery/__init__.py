@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import suppress
 import logging
 from typing import TYPE_CHECKING, Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import attr
 
@@ -31,7 +31,7 @@ class Message:
     addon: str = attr.ib()
     service: str = attr.ib()
     config: dict[str, Any] = attr.ib(eq=False)
-    uuid: UUID = attr.ib(factory=lambda: uuid4().hex, eq=False)
+    uuid: str = attr.ib(factory=lambda: uuid4().hex, eq=False)
 
 
 class Discovery(CoreSysAttributes, FileConfiguration):

@@ -40,7 +40,7 @@ class HwMonitor(CoreSysAttributes):
                 ),
             )
         except OSError:
-            self.sys_resolution.unhealthy = UnhealthyReason.PRIVILEGED
+            self.sys_resolution.add_unhealthy_reason(UnhealthyReason.PRIVILEGED)
             _LOGGER.critical("Not privileged to run udev monitor!")
         else:
             self.observer.start()
