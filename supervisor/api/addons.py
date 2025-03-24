@@ -106,6 +106,7 @@ from ..exceptions import (
     APIAddonNotInstalled,
     APIError,
     APIForbidden,
+    APINotFound,
     PwnedError,
     PwnedSecret,
 )
@@ -161,7 +162,7 @@ class APIAddons(CoreSysAttributes):
 
         addon = self.sys_addons.get(addon_slug)
         if not addon:
-            raise APIError(f"Addon {addon_slug} does not exist")
+            raise APINotFound(f"Addon {addon_slug} does not exist")
         if not isinstance(addon, Addon) or not addon.is_installed:
             raise APIAddonNotInstalled("Addon is not installed")
 
@@ -211,7 +212,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_HOSTNAME: addon.hostname,
             ATTR_DNS: addon.dns,
             ATTR_DESCRIPTON: addon.description,
-            ATTR_LONG_DESCRIPTION: addon.long_description,
+            ATTR_LONG_DESCRIPTION: await addon.long_description(),
             ATTR_ADVANCED: addon.advanced,
             ATTR_STAGE: addon.stage,
             ATTR_REPOSITORY: addon.repository,
@@ -321,7 +322,7 @@ class APIAddons(CoreSysAttributes):
         if ATTR_WATCHDOG in body:
             addon.watchdog = body[ATTR_WATCHDOG]
 
-        addon.save_persist()
+        await addon.save_persist()
 
     @api_process
     async def sys_options(self, request: web.Request) -> None:
@@ -335,7 +336,7 @@ class APIAddons(CoreSysAttributes):
         if ATTR_SYSTEM_MANAGED_CONFIG_ENTRY in body:
             addon.system_managed_config_entry = body[ATTR_SYSTEM_MANAGED_CONFIG_ENTRY]
 
-        addon.save_persist()
+        await addon.save_persist()
 
     @api_process
     async def options_validate(self, request: web.Request) -> None:
@@ -401,7 +402,7 @@ class APIAddons(CoreSysAttributes):
             _LOGGER.warning("Changing protected flag for %s!", addon.slug)
             addon.protected = body[ATTR_PROTECTED]
 
-        addon.save_persist()
+        await addon.save_persist()
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:

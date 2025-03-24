@@ -26,7 +26,7 @@ body:
     attributes:
       label: What type of installation are you running?
       description: >
-        If you don't know, can be found in [Settings -> System -> Repairs -> System Information](https://my.home-assistant.io/redirect/system_health/).
+        If you don't know, can be found in [Settings -> System -> Repairs -> (three dot menu) -> System Information](https://my.home-assistant.io/redirect/system_health/).
         It is listed as the `Installation Type` value.
       options:
         - Home Assistant OS
@@ -72,9 +72,9 @@ body:
     validations:
       required: true
     attributes:
-      label: System Health information
+      label: System information
       description: >
-        System Health information can be found in the top right menu in [Settings -> System -> Repairs](https://my.home-assistant.io/redirect/repairs/).
+        The System information can be found in [Settings -> System -> Repairs -> (three dot menu) -> System Information](https://my.home-assistant.io/redirect/system_health/).
         Click the copy button at the bottom of the pop-up and paste it here.
         
         [![Open your Home Assistant instance and show health information about your system.](https://my.home-assistant.io/badges/system_health.svg)](https://my.home-assistant.io/redirect/system_health/)
@@ -83,8 +83,9 @@ body:
       label: Supervisor diagnostics
       placeholder: "drag-and-drop the diagnostics data file here (do not copy-and-paste the content)"
       description: >-
-        Supervisor diagnostics can be found in [Settings -> Integrations](https://my.home-assistant.io/redirect/integrations/).
-        Find the card that says `Home Assistant Supervisor`, open its menu and select 'Download diagnostics'.
+        Supervisor diagnostics can be found in [Settings -> Devices & services](https://my.home-assistant.io/redirect/integrations/).
+        Find the card that says `Home Assistant Supervisor`, open it, and select the three dot menu of the Supervisor integration entry
+        and select 'Download diagnostics'.
         
         **Please drag-and-drop the downloaded file into the textbox below. Do not copy and paste its contents.**
   - type: textarea

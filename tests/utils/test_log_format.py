@@ -19,9 +19,3 @@ def test_format_message_port_alternative():
         format_message(message)
         == "Port '80' is already in use by something else on the host."
     )
-
-
-def test_exeption():
-    """Tests the exception handling."""
-    message = b"byte"
-    assert format_message(message) == message

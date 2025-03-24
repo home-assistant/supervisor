@@ -403,7 +403,11 @@ class DBusParseError(DBusError):
 
 
 class DBusTimeoutError(DBusError):
-    """D-Bus call timed out."""
+    """D-Bus call timeout."""
+
+
+class DBusTimedOutError(DBusError):
+    """D-Bus call timed out (typically when systemd D-Bus service activation fail)."""
 
 
 class DBusNoReplyError(DBusError):
@@ -657,6 +661,18 @@ class BackupDataDiskBadMessageError(BackupError):
 
 class BackupJobError(BackupError, JobException):
     """Raise on Backup job error."""
+
+
+class BackupFileNotFoundError(BackupError):
+    """Raise if the backup file hasn't been found."""
+
+
+class BackupPermissionError(BackupError):
+    """Raise if we could not write the backup due to permission error."""
+
+
+class BackupFileExistError(BackupError):
+    """Raise if the backup file already exists."""
 
 
 # Security

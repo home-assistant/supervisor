@@ -169,7 +169,7 @@ class APIOS(CoreSysAttributes):
                 body[ATTR_SYSTEM_HEALTH_LED]
             )
 
-        self.sys_dbus.agent.board.green.save_data()
+        await self.sys_dbus.agent.board.green.save_data()
 
     @api_process
     async def boards_yellow_info(self, request: web.Request) -> dict[str, Any]:
@@ -196,7 +196,7 @@ class APIOS(CoreSysAttributes):
         if ATTR_POWER_LED in body:
             await self.sys_dbus.agent.board.yellow.set_power_led(body[ATTR_POWER_LED])
 
-        self.sys_dbus.agent.board.yellow.save_data()
+        await self.sys_dbus.agent.board.yellow.save_data()
         self.sys_resolution.create_issue(
             IssueType.REBOOT_REQUIRED,
             ContextType.SYSTEM,

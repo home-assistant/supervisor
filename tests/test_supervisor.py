@@ -36,29 +36,23 @@ async def fixture_webession(coresys: CoreSys) -> AsyncMock:
         yield mock_websession
 
 
-@pytest.fixture(name="supervisor_unthrottled")
-async def fixture_supervisor_unthrottled(coresys: CoreSys) -> Supervisor:
-    """Get supervisor object with connectivity check throttle removed."""
-    with patch("supervisor.jobs.decorator.Job.last_call", return_value=datetime.min):
-        yield coresys.supervisor
-
-
 @pytest.mark.parametrize(
     "side_effect,connectivity", [(ClientError(), False), (None, True)]
 )
+@pytest.mark.usefixtures("no_job_throttle")
 async def test_connectivity_check(
-    supervisor_unthrottled: Supervisor,
+    coresys: CoreSys,
     websession: AsyncMock,
     side_effect: Exception | None,
     connectivity: bool,
 ):
     """Test connectivity check."""
-    assert supervisor_unthrottled.connectivity is True
+    assert coresys.supervisor.connectivity is True
 
     websession.head.side_effect = side_effect
-    await supervisor_unthrottled.check_connectivity()
+    await coresys.supervisor.check_connectivity()
 
-    assert supervisor_unthrottled.connectivity is connectivity
+    assert coresys.supervisor.connectivity is connectivity
 
 
 @pytest.mark.parametrize(

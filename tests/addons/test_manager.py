@@ -66,12 +66,12 @@ async def fixture_remove_wait_boot(coresys: CoreSys) -> AsyncGenerator[None]:
 
 
 @pytest.fixture(name="install_addon_example_image")
-def fixture_install_addon_example_image(
+async def fixture_install_addon_example_image(
     coresys: CoreSys, repository
 ) -> Generator[Addon]:
     """Install local_example add-on with image."""
     store = coresys.addons.store["local_example_image"]
-    coresys.addons.data.install(store)
+    await coresys.addons.data.install(store)
     # pylint: disable-next=protected-access
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 
@@ -195,7 +195,7 @@ async def test_addon_uninstall_removes_discovery(
     """Test discovery messages removed when addon uninstalled."""
     assert coresys.discovery.list_messages == []
 
-    message = coresys.discovery.send(
+    message = await coresys.discovery.send(
         install_addon_ssh, "mqtt", {"host": "localhost", "port": 1883}
     )
     assert message.addon == TEST_ADDON_SLUG
@@ -409,7 +409,7 @@ async def test_repository_file_error(
             in caplog.text
         )
 
-        write_json_file(repo_file, {"invalid": "bad"})
+        await coresys.run_in_executor(write_json_file, repo_file, {"invalid": "bad"})
         await coresys.store.data.update()
         assert f"Repository parse error {repo_dir.as_posix()}" in caplog.text
 
@@ -504,7 +504,7 @@ async def test_shared_image_kept_on_uninstall(
     store_data = deepcopy(coresys.addons.store["local_example"].data)
     store = AddonStore(coresys, "local_example2", store_data)
     coresys.addons.store["local_example2"] = store
-    coresys.addons.data.install(store)
+    await coresys.addons.data.install(store)
     # pylint: disable-next=protected-access
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 
@@ -545,7 +545,7 @@ async def test_shared_image_kept_on_update(
 
     coresys.store.data.addons["local_example2"] = new_store_data
     coresys.addons.store["local_example2"] = new_store
-    coresys.addons.data.install(curr_store)
+    await coresys.addons.data.install(curr_store)
     # pylint: disable-next=protected-access
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 

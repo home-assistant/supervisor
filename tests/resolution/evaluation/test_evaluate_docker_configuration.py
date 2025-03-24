@@ -15,7 +15,7 @@ from supervisor.resolution.evaluations.docker_configuration import (
 async def test_evaluation(coresys: CoreSys):
     """Test evaluation."""
     docker_configuration = EvaluateDockerConfiguration(coresys)
-    coresys.core.state = CoreState.INITIALIZE
+    await coresys.core.set_state(CoreState.INITIALIZE)
 
     assert docker_configuration.reason not in coresys.resolution.unsupported
 
@@ -50,13 +50,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await docker_configuration()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await docker_configuration()
             evaluate.assert_not_called()
             evaluate.reset_mock()

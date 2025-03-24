@@ -55,7 +55,7 @@ async def test_apparmor_multiple_profiles(caplog: pytest.LogCaptureFixture):
     )
 
 
-async def test_apparmor_profile_adjust(tmp_path: Path):
+def test_apparmor_profile_adjust(tmp_path: Path):
     """Test apparmor profile adjust."""
     profile_out = tmp_path / "apparmor_out.txt"
     adjust_profile("test", get_fixture_path("apparmor_valid.txt"), profile_out)
@@ -63,7 +63,7 @@ async def test_apparmor_profile_adjust(tmp_path: Path):
     assert profile_out.read_text(encoding="utf-8") == TEST_PROFILE
 
 
-async def test_apparmor_profile_adjust_mediate(tmp_path: Path):
+def test_apparmor_profile_adjust_mediate(tmp_path: Path):
     """Test apparmor profile adjust when name matches a flag."""
     profile_out = tmp_path / "apparmor_out.txt"
     adjust_profile("test", get_fixture_path("apparmor_valid_mediate.txt"), profile_out)

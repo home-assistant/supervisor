@@ -98,10 +98,10 @@ class APIHost(CoreSysAttributes):
             ATTR_VIRTUALIZATION: self.sys_host.info.virtualization,
             ATTR_CPE: self.sys_host.info.cpe,
             ATTR_DEPLOYMENT: self.sys_host.info.deployment,
-            ATTR_DISK_FREE: self.sys_host.info.free_space,
-            ATTR_DISK_TOTAL: self.sys_host.info.total_space,
-            ATTR_DISK_USED: self.sys_host.info.used_space,
-            ATTR_DISK_LIFE_TIME: self.sys_host.info.disk_life_time,
+            ATTR_DISK_FREE: await self.sys_host.info.free_space(),
+            ATTR_DISK_TOTAL: await self.sys_host.info.total_space(),
+            ATTR_DISK_USED: await self.sys_host.info.used_space(),
+            ATTR_DISK_LIFE_TIME: await self.sys_host.info.disk_life_time(),
             ATTR_FEATURES: self.sys_host.features,
             ATTR_HOSTNAME: self.sys_host.info.hostname,
             ATTR_LLMNR_HOSTNAME: self.sys_host.info.llmnr_hostname,
@@ -239,12 +239,12 @@ class APIHost(CoreSysAttributes):
                 # return 2 lines at minimum.
                 lines = max(2, lines)
             # entries=cursor[[:num_skip]:num_entries]
-            range_header = f"entries=:-{lines-1}:{'' if follow else lines}"
+            range_header = f"entries=:-{lines - 1}:{'' if follow else lines}"
         elif RANGE in request.headers:
             range_header = request.headers.get(RANGE)
         else:
             range_header = (
-                f"entries=:-{DEFAULT_LINES-1}:{'' if follow else DEFAULT_LINES}"
+                f"entries=:-{DEFAULT_LINES - 1}:{'' if follow else DEFAULT_LINES}"
             )
 
         async with self.sys_host.logs.journald_logs(
@@ -255,15 +255,22 @@ class APIHost(CoreSysAttributes):
                 response.content_type = CONTENT_TYPE_TEXT
                 headers_returned = False
                 async for cursor, line in journal_logs_reader(resp, log_formatter):
-                    if not headers_returned:
-                        if cursor:
-                            response.headers["X-First-Cursor"] = cursor
-                        await response.prepare(request)
-                        headers_returned = True
-                    # When client closes the connection while reading busy logs, we
-                    # sometimes get this exception. It should be safe to ignore it.
-                    with suppress(ClientConnectionResetError):
+                    try:
+                        if not headers_returned:
+                            if cursor:
+                                response.headers["X-First-Cursor"] = cursor
+                            response.headers["X-Accel-Buffering"] = "no"
+                            await response.prepare(request)
+                            headers_returned = True
                         await response.write(line.encode("utf-8") + b"\n")
+                    except ClientConnectionResetError as err:
+                        # When client closes the connection while reading busy logs, we
+                        # sometimes get this exception. It should be safe to ignore it.
+                        _LOGGER.debug(
+                            "ClientConnectionResetError raised when returning journal logs: %s",
+                            err,
+                        )
+                        break
             except ConnectionResetError as ex:
                 raise APIError(
                     "Connection reset when trying to fetch data from systemd-journald."

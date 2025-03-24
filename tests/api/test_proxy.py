@@ -18,7 +18,7 @@ from supervisor.api.proxy import APIProxy
 from supervisor.const import ATTR_ACCESS_TOKEN
 
 
-def id_generator() -> Generator[int, None, None]:
+def id_generator() -> Generator[int]:
     """Generate IDs for WS messages."""
     i = 0
     while True:

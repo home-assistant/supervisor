@@ -1,6 +1,8 @@
 """Common test functions."""
 
+import asyncio
 from datetime import datetime
+from functools import partial
 from importlib import import_module
 from inspect import getclosurevars
 import json
@@ -68,7 +70,9 @@ async def mock_dbus_services(
     services: dict[str, list[DBusServiceMock] | DBusServiceMock] = {}
     requested_names: set[str] = set()
 
-    for module in get_valid_modules("dbus_service_mocks", base=__file__):
+    for module in await asyncio.get_running_loop().run_in_executor(
+        None, partial(get_valid_modules, base=__file__), "dbus_service_mocks"
+    ):
         if module in to_mock:
             service_module = import_module(f"{__package__}.dbus_service_mocks.{module}")
 

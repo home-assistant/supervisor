@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 import errno
+from io import IOBase
 import logging
 from pathlib import Path
 import re
@@ -14,6 +15,7 @@ from typing import Any
 from aiohttp import web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
+from voluptuous.humanize import humanize_error
 
 from ..backups.backup import Backup
 from ..backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE
@@ -26,6 +28,7 @@ from ..const import (
     ATTR_DATE,
     ATTR_DAYS_UNTIL_STALE,
     ATTR_EXTRA,
+    ATTR_FILENAME,
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_HOMEASSISTANT_EXCLUDE_DATABASE,
@@ -33,9 +36,11 @@ from ..const import (
     ATTR_LOCATION,
     ATTR_NAME,
     ATTR_PASSWORD,
+    ATTR_PATH,
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
+    ATTR_SIZE_BYTES,
     ATTR_SLUG,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TIMEOUT,
@@ -53,13 +58,17 @@ from ..resolution.const import UnhealthyReason
 from .const import (
     ATTR_ADDITIONAL_LOCATIONS,
     ATTR_BACKGROUND,
+    ATTR_LOCATION_ATTRIBUTES,
     ATTR_LOCATIONS,
-    ATTR_SIZE_BYTES,
     CONTENT_TYPE_TAR,
 )
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+ALL_ADDONS_FLAG = "ALL"
+
+LOCATION_LOCAL = ".local"
 
 RE_SLUGIFY_NAME = re.compile(r"[^A-Za-z0-9]+")
 RE_BACKUP_FILENAME = re.compile(r"^[^\\\/]+\.tar$")
@@ -76,11 +85,23 @@ def _ensure_list(item: Any) -> list:
     return item
 
 
+def _convert_local_location(item: str | None) -> str | None:
+    """Convert local location value."""
+    if item in {LOCATION_LOCAL, ""}:
+        return None
+    return item
+
+
 # pylint: disable=no-value-for-parameter
+SCHEMA_FOLDERS = vol.All([vol.In(_ALL_FOLDERS)], vol.Unique())
+SCHEMA_LOCATION = vol.All(vol.Maybe(str), _convert_local_location)
+SCHEMA_LOCATION_LIST = vol.All(_ensure_list, [SCHEMA_LOCATION], vol.Unique())
+
 SCHEMA_RESTORE_FULL = vol.Schema(
     {
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_BACKGROUND, default=False): vol.Boolean(),
+        vol.Optional(ATTR_LOCATION): SCHEMA_LOCATION,
     }
 )
 
@@ -88,18 +109,17 @@ SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
     {
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
         vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
-        vol.Optional(ATTR_FOLDERS): vol.All([vol.In(_ALL_FOLDERS)], vol.Unique()),
+        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS,
     }
 )
 
 SCHEMA_BACKUP_FULL = vol.Schema(
     {
         vol.Optional(ATTR_NAME): str,
+        vol.Optional(ATTR_FILENAME): vol.Match(RE_BACKUP_FILENAME),
         vol.Optional(ATTR_PASSWORD): vol.Maybe(str),
         vol.Optional(ATTR_COMPRESSED): vol.Maybe(vol.Boolean()),
-        vol.Optional(ATTR_LOCATION): vol.All(
-            _ensure_list, [vol.Maybe(str)], vol.Unique()
-        ),
+        vol.Optional(ATTR_LOCATION): SCHEMA_LOCATION_LIST,
         vol.Optional(ATTR_HOMEASSISTANT_EXCLUDE_DATABASE): vol.Boolean(),
         vol.Optional(ATTR_BACKGROUND, default=False): vol.Boolean(),
         vol.Optional(ATTR_EXTRA): dict,
@@ -108,31 +128,17 @@ SCHEMA_BACKUP_FULL = vol.Schema(
 
 SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
     {
-        vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
-        vol.Optional(ATTR_FOLDERS): vol.All([vol.In(_ALL_FOLDERS)], vol.Unique()),
+        vol.Optional(ATTR_ADDONS): vol.Or(
+            ALL_ADDONS_FLAG, vol.All([str], vol.Unique())
+        ),
+        vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS,
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
     }
 )
 
-SCHEMA_OPTIONS = vol.Schema(
-    {
-        vol.Optional(ATTR_DAYS_UNTIL_STALE): days_until_stale,
-    }
-)
-
-SCHEMA_FREEZE = vol.Schema(
-    {
-        vol.Optional(ATTR_TIMEOUT): vol.All(int, vol.Range(min=1)),
-    }
-)
-
-SCHEMA_REMOVE = vol.Schema(
-    {
-        vol.Optional(ATTR_LOCATION): vol.All(
-            _ensure_list, [vol.Maybe(str)], vol.Unique()
-        ),
-    }
-)
+SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_DAYS_UNTIL_STALE): days_until_stale})
+SCHEMA_FREEZE = vol.Schema({vol.Optional(ATTR_TIMEOUT): vol.All(int, vol.Range(min=1))})
+SCHEMA_REMOVE = vol.Schema({vol.Optional(ATTR_LOCATION): SCHEMA_LOCATION_LIST})
 
 
 class APIBackups(CoreSysAttributes):
@@ -144,6 +150,16 @@ class APIBackups(CoreSysAttributes):
         if not backup:
             raise APINotFound("Backup does not exist")
         return backup
+
+    def _make_location_attributes(self, backup: Backup) -> dict[str, dict[str, Any]]:
+        """Make location attributes dictionary."""
+        return {
+            loc if loc else LOCATION_LOCAL: {
+                ATTR_PROTECTED: backup.all_locations[loc][ATTR_PROTECTED],
+                ATTR_SIZE_BYTES: backup.all_locations[loc][ATTR_SIZE_BYTES],
+            }
+            for loc in backup.locations
+        }
 
     def _list_backups(self):
         """Return list of backups."""
@@ -158,6 +174,7 @@ class APIBackups(CoreSysAttributes):
                 ATTR_LOCATION: backup.location,
                 ATTR_LOCATIONS: backup.locations,
                 ATTR_PROTECTED: backup.protected,
+                ATTR_LOCATION_ATTRIBUTES: self._make_location_attributes(backup),
                 ATTR_COMPRESSED: backup.compressed,
                 ATTR_CONTENT: {
                     ATTR_HOMEASSISTANT: backup.homeassistant_version is not None,
@@ -196,7 +213,7 @@ class APIBackups(CoreSysAttributes):
         if ATTR_DAYS_UNTIL_STALE in body:
             self.sys_backups.days_until_stale = body[ATTR_DAYS_UNTIL_STALE]
 
-        self.sys_backups.save_data()
+        await self.sys_backups.save_data()
 
     @api_process
     async def reload(self, _):
@@ -229,6 +246,7 @@ class APIBackups(CoreSysAttributes):
             ATTR_SIZE_BYTES: backup.size_bytes,
             ATTR_COMPRESSED: backup.compressed,
             ATTR_PROTECTED: backup.protected,
+            ATTR_LOCATION_ATTRIBUTES: self._make_location_attributes(backup),
             ATTR_SUPERVISOR_VERSION: backup.supervisor_version,
             ATTR_HOMEASSISTANT: backup.homeassistant_version,
             ATTR_LOCATION: backup.location,
@@ -291,13 +309,18 @@ class APIBackups(CoreSysAttributes):
             BusEvent.SUPERVISOR_STATE_CHANGE, release_on_freeze
         )
         try:
-            await asyncio.wait(
+            event_task = self.sys_create_task(event.wait())
+            _, pending = await asyncio.wait(
                 (
                     backup_task,
-                    self.sys_create_task(event.wait()),
+                    event_task,
                 ),
                 return_when=asyncio.FIRST_COMPLETED,
             )
+            # It seems backup returned early (error or something), make sure to cancel
+            # the event task to avoid "Task was destroyed but it is pending!" errors.
+            if event_task in pending:
+                event_task.cancel()
             return (backup_task, job.uuid)
         finally:
             self.sys_bus.remove_listener(listener)
@@ -352,6 +375,9 @@ class APIBackups(CoreSysAttributes):
             if locations:
                 body[ATTR_ADDITIONAL_LOCATIONS] = locations
 
+        if body.get(ATTR_ADDONS) == ALL_ADDONS_FLAG:
+            body[ATTR_ADDONS] = list(self.sys_addons.local)
+
         background = body.pop(ATTR_BACKGROUND)
         backup_task, job_id = await self._background_backup_task(
             self.sys_backups.do_backup_partial, **body
@@ -372,8 +398,10 @@ class APIBackups(CoreSysAttributes):
     async def restore_full(self, request: web.Request):
         """Full restore of a backup."""
         backup = self._extract_slug(request)
-        self._validate_cloud_backup_location(request, backup.location)
         body = await api_validate(SCHEMA_RESTORE_FULL, request)
+        self._validate_cloud_backup_location(
+            request, body.get(ATTR_LOCATION, backup.location)
+        )
         background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await self._background_backup_task(
             self.sys_backups.do_restore_full, backup, **body
@@ -390,8 +418,10 @@ class APIBackups(CoreSysAttributes):
     async def restore_partial(self, request: web.Request):
         """Partial restore a backup."""
         backup = self._extract_slug(request)
-        self._validate_cloud_backup_location(request, backup.location)
         body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
+        self._validate_cloud_backup_location(
+            request, body.get(ATTR_LOCATION, backup.location)
+        )
         background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await self._background_backup_task(
             self.sys_backups.do_restore_partial, backup, **body
@@ -428,23 +458,35 @@ class APIBackups(CoreSysAttributes):
         else:
             self._validate_cloud_backup_location(request, backup.location)
 
-        return self.sys_backups.remove(backup, locations=locations)
+        await self.sys_backups.remove(backup, locations=locations)
 
     @api_process
     async def download(self, request: web.Request):
         """Download a backup file."""
         backup = self._extract_slug(request)
         # Query will give us '' for /backups, convert value to None
-        location = request.query.get(ATTR_LOCATION, backup.location) or None
+        location = _convert_local_location(
+            request.query.get(ATTR_LOCATION, backup.location)
+        )
         self._validate_cloud_backup_location(request, location)
         if location not in backup.all_locations:
             raise APIError(f"Backup {backup.slug} is not in location {location}")
 
         _LOGGER.info("Downloading backup %s", backup.slug)
-        response = web.FileResponse(backup.all_locations[location])
+        filename = backup.all_locations[location][ATTR_PATH]
+        # If the file is missing, return 404 and trigger reload of location
+        if not await self.sys_run_in_executor(filename.is_file):
+            self.sys_create_task(self.sys_backups.reload(location))
+            return web.Response(status=404)
+
+        response = web.FileResponse(filename)
         response.content_type = CONTENT_TYPE_TAR
+
+        download_filename = filename.name
+        if download_filename == f"{backup.slug}.tar":
+            download_filename = f"{RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
         response.headers[CONTENT_DISPOSITION] = (
-            f"attachment; filename={RE_SLUGIFY_NAME.sub('_', backup.name)}.tar"
+            f"attachment; filename={download_filename}"
         )
         return response
 
@@ -459,7 +501,9 @@ class APIBackups(CoreSysAttributes):
             self._validate_cloud_backup_location(request, location_names)
             # Convert empty string to None if necessary
             locations = [
-                self._location_to_mount(location) if location else None
+                self._location_to_mount(location)
+                if _convert_local_location(location)
+                else None
                 for location in location_names
             ]
             location = locations.pop(0)
@@ -467,35 +511,62 @@ class APIBackups(CoreSysAttributes):
             if location and location != LOCATION_CLOUD_BACKUP:
                 tmp_path = location.local_where
 
-        with TemporaryDirectory(dir=tmp_path.as_posix()) as temp_dir:
-            tar_file = Path(temp_dir, "backup.tar")
+        filename: str | None = None
+        if ATTR_FILENAME in request.query:
+            filename = request.query.get(ATTR_FILENAME)
+            try:
+                vol.Match(RE_BACKUP_FILENAME)(filename)
+            except vol.Invalid as ex:
+                raise APIError(humanize_error(filename, ex)) from None
+
+        temp_dir: TemporaryDirectory | None = None
+        backup_file_stream: IOBase | None = None
+
+        def open_backup_file() -> Path:
+            nonlocal temp_dir, backup_file_stream
+            temp_dir = TemporaryDirectory(dir=tmp_path.as_posix())
+            tar_file = Path(temp_dir.name, "backup.tar")
+            backup_file_stream = tar_file.open("wb")
+            return tar_file
+
+        def close_backup_file() -> None:
+            if backup_file_stream:
+                # Make sure it got closed, in case of exception. It is safe to
+                # close the file stream twice.
+                backup_file_stream.close()
+            if temp_dir:
+                temp_dir.cleanup()
+
+        try:
             reader = await request.multipart()
             contents = await reader.next()
-            try:
-                with tar_file.open("wb") as backup:
-                    while True:
-                        chunk = await contents.read_chunk()
-                        if not chunk:
-                            break
-                        backup.write(chunk)
-
-            except OSError as err:
-                if err.errno == errno.EBADMSG and location in {
-                    LOCATION_CLOUD_BACKUP,
-                    None,
-                }:
-                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-                _LOGGER.error("Can't write new backup file: %s", err)
-                return False
-
-            except asyncio.CancelledError:
-                return False
+            tar_file = await self.sys_run_in_executor(open_backup_file)
+            while chunk := await contents.read_chunk(size=2**16):
+                await self.sys_run_in_executor(backup_file_stream.write, chunk)
+            await self.sys_run_in_executor(backup_file_stream.close)
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
-                    tar_file, location=location, additional_locations=locations
+                    tar_file,
+                    filename,
+                    location=location,
+                    additional_locations=locations,
                 )
             )
+        except OSError as err:
+            if err.errno == errno.EBADMSG and location in {
+                LOCATION_CLOUD_BACKUP,
+                None,
+            }:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+            _LOGGER.error("Can't write new backup file: %s", err)
+            return False
+
+        except asyncio.CancelledError:
+            return False
+
+        finally:
+            await self.sys_run_in_executor(close_backup_file)
 
         if backup:
             return {ATTR_SLUG: backup.slug}

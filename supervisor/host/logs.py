@@ -6,7 +6,9 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 import json
 import logging
+import os
 from pathlib import Path
+from typing import Self
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 from aiohttp.client_exceptions import UnixClientConnectorError
@@ -50,11 +52,19 @@ class LogsControl(CoreSysAttributes):
         self._profiles: set[str] = set()
         self._boot_ids: list[str] = []
         self._default_identifiers: list[str] = []
+        self._available: bool = False
+
+    async def post_init(self) -> Self:
+        """Post init actions that must occur in event loop."""
+        self._available = bool(
+            os.environ.get("SUPERVISOR_SYSTEMD_JOURNAL_GATEWAYD_URL")
+        ) or await self.sys_run_in_executor(SYSTEMD_JOURNAL_GATEWAYD_SOCKET.is_socket)
+        return self
 
     @property
     def available(self) -> bool:
-        """Return True if Unix socket to systemd-journal-gatwayd is available."""
-        return SYSTEMD_JOURNAL_GATEWAYD_SOCKET.is_socket()
+        """Check if systemd-journal-gatwayd is available."""
+        return self._available
 
     @property
     def boot_ids(self) -> list[str]:
@@ -69,7 +79,9 @@ class LogsControl(CoreSysAttributes):
     async def load(self) -> None:
         """Load log control."""
         try:
-            self._default_identifiers = read_json_file(SYSLOG_IDENTIFIERS_JSON)
+            self._default_identifiers = await self.sys_run_in_executor(
+                read_json_file, SYSLOG_IDENTIFIERS_JSON
+            )
         except ConfigurationFileError:
             _LOGGER.warning(
                 "Can't read syslog identifiers json file from %s",
@@ -108,25 +120,29 @@ class LogsControl(CoreSysAttributes):
                 _LOGGER.error,
             ) from err
 
-        # If a system has not been rebooted in a long time query can come back with zero results
-        # Fallback is to get latest log line and its boot ID so we always have at least one.
-        if not text:
-            try:
-                async with self.journald_logs(
-                    range_header="entries=:-1:1",
-                    accept=LogFormat.JSON,
-                    timeout=ClientTimeout(total=20),
-                ) as resp:
-                    text = await resp.text()
-            except (ClientError, TimeoutError) as err:
-                raise HostLogError(
-                    "Could not get a list of boot IDs from systemd-journal-gatewayd",
-                    _LOGGER.error,
-                ) from err
+        # Get the oldest log entry. This makes sure that its ID is included
+        # if the start of the oldest boot was rotated out of the journal.
+        try:
+            async with self.journald_logs(
+                range_header="entries=:0:1",
+                accept=LogFormat.JSON,
+                timeout=ClientTimeout(total=20),
+            ) as resp:
+                text = await resp.text() + text
+        except (ClientError, TimeoutError) as err:
+            raise HostLogError(
+                "Could not get a list of boot IDs from systemd-journal-gatewayd",
+                _LOGGER.error,
+            ) from err
 
-        self._boot_ids = [
-            json.loads(entry)[PARAM_BOOT_ID] for entry in text.split("\n") if entry
-        ]
+        self._boot_ids = []
+        for entry in text.split("\n"):
+            if (
+                entry
+                and (boot_id := json.loads(entry)[PARAM_BOOT_ID]) not in self._boot_ids
+            ):
+                self._boot_ids.append(boot_id)
+
         return self._boot_ids
 
     async def get_identifiers(self) -> list[str]:
@@ -162,14 +178,17 @@ class LogsControl(CoreSysAttributes):
             )
 
         try:
-            async with ClientSession(
-                connector=UnixConnector(path=str(SYSTEMD_JOURNAL_GATEWAYD_SOCKET))
-            ) as session:
+            if base_url := os.environ.get("SUPERVISOR_SYSTEMD_JOURNAL_GATEWAYD_URL"):
+                connector = None
+            else:
+                base_url = "http://localhost/"
+                connector = UnixConnector(path=str(SYSTEMD_JOURNAL_GATEWAYD_SOCKET))
+            async with ClientSession(base_url=base_url, connector=connector) as session:
                 headers = {ACCEPT: accept}
                 if range_header:
                     headers[RANGE] = range_header
                 async with session.get(
-                    f"http://localhost{path}",
+                    f"{path}",
                     headers=headers,
                     params=params or {},
                     timeout=timeout,

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools~=75.6.0", "wheel~=0.45.0"]
+requires = ["setuptools~=77.0.1", "wheel~=0.45.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,7 +12,7 @@ authors = [
     { name = "The Home Assistant Authors", email = "hello@home-assistant.io" },
 ]
 keywords = ["docker", "home-assistant", "api"]
-requires-python = ">=3.12.0"
+requires-python = ">=3.13.0"
 
 [project.urls]
 "Homepage" = "https://www.home-assistant.io/"
@@ -31,7 +31,7 @@ include-package-data = true
 include = ["supervisor*"]
 
 [tool.pylint.MAIN]
-py-version = "3.12"
+py-version = "3.13"
 # Use a conservative default here; 2 should speed up most setups and not hurt
 # any too bad. Override on command line as appropriate.
 jobs = 2
@@ -147,7 +147,7 @@ disable = [
     # "pointless-statement", # B018, ruff catches new occurrences, needs more work
     "raise-missing-from", # TRY200
     # "redefined-builtin", # A001, ruff is way more stricter, needs work
-    "try-except-raise",               # TRY302
+    "try-except-raise",               # TRY203
     "unused-argument",                # ARG001, we don't use it
     "unused-format-string-argument",  #F507
     "unused-format-string-key",       # F504
@@ -223,6 +223,7 @@ testpaths = ["tests"]
 norecursedirs = [".git"]
 log_format = "%(asctime)s.%(msecs)03d %(levelname)-8s %(threadName)s %(name)s:%(filename)s:%(lineno)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
+asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
 filterwarnings = [
     "error",
@@ -289,7 +290,7 @@ lint.select = [
     "T20",     # flake8-print
     "TID251",  # Banned imports
     "TRY004",  # Prefer TypeError exception for invalid type
-    "TRY302",  # Remove exception handler; error is immediately re-raised
+    "TRY203",  # Remove exception handler; error is immediately re-raised
     "UP",      # pyupgrade
     "W",       # pycodestyle
 ]

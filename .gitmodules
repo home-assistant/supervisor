@@ -1,4 +1,0 @@
-[submodule "home-assistant-polymer"]
-	path = home-assistant-polymer
-	url = https://github.com/home-assistant/home-assistant-polymer
-	branch = dev

@@ -327,9 +327,9 @@ async def test_advanced_logs_boot_id_offset(
 
 
 async def test_advanced_logs_formatters(
+    journald_gateway: MagicMock,
     api_client: TestClient,
     coresys: CoreSys,
-    journald_gateway: MagicMock,
     journal_logs_reader: MagicMock,
 ):
     """Test advanced logs formatters varying on Accept header."""
@@ -358,11 +358,13 @@ async def test_advanced_logs_formatters(
 async def test_advanced_logs_errors(api_client: TestClient):
     """Test advanced logging API errors."""
     # coresys = coresys_logs_control
-    resp = await api_client.get("/host/logs")
-    assert resp.content_type == "text/plain"
-    assert resp.status == 400
-    content = await resp.text()
-    assert content == "No systemd-journal-gatewayd Unix socket available"
+    with patch("supervisor.host.logs.SYSTEMD_JOURNAL_GATEWAYD_SOCKET") as socket:
+        socket.is_socket.return_value = False
+        resp = await api_client.get("/host/logs")
+        assert resp.content_type == "text/plain"
+        assert resp.status == 400
+        content = await resp.text()
+        assert content == "No systemd-journal-gatewayd Unix socket available"
 
     headers = {"Accept": "application/json"}
     resp = await api_client.get("/host/logs", headers=headers)

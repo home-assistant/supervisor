@@ -25,6 +25,7 @@ from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     BackupError,
+    BackupFileNotFoundError,
     BackupInvalidError,
     BackupJobError,
     BackupMountDownError,
@@ -47,10 +48,10 @@ from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitServ
 
 async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
     """Test creating Backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     # backup_mock fixture causes Backup() to be a MagicMock
     backup_instance: MagicMock = await manager.do_backup_full()
@@ -62,7 +63,6 @@ async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_called_once()
     assert install_addon_ssh in backup_instance.store_addons.call_args[0][0]
@@ -73,14 +73,36 @@ async def test_do_backup_full(coresys: CoreSys, backup_mock, install_addon_ssh):
     assert coresys.core.state == CoreState.RUNNING
 
 
+@pytest.mark.parametrize(
+    ("filename", "filename_expected"),
+    [("../my file.tar", "/data/backup/my file.tar"), (None, "/data/backup/{}.tar")],
+)
+async def test_do_backup_full_with_filename(
+    coresys: CoreSys, filename: str, filename_expected: str, backup_mock
+):
+    """Test creating Backup with a specific file name."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    manager = await BackupManager(coresys).load_config()
+
+    # backup_mock fixture causes Backup() to be a MagicMock
+    await manager.do_backup_full(filename=filename)
+
+    slug = backup_mock.call_args[0][2]
+    assert str(backup_mock.call_args[0][1]) == filename_expected.format(slug)
+
+    assert coresys.core.state == CoreState.RUNNING
+
+
 async def test_do_backup_full_uncompressed(
     coresys: CoreSys, backup_mock, install_addon_ssh
 ):
     """Test creating Backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     # backup_mock fixture causes Backup() to be a MagicMock
     backup_instance: MagicMock = await manager.do_backup_full(compressed=False)
@@ -92,7 +114,6 @@ async def test_do_backup_full_uncompressed(
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_called_once()
     assert install_addon_ssh in backup_instance.store_addons.call_args[0][0]
@@ -108,10 +129,10 @@ async def test_do_backup_partial_minimal(
     coresys: CoreSys, backup_mock, install_addon_ssh
 ):
     """Test creating minimal partial Backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     # backup_mock fixture causes Backup() to be a MagicMock
     backup_instance: MagicMock = await manager.do_backup_partial(homeassistant=False)
@@ -123,7 +144,6 @@ async def test_do_backup_partial_minimal(
 
     backup_instance.store_homeassistant.assert_not_called()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_not_called()
 
@@ -136,10 +156,10 @@ async def test_do_backup_partial_minimal_uncompressed(
     coresys: CoreSys, backup_mock, install_addon_ssh
 ):
     """Test creating minimal partial Backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     # backup_mock fixture causes Backup() to be a MagicMock
     backup_instance: MagicMock = await manager.do_backup_partial(
@@ -153,7 +173,6 @@ async def test_do_backup_partial_minimal_uncompressed(
 
     backup_instance.store_homeassistant.assert_not_called()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_not_called()
 
@@ -166,10 +185,10 @@ async def test_do_backup_partial_maximal(
     coresys: CoreSys, backup_mock, install_addon_ssh
 ):
     """Test creating maximal partial Backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     # backup_mock fixture causes Backup() to be a MagicMock
     backup_instance: MagicMock = await manager.do_backup_partial(
@@ -185,7 +204,6 @@ async def test_do_backup_partial_maximal(
 
     backup_instance.store_homeassistant.assert_called_once()
     backup_instance.store_repositories.assert_called_once()
-    backup_instance.store_dockerconfig.assert_called_once()
 
     backup_instance.store_addons.assert_called_once()
     assert install_addon_ssh in backup_instance.store_addons.call_args[0][0]
@@ -199,14 +217,14 @@ async def test_do_backup_partial_maximal(
 
 async def test_do_restore_full(coresys: CoreSys, full_backup_mock, install_addon_ssh):
     """Test restoring full Backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.core.start = AsyncMock(return_value=None)
     coresys.homeassistant.core.stop = AsyncMock(return_value=None)
     coresys.homeassistant.core.update = AsyncMock(return_value=None)
     install_addon_ssh.uninstall = AsyncMock(return_value=None)
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     backup_instance = full_backup_mock.return_value
     backup_instance.sys_addons = coresys.addons
@@ -217,7 +235,6 @@ async def test_do_restore_full(coresys: CoreSys, full_backup_mock, install_addon
 
     backup_instance.restore_homeassistant.assert_called_once()
     backup_instance.restore_repositories.assert_called_once()
-    backup_instance.restore_dockerconfig.assert_called_once()
 
     backup_instance.restore_addons.assert_called_once()
     install_addon_ssh.uninstall.assert_not_called()
@@ -231,14 +248,14 @@ async def test_do_restore_full_different_addon(
     coresys: CoreSys, full_backup_mock, install_addon_ssh
 ):
     """Test restoring full Backup with different addons than installed."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.core.start = AsyncMock(return_value=None)
     coresys.homeassistant.core.stop = AsyncMock(return_value=None)
     coresys.homeassistant.core.update = AsyncMock(return_value=None)
     install_addon_ssh.uninstall = AsyncMock(return_value=None)
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     backup_instance = full_backup_mock.return_value
     backup_instance.addon_list = ["differentslug"]
@@ -250,7 +267,6 @@ async def test_do_restore_full_different_addon(
 
     backup_instance.restore_homeassistant.assert_called_once()
     backup_instance.restore_repositories.assert_called_once()
-    backup_instance.restore_dockerconfig.assert_called_once()
 
     backup_instance.restore_addons.assert_called_once()
     install_addon_ssh.uninstall.assert_called_once()
@@ -264,20 +280,19 @@ async def test_do_restore_partial_minimal(
     coresys: CoreSys, partial_backup_mock, install_addon_ssh
 ):
     """Test restoring partial Backup minimal."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.core.start = AsyncMock(return_value=None)
     coresys.homeassistant.core.stop = AsyncMock(return_value=None)
     coresys.homeassistant.core.update = AsyncMock(return_value=None)
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     backup_instance = partial_backup_mock.return_value
     assert await manager.do_restore_partial(backup_instance, homeassistant=False)
 
     backup_instance.restore_homeassistant.assert_not_called()
     backup_instance.restore_repositories.assert_not_called()
-    backup_instance.restore_dockerconfig.assert_called_once()
 
     backup_instance.restore_addons.assert_not_called()
 
@@ -288,13 +303,13 @@ async def test_do_restore_partial_minimal(
 
 async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock):
     """Test restoring partial Backup minimal."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.core.start = AsyncMock(return_value=None)
     coresys.homeassistant.core.stop = AsyncMock(return_value=None)
     coresys.homeassistant.core.update = AsyncMock(return_value=None)
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     backup_instance = partial_backup_mock.return_value
     assert await manager.do_restore_partial(
@@ -306,7 +321,6 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
 
     backup_instance.restore_homeassistant.assert_called_once()
     backup_instance.restore_repositories.assert_called_once()
-    backup_instance.restore_dockerconfig.assert_called_once()
 
     backup_instance.restore_addons.assert_called_once()
 
@@ -320,22 +334,22 @@ async def test_fail_invalid_full_backup(
     coresys: CoreSys, full_backup_mock: MagicMock, partial_backup_mock: MagicMock
 ):
     """Test restore fails with invalid backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_full(partial_backup_mock.return_value)
 
     backup_instance = full_backup_mock.return_value
-    backup_instance.protected = True
-    backup_instance.set_password.return_value = False
+    backup_instance.all_locations[None]["protected"] = True
+    backup_instance.validate_backup.side_effect = BackupInvalidError()
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_full(backup_instance)
 
-    backup_instance.protected = False
+    backup_instance.all_locations[None]["protected"] = False
     backup_instance.supervisor_version = "2022.08.4"
     with (
         patch.object(
@@ -352,19 +366,19 @@ async def test_fail_invalid_partial_backup(
     coresys: CoreSys, partial_backup_mock: MagicMock
 ):
     """Test restore fails with invalid backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     backup_instance = partial_backup_mock.return_value
-    backup_instance.protected = True
-    backup_instance.set_password.return_value = False
+    backup_instance.all_locations[None]["protected"] = True
+    backup_instance.validate_backup.side_effect = BackupInvalidError()
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_partial(backup_instance)
 
-    backup_instance.protected = False
+    backup_instance.all_locations[None]["protected"] = False
     backup_instance.homeassistant = None
 
     with pytest.raises(BackupInvalidError):
@@ -389,7 +403,7 @@ async def test_backup_error(
     capture_exception: Mock,
 ):
     """Test error captured when backup fails."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     backup_mock.return_value.store_folders.side_effect = (err := OSError())
@@ -402,17 +416,18 @@ async def test_restore_error(
     coresys: CoreSys, full_backup_mock: MagicMock, capture_exception: Mock
 ):
     """Test restoring full Backup with errors."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.core.start = AsyncMock(return_value=None)
 
     backup_instance = full_backup_mock.return_value
-    backup_instance.restore_dockerconfig.side_effect = BackupError()
+    backup_instance.protected = False
+    backup_instance.restore_homeassistant.side_effect = BackupError()
     with pytest.raises(BackupError):
         await coresys.backups.do_restore_full(backup_instance)
     capture_exception.assert_not_called()
 
-    backup_instance.restore_dockerconfig.side_effect = (err := DockerError())
+    backup_instance.restore_homeassistant.side_effect = (err := DockerError())
     with pytest.raises(BackupError):
         await coresys.backups.do_restore_full(backup_instance)
     capture_exception.assert_called_once_with(err)
@@ -460,7 +475,7 @@ async def test_backup_media_with_mounts(
     assert (mount_dir := coresys.config.path_media / "media_test").is_dir()
 
     # Make a partial backup
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     backup: Backup = await coresys.backups.do_backup_partial("test", folders=["media"])
 
@@ -517,7 +532,7 @@ async def test_backup_media_with_mounts_retains_files(
     )
 
     # Make a partial backup
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     backup: Backup = await coresys.backups.do_backup_partial("test", folders=["media"])
 
@@ -584,7 +599,7 @@ async def test_backup_share_with_mounts(
     assert (mount_dir := coresys.config.path_share / "share_test").is_dir()
 
     # Make a partial backup
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     backup: Backup = await coresys.backups.do_backup_partial("test", folders=["share"])
 
@@ -631,7 +646,7 @@ async def test_full_backup_to_mount(
     assert coresys.backups.backup_locations["backup_test"] == mount_dir
 
     # Make a backup and add it to mounts. Confirm it exists in the right place
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     backup: Backup = await coresys.backups.do_backup_full("test", location=mount)
     assert (mount_dir / f"{backup.slug}.tar").exists()
@@ -677,7 +692,7 @@ async def test_partial_backup_to_mount(
     assert coresys.backups.backup_locations["backup_test"] == mount_dir
 
     # Make a backup and add it to mounts. Confirm it exists in the right place
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(
@@ -731,7 +746,7 @@ async def test_backup_to_down_mount_error(
 
     # Attempt to make a backup which fails because is_mount on directory is false
     mock_is_mount.return_value = False
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     with pytest.raises(BackupMountDownError):
         await coresys.backups.do_backup_full("test", location=mount)
@@ -765,7 +780,7 @@ async def test_backup_to_local_with_default(
     coresys.mounts.default_backup_mount = mount
 
     # Make a backup for local. Confirm it exists in the right place
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(
@@ -805,7 +820,7 @@ async def test_backup_to_default(
     coresys.mounts.default_backup_mount = mount
 
     # Make a backup for default. Confirm it exists in the right place
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with patch.object(
@@ -846,7 +861,7 @@ async def test_backup_to_default_mount_down_error(
 
     # Attempt to make a backup which fails because is_mount on directory is false
     mock_is_mount.return_value = False
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with pytest.raises(BackupMountDownError):
@@ -899,7 +914,7 @@ async def test_backup_with_healthcheck(
     container.status = "running"
     container.attrs["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await install_addon_ssh.load()
     await asyncio.sleep(0)
@@ -977,7 +992,7 @@ async def test_restore_with_healthcheck(
     container.status = "running"
     container.attrs["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await install_addon_ssh.load()
     await asyncio.sleep(0)
@@ -1061,6 +1076,7 @@ def _make_backup_message_for_assert(
                 "done": done,
                 "parent_id": None,
                 "errors": [],
+                "created": ANY,
             },
         },
     }
@@ -1077,7 +1093,7 @@ async def test_backup_progress(
     """Test progress is tracked during backups."""
     container.status = "running"
     install_addon_ssh.path_data.mkdir()
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     with (
@@ -1103,9 +1119,6 @@ async def test_backup_progress(
         _make_backup_message_for_assert(reference=full_backup.slug, stage=None),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="addon_repositories"
-        ),
-        _make_backup_message_for_assert(
-            reference=full_backup.slug, stage="docker_config"
         ),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="home_assistant"
@@ -1149,11 +1162,6 @@ async def test_backup_progress(
             stage="addon_repositories",
         ),
         _make_backup_message_for_assert(
-            action="partial_backup",
-            reference=partial_backup.slug,
-            stage="docker_config",
-        ),
-        _make_backup_message_for_assert(
             action="partial_backup", reference=partial_backup.slug, stage="addons"
         ),
         _make_backup_message_for_assert(
@@ -1174,7 +1182,6 @@ async def test_backup_progress(
 
 
 async def test_restore_progress(
-    request: pytest.FixtureRequest,
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: MagicMock,
@@ -1186,7 +1193,7 @@ async def test_restore_progress(
     container.status = "running"
     install_addon_ssh.path_data.mkdir()
     install_addon_ssh.state = AddonState.STARTED
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     full_backup: Backup = await coresys.backups.do_backup_full()
@@ -1194,7 +1201,14 @@ async def test_restore_progress(
     ha_ws_client.async_send_command.reset_mock()
 
     # Install another addon to be uninstalled
-    request.getfixturevalue("install_addon_example")
+    # Duplicate code from install_addon_example fixture
+    # Apparently request.getfixturevalue does not work with async fixtures: https://github.com/pytest-dev/pytest-asyncio/issues/112
+    store = coresys.addons.store["local_example"]
+    await coresys.addons.data.install(store)
+    # pylint: disable-next=protected-access
+    coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
+    coresys.addons.local[store.slug] = Addon(coresys, store.slug)
+
     with (
         patch("supervisor.addons.addon.asyncio.Event.wait"),
         patch.object(HomeAssistant, "restore"),
@@ -1220,9 +1234,6 @@ async def test_restore_progress(
             action="full_restore", reference=full_backup.slug, stage=None
         ),
         _make_backup_message_for_assert(
-            action="full_restore", reference=full_backup.slug, stage="docker_config"
-        ),
-        _make_backup_message_for_assert(
             action="full_restore", reference=full_backup.slug, stage="folders"
         ),
         _make_backup_message_for_assert(
@@ -1246,22 +1257,17 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="await_home_assistant_restart",
-        ),
-        _make_backup_message_for_assert(
-            action="full_restore",
-            reference=full_backup.slug,
             stage="await_addon_restarts",
         ),
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="check_home_assistant",
+            stage="await_home_assistant_restart",
         ),
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
-            stage="check_home_assistant",
+            stage="await_home_assistant_restart",
             done=True,
         ),
     ]
@@ -1290,11 +1296,6 @@ async def test_restore_progress(
             action="partial_restore",
             reference=folders_backup.slug,
             stage=None,
-        ),
-        _make_backup_message_for_assert(
-            action="partial_restore",
-            reference=folders_backup.slug,
-            stage="docker_config",
         ),
         _make_backup_message_for_assert(
             action="partial_restore",
@@ -1340,11 +1341,6 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="partial_restore",
             reference=addon_backup.slug,
-            stage="docker_config",
-        ),
-        _make_backup_message_for_assert(
-            action="partial_restore",
-            reference=addon_backup.slug,
             stage="addon_repositories",
         ),
         _make_backup_message_for_assert(
@@ -1372,7 +1368,7 @@ async def test_freeze_thaw(
     """Test manual freeze and thaw for external snapshots."""
     container.status = "running"
     install_addon_ssh.path_data.mkdir()
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     container.exec_run.return_value = (0, None)
     ha_ws_client.ha_version = AwesomeVersion("2022.1.0")
@@ -1454,7 +1450,7 @@ async def test_freeze_thaw_timeout(
     path_extern,
 ):
     """Test manual freeze ends due to timeout expiration."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     ha_ws_client.ha_version = AwesomeVersion("2022.1.0")
 
@@ -1478,7 +1474,7 @@ async def test_freeze_thaw_timeout(
 
 async def test_cannot_manually_thaw_normal_freeze(coresys: CoreSys):
     """Test thaw_all cannot be used unless freeze was started by freeze_all method."""
-    coresys.core.state = CoreState.FREEZE
+    await coresys.core.set_state(CoreState.FREEZE)
     with pytest.raises(BackupError):
         await coresys.backups.thaw_all()
 
@@ -1491,7 +1487,7 @@ async def test_restore_only_reloads_ingress_on_change(
 ):
     """Test restore only tells core to reload ingress when something has changed."""
     install_addon_ssh.path_data.mkdir()
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     backup_no_ingress: Backup = await coresys.backups.do_backup_partial(
@@ -1499,7 +1495,7 @@ async def test_restore_only_reloads_ingress_on_change(
     )
 
     install_addon_ssh.ingress_panel = True
-    install_addon_ssh.save_persist()
+    await install_addon_ssh.save_persist()
     backup_with_ingress: Backup = await coresys.backups.do_backup_partial(
         addons=["local_ssh"]
     )
@@ -1551,7 +1547,7 @@ async def test_restore_new_addon(
     path_extern,
 ):
     """Test restore installing new addon."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     assert not install_addon_example.path_data.exists()
@@ -1582,7 +1578,7 @@ async def test_restore_preserves_data_config(
     path_extern,
 ):
     """Test restore preserves data and config."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
     install_addon_example.path_data.mkdir()
@@ -1620,7 +1616,7 @@ async def test_backup_to_mount_bypasses_free_space_condition(
     mock_is_mount,
 ):
     """Test backing up to a mount bypasses the check on local free space."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda _: 0.1
 
     # These fail due to lack of local free space
@@ -1673,7 +1669,7 @@ async def test_skip_homeassistant_database(
     path_extern,
 ):
     """Test exclude database option skips database in backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.jobs.ignore_conditions = [
         JobCondition.INTERNET_HOST,
@@ -1683,15 +1679,17 @@ async def test_skip_homeassistant_database(
     coresys.homeassistant.backups_exclude_database = exclude_db_setting
 
     test_file = coresys.config.path_homeassistant / "configuration.yaml"
-    (test_db := coresys.config.path_homeassistant / "home-assistant_v2.db").touch()
-    (
-        test_db_wal := coresys.config.path_homeassistant / "home-assistant_v2.db-wal"
-    ).touch()
-    (
-        test_db_shm := coresys.config.path_homeassistant / "home-assistant_v2.db-shm"
-    ).touch()
+    test_db = coresys.config.path_homeassistant / "home-assistant_v2.db"
+    test_db_wal = coresys.config.path_homeassistant / "home-assistant_v2.db-wal"
+    test_db_shm = coresys.config.path_homeassistant / "home-assistant_v2.db-shm"
 
-    write_json_file(test_file, {"default_config": {}})
+    def setup_1():
+        test_db.touch()
+        test_db_wal.touch()
+        test_db_shm.touch()
+        write_json_file(test_file, {"default_config": {}})
+
+    await coresys.run_in_executor(setup_1)
 
     kwargs = {} if exclude_db_setting else {"homeassistant_exclude_database": True}
     if partial_backup:
@@ -1701,9 +1699,12 @@ async def test_skip_homeassistant_database(
     else:
         backup: Backup = await coresys.backups.do_backup_full(**kwargs)
 
-    test_file.unlink()
-    write_json_file(test_db, {"hello": "world"})
-    write_json_file(test_db_wal, {"hello": "world"})
+    def setup_2():
+        test_file.unlink()
+        write_json_file(test_db, {"hello": "world"})
+        write_json_file(test_db_wal, {"hello": "world"})
+
+    await coresys.run_in_executor(setup_2)
 
     with (
         patch.object(HomeAssistantCore, "update"),
@@ -1711,10 +1712,13 @@ async def test_skip_homeassistant_database(
     ):
         await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
-    assert read_json_file(test_file) == {"default_config": {}}
-    assert read_json_file(test_db) == {"hello": "world"}
-    assert read_json_file(test_db_wal) == {"hello": "world"}
-    assert not test_db_shm.exists()
+    def test_assertions():
+        assert read_json_file(test_file) == {"default_config": {}}
+        assert read_json_file(test_db) == {"hello": "world"}
+        assert read_json_file(test_db_wal) == {"hello": "world"}
+        assert not test_db_shm.exists()
+
+    await coresys.run_in_executor(test_assertions)
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
@@ -1733,19 +1737,26 @@ async def test_backup_remove_error(
     healthy_expected: bool,
 ):
     """Test removing a backup error."""
-    copy(get_fixture_path("backup_example.tar"), coresys.config.path_backup)
-    await coresys.backups.reload(location=None, filename="backup_example.tar")
+    location: LOCATION_TYPE = backup_locations[0]
+    backup_base_path = coresys.backups._get_base_path(location)  # pylint: disable=protected-access
+    backup_base_path.mkdir(exist_ok=True)
+    copy(get_fixture_path("backup_example.tar"), backup_base_path)
+
+    await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
 
-    backup.all_locations[location_name] = (tar_mock := MagicMock())
-    tar_mock.unlink.side_effect = (err := OSError())
+    assert location_name in backup.all_locations
+    backup.all_locations[location_name]["path"] = (tar_file_mock := MagicMock())
+    tar_file_mock.unlink.side_effect = (err := OSError())
 
     err.errno = errno.EBUSY
-    assert coresys.backups.remove(backup) is False
+    with pytest.raises(BackupError):
+        await coresys.backups.remove(backup)
     assert coresys.core.healthy is True
 
     err.errno = errno.EBADMSG
-    assert coresys.backups.remove(backup) is False
+    with pytest.raises(BackupError):
+        await coresys.backups.remove(backup)
     assert coresys.core.healthy is healthy_expected
 
 
@@ -1809,15 +1820,16 @@ async def test_monitoring_after_full_restore(
     coresys: CoreSys, full_backup_mock, install_addon_ssh, container
 ):
     """Test monitoring of addon state still works after full restore."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.core.start = AsyncMock(return_value=None)
     coresys.homeassistant.core.stop = AsyncMock(return_value=None)
     coresys.homeassistant.core.update = AsyncMock(return_value=None)
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     backup_instance = full_backup_mock.return_value
+    backup_instance.protected = False
     assert await manager.do_restore_full(backup_instance)
 
     backup_instance.restore_addons.assert_called_once_with([TEST_ADDON_SLUG])
@@ -1829,12 +1841,13 @@ async def test_monitoring_after_partial_restore(
     coresys: CoreSys, partial_backup_mock, install_addon_ssh, container
 ):
     """Test monitoring of addon state still works after full restore."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    manager = BackupManager(coresys)
+    manager = await BackupManager(coresys).load_config()
 
     backup_instance = partial_backup_mock.return_value
+    backup_instance.protected = False
     assert await manager.do_restore_partial(backup_instance, addons=[TEST_ADDON_SLUG])
 
     backup_instance.restore_addons.assert_called_once_with([TEST_ADDON_SLUG])
@@ -1861,7 +1874,7 @@ async def test_core_pre_backup_actions_failed(
     path_extern,
 ):
     """Test pre-backup actions failed in HA core stops backup."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     ha_ws_client.ha_version = AwesomeVersion("2024.7.0")
     ha_ws_client.async_send_command.return_value = {
@@ -1959,7 +1972,7 @@ async def test_partial_reload_multiple_locations(
     assert backup.all_locations.keys() == {".cloud_backup"}
 
     copy(backup_file, tmp_supervisor_data / "backup")
-    await coresys.backups.reload(location=None, filename="backup_example.tar")
+    await coresys.backups.reload()
 
     assert coresys.backups.list_backups
     assert (backup := coresys.backups.get("7fed74c8"))
@@ -1968,7 +1981,7 @@ async def test_partial_reload_multiple_locations(
     assert backup.all_locations.keys() == {".cloud_backup", None}
 
     copy(backup_file, mount_dir)
-    await coresys.backups.reload(location=mount, filename="backup_example.tar")
+    await coresys.backups.reload()
 
     assert coresys.backups.list_backups
     assert (backup := coresys.backups.get("7fed74c8"))
@@ -1986,9 +1999,12 @@ async def test_backup_remove_multiple_locations(coresys: CoreSys):
 
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
-    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+    assert backup.all_locations == {
+        None: {"path": location_1, "protected": False, "size_bytes": 10240},
+        ".cloud_backup": {"path": location_2, "protected": False, "size_bytes": 10240},
+    }
 
-    coresys.backups.remove(backup)
+    await coresys.backups.remove(backup)
     assert not location_1.exists()
     assert not location_2.exists()
     assert not coresys.backups.get("7fed74c8")
@@ -2003,10 +2019,63 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
 
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
-    assert backup.all_locations == {None: location_1, ".cloud_backup": location_2}
+    assert backup.all_locations == {
+        None: {"path": location_1, "protected": False, "size_bytes": 10240},
+        ".cloud_backup": {"path": location_2, "protected": False, "size_bytes": 10240},
+    }
 
-    coresys.backups.remove(backup, locations=[".cloud_backup"])
+    await coresys.backups.remove(backup, locations=[".cloud_backup"])
     assert location_1.exists()
     assert not location_2.exists()
     assert coresys.backups.get("7fed74c8")
-    assert backup.all_locations == {None: location_1}
+    assert backup.all_locations == {
+        None: {"path": location_1, "protected": False, "size_bytes": 10240}
+    }
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_addon_backup_excludes(coresys: CoreSys, install_addon_example: Addon):
+    """Test backup excludes option for addons."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    install_addon_example.path_data.mkdir(parents=True)
+    (test1 := install_addon_example.path_data / "test1").touch()
+    (test_dir := install_addon_example.path_data / "test_dir").mkdir()
+    (test2 := test_dir / "test2").touch()
+    (test3 := test_dir / "test3").touch()
+
+    install_addon_example.data["backup_exclude"] = ["test1", "*/test2"]
+    backup = await coresys.backups.do_backup_partial(addons=["local_example"])
+    test1.unlink()
+    test2.unlink()
+    test3.unlink()
+    test_dir.rmdir()
+
+    await coresys.backups.do_restore_partial(backup, addons=["local_example"])
+    assert not test1.exists()
+    assert not test2.exists()
+    assert test_dir.is_dir()
+    assert test3.exists()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_remove_non_existing_backup_raises(
+    coresys: CoreSys,
+):
+    """Test removing a backup error."""
+    location: LOCATION_TYPE = None
+    backup_base_path = coresys.backups._get_base_path(location)  # pylint: disable=protected-access
+    backup_base_path.mkdir(exist_ok=True)
+    copy(get_fixture_path("backup_example.tar"), backup_base_path)
+
+    await coresys.backups.reload()
+    assert (backup := coresys.backups.get("7fed74c8"))
+
+    assert None in backup.all_locations
+    backup.all_locations[None]["path"] = (tar_file_mock := MagicMock())
+    tar_file_mock.unlink.side_effect = (err := FileNotFoundError())
+    err.errno = errno.ENOENT
+
+    with pytest.raises(BackupFileNotFoundError):
+        await coresys.backups.remove(backup)

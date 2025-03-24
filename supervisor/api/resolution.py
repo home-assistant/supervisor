@@ -19,8 +19,9 @@ from ..const import (
     ATTR_UNSUPPORTED,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, ResolutionNotFound
-from ..resolution.data import Suggestion
+from ..exceptions import APINotFound, ResolutionNotFound
+from ..resolution.checks.base import CheckBase
+from ..resolution.data import Issue, Suggestion
 from .utils import api_process, api_validate
 
 SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): bool})
@@ -28,6 +29,29 @@ SCHEMA_CHECK_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLED): bool})
 
 class APIResoulution(CoreSysAttributes):
     """Handle REST API for resoulution."""
+
+    def _extract_issue(self, request: web.Request) -> Issue:
+        """Extract issue from request or raise."""
+        try:
+            return self.sys_resolution.get_issue(request.match_info.get("issue"))
+        except ResolutionNotFound:
+            raise APINotFound("The supplied UUID is not a valid issue") from None
+
+    def _extract_suggestion(self, request: web.Request) -> Suggestion:
+        """Extract suggestion from request or raise."""
+        try:
+            return self.sys_resolution.get_suggestion(
+                request.match_info.get("suggestion")
+            )
+        except ResolutionNotFound:
+            raise APINotFound("The supplied UUID is not a valid suggestion") from None
+
+    def _extract_check(self, request: web.Request) -> CheckBase:
+        """Extract check from request or raise."""
+        try:
+            return self.sys_resolution.check.get(request.match_info.get("check"))
+        except ResolutionNotFound:
+            raise APINotFound("The supplied check slug is not available") from None
 
     def _generate_suggestion_information(self, suggestion: Suggestion):
         """Generate suggestion information for response."""
@@ -61,47 +85,31 @@ class APIResoulution(CoreSysAttributes):
     @api_process
     async def apply_suggestion(self, request: web.Request) -> None:
         """Apply suggestion."""
-        try:
-            suggestion = self.sys_resolution.get_suggestion(
-                request.match_info.get("suggestion")
-            )
-            await self.sys_resolution.apply_suggestion(suggestion)
-        except ResolutionNotFound:
-            raise APIError("The supplied UUID is not a valid suggestion") from None
+        suggestion = self._extract_suggestion(request)
+        await self.sys_resolution.apply_suggestion(suggestion)
 
     @api_process
     async def dismiss_suggestion(self, request: web.Request) -> None:
         """Dismiss suggestion."""
-        try:
-            suggestion = self.sys_resolution.get_suggestion(
-                request.match_info.get("suggestion")
-            )
-            self.sys_resolution.dismiss_suggestion(suggestion)
-        except ResolutionNotFound:
-            raise APIError("The supplied UUID is not a valid suggestion") from None
+        suggestion = self._extract_suggestion(request)
+        self.sys_resolution.dismiss_suggestion(suggestion)
 
     @api_process
     async def suggestions_for_issue(self, request: web.Request) -> dict[str, Any]:
         """Return suggestions that fix an issue."""
-        try:
-            issue = self.sys_resolution.get_issue(request.match_info.get("issue"))
-            return {
-                ATTR_SUGGESTIONS: [
-                    self._generate_suggestion_information(suggestion)
-                    for suggestion in self.sys_resolution.suggestions_for_issue(issue)
-                ]
-            }
-        except ResolutionNotFound:
-            raise APIError("The supplied UUID is not a valid issue") from None
+        issue = self._extract_issue(request)
+        return {
+            ATTR_SUGGESTIONS: [
+                self._generate_suggestion_information(suggestion)
+                for suggestion in self.sys_resolution.suggestions_for_issue(issue)
+            ]
+        }
 
     @api_process
     async def dismiss_issue(self, request: web.Request) -> None:
         """Dismiss issue."""
-        try:
-            issue = self.sys_resolution.get_issue(request.match_info.get("issue"))
-            self.sys_resolution.dismiss_issue(issue)
-        except ResolutionNotFound:
-            raise APIError("The supplied UUID is not a valid issue") from None
+        issue = self._extract_issue(request)
+        self.sys_resolution.dismiss_issue(issue)
 
     @api_process
     def healthcheck(self, request: web.Request) -> Awaitable[None]:
@@ -112,24 +120,16 @@ class APIResoulution(CoreSysAttributes):
     async def options_check(self, request: web.Request) -> None:
         """Set options for check."""
         body = await api_validate(SCHEMA_CHECK_OPTIONS, request)
-
-        try:
-            check = self.sys_resolution.check.get(request.match_info.get("check"))
-        except ResolutionNotFound:
-            raise APIError("The supplied check slug is not available") from None
+        check = self._extract_check(request)
 
         # Apply options
         if ATTR_ENABLED in body:
             check.enabled = body[ATTR_ENABLED]
 
-        self.sys_resolution.save_data()
+        await self.sys_resolution.save_data()
 
     @api_process
     async def run_check(self, request: web.Request) -> None:
         """Execute a backend check."""
-        try:
-            check = self.sys_resolution.check.get(request.match_info.get("check"))
-        except ResolutionNotFound:
-            raise APIError("The supplied check slug is not available") from None
-
+        check = self._extract_check(request)
         await check()

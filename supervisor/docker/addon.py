@@ -42,7 +42,7 @@ from ..hardware.data import Device
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     ENV_TIME,
     ENV_TOKEN,
@@ -606,7 +606,7 @@ class DockerAddon(DockerInterface):
             )
         except CoreDNSError as err:
             _LOGGER.warning("Can't update DNS for %s", self.name)
-            capture_exception(err)
+            await async_capture_exception(err)
 
         # Hardware Access
         if self.addon.static_devices:
@@ -664,18 +664,20 @@ class DockerAddon(DockerInterface):
 
     async def _build(self, version: AwesomeVersion, image: str | None = None) -> None:
         """Build a Docker container."""
-        build_env = AddonBuild(self.coresys, self.addon)
-        if not build_env.is_valid:
+        build_env = await AddonBuild(self.coresys, self.addon).load_config()
+        if not await build_env.is_valid():
             _LOGGER.error("Invalid build environment, can't build this add-on!")
             raise DockerError()
 
         _LOGGER.info("Starting build for %s:%s", self.image, version)
-        try:
-            image, log = await self.sys_run_in_executor(
-                self.sys_docker.images.build,
-                use_config_proxy=False,
-                **build_env.get_docker_args(version, image),
+
+        def build_image():
+            return self.sys_docker.images.build(
+                use_config_proxy=False, **build_env.get_docker_args(version, image)
             )
+
+        try:
+            image, log = await self.sys_run_in_executor(build_image)
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, version, log)
 
@@ -697,16 +699,9 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Build %s:%s done", self.image, version)
 
-    @Job(
-        name="docker_addon_export_image",
-        limit=JobExecutionLimit.GROUP_ONCE,
-        on_condition=DockerJobError,
-    )
     def export_image(self, tar_file: Path) -> Awaitable[None]:
         """Export current images into a tar file."""
-        return self.sys_run_in_executor(
-            self.sys_docker.export_image, self.image, self.version, tar_file
-        )
+        return self.sys_docker.export_image(self.image, self.version, tar_file)
 
     @Job(
         name="docker_addon_import_image",
@@ -794,7 +789,7 @@ class DockerAddon(DockerInterface):
                 await self.sys_plugins.dns.delete_host(self.addon.hostname)
             except CoreDNSError as err:
                 _LOGGER.warning("Can't update DNS for %s", self.name)
-                capture_exception(err)
+                await async_capture_exception(err)
 
         # Hardware
         if self._hw_listener:

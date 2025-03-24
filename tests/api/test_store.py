@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 from unittest.mock import MagicMock, PropertyMock, patch
 
+from aiohttp import ClientResponse
 from aiohttp.test_utils import TestClient
 import pytest
 
@@ -235,7 +236,7 @@ async def test_api_detached_addon_changelog(
     resp = await api_client.get(f"/{resource}/{install_addon_ssh.slug}/changelog")
     assert resp.status == 200
     result = await resp.text()
-    assert result == "Addon local_ssh with version latest does not exist in the store"
+    assert result == "Addon local_ssh does not exist in the store"
 
 
 @pytest.mark.parametrize("resource", ["store/addons", "addons"])
@@ -279,4 +280,110 @@ async def test_api_detached_addon_documentation(
     resp = await api_client.get(f"/{resource}/{install_addon_ssh.slug}/documentation")
     assert resp.status == 200
     result = await resp.text()
-    assert result == "Addon local_ssh with version latest does not exist in the store"
+    assert result == "Addon local_ssh does not exist in the store"
+
+
+async def get_message(resp: ClientResponse, json_expected: bool) -> str:
+    """Get message from response based on response type."""
+    if json_expected:
+        body = await resp.json()
+        return body["message"]
+    return await resp.text()
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "json_expected"),
+    [
+        ("get", "/store/addons/bad", True),
+        ("get", "/store/addons/bad/1", True),
+        ("get", "/store/addons/bad/icon", False),
+        ("get", "/store/addons/bad/logo", False),
+        ("post", "/store/addons/bad/install", True),
+        ("post", "/store/addons/bad/install/1", True),
+        ("post", "/store/addons/bad/update", True),
+        ("post", "/store/addons/bad/update/1", True),
+        # Legacy paths
+        ("get", "/addons/bad/icon", False),
+        ("get", "/addons/bad/logo", False),
+        ("post", "/addons/bad/install", True),
+        ("post", "/addons/bad/update", True),
+    ],
+)
+async def test_store_addon_not_found(
+    api_client: TestClient, method: str, url: str, json_expected: bool
+):
+    """Test store addon not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    assert await get_message(resp, json_expected) == "Addon bad does not exist"
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [
+        ("post", "/store/addons/local_ssh/update"),
+        ("post", "/store/addons/local_ssh/update/1"),
+        # Legacy paths
+        ("post", "/addons/local_ssh/update"),
+    ],
+)
+@pytest.mark.usefixtures("repository")
+async def test_store_addon_not_installed(api_client: TestClient, method: str, url: str):
+    """Test store addon not installed error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "Addon local_ssh is not installed"
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [
+        ("get", "/store/repositories/bad"),
+        ("delete", "/store/repositories/bad"),
+    ],
+)
+async def test_repository_not_found(api_client: TestClient, method: str, url: str):
+    """Test repository not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    body = await resp.json()
+    assert body["message"] == "Repository bad does not exist in the store"
+
+
+@pytest.mark.parametrize("resource", ["store/addons", "addons"])
+async def test_api_store_addons_documentation_corrupted(
+    api_client: TestClient, coresys: CoreSys, store_addon: AddonStore, resource: str
+):
+    """Test /store/addons/{addon}/documentation REST API.
+
+    Test add-on with documentation file with byte sequences which cannot be decoded
+    using UTF-8.
+    """
+    store_addon.path_documentation.write_bytes(b"Text with an invalid UTF-8 char: \xff")
+    await store_addon.refresh_path_cache()
+    assert store_addon.with_documentation is True
+
+    resp = await api_client.get(f"/{resource}/{store_addon.slug}/documentation")
+    assert resp.status == 200
+    result = await resp.text()
+    assert result == "Text with an invalid UTF-8 char: �"
+
+
+@pytest.mark.parametrize("resource", ["store/addons", "addons"])
+async def test_api_store_addons_changelog_corrupted(
+    api_client: TestClient, coresys: CoreSys, store_addon: AddonStore, resource: str
+):
+    """Test /store/addons/{addon}/changelog REST API.
+
+    Test add-on with changelog file with byte sequences which cannot be decoded
+    using UTF-8.
+    """
+    store_addon.path_changelog.write_bytes(b"Text with an invalid UTF-8 char: \xff")
+    await store_addon.refresh_path_cache()
+    assert store_addon.with_changelog is True
+
+    resp = await api_client.get(f"/{resource}/{store_addon.slug}/changelog")
+    assert resp.status == 200
+    result = await resp.text()
+    assert result == "Text with an invalid UTF-8 char: �"

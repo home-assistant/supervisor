@@ -75,8 +75,6 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
     async def load(self) -> None:
         """Start up add-on management."""
-        await self.data.update()
-
         # Init custom repositories and load add-ons
         await self.update_repositories(
             self._data[ATTR_REPOSITORIES], add_with_errors=True
@@ -185,7 +183,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
                 raise err
 
         else:
-            if not repository.validate():
+            if not await self.sys_run_in_executor(repository.validate):
                 if add_with_errors:
                     _LOGGER.error("%s is not a valid add-on repository", url)
                     self.sys_resolution.create_issue(
@@ -206,7 +204,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         # On start-up we add the saved repos to force a load. But they're already in data
         if url not in self._data[ATTR_REPOSITORIES]:
             self._data[ATTR_REPOSITORIES].append(url)
-            self.save_data()
+            await self.save_data()
 
         # Persist changes
         if persist:
@@ -227,7 +225,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             )
         await self.repositories.pop(repository.slug).remove()
         self._data[ATTR_REPOSITORIES].remove(repository.source)
-        self.save_data()
+        await self.save_data()
 
         if persist:
             await self.data.update()

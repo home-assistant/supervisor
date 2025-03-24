@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from unittest.util import unorderable_list_difference
 
 from dbus_fast import DBusError, ErrorType, Variant
 from dbus_fast.aio.message_bus import MessageBus
@@ -111,40 +112,46 @@ async def test_load(
     assert media_test.local_where.is_dir()
     assert (coresys.config.path_media / "media_test").is_dir()
 
-    assert systemd_service.StartTransientUnit.calls == [
-        (
-            "mnt-data-supervisor-mounts-backup_test.mount",
-            "fail",
-            [
-                ["Options", Variant("s", "noserverino,guest")],
-                ["Type", Variant("s", "cifs")],
-                ["Description", Variant("s", "Supervisor cifs mount: backup_test")],
-                ["What", Variant("s", "//backup.local/backups")],
-            ],
-            [],
-        ),
-        (
-            "mnt-data-supervisor-mounts-media_test.mount",
-            "fail",
-            [
-                ["Options", Variant("s", "soft,timeo=200")],
-                ["Type", Variant("s", "nfs")],
-                ["Description", Variant("s", "Supervisor nfs mount: media_test")],
-                ["What", Variant("s", "media.local:/media")],
-            ],
-            [],
-        ),
-        (
-            "mnt-data-supervisor-media-media_test.mount",
-            "fail",
-            [
-                ["Options", Variant("s", "bind")],
-                ["Description", Variant("s", "Supervisor bind mount: bind_media_test")],
-                ["What", Variant("s", "/mnt/data/supervisor/mounts/media_test")],
-            ],
-            [],
-        ),
-    ]
+    assert unorderable_list_difference(
+        systemd_service.StartTransientUnit.calls,
+        [
+            (
+                "mnt-data-supervisor-mounts-backup_test.mount",
+                "fail",
+                [
+                    ["Options", Variant("s", "noserverino,guest")],
+                    ["Type", Variant("s", "cifs")],
+                    ["Description", Variant("s", "Supervisor cifs mount: backup_test")],
+                    ["What", Variant("s", "//backup.local/backups")],
+                ],
+                [],
+            ),
+            (
+                "mnt-data-supervisor-mounts-media_test.mount",
+                "fail",
+                [
+                    ["Options", Variant("s", "soft,timeo=200")],
+                    ["Type", Variant("s", "nfs")],
+                    ["Description", Variant("s", "Supervisor nfs mount: media_test")],
+                    ["What", Variant("s", "media.local:/media")],
+                ],
+                [],
+            ),
+            (
+                "mnt-data-supervisor-media-media_test.mount",
+                "fail",
+                [
+                    ["Options", Variant("s", "bind")],
+                    [
+                        "Description",
+                        Variant("s", "Supervisor bind mount: bind_media_test"),
+                    ],
+                    ["What", Variant("s", "/mnt/data/supervisor/mounts/media_test")],
+                ],
+                [],
+            ),
+        ],
+    ) == ([], [])
 
 
 async def test_load_share_mount(
@@ -468,7 +475,7 @@ async def test_save_data(
 ):
     """Test saving mount config data."""
     # Replace mount manager with one that doesn't have save_data mocked
-    coresys._mounts = MountManager(coresys)  # pylint: disable=protected-access
+    coresys._mounts = await MountManager(coresys).load_config()  # pylint: disable=protected-access
 
     path = tmp_supervisor_data / "mounts.json"
     assert not path.exists()
@@ -488,7 +495,7 @@ async def test_save_data(
             },
         )
     )
-    coresys.mounts.save_data()
+    await coresys.mounts.save_data()
 
     assert path.exists()
     with path.open() as file:

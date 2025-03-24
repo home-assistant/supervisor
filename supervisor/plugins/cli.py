@@ -17,7 +17,7 @@ from ..docker.stats import DockerStats
 from ..exceptions import CliError, CliJobError, CliUpdateError, DockerError
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .base import PluginBase
 from .const import (
     FILE_HASSIO_CLI,
@@ -73,7 +73,7 @@ class PluginCli(PluginBase):
         """Run cli."""
         # Create new API token
         self._data[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
-        self.save_data()
+        await self.save_data()
 
         # Start Instance
         _LOGGER.info("Starting CLI plugin")
@@ -114,7 +114,7 @@ class PluginCli(PluginBase):
             await self.instance.install(self.version)
         except DockerError as err:
             _LOGGER.error("Repair of HA cli failed")
-            capture_exception(err)
+            await async_capture_exception(err)
 
     @Job(
         name="plugin_cli_restart_after_problem",

@@ -1,11 +1,13 @@
 """Manager for Supervisor Docker."""
 
+import asyncio
 from contextlib import suppress
+from functools import partial
 from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, Self
 
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -105,13 +107,41 @@ class DockerAPI:
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
-        self.docker: DockerClient = DockerClient(
-            base_url=f"unix:/{str(SOCKET_DOCKER)}", version="auto", timeout=900
-        )
-        self.network: DockerNetwork = DockerNetwork(self.docker)
-        self._info: DockerInfo = DockerInfo.new(self.docker.info())
+        self._docker: DockerClient | None = None
+        self._network: DockerNetwork | None = None
+        self._info: DockerInfo | None = None
         self.config: DockerConfig = DockerConfig()
         self._monitor: DockerMonitor = DockerMonitor(coresys)
+
+    async def post_init(self) -> Self:
+        """Post init actions that must be done in event loop."""
+        self._docker = await asyncio.get_running_loop().run_in_executor(
+            None,
+            partial(
+                DockerClient,
+                base_url=f"unix:/{str(SOCKET_DOCKER)}",
+                version="auto",
+                timeout=900,
+            ),
+        )
+        self._network = DockerNetwork(self._docker)
+        self._info = DockerInfo.new(self.docker.info())
+        await self.config.read_data()
+        return self
+
+    @property
+    def docker(self) -> DockerClient:
+        """Get docker API client."""
+        if not self._docker:
+            raise RuntimeError("Docker API Client not initialized!")
+        return self._docker
+
+    @property
+    def network(self) -> DockerNetwork:
+        """Get Docker network."""
+        if not self._network:
+            raise RuntimeError("Docker Network not initialized!")
+        return self._network
 
     @property
     def images(self) -> ImageCollection:
@@ -131,6 +161,8 @@ class DockerAPI:
     @property
     def info(self) -> DockerInfo:
         """Return local docker info."""
+        if not self._info:
+            raise RuntimeError("Docker Info not initialized!")
         return self._info
 
     @property

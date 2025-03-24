@@ -39,7 +39,10 @@ def partial_backup_mock(backup_mock):
     backup_instance.sys_type = BackupType.PARTIAL
     backup_instance.folders = []
     backup_instance.addon_list = [TEST_ADDON_SLUG]
-    backup_instance.supervisor_version = "99.9.9dev"
+    backup_instance.supervisor_version = "9999.09.9.dev9999"
+    backup_instance.location = None
+    backup_instance.all_locations = {None: {"protected": False}}
+    backup_instance.validate_backup = AsyncMock()
     yield backup_mock
 
 
@@ -50,7 +53,10 @@ def full_backup_mock(backup_mock):
     backup_instance.sys_type = BackupType.FULL
     backup_instance.folders = ALL_FOLDERS
     backup_instance.addon_list = [TEST_ADDON_SLUG]
-    backup_instance.supervisor_version = "99.9.9dev"
+    backup_instance.supervisor_version = "9999.09.9.dev9999"
+    backup_instance.location = None
+    backup_instance.all_locations = {None: {"protected": False}}
+    backup_instance.validate_backup = AsyncMock()
     yield backup_mock
 
 

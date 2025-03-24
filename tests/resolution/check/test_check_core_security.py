@@ -23,7 +23,7 @@ async def test_check(coresys: CoreSys, tmp_path):
     """Test check."""
     with patch("supervisor.config.CoreConfig.path_homeassistant", tmp_path):
         core_security = CheckCoreSecurity(coresys)
-        coresys.core.state = CoreState.RUNNING
+        await coresys.core.set_state(CoreState.RUNNING)
 
         assert len(coresys.resolution.issues) == 0
 
@@ -57,7 +57,7 @@ async def test_approve(coresys: CoreSys, tmp_path):
     """Test check."""
     with patch("supervisor.config.CoreConfig.path_homeassistant", tmp_path):
         core_security = CheckCoreSecurity(coresys)
-        coresys.core.state = CoreState.RUNNING
+        await coresys.core.set_state(CoreState.RUNNING)
         coresys.homeassistant._data["version"] = None
         assert await core_security.approve_check()
 
@@ -84,13 +84,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as check:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await core_security()
             check.assert_called_once()
             check.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await core_security()
             check.assert_not_called()
             check.reset_mock()

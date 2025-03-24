@@ -2,11 +2,12 @@
 
 import asyncio
 import logging
+from typing import Self
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HassioError
 from ..resolution.const import ContextType, IssueType, SuggestionType
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .audio import PluginAudio
 from .base import PluginBase
 from .cli import PluginCli
@@ -29,6 +30,11 @@ class PluginManager(CoreSysAttributes):
         self._audio: PluginAudio = PluginAudio(coresys)
         self._observer: PluginObserver = PluginObserver(coresys)
         self._multicast: PluginMulticast = PluginMulticast(coresys)
+
+    async def load_config(self) -> Self:
+        """Load config in executor."""
+        await asyncio.gather(*[plugin.read_data() for plugin in self.all_plugins])
+        return self
 
     @property
     def all_plugins(self) -> list[PluginBase]:
@@ -74,7 +80,7 @@ class PluginManager(CoreSysAttributes):
                     reference=plugin.slug,
                     suggestions=[SuggestionType.EXECUTE_REPAIR],
                 )
-                capture_exception(err)
+                await async_capture_exception(err)
 
         # Exit if supervisor out of date. Plugins can't update until then
         if self.sys_supervisor.need_update:
@@ -87,17 +93,18 @@ class PluginManager(CoreSysAttributes):
                 continue
 
             _LOGGER.info(
-                "%s does not have the latest version %s, updating",
+                "Plugin %s is not up-to-date, latest version %s, updating",
                 plugin.slug,
                 plugin.latest_version,
             )
             try:
                 await plugin.update()
-            except HassioError:
+            except HassioError as ex:
                 _LOGGER.error(
-                    "Can't update %s to %s, the Supervisor healthy could be compromised!",
+                    "Can't update %s to %s: %s",
                     plugin.slug,
                     plugin.latest_version,
+                    str(ex),
                 )
                 self.sys_resolution.create_issue(
                     IssueType.UPDATE_FAILED,
@@ -107,7 +114,7 @@ class PluginManager(CoreSysAttributes):
                 )
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't update plugin %s: %s", plugin.slug, err)
-                capture_exception(err)
+                await async_capture_exception(err)
 
     async def repair(self) -> None:
         """Repair Supervisor plugins."""
@@ -125,4 +132,4 @@ class PluginManager(CoreSysAttributes):
                 await plugin.stop()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't stop plugin %s: %s", plugin.slug, err)
-                capture_exception(err)
+                await async_capture_exception(err)

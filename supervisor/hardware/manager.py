@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Self
 
 import pyudev
 
@@ -16,6 +17,33 @@ from .policy import HwPolicy
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# Some device nodes get created system on startup by kmod-static-nodes.service,
+# which in turn uses /usr/bin/kmod to get a list of static device nodes which
+# are provided by kernel modules. These type of devices are not listed by udev
+# and hence not listed through pyudev. However, on first access the kernel
+# module is loaded automatically.
+# Which nodes are exposed by module is system specific, so ideally Supervisor
+# should read the output of kmod (e.g. /run/tmpfiles.d/static-nodes.conf). But
+# this seems a bit overkill, since we are currently only interested in tun.
+_STATIC_NODES: list[Device] = [
+    Device(
+        "tun",
+        Path("/dev/net/tun"),
+        Path("/sys/devices/virtual/misc/tun"),
+        "misc",
+        None,
+        [],
+        {
+            "DEVNAME": "/dev/net/tun",
+            "DEVPATH": "/devices/virtual/misc/tun",
+            "MAJOR": "10",
+            "MINOR": "200",
+            "SUBSYSTEM": "misc",
+        },
+        [],
+    )
+]
+
 
 class HardwareManager(CoreSysAttributes):
     """Hardware manager for supervisor."""
@@ -24,17 +52,25 @@ class HardwareManager(CoreSysAttributes):
         """Initialize Hardware Monitor object."""
         self.coresys: CoreSys = coresys
         self._devices: dict[str, Device] = {}
-        self._udev = pyudev.Context()
+        self._udev: pyudev.Context | None = None
 
-        self._montior: HwMonitor = HwMonitor(coresys)
+        self._monitor: HwMonitor | None = None
         self._helper: HwHelper = HwHelper(coresys)
         self._policy: HwPolicy = HwPolicy(coresys)
         self._disk: HwDisk = HwDisk(coresys)
 
+    async def post_init(self) -> Self:
+        """Complete initialization of obect within event loop."""
+        self._udev = await self.sys_run_in_executor(pyudev.Context)
+        self._monitor: HwMonitor = HwMonitor(self.coresys, self._udev)
+        return self
+
     @property
     def monitor(self) -> HwMonitor:
         """Return Hardware Monitor instance."""
-        return self._montior
+        if not self._monitor:
+            raise RuntimeError("Hardware monitor not initialized!")
+        return self._monitor
 
     @property
     def helper(self) -> HwHelper:
@@ -113,6 +149,11 @@ class HardwareManager(CoreSysAttributes):
                 _LOGGER.warning("Ignoring udev device due to error: %s", err)
                 continue
             self._devices[device.sys_name] = Device.import_udev(device)
+
+        # Add static nodes if not found through udev (e.g. module not yet loaded)
+        for device in _STATIC_NODES:
+            if device.name not in self._devices:
+                self._devices[device.name] = device
 
     async def load(self) -> None:
         """Load hardware backend."""

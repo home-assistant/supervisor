@@ -10,7 +10,7 @@ from supervisor.resolution.evaluations.resolved import EvaluateResolved
 async def test_evaluation(coresys: CoreSys, dbus_is_connected):
     """Test evaluation."""
     resolved = EvaluateResolved(coresys)
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     assert resolved.reason not in coresys.resolution.unsupported
 
@@ -36,13 +36,13 @@ async def test_did_run(coresys: CoreSys):
         return_value=None,
     ) as evaluate:
         for state in should_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await resolved()
             evaluate.assert_called_once()
             evaluate.reset_mock()
 
         for state in should_not_run:
-            coresys.core.state = state
+            await coresys.core.set_state(state)
             await resolved()
             evaluate.assert_not_called()
             evaluate.reset_mock()

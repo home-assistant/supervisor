@@ -5,7 +5,7 @@ import logging
 import docker
 from docker.types import Mount
 
-from ..const import DOCKER_CPU_RUNTIME_ALLOCATION, MACHINE_ID
+from ..const import DOCKER_CPU_RUNTIME_ALLOCATION
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerJobError
 from ..hardware.const import PolicyGroup
@@ -57,7 +57,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         ]
 
         # Machine ID
-        if MACHINE_ID.exists():
+        if self.sys_machine_id:
             mounts.append(MOUNT_MACHINE_ID)
 
         return mounts

@@ -23,7 +23,7 @@ async def mock_handler(request):
 
 
 @pytest.fixture
-async def api_system(aiohttp_client, run_dir, coresys: CoreSys) -> TestClient:
+async def api_system(aiohttp_client, coresys: CoreSys) -> TestClient:
     """Fixture for RestAPI client."""
     api = RestAPI(coresys)
     api.webapp = web.Application()
@@ -39,7 +39,7 @@ async def api_system(aiohttp_client, run_dir, coresys: CoreSys) -> TestClient:
 
 
 @pytest.fixture
-async def api_token_validation(aiohttp_client, run_dir, coresys: CoreSys) -> TestClient:
+async def api_token_validation(aiohttp_client, coresys: CoreSys) -> TestClient:
     """Fixture for RestAPI client with token validation middleware."""
     api = RestAPI(coresys)
     api.webapp = web.Application()
@@ -58,7 +58,7 @@ async def api_token_validation(aiohttp_client, run_dir, coresys: CoreSys) -> Tes
 @pytest.mark.asyncio
 async def test_api_security_system_initialize(api_system: TestClient, coresys: CoreSys):
     """Test security."""
-    coresys.core.state = CoreState.INITIALIZE
+    await coresys.core.set_state(CoreState.INITIALIZE)
 
     resp = await api_system.get("/supervisor/ping")
     result = await resp.json()
@@ -69,7 +69,7 @@ async def test_api_security_system_initialize(api_system: TestClient, coresys: C
 @pytest.mark.asyncio
 async def test_api_security_system_setup(api_system: TestClient, coresys: CoreSys):
     """Test security."""
-    coresys.core.state = CoreState.SETUP
+    await coresys.core.set_state(CoreState.SETUP)
 
     resp = await api_system.get("/supervisor/ping")
     result = await resp.json()
@@ -80,7 +80,7 @@ async def test_api_security_system_setup(api_system: TestClient, coresys: CoreSy
 @pytest.mark.asyncio
 async def test_api_security_system_running(api_system: TestClient, coresys: CoreSys):
     """Test security."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
 
     resp = await api_system.get("/supervisor/ping")
     assert resp.status == 200
@@ -89,7 +89,7 @@ async def test_api_security_system_running(api_system: TestClient, coresys: Core
 @pytest.mark.asyncio
 async def test_api_security_system_startup(api_system: TestClient, coresys: CoreSys):
     """Test security."""
-    coresys.core.state = CoreState.STARTUP
+    await coresys.core.set_state(CoreState.STARTUP)
 
     resp = await api_system.get("/supervisor/ping")
     assert resp.status == 200

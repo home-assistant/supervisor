@@ -16,7 +16,7 @@ from tests.dbus_service_mocks.rauc import Rauc as RaucService
 # pylint: disable=protected-access
 
 
-@pytest.mark.asyncio
+@pytest.mark.usefixtures("no_job_throttle")
 async def test_ota_url_generic_x86_64_rename(coresys: CoreSys) -> None:
     """Test download URL generated."""
     coresys.os._board = "intel-nuc"
@@ -67,7 +67,7 @@ def test_ota_url_os_name_rel_5_downgrade(coresys: CoreSys) -> None:
 
 async def test_update_fails_if_out_of_date(coresys: CoreSys) -> None:
     """Test update of OS fails if Supervisor is out of date."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     with (
         patch.object(
             type(coresys.supervisor), "need_update", new=PropertyMock(return_value=True)

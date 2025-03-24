@@ -5,6 +5,7 @@ from collections.abc import Awaitable
 from dataclasses import dataclass
 import logging
 from pathlib import PurePath
+from typing import Self
 
 from attr import evolve
 
@@ -17,7 +18,7 @@ from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.const import SuggestionType
 from ..utils.common import FileConfiguration
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     ATTR_DEFAULT_BACKUP_MOUNT,
     ATTR_MOUNTS,
@@ -49,11 +50,17 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         )
 
         self.coresys: CoreSys = coresys
+        self._mounts: dict[str, Mount] = {}
+        self._bound_mounts: dict[str, BoundMount] = {}
+
+    async def load_config(self) -> Self:
+        """Load config in executor."""
+        await super().load_config()
         self._mounts: dict[str, Mount] = {
-            mount[ATTR_NAME]: Mount.from_dict(coresys, mount)
+            mount[ATTR_NAME]: Mount.from_dict(self.coresys, mount)
             for mount in self._data[ATTR_MOUNTS]
         }
-        self._bound_mounts: dict[str, BoundMount] = {}
+        return self
 
     @property
     def mounts(self) -> list[Mount]:
@@ -170,7 +177,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
             if not isinstance(errors[i], MountError):
-                capture_exception(errors[i])
+                await async_capture_exception(errors[i])
 
             self.sys_resolution.add_issue(
                 evolve(mounts[i].failed_issue),
@@ -285,9 +292,12 @@ class MountManager(FileConfiguration, CoreSysAttributes):
                 where.as_posix(),
             )
             path = self.sys_config.path_emergency / mount.name
-            if not path.exists():
-                path.mkdir(mode=0o444)
 
+            def emergency_mkdir():
+                if not path.exists():
+                    path.mkdir(mode=0o444)
+
+            await self.sys_run_in_executor(emergency_mkdir)
             path = self.sys_config.local_to_extern_path(path)
 
         self._bound_mounts[mount.name] = bound_mount = BoundMount(
@@ -303,9 +313,9 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         )
         await bound_mount.bind_mount.load()
 
-    def save_data(self) -> None:
+    async def save_data(self) -> None:
         """Store data to configuration file."""
         self._data[ATTR_MOUNTS] = [
             mount.to_dict(skip_secrets=False) for mount in self.mounts
         ]
-        super().save_data()
+        await super().save_data()

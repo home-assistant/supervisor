@@ -1,5 +1,6 @@
 """Test dbus interface."""
 
+import asyncio
 from unittest.mock import patch
 
 from dbus_fast.aio.message_bus import MessageBus
@@ -145,9 +146,11 @@ async def test_proxy_missing_properties_interface(dbus_session_bus: MessageBus):
     proxy.object_path = DBUS_OBJECT_BASE
     proxy.properties_interface = "test.no.properties.interface"
 
-    async def mock_introspect(*args, **kwargs):
+    def mock_introspect(*args, **kwargs):
         """Return introspection without properties."""
-        return load_fixture("test_no_properties_interface.xml")
+        return asyncio.get_running_loop().run_in_executor(
+            None, load_fixture, "test_no_properties_interface.xml"
+        )
 
     with (
         patch.object(MessageBus, "introspect", new=mock_introspect),

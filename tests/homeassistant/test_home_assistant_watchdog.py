@@ -141,7 +141,7 @@ async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> N
                 time=1,
             ),
         )
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.1)
         start.assert_called_once()
         rebuild.assert_called_once()
 

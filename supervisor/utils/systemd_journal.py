@@ -61,7 +61,7 @@ def journal_verbose_formatter(entries: dict[str, str]) -> str:
 
 async def journal_logs_reader(
     journal_logs: ClientResponse, log_formatter: LogFormatter = LogFormatter.PLAIN
-) -> AsyncGenerator[(str | None, str), None]:
+) -> AsyncGenerator[str | None, str]:
     """Read logs from systemd journal line by line, formatted using the given formatter.
 
     Returns a generator of (cursor, formatted_entry) tuples.

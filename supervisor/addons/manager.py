@@ -5,7 +5,7 @@ from collections.abc import Awaitable
 from contextlib import suppress
 import logging
 import tarfile
-from typing import Union
+from typing import Self, Union
 
 from attr import evolve
 
@@ -23,7 +23,7 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .addon import Addon
 from .const import ADDON_UPDATE_CONDITIONS
 from .data import AddonsData
@@ -73,6 +73,11 @@ class AddonManager(CoreSysAttributes):
             if token == addon.supervisor_token:
                 return addon
         return None
+
+    async def load_config(self) -> Self:
+        """Load config in executor."""
+        await self.data.read_data()
+        return self
 
     async def load(self) -> None:
         """Start up add-on management."""
@@ -165,7 +170,7 @@ class AddonManager(CoreSysAttributes):
                 await addon.stop()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Can't stop Add-on %s: %s", addon.slug, err)
-                capture_exception(err)
+                await async_capture_exception(err)
 
     @Job(
         name="addon_manager_install",
@@ -383,7 +388,7 @@ class AddonManager(CoreSysAttributes):
                     reference=addon.slug,
                     suggestions=[SuggestionType.EXECUTE_REPAIR],
                 )
-                capture_exception(err)
+                await async_capture_exception(err)
             else:
                 add_host_coros.append(
                     self.sys_plugins.dns.add_host(

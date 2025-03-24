@@ -60,7 +60,7 @@ SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_CHANNEL): vol.Coerce(UpdateChannel),
         vol.Optional(ATTR_ADDONS_REPOSITORIES): repositories,
-        vol.Optional(ATTR_TIMEZONE): validate_timezone,
+        vol.Optional(ATTR_TIMEZONE): str,
         vol.Optional(ATTR_WAIT_BOOT): wait_boot,
         vol.Optional(ATTR_LOGGING): vol.Coerce(LogLevel),
         vol.Optional(ATTR_DEBUG): vol.Boolean(),
@@ -127,11 +127,17 @@ class APISupervisor(CoreSysAttributes):
         """Set Supervisor options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
+        # Timezone must be first as validation is incomplete
+        # If a timezone is present we do that validation after in the executor
+        if (
+            ATTR_TIMEZONE in body
+            and (timezone := body[ATTR_TIMEZONE]) != self.sys_config.timezone
+        ):
+            await self.sys_run_in_executor(validate_timezone, timezone)
+            await self.sys_config.set_timezone(timezone)
+
         if ATTR_CHANNEL in body:
             self.sys_updater.channel = body[ATTR_CHANNEL]
-
-        if ATTR_TIMEZONE in body:
-            self.sys_config.timezone = body[ATTR_TIMEZONE]
 
         if ATTR_DEBUG in body:
             self.sys_config.debug = body[ATTR_DEBUG]
@@ -159,8 +165,8 @@ class APISupervisor(CoreSysAttributes):
             self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
 
         # Save changes before processing addons in case of errors
-        self.sys_updater.save_data()
-        self.sys_config.save_data()
+        await self.sys_updater.save_data()
+        await self.sys_config.save_data()
 
         # Remove: 2022.9
         if ATTR_ADDONS_REPOSITORIES in body:

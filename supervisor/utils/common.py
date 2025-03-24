@@ -1,9 +1,10 @@
 """Common utils."""
 
+import asyncio
 from contextlib import suppress
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -18,7 +19,10 @@ _DEFAULT: dict[str, Any] = {}
 
 
 def find_one_filetype(path: Path, filename: str, filetypes: list[str]) -> Path:
-    """Find first file matching filetypes."""
+    """Find first file matching filetypes.
+
+    Must be run in executor.
+    """
     for file in path.glob(f"**/{filename}.*"):
         if file.suffix in filetypes:
             return file
@@ -26,7 +30,10 @@ def find_one_filetype(path: Path, filename: str, filetypes: list[str]) -> Path:
 
 
 def read_json_or_yaml_file(path: Path) -> dict:
-    """Read JSON or YAML file."""
+    """Read JSON or YAML file.
+
+    Must be run in executor.
+    """
     if path.suffix == ".json":
         return read_json_file(path)
 
@@ -37,7 +44,10 @@ def read_json_or_yaml_file(path: Path) -> dict:
 
 
 def write_json_or_yaml_file(path: Path, data: dict) -> None:
-    """Write JSON or YAML file."""
+    """Write JSON or YAML file.
+
+    Must be run in executor.
+    """
     if path.suffix == ".json":
         return write_json_file(path, data)
 
@@ -50,15 +60,18 @@ def write_json_or_yaml_file(path: Path, data: dict) -> None:
 class FileConfiguration:
     """Baseclass for classes that uses configuration files, the files can be JSON/YAML."""
 
-    def __init__(self, file_path: Path, schema: vol.Schema):
+    def __init__(self, file_path: Path | None, schema: vol.Schema):
         """Initialize hass object."""
-        self._file: Path = file_path
+        self._file: Path | None = file_path
         self._schema: vol.Schema = schema
         self._data: dict[str, Any] = _DEFAULT
 
-        self.read_data()
+    async def load_config(self) -> Self:
+        """Read in config in executor."""
+        await self.read_data()
+        return self
 
-    def reset_data(self) -> None:
+    async def reset_data(self) -> None:
         """Reset configuration to default."""
         try:
             self._data = self._schema(_DEFAULT)
@@ -67,15 +80,20 @@ class FileConfiguration:
                 "Can't reset %s: %s", self._file, humanize_error(self._data, ex)
             )
         else:
-            self.save_data()
+            await self.save_data()
 
-    def read_data(self) -> None:
+    async def read_data(self) -> None:
         """Read configuration file."""
-        if self._file.is_file():
-            try:
-                self._data = read_json_or_yaml_file(self._file)
-            except ConfigurationFileError:
-                self._data = _DEFAULT
+        if not self._file:
+            raise RuntimeError("Path to config file must be set!")
+
+        def _read_data() -> dict[str, Any]:
+            if self._file.is_file():
+                with suppress(ConfigurationFileError):
+                    return read_json_or_yaml_file(self._file)
+            return _DEFAULT
+
+        self._data = await asyncio.get_running_loop().run_in_executor(None, _read_data)
 
         # Validate
         try:
@@ -89,8 +107,11 @@ class FileConfiguration:
             _LOGGER.warning("Resetting %s to default", self._file)
             self._data = self._schema(_DEFAULT)
 
-    def save_data(self) -> None:
+    async def save_data(self) -> None:
         """Store data to configuration file."""
+        if not self._file:
+            raise RuntimeError("Path to config file must be set!")
+
         # Validate
         try:
             self._data = self._schema(self._data)
@@ -100,8 +121,10 @@ class FileConfiguration:
             # Load last valid data
             _LOGGER.warning("Resetting %s to last version", self._file)
             self._data = _DEFAULT
-            self.read_data()
+            await self.read_data()
         else:
             # write
             with suppress(ConfigurationFileError):
-                write_json_or_yaml_file(self._file, self._data)
+                await asyncio.get_running_loop().run_in_executor(
+                    None, write_json_or_yaml_file, self._file, self._data
+                )

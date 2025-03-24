@@ -6,7 +6,7 @@ import logging
 from ..coresys import CoreSys, CoreSysAttributes
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .data import Issue, Suggestion
 from .fixups.base import FixupBase
 from .validate import get_valid_modules
@@ -22,15 +22,18 @@ class ResolutionFixup(CoreSysAttributes):
         self.coresys = coresys
         self._fixups: dict[str, FixupBase] = {}
 
-        self._load()
+    def load_modules(self) -> None:
+        """Load and setup all fixups.
 
-    def _load(self):
-        """Load all checks."""
+        Must be run in executor.
+        """
         package = f"{__package__}.fixups"
+        fixups: dict[str, FixupBase] = {}
         for module in get_valid_modules("fixups"):
             fixup_module = import_module(f"{package}.{module}")
             fixup = fixup_module.setup(self.coresys)
-            self._fixups[fixup.slug] = fixup
+            fixups[fixup.slug] = fixup
+        self._fixups = fixups
 
     @property
     def all_fixes(self) -> list[FixupBase]:
@@ -52,7 +55,7 @@ class ResolutionFixup(CoreSysAttributes):
                 await fix()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Error during processing %s: %s", fix.suggestion, err)
-                capture_exception(err)
+                await async_capture_exception(err)
 
         _LOGGER.info("System autofix complete")
 

@@ -3,6 +3,7 @@
 from unittest.mock import PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
+import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
@@ -35,6 +36,7 @@ async def test_repair(coresys: CoreSys):
         assert install.call_count == len(coresys.plugins.all_plugins)
 
 
+@pytest.mark.usefixtures("no_job_throttle")
 async def test_load(coresys: CoreSys):
     """Test plugin manager load."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000

@@ -9,7 +9,8 @@ ENV \
 
 ARG \
     COSIGN_VERSION \
-    BUILD_ARCH
+    BUILD_ARCH \
+    QEMU_CPU
 
 # Install base
 WORKDIR /usr/src
@@ -28,22 +29,23 @@ RUN \
     \
     && curl -Lso /usr/bin/cosign "https://github.com/home-assistant/cosign/releases/download/${COSIGN_VERSION}/cosign_${BUILD_ARCH}" \
     && chmod a+x /usr/bin/cosign \
-    && pip3 install uv==0.2.21
+    && pip3 install uv==0.6.1
 
 # Install requirements
 COPY requirements.txt .
 RUN \
     if [ "${BUILD_ARCH}" = "i386" ]; then \
-        linux32 uv pip install --no-build -r requirements.txt; \
+        setarch="linux32"; \
     else \
-        uv pip install --no-build -r requirements.txt; \
+        setarch=""; \
     fi \
+    && ${setarch} uv pip install --compile-bytecode --no-cache --no-build -r requirements.txt \
     && rm -f requirements.txt
 
 # Install Home Assistant Supervisor
 COPY . supervisor
 RUN \
-    pip3 install -e ./supervisor \
+    uv pip install --no-cache -e ./supervisor \
     && python3 -m compileall ./supervisor/supervisor
 
 

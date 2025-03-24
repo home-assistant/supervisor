@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock
 
+from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.const import (
@@ -24,7 +25,7 @@ from supervisor.resolution.data import Issue, Suggestion
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_base(coresys: CoreSys, api_client):
+async def test_api_resolution_base(coresys: CoreSys, api_client: TestClient):
     """Test resolution manager api."""
     coresys.resolution.unsupported = UnsupportedReason.OS
     coresys.resolution.suggestions = Suggestion(
@@ -42,7 +43,9 @@ async def test_api_resolution_base(coresys: CoreSys, api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_dismiss_suggestion(coresys: CoreSys, api_client):
+async def test_api_resolution_dismiss_suggestion(
+    coresys: CoreSys, api_client: TestClient
+):
     """Test resolution manager suggestion apply api."""
     coresys.resolution.suggestions = clear_backup = Suggestion(
         SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
@@ -54,7 +57,9 @@ async def test_api_resolution_dismiss_suggestion(coresys: CoreSys, api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
+async def test_api_resolution_apply_suggestion(
+    coresys: CoreSys, api_client: TestClient
+):
     """Test resolution manager suggestion apply api."""
     coresys.resolution.suggestions = clear_backup = Suggestion(
         SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM
@@ -82,7 +87,7 @@ async def test_api_resolution_apply_suggestion(coresys: CoreSys, api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client):
+async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client: TestClient):
     """Test resolution manager issue apply api."""
     coresys.resolution.issues = updated_failed = Issue(
         IssueType.UPDATE_FAILED, ContextType.SYSTEM
@@ -94,7 +99,7 @@ async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_unhealthy(coresys: CoreSys, api_client):
+async def test_api_resolution_unhealthy(coresys: CoreSys, api_client: TestClient):
     """Test resolution manager api."""
     coresys.resolution.unhealthy = UnhealthyReason.DOCKER
 
@@ -104,7 +109,7 @@ async def test_api_resolution_unhealthy(coresys: CoreSys, api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_check_options(coresys: CoreSys, api_client):
+async def test_api_resolution_check_options(coresys: CoreSys, api_client: TestClient):
     """Test client API with checks options."""
     free_space = coresys.resolution.check.get("free_space")
 
@@ -121,9 +126,9 @@ async def test_api_resolution_check_options(coresys: CoreSys, api_client):
 
 
 @pytest.mark.asyncio
-async def test_api_resolution_check_run(coresys: CoreSys, api_client):
+async def test_api_resolution_check_run(coresys: CoreSys, api_client: TestClient):
     """Test client API with run check."""
-    coresys.core.state = CoreState.RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
     free_space = coresys.resolution.check.get("free_space")
 
     free_space.run_check = AsyncMock()
@@ -133,7 +138,9 @@ async def test_api_resolution_check_run(coresys: CoreSys, api_client):
     assert free_space.run_check.called
 
 
-async def test_api_resolution_suggestions_for_issue(coresys: CoreSys, api_client):
+async def test_api_resolution_suggestions_for_issue(
+    coresys: CoreSys, api_client: TestClient
+):
     """Test getting suggestions that fix an issue."""
     coresys.resolution.issues = corrupt_repo = Issue(
         IssueType.CORRUPT_REPOSITORY, ContextType.STORE, "repo_1"
@@ -165,3 +172,39 @@ async def test_api_resolution_suggestions_for_issue(coresys: CoreSys, api_client
     ]
     assert len(suggestion) == 1
     assert suggestion[0]["auto"] is False
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [("delete", "/resolution/issue/bad"), ("get", "/resolution/issue/bad/suggestions")],
+)
+async def test_issue_not_found(api_client: TestClient, method: str, url: str):
+    """Test issue not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    body = await resp.json()
+    assert body["message"] == "The supplied UUID is not a valid issue"
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [("delete", "/resolution/suggestion/bad"), ("post", "/resolution/suggestion/bad")],
+)
+async def test_suggestion_not_found(api_client: TestClient, method: str, url: str):
+    """Test suggestion not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    body = await resp.json()
+    assert body["message"] == "The supplied UUID is not a valid suggestion"
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [("post", "/resolution/check/bad/options"), ("post", "/resolution/check/bad/run")],
+)
+async def test_check_not_found(api_client: TestClient, method: str, url: str):
+    """Test check not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    body = await resp.json()
+    assert body["message"] == "The supplied check slug is not available"

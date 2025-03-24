@@ -2,7 +2,7 @@
 
 import asyncio
 from functools import wraps
-from typing import Any, no_type_check_decorator
+from typing import Any
 
 from dbus_fast import Message
 from dbus_fast.aio.message_bus import MessageBus
@@ -51,7 +51,6 @@ def dbus_method(name: str = None, disabled: bool = False, track_obj_path: bool =
     """
     orig_decorator = method(name=name, disabled=disabled)
 
-    @no_type_check_decorator
     def decorator(func):
         calls: list[list[Any]] = []
 

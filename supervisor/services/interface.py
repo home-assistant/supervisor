@@ -51,9 +51,9 @@ class ServiceInterface(CoreSysAttributes, ABC):
         """Return True if the service is in use."""
         return bool(self._data)
 
-    def save(self) -> None:
+    async def save(self) -> None:
         """Save changes."""
-        self.sys_services.data.save_data()
+        await self.sys_services.data.save_data()
 
     def get_service_data(self) -> dict[str, Any] | None:
         """Return the requested service data."""
@@ -62,9 +62,9 @@ class ServiceInterface(CoreSysAttributes, ABC):
         return None
 
     @abstractmethod
-    def set_service_data(self, addon: Addon, data: dict[str, Any]) -> None:
+    async def set_service_data(self, addon: Addon, data: dict[str, Any]) -> None:
         """Write the data into service object."""
 
     @abstractmethod
-    def del_service_data(self, addon: Addon) -> None:
+    async def del_service_data(self, addon: Addon) -> None:
         """Remove the data from service object."""

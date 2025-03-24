@@ -9,10 +9,11 @@ from pathlib import Path, PurePath
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
+from typing import Any
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from securetar import atomic_contents_add, secure_path
+from securetar import AddFileError, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -46,7 +47,7 @@ from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from ..jobs.decorator import Job, JobExecutionLimit
 from ..resolution.const import UnhealthyReason
-from ..utils import remove_folder
+from ..utils import remove_folder, remove_folder_with_excludes
 from ..utils.common import FileConfiguration
 from ..utils.json import read_json_file, write_json_file
 from .api import HomeAssistantAPI
@@ -60,12 +61,15 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 HOMEASSISTANT_BACKUP_EXCLUDE = [
+    "**/__pycache__/*",
+    "**/.DS_Store",
     "*.db-shm",
     "*.corrupt.*",
-    "__pycache__/*",
-    "*.log",
     "*.log.*",
+    "*.log",
     "OZW_Log.txt",
+    "backups/*.tar",
+    "tmp_backups/*.tar",
     "tts/*",
 ]
 HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE = [
@@ -305,20 +309,24 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
         # Register for events
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
+        self.sys_bus.register_event(
+            BusEvent.HARDWARE_REMOVE_DEVICE, self._hardware_events
+        )
 
-    def write_pulse(self):
+    async def write_pulse(self):
         """Write asound config to file and return True on success."""
         pulse_config = self.sys_plugins.audio.pulse_client(
             input_profile=self.audio_input, output_profile=self.audio_output
         )
 
-        # Cleanup wrong maps
-        if self.path_pulse.is_dir():
-            shutil.rmtree(self.path_pulse, ignore_errors=True)
-
-        # Write pulse config
-        try:
+        def write_pulse_config():
+            # Cleanup wrong maps
+            if self.path_pulse.is_dir():
+                shutil.rmtree(self.path_pulse, ignore_errors=True)
             self.path_pulse.write_text(pulse_config, encoding="utf-8")
+
+        try:
+            await self.sys_run_in_executor(write_pulse_config)
         except OSError as err:
             if err.errno == errno.EBADMSG:
                 self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
@@ -353,7 +361,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             )
         except HomeAssistantWSError as err:
             raise HomeAssistantBackupError(
-                "Preparing backup of Home Assistant Core failed. Check HA Core logs.",
+                f"Preparing backup of Home Assistant Core failed. Failed to inform HA Core: {str(err)}.",
                 _LOGGER.error,
             ) from err
 
@@ -370,9 +378,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             resp = await self.websocket.async_send_command(
                 {ATTR_TYPE: WSType.BACKUP_END}
             )
-        except HomeAssistantWSError:
+        except HomeAssistantWSError as err:
             _LOGGER.warning(
-                "Error resuming normal operations after backup of Home Assistant Core. Check HA Core logs."
+                "Error resuming normal operations after backup of Home Assistant Core. Failed to inform HA Core: %s.",
+                str(err),
             )
         else:
             if resp and not resp.get(ATTR_SUCCESS):
@@ -385,51 +394,59 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def backup(
         self, tar_file: tarfile.TarFile, exclude_database: bool = False
     ) -> None:
-        """Backup Home Assistant Core config/ directory."""
-        await self.begin_backup()
-        try:
+        """Backup Home Assistant Core config/directory."""
+        excludes = HOMEASSISTANT_BACKUP_EXCLUDE.copy()
+        if exclude_database:
+            excludes += HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE
+
+        def _is_excluded_by_filter(path: PurePath) -> bool:
+            """Filter function to filter out excluded files from the backup."""
+            for exclude in excludes:
+                if not path.full_match(f"data/{exclude}"):
+                    continue
+                _LOGGER.debug("Ignoring %s because of %s", path, exclude)
+                return True
+
+            return False
+
+        # Backup data config folder
+        def _write_tarfile(metadata: dict[str, Any]) -> None:
+            """Write tarfile."""
             with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
                 temp_path = Path(temp)
 
                 # Store local configs/state
                 try:
-                    write_json_file(
-                        temp_path.joinpath("homeassistant.json"), self._data
-                    )
+                    write_json_file(temp_path.joinpath("homeassistant.json"), metadata)
                 except ConfigurationFileError as err:
                     raise HomeAssistantError(
                         f"Can't save meta for Home Assistant Core: {err!s}",
                         _LOGGER.error,
                     ) from err
 
-                # Backup data config folder
-                def _write_tarfile():
+                try:
                     with tar_file as backup:
                         # Backup metadata
                         backup.add(temp, arcname=".")
-
-                        # Set excludes
-                        excludes = HOMEASSISTANT_BACKUP_EXCLUDE.copy()
-                        if exclude_database:
-                            excludes += HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE
 
                         # Backup data
                         atomic_contents_add(
                             backup,
                             self.sys_config.path_homeassistant,
-                            excludes=excludes,
+                            file_filter=_is_excluded_by_filter,
                             arcname="data",
                         )
-
-                try:
-                    _LOGGER.info("Backing up Home Assistant Core config folder")
-                    await self.sys_run_in_executor(_write_tarfile)
-                    _LOGGER.info("Backup Home Assistant Core config folder done")
-                except (tarfile.TarError, OSError) as err:
+                except (tarfile.TarError, OSError, AddFileError) as err:
                     raise HomeAssistantBackupError(
                         f"Can't backup Home Assistant Core config folder: {str(err)}",
                         _LOGGER.error,
                     ) from err
+
+        await self.begin_backup()
+        try:
+            _LOGGER.info("Backing up Home Assistant Core config folder")
+            await self.sys_run_in_executor(_write_tarfile, self._data)
+            _LOGGER.info("Backup Home Assistant Core config folder done")
         finally:
             await self.end_backup()
 
@@ -438,91 +455,94 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         self, tar_file: tarfile.TarFile, exclude_database: bool = False
     ) -> None:
         """Restore Home Assistant Core config/ directory."""
-        with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
-            temp_path = Path(temp)
-            temp_data = temp_path.joinpath("data")
-            temp_meta = temp_path.joinpath("homeassistant.json")
 
-            # extract backup
-            def _extract_tarfile():
-                """Extract tar backup."""
-                with tar_file as backup:
-                    backup.extractall(
-                        path=temp_path,
-                        members=secure_path(backup),
-                        filter="fully_trusted",
+        def _restore_home_assistant() -> Any:
+            """Restores data and reads metadata from backup.
+
+            Returns: Home Assistant metdata
+            """
+            with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
+                temp_path = Path(temp)
+                temp_data = temp_path.joinpath("data")
+                temp_meta = temp_path.joinpath("homeassistant.json")
+
+                # extract backup
+                try:
+                    with tar_file as backup:
+                        backup.extractall(
+                            path=temp_path,
+                            members=secure_path(backup),
+                            filter="fully_trusted",
+                        )
+                except tarfile.TarError as err:
+                    raise HomeAssistantError(
+                        f"Can't read tarfile {tar_file}: {err}", _LOGGER.error
+                    ) from err
+
+                # Check old backup format v1
+                if not temp_data.exists():
+                    temp_data = temp_path
+
+                _LOGGER.info("Restore Home Assistant Core config folder")
+                if exclude_database:
+                    remove_folder_with_excludes(
+                        self.sys_config.path_homeassistant,
+                        excludes=HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE,
+                        tmp_dir=self.sys_config.path_tmp,
                     )
+                else:
+                    remove_folder(self.sys_config.path_homeassistant)
 
-            try:
-                await self.sys_run_in_executor(_extract_tarfile)
-            except tarfile.TarError as err:
-                raise HomeAssistantError(
-                    f"Can't read tarfile {tar_file}: {err}", _LOGGER.error
-                ) from err
+                try:
+                    shutil.copytree(
+                        temp_data,
+                        self.sys_config.path_homeassistant,
+                        symlinks=True,
+                        dirs_exist_ok=True,
+                    )
+                except shutil.Error as err:
+                    raise HomeAssistantError(
+                        f"Can't restore origin data: {err}", _LOGGER.error
+                    ) from err
 
-            # Check old backup format v1
-            if not temp_data.exists():
-                temp_data = temp_path
+                _LOGGER.info("Restore Home Assistant Core config folder done")
 
-            # Restore data
-            def _restore_data():
-                """Restore data."""
-                shutil.copytree(
-                    temp_data,
-                    self.sys_config.path_homeassistant,
-                    symlinks=True,
-                    dirs_exist_ok=True,
-                )
+                if not temp_meta.exists():
+                    return None
+                _LOGGER.info("Restore Home Assistant Core metadata")
 
-            _LOGGER.info("Restore Home Assistant Core config folder")
-            excludes = (
-                HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE if exclude_database else None
-            )
-            await remove_folder(
-                self.sys_config.path_homeassistant,
-                content_only=True,
-                excludes=excludes,
-                tmp_dir=self.sys_config.path_tmp,
-            )
-            try:
-                await self.sys_run_in_executor(_restore_data)
-            except shutil.Error as err:
-                raise HomeAssistantError(
-                    f"Can't restore origin data: {err}", _LOGGER.error
-                ) from err
+                # Read backup data
+                try:
+                    data = read_json_file(temp_meta)
+                except ConfigurationFileError as err:
+                    raise HomeAssistantError() from err
 
-            _LOGGER.info("Restore Home Assistant Core config folder done")
+                return data
 
-            if not temp_meta.exists():
-                return
-            _LOGGER.info("Restore Home Assistant Core metadata")
+        data = await self.sys_run_in_executor(_restore_home_assistant)
+        if data is None:
+            return
 
-            # Read backup data
-            try:
-                data = read_json_file(temp_meta)
-            except ConfigurationFileError as err:
-                raise HomeAssistantError() from err
+        # Validate metadata
+        try:
+            data = SCHEMA_HASS_CONFIG(data)
+        except vol.Invalid as err:
+            raise HomeAssistantError(
+                f"Can't validate backup data: {humanize_error(data, err)}",
+                _LOGGER.error,
+            ) from err
 
-            # Validate
-            try:
-                data = SCHEMA_HASS_CONFIG(data)
-            except vol.Invalid as err:
-                raise HomeAssistantError(
-                    f"Can't validate backup data: {humanize_error(data, err)}",
-                    _LOGGER.err,
-                ) from err
-
-            # Restore metadata
-            for attr in (
-                ATTR_AUDIO_INPUT,
-                ATTR_AUDIO_OUTPUT,
-                ATTR_PORT,
-                ATTR_SSL,
-                ATTR_REFRESH_TOKEN,
-                ATTR_WATCHDOG,
-            ):
-                if attr in data:
-                    self._data[attr] = data[attr]
+        # Restore metadata
+        for attr in (
+            ATTR_AUDIO_INPUT,
+            ATTR_AUDIO_OUTPUT,
+            ATTR_PORT,
+            ATTR_SSL,
+            ATTR_REFRESH_TOKEN,
+            ATTR_WATCHDOG,
+        ):
+            if attr in data:
+                self._data[attr] = data[attr]
 
     @Job(
         name="home_assistant_get_users",

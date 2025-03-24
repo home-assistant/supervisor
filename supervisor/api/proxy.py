@@ -95,6 +95,7 @@ class APIProxy(CoreSysAttributes):
             response = web.StreamResponse()
             response.content_type = request.headers.get(CONTENT_TYPE)
             try:
+                response.headers["X-Accel-Buffering"] = "no"
                 await response.prepare(request)
                 async for data in client.content:
                     await response.write(data)

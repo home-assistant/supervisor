@@ -53,7 +53,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         _LOGGER.info("Loaded %d messages", len(messages))
         self.message_obj = messages
 
-    def save(self) -> None:
+    async def save(self) -> None:
         """Write discovery message into data file."""
         messages: list[dict[str, Any]] = []
         for message in self.list_messages:
@@ -61,7 +61,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
 
         self._data[ATTR_DISCOVERY].clear()
         self._data[ATTR_DISCOVERY].extend(messages)
-        self.save_data()
+        await self.save_data()
 
     def get(self, uuid: str) -> Message | None:
         """Return discovery message."""
@@ -72,7 +72,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         """Return list of available discovery messages."""
         return list(self.message_obj.values())
 
-    def send(self, addon: Addon, service: str, config: dict[str, Any]) -> Message:
+    async def send(self, addon: Addon, service: str, config: dict[str, Any]) -> Message:
         """Send a discovery message to Home Assistant."""
         # Create message
         message = Message(addon.slug, service, config)
@@ -93,15 +93,15 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             "Sending discovery to Home Assistant %s from %s", service, addon.slug
         )
         self.message_obj[message.uuid] = message
-        self.save()
+        await self.save()
 
         self.sys_create_task(self._push_discovery(message, CMD_NEW))
         return message
 
-    def remove(self, message: Message) -> None:
+    async def remove(self, message: Message) -> None:
         """Remove a discovery message from Home Assistant."""
         self.message_obj.pop(message.uuid, None)
-        self.save()
+        await self.save()
 
         _LOGGER.info(
             "Delete discovery to Home Assistant %s from %s",

@@ -7,7 +7,7 @@ from typing import Any
 from ..const import ATTR_CHECKS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionNotFound
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .checks.base import CheckBase
 from .validate import get_valid_modules
 
@@ -22,8 +22,6 @@ class ResolutionCheck(CoreSysAttributes):
         self.coresys = coresys
         self._checks: dict[str, CheckBase] = {}
 
-        self._load()
-
     @property
     def data(self) -> dict[str, Any]:
         """Return data."""
@@ -34,13 +32,18 @@ class ResolutionCheck(CoreSysAttributes):
         """Return all list of all checks."""
         return list(self._checks.values())
 
-    def _load(self):
-        """Load all checks."""
+    def load_modules(self) -> None:
+        """Load and setup all checks.
+
+        Must be run in executor.
+        """
         package = f"{__package__}.checks"
+        checks: dict[str, CheckBase] = {}
         for module in get_valid_modules("checks"):
             check_module = import_module(f"{package}.{module}")
             check = check_module.setup(self.coresys)
-            self._checks[check.slug] = check
+            checks[check.slug] = check
+        self._checks = checks
 
     def get(self, slug: str) -> CheckBase:
         """Return check based on slug."""
@@ -61,6 +64,6 @@ class ResolutionCheck(CoreSysAttributes):
                 await check()
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.error("Error during processing %s: %s", check.issue, err)
-                capture_exception(err)
+                await async_capture_exception(err)
 
         _LOGGER.info("System checks complete")

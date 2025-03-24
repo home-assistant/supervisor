@@ -40,7 +40,7 @@ from ..exceptions import (
 )
 from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .const import (
     ATTR_PATH,
     ATTR_READ_ONLY,
@@ -208,7 +208,7 @@ class Mount(CoreSysAttributes, ABC):
         try:
             self._state = await self.unit.get_active_state()
         except DBusError as err:
-            capture_exception(err)
+            await async_capture_exception(err)
             raise MountError(
                 f"Could not get active state of mount due to: {err!s}"
             ) from err
@@ -221,7 +221,7 @@ class Mount(CoreSysAttributes, ABC):
             self._unit = None
             self._state = None
         except DBusError as err:
-            capture_exception(err)
+            await async_capture_exception(err)
             raise MountError(f"Could not get mount unit due to: {err!s}") from err
         return self.unit
 
@@ -278,21 +278,25 @@ class Mount(CoreSysAttributes, ABC):
         """Mount using systemd."""
         # If supervisor can see where it will mount, ensure there's an empty folder there
         if self.local_where:
-            if not self.local_where.exists():
-                _LOGGER.info(
-                    "Creating folder for mount: %s", self.local_where.as_posix()
-                )
-                self.local_where.mkdir(parents=True)
-            elif not self.local_where.is_dir():
-                raise MountInvalidError(
-                    f"Cannot mount {self.name} at {self.local_where.as_posix()} as it is not a directory",
-                    _LOGGER.error,
-                )
-            elif any(self.local_where.iterdir()):
-                raise MountInvalidError(
-                    f"Cannot mount {self.name} at {self.local_where.as_posix()} because it is not empty",
-                    _LOGGER.error,
-                )
+
+            def ensure_empty_folder() -> None:
+                if not self.local_where.exists():
+                    _LOGGER.info(
+                        "Creating folder for mount: %s", self.local_where.as_posix()
+                    )
+                    self.local_where.mkdir(parents=True)
+                elif not self.local_where.is_dir():
+                    raise MountInvalidError(
+                        f"Cannot mount {self.name} at {self.local_where.as_posix()} as it is not a directory",
+                        _LOGGER.error,
+                    )
+                elif any(self.local_where.iterdir()):
+                    raise MountInvalidError(
+                        f"Cannot mount {self.name} at {self.local_where.as_posix()} because it is not empty",
+                        _LOGGER.error,
+                    )
+
+            await self.sys_run_in_executor(ensure_empty_folder)
 
         try:
             options = (
@@ -488,17 +492,23 @@ class CIFSMount(NetworkMount):
     async def mount(self) -> None:
         """Mount using systemd."""
         if self.username and self.password:
-            if not self.path_credentials.exists():
-                self.path_credentials.touch(mode=0o600)
 
-            with self.path_credentials.open(mode="w") as cred_file:
-                cred_file.write(f"username={self.username}\npassword={self.password}")
+            def write_credentials() -> None:
+                if not self.path_credentials.exists():
+                    self.path_credentials.touch(mode=0o600)
+
+                with self.path_credentials.open(mode="w") as cred_file:
+                    cred_file.write(
+                        f"username={self.username}\npassword={self.password}"
+                    )
+
+            await self.sys_run_in_executor(write_credentials)
 
         await super().mount()
 
     async def unmount(self) -> None:
         """Unmount using systemd."""
-        self.path_credentials.unlink(missing_ok=True)
+        await self.sys_run_in_executor(self.path_credentials.unlink, missing_ok=True)
         await super().unmount()
 
 

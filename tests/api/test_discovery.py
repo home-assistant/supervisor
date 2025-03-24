@@ -54,7 +54,7 @@ async def test_api_list_discovery(
         ),
         patch("supervisor.utils.common.Path.is_file", return_value=True),
     ):
-        coresys.discovery.read_data()
+        await coresys.discovery.read_data()
 
     await coresys.discovery.load()
     assert coresys.discovery.list_messages == [
@@ -138,3 +138,15 @@ async def test_api_invalid_discovery(api_client: TestClient, install_addon_ssh: 
 
     resp = await api_client.post("/discovery", json={"service": "test", "config": None})
     assert resp.status == 400
+
+
+@pytest.mark.parametrize(
+    ("method", "url"),
+    [("get", "/discovery/bad"), ("delete", "/discovery/bad")],
+)
+async def test_discovery_not_found(api_client: TestClient, method: str, url: str):
+    """Test discovery not found error."""
+    resp = await api_client.request(method, url)
+    assert resp.status == 404
+    resp = await resp.json()
+    assert resp["message"] == "Discovery message not found"

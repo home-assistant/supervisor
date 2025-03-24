@@ -24,7 +24,7 @@ from ..exceptions import (
 from ..jobs.const import JobCondition, JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.const import UnhealthyReason
-from ..utils.sentry import capture_exception
+from ..utils.sentry import async_capture_exception
 from .data_disk import DataDisk
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -217,12 +217,15 @@ class OSManager(CoreSysAttributes):
                     )
 
                 # Download RAUCB file
-                with raucb.open("wb") as ota_file:
+                ota_file = await self.sys_run_in_executor(raucb.open, "wb")
+                try:
                     while True:
                         chunk = await request.content.read(1_048_576)
                         if not chunk:
                             break
-                        ota_file.write(chunk)
+                        await self.sys_run_in_executor(ota_file.write, chunk)
+                finally:
+                    await self.sys_run_in_executor(ota_file.close)
 
             _LOGGER.info("Completed download of OTA update file %s", raucb)
 
@@ -382,7 +385,7 @@ class OSManager(CoreSysAttributes):
                 RaucState.ACTIVE, self.get_slot_name(boot_name)
             )
         except DBusError as err:
-            capture_exception(err)
+            await async_capture_exception(err)
             raise HassOSSlotUpdateError(
                 f"Can't mark {boot_name} as active!", _LOGGER.error
             ) from err

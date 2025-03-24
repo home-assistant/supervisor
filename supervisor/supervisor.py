@@ -13,7 +13,12 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from .const import ATTR_SUPERVISOR_INTERNET, SUPERVISOR_VERSION, URL_HASSIO_APPARMOR
+from .const import (
+    ATTR_SUPERVISOR_INTERNET,
+    SUPERVISOR_VERSION,
+    URL_HASSIO_APPARMOR,
+    BusEvent,
+)
 from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
@@ -31,7 +36,7 @@ from .jobs.const import JobCondition, JobExecutionLimit
 from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType, UnhealthyReason
 from .utils.codenotary import calc_checksum
-from .utils.sentry import capture_exception
+from .utils.sentry import async_capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -74,6 +79,7 @@ class Supervisor(CoreSysAttributes):
         if self._connectivity == state:
             return
         self._connectivity = state
+        self.sys_bus.fire_event(BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, state)
         self.sys_homeassistant.websocket.supervisor_update_event(
             "network", {ATTR_SUPERVISOR_INTERNET: state}
         )
@@ -152,25 +158,35 @@ class Supervisor(CoreSysAttributes):
             ) from err
 
         # Load
-        with TemporaryDirectory(dir=self.sys_config.path_tmp) as tmp_dir:
-            profile_file = Path(tmp_dir, "apparmor.txt")
-            try:
-                profile_file.write_text(data, encoding="utf-8")
-            except OSError as err:
-                if err.errno == errno.EBADMSG:
-                    self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
-                raise SupervisorAppArmorError(
-                    f"Can't write temporary profile: {err!s}", _LOGGER.error
-                ) from err
+        temp_dir: TemporaryDirectory | None = None
 
-            try:
-                await self.sys_host.apparmor.load_profile(
-                    "hassio-supervisor", profile_file
-                )
-            except HostAppArmorError as err:
-                raise SupervisorAppArmorError(
-                    "Can't update AppArmor profile!", _LOGGER.error
-                ) from err
+        def write_profile() -> Path:
+            nonlocal temp_dir
+            temp_dir = TemporaryDirectory(dir=self.sys_config.path_tmp)
+            profile_file = Path(temp_dir.name, "apparmor.txt")
+            profile_file.write_text(data, encoding="utf-8")
+            return profile_file
+
+        try:
+            profile_file = await self.sys_run_in_executor(write_profile)
+
+            await self.sys_host.apparmor.load_profile("hassio-supervisor", profile_file)
+
+        except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+            raise SupervisorAppArmorError(
+                f"Can't write temporary profile: {err!s}", _LOGGER.error
+            ) from err
+
+        except HostAppArmorError as err:
+            raise SupervisorAppArmorError(
+                "Can't update AppArmor profile!", _LOGGER.error
+            ) from err
+
+        finally:
+            if temp_dir:
+                await self.sys_run_in_executor(temp_dir.cleanup)
 
     async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Supervisor version."""
@@ -203,14 +219,14 @@ class Supervisor(CoreSysAttributes):
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
             )
-            capture_exception(err)
+            await async_capture_exception(err)
             raise SupervisorUpdateError(
                 f"Update of Supervisor failed: {err!s}", _LOGGER.critical
             ) from err
 
         self.sys_config.version = version
         self.sys_config.image = self.sys_updater.image_supervisor
-        self.sys_config.save_data()
+        await self.sys_config.save_data()
 
         self.sys_create_task(self.sys_core.stop())
 

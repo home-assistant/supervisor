@@ -9,7 +9,7 @@ from supervisor.dbus.timedate import TimeDate
 from supervisor.utils.dt import utcnow
 
 
-async def test_timezone(run_dir, coresys: CoreSys):
+async def test_timezone(coresys: CoreSys):
     """Test write corestate to /run/supervisor."""
     # pylint: disable=protected-access
     coresys.host.sys_dbus._timedate = TimeDate()
@@ -21,13 +21,13 @@ async def test_timezone(run_dir, coresys: CoreSys):
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
     assert coresys.timezone == "Etc/UTC"
 
-    coresys.config.timezone = "Europe/Zurich"
+    await coresys.config.set_timezone("Europe/Zurich")
     assert coresys.timezone == "Europe/Zurich"
 
 
-def test_now(coresys: CoreSys):
+async def test_now(coresys: CoreSys):
     """Test datetime now with local time."""
-    coresys.config.timezone = "Europe/Zurich"
+    await coresys.config.set_timezone("Europe/Zurich")
 
     zurich = coresys.now()
     utc = utcnow()
@@ -39,6 +39,6 @@ def test_now(coresys: CoreSys):
 def test_custom_user_agent(coresys: CoreSys):
     """Test custom useragent."""
     assert (
-        "HomeAssistantSupervisor/99.9.9dev"
+        "HomeAssistantSupervisor/9999.09.9.dev9999"
         in coresys.websession._default_headers[USER_AGENT]  # pylint: disable=protected-access
     )

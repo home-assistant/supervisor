@@ -28,6 +28,15 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema(
 )
 
 
+def ensure_builtin_repositories(addon_repositories: list[str]) -> list[str]:
+    """Ensure builtin repositories are in list.
+
+    Note: This should not be used in validation as the resulting list is not
+    stable. This can have side effects when comparing data later on.
+    """
+    return list(set(addon_repositories) | BUILTIN_REPOSITORIES)
+
+
 def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
     if repository in [StoreType.CORE, StoreType.LOCAL]:
@@ -44,13 +53,7 @@ def validate_repository(repository: str) -> str:
     return repository
 
 
-def ensure_builtin_repositories(addon_repositories: list[str]) -> list[str]:
-    """Ensure builtin repositories are in list."""
-    return list(set(addon_repositories) | BUILTIN_REPOSITORIES)
-
-
-# pylint: disable=no-value-for-parameter
-repositories = vol.All([validate_repository], vol.Unique(), ensure_builtin_repositories)
+repositories = vol.All([validate_repository], vol.Unique())
 
 SCHEMA_STORE_FILE = vol.Schema(
     {
