@@ -25,6 +25,6 @@ securetar==2025.2.1
 sentry-sdk==2.24.0
 setuptools==77.0.3
 voluptuous==0.15.2
-dbus-fast==2.39.6
+dbus-fast==2.43.0
 typing_extensions==4.12.2
 zlib-fast==0.2.1
