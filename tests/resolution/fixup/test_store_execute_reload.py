@@ -15,11 +15,11 @@ async def test_fixup(coresys: CoreSys):
 
     assert store_execute_reload.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_RELOAD, ContextType.STORE, reference="test"
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.EXECUTE_RELOAD, ContextType.STORE, reference="test")
     )
-    coresys.resolution.issues = Issue(
-        IssueType.FATAL_ERROR, ContextType.STORE, reference="test"
+    coresys.resolution.add_issue(
+        Issue(IssueType.FATAL_ERROR, ContextType.STORE, reference="test")
     )
 
     mock_repositorie = AsyncMock()

@@ -83,7 +83,7 @@ class APIIngress(CoreSysAttributes):
 
     def _extract_addon(self, request: web.Request) -> Addon:
         """Return addon, throw an exception it it doesn't exist."""
-        token = request.match_info.get("token")
+        token = request.match_info["token"]
 
         # Find correct add-on
         addon = self.sys_ingress.get(token)
@@ -132,7 +132,7 @@ class APIIngress(CoreSysAttributes):
 
     @api_process
     @require_home_assistant
-    async def validate_session(self, request: web.Request) -> dict[str, Any]:
+    async def validate_session(self, request: web.Request) -> None:
         """Validate session and extending how long it's valid for."""
         data = await api_validate(VALIDATE_SESSION_DATA, request)
 
@@ -147,14 +147,14 @@ class APIIngress(CoreSysAttributes):
         """Route data to Supervisor ingress service."""
 
         # Check Ingress Session
-        session = request.cookies.get(COOKIE_INGRESS)
+        session = request.cookies.get(COOKIE_INGRESS, "")
         if not self.sys_ingress.validate_session(session):
             _LOGGER.warning("No valid ingress session %s", session)
             raise HTTPUnauthorized()
 
         # Process requests
         addon = self._extract_addon(request)
-        path = request.match_info.get("path")
+        path = request.match_info["path"]
         session_data = self.sys_ingress.get_session_data(session)
         try:
             # Websocket
@@ -183,7 +183,7 @@ class APIIngress(CoreSysAttributes):
                 for proto in request.headers[hdrs.SEC_WEBSOCKET_PROTOCOL].split(",")
             ]
         else:
-            req_protocols = ()
+            req_protocols = []
 
         ws_server = web.WebSocketResponse(
             protocols=req_protocols, autoclose=False, autoping=False
@@ -340,9 +340,10 @@ def _init_header(
         headers[name] = value
 
     # Update X-Forwarded-For
-    forward_for = request.headers.get(hdrs.X_FORWARDED_FOR)
-    connected_ip = ip_address(request.transport.get_extra_info("peername")[0])
-    headers[hdrs.X_FORWARDED_FOR] = f"{forward_for}, {connected_ip!s}"
+    if request.transport:
+        forward_for = request.headers.get(hdrs.X_FORWARDED_FOR)
+        connected_ip = ip_address(request.transport.get_extra_info("peername")[0])
+        headers[hdrs.X_FORWARDED_FOR] = f"{forward_for}, {connected_ip!s}"
 
     return headers
 

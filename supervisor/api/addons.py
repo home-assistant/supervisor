@@ -3,14 +3,13 @@
 import asyncio
 from collections.abc import Awaitable
 import logging
-from typing import Any
+from typing import Any, TypedDict
 
 from aiohttp import web
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
 from ..addons.addon import Addon
-from ..addons.manager import AnyAddon
 from ..addons.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
@@ -63,7 +62,6 @@ from ..const import (
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
-    ATTR_MESSAGE,
     ATTR_NAME,
     ATTR_NETWORK,
     ATTR_NETWORK_DESCRIPTION,
@@ -72,7 +70,6 @@ from ..const import (
     ATTR_OPTIONS,
     ATTR_PRIVILEGED,
     ATTR_PROTECTED,
-    ATTR_PWNED,
     ATTR_RATING,
     ATTR_REPOSITORY,
     ATTR_SCHEMA,
@@ -90,7 +87,6 @@ from ..const import (
     ATTR_UPDATE_AVAILABLE,
     ATTR_URL,
     ATTR_USB,
-    ATTR_VALID,
     ATTR_VERSION,
     ATTR_VERSION_LATEST,
     ATTR_VIDEO,
@@ -146,12 +142,20 @@ SCHEMA_UNINSTALL = vol.Schema(
 # pylint: enable=no-value-for-parameter
 
 
+class OptionsValidateResponse(TypedDict):
+    """Response object for options validate."""
+
+    message: str
+    valid: bool
+    pwned: bool | None
+
+
 class APIAddons(CoreSysAttributes):
     """Handle RESTful API for add-on functions."""
 
     def get_addon_for_request(self, request: web.Request) -> Addon:
         """Return addon, throw an exception if it doesn't exist."""
-        addon_slug: str = request.match_info.get("addon")
+        addon_slug: str = request.match_info["addon"]
 
         # Lookup itself
         if addon_slug == "self":
@@ -169,7 +173,7 @@ class APIAddons(CoreSysAttributes):
         return addon
 
     @api_process
-    async def list(self, request: web.Request) -> dict[str, Any]:
+    async def list_addons(self, request: web.Request) -> dict[str, Any]:
         """Return all add-ons or repositories."""
         data_addons = [
             {
@@ -204,7 +208,7 @@ class APIAddons(CoreSysAttributes):
 
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information."""
-        addon: AnyAddon = self.get_addon_for_request(request)
+        addon: Addon = self.get_addon_for_request(request)
 
         data = {
             ATTR_NAME: addon.name,
@@ -339,10 +343,10 @@ class APIAddons(CoreSysAttributes):
         await addon.save_persist()
 
     @api_process
-    async def options_validate(self, request: web.Request) -> None:
+    async def options_validate(self, request: web.Request) -> OptionsValidateResponse:
         """Validate user options for add-on."""
         addon = self.get_addon_for_request(request)
-        data = {ATTR_MESSAGE: "", ATTR_VALID: True, ATTR_PWNED: False}
+        data = OptionsValidateResponse(message="", valid=True, pwned=False)
 
         options = await request.json(loads=json_loads) or addon.options
 
@@ -351,8 +355,8 @@ class APIAddons(CoreSysAttributes):
         try:
             options_schema.validate(options)
         except vol.Invalid as ex:
-            data[ATTR_MESSAGE] = humanize_error(options, ex)
-            data[ATTR_VALID] = False
+            data["message"] = humanize_error(options, ex)
+            data["valid"] = False
 
         if not self.sys_security.pwned:
             return data
@@ -363,24 +367,24 @@ class APIAddons(CoreSysAttributes):
                 await self.sys_security.verify_secret(secret)
                 continue
             except PwnedSecret:
-                data[ATTR_PWNED] = True
+                data["pwned"] = True
             except PwnedError:
-                data[ATTR_PWNED] = None
+                data["pwned"] = None
             break
 
-        if self.sys_security.force and data[ATTR_PWNED] in (None, True):
-            data[ATTR_VALID] = False
-            if data[ATTR_PWNED] is None:
-                data[ATTR_MESSAGE] = "Error happening on pwned secrets check!"
+        if self.sys_security.force and data["pwned"] in (None, True):
+            data["valid"] = False
+            if data["pwned"] is None:
+                data["message"] = "Error happening on pwned secrets check!"
             else:
-                data[ATTR_MESSAGE] = "Add-on uses pwned secrets!"
+                data["message"] = "Add-on uses pwned secrets!"
 
         return data
 
     @api_process
     async def options_config(self, request: web.Request) -> None:
         """Validate user options for add-on."""
-        slug: str = request.match_info.get("addon")
+        slug: str = request.match_info["addon"]
         if slug != "self":
             raise APIForbidden("This can be only read by the Add-on itself!")
         addon = self.get_addon_for_request(request)

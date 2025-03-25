@@ -96,7 +96,7 @@ def test_diagnostics_disabled(coresys):
 def test_not_supported(coresys):
     """Test if not supported."""
     coresys.config.diagnostics = True
-    coresys.resolution.unsupported = UnsupportedReason.DOCKER_VERSION
+    coresys.resolution.add_unsupported_reason(UnsupportedReason.DOCKER_VERSION)
     assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
@@ -215,7 +215,7 @@ async def test_unhealthy_on_report(coresys):
 
     coresys.config.diagnostics = True
     await coresys.core.set_state(CoreState.RUNNING)
-    coresys.resolution.unhealthy = UnhealthyReason.DOCKER
+    coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER)
 
     with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
         event = filter_data(coresys, SAMPLE_EVENT, {})

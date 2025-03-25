@@ -53,7 +53,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
 DOCKER_HUB = "hub.docker.com"
 
-MAP_ARCH = {
+MAP_ARCH: dict[CpuArch | str, str] = {
     CpuArch.ARMV7: "linux/arm/v7",
     CpuArch.ARMHF: "linux/arm/v6",
     CpuArch.AARCH64: "linux/arm64",

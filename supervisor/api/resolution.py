@@ -33,23 +33,21 @@ class APIResoulution(CoreSysAttributes):
     def _extract_issue(self, request: web.Request) -> Issue:
         """Extract issue from request or raise."""
         try:
-            return self.sys_resolution.get_issue(request.match_info.get("issue"))
+            return self.sys_resolution.get_issue(request.match_info["issue"])
         except ResolutionNotFound:
             raise APINotFound("The supplied UUID is not a valid issue") from None
 
     def _extract_suggestion(self, request: web.Request) -> Suggestion:
         """Extract suggestion from request or raise."""
         try:
-            return self.sys_resolution.get_suggestion(
-                request.match_info.get("suggestion")
-            )
+            return self.sys_resolution.get_suggestion(request.match_info["suggestion"])
         except ResolutionNotFound:
             raise APINotFound("The supplied UUID is not a valid suggestion") from None
 
     def _extract_check(self, request: web.Request) -> CheckBase:
         """Extract check from request or raise."""
         try:
-            return self.sys_resolution.check.get(request.match_info.get("check"))
+            return self.sys_resolution.check.get(request.match_info["check"])
         except ResolutionNotFound:
             raise APINotFound("The supplied check slug is not available") from None
 

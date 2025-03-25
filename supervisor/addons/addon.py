@@ -18,7 +18,7 @@ from tempfile import TemporaryDirectory
 from typing import Any, Final
 
 import aiohttp
-from awesomeversion import AwesomeVersionCompareException
+from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from deepmerge import Merger
 from securetar import AddFileError, atomic_contents_add, secure_path
 import voluptuous as vol
@@ -285,28 +285,28 @@ class Addon(AddonModel):
     @property
     def with_icon(self) -> bool:
         """Return True if an icon exists."""
-        if self.is_detached:
+        if self.is_detached or not self.addon_store:
             return super().with_icon
         return self.addon_store.with_icon
 
     @property
     def with_logo(self) -> bool:
         """Return True if a logo exists."""
-        if self.is_detached:
+        if self.is_detached or not self.addon_store:
             return super().with_logo
         return self.addon_store.with_logo
 
     @property
     def with_changelog(self) -> bool:
         """Return True if a changelog exists."""
-        if self.is_detached:
+        if self.is_detached or not self.addon_store:
             return super().with_changelog
         return self.addon_store.with_changelog
 
     @property
     def with_documentation(self) -> bool:
         """Return True if a documentation exists."""
-        if self.is_detached:
+        if self.is_detached or not self.addon_store:
             return super().with_documentation
         return self.addon_store.with_documentation
 
@@ -316,7 +316,7 @@ class Addon(AddonModel):
         return self._available(self.data_store)
 
     @property
-    def version(self) -> str | None:
+    def version(self) -> AwesomeVersion:
         """Return installed version."""
         return self.persist[ATTR_VERSION]
 
@@ -464,7 +464,7 @@ class Addon(AddonModel):
         return None
 
     @property
-    def latest_version(self) -> str:
+    def latest_version(self) -> AwesomeVersion:
         """Return version of add-on."""
         return self.data_store[ATTR_VERSION]
 
@@ -518,9 +518,8 @@ class Addon(AddonModel):
     def webui(self) -> str | None:
         """Return URL to webui or None."""
         url = super().webui
-        if not url:
+        if not url or not (webui := RE_WEBUI.match(url)):
             return None
-        webui = RE_WEBUI.match(url)
 
         # extract arguments
         t_port = webui.group("t_port")
@@ -675,10 +674,9 @@ class Addon(AddonModel):
 
     async def watchdog_application(self) -> bool:
         """Return True if application is running."""
-        url = super().watchdog
-        if not url:
+        url = self.watchdog_url
+        if not url or not (application := RE_WATCHDOG.match(url)):
             return True
-        application = RE_WATCHDOG.match(url)
 
         # extract arguments
         t_port = int(application.group("t_port"))
@@ -687,8 +685,10 @@ class Addon(AddonModel):
         s_suffix = application.group("s_suffix") or ""
 
         # search host port for this docker port
-        if self.host_network:
-            port = self.ports.get(f"{t_port}/tcp", t_port)
+        if self.host_network and self.ports:
+            port = self.ports.get(f"{t_port}/tcp")
+            if port is None:
+                port = t_port
         else:
             port = t_port
 
@@ -777,6 +777,9 @@ class Addon(AddonModel):
     )
     async def install(self) -> None:
         """Install and setup this addon."""
+        if not self.addon_store:
+            raise AddonsError("Missing from store, cannot install!")
+
         await self.sys_addons.data.install(self.addon_store)
         await self.load()
 
@@ -880,6 +883,9 @@ class Addon(AddonModel):
         Returns a Task that completes when addon has state 'started' (see start)
         if it was running. Else nothing is returned.
         """
+        if not self.addon_store:
+            raise AddonsError("Missing from store, cannot update!")
+
         old_image = self.image
         # Cache data to prevent races with other updates to global
         store = self.addon_store.clone()
@@ -936,7 +942,9 @@ class Addon(AddonModel):
             except DockerError as err:
                 raise AddonsError() from err
 
-            await self.sys_addons.data.update(self.addon_store)
+            if self.addon_store:
+                await self.sys_addons.data.update(self.addon_store)
+
             await self._check_ingress_port()
             _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
 
@@ -965,7 +973,9 @@ class Addon(AddonModel):
             await self.sys_run_in_executor(write_pulse_config)
         except OSError as err:
             if err.errno == errno.EBADMSG:
-                self.sys_resolution.unhealthy = UnhealthyReason.OSERROR_BAD_MESSAGE
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
             _LOGGER.error(
                 "Add-on %s can't write pulse/client.config: %s", self.slug, err
             )
@@ -1324,7 +1334,7 @@ class Addon(AddonModel):
                             arcname="config",
                         )
 
-        wait_for_start: Awaitable[None] | None = None
+        wait_for_start: asyncio.Task | None = None
 
         data = {
             ATTR_USER: self.persist,
@@ -1370,7 +1380,7 @@ class Addon(AddonModel):
         Returns a Task that completes when addon has state 'started' (see start)
         if addon is started after restore. Else nothing is returned.
         """
-        wait_for_start: Awaitable[None] | None = None
+        wait_for_start: asyncio.Task | None = None
 
         # Extract backup
         def _extract_tarfile() -> tuple[TemporaryDirectory, dict[str, Any]]:
@@ -1594,6 +1604,6 @@ class Addon(AddonModel):
 
     def refresh_path_cache(self) -> Awaitable[None]:
         """Refresh cache of existing paths."""
-        if self.is_detached:
+        if self.is_detached or not self.addon_store:
             return super().refresh_path_cache()
         return self.addon_store.refresh_path_cache()

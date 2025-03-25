@@ -1,11 +1,12 @@
 """Handle security part of this API."""
 
+from collections.abc import Callable
 import logging
 import re
 from typing import Final
 from urllib.parse import unquote
 
-from aiohttp.web import Request, RequestHandler, Response, middleware
+from aiohttp.web import Request, Response, middleware
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPUnauthorized
 from awesomeversion import AwesomeVersion
 
@@ -23,7 +24,7 @@ from ...const import (
 )
 from ...coresys import CoreSys, CoreSysAttributes
 from ...utils import version_is_new_enough
-from ..utils import api_return_error, excract_supervisor_token
+from ..utils import api_return_error, extract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 _CORE_VERSION: Final = AwesomeVersion("2023.3.4")
@@ -179,9 +180,7 @@ class SecurityMiddleware(CoreSysAttributes):
         return unquoted
 
     @middleware
-    async def block_bad_requests(
-        self, request: Request, handler: RequestHandler
-    ) -> Response:
+    async def block_bad_requests(self, request: Request, handler: Callable) -> Response:
         """Process request and tblock commonly known exploit attempts."""
         if FILTERS.search(self._recursive_unquote(request.path)):
             _LOGGER.warning(
@@ -199,9 +198,7 @@ class SecurityMiddleware(CoreSysAttributes):
         return await handler(request)
 
     @middleware
-    async def system_validation(
-        self, request: Request, handler: RequestHandler
-    ) -> Response:
+    async def system_validation(self, request: Request, handler: Callable) -> Response:
         """Check if core is ready to response."""
         if self.sys_core.state not in (
             CoreState.STARTUP,
@@ -215,12 +212,10 @@ class SecurityMiddleware(CoreSysAttributes):
         return await handler(request)
 
     @middleware
-    async def token_validation(
-        self, request: Request, handler: RequestHandler
-    ) -> Response:
+    async def token_validation(self, request: Request, handler: Callable) -> Response:
         """Check security access of this layer."""
-        request_from = None
-        supervisor_token = excract_supervisor_token(request)
+        request_from: CoreSysAttributes | None = None
+        supervisor_token = extract_supervisor_token(request)
 
         # Blacklist
         if BLACKLIST.match(request.path):
@@ -288,7 +283,7 @@ class SecurityMiddleware(CoreSysAttributes):
         raise HTTPForbidden()
 
     @middleware
-    async def core_proxy(self, request: Request, handler: RequestHandler) -> Response:
+    async def core_proxy(self, request: Request, handler: Callable) -> Response:
         """Validate user from Core API proxy."""
         if (
             request[REQUEST_FROM] != self.sys_homeassistant

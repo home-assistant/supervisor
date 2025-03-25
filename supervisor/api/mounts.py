@@ -1,6 +1,6 @@
 """Inits file for supervisor mounts REST API."""
 
-from typing import Any
+from typing import Any, cast
 
 from aiohttp import web
 import voluptuous as vol
@@ -10,7 +10,7 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound
 from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, MountUsage
 from ..mounts.mount import Mount
-from ..mounts.validate import SCHEMA_MOUNT_CONFIG
+from ..mounts.validate import SCHEMA_MOUNT_CONFIG, MountData
 from .const import ATTR_MOUNTS, ATTR_USER_PATH
 from .utils import api_process, api_validate
 
@@ -26,7 +26,7 @@ class APIMounts(CoreSysAttributes):
 
     def _extract_mount(self, request: web.Request) -> Mount:
         """Extract mount from request or raise."""
-        name = request.match_info.get("mount")
+        name = request.match_info["mount"]
         if name not in self.sys_mounts:
             raise APINotFound(f"No mount exists with name {name}")
         return self.sys_mounts.get(name)
@@ -71,10 +71,10 @@ class APIMounts(CoreSysAttributes):
     @api_process
     async def create_mount(self, request: web.Request) -> None:
         """Create a new mount in supervisor."""
-        body = await api_validate(SCHEMA_MOUNT_CONFIG, request)
+        body = cast(MountData, await api_validate(SCHEMA_MOUNT_CONFIG, request))
 
-        if body[ATTR_NAME] in self.sys_mounts:
-            raise APIError(f"A mount already exists with name {body[ATTR_NAME]}")
+        if body["name"] in self.sys_mounts:
+            raise APIError(f"A mount already exists with name {body['name']}")
 
         mount = Mount.from_dict(self.coresys, body)
         await self.sys_mounts.create_mount(mount)
@@ -97,7 +97,10 @@ class APIMounts(CoreSysAttributes):
             {vol.Optional(ATTR_NAME, default=current.name): current.name},
             extra=vol.ALLOW_EXTRA,
         )
-        body = await api_validate(vol.All(name_schema, SCHEMA_MOUNT_CONFIG), request)
+        body = cast(
+            MountData,
+            await api_validate(vol.All(name_schema, SCHEMA_MOUNT_CONFIG), request),
+        )
 
         mount = Mount.from_dict(self.coresys, body)
         await self.sys_mounts.create_mount(mount)

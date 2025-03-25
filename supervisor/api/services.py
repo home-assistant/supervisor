@@ -25,7 +25,7 @@ class APIServices(CoreSysAttributes):
         return service
 
     @api_process
-    async def list(self, request):
+    async def list_services(self, request):
         """Show register services."""
         services = []
         for service in self.sys_services.list_services:

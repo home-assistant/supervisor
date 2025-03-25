@@ -3,11 +3,12 @@
 import asyncio
 from collections.abc import Awaitable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from aiohttp import web
 import voluptuous as vol
 
+from ..addons.addon import Addon
 from ..addons.manager import AnyAddon
 from ..addons.utils import rating_security
 from ..api.const import ATTR_SIGNED
@@ -92,7 +93,7 @@ class APIStore(CoreSysAttributes):
 
     def _extract_addon(self, request: web.Request, installed=False) -> AnyAddon:
         """Return add-on, throw an exception it it doesn't exist."""
-        addon_slug: str = request.match_info.get("addon")
+        addon_slug: str = request.match_info["addon"]
 
         if not (addon := self.sys_addons.get(addon_slug)):
             raise APINotFound(f"Addon {addon_slug} does not exist")
@@ -101,6 +102,7 @@ class APIStore(CoreSysAttributes):
             raise APIError(f"Addon {addon_slug} is not installed")
 
         if not installed and addon.is_installed:
+            addon = cast(Addon, addon)
             if not addon.addon_store:
                 raise APINotFound(f"Addon {addon_slug} does not exist in the store")
             return addon.addon_store
@@ -109,7 +111,7 @@ class APIStore(CoreSysAttributes):
 
     def _extract_repository(self, request: web.Request) -> Repository:
         """Return repository, throw an exception it it doesn't exist."""
-        repository_slug: str = request.match_info.get("repository")
+        repository_slug: str = request.match_info["repository"]
 
         if repository_slug not in self.sys_store.repositories:
             raise APINotFound(
@@ -124,7 +126,7 @@ class APIStore(CoreSysAttributes):
         """Generate addon information."""
 
         installed = (
-            self.sys_addons.get(addon.slug, local_only=True)
+            cast(Addon, self.sys_addons.get(addon.slug, local_only=True))
             if addon.is_installed
             else None
         )
@@ -144,12 +146,10 @@ class APIStore(CoreSysAttributes):
             ATTR_REPOSITORY: addon.repository,
             ATTR_SLUG: addon.slug,
             ATTR_STAGE: addon.stage,
-            ATTR_UPDATE_AVAILABLE: installed.need_update
-            if addon.is_installed
-            else False,
+            ATTR_UPDATE_AVAILABLE: installed.need_update if installed else False,
             ATTR_URL: addon.url,
             ATTR_VERSION_LATEST: addon.latest_version,
-            ATTR_VERSION: installed.version if addon.is_installed else None,
+            ATTR_VERSION: installed.version if installed else None,
         }
         if extended:
             data.update(
@@ -246,7 +246,7 @@ class APIStore(CoreSysAttributes):
     # Used by legacy routing for addons/{addon}/info, can be refactored out when that is removed (1/2023)
     async def addons_addon_info_wrapped(self, request: web.Request) -> dict[str, Any]:
         """Return add-on information directly (not api)."""
-        addon: AddonStore = self._extract_addon(request)
+        addon = cast(AddonStore, self._extract_addon(request))
         return await self._generate_addon_information(addon, True)
 
     @api_process_raw(CONTENT_TYPE_PNG)

@@ -1,7 +1,8 @@
 """Home Assistant control object."""
 
 import asyncio
-from contextlib import AbstractAsyncContextManager, asynccontextmanager, suppress
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 import logging
@@ -10,6 +11,7 @@ from typing import Any
 import aiohttp
 from aiohttp import hdrs
 from awesomeversion import AwesomeVersion
+from multidict import MultiMapping
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
@@ -84,10 +86,10 @@ class HomeAssistantAPI(CoreSysAttributes):
         json: dict[str, Any] | None = None,
         content_type: str | None = None,
         data: Any = None,
-        timeout: int = 30,
-        params: dict[str, str] | None = None,
+        timeout: int | None = 30,
+        params: MultiMapping[str] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> AbstractAsyncContextManager[aiohttp.ClientResponse]:
+    ) -> AsyncIterator[aiohttp.ClientResponse]:
         """Async context manager to make a request with right auth."""
         url = f"{self.sys_homeassistant.api_url}/{path}"
         headers = headers or {}
