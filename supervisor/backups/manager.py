@@ -7,7 +7,7 @@ from collections.abc import Awaitable
 import errno
 import logging
 from pathlib import Path
-from shutil import copy
+import shutil
 
 from ..addons.addon import Addon
 from ..const import (
@@ -368,14 +368,18 @@ class BackupManager(FileConfiguration, JobGroup):
     ):
         """Copy a backup file to additional locations."""
 
+        all_new_locations: dict[str | None, Path] = {}
+
         def copy_to_additional_locations() -> dict[str | None, Path]:
             """Copy backup file to additional locations."""
-            all_locations: dict[str | None, Path] = {}
+            nonlocal all_new_locations
             for location in locations:
                 try:
                     if location == LOCATION_CLOUD_BACKUP:
-                        all_locations[LOCATION_CLOUD_BACKUP] = Path(
-                            copy(backup.tarfile, self.sys_config.path_core_backup)
+                        all_new_locations[LOCATION_CLOUD_BACKUP] = Path(
+                            shutil.copy(
+                                backup.tarfile, self.sys_config.path_core_backup
+                            )
                         )
                     elif location:
                         location_mount: Mount = location
@@ -384,12 +388,12 @@ class BackupManager(FileConfiguration, JobGroup):
                                 f"{location_mount.name} is down, cannot copy to it",
                                 _LOGGER.error,
                             )
-                        all_locations[location_mount.name] = Path(
-                            copy(backup.tarfile, location_mount.local_where)
+                        all_new_locations[location_mount.name] = Path(
+                            shutil.copy(backup.tarfile, location_mount.local_where)
                         )
                     else:
-                        all_locations[None] = Path(
-                            copy(backup.tarfile, self.sys_config.path_backup)
+                        all_new_locations[None] = Path(
+                            shutil.copy(backup.tarfile, self.sys_config.path_backup)
                         )
                 except OSError as err:
                     msg = f"Could not copy backup to {location.name if isinstance(location, Mount) else location} due to: {err!s}"
@@ -401,12 +405,8 @@ class BackupManager(FileConfiguration, JobGroup):
                         raise BackupDataDiskBadMessageError(msg, _LOGGER.error) from err
                     raise BackupError(msg, _LOGGER.error) from err
 
-            return all_locations
-
         try:
-            all_new_locations = await self.sys_run_in_executor(
-                copy_to_additional_locations
-            )
+            await self.sys_run_in_executor(copy_to_additional_locations)
         except BackupDataDiskBadMessageError:
             self.sys_resolution.add_unhealthy_reason(
                 UnhealthyReason.OSERROR_BAD_MESSAGE

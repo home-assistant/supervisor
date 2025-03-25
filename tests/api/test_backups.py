@@ -658,6 +658,56 @@ async def test_backup_to_multiple_locations(
     assert coresys.backups.get(slug).location is None
 
 
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+@pytest.mark.parametrize(
+    ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
+)
+async def test_backup_to_multiple_locations_error_on_copy(
+    api_client: TestClient,
+    coresys: CoreSys,
+    backup_type: str,
+    inputs: dict[str, Any],
+):
+    """Test making a backup to multiple locations that fails during copy stage."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch("supervisor.backups.manager.shutil.copy", side_effect=OSError):
+        resp = await api_client.post(
+            f"/backups/new/{backup_type}",
+            json={
+                "name": "Multiple locations test",
+                "location": [None, ".cloud_backup"],
+            }
+            | inputs,
+        )
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["result"] == "ok"
+    slug = result["data"]["slug"]
+
+    orig_backup = coresys.config.path_backup / f"{slug}.tar"
+    assert await coresys.run_in_executor(orig_backup.exists)
+    assert coresys.backups.get(slug).all_locations == {
+        None: {"path": orig_backup, "protected": False, "size_bytes": 10240},
+    }
+    assert coresys.backups.get(slug).location is None
+
+    resp = await api_client.get("/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["name"] == f"backup_manager_{backup_type}_backup"
+    assert result["data"]["jobs"][0]["reference"] == slug
+    assert result["data"]["jobs"][0]["done"] is True
+    assert result["data"]["jobs"][0]["errors"] == [
+        {
+            "type": "BackupError",
+            "message": "Could not copy backup to .cloud_backup due to: ",
+            "stage": "copy_additional_locations",
+        }
+    ]
+
+
 @pytest.mark.parametrize(
     ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
 )
