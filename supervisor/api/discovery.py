@@ -37,7 +37,7 @@ class APIDiscovery(CoreSysAttributes):
 
     def _extract_message(self, request: web.Request) -> Message:
         """Extract discovery message from URL."""
-        message = self.sys_discovery.get(request.match_info.get("uuid", ""))
+        message = self.sys_discovery.get(request.match_info["uuid"])
         if not message:
             raise APINotFound("Discovery message not found")
         return message

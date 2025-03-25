@@ -155,7 +155,7 @@ class APIAddons(CoreSysAttributes):
 
     def get_addon_for_request(self, request: web.Request) -> Addon:
         """Return addon, throw an exception if it doesn't exist."""
-        addon_slug: str = request.match_info.get("addon", "")
+        addon_slug: str = request.match_info["addon"]
 
         # Lookup itself
         if addon_slug == "self":
@@ -384,7 +384,7 @@ class APIAddons(CoreSysAttributes):
     @api_process
     async def options_config(self, request: web.Request) -> None:
         """Validate user options for add-on."""
-        slug: str = request.match_info.get("addon", "")
+        slug: str = request.match_info["addon"]
         if slug != "self":
             raise APIForbidden("This can be only read by the Add-on itself!")
         addon = self.get_addon_for_request(request)

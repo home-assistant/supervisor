@@ -93,7 +93,7 @@ class APIStore(CoreSysAttributes):
 
     def _extract_addon(self, request: web.Request, installed=False) -> AnyAddon:
         """Return add-on, throw an exception it it doesn't exist."""
-        addon_slug: str = request.match_info.get("addon", "")
+        addon_slug: str = request.match_info["addon"]
 
         if not (addon := self.sys_addons.get(addon_slug)):
             raise APINotFound(f"Addon {addon_slug} does not exist")
@@ -111,7 +111,7 @@ class APIStore(CoreSysAttributes):
 
     def _extract_repository(self, request: web.Request) -> Repository:
         """Return repository, throw an exception it it doesn't exist."""
-        repository_slug: str = request.match_info.get("repository", "")
+        repository_slug: str = request.match_info["repository"]
 
         if repository_slug not in self.sys_store.repositories:
             raise APINotFound(

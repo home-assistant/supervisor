@@ -26,7 +26,7 @@ class APIJobs(CoreSysAttributes):
     def _extract_job(self, request: web.Request) -> SupervisorJob:
         """Extract job from request or raise."""
         try:
-            return self.sys_jobs.get_job(request.match_info.get("uuid", ""))
+            return self.sys_jobs.get_job(request.match_info["uuid"])
         except JobNotFound:
             raise APINotFound("Job does not exist") from None
 

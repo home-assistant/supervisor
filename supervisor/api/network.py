@@ -194,14 +194,14 @@ class APINetwork(CoreSysAttributes):
     @api_process
     async def interface_info(self, request: web.Request) -> dict[str, Any]:
         """Return network information for a interface."""
-        interface = self._get_interface(request.match_info.get(ATTR_INTERFACE, ""))
+        interface = self._get_interface(request.match_info[ATTR_INTERFACE])
 
         return interface_struct(interface)
 
     @api_process
     async def interface_update(self, request: web.Request) -> None:
         """Update the configuration of an interface."""
-        interface = self._get_interface(request.match_info.get(ATTR_INTERFACE, ""))
+        interface = self._get_interface(request.match_info[ATTR_INTERFACE])
 
         # Validate data
         body = await api_validate(SCHEMA_UPDATE, request)
@@ -247,7 +247,7 @@ class APINetwork(CoreSysAttributes):
     @api_process
     async def scan_accesspoints(self, request: web.Request) -> dict[str, Any]:
         """Scan and return a list of available networks."""
-        interface = self._get_interface(request.match_info.get(ATTR_INTERFACE, ""))
+        interface = self._get_interface(request.match_info[ATTR_INTERFACE])
 
         # Only wlan is supported
         if interface.type != InterfaceType.WIRELESS:
@@ -260,7 +260,7 @@ class APINetwork(CoreSysAttributes):
     @api_process
     async def create_vlan(self, request: web.Request) -> None:
         """Create a new vlan."""
-        interface = self._get_interface(request.match_info.get(ATTR_INTERFACE, ""))
+        interface = self._get_interface(request.match_info[ATTR_INTERFACE])
         vlan = int(request.match_info.get(ATTR_VLAN, -1))
         if vlan < 0:
             raise APIError(f"Invalid vlan specified: {vlan}")

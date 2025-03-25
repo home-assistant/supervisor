@@ -26,7 +26,7 @@ class APIMounts(CoreSysAttributes):
 
     def _extract_mount(self, request: web.Request) -> Mount:
         """Extract mount from request or raise."""
-        name = request.match_info.get("mount", "")
+        name = request.match_info["mount"]
         if name not in self.sys_mounts:
             raise APINotFound(f"No mount exists with name {name}")
         return self.sys_mounts.get(name)

@@ -83,7 +83,7 @@ class APIIngress(CoreSysAttributes):
 
     def _extract_addon(self, request: web.Request) -> Addon:
         """Return addon, throw an exception it it doesn't exist."""
-        token = request.match_info.get("token", "")
+        token = request.match_info["token"]
 
         # Find correct add-on
         addon = self.sys_ingress.get(token)
@@ -154,7 +154,7 @@ class APIIngress(CoreSysAttributes):
 
         # Process requests
         addon = self._extract_addon(request)
-        path = request.match_info.get("path", "")
+        path = request.match_info["path"]
         session_data = self.sys_ingress.get_session_data(session)
         try:
             # Websocket
