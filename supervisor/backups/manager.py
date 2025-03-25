@@ -412,17 +412,17 @@ class BackupManager(FileConfiguration, JobGroup):
                 UnhealthyReason.OSERROR_BAD_MESSAGE
             )
             raise
-
-        backup.all_locations.update(
-            {
-                loc: {
-                    ATTR_PATH: path,
-                    ATTR_PROTECTED: backup.protected,
-                    ATTR_SIZE_BYTES: backup.size_bytes,
+        finally:
+            backup.all_locations.update(
+                {
+                    loc: {
+                        ATTR_PATH: path,
+                        ATTR_PROTECTED: backup.protected,
+                        ATTR_SIZE_BYTES: backup.size_bytes,
+                    }
+                    for loc, path in all_new_locations.items()
                 }
-                for loc, path in all_new_locations.items()
-            }
-        )
+            )
 
     @Job(name="backup_manager_import_backup")
     async def import_backup(
