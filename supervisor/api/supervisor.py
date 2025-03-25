@@ -20,6 +20,7 @@ from ..const import (
     ATTR_CPU_PERCENT,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
+    ATTR_DETECT_BLOCKING_IO,
     ATTR_DIAGNOSTICS,
     ATTR_FORCE_SECURITY,
     ATTR_HEALTHY,
@@ -47,10 +48,15 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..store.validate import repositories
+from ..utils.blockbuster import (
+    activate_blockbuster,
+    blockbuster_enabled,
+    deactivate_blockbuster,
+)
 from ..utils.sentry import close_sentry, init_sentry
 from ..utils.validate import validate_timezone
 from ..validate import version_tag, wait_boot
-from .const import CONTENT_TYPE_TEXT
+from .const import CONTENT_TYPE_TEXT, DetectBlockingIO
 from .utils import api_process, api_process_raw, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -69,6 +75,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_CONTENT_TRUST): vol.Boolean(),
         vol.Optional(ATTR_FORCE_SECURITY): vol.Boolean(),
         vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
+        vol.Optional(ATTR_DETECT_BLOCKING_IO): vol.Coerce(DetectBlockingIO),
     }
 )
 
@@ -101,6 +108,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_AUTO_UPDATE: self.sys_updater.auto_update,
+            ATTR_DETECT_BLOCKING_IO: blockbuster_enabled(),
             # Depricated
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_ADDONS: [
@@ -159,6 +167,17 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_AUTO_UPDATE in body:
             self.sys_updater.auto_update = body[ATTR_AUTO_UPDATE]
+
+        if detect_blocking_io := body.get(ATTR_DETECT_BLOCKING_IO):
+            if detect_blocking_io == DetectBlockingIO.ON_AT_STARTUP:
+                self.sys_config.detect_blocking_io = True
+                detect_blocking_io = DetectBlockingIO.ON
+
+            if detect_blocking_io == DetectBlockingIO.ON:
+                activate_blockbuster()
+            elif detect_blocking_io == DetectBlockingIO.OFF:
+                self.sys_config.detect_blocking_io = False
+                deactivate_blockbuster()
 
         # Deprecated
         if ATTR_WAIT_BOOT in body:
