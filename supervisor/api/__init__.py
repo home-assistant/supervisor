@@ -237,6 +237,8 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/os/info", api_os.info),
                 web.post("/os/update", api_os.update),
+                web.get("/os/config/swap", api_os.config_swap_info),
+                web.post("/os/config/swap", api_os.config_swap_options),
                 web.post("/os/config/sync", api_os.config_sync),
                 web.post("/os/datadisk/move", api_os.migrate_data),
                 web.get("/os/datadisk/list", api_os.list_data),
@@ -253,14 +255,6 @@ class RestAPI(CoreSysAttributes):
                 web.get("/os/boards/yellow", api_os.boards_yellow_info),
                 web.post("/os/boards/yellow", api_os.boards_yellow_options),
                 web.get("/os/boards/{board}", api_os.boards_other_info),
-            ]
-        )
-
-        # Config options
-        self.webapp.add_routes(
-            [
-                web.get("/os/config/swap", api_os.config_swap_info),
-                web.post("/os/config/swap", api_os.config_swap_options),
             ]
         )
 

@@ -3,10 +3,10 @@
 import asyncio
 from collections.abc import Awaitable
 import logging
+import re
 from typing import Any
 
 from aiohttp import web
-from aiohttp.web_exceptions import HTTPNotFound
 import voluptuous as vol
 
 from ..const import (
@@ -29,7 +29,7 @@ from ..const import (
     ATTR_VERSION_LATEST,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import BoardInvalidError
+from ..exceptions import APINotFound, BoardInvalidError
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..validate import version_tag
 from .const import (
@@ -69,10 +69,12 @@ SCHEMA_GREEN_OPTIONS = vol.Schema(
     }
 )
 
+RE_SWAP_SIZE = re.compile(r"^\d+([KMG](i?B)?|B)?$", re.IGNORECASE)
+
 SCHEMA_SWAP_OPTIONS = vol.Schema(
     {
-        vol.Optional(ATTR_SWAP_SIZE): vol.Coerce(str),
-        vol.Optional(ATTR_SWAPPINESS): vol.Coerce(int),
+        vol.Optional(ATTR_SWAP_SIZE): vol.Match(RE_SWAP_SIZE),
+        vol.Optional(ATTR_SWAPPINESS): vol.All(int, vol.Range(min=0, max=200)),
     }
 )
 # pylint: enable=no-value-for-parameter
@@ -227,7 +229,9 @@ class APIOS(CoreSysAttributes):
     async def config_swap_info(self, request: web.Request) -> dict[str, Any]:
         """Get swap settings."""
         if not self.coresys.os.available or self.coresys.os.version < "15.0":
-            raise HTTPNotFound()
+            raise APINotFound(
+                "Home Assistant OS 15.0 or newer required for swap settings"
+            )
 
         return {
             ATTR_SWAP_SIZE: self.sys_dbus.agent.swap.swap_size,
@@ -238,7 +242,9 @@ class APIOS(CoreSysAttributes):
     async def config_swap_options(self, request: web.Request) -> None:
         """Update swap settings."""
         if not self.coresys.os.available or self.coresys.os.version < "15.0":
-            raise HTTPNotFound()
+            raise APINotFound(
+                "Home Assistant OS 15.0 or newer required for swap settings"
+            )
 
         body = await api_validate(SCHEMA_SWAP_OPTIONS, request)
 

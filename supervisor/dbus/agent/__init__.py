@@ -96,7 +96,14 @@ class OSAgent(DBusInterfaceProxy):
     @property
     def all(self) -> list[DBusInterface]:
         """Return all managed dbus interfaces."""
-        return [self.apparmor, self.board, self.cgroup, self.datadisk, self.system]
+        return [
+            self.apparmor,
+            self.board,
+            self.cgroup,
+            self.datadisk,
+            self.swap,
+            self.system,
+        ]
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
