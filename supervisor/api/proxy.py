@@ -215,8 +215,8 @@ class APIProxy(CoreSysAttributes):
                 dumps=json_dumps,
             )
 
-            # Check API access
-            response = await server.receive_json()
+            # Check API access, wait up to 10s just like _async_handle_auth_phase in Core
+            response = await server.receive_json(timeout=10)
             supervisor_token = response.get("api_password") or response.get(
                 "access_token"
             )
@@ -237,6 +237,9 @@ class APIProxy(CoreSysAttributes):
                 {"type": "auth_ok", "ha_version": self.sys_homeassistant.version},
                 dumps=json_dumps,
             )
+        except TimeoutError:
+            _LOGGER.error("Timeout during authentication for WebSocket API")
+            return server
         except WSMessageTypeError as err:
             _LOGGER.error(
                 "Unexpected message during authentication for WebSocket API: %s", err
