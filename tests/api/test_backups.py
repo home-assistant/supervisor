@@ -394,7 +394,11 @@ async def test_api_backup_errors(
     assert job["child_jobs"][1]["child_jobs"][0]["name"] == "backup_addon_save"
     assert job["child_jobs"][1]["child_jobs"][0]["reference"] == "local_ssh"
     assert job["child_jobs"][1]["child_jobs"][0]["errors"] == [
-        {"type": "BackupError", "message": "Can't create backup for local_ssh"}
+        {
+            "type": "BackupError",
+            "message": "Can't create backup for local_ssh",
+            "stage": None,
+        }
     ]
     assert job["child_jobs"][2]["name"] == "backup_store_folders"
     assert job["child_jobs"][2]["reference"] == slug
@@ -425,11 +429,21 @@ async def test_api_backup_errors(
 
     assert job["name"] == f"backup_manager_{backup_type}_backup"
     assert job["done"] is True
-    assert job["errors"] == (
-        err := [{"type": "HomeAssistantBackupError", "message": "Backup error"}]
-    )
+    assert job["errors"] == [
+        {
+            "type": "HomeAssistantBackupError",
+            "message": "Backup error",
+            "stage": "home_assistant",
+        }
+    ]
     assert job["child_jobs"][0]["name"] == "backup_store_homeassistant"
-    assert job["child_jobs"][0]["errors"] == err
+    assert job["child_jobs"][0]["errors"] == [
+        {
+            "type": "HomeAssistantBackupError",
+            "message": "Backup error",
+            "stage": None,
+        }
+    ]
     assert len(job["child_jobs"]) == 1
 
 
