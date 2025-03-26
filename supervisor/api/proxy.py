@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import logging
 
 import aiohttp
-from aiohttp import web
+from aiohttp import WSMessageTypeError, web
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.client_ws import ClientWebSocketResponse
 from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
@@ -237,6 +237,11 @@ class APIProxy(CoreSysAttributes):
                 {"type": "auth_ok", "ha_version": self.sys_homeassistant.version},
                 dumps=json_dumps,
             )
+        except WSMessageTypeError as err:
+            _LOGGER.error(
+                "Unexpected message during authentication for WebSocket API: %s", err
+            )
+            return server
         except (RuntimeError, ValueError) as err:
             _LOGGER.error("Can't initialize handshake: %s", err)
             return server
