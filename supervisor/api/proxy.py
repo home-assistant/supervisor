@@ -10,7 +10,6 @@ from aiohttp import WSMessageTypeError, web
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.client_ws import ClientWebSocketResponse
 from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
-from aiohttp.http import WSMessage
 from aiohttp.http_websocket import WSMsgType
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 
@@ -179,23 +178,28 @@ class APIProxy(CoreSysAttributes):
 
     async def _proxy_message(
         self,
-        read_task: asyncio.Task,
+        source: web.WebSocketResponse | ClientWebSocketResponse,
         target: web.WebSocketResponse | ClientWebSocketResponse,
     ) -> None:
         """Proxy a message from client to server or vice versa."""
-        msg: WSMessage = read_task.result()
-        match msg.type:
-            case WSMsgType.TEXT:
-                await target.send_str(msg.data)
-            case WSMsgType.BINARY:
-                await target.send_bytes(msg.data)
-            case WSMsgType.CLOSE:
-                _LOGGER.debug("Received close message from WebSocket.")
-                await target.close()
-            case _:
-                raise TypeError(
-                    f"Cannot proxy websocket message of unsupported type: {msg.type}"
-                )
+        while not source.closed and not target.closed:
+            msg = await source.receive()
+            match msg.type:
+                case WSMsgType.TEXT:
+                    await target.send_str(msg.data)
+                case WSMsgType.BINARY:
+                    await target.send_bytes(msg.data)
+                case WSMsgType.CLOSE | WSMsgType.CLOSED:
+                    _LOGGER.debug(
+                        "Received %s message from WebSocket %s.", msg.type, source
+                    )
+                    await target.close()
+                case WSMsgType.CLOSING:
+                    pass
+                case _:
+                    raise TypeError(
+                        f"Cannot proxy websocket message of unsupported type: {msg.type}"
+                    )
 
     async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""
@@ -256,41 +260,25 @@ class APIProxy(CoreSysAttributes):
             return server
 
         _LOGGER.info("Home Assistant WebSocket API request running")
+        client_task = server_task = None
         try:
-            client_read: asyncio.Task | None = None
-            server_read: asyncio.Task | None = None
-            while not server.closed and not client.closed:
-                if not client_read:
-                    client_read = self.sys_create_task(client.receive())
-                if not server_read:
-                    server_read = self.sys_create_task(server.receive())
+            client_task = asyncio.create_task(self._proxy_message(client, server))
+            server_task = asyncio.create_task(self._proxy_message(server, client))
 
-                # wait until data need to be processed
-                await asyncio.wait(
-                    [client_read, server_read], return_when=asyncio.FIRST_COMPLETED
-                )
-
-                # server
-                if server_read.done() and not client.closed:
-                    await self._proxy_message(server_read, client)
-                    server_read = None
-
-                # client
-                if client_read.done() and not server.closed:
-                    await self._proxy_message(client_read, server)
-                    client_read = None
-
+            await asyncio.gather(client_task, server_task)
         except asyncio.CancelledError:
             pass
 
         except (RuntimeError, ConnectionError, TypeError) as err:
-            _LOGGER.info("Home Assistant WebSocket API error: %s", err)
+            _LOGGER.warning("Home Assistant WebSocket API error: %s", err)
 
         finally:
-            if client_read and not client_read.done():
-                client_read.cancel()
-            if server_read and not server_read.done():
-                server_read.cancel()
+            for task in (client_task, server_task):
+                if task and not task.done():
+                    task.cancel()
+            await asyncio.gather(
+                *(t for t in (client_task, server_task) if t), return_exceptions=True
+            )
 
             # close connections
             if not client.closed:
