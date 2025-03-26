@@ -7,7 +7,7 @@ from collections.abc import Awaitable
 import errno
 import logging
 from pathlib import Path
-import shutil
+from shutil import copy
 
 from ..addons.addon import Addon
 from ..const import (
@@ -377,9 +377,7 @@ class BackupManager(FileConfiguration, JobGroup):
                 try:
                     if location == LOCATION_CLOUD_BACKUP:
                         all_new_locations[LOCATION_CLOUD_BACKUP] = Path(
-                            shutil.copy(
-                                backup.tarfile, self.sys_config.path_core_backup
-                            )
+                            copy(backup.tarfile, self.sys_config.path_core_backup)
                         )
                     elif location:
                         location_mount: Mount = location
@@ -389,11 +387,11 @@ class BackupManager(FileConfiguration, JobGroup):
                                 _LOGGER.error,
                             )
                         all_new_locations[location_mount.name] = Path(
-                            shutil.copy(backup.tarfile, location_mount.local_where)
+                            copy(backup.tarfile, location_mount.local_where)
                         )
                     else:
                         all_new_locations[None] = Path(
-                            shutil.copy(backup.tarfile, self.sys_config.path_backup)
+                            copy(backup.tarfile, self.sys_config.path_backup)
                         )
                 except OSError as err:
                     msg = f"Could not copy backup to {location.name if isinstance(location, Mount) else location} due to: {err!s}"

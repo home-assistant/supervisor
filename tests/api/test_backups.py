@@ -686,7 +686,7 @@ async def test_backup_to_multiple_locations_error_on_copy(
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    with patch("supervisor.backups.manager.shutil.copy", side_effect=OSError):
+    with patch("supervisor.backups.manager.copy", side_effect=OSError):
         resp = await api_client.post(
             f"/backups/new/{backup_type}",
             json={
