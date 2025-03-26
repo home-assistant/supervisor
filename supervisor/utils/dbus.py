@@ -18,6 +18,7 @@ from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
 from dbus_fast.errors import DBusError as DBusFastDBusError
 from dbus_fast.introspection import Node
+from log_rate_limit import RateLimit, StreamRateLimitFilter
 
 from ..exceptions import (
     DBusError,
@@ -38,6 +39,7 @@ from ..exceptions import (
 from .sentry import async_capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+_LOGGER.addFilter(StreamRateLimitFilter(period_sec=30, allow_next_n=2))
 
 DBUS_INTERFACE_OBJECT_MANAGER: str = "org.freedesktop.DBus.ObjectManager"
 DBUS_INTERFACE_PROPERTIES: str = "org.freedesktop.DBus.Properties"
@@ -151,11 +153,17 @@ class DBus:
                 # The systemd D-Bus activate service has a timeout of 25s, which will raise. We should
                 # not end up here unless the D-Bus broker is majorly overwhelmed.
                 _LOGGER.critical(
-                    "Timeout connecting to %s - %s", self.bus_name, self.object_path
+                    "Timeout connecting to %s - %s",
+                    self.bus_name,
+                    self.object_path,
+                    extra=RateLimit(stream_id=f"dbus_timeout_{self.bus_name}"),
                 )
             except EOFError:
                 _LOGGER.warning(
-                    "Busy system at %s - %s", self.bus_name, self.object_path
+                    "Busy system at %s - %s",
+                    self.bus_name,
+                    self.object_path,
+                    extra=RateLimit(stream_id=f"dbus_eof_{self.bus_name}"),
                 )
 
             await asyncio.sleep(3)
