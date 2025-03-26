@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable, Coroutine, Generator
 from json import dumps
+import logging
 from typing import Any, cast
 from unittest.mock import patch
 
@@ -175,3 +176,21 @@ async def test_proxy_invalid_auth(
     auth_not_ok = await websocket.receive_json()
     assert auth_not_ok["type"] == "auth_invalid"
     assert auth_not_ok["message"] == "Invalid access"
+
+
+async def test_proxy_auth_abort_log(
+    api_client: TestClient,
+    install_addon_example: Addon,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test WebSocket closed during authentication gets logged."""
+    install_addon_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    websocket = await api_client.ws_connect("/core/websocket")
+    auth_resp = await websocket.receive_json()
+    assert auth_resp["type"] == "auth_required"
+    caplog.clear()
+    with caplog.at_level(logging.ERROR):
+        await websocket.close()
+        assert (
+            "Unexpected message during authentication for WebSocket API" in caplog.text
+        )
