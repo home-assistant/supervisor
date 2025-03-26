@@ -639,13 +639,20 @@ async def test_upload_download(
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 @pytest.mark.parametrize(
-    ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
+    ("backup_type", "inputs", "locations"),
+    [
+        ("full", {}, [None, ".cloud_backup"]),
+        ("full", {}, [".cloud_backup", None]),
+        ("partial", {"folders": ["ssl"]}, [None, ".cloud_backup"]),
+        ("partial", {"folders": ["ssl"]}, [".cloud_backup", None]),
+    ],
 )
 async def test_backup_to_multiple_locations(
     api_client: TestClient,
     coresys: CoreSys,
     backup_type: str,
     inputs: dict[str, Any],
+    locations: list[str | None],
 ):
     """Test making a backup to multiple locations."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -653,8 +660,7 @@ async def test_backup_to_multiple_locations(
 
     resp = await api_client.post(
         f"/backups/new/{backup_type}",
-        json={"name": "Multiple locations test", "location": [None, ".cloud_backup"]}
-        | inputs,
+        json={"name": "Multiple locations test", "location": locations} | inputs,
     )
     assert resp.status == 200
     result = await resp.json()

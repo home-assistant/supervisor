@@ -37,6 +37,7 @@ from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.jobs.const import JobCondition
 from supervisor.mounts.mount import Mount
+from supervisor.resolution.const import UnhealthyReason
 from supervisor.utils.json import read_json_file, write_json_file
 
 from tests.common import get_fixture_path
@@ -2079,3 +2080,41 @@ async def test_remove_non_existing_backup_raises(
 
     with pytest.raises(BackupFileNotFoundError):
         await coresys.backups.remove(backup)
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+@pytest.mark.parametrize(
+    ("error_num", "unhealthy", "default_location", "additional_location"),
+    [
+        (errno.EBUSY, False, None, ".cloud_backup"),
+        (errno.EBUSY, False, ".cloud_backup", None),
+        (errno.EBADMSG, True, None, ".cloud_backup"),
+        (errno.EBADMSG, True, ".cloud_backup", None),
+    ],
+)
+async def test_backup_multiple_locations_oserror(
+    coresys: CoreSys,
+    error_num: int,
+    unhealthy: bool,
+    default_location: str | None,
+    additional_location: str | None,
+):
+    """Test backup to multiple locations raises oserror."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch("supervisor.backups.manager.copy", side_effect=(err := OSError())):
+        err.errno = error_num
+        backup: Backup | None = await coresys.backups.do_backup_full(
+            name="test",
+            location=default_location,
+            additional_locations=[additional_location],
+        )
+
+    assert backup
+    assert coresys.backups.get(backup.slug) == backup
+    assert backup.location == default_location
+    assert additional_location not in backup.all_locations
+    assert (
+        UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
+    ) is unhealthy
