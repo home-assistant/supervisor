@@ -235,6 +235,7 @@ async def test_api_supervisor_reload(api_client: TestClient):
     """Test supervisor reload."""
     resp = await api_client.post("/supervisor/reload")
     assert resp.status == 200
+    assert await resp.json() == {"result": "ok", "data": {}}
 
 
 async def test_api_supervisor_options_timezone(
