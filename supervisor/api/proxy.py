@@ -13,6 +13,8 @@ from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
 from aiohttp.http_websocket import WSMsgType
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 
+from supervisor.utils.logging import AddonLoggerAdapter
+
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps
@@ -180,6 +182,7 @@ class APIProxy(CoreSysAttributes):
         self,
         source: web.WebSocketResponse | ClientWebSocketResponse,
         target: web.WebSocketResponse | ClientWebSocketResponse,
+        logger: AddonLoggerAdapter,
     ) -> None:
         """Proxy a message from client to server or vice versa."""
         while not source.closed and not target.closed:
@@ -190,16 +193,26 @@ class APIProxy(CoreSysAttributes):
                 case WSMsgType.BINARY:
                     await target.send_bytes(msg.data)
                 case WSMsgType.CLOSE | WSMsgType.CLOSED:
-                    _LOGGER.debug(
-                        "Received %s message from WebSocket %s.", msg.type, source
+                    logger.debug(
+                        "Received WebSocket message type %r from %s.",
+                        msg.type,
+                        "add-on" if type(source) is web.WebSocketResponse else "Core",
                     )
                     await target.close()
                 case WSMsgType.CLOSING:
                     pass
-                case _:
-                    raise TypeError(
-                        f"Cannot proxy websocket message of unsupported type: {msg.type}"
+                case WSMsgType.ERROR:
+                    logger.warning(
+                        "Error WebSocket message received while proxying: %r", msg.data
                     )
+                    await target.close(code=source.close_code)
+                case _:
+                    logger.warning(
+                        "Cannot proxy WebSocket message of unsupported type: %r",
+                        msg.type,
+                    )
+                    await source.close()
+                    await target.close()
 
     async def websocket(self, request: web.Request):
         """Initialize a WebSocket API connection."""
@@ -259,19 +272,18 @@ class APIProxy(CoreSysAttributes):
         except APIError:
             return server
 
-        _LOGGER.info("Home Assistant WebSocket API request running")
+        logger = AddonLoggerAdapter(_LOGGER, {"addon_name": addon_name})
+        logger.info("Home Assistant WebSocket API proxy running")
         client_task = server_task = None
         try:
-            client_task = asyncio.create_task(self._proxy_message(client, server))
-            server_task = asyncio.create_task(self._proxy_message(server, client))
+            client_task = asyncio.create_task(
+                self._proxy_message(client, server, logger)
+            )
+            server_task = asyncio.create_task(
+                self._proxy_message(server, client, logger)
+            )
 
             await asyncio.gather(client_task, server_task)
-        except asyncio.CancelledError:
-            pass
-
-        except (RuntimeError, ConnectionError, TypeError) as err:
-            _LOGGER.warning("Home Assistant WebSocket API error: %s", err)
-
         finally:
             for task in (client_task, server_task):
                 if task and not task.done():
@@ -286,5 +298,5 @@ class APIProxy(CoreSysAttributes):
             if not server.closed:
                 await server.close()
 
-        _LOGGER.info("Home Assistant WebSocket API for %s closed", addon_name)
+        logger.info("Home Assistant WebSocket API closed")
         return server
