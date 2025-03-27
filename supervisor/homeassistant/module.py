@@ -67,6 +67,7 @@ HOMEASSISTANT_BACKUP_EXCLUDE = [
     "*.corrupt.*",
     "*.log.*",
     "*.log",
+    ".storage/*.corrupt.*",
     "OZW_Log.txt",
     "backups/*.tar",
     "tmp_backups/*.tar",
