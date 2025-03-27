@@ -368,13 +368,15 @@ class BackupManager(FileConfiguration, JobGroup):
     ):
         """Copy a backup file to additional locations."""
 
+        all_new_locations: dict[str | None, Path] = {}
+
         def copy_to_additional_locations() -> dict[str | None, Path]:
             """Copy backup file to additional locations."""
-            all_locations: dict[str | None, Path] = {}
+            nonlocal all_new_locations
             for location in locations:
                 try:
                     if location == LOCATION_CLOUD_BACKUP:
-                        all_locations[LOCATION_CLOUD_BACKUP] = Path(
+                        all_new_locations[LOCATION_CLOUD_BACKUP] = Path(
                             copy(backup.tarfile, self.sys_config.path_core_backup)
                         )
                     elif location:
@@ -384,11 +386,11 @@ class BackupManager(FileConfiguration, JobGroup):
                                 f"{location_mount.name} is down, cannot copy to it",
                                 _LOGGER.error,
                             )
-                        all_locations[location_mount.name] = Path(
+                        all_new_locations[location_mount.name] = Path(
                             copy(backup.tarfile, location_mount.local_where)
                         )
                     else:
-                        all_locations[None] = Path(
+                        all_new_locations[None] = Path(
                             copy(backup.tarfile, self.sys_config.path_backup)
                         )
                 except OSError as err:
@@ -401,28 +403,24 @@ class BackupManager(FileConfiguration, JobGroup):
                         raise BackupDataDiskBadMessageError(msg, _LOGGER.error) from err
                     raise BackupError(msg, _LOGGER.error) from err
 
-            return all_locations
-
         try:
-            all_new_locations = await self.sys_run_in_executor(
-                copy_to_additional_locations
-            )
+            await self.sys_run_in_executor(copy_to_additional_locations)
         except BackupDataDiskBadMessageError:
             self.sys_resolution.add_unhealthy_reason(
                 UnhealthyReason.OSERROR_BAD_MESSAGE
             )
             raise
-
-        backup.all_locations.update(
-            {
-                loc: {
-                    ATTR_PATH: path,
-                    ATTR_PROTECTED: backup.protected,
-                    ATTR_SIZE_BYTES: backup.size_bytes,
+        finally:
+            backup.all_locations.update(
+                {
+                    loc: {
+                        ATTR_PATH: path,
+                        ATTR_PROTECTED: backup.protected,
+                        ATTR_SIZE_BYTES: backup.size_bytes,
+                    }
+                    for loc, path in all_new_locations.items()
                 }
-                for loc, path in all_new_locations.items()
-            }
-        )
+            )
 
     @Job(name="backup_manager_import_backup")
     async def import_backup(

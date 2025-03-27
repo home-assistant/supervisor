@@ -73,10 +73,15 @@ class SupervisorJobError:
 
     type_: type[HassioError] = HassioError
     message: str = "Unknown error, see supervisor logs"
+    stage: str | None = None
 
     def as_dict(self) -> dict[str, str]:
         """Return dictionary representation."""
-        return {"type": self.type_.__name__, "message": self.message}
+        return {
+            "type": self.type_.__name__,
+            "message": self.message,
+            "stage": self.stage,
+        }
 
 
 @define(order=True)
@@ -126,9 +131,9 @@ class SupervisorJob:
     def capture_error(self, err: HassioError | None = None) -> None:
         """Capture an error or record that an unknown error has occurred."""
         if err:
-            new_error = SupervisorJobError(type(err), str(err))
+            new_error = SupervisorJobError(type(err), str(err), self.stage)
         else:
-            new_error = SupervisorJobError()
+            new_error = SupervisorJobError(stage=self.stage)
         self.errors += [new_error]
 
     @contextmanager
