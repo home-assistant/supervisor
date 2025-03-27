@@ -14,7 +14,7 @@ import tarfile
 from tarfile import TarFile
 from tempfile import TemporaryDirectory
 import time
-from typing import Any, Self
+from typing import Any, Self, TypedDict, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
@@ -35,11 +35,9 @@ from ..const import (
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
-    ATTR_PATH,
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
-    ATTR_SIZE_BYTES,
     ATTR_SLUG,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
@@ -69,6 +67,14 @@ from .validate import SCHEMA_BACKUP
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+class BackupLocation(TypedDict):
+    """Backup location metadata."""
+
+    path: Path
+    protected: bool
+    size_bytes: int
+
+
 def location_sort_key(value: str | None) -> str:
     """Sort locations, None is always first else alphabetical."""
     return value if value else ""
@@ -91,16 +97,16 @@ class Backup(JobGroup):
             coresys, JOB_GROUP_BACKUP.format_map(defaultdict(str, slug=slug)), slug
         )
         self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
-        self._tmp: TemporaryDirectory = None
+        self._tmp: TemporaryDirectory | None = None
         self._outer_secure_tarfile: SecureTarFile | None = None
         self._key: bytes | None = None
         self._aes: Cipher | None = None
-        self._locations: dict[str | None, dict[str, Path | bool]] = {
-            location: {
-                ATTR_PATH: tar_file,
-                ATTR_PROTECTED: data.get(ATTR_PROTECTED, False) if data else False,
-                ATTR_SIZE_BYTES: size_bytes,
-            }
+        self._locations: dict[str | None, BackupLocation] = {
+            location: BackupLocation(
+                path=tar_file,
+                protected=data.get(ATTR_PROTECTED, False) if data else False,
+                size_bytes=size_bytes,
+            )
         }
 
     @property
@@ -131,7 +137,7 @@ class Backup(JobGroup):
     @property
     def protected(self) -> bool:
         """Return backup date."""
-        return self._locations[self.location][ATTR_PROTECTED]
+        return self._locations[self.location]["protected"]
 
     @property
     def compressed(self) -> bool:
@@ -208,7 +214,7 @@ class Backup(JobGroup):
         return self.locations[0]
 
     @property
-    def all_locations(self) -> dict[str | None, dict[str, Path | bool]]:
+    def all_locations(self) -> dict[str | None, BackupLocation]:
         """Return all locations this backup was found in."""
         return self._locations
 
@@ -234,7 +240,7 @@ class Backup(JobGroup):
     @property
     def size_bytes(self) -> int:
         """Return backup size in bytes."""
-        return self._locations[self.location][ATTR_SIZE_BYTES]
+        return self._locations[self.location]["size_bytes"]
 
     @property
     def is_new(self) -> bool:
@@ -244,7 +250,7 @@ class Backup(JobGroup):
     @property
     def tarfile(self) -> Path:
         """Return path to backup tarfile."""
-        return self._locations[self.location][ATTR_PATH]
+        return self._locations[self.location]["path"]
 
     @property
     def is_current(self) -> bool:
@@ -296,7 +302,7 @@ class Backup(JobGroup):
         # In case of conflict we always ignore the ones from the first one. But log them to let the user know
 
         if conflict := {
-            loc: val[ATTR_PATH]
+            loc: val["path"]
             for loc, val in self.all_locations.items()
             if loc in backup.all_locations and backup.all_locations[loc] != val
         }:
@@ -334,7 +340,7 @@ class Backup(JobGroup):
             self._init_password(password)
             self._data[ATTR_PROTECTED] = True
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
-            self._locations[self.location][ATTR_PROTECTED] = True
+            self._locations[self.location]["protected"] = True
 
         if not compressed:
             self._data[ATTR_COMPRESSED] = False
@@ -361,7 +367,7 @@ class Backup(JobGroup):
 
         Checks if we can access the backup file and decrypt if necessary.
         """
-        backup_file: Path = self.all_locations[location][ATTR_PATH]
+        backup_file: Path = self.all_locations[location]["path"]
 
         def _validate_file() -> None:
             ending = f".tar{'.gz' if self.compressed else ''}"
@@ -416,6 +422,9 @@ class Backup(JobGroup):
                     json_file = backup.extractfile("./snapshot.json")
                 else:
                     json_file = backup.extractfile("./backup.json")
+
+                if not json_file:
+                    raise BackupInvalidError("Metadata file cannot be read")
                 return size_bytes, json_file.read()
 
         # read backup.json
@@ -424,7 +433,7 @@ class Backup(JobGroup):
         except FileNotFoundError:
             _LOGGER.error("No tarfile located at %s", self.tarfile)
             return False
-        except (tarfile.TarError, KeyError) as err:
+        except (BackupInvalidError, tarfile.TarError, KeyError) as err:
             _LOGGER.error("Can't read backup tarfile %s: %s", self.tarfile, err)
             return False
 
@@ -447,8 +456,8 @@ class Backup(JobGroup):
             return False
 
         if self._data[ATTR_PROTECTED]:
-            self._locations[self.location][ATTR_PROTECTED] = True
-        self._locations[self.location][ATTR_SIZE_BYTES] = size_bytes
+            self._locations[self.location]["protected"] = True
+        self._locations[self.location]["size_bytes"] = size_bytes
 
         return True
 
@@ -456,7 +465,7 @@ class Backup(JobGroup):
     async def create(self) -> AsyncGenerator[None]:
         """Create new backup file."""
 
-        def _open_outer_tarfile():
+        def _open_outer_tarfile() -> tuple[SecureTarFile, tarfile.TarFile]:
             """Create and open outer tarfile."""
             if self.tarfile.is_file():
                 raise BackupFileExistError(
@@ -487,7 +496,7 @@ class Backup(JobGroup):
 
         def _close_outer_tarfile() -> int:
             """Close outer tarfile."""
-            self._outer_secure_tarfile.close()
+            cast(SecureTarFile, self._outer_secure_tarfile).close()
             return self.tarfile.stat().st_size
 
         self._outer_secure_tarfile, outer_tarfile = await self.sys_run_in_executor(
@@ -498,7 +507,7 @@ class Backup(JobGroup):
         finally:
             await self._create_cleanup(outer_tarfile)
             size_bytes = await self.sys_run_in_executor(_close_outer_tarfile)
-            self._locations[self.location][ATTR_SIZE_BYTES] = size_bytes
+            self._locations[self.location]["size_bytes"] = size_bytes
             self._outer_secure_tarfile = None
 
     @asynccontextmanager
@@ -513,7 +522,7 @@ class Backup(JobGroup):
         backup_tarfile = (
             self.tarfile
             if location == DEFAULT
-            else self.all_locations[location][ATTR_PATH]
+            else self.all_locations[cast(str | None, location)]["path"]
         )
 
         # extract an existing backup
@@ -579,6 +588,10 @@ class Backup(JobGroup):
     async def _addon_save(self, addon: Addon) -> asyncio.Task | None:
         """Store an add-on into backup."""
         self.sys_jobs.current.reference = addon.slug
+        if not self._outer_secure_tarfile:
+            raise RuntimeError(
+                "Cannot backup components without initializing backup tar"
+            )
 
         tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
 
@@ -610,7 +623,7 @@ class Backup(JobGroup):
         return start_task
 
     @Job(name="backup_store_addons", cleanup=False)
-    async def store_addons(self, addon_list: list[str]) -> list[asyncio.Task]:
+    async def store_addons(self, addon_list: list[Addon]) -> list[asyncio.Task]:
         """Add a list of add-ons into backup.
 
         For each addon that needs to be started after backup, returns a Task which
@@ -631,6 +644,8 @@ class Backup(JobGroup):
     async def _addon_restore(self, addon_slug: str) -> asyncio.Task | None:
         """Restore an add-on from backup."""
         self.sys_jobs.current.reference = addon_slug
+        if not self._tmp:
+            raise RuntimeError("Cannot restore components without opening backup tar")
 
         tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
         addon_file = SecureTarFile(
@@ -696,6 +711,11 @@ class Backup(JobGroup):
     async def _folder_save(self, name: str):
         """Take backup of a folder."""
         self.sys_jobs.current.reference = name
+        if not self._outer_secure_tarfile:
+            raise RuntimeError(
+                "Cannot backup components without initializing backup tar"
+            )
+
         slug_name = name.replace("/", "_")
         tar_name = f"{slug_name}.tar{'.gz' if self.compressed else ''}"
         origin_dir = Path(self.sys_config.path_supervisor, name)
@@ -725,7 +745,7 @@ class Backup(JobGroup):
 
                 return False
 
-            with self._outer_secure_tarfile.create_inner_tar(
+            with cast(SecureTarFile, self._outer_secure_tarfile).create_inner_tar(
                 f"./{tar_name}",
                 gzip=self.compressed,
                 key=self._key,
@@ -759,6 +779,8 @@ class Backup(JobGroup):
     async def _folder_restore(self, name: str) -> None:
         """Restore a folder."""
         self.sys_jobs.current.reference = name
+        if not self._tmp:
+            raise RuntimeError("Cannot restore components without opening backup tar")
 
         slug_name = name.replace("/", "_")
         tar_name = Path(
@@ -767,7 +789,7 @@ class Backup(JobGroup):
         origin_dir = Path(self.sys_config.path_supervisor, name)
 
         # Perform a restore
-        def _restore() -> bool:
+        def _restore() -> None:
             # Check if exists inside backup
             if not tar_name.exists():
                 raise BackupInvalidError(
@@ -795,7 +817,6 @@ class Backup(JobGroup):
                 raise BackupError(
                     f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
-            return True
 
         # Unmount any mounts within folder
         bind_mounts = [
@@ -808,7 +829,7 @@ class Backup(JobGroup):
             await asyncio.gather(*[bind_mount.unmount() for bind_mount in bind_mounts])
 
         try:
-            return await self.sys_run_in_executor(_restore)
+            await self.sys_run_in_executor(_restore)
         finally:
             if bind_mounts:
                 await asyncio.gather(
@@ -832,6 +853,11 @@ class Backup(JobGroup):
     @Job(name="backup_store_homeassistant", cleanup=False)
     async def store_homeassistant(self, exclude_database: bool = False):
         """Backup Home Assistant Core configuration folder."""
+        if not self._outer_secure_tarfile:
+            raise RuntimeError(
+                "Cannot backup components without initializing backup tar"
+            )
+
         self._data[ATTR_HOMEASSISTANT] = {
             ATTR_VERSION: self.sys_homeassistant.version,
             ATTR_EXCLUDE_DATABASE: exclude_database,
@@ -855,6 +881,9 @@ class Backup(JobGroup):
     @Job(name="backup_restore_homeassistant", cleanup=False)
     async def restore_homeassistant(self) -> Awaitable[None]:
         """Restore Home Assistant Core configuration folder."""
+        if not self._tmp:
+            raise RuntimeError("Cannot restore components without opening backup tar")
+
         await self.sys_homeassistant.core.stop(remove_container=True)
 
         # Restore Home Assistant Core config directory

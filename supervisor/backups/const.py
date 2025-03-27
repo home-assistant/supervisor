@@ -9,7 +9,7 @@ BUF_SIZE = 2**20 * 4  # 4MB
 DEFAULT_FREEZE_TIMEOUT = 600
 LOCATION_CLOUD_BACKUP = ".cloud_backup"
 
-LOCATION_TYPE = Mount | Literal[LOCATION_CLOUD_BACKUP] | None
+LOCATION_TYPE = Mount | Literal[".cloud_backup"] | None
 
 
 class BackupType(StrEnum):
