@@ -276,14 +276,18 @@ class APIProxy(CoreSysAttributes):
         logger.info("Home Assistant WebSocket API proxy running")
         client_task = server_task = None
         try:
-            client_task = asyncio.create_task(
+            client_task = self.sys_create_task(
                 self._proxy_message(client, server, logger)
             )
-            server_task = asyncio.create_task(
+            server_task = self.sys_create_task(
                 self._proxy_message(server, client, logger)
             )
 
             await asyncio.gather(client_task, server_task)
+        except asyncio.CancelledError:
+            # This only appears to happen during test_proxy, it is not clear why
+            # this only happens in pytest.
+            pass
         finally:
             for task in (client_task, server_task):
                 if task and not task.done():
