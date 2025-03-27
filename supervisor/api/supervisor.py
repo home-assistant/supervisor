@@ -230,9 +230,9 @@ class APISupervisor(CoreSysAttributes):
         await asyncio.shield(self.sys_supervisor.update(version))
 
     @api_process
-    def reload(self, request: web.Request) -> Awaitable:
+    async def reload(self, request: web.Request) -> None:
         """Reload add-ons, configuration, etc."""
-        return asyncio.gather(
+        await asyncio.gather(
             asyncio.shield(self.sys_updater.reload()),
             asyncio.shield(self.sys_homeassistant.secrets.reload()),
             asyncio.shield(self.sys_resolution.evaluate.evaluate_system()),
