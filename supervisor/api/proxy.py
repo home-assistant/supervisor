@@ -274,29 +274,35 @@ class APIProxy(CoreSysAttributes):
 
         logger = AddonLoggerAdapter(_LOGGER, {"addon_name": addon_name})
         logger.info("Home Assistant WebSocket API proxy running")
-        client_task = server_task = None
         try:
-            await asyncio.gather(
-                self._proxy_message(client, server, logger),
-                self._proxy_message(server, client, logger),
+            client_task = self.sys_create_task(
+                self._proxy_message(client, server, logger)
             )
-        except asyncio.CancelledError:
-            # This only appears to happen during test_proxy, it is not clear why
-            # this only happens in pytest.
-            pass
-        finally:
-            for task in (client_task, server_task):
-                if task and not task.done():
-                    task.cancel()
-            await asyncio.gather(
-                *(t for t in (client_task, server_task) if t), return_exceptions=True
+            server_task = self.sys_create_task(
+                self._proxy_message(server, client, logger)
+            )
+            # Make sure we close both connections if one of the proxy direction
+            # has an exception. Using this over exception handling has the advantage
+            # that we can wait for the other proxy direction to gracefully close and
+            # complete.
+            _, pending = await asyncio.wait(
+                (client_task, server_task), return_when=asyncio.FIRST_EXCEPTION
             )
 
-            # close connections
+            # Close connections, in case this wasn't a graceful close
             if not client.closed:
                 await client.close()
             if not server.closed:
                 await server.close()
+
+            if pending:
+                asyncio.wait_for(pending, timeout=10)
+        except asyncio.CancelledError:
+            # This only appears to happen during test_proxy, it is not clear why
+            # this only happens in pytest.
+            pass
+        except TimeoutError:
+            logger.critical("WebSocket proxy task did not end gracefully")
 
         logger.info("Home Assistant WebSocket API closed")
         return server
