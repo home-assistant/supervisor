@@ -156,8 +156,8 @@ class APIBackups(CoreSysAttributes):
         """Make location attributes dictionary."""
         return {
             loc if loc else LOCATION_LOCAL: {
-                ATTR_PROTECTED: backup.all_locations[loc][ATTR_PROTECTED],
-                ATTR_SIZE_BYTES: backup.all_locations[loc][ATTR_SIZE_BYTES],
+                ATTR_PROTECTED: backup.all_locations[loc]["protected"],
+                ATTR_SIZE_BYTES: backup.all_locations[loc]["size_bytes"],
             }
             for loc in backup.locations
         }
@@ -262,7 +262,7 @@ class APIBackups(CoreSysAttributes):
     def _location_to_mount(self, location: str | None) -> LOCATION_TYPE:
         """Convert a single location to a mount if possible."""
         if not location or location == LOCATION_CLOUD_BACKUP:
-            return location
+            return cast(LOCATION_TYPE, location)
 
         mount = self.sys_mounts.get(location)
         if mount.usage != MountUsage.BACKUP:

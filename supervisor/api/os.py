@@ -228,7 +228,11 @@ class APIOS(CoreSysAttributes):
     @api_process
     async def config_swap_info(self, request: web.Request) -> dict[str, Any]:
         """Get swap settings."""
-        if not self.coresys.os.available or self.coresys.os.version < "15.0":
+        if (
+            not self.coresys.os.available
+            or not self.coresys.os.version
+            or self.coresys.os.version < "15.0"
+        ):
             raise APINotFound(
                 "Home Assistant OS 15.0 or newer required for swap settings"
             )
@@ -241,7 +245,11 @@ class APIOS(CoreSysAttributes):
     @api_process
     async def config_swap_options(self, request: web.Request) -> None:
         """Update swap settings."""
-        if not self.coresys.os.available or self.coresys.os.version < "15.0":
+        if (
+            not self.coresys.os.available
+            or not self.coresys.os.version
+            or self.coresys.os.version < "15.0"
+        ):
             raise APINotFound(
                 "Home Assistant OS 15.0 or newer required for swap settings"
             )
