@@ -9,7 +9,7 @@ import logging
 from typing import Any, cast
 from unittest.mock import patch
 
-from aiohttp import ClientWebSocketResponse
+from aiohttp import ClientWebSocketResponse, WSCloseCode
 from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
@@ -37,6 +37,7 @@ class MockHAServerWebSocket:
     """Mock of HA Websocket server."""
 
     closed: bool = False
+    close_code: int | None = None
 
     def __init__(self) -> None:
         """Initialize object."""
@@ -44,9 +45,12 @@ class MockHAServerWebSocket:
         self.incoming: asyncio.Queue[WSMessage] = asyncio.Queue()
         self._id_generator = id_generator()
 
-    def receive(self) -> Awaitable[WSMessage]:
+    async def receive(self) -> WSMessage:
         """Receive next message."""
-        return self.outgoing.get()
+        try:
+            return await self.outgoing.get()
+        except asyncio.QueueShutDown:
+            return WSMessage(WSMsgType.CLOSED, None, None)
 
     def send_str(self, data: str) -> Awaitable[None]:
         """Incoming string message."""
@@ -68,9 +72,11 @@ class MockHAServerWebSocket:
         """Respond with binary."""
         return self.outgoing.put(WSMessage(WSMsgType.BINARY, data, None))
 
-    async def close(self) -> None:
+    async def close(self, code: int = WSCloseCode.OK) -> None:
         """Close connection."""
         self.closed = True
+        self.outgoing.shutdown(immediate=True)
+        self.close_code = code
 
 
 WebSocketGenerator = Callable[..., Coroutine[Any, Any, MockHAClientWebSocket]]
@@ -160,6 +166,26 @@ async def test_proxy_binary_message(
     assert await client.receive_bytes() == b"world received"
 
     assert await client.close()
+
+
+async def test_proxy_large_message(
+    proxy_ws_client: WebSocketGenerator,
+    ha_ws_server: MockHAServerWebSocket,
+    install_addon_ssh: Addon,
+):
+    """Test too large message handled gracefully."""
+    install_addon_ssh.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    client: MockHAClientWebSocket = await proxy_ws_client(
+        install_addon_ssh.supervisor_token
+    )
+
+    # Test message over size limit of 4MB
+    await client.send_bytes(bytearray(1024 * 1024 * 4))
+    msg = await client.receive()
+    assert msg.type == WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.MESSAGE_TOO_BIG
+
+    assert ha_ws_server.closed
 
 
 @pytest.mark.parametrize("auth_token", ["abc123", "bad"])
