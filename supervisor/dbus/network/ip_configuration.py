@@ -29,13 +29,22 @@ class IpConfiguration(DBusInterfaceProxy):
 
     def __init__(self, object_path: str, ip4: bool = True) -> None:
         """Initialize properties."""
-        super().__init__()
-
         self._ip4: bool = ip4
-        self.object_path: str = object_path
-        self.properties_interface: str = (
+        self._object_path: str = object_path
+        self._properties_interface: str = (
             DBUS_IFACE_IP4CONFIG if ip4 else DBUS_IFACE_IP6CONFIG
         )
+        super().__init__()
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
+
+    @property
+    def properties_interface(self) -> str:
+        """Primary interface of object to get property values from."""
+        return self._properties_interface
 
     @property
     @dbus_property

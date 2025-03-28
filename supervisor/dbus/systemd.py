@@ -60,17 +60,22 @@ class SystemdUnit(DBusInterface):
     def __init__(self, object_path: str) -> None:
         """Initialize object."""
         super().__init__()
-        self.object_path = object_path
+        self._object_path = object_path
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @dbus_connected
     async def get_active_state(self) -> UnitActiveState:
         """Get active state of the unit."""
-        return await self.dbus.Unit.get_active_state()
+        return await self.connected_dbus.Unit.get("active_state")
 
     @dbus_connected
     def properties_changed(self) -> DBusSignalWrapper:
         """Return signal wrapper for properties changed."""
-        return self.dbus.signal(DBUS_SIGNAL_PROPERTIES_CHANGED)
+        return self.connected_dbus.signal(DBUS_SIGNAL_PROPERTIES_CHANGED)
 
 
 class Systemd(DBusInterfaceProxy):
@@ -124,64 +129,66 @@ class Systemd(DBusInterfaceProxy):
     @dbus_connected
     async def reboot(self) -> None:
         """Reboot host computer."""
-        await self.dbus.Manager.call_reboot()
+        await self.connected_dbus.Manager.call("reboot")
 
     @dbus_connected
     async def power_off(self) -> None:
         """Power off host computer."""
-        await self.dbus.Manager.call_power_off()
+        await self.connected_dbus.Manager.call("power_off")
 
     @dbus_connected
     @systemd_errors
     async def start_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Start a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_start_unit(unit, mode)
+        return await self.connected_dbus.Manager.call("start_unit", unit, mode)
 
     @dbus_connected
     @systemd_errors
     async def stop_unit(self, unit: str, mode: StopUnitMode) -> str:
         """Stop a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_stop_unit(unit, mode)
+        return await self.connected_dbus.Manager.call("stop_unit", unit, mode)
 
     @dbus_connected
     @systemd_errors
     async def reload_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Reload a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_reload_or_restart_unit(unit, mode)
+        return await self.connected_dbus.Manager.call(
+            "reload_or_restart_unit", unit, mode
+        )
 
     @dbus_connected
     @systemd_errors
     async def restart_unit(self, unit: str, mode: StartUnitMode) -> str:
         """Restart a systemd service unit. Returns object path of job."""
-        return await self.dbus.Manager.call_restart_unit(unit, mode)
+        return await self.connected_dbus.Manager.call("restart_unit", unit, mode)
 
     @dbus_connected
     async def list_units(
         self,
     ) -> list[tuple[str, str, str, str, str, str, str, int, str, str]]:
         """Return a list of available systemd services."""
-        return await self.dbus.Manager.call_list_units()
+        return await self.connected_dbus.Manager.call("list_units")
 
     @dbus_connected
     async def start_transient_unit(
         self, unit: str, mode: StartUnitMode, properties: list[tuple[str, Variant]]
     ) -> str:
         """Start a transient unit which is released when stopped or on reboot. Returns object path of job."""
-        return await self.dbus.Manager.call_start_transient_unit(
-            unit, mode, properties, []
+        return await self.connected_dbus.Manager.call(
+            "start_transient_unit", unit, mode, properties, []
         )
 
     @dbus_connected
     @systemd_errors
     async def reset_failed_unit(self, unit: str) -> None:
         """Reset the failed state of a unit."""
-        await self.dbus.Manager.call_reset_failed_unit(unit)
+        await self.connected_dbus.Manager.call("reset_failed_unit", unit)
 
     @dbus_connected
     @systemd_errors
     async def get_unit(self, unit: str) -> SystemdUnit:
         """Return systemd unit for unit name."""
-        obj_path = await self.dbus.Manager.call_get_unit(unit)
-        unit = SystemdUnit(obj_path)
-        await unit.connect(self.dbus.bus)
-        return unit
+        obj_path = await self.connected_dbus.Manager.call("get_unit", unit)
+        systemd_unit = SystemdUnit(obj_path)
+        await systemd_unit.connect(self.connected_dbus.bus)
+        return systemd_unit

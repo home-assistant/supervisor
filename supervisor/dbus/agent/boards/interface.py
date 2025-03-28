@@ -16,12 +16,21 @@ class BoardProxy(FileConfiguration, DBusInterfaceProxy):
 
     def __init__(self, name: str, file_schema: Schema | None = None) -> None:
         """Initialize properties."""
+        self._name: str = name
+        self._object_path: str = f"{DBUS_OBJECT_HAOS_BOARDS}/{name}"
+        self._properties_interface: str = f"{DBUS_IFACE_HAOS_BOARDS}.{name}"
         super().__init__(FILE_HASSIO_BOARD, file_schema or SCHEMA_BASE_BOARD)
         super(FileConfiguration, self).__init__()
 
-        self._name: str = name
-        self.object_path: str = f"{DBUS_OBJECT_HAOS_BOARDS}/{name}"
-        self.properties_interface: str = f"{DBUS_IFACE_HAOS_BOARDS}.{name}"
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
+
+    @property
+    def properties_interface(self) -> str:
+        """Primary interface of object to get property values from."""
+        return self._properties_interface
 
     @property
     def name(self) -> str:

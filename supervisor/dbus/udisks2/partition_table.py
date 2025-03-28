@@ -24,9 +24,14 @@ class UDisks2PartitionTable(DBusInterfaceProxy):
 
     def __init__(self, object_path: str, *, sync_properties: bool = True) -> None:
         """Initialize object."""
-        self.object_path = object_path
+        self._object_path = object_path
         self.sync_properties = sync_properties
         super().__init__()
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     @dbus_property
@@ -59,7 +64,12 @@ class UDisks2PartitionTable(DBusInterfaceProxy):
         and let UDisks2 choose a default based on partition table and OS.
         Provide return value with UDisks2Block.new. Or UDisks2.get_block_device after UDisks2.update.
         """
-        options = options.to_dict() if options else {}
-        return await self.dbus.PartitionTable.call_create_partition(
-            offset, size, type_, name, options | UDISKS2_DEFAULT_OPTIONS
+        partition_options = options.to_dict() if options else {}
+        return await self.connected_dbus.PartitionTable.call(
+            "create_partition",
+            offset,
+            size,
+            type_,
+            name,
+            partition_options | UDISKS2_DEFAULT_OPTIONS,
         )

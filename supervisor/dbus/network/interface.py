@@ -36,14 +36,16 @@ class NetworkInterface(DBusInterfaceProxy):
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        super().__init__()
-
-        self.object_path: str = object_path
-
+        self._object_path: str = object_path
         self.primary: bool = False
-
         self._connection: NetworkConnection | None = None
         self._wireless: NetworkWireless | None = None
+        super().__init__()
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     @dbus_property
@@ -130,7 +132,9 @@ class NetworkInterface(DBusInterfaceProxy):
 
         self.sync_properties = self.managed
         if self.sync_properties and self.is_connected:
-            self.dbus.sync_property_changes(self.properties_interface, self.update)
+            self.connected_dbus.sync_property_changes(
+                self.properties_interface, self.update
+            )
 
     @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:
@@ -157,7 +161,7 @@ class NetworkInterface(DBusInterfaceProxy):
                 self.connection = NetworkConnection(
                     self.properties[DBUS_ATTR_ACTIVE_CONNECTION]
                 )
-                await self.connection.connect(self.dbus.bus)
+                await self.connection.connect(self.connected_dbus.bus)
             else:
                 self.connection = None
 
@@ -169,7 +173,7 @@ class NetworkInterface(DBusInterfaceProxy):
                 await self.wireless.update()
             else:
                 self.wireless = NetworkWireless(self.object_path)
-                await self.wireless.connect(self.dbus.bus)
+                await self.wireless.connect(self.connected_dbus.bus)
 
     def shutdown(self) -> None:
         """Shutdown the object and disconnect from D-Bus.
