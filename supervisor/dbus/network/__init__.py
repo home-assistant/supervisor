@@ -1,7 +1,7 @@
 """Network Manager implementation for DBUS."""
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 from dbus_fast.aio.message_bus import MessageBus
@@ -106,11 +106,11 @@ class NetworkManager(DBusInterfaceProxy):
         self, connection_object: str, device_object: str
     ) -> NetworkConnection:
         """Activate a connction on a device."""
-        obj_active_con = await self.dbus.call_activate_connection(
-            connection_object, device_object, DBUS_OBJECT_BASE
+        obj_active_con = await self.connected_dbus.call(
+            "activate_connection", connection_object, device_object, DBUS_OBJECT_BASE
         )
         active_con = NetworkConnection(obj_active_con)
-        await active_con.connect(self.dbus.bus)
+        await active_con.connect(self.connected_dbus.bus)
         return active_con
 
     @dbus_connected
@@ -121,21 +121,22 @@ class NetworkManager(DBusInterfaceProxy):
         (
             _,
             obj_active_con,
-        ) = await self.dbus.call_add_and_activate_connection(
-            settings, device_object, DBUS_OBJECT_BASE
+        ) = await self.connected_dbus.call(
+            "add_and_activate_connection", settings, device_object, DBUS_OBJECT_BASE
         )
 
         active_con = NetworkConnection(obj_active_con)
-        await active_con.connect(self.dbus.bus)
-        return active_con.settings, active_con
+        await active_con.connect(self.connected_dbus.bus)
+        # Settings were provided so settings will not be None here or call would've failed
+        return cast(NetworkSetting, active_con.settings), active_con
 
     @dbus_connected
     async def check_connectivity(self, *, force: bool = False) -> ConnectivityState:
         """Check the connectivity of the host."""
         if force:
-            return await self.dbus.call_check_connectivity()
+            return await self.connected_dbus.call("check_connectivity")
         else:
-            return await self.dbus.get_connectivity()
+            return await self.connected_dbus.get("connectivity")
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
@@ -160,9 +161,10 @@ class NetworkManager(DBusInterfaceProxy):
                 self.dns.disconnect()
                 self.settings.disconnect()
 
+    @dbus_connected
     async def _validate_version(self) -> None:
         """Validate Version of NetworkManager."""
-        self.properties = await self.dbus.get_properties(DBUS_IFACE_NM)
+        self.properties = await self.connected_dbus.get_properties(DBUS_IFACE_NM)
 
         try:
             if self.version >= MINIMAL_VERSION:
@@ -206,7 +208,7 @@ class NetworkManager(DBusInterfaceProxy):
 
                 # Connect to interface
                 try:
-                    await interface.connect(self.dbus.bus)
+                    await interface.connect(self.connected_dbus.bus)
                 except (DBusFatalError, DBusInterfaceError) as err:
                     # Docker creates and deletes interfaces quite often, sometimes
                     # this causes a race condition: A device disappears while we

@@ -35,14 +35,17 @@ class NetworkConnection(DBusInterfaceProxy):
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        super().__init__()
-
-        self.object_path: str = object_path
-
+        self._object_path: str = object_path
         self._ipv4: IpConfiguration | None = None
         self._ipv6: IpConfiguration | None = None
         self._state_flags: set[ConnectionStateFlags] = {ConnectionStateFlags.NONE}
         self._settings: NetworkSetting | None = None
+        super().__init__()
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     @dbus_property
@@ -134,7 +137,7 @@ class NetworkConnection(DBusInterfaceProxy):
                 await self.ipv4.update()
             elif self.properties[DBUS_ATTR_IP4CONFIG] != DBUS_OBJECT_BASE:
                 self.ipv4 = IpConfiguration(self.properties[DBUS_ATTR_IP4CONFIG])
-                await self.ipv4.connect(self.dbus.bus)
+                await self.ipv4.connect(self.connected_dbus.bus)
             else:
                 self.ipv4 = None
 
@@ -148,7 +151,7 @@ class NetworkConnection(DBusInterfaceProxy):
                 await self.ipv6.update()
             elif self.properties[DBUS_ATTR_IP6CONFIG] != DBUS_OBJECT_BASE:
                 self.ipv6 = IpConfiguration(self.properties[DBUS_ATTR_IP6CONFIG], False)
-                await self.ipv6.connect(self.dbus.bus)
+                await self.ipv6.connect(self.connected_dbus.bus)
             else:
                 self.ipv6 = None
 
@@ -162,7 +165,7 @@ class NetworkConnection(DBusInterfaceProxy):
                 await self.settings.reload()
             elif self.properties[DBUS_ATTR_CONNECTION] != DBUS_OBJECT_BASE:
                 self.settings = NetworkSetting(self.properties[DBUS_ATTR_CONNECTION])
-                await self.settings.connect(self.dbus.bus)
+                await self.settings.connect(self.connected_dbus.bus)
             else:
                 self.settings = None
 

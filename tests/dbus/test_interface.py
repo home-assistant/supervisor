@@ -38,6 +38,14 @@ class TestInterface(DBusServiceMock):
         return 4
 
 
+class ServiceTest(DBusInterfaceProxy):
+    """DBus test class."""
+
+    bus_name = "service.test.TestInterface"
+    object_path = "/service/test/TestInterface"
+    properties_interface = "service.test.TestInterface"
+
+
 @pytest.fixture(name="test_service")
 async def fixture_test_service(dbus_session_bus: MessageBus) -> TestInterface:
     """Export test interface on dbus."""
@@ -54,12 +62,8 @@ async def fixture_proxy(
     dbus_session_bus: MessageBus,
 ) -> DBusInterfaceProxy:
     """Get a proxy."""
-    proxy = DBusInterfaceProxy()
-    proxy.bus_name = "service.test.TestInterface"
-    proxy.object_path = "/service/test/TestInterface"
-    proxy.properties_interface = "service.test.TestInterface"
+    proxy = ServiceTest()
     proxy.sync_properties = getattr(request, "param", True)
-
     await proxy.connect(dbus_session_bus)
     yield proxy
 
@@ -122,10 +126,7 @@ async def test_dbus_connected_no_raise_after_shutdown(
     test_service: TestInterface, dbus_session_bus: MessageBus
 ):
     """Test dbus connected methods do not raise DBusNotConnectedError after shutdown."""
-    proxy = DBusInterfaceProxy()
-    proxy.bus_name = "service.test.TestInterface"
-    proxy.object_path = "/service/test/TestInterface"
-    proxy.properties_interface = "service.test.TestInterface"
+    proxy = ServiceTest()
     proxy.sync_properties = False
 
     with pytest.raises(DBusNotConnectedError):
@@ -141,10 +142,13 @@ async def test_dbus_connected_no_raise_after_shutdown(
 
 async def test_proxy_missing_properties_interface(dbus_session_bus: MessageBus):
     """Test proxy instance disconnects and errors when missing properties interface."""
-    proxy = DBusInterfaceProxy()
-    proxy.bus_name = "test.no.properties.interface"
-    proxy.object_path = DBUS_OBJECT_BASE
-    proxy.properties_interface = "test.no.properties.interface"
+
+    class NoPropertiesService(DBusInterfaceProxy):
+        bus_name = "test.no.properties.interface"
+        object_path = DBUS_OBJECT_BASE
+        properties_interface = "test.no.properties.interface"
+
+    proxy = NoPropertiesService()
 
     def mock_introspect(*args, **kwargs):
         """Return introspection without properties."""
@@ -163,10 +167,12 @@ async def test_proxy_missing_properties_interface(dbus_session_bus: MessageBus):
 
 async def test_initialize(test_service: TestInterface, dbus_session_bus: MessageBus):
     """Test initialize for reusing connected dbus object."""
-    proxy = DBusInterface()
-    proxy.bus_name = "service.test.TestInterface"
-    proxy.object_path = "/service/test/TestInterface"
 
+    class ServiceTestInterfaceOnly(DBusInterface):
+        bus_name = "service.test.TestInterface"
+        object_path = "/service/test/TestInterface"
+
+    proxy = ServiceTestInterfaceOnly()
     assert proxy.is_connected is False
 
     # Not connected

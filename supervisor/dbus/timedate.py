@@ -35,7 +35,7 @@ class TimeDate(DBusInterfaceProxy):
     object_path: str = DBUS_OBJECT_TIMEDATE
     properties_interface: str = DBUS_IFACE_TIMEDATE
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize object."""
         super().__init__()
         self._timezone_tzinfo: tzinfo | None = None
@@ -97,9 +97,11 @@ class TimeDate(DBusInterfaceProxy):
     @dbus_connected
     async def set_time(self, utc: datetime) -> None:
         """Set time & date on host as UTC."""
-        await self.dbus.call_set_time(int(utc.timestamp() * 1000000), False, False)
+        await self.connected_dbus.call(
+            "set_time", int(utc.timestamp() * 1000000), False, False
+        )
 
     @dbus_connected
     async def set_ntp(self, use_ntp: bool) -> None:
         """Turn NTP on or off."""
-        await self.dbus.call_set_ntp(use_ntp, False)
+        await self.connected_dbus.call("set_ntp", use_ntp, False)

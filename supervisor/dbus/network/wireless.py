@@ -29,11 +29,14 @@ class NetworkWireless(DBusInterfaceProxy):
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
+        self._object_path: str = object_path
+        self._active: NetworkWirelessAP | None = None
         super().__init__()
 
-        self.object_path: str = object_path
-
-        self._active: NetworkWirelessAP | None = None
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     @dbus_property
@@ -57,22 +60,26 @@ class NetworkWireless(DBusInterfaceProxy):
     @dbus_connected
     async def request_scan(self) -> None:
         """Request a new AP scan."""
-        await self.dbus.Device.Wireless.call_request_scan({})
+        await self.connected_dbus.Device.Wireless.call("request_scan", {})
 
     @dbus_connected
     async def get_all_accesspoints(self) -> list[NetworkWirelessAP]:
         """Return a list of all access points path."""
-        accesspoints_data = await self.dbus.Device.Wireless.call_get_all_access_points()
+        accesspoints_data = await self.connected_dbus.Device.Wireless.call(
+            "get_all_access_points"
+        )
         accesspoints = [NetworkWirelessAP(ap_obj) for ap_obj in accesspoints_data]
 
         for err in await asyncio.gather(
-            *[ap.connect(self.dbus.bus) for ap in accesspoints], return_exceptions=True
+            *[ap.connect(self.connected_dbus.bus) for ap in accesspoints],
+            return_exceptions=True,
         ):
             if err:
                 _LOGGER.warning("Can't process an AP: %s", err)
 
         return accesspoints
 
+    @dbus_connected
     async def update(self, changed: dict[str, Any] | None = None) -> None:
         """Update properties via D-Bus."""
         await super().update(changed)
@@ -90,6 +97,6 @@ class NetworkWireless(DBusInterfaceProxy):
                 self.active = NetworkWirelessAP(
                     self.properties[DBUS_ATTR_ACTIVE_ACCESSPOINT]
                 )
-                await self.active.connect(self.dbus.bus)
+                await self.active.connect(self.connected_dbus.bus)
             else:
                 self.active = None

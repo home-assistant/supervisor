@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import socket
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 from dbus_fast import Variant
 
+from ....host.configuration import VlanConfig
 from ....host.const import InterfaceMethod, InterfaceType
 from .. import NetworkManager
 from . import (
@@ -140,12 +141,15 @@ def get_connection_from_interface(
     uuid: str | None = None,
 ) -> dict[str, dict[str, Variant]]:
     """Generate message argument for network interface update."""
+    # Simple input check to ensure it is safe to cast this for type checker
+    if interface.type == InterfaceType.VLAN and not interface.vlan:
+        raise ValueError("Interface has type vlan but no vlan config!")
 
     # Generate/Update ID/name
     if not name or not name.startswith("Supervisor"):
         name = f"Supervisor {interface.name}"
         if interface.type == InterfaceType.VLAN:
-            name = f"{name}.{interface.vlan.id}"
+            name = f"{name}.{cast(VlanConfig, interface.vlan).id}"
 
     if interface.type == InterfaceType.ETHERNET:
         iftype = "802-3-ethernet"
@@ -186,14 +190,14 @@ def get_connection_from_interface(
             CONF_ATTR_802_ETHERNET_ASSIGNED_MAC: Variant("s", "preserve")
         }
     elif interface.type == "vlan":
-        parent = interface.vlan.interface
+        parent = cast(VlanConfig, interface.vlan).interface
         if parent in network_manager and (
             parent_connection := network_manager.get(parent).connection
         ):
             parent = parent_connection.uuid
 
         conn[CONF_ATTR_VLAN] = {
-            CONF_ATTR_VLAN_ID: Variant("u", interface.vlan.id),
+            CONF_ATTR_VLAN_ID: Variant("u", cast(VlanConfig, interface.vlan).id),
             CONF_ATTR_VLAN_PARENT: Variant("s", parent),
         }
     elif interface.type == InterfaceType.WIRELESS:
