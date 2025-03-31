@@ -5,6 +5,7 @@ from collections import defaultdict
 from collections.abc import AsyncGenerator, Awaitable
 from contextlib import asynccontextmanager
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import timedelta
 import io
 import json
@@ -14,7 +15,7 @@ import tarfile
 from tarfile import TarFile
 from tempfile import TemporaryDirectory
 import time
-from typing import Any, Self, TypedDict, cast
+from typing import Any, Self, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from cryptography.hazmat.backends import default_backend
@@ -67,7 +68,8 @@ from .validate import SCHEMA_BACKUP
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class BackupLocation(TypedDict):
+@dataclass(slots=True)
+class BackupLocation:
     """Backup location metadata."""
 
     path: Path
@@ -137,7 +139,7 @@ class Backup(JobGroup):
     @property
     def protected(self) -> bool:
         """Return backup date."""
-        return self._locations[self.location]["protected"]
+        return self._locations[self.location].protected
 
     @property
     def compressed(self) -> bool:
@@ -240,7 +242,7 @@ class Backup(JobGroup):
     @property
     def size_bytes(self) -> int:
         """Return backup size in bytes."""
-        return self._locations[self.location]["size_bytes"]
+        return self._locations[self.location].size_bytes
 
     @property
     def is_new(self) -> bool:
@@ -250,7 +252,7 @@ class Backup(JobGroup):
     @property
     def tarfile(self) -> Path:
         """Return path to backup tarfile."""
-        return self._locations[self.location]["path"]
+        return self._locations[self.location].path
 
     @property
     def is_current(self) -> bool:
@@ -302,7 +304,7 @@ class Backup(JobGroup):
         # In case of conflict we always ignore the ones from the first one. But log them to let the user know
 
         if conflict := {
-            loc: val["path"]
+            loc: val.path
             for loc, val in self.all_locations.items()
             if loc in backup.all_locations and backup.all_locations[loc] != val
         }:
@@ -340,7 +342,7 @@ class Backup(JobGroup):
             self._init_password(password)
             self._data[ATTR_PROTECTED] = True
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
-            self._locations[self.location]["protected"] = True
+            self._locations[self.location].protected = True
 
         if not compressed:
             self._data[ATTR_COMPRESSED] = False
@@ -367,7 +369,7 @@ class Backup(JobGroup):
 
         Checks if we can access the backup file and decrypt if necessary.
         """
-        backup_file: Path = self.all_locations[location]["path"]
+        backup_file: Path = self.all_locations[location].path
 
         def _validate_file() -> None:
             ending = f".tar{'.gz' if self.compressed else ''}"
@@ -456,8 +458,8 @@ class Backup(JobGroup):
             return False
 
         if self._data[ATTR_PROTECTED]:
-            self._locations[self.location]["protected"] = True
-        self._locations[self.location]["size_bytes"] = size_bytes
+            self._locations[self.location].protected = True
+        self._locations[self.location].size_bytes = size_bytes
 
         return True
 
@@ -494,20 +496,22 @@ class Backup(JobGroup):
 
             return _outer_secure_tarfile, _outer_tarfile
 
-        def _close_outer_tarfile() -> int:
-            """Close outer tarfile."""
-            cast(SecureTarFile, self._outer_secure_tarfile).close()
-            return self.tarfile.stat().st_size
-
-        self._outer_secure_tarfile, outer_tarfile = await self.sys_run_in_executor(
+        outer_secure_tarfile, outer_tarfile = await self.sys_run_in_executor(
             _open_outer_tarfile
         )
+        self._outer_secure_tarfile = outer_secure_tarfile
+
+        def _close_outer_tarfile() -> int:
+            """Close outer tarfile."""
+            outer_secure_tarfile.close()
+            return self.tarfile.stat().st_size
+
         try:
             yield
         finally:
             await self._create_cleanup(outer_tarfile)
             size_bytes = await self.sys_run_in_executor(_close_outer_tarfile)
-            self._locations[self.location]["size_bytes"] = size_bytes
+            self._locations[self.location].size_bytes = size_bytes
             self._outer_secure_tarfile = None
 
     @asynccontextmanager
@@ -522,7 +526,7 @@ class Backup(JobGroup):
         backup_tarfile = (
             self.tarfile
             if location == DEFAULT
-            else self.all_locations[cast(str | None, location)]["path"]
+            else self.all_locations[cast(str | None, location)].path
         )
 
         # extract an existing backup
@@ -716,6 +720,7 @@ class Backup(JobGroup):
                 "Cannot backup components without initializing backup tar"
             )
 
+        outer_secure_tarfile = self._outer_secure_tarfile
         slug_name = name.replace("/", "_")
         tar_name = f"{slug_name}.tar{'.gz' if self.compressed else ''}"
         origin_dir = Path(self.sys_config.path_supervisor, name)
@@ -745,7 +750,7 @@ class Backup(JobGroup):
 
                 return False
 
-            with cast(SecureTarFile, self._outer_secure_tarfile).create_inner_tar(
+            with outer_secure_tarfile.create_inner_tar(
                 f"./{tar_name}",
                 gzip=self.compressed,
                 key=self._key,

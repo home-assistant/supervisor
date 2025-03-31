@@ -36,7 +36,6 @@ from ..const import (
     ATTR_LOCATION,
     ATTR_NAME,
     ATTR_PASSWORD,
-    ATTR_PATH,
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
@@ -156,8 +155,8 @@ class APIBackups(CoreSysAttributes):
         """Make location attributes dictionary."""
         return {
             loc if loc else LOCATION_LOCAL: {
-                ATTR_PROTECTED: backup.all_locations[loc]["protected"],
-                ATTR_SIZE_BYTES: backup.all_locations[loc]["size_bytes"],
+                ATTR_PROTECTED: backup.all_locations[loc].protected,
+                ATTR_SIZE_BYTES: backup.all_locations[loc].size_bytes,
             }
             for loc in backup.locations
         }
@@ -474,7 +473,7 @@ class APIBackups(CoreSysAttributes):
             raise APIError(f"Backup {backup.slug} is not in location {location}")
 
         _LOGGER.info("Downloading backup %s", backup.slug)
-        filename = backup.all_locations[location][ATTR_PATH]
+        filename = backup.all_locations[location].path
         # If the file is missing, return 404 and trigger reload of location
         if not await self.sys_run_in_executor(filename.is_file):
             self.sys_create_task(self.sys_backups.reload(location))

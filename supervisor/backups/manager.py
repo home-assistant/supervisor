@@ -344,7 +344,7 @@ class BackupManager(FileConfiguration, JobGroup):
             else list(backup.all_locations.keys())
         )
         for location in targets:
-            backup_tarfile = backup.all_locations[location]["path"]
+            backup_tarfile = backup.all_locations[location].path
             try:
                 await self.sys_run_in_executor(backup_tarfile.unlink)
                 del backup.all_locations[location]
@@ -786,7 +786,7 @@ class BackupManager(FileConfiguration, JobGroup):
         location_name = (
             cast(str | None, location) if location != DEFAULT else backup.location
         )
-        if backup.all_locations[location_name]["protected"]:
+        if backup.all_locations[location_name].protected:
             backup.set_password(password)
         else:
             backup.set_password(None)

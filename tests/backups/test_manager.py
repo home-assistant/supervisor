@@ -14,7 +14,7 @@ import pytest
 from supervisor.addons.addon import Addon
 from supervisor.addons.const import AddonBackupMode
 from supervisor.addons.model import AddonModel
-from supervisor.backups.backup import Backup
+from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.const import LOCATION_TYPE, BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, AddonState, CoreState
@@ -344,13 +344,13 @@ async def test_fail_invalid_full_backup(
         await manager.do_restore_full(partial_backup_mock.return_value)
 
     backup_instance = full_backup_mock.return_value
-    backup_instance.all_locations[None]["protected"] = True
+    backup_instance.all_locations[None].protected = True
     backup_instance.validate_backup.side_effect = BackupInvalidError()
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_full(backup_instance)
 
-    backup_instance.all_locations[None]["protected"] = False
+    backup_instance.all_locations[None].protected = False
     backup_instance.supervisor_version = "2022.08.4"
     with (
         patch.object(
@@ -373,13 +373,13 @@ async def test_fail_invalid_partial_backup(
     manager = await BackupManager(coresys).load_config()
 
     backup_instance = partial_backup_mock.return_value
-    backup_instance.all_locations[None]["protected"] = True
+    backup_instance.all_locations[None].protected = True
     backup_instance.validate_backup.side_effect = BackupInvalidError()
 
     with pytest.raises(BackupInvalidError):
         await manager.do_restore_partial(backup_instance)
 
-    backup_instance.all_locations[None]["protected"] = False
+    backup_instance.all_locations[None].protected = False
     backup_instance.homeassistant = None
 
     with pytest.raises(BackupInvalidError):
@@ -1747,7 +1747,7 @@ async def test_backup_remove_error(
     assert (backup := coresys.backups.get("7fed74c8"))
 
     assert location_name in backup.all_locations
-    backup.all_locations[location_name]["path"] = (tar_file_mock := MagicMock())
+    backup.all_locations[location_name].path = (tar_file_mock := MagicMock())
     tar_file_mock.unlink.side_effect = (err := OSError())
 
     err.errno = errno.EBUSY
@@ -2001,8 +2001,10 @@ async def test_backup_remove_multiple_locations(coresys: CoreSys):
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False, "size_bytes": 10240},
-        ".cloud_backup": {"path": location_2, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=location_1, protected=False, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=location_2, protected=False, size_bytes=10240
+        ),
     }
 
     await coresys.backups.remove(backup)
@@ -2021,8 +2023,10 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False, "size_bytes": 10240},
-        ".cloud_backup": {"path": location_2, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=location_1, protected=False, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=location_2, protected=False, size_bytes=10240
+        ),
     }
 
     await coresys.backups.remove(backup, locations=[".cloud_backup"])
@@ -2030,7 +2034,7 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
     assert not location_2.exists()
     assert coresys.backups.get("7fed74c8")
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False, "size_bytes": 10240}
+        None: BackupLocation(path=location_1, protected=False, size_bytes=10240),
     }
 
 
@@ -2074,7 +2078,7 @@ async def test_remove_non_existing_backup_raises(
     assert (backup := coresys.backups.get("7fed74c8"))
 
     assert None in backup.all_locations
-    backup.all_locations[None]["path"] = (tar_file_mock := MagicMock())
+    backup.all_locations[None].path = (tar_file_mock := MagicMock())
     tar_file_mock.unlink.side_effect = (err := FileNotFoundError())
     err.errno = errno.ENOENT
 
