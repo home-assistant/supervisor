@@ -118,17 +118,7 @@ class BackupManager(FileConfiguration, JobGroup):
             location = self.sys_mounts.default_backup_mount
 
         if location:
-            if (location_mount := cast(Mount, location)).local_where:
-                return location_mount.local_where
-
-            # This case should never actually occur, it was identified only by type checker.
-            # Backup type mounts always have a local_where and we check type of mount before calling this
-            # Previously this situation would've caused a runtime error returning None
-            # This is cleaner and ensures if it does happen somehow it gets to sentry
-            raise BackupError(
-                f"Cannot make backup in mount {location_mount.name} as it has no local mountpoint!",
-                _LOGGER.critical,
-            )
+            return cast(Mount, location).local_where
 
         return self.sys_config.path_backup
 
@@ -389,10 +379,7 @@ class BackupManager(FileConfiguration, JobGroup):
                         )
                     elif location:
                         location_mount = cast(Mount, location)
-                        if (
-                            not location_mount.local_where
-                            or not location_mount.local_where.is_mount()
-                        ):
+                        if not location_mount.local_where.is_mount():
                             raise BackupMountDownError(
                                 f"{location_mount.name} is down, cannot copy to it",
                                 _LOGGER.error,

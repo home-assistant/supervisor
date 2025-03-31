@@ -511,7 +511,7 @@ class APIBackups(CoreSysAttributes):
             location = locations.pop(0)
 
             if location and location != LOCATION_CLOUD_BACKUP:
-                tmp_path = cast(Mount, location).local_where or tmp_path
+                tmp_path = cast(Mount, location).local_where
 
         filename: str | None = None
         if ATTR_FILENAME in request.query:
