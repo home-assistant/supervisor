@@ -24,7 +24,7 @@ async def test_dbus_yellow(yellow_service: YellowService, dbus_session_bus: Mess
     yellow = await Yellow().load_config()
     await yellow.connect(dbus_session_bus)
 
-    assert yellow.name == "Yellow"
+    assert yellow.board_name == "Yellow"
     assert yellow.disk_led is True
     assert yellow.heartbeat_led is True
     assert yellow.power_led is True
