@@ -60,7 +60,7 @@ class UDisks2Block(DBusInterfaceProxy):
 
     def __init__(self, object_path: str, *, sync_properties: bool = True) -> None:
         """Initialize object."""
-        self.object_path = object_path
+        self._object_path = object_path
         self.sync_properties = sync_properties
         super().__init__()
 
@@ -77,6 +77,11 @@ class UDisks2Block(DBusInterfaceProxy):
         obj = UDisks2Block(object_path, sync_properties=sync_properties)
         await obj.connect(bus)
         return obj
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     def filesystem(self) -> UDisks2Filesystem | None:
@@ -212,48 +217,54 @@ class UDisks2Block(DBusInterfaceProxy):
     @dbus_connected
     async def check_type(self) -> None:
         """Check if type of block device has changed and adjust interfaces if so."""
-        introspection = await self.dbus.introspect()
+        introspection = await self.connected_dbus.introspect()
         interfaces = {intr.name for intr in introspection.interfaces}
 
         # If interfaces changed, update the proxy from introspection and reload interfaces
-        if interfaces != set(self.dbus.proxies.keys()):
-            await self.dbus.init_proxy(introspection=introspection)
+        if interfaces != set(self.connected_dbus.proxies.keys()):
+            await self.connected_dbus.init_proxy(introspection=introspection)
             await self._reload_interfaces()
 
     @dbus_connected
     async def _reload_interfaces(self) -> None:
         """Reload interfaces from introspection as necessary."""
         # Check if block device is a filesystem
-        if not self.filesystem and DBUS_IFACE_FILESYSTEM in self.dbus.proxies:
+        if not self.filesystem and DBUS_IFACE_FILESYSTEM in self.connected_dbus.proxies:
             self._filesystem = UDisks2Filesystem(
                 self.object_path, sync_properties=self.sync_properties
             )
-            await self._filesystem.initialize(self.dbus)
+            await self._filesystem.initialize(self.connected_dbus)
 
-        elif self.filesystem and DBUS_IFACE_FILESYSTEM not in self.dbus.proxies:
+        elif (
+            self.filesystem and DBUS_IFACE_FILESYSTEM not in self.connected_dbus.proxies
+        ):
             self.filesystem.stop_sync_property_changes()
             self._filesystem = None
 
         # Check if block device is a partition
-        if not self.partition and DBUS_IFACE_PARTITION in self.dbus.proxies:
+        if not self.partition and DBUS_IFACE_PARTITION in self.connected_dbus.proxies:
             self._partition = UDisks2Partition(
                 self.object_path, sync_properties=self.sync_properties
             )
-            await self._partition.initialize(self.dbus)
+            await self._partition.initialize(self.connected_dbus)
 
-        elif self.partition and DBUS_IFACE_PARTITION not in self.dbus.proxies:
+        elif self.partition and DBUS_IFACE_PARTITION not in self.connected_dbus.proxies:
             self.partition.stop_sync_property_changes()
             self._partition = None
 
         # Check if block device is a partition table
-        if not self.partition_table and DBUS_IFACE_PARTITION_TABLE in self.dbus.proxies:
+        if (
+            not self.partition_table
+            and DBUS_IFACE_PARTITION_TABLE in self.connected_dbus.proxies
+        ):
             self._partition_table = UDisks2PartitionTable(
                 self.object_path, sync_properties=self.sync_properties
             )
-            await self._partition_table.initialize(self.dbus)
+            await self._partition_table.initialize(self.connected_dbus)
 
         elif (
-            self.partition_table and DBUS_IFACE_PARTITION_TABLE not in self.dbus.proxies
+            self.partition_table
+            and DBUS_IFACE_PARTITION_TABLE not in self.connected_dbus.proxies
         ):
             self.partition_table.stop_sync_property_changes()
             self._partition_table = None
@@ -263,5 +274,7 @@ class UDisks2Block(DBusInterfaceProxy):
         self, type_: FormatType = FormatType.GPT, options: FormatOptions | None = None
     ) -> None:
         """Format block device."""
-        options = options.to_dict() if options else {}
-        await self.dbus.Block.call_format(type_, options | UDISKS2_DEFAULT_OPTIONS)
+        format_options = options.to_dict() if options else {}
+        await self.connected_dbus.Block.call(
+            "format", type_, format_options | UDISKS2_DEFAULT_OPTIONS
+        )

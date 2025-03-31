@@ -74,11 +74,11 @@ class UDisks2Manager(DBusInterfaceProxy):
             )
         else:
             # Register for signals on devices added/removed
-            self.udisks2_object_manager.dbus.object_manager.on_interfaces_added(
-                self._interfaces_added
+            self.udisks2_object_manager.dbus.object_manager.on(
+                "interfaces_added", self._interfaces_added
             )
-            self.udisks2_object_manager.dbus.object_manager.on_interfaces_removed(
-                self._interfaces_removed
+            self.udisks2_object_manager.dbus.object_manager.on(
+                "interfaces_removed", self._interfaces_removed
             )
 
     @dbus_connected
@@ -91,8 +91,8 @@ class UDisks2Manager(DBusInterfaceProxy):
 
         if not changed:
             # Cache block devices
-            block_devices = await self.dbus.Manager.call_get_block_devices(
-                UDISKS2_DEFAULT_OPTIONS
+            block_devices = await self.connected_dbus.Manager.call(
+                "get_block_devices", UDISKS2_DEFAULT_OPTIONS
             )
 
             unchanged_blocks = self._block_devices.keys() & set(block_devices)
@@ -102,7 +102,7 @@ class UDisks2Manager(DBusInterfaceProxy):
             self._block_devices = {
                 device: self._block_devices[device]
                 if device in unchanged_blocks
-                else await UDisks2Block.new(device, self.dbus.bus)
+                else await UDisks2Block.new(device, self.connected_dbus.bus)
                 for device in block_devices
             }
 
@@ -128,7 +128,7 @@ class UDisks2Manager(DBusInterfaceProxy):
             self._drives = {
                 drive: self._drives[drive]
                 if drive in self._drives
-                else await UDisks2Drive.new(drive, self.dbus.bus)
+                else await UDisks2Drive.new(drive, self.connected_dbus.bus)
                 for drive in drives
             }
 
@@ -180,13 +180,14 @@ class UDisks2Manager(DBusInterfaceProxy):
         """Return list of device object paths for specification."""
         return await asyncio.gather(
             *[
-                UDisks2Block.new(path, self.dbus.bus, sync_properties=False)
-                for path in await self.dbus.Manager.call_resolve_device(
-                    devspec.to_dict(), UDISKS2_DEFAULT_OPTIONS
+                UDisks2Block.new(path, self.connected_dbus.bus, sync_properties=False)
+                for path in await self.connected_dbus.Manager.call(
+                    "resolve_device", devspec.to_dict(), UDISKS2_DEFAULT_OPTIONS
                 )
             ]
         )
 
+    @dbus_connected
     async def _interfaces_added(
         self, object_path: str, properties: dict[str, dict[str, Any]]
     ) -> None:
@@ -200,13 +201,13 @@ class UDisks2Manager(DBusInterfaceProxy):
 
         if DBUS_IFACE_BLOCK in properties:
             self._block_devices[object_path] = await UDisks2Block.new(
-                object_path, self.dbus.bus
+                object_path, self.connected_dbus.bus
             )
             return
 
         if DBUS_IFACE_DRIVE in properties:
             self._drives[object_path] = await UDisks2Drive.new(
-                object_path, self.dbus.bus
+                object_path, self.connected_dbus.bus
             )
 
     async def _interfaces_removed(

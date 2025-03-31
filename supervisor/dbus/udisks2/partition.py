@@ -29,9 +29,14 @@ class UDisks2Partition(DBusInterfaceProxy):
 
     def __init__(self, object_path: str, *, sync_properties: bool = True) -> None:
         """Initialize object."""
-        self.object_path = object_path
+        self._object_path = object_path
         self.sync_properties = sync_properties
         super().__init__()
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     @dbus_property
@@ -86,12 +91,16 @@ class UDisks2Partition(DBusInterfaceProxy):
         for GPT type tables or a hexadecimal number for dos type tables. Can also use empty string
         and let UDisks2 choose a default based on partition table and OS.
         """
-        await self.dbus.Partition.call_set_type(type_, UDISKS2_DEFAULT_OPTIONS)
+        await self.connected_dbus.Partition.call(
+            "set_type", type_, UDISKS2_DEFAULT_OPTIONS
+        )
 
     @dbus_connected
     async def set_name(self, name: str) -> None:
         """Set the name/label of the partition."""
-        await self.dbus.Partition.call_set_name(name, UDISKS2_DEFAULT_OPTIONS)
+        await self.connected_dbus.Partition.call(
+            "set_name", name, UDISKS2_DEFAULT_OPTIONS
+        )
 
     @dbus_connected
     async def resize(self, size: int = 0) -> None:
@@ -100,10 +109,14 @@ class UDisks2Partition(DBusInterfaceProxy):
         Position/offset cannot be changed, only size. May be slightly bigger then requested.
         Raises error if allocation fails.
         """
-        await self.dbus.Partition.call_resize(size, UDISKS2_DEFAULT_OPTIONS)
+        await self.connected_dbus.Partition.call(
+            "resize", size, UDISKS2_DEFAULT_OPTIONS
+        )
 
     @dbus_connected
     async def delete(self, options: DeletePartitionOptions | None = None) -> None:
         """Delete the partition."""
-        options = options.to_dict() if options else {}
-        return await self.dbus.Partition.call_delete(options | UDISKS2_DEFAULT_OPTIONS)
+        delete_options = options.to_dict() if options else {}
+        return await self.connected_dbus.Partition.call(
+            "delete", delete_options | UDISKS2_DEFAULT_OPTIONS
+        )

@@ -1,9 +1,11 @@
 """Mock test."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from supervisor.backups.backup import BackupLocation
 from supervisor.backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE, BackupType
 from supervisor.backups.validate import ALL_FOLDERS
 from supervisor.coresys import CoreSys
@@ -41,7 +43,9 @@ def partial_backup_mock(backup_mock):
     backup_instance.addon_list = [TEST_ADDON_SLUG]
     backup_instance.supervisor_version = "9999.09.9.dev9999"
     backup_instance.location = None
-    backup_instance.all_locations = {None: {"protected": False}}
+    backup_instance.all_locations = {
+        None: BackupLocation(path=Path("/"), protected=False, size_bytes=0)
+    }
     backup_instance.validate_backup = AsyncMock()
     yield backup_mock
 
@@ -55,7 +59,9 @@ def full_backup_mock(backup_mock):
     backup_instance.addon_list = [TEST_ADDON_SLUG]
     backup_instance.supervisor_version = "9999.09.9.dev9999"
     backup_instance.location = None
-    backup_instance.all_locations = {None: {"protected": False}}
+    backup_instance.all_locations = {
+        None: BackupLocation(path=Path("/"), protected=False, size_bytes=0)
+    }
     backup_instance.validate_backup = AsyncMock()
     yield backup_mock
 

@@ -24,7 +24,7 @@ async def test_dbus_green(green_service: GreenService, dbus_session_bus: Message
     green = await Green().load_config()
     await green.connect(dbus_session_bus)
 
-    assert green.name == "Green"
+    assert green.board_name == "Green"
     assert green.activity_led is True
     assert green.power_led is True
     assert green.user_led is True

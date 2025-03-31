@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import logging
 
 import aiohttp
-from aiohttp import WSMessageTypeError, web
+from aiohttp import WSCloseCode, WSMessageTypeError, web
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.client_ws import ClientWebSocketResponse
 from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
@@ -205,7 +205,9 @@ class APIProxy(CoreSysAttributes):
                     logger.warning(
                         "Error WebSocket message received while proxying: %r", msg.data
                     )
-                    await target.close(code=source.close_code)
+                    await target.close(
+                        code=source.close_code or WSCloseCode.INTERNAL_ERROR
+                    )
                 case _:
                     logger.warning(
                         "Cannot proxy WebSocket message of unsupported type: %r",

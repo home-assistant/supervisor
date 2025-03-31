@@ -26,9 +26,14 @@ class UDisks2Filesystem(DBusInterfaceProxy):
 
     def __init__(self, object_path: str, *, sync_properties: bool = True) -> None:
         """Initialize object."""
-        self.object_path = object_path
+        self._object_path = object_path
         self.sync_properties = sync_properties
         super().__init__()
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     @dbus_property
@@ -53,26 +58,36 @@ class UDisks2Filesystem(DBusInterfaceProxy):
         if not overridden in /etc/fstab. Therefore unclear if this can be useful to supervisor.
         http://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Filesystem.html#gdbus-method-org-freedesktop-UDisks2-Filesystem.Mount
         """
-        options = options.to_dict() if options else {}
-        return await self.dbus.Filesystem.call_mount(options | UDISKS2_DEFAULT_OPTIONS)
+        mount_options = options.to_dict() if options else {}
+        return await self.connected_dbus.Filesystem.call(
+            "mount", mount_options | UDISKS2_DEFAULT_OPTIONS
+        )
 
     @dbus_connected
     async def unmount(self, options: UnmountOptions | None = None) -> None:
         """Unmount filesystem."""
-        options = options.to_dict() if options else {}
-        await self.dbus.Filesystem.call_unmount(options | UDISKS2_DEFAULT_OPTIONS)
+        unmount_options = options.to_dict() if options else {}
+        await self.connected_dbus.Filesystem.call(
+            "unmount", unmount_options | UDISKS2_DEFAULT_OPTIONS
+        )
 
     @dbus_connected
     async def set_label(self, label: str) -> None:
         """Set filesystem label."""
-        await self.dbus.Filesystem.call_set_label(label, UDISKS2_DEFAULT_OPTIONS)
+        await self.connected_dbus.Filesystem.call(
+            "set_label", label, UDISKS2_DEFAULT_OPTIONS
+        )
 
     @dbus_connected
     async def check(self) -> bool:
         """Check filesystem for consistency. Returns true if it passed."""
-        return await self.dbus.Filesystem.call_check(UDISKS2_DEFAULT_OPTIONS)
+        return await self.connected_dbus.Filesystem.call(
+            "check", UDISKS2_DEFAULT_OPTIONS
+        )
 
     @dbus_connected
     async def repair(self) -> bool:
         """Attempt to repair filesystem. Returns true if repair was successful."""
-        return await self.dbus.Filesystem.call_repair(UDISKS2_DEFAULT_OPTIONS)
+        return await self.connected_dbus.Filesystem.call(
+            "repair", UDISKS2_DEFAULT_OPTIONS
+        )

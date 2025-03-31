@@ -25,9 +25,13 @@ class NetworkWirelessAP(DBusInterfaceProxy):
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkWireless AP object."""
+        self._object_path: str = object_path
         super().__init__()
 
-        self.object_path: str = object_path
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     @dbus_property

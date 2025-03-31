@@ -79,7 +79,7 @@ def _merge_settings_attribute(
     new_settings: dict[str, dict[str, Variant]],
     attribute: str,
     *,
-    ignore_current_value: list[str] = None,
+    ignore_current_value: list[str] | None = None,
 ) -> None:
     """Merge settings attribute if present."""
     if attribute in new_settings:
@@ -103,7 +103,7 @@ class NetworkSetting(DBusInterface):
 
     def __init__(self, object_path: str) -> None:
         """Initialize NetworkConnection object."""
-        self.object_path: str = object_path
+        self._object_path: str = object_path
 
         self._connection: ConnectionProperties | None = None
         self._wireless: WirelessProperties | None = None
@@ -113,6 +113,12 @@ class NetworkSetting(DBusInterface):
         self._ipv4: IpProperties | None = None
         self._ipv6: IpProperties | None = None
         self._match: MatchProperties | None = None
+        super().__init__()
+
+    @property
+    def object_path(self) -> str:
+        """Object path for dbus object."""
+        return self._object_path
 
     @property
     def connection(self) -> ConnectionProperties | None:
@@ -157,14 +163,16 @@ class NetworkSetting(DBusInterface):
     @dbus_connected
     async def get_settings(self) -> dict[str, Any]:
         """Return connection settings."""
-        return await self.dbus.Settings.Connection.call_get_settings()
+        return await self.connected_dbus.Settings.Connection.call("get_settings")
 
     @dbus_connected
     async def update(self, settings: dict[str, dict[str, Variant]]) -> None:
         """Update connection settings."""
         new_settings: dict[
             str, dict[str, Variant]
-        ] = await self.dbus.Settings.Connection.call_get_settings(unpack_variants=False)
+        ] = await self.connected_dbus.Settings.Connection.call(
+            "get_settings", unpack_variants=False
+        )
 
         _merge_settings_attribute(
             new_settings,
@@ -192,19 +200,19 @@ class NetworkSetting(DBusInterface):
         )
         _merge_settings_attribute(new_settings, settings, CONF_ATTR_MATCH)
 
-        await self.dbus.Settings.Connection.call_update(new_settings)
+        await self.connected_dbus.Settings.Connection.call("update", new_settings)
 
     @dbus_connected
     async def delete(self) -> None:
         """Delete connection settings."""
-        await self.dbus.Settings.Connection.call_delete()
+        await self.connected_dbus.Settings.Connection.call("delete")
 
     async def connect(self, bus: MessageBus) -> None:
         """Get connection information."""
         await super().connect(bus)
         await self.reload()
 
-        self.dbus.Settings.Connection.on_updated(self.reload)
+        self.connected_dbus.Settings.Connection.on("updated", self.reload)
 
     @dbus_connected
     async def reload(self):
