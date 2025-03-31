@@ -89,9 +89,10 @@ class OSAgent(DBusInterfaceProxy):
         """Return if diagnostics is enabled on OS-Agent."""
         return self.properties[DBUS_ATTR_DIAGNOSTICS]
 
+    @dbus_connected
     def set_diagnostics(self, value: bool) -> Awaitable[None]:
         """Enable or disable OS-Agent diagnostics."""
-        return self.dbus.set_diagnostics(value)
+        return self.connected_dbus.set("diagnostics", value)
 
     @property
     def all(self) -> list[DBusInterface]:

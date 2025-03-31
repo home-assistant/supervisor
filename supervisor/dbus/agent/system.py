@@ -14,4 +14,4 @@ class System(DBusInterface):
     @dbus_connected
     async def schedule_wipe_device(self) -> bool:
         """Schedule a factory reset on next system boot."""
-        return await self.dbus.System.call_schedule_wipe_device()
+        return await self.connected_dbus.System.call("schedule_wipe_device")
