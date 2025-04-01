@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from aiohttp import web
+from aiohttp import hdrs, web
 
 from ..const import AddonState
 from ..coresys import CoreSys, CoreSysAttributes
@@ -82,14 +82,12 @@ class RestAPI(CoreSysAttributes):
         self._site: web.TCPSite | None = None
 
         # share single host API handler for reuse in logging endpoints
-        self._api_host: APIHost | None = None
+        self._api_host: APIHost = APIHost()
+        self._api_host.coresys = coresys
 
     async def load(self) -> None:
         """Register REST API Calls."""
         static_resource_configs: list[StaticResourceConfig] = []
-
-        self._api_host = APIHost()
-        self._api_host.coresys = self.coresys
 
         self._register_addons()
         self._register_audio()
@@ -239,6 +237,8 @@ class RestAPI(CoreSysAttributes):
             [
                 web.get("/os/info", api_os.info),
                 web.post("/os/update", api_os.update),
+                web.get("/os/config/swap", api_os.config_swap_info),
+                web.post("/os/config/swap", api_os.config_swap_options),
                 web.post("/os/config/sync", api_os.config_sync),
                 web.post("/os/datadisk/move", api_os.migrate_data),
                 web.get("/os/datadisk/list", api_os.list_data),
@@ -526,7 +526,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get("/addons", api_addons.list),
+                web.get("/addons", api_addons.list_addons),
                 web.post("/addons/{addon}/uninstall", api_addons.uninstall),
                 web.post("/addons/{addon}/start", api_addons.start),
                 web.post("/addons/{addon}/stop", api_addons.stop),
@@ -594,7 +594,9 @@ class RestAPI(CoreSysAttributes):
                 web.post("/ingress/session", api_ingress.create_session),
                 web.post("/ingress/validate_session", api_ingress.validate_session),
                 web.get("/ingress/panels", api_ingress.panels),
-                web.view("/ingress/{token}/{path:.*}", api_ingress.handler),
+                web.route(
+                    hdrs.METH_ANY, "/ingress/{token}/{path:.*}", api_ingress.handler
+                ),
             ]
         )
 
@@ -605,7 +607,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get("/backups", api_backups.list),
+                web.get("/backups", api_backups.list_backups),
                 web.get("/backups/info", api_backups.info),
                 web.post("/backups/options", api_backups.options),
                 web.post("/backups/reload", api_backups.reload),
@@ -632,7 +634,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get("/services", api_services.list),
+                web.get("/services", api_services.list_services),
                 web.get("/services/{service}", api_services.get_service),
                 web.post("/services/{service}", api_services.set_service),
                 web.delete("/services/{service}", api_services.del_service),
@@ -646,7 +648,7 @@ class RestAPI(CoreSysAttributes):
 
         self.webapp.add_routes(
             [
-                web.get("/discovery", api_discovery.list),
+                web.get("/discovery", api_discovery.list_discovery),
                 web.get("/discovery/{uuid}", api_discovery.get_discovery),
                 web.delete("/discovery/{uuid}", api_discovery.del_discovery),
                 web.post("/discovery", api_discovery.set_discovery),

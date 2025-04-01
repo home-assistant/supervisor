@@ -124,7 +124,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_volume(self, request: web.Request) -> None:
         """Set audio volume on stream."""
-        source: StreamType = StreamType(request.match_info.get("source"))
+        source: StreamType = StreamType(request.match_info["source"])
         application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_VOLUME, request)
 
@@ -137,7 +137,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_mute(self, request: web.Request) -> None:
         """Mute audio volume on stream."""
-        source: StreamType = StreamType(request.match_info.get("source"))
+        source: StreamType = StreamType(request.match_info["source"])
         application: bool = request.path.endswith("application")
         body = await api_validate(SCHEMA_MUTE, request)
 
@@ -150,7 +150,7 @@ class APIAudio(CoreSysAttributes):
     @api_process
     async def set_default(self, request: web.Request) -> None:
         """Set audio default stream."""
-        source: StreamType = StreamType(request.match_info.get("source"))
+        source: StreamType = StreamType(request.match_info["source"])
         body = await api_validate(SCHEMA_DEFAULT, request)
 
         await asyncio.shield(self.sys_host.sound.set_default(source, body[ATTR_NAME]))

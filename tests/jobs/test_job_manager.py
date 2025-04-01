@@ -195,6 +195,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                             {
                                 "type": "HassioError",
                                 "message": "Unknown error, see supervisor logs",
+                                "stage": "test",
                             }
                         ],
                         "created": ANY,
@@ -221,6 +222,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                         {
                             "type": "HassioError",
                             "message": "Unknown error, see supervisor logs",
+                            "stage": "test",
                         }
                     ],
                     "created": ANY,

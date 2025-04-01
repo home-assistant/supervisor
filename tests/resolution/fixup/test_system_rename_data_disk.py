@@ -43,11 +43,13 @@ async def test_fixup(coresys: CoreSys, sda1_filesystem_service: FilesystemServic
 
     assert not system_rename_data_disk.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.RENAME_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.RENAME_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_issue(
+        Issue(IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1")
     )
 
     await system_rename_data_disk()
@@ -73,11 +75,13 @@ async def test_fixup_device_removed(
 
     assert not system_rename_data_disk.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.RENAME_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.RENAME_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_issue(
+        Issue(IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1")
     )
 
     udisks2_service.resolved_devices = []
@@ -98,11 +102,13 @@ async def test_fixup_device_not_filesystem(
 
     assert not system_rename_data_disk.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.RENAME_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.RENAME_DATA_DISK, ContextType.SYSTEM, reference="/dev/sda1"
+        )
     )
-    coresys.resolution.issues = Issue(
-        IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1"
+    coresys.resolution.add_issue(
+        Issue(IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sda1")
     )
 
     udisks2_service.resolved_devices = ["/org/freedesktop/UDisks2/block_devices/sda"]

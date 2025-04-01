@@ -35,9 +35,9 @@ class Logind(DBusInterface):
     @dbus_connected
     async def reboot(self) -> None:
         """Reboot host computer."""
-        await self.dbus.Manager.call_reboot(False)
+        await self.connected_dbus.Manager.call("reboot", False)
 
     @dbus_connected
     async def power_off(self) -> None:
         """Power off host computer."""
-        await self.dbus.Manager.call_power_off(False)
+        await self.connected_dbus.Manager.call("power_off", False)

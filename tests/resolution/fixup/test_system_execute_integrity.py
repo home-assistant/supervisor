@@ -22,10 +22,10 @@ async def test_fixup(coresys: CoreSys):
 
     assert system_execute_integrity.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_INTEGRITY, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.EXECUTE_INTEGRITY, ContextType.SYSTEM)
     )
-    coresys.resolution.issues = Issue(IssueType.TRUST, ContextType.SYSTEM)
+    coresys.resolution.add_issue(Issue(IssueType.TRUST, ContextType.SYSTEM))
 
     coresys.security.integrity_check = AsyncMock(
         return_value=IntegrityResult(
@@ -48,10 +48,10 @@ async def test_fixup_error(coresys: CoreSys):
 
     assert system_execute_integrity.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_INTEGRITY, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.EXECUTE_INTEGRITY, ContextType.SYSTEM)
     )
-    coresys.resolution.issues = Issue(IssueType.TRUST, ContextType.SYSTEM)
+    coresys.resolution.add_issue(Issue(IssueType.TRUST, ContextType.SYSTEM))
 
     coresys.security.integrity_check = AsyncMock(
         return_value=IntegrityResult(

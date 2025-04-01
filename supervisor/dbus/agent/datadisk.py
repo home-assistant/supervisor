@@ -28,14 +28,14 @@ class DataDisk(DBusInterfaceProxy):
     @dbus_connected
     async def change_device(self, device: Path) -> None:
         """Migrate data disk to a new device."""
-        await self.dbus.DataDisk.call_change_device(device.as_posix())
+        await self.connected_dbus.DataDisk.call("change_device", device.as_posix())
 
     @dbus_connected
     async def reload_device(self) -> None:
         """Reload device data."""
-        await self.dbus.DataDisk.call_reload_device()
+        await self.connected_dbus.DataDisk.call("reload_device")
 
     @dbus_connected
     async def mark_data_move(self) -> None:
         """Create marker to signal to do data disk migration next reboot."""
-        await self.dbus.DataDisk.call_mark_data_move()
+        await self.connected_dbus.DataDisk.call("mark_data_move")

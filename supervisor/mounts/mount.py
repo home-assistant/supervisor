@@ -153,16 +153,9 @@ class Mount(CoreSysAttributes, ABC):
         return self._state
 
     @cached_property
-    def local_where(self) -> Path | None:
-        """Return where this is mounted within supervisor container.
-
-        This returns none if 'where' is not within supervisor's host data directory.
-        """
-        return (
-            self.sys_config.extern_to_local_path(self.where)
-            if self.where.is_relative_to(self.sys_config.path_extern_supervisor)
-            else None
-        )
+    def local_where(self) -> Path:
+        """Return where this is mounted within supervisor container."""
+        return self.sys_config.extern_to_local_path(self.where)
 
     @property
     def container_where(self) -> PurePath | None:
@@ -276,27 +269,25 @@ class Mount(CoreSysAttributes, ABC):
 
     async def mount(self) -> None:
         """Mount using systemd."""
-        # If supervisor can see where it will mount, ensure there's an empty folder there
-        if self.local_where:
 
-            def ensure_empty_folder() -> None:
-                if not self.local_where.exists():
-                    _LOGGER.info(
-                        "Creating folder for mount: %s", self.local_where.as_posix()
-                    )
-                    self.local_where.mkdir(parents=True)
-                elif not self.local_where.is_dir():
-                    raise MountInvalidError(
-                        f"Cannot mount {self.name} at {self.local_where.as_posix()} as it is not a directory",
-                        _LOGGER.error,
-                    )
-                elif any(self.local_where.iterdir()):
-                    raise MountInvalidError(
-                        f"Cannot mount {self.name} at {self.local_where.as_posix()} because it is not empty",
-                        _LOGGER.error,
-                    )
+        def ensure_empty_folder() -> None:
+            if not self.local_where.exists():
+                _LOGGER.info(
+                    "Creating folder for mount: %s", self.local_where.as_posix()
+                )
+                self.local_where.mkdir(parents=True)
+            elif not self.local_where.is_dir():
+                raise MountInvalidError(
+                    f"Cannot mount {self.name} at {self.local_where.as_posix()} as it is not a directory",
+                    _LOGGER.error,
+                )
+            elif any(self.local_where.iterdir()):
+                raise MountInvalidError(
+                    f"Cannot mount {self.name} at {self.local_where.as_posix()} because it is not empty",
+                    _LOGGER.error,
+                )
 
-            await self.sys_run_in_executor(ensure_empty_folder)
+        await self.sys_run_in_executor(ensure_empty_folder)
 
         try:
             options = (
@@ -542,6 +533,9 @@ class BindMount(Mount):
         self, coresys: CoreSys, data: MountData, *, where: PurePath | None = None
     ) -> None:
         """Initialize object."""
+        if where and not where.is_relative_to(coresys.config.path_extern_supervisor):
+            raise ValueError("Path must be within Supervisor's host data directory!")
+
         super().__init__(coresys, data)
         self._where = where
 

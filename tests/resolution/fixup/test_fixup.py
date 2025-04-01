@@ -28,8 +28,8 @@ async def test_check_autofix(coresys: CoreSys):
         "system_create_full_backup"
     ].process_fixup.assert_not_called()
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.CREATE_FULL_BACKUP, ContextType.SYSTEM)
     )
     with patch(
         "supervisor.resolution.fixups.system_create_full_backup.FixupSystemCreateFullBackup.auto",

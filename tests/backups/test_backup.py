@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from supervisor.backups.backup import Backup
+from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
@@ -86,7 +86,7 @@ async def test_consolidate_conflict_varied_encryption(
         in caplog.text
     )
     assert enc_backup.all_locations == {
-        None: {"path": unc_tar, "protected": False, "size_bytes": 10240}
+        None: BackupLocation(path=unc_tar, protected=False, size_bytes=10240),
     }
 
 
@@ -112,8 +112,8 @@ async def test_consolidate(
         not in caplog.text
     )
     assert enc_backup.all_locations == {
-        None: {"path": enc_tar, "protected": True, "size_bytes": 10240},
-        "backup_test": {"path": unc_tar, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=enc_tar, protected=True, size_bytes=10240),
+        "backup_test": BackupLocation(path=unc_tar, protected=False, size_bytes=10240),
     }
 
 

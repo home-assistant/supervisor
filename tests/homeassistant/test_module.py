@@ -144,6 +144,12 @@ async def test_end_backup_ws_error(coresys: CoreSys, caplog: pytest.LogCaptureFi
         ("test.cpython-312.pyc", False, True, "subfolder/__pycache__"),
         (".DS_Store", False, True, None),
         (".DS_Store", False, True, "subfolder"),
+        (
+            "core.restore_state.corrupt.2025-03-26T20:55:45.635297+00:00",
+            False,
+            True,
+            ".storage",
+        ),
     ],
 )
 @pytest.mark.usefixtures("tmp_supervisor_data")

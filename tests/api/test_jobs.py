@@ -7,6 +7,7 @@ from aiohttp.test_utils import TestClient
 import pytest
 
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import SupervisorError
 from supervisor.jobs.const import ATTR_IGNORE_CONDITIONS, JobCondition
 from supervisor.jobs.decorator import Job
 
@@ -312,6 +313,75 @@ async def test_jobs_sorted(api_client: TestClient, coresys: CoreSys):
                     "stage": None,
                     "done": True,
                     "errors": [],
+                    "child_jobs": [],
+                },
+            ],
+        },
+    ]
+
+
+async def test_job_with_error(
+    api_client: TestClient,
+    coresys: CoreSys,
+):
+    """Test job output with an error."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(name="test_jobs_api_error_outer", cleanup=False)
+        async def test_jobs_api_error_outer(self):
+            """Error test outer method."""
+            coresys.jobs.current.stage = "test"
+            await self.test_jobs_api_error_inner()
+
+        @Job(name="test_jobs_api_error_inner", cleanup=False)
+        async def test_jobs_api_error_inner(self):
+            """Error test inner method."""
+            raise SupervisorError("bad")
+
+    test = TestClass(coresys)
+    with pytest.raises(SupervisorError):
+        await test.test_jobs_api_error_outer()
+
+    resp = await api_client.get("/jobs/info")
+    result = await resp.json()
+    assert result["data"]["jobs"] == [
+        {
+            "created": ANY,
+            "name": "test_jobs_api_error_outer",
+            "reference": None,
+            "uuid": ANY,
+            "progress": 0,
+            "stage": "test",
+            "done": True,
+            "errors": [
+                {
+                    "type": "SupervisorError",
+                    "message": "bad",
+                    "stage": "test",
+                }
+            ],
+            "child_jobs": [
+                {
+                    "created": ANY,
+                    "name": "test_jobs_api_error_inner",
+                    "reference": None,
+                    "uuid": ANY,
+                    "progress": 0,
+                    "stage": None,
+                    "done": True,
+                    "errors": [
+                        {
+                            "type": "SupervisorError",
+                            "message": "bad",
+                            "stage": None,
+                        }
+                    ],
                     "child_jobs": [],
                 },
             ],

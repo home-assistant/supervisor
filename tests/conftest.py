@@ -65,8 +65,12 @@ from .dbus_service_mocks.network_manager import NetworkManager as NetworkManager
 
 
 @pytest.fixture(autouse=True)
-def blockbuster() -> BlockBuster:
+def blockbuster(request: pytest.FixtureRequest) -> BlockBuster | None:
     """Raise for blocking I/O in event loop."""
+    if getattr(request, "param", "") == "no_blockbuster":
+        yield None
+        return
+
     # Only scanning supervisor code for now as that's our primary interest
     # This will still raise for tests that call utilities in supervisor code that block
     # But it will ignore calls to libraries and such that do blocking I/O directly from tests
@@ -279,6 +283,7 @@ async def fixture_os_agent_services(
             "agent_apparmor": None,
             "agent_cgroup": None,
             "agent_datadisk": None,
+            "agent_swap": None,
             "agent_system": None,
             "agent_boards": None,
             "agent_boards_yellow": None,

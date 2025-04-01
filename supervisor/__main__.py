@@ -11,10 +11,12 @@ import zlib_fast
 # Enable fast zlib before importing supervisor
 zlib_fast.enable()
 
-from supervisor import bootstrap  # pylint: disable=wrong-import-position # noqa: E402
-from supervisor.utils.logging import (  # pylint: disable=wrong-import-position  # noqa: E402
-    activate_log_queue_handler,
-)
+# pylint: disable=wrong-import-position
+from supervisor import bootstrap  # noqa: E402
+from supervisor.utils.blockbuster import activate_blockbuster  # noqa: E402
+from supervisor.utils.logging import activate_log_queue_handler  # noqa: E402
+
+# pylint: enable=wrong-import-position
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -52,6 +54,8 @@ if __name__ == "__main__":
     _LOGGER.info("Initializing Supervisor setup")
     coresys = loop.run_until_complete(bootstrap.initialize_coresys())
     loop.set_debug(coresys.config.debug)
+    if coresys.config.detect_blocking_io:
+        activate_blockbuster()
     loop.run_until_complete(coresys.core.connect())
 
     loop.run_until_complete(bootstrap.supervisor_debugger(coresys))

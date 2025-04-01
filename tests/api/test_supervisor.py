@@ -1,9 +1,11 @@
 """Test Supervisor API."""
 
 # pylint: disable=protected-access
+import time
 from unittest.mock import MagicMock, patch
 
 from aiohttp.test_utils import TestClient
+from blockbuster import BlockingError
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -233,6 +235,7 @@ async def test_api_supervisor_reload(api_client: TestClient):
     """Test supervisor reload."""
     resp = await api_client.post("/supervisor/reload")
     assert resp.status == 200
+    assert await resp.json() == {"result": "ok", "data": {}}
 
 
 async def test_api_supervisor_options_timezone(
@@ -247,3 +250,46 @@ async def test_api_supervisor_options_timezone(
     assert resp.status == 200
 
     assert coresys.timezone == "Europe/Zurich"
+
+
+@pytest.mark.parametrize(
+    ("blockbuster", "option_value", "config_value"),
+    [("no_blockbuster", "on", False), ("no_blockbuster", "on_at_startup", True)],
+    indirect=["blockbuster"],
+)
+async def test_api_supervisor_options_blocking_io(
+    api_client: TestClient, coresys: CoreSys, option_value: str, config_value: bool
+):
+    """Test setting supervisor detect blocking io option."""
+    # This should not fail with a blocking error yet
+    time.sleep(0)
+
+    resp = await api_client.post(
+        "/supervisor/options", json={"detect_blocking_io": option_value}
+    )
+    assert resp.status == 200
+
+    resp = await api_client.get("/supervisor/info")
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["data"]["detect_blocking_io"] is True
+
+    # This remains false because we only turned it on for current run of supervisor, not permanently
+    assert coresys.config.detect_blocking_io is config_value
+
+    with pytest.raises(BlockingError):
+        time.sleep(0)
+
+    resp = await api_client.post(
+        "/supervisor/options", json={"detect_blocking_io": "off"}
+    )
+    assert resp.status == 200
+
+    resp = await api_client.get("/supervisor/info")
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["data"]["detect_blocking_io"] is False
+    assert coresys.config.detect_blocking_io is False
+
+    # This should not raise blocking error anymore
+    time.sleep(0)

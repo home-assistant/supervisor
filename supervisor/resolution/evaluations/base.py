@@ -23,7 +23,7 @@ class EvaluateBase(ABC, CoreSysAttributes):
             return
         if await self.evaluate():
             if self.reason not in self.sys_resolution.unsupported:
-                self.sys_resolution.unsupported = self.reason
+                self.sys_resolution.add_unsupported_reason(self.reason)
                 _LOGGER.warning(
                     "%s (more-info: https://www.home-assistant.io/more-info/unsupported/%s)",
                     self.on_failure,

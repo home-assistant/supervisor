@@ -18,11 +18,11 @@ async def test_fixup(coresys: CoreSys, tmp_path):
 
     assert store_execute_reset.auto
 
-    coresys.resolution.suggestions = Suggestion(
-        SuggestionType.EXECUTE_RESET, ContextType.STORE, reference="test"
+    coresys.resolution.add_suggestion(
+        Suggestion(SuggestionType.EXECUTE_RESET, ContextType.STORE, reference="test")
     )
-    coresys.resolution.issues = Issue(
-        IssueType.CORRUPT_REPOSITORY, ContextType.STORE, reference="test"
+    coresys.resolution.add_issue(
+        Issue(IssueType.CORRUPT_REPOSITORY, ContextType.STORE, reference="test")
     )
 
     test_repo.mkdir()

@@ -194,6 +194,7 @@ class AddonManager(CoreSysAttributes):
 
         _LOGGER.info("Add-on '%s' successfully installed", slug)
 
+    @Job(name="addon_manager_uninstall")
     async def uninstall(self, slug: str, *, remove_config: bool = False) -> None:
         """Remove an add-on."""
         if slug not in self.local:
@@ -313,7 +314,7 @@ class AddonManager(CoreSysAttributes):
         if slug not in self.local:
             _LOGGER.debug("Add-on %s is not local available for restore", slug)
             addon = Addon(self.coresys, slug)
-            had_ingress = False
+            had_ingress: bool | None = False
         else:
             _LOGGER.debug("Add-on %s is local available for restore", slug)
             addon = self.local[slug]

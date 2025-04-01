@@ -12,7 +12,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.addons.addon import Addon
-from supervisor.backups.backup import Backup
+from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.manager import DockerAPI
@@ -394,7 +394,11 @@ async def test_api_backup_errors(
     assert job["child_jobs"][1]["child_jobs"][0]["name"] == "backup_addon_save"
     assert job["child_jobs"][1]["child_jobs"][0]["reference"] == "local_ssh"
     assert job["child_jobs"][1]["child_jobs"][0]["errors"] == [
-        {"type": "BackupError", "message": "Can't create backup for local_ssh"}
+        {
+            "type": "BackupError",
+            "message": "Can't create backup for local_ssh",
+            "stage": None,
+        }
     ]
     assert job["child_jobs"][2]["name"] == "backup_store_folders"
     assert job["child_jobs"][2]["reference"] == slug
@@ -425,11 +429,21 @@ async def test_api_backup_errors(
 
     assert job["name"] == f"backup_manager_{backup_type}_backup"
     assert job["done"] is True
-    assert job["errors"] == (
-        err := [{"type": "HomeAssistantBackupError", "message": "Backup error"}]
-    )
+    assert job["errors"] == [
+        {
+            "type": "HomeAssistantBackupError",
+            "message": "Backup error",
+            "stage": "home_assistant",
+        }
+    ]
     assert job["child_jobs"][0]["name"] == "backup_store_homeassistant"
-    assert job["child_jobs"][0]["errors"] == err
+    assert job["child_jobs"][0]["errors"] == [
+        {
+            "type": "HomeAssistantBackupError",
+            "message": "Backup error",
+            "stage": None,
+        }
+    ]
     assert len(job["child_jobs"]) == 1
 
 
@@ -491,7 +505,9 @@ async def test_restore_immediate_errors(
 
     with (
         patch.object(
-            Backup, "all_locations", new={None: {"path": None, "protected": True}}
+            Backup,
+            "all_locations",
+            new={None: BackupLocation(path=Path("/"), protected=True, size_bytes=0)},
         ),
         patch.object(
             Backup,
@@ -572,7 +588,9 @@ async def test_cloud_backup_core_only(api_client: TestClient, mock_full_backup: 
 
     # pylint: disable-next=protected-access
     mock_full_backup._locations = {
-        ".cloud_backup": {"path": None, "protected": False, "size_bytes": 10240}
+        ".cloud_backup": BackupLocation(
+            path=Path("/"), protected=False, size_bytes=10240
+        )
     }
     assert mock_full_backup.location == ".cloud_backup"
 
@@ -625,13 +643,20 @@ async def test_upload_download(
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 @pytest.mark.parametrize(
-    ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
+    ("backup_type", "inputs", "locations"),
+    [
+        ("full", {}, [None, ".cloud_backup"]),
+        ("full", {}, [".cloud_backup", None]),
+        ("partial", {"folders": ["ssl"]}, [None, ".cloud_backup"]),
+        ("partial", {"folders": ["ssl"]}, [".cloud_backup", None]),
+    ],
 )
 async def test_backup_to_multiple_locations(
     api_client: TestClient,
     coresys: CoreSys,
     backup_type: str,
     inputs: dict[str, Any],
+    locations: list[str | None],
 ):
     """Test making a backup to multiple locations."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -639,8 +664,7 @@ async def test_backup_to_multiple_locations(
 
     resp = await api_client.post(
         f"/backups/new/{backup_type}",
-        json={"name": "Multiple locations test", "location": [None, ".cloud_backup"]}
-        | inputs,
+        json={"name": "Multiple locations test", "location": locations} | inputs,
     )
     assert resp.status == 200
     result = await resp.json()
@@ -652,10 +676,62 @@ async def test_backup_to_multiple_locations(
     assert orig_backup.exists()
     assert copy_backup.exists()
     assert coresys.backups.get(slug).all_locations == {
-        None: {"path": orig_backup, "protected": False, "size_bytes": 10240},
-        ".cloud_backup": {"path": copy_backup, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=copy_backup, protected=False, size_bytes=10240
+        ),
     }
     assert coresys.backups.get(slug).location is None
+
+
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+@pytest.mark.parametrize(
+    ("backup_type", "inputs"), [("full", {}), ("partial", {"folders": ["ssl"]})]
+)
+async def test_backup_to_multiple_locations_error_on_copy(
+    api_client: TestClient,
+    coresys: CoreSys,
+    backup_type: str,
+    inputs: dict[str, Any],
+):
+    """Test making a backup to multiple locations that fails during copy stage."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with patch("supervisor.backups.manager.copy", side_effect=OSError):
+        resp = await api_client.post(
+            f"/backups/new/{backup_type}",
+            json={
+                "name": "Multiple locations test",
+                "location": [None, ".cloud_backup"],
+            }
+            | inputs,
+        )
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["result"] == "ok"
+    slug = result["data"]["slug"]
+
+    orig_backup = coresys.config.path_backup / f"{slug}.tar"
+    assert await coresys.run_in_executor(orig_backup.exists)
+    assert coresys.backups.get(slug).all_locations == {
+        None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
+    }
+    assert coresys.backups.get(slug).location is None
+
+    resp = await api_client.get("/jobs/info")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["jobs"][0]["name"] == f"backup_manager_{backup_type}_backup"
+    assert result["data"]["jobs"][0]["reference"] == slug
+    assert result["data"]["jobs"][0]["done"] is True
+    assert result["data"]["jobs"][0]["errors"] == [
+        {
+            "type": "BackupError",
+            "message": "Could not copy backup to .cloud_backup due to: ",
+            "stage": "copy_additional_locations",
+        }
+    ]
 
 
 @pytest.mark.parametrize(
@@ -713,8 +789,10 @@ async def test_upload_to_multiple_locations(
     assert orig_backup.exists()
     assert copy_backup.exists()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: {"path": orig_backup, "protected": False, "size_bytes": 10240},
-        ".cloud_backup": {"path": copy_backup, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=copy_backup, protected=False, size_bytes=10240
+        ),
     }
     assert coresys.backups.get("7fed74c8").location is None
 
@@ -728,7 +806,7 @@ async def test_upload_duplicate_backup_new_location(
     orig_backup = Path(copy(backup_file, coresys.config.path_backup))
     await coresys.backups.reload()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: {"path": orig_backup, "protected": False, "size_bytes": 10240}
+        None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
     }
 
     with backup_file.open("rb") as file, MultipartWriter("form-data") as mp:
@@ -745,8 +823,10 @@ async def test_upload_duplicate_backup_new_location(
     assert orig_backup.exists()
     assert copy_backup.exists()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: {"path": orig_backup, "protected": False, "size_bytes": 10240},
-        ".cloud_backup": {"path": copy_backup, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=copy_backup, protected=False, size_bytes=10240
+        ),
     }
     assert coresys.backups.get("7fed74c8").location is None
 
@@ -783,7 +863,7 @@ async def test_upload_with_filename(
     orig_backup = coresys.config.path_backup / filename
     assert orig_backup.exists()
     assert coresys.backups.get("7fed74c8").all_locations == {
-        None: {"path": orig_backup, "protected": False, "size_bytes": 10240}
+        None: BackupLocation(path=orig_backup, protected=False, size_bytes=10240),
     }
     assert coresys.backups.get("7fed74c8").location is None
 
@@ -816,8 +896,10 @@ async def test_remove_backup_from_location(api_client: TestClient, coresys: Core
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False, "size_bytes": 10240},
-        ".cloud_backup": {"path": location_2, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=location_1, protected=False, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=location_2, protected=False, size_bytes=10240
+        ),
     }
 
     resp = await api_client.delete(
@@ -829,7 +911,7 @@ async def test_remove_backup_from_location(api_client: TestClient, coresys: Core
     assert not location_2.exists()
     assert coresys.backups.get("7fed74c8")
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False, "size_bytes": 10240}
+        None: BackupLocation(path=location_1, protected=False, size_bytes=10240),
     }
 
 
@@ -842,7 +924,7 @@ async def test_remove_backup_file_not_found(api_client: TestClient, coresys: Cor
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.all_locations == {
-        None: {"path": location, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=location, protected=False, size_bytes=10240),
     }
 
     location.unlink()
@@ -870,8 +952,10 @@ async def test_download_backup_from_location(
     await coresys.backups.reload()
     assert (backup := coresys.backups.get("7fed74c8"))
     assert backup.all_locations == {
-        None: {"path": location_1, "protected": False, "size_bytes": 10240},
-        ".cloud_backup": {"path": location_2, "protected": False, "size_bytes": 10240},
+        None: BackupLocation(path=location_1, protected=False, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=location_2, protected=False, size_bytes=10240
+        ),
     }
 
     # The use case of this is user might want to pick a particular mount if one is flaky
@@ -949,7 +1033,7 @@ async def test_restore_backup_from_location(
     # The use case of this is user might want to pick a particular mount if one is flaky
     # To simulate this, remove the file from one location and show one works and the other doesn't
     assert backup.location is None
-    (backup_local_path := backup.all_locations[None]["path"]).unlink()
+    (backup_local_path := backup.all_locations[None].path).unlink()
     test_file.unlink()
 
     resp = await api_client.post(
@@ -985,12 +1069,12 @@ async def test_restore_backup_unencrypted_after_encrypted(
 
     backup = coresys.backups.get("d9c48f8b")
     assert backup.all_locations == {
-        None: {"path": Path(enc_tar), "protected": True, "size_bytes": 10240},
-        ".cloud_backup": {
-            "path": Path(unc_tar),
-            "protected": False,
-            "size_bytes": 10240,
-        },
+        None: BackupLocation(path=Path(enc_tar), protected=True, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=Path(unc_tar),
+            protected=False,
+            size_bytes=10240,
+        ),
     }
 
     # pylint: disable=fixme
@@ -1103,12 +1187,12 @@ async def test_backup_mixed_encryption(api_client: TestClient, coresys: CoreSys)
 
     backup = coresys.backups.get("d9c48f8b")
     assert backup.all_locations == {
-        None: {"path": Path(enc_tar), "protected": True, "size_bytes": 10240},
-        ".cloud_backup": {
-            "path": Path(unc_tar),
-            "protected": False,
-            "size_bytes": 10240,
-        },
+        None: BackupLocation(path=Path(enc_tar), protected=True, size_bytes=10240),
+        ".cloud_backup": BackupLocation(
+            path=Path(unc_tar),
+            protected=False,
+            size_bytes=10240,
+        ),
     }
 
     resp = await api_client.get("/backups")

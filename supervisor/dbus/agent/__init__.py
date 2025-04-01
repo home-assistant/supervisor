@@ -22,6 +22,7 @@ from .apparmor import AppArmor
 from .boards import BoardManager
 from .cgroup import CGroup
 from .datadisk import DataDisk
+from .swap import Swap
 from .system import System
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ class OSAgent(DBusInterfaceProxy):
         self._board: BoardManager = BoardManager()
         self._cgroup: CGroup = CGroup()
         self._datadisk: DataDisk = DataDisk()
+        self._swap: Swap = Swap()
         self._system: System = System()
 
     @property
@@ -54,6 +56,11 @@ class OSAgent(DBusInterfaceProxy):
     def apparmor(self) -> AppArmor:
         """Return AppArmor DBUS object."""
         return self._apparmor
+
+    @property
+    def swap(self) -> Swap:
+        """Return Swap DBUS object."""
+        return self._swap
 
     @property
     def system(self) -> System:
@@ -82,14 +89,22 @@ class OSAgent(DBusInterfaceProxy):
         """Return if diagnostics is enabled on OS-Agent."""
         return self.properties[DBUS_ATTR_DIAGNOSTICS]
 
+    @dbus_connected
     def set_diagnostics(self, value: bool) -> Awaitable[None]:
         """Enable or disable OS-Agent diagnostics."""
-        return self.dbus.set_diagnostics(value)
+        return self.connected_dbus.set("diagnostics", value)
 
     @property
     def all(self) -> list[DBusInterface]:
         """Return all managed dbus interfaces."""
-        return [self.apparmor, self.board, self.cgroup, self.datadisk, self.system]
+        return [
+            self.apparmor,
+            self.board,
+            self.cgroup,
+            self.datadisk,
+            self.swap,
+            self.system,
+        ]
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
