@@ -118,7 +118,7 @@ class APIHomeAssistant(CoreSysAttributes):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_IMAGE in body:
-            self.sys_homeassistant.image = body[ATTR_IMAGE]
+            self.sys_homeassistant.set_image(body[ATTR_IMAGE])
             self.sys_homeassistant.override_image = (
                 self.sys_homeassistant.image != self.sys_homeassistant.default_image
             )

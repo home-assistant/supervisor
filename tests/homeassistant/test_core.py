@@ -391,7 +391,7 @@ async def test_core_loads_wrong_image_for_machine(
     coresys: CoreSys, container: MagicMock
 ):
     """Test core is loaded with wrong image for machine."""
-    coresys.homeassistant.image = "ghcr.io/home-assistant/odroid-n2-homeassistant"
+    coresys.homeassistant.set_image("ghcr.io/home-assistant/odroid-n2-homeassistant")
     coresys.homeassistant.version = AwesomeVersion("2024.4.0")
     container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
 
@@ -417,7 +417,7 @@ async def test_core_loads_wrong_image_for_machine(
 
 async def test_core_load_allows_image_override(coresys: CoreSys, container: MagicMock):
     """Test core does not change image if user overrode it."""
-    coresys.homeassistant.image = "ghcr.io/home-assistant/odroid-n2-homeassistant"
+    coresys.homeassistant.set_image("ghcr.io/home-assistant/odroid-n2-homeassistant")
     coresys.homeassistant.version = AwesomeVersion("2024.4.0")
     container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
 
