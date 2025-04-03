@@ -109,7 +109,7 @@ class DockerNetwork:
             self.network.reload()
 
         # Check stale Network
-        if container.name in (
+        if container.name and container.name in (
             val.get("Name") for val in self.network.attrs.get("Containers", {}).values()
         ):
             self.stale_cleanup(container.name)

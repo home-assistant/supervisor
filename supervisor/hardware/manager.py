@@ -62,8 +62,15 @@ class HardwareManager(CoreSysAttributes):
     async def post_init(self) -> Self:
         """Complete initialization of obect within event loop."""
         self._udev = await self.sys_run_in_executor(pyudev.Context)
-        self._monitor: HwMonitor = HwMonitor(self.coresys, self._udev)
+        self._monitor = HwMonitor(self.coresys, self.udev)
         return self
+
+    @property
+    def udev(self) -> pyudev.Context:
+        """Return Udev context instance."""
+        if not self._udev:
+            raise RuntimeError("Udev context not initialized!")
+        return self._udev
 
     @property
     def monitor(self) -> HwMonitor:
@@ -129,7 +136,7 @@ class HardwareManager(CoreSysAttributes):
     def check_subsystem_parents(self, device: Device, subsystem: UdevSubsystem) -> bool:
         """Return True if the device is part of the given subsystem parent."""
         udev_device: pyudev.Device = pyudev.Devices.from_sys_path(
-            self._udev, str(device.sysfs)
+            self.udev, str(device.sysfs)
         )
         return udev_device.find_parent(subsystem) is not None
 
@@ -138,7 +145,7 @@ class HardwareManager(CoreSysAttributes):
         self._devices.clear()
 
         # Exctract all devices
-        for device in self._udev.list_devices():
+        for device in self.udev.list_devices():
             # Skip devices without mapping
             try:
                 if not device.device_node or self.helper.hide_virtual_device(device):

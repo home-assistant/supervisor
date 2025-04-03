@@ -7,7 +7,7 @@ from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
-from typing import Any, Final, Self
+from typing import Any, Final, Self, cast
 
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -255,7 +255,7 @@ class DockerAPI:
 
             # Check if container is register on host
             # https://github.com/moby/moby/issues/23302
-            if name in (
+            if name and name in (
                 val.get("Name")
                 for val in host_network.attrs.get("Containers", {}).values()
             ):
@@ -405,7 +405,8 @@ class DockerAPI:
 
         # Check the image is correct and state is good
         return (
-            docker_container.image.id == docker_image.id
+            docker_container.image is not None
+            and docker_container.image.id == docker_image.id
             and docker_container.status in ("exited", "running", "created")
         )
 
@@ -540,7 +541,7 @@ class DockerAPI:
         """Import a tar file as image."""
         try:
             with tar_file.open("rb") as read_tar:
-                docker_image_list: list[Image] = self.images.load(read_tar)
+                docker_image_list: list[Image] = self.images.load(read_tar)  # type: ignore
 
             if len(docker_image_list) != 1:
                 _LOGGER.warning(
@@ -557,7 +558,7 @@ class DockerAPI:
     def export_image(self, image: str, version: AwesomeVersion, tar_file: Path) -> None:
         """Export current images into a tar file."""
         try:
-            image = self.api.get_image(f"{image}:{version}")
+            docker_image = self.api.get_image(f"{image}:{version}")
         except (DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't fetch image {image}: {err}", _LOGGER.error
@@ -566,7 +567,7 @@ class DockerAPI:
         _LOGGER.info("Export image %s to %s", image, tar_file)
         try:
             with tar_file.open("wb") as write_tar:
-                for chunk in image:
+                for chunk in docker_image:
                     write_tar.write(chunk)
         except (OSError, requests.RequestException) as err:
             raise DockerError(
@@ -586,7 +587,7 @@ class DockerAPI:
         """Clean up old versions of an image."""
         image = f"{current_image}:{current_version!s}"
         try:
-            keep: set[str] = {self.images.get(image).id}
+            keep = {cast(str, self.images.get(image).id)}
         except ImageNotFound:
             raise DockerNotFound(
                 f"{current_image} not found for cleanup", _LOGGER.warning
@@ -602,7 +603,7 @@ class DockerAPI:
                 for image in keep_images:
                     # If its not found, no need to preserve it from getting removed
                     with suppress(ImageNotFound):
-                        keep.add(self.images.get(image).id)
+                        keep.add(cast(str, self.images.get(image).id))
             except (DockerException, requests.RequestException) as err:
                 raise DockerError(
                     f"Failed to get one or more images from {keep} during cleanup",
@@ -614,16 +615,18 @@ class DockerAPI:
             old_images | {current_image} if old_images else {current_image}
         )
         try:
-            images_list = self.images.list(name=image_names)
+            # This API accepts a list of image names. Tested and confirmed working on docker==7.1.0
+            # Its typing does say only `str` though. Bit concerning, could an update break this?
+            images_list = self.images.list(name=image_names)  # type: ignore
         except (DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Corrupt docker overlayfs found: {err}", _LOGGER.warning
             ) from err
 
-        for image in images_list:
-            if image.id in keep:
+        for docker_image in images_list:
+            if docker_image.id in keep:
                 continue
 
             with suppress(DockerException, requests.RequestException):
-                _LOGGER.info("Cleanup images: %s", image.tags)
-                self.images.remove(image.id, force=True)
+                _LOGGER.info("Cleanup images: %s", docker_image.tags)
+                self.images.remove(docker_image.id, force=True)

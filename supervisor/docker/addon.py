@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
 from contextlib import suppress
-from ipaddress import IPv4Address, ip_address
+from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from attr import evolve
 from awesomeversion import AwesomeVersion
@@ -73,7 +72,7 @@ if TYPE_CHECKING:
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-NO_ADDDRESS = ip_address("0.0.0.0")
+NO_ADDDRESS = IPv4Address("0.0.0.0")
 
 
 class DockerAddon(DockerInterface):
@@ -101,10 +100,12 @@ class DockerAddon(DockerInterface):
         """Return IP address of this container."""
         if self.addon.host_network:
             return self.sys_docker.network.gateway
+        if not self._meta:
+            return NO_ADDDRESS
 
         # Extract IP-Address
         try:
-            return ip_address(
+            return IPv4Address(
                 self._meta["NetworkSettings"]["Networks"]["hassio"]["IPAddress"]
             )
         except (KeyError, TypeError, ValueError):
@@ -121,7 +122,7 @@ class DockerAddon(DockerInterface):
         return self.addon.version
 
     @property
-    def arch(self) -> str:
+    def arch(self) -> str | None:
         """Return arch of Docker image."""
         if self.addon.legacy:
             return self.sys_arch.default
@@ -133,9 +134,9 @@ class DockerAddon(DockerInterface):
         return DockerAddon.slug_to_name(self.addon.slug)
 
     @property
-    def environment(self) -> dict[str, str | None]:
+    def environment(self) -> dict[str, str | int | None]:
         """Return environment for Docker add-on."""
-        addon_env = self.addon.environment or {}
+        addon_env = cast(dict[str, str | int | None], self.addon.environment or {})
 
         # Provide options for legacy add-ons
         if self.addon.legacy:
@@ -336,7 +337,7 @@ class DockerAddon(DockerInterface):
         """Return mounts for container."""
         addon_mapping = self.addon.map_volumes
 
-        target_data_path = ""
+        target_data_path: str | None = ""
         if MappingType.DATA in addon_mapping:
             target_data_path = addon_mapping[MappingType.DATA].path
 
@@ -677,12 +678,12 @@ class DockerAddon(DockerInterface):
             )
 
         try:
-            image, log = await self.sys_run_in_executor(build_image)
+            docker_image, log = await self.sys_run_in_executor(build_image)
 
             _LOGGER.debug("Build %s:%s done: %s", self.image, version, log)
 
             # Update meta data
-            self._meta = image.attrs
+            self._meta = docker_image.attrs
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't build %s:%s: %s", self.image, version, err)
@@ -699,9 +700,14 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Build %s:%s done", self.image, version)
 
-    def export_image(self, tar_file: Path) -> Awaitable[None]:
-        """Export current images into a tar file."""
-        return self.sys_docker.export_image(self.image, self.version, tar_file)
+    def export_image(self, tar_file: Path) -> None:
+        """Export current images into a tar file.
+
+        Must be run in executor.
+        """
+        if not self.image:
+            raise RuntimeError("Cannot export without image!")
+        self.sys_docker.export_image(self.image, self.version, tar_file)
 
     @Job(
         name="docker_addon_import_image",
@@ -805,15 +811,15 @@ class DockerAddon(DockerInterface):
         ):
             self.sys_resolution.dismiss_issue(self.addon.device_access_missing_issue)
 
-    async def _validate_trust(
-        self, image_id: str, image: str, version: AwesomeVersion
-    ) -> None:
+    async def _validate_trust(self, image_id: str) -> None:
         """Validate trust of content."""
         if not self.addon.signed:
             return
 
         checksum = image_id.partition(":")[2]
-        return await self.sys_security.verify_content(self.addon.codenotary, checksum)
+        return await self.sys_security.verify_content(
+            cast(str, self.addon.codenotary), checksum
+        )
 
     @Job(
         name="docker_addon_hardware_events",
@@ -834,7 +840,8 @@ class DockerAddon(DockerInterface):
                 self.sys_docker.containers.get, self.name
             )
         except docker.errors.NotFound:
-            self.sys_bus.remove_listener(self._hw_listener)
+            if self._hw_listener:
+                self.sys_bus.remove_listener(self._hw_listener)
             self._hw_listener = None
             return
         except (docker.errors.DockerException, requests.RequestException) as err:
