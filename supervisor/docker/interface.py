@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Awaitable
 from contextlib import suppress
 import logging
 import re
 from time import time
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from awesomeversion import AwesomeVersion
@@ -79,7 +80,7 @@ def _container_state_from_model(docker_container: Container) -> ContainerState:
     return ContainerState.STOPPED
 
 
-class DockerInterface(JobGroup):
+class DockerInterface(JobGroup, ABC):
     """Docker Supervisor interface."""
 
     def __init__(self, coresys: CoreSys):
@@ -100,9 +101,9 @@ class DockerInterface(JobGroup):
         return 10
 
     @property
-    def name(self) -> str | None:
+    @abstractmethod
+    def name(self) -> str:
         """Return name of Docker container."""
-        return None
 
     @property
     def meta_config(self) -> dict[str, Any]:
@@ -153,7 +154,7 @@ class DockerInterface(JobGroup):
     @property
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
-        return self.active_job
+        return self.active_job is not None
 
     @property
     def restart_policy(self) -> RestartPolicy | None:
@@ -230,7 +231,10 @@ class DockerInterface(JobGroup):
     ) -> None:
         """Pull docker image."""
         image = image or self.image
-        arch = arch or self.sys_arch.supervisor
+        if not image:
+            raise ValueError("Cannot pull without an image!")
+
+        image_arch = str(arch) if arch else self.sys_arch.supervisor
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
@@ -242,12 +246,12 @@ class DockerInterface(JobGroup):
             docker_image = await self.sys_run_in_executor(
                 self.sys_docker.images.pull,
                 f"{image}:{version!s}",
-                platform=MAP_ARCH[arch],
+                platform=MAP_ARCH[image_arch],
             )
 
             # Validate content
             try:
-                await self._validate_trust(docker_image.id, image, version)
+                await self._validate_trust(cast(str, docker_image.id))
             except CodeNotaryError:
                 with suppress(docker.errors.DockerException):
                     await self.sys_run_in_executor(
@@ -355,7 +359,7 @@ class DockerInterface(JobGroup):
                 self.sys_bus.fire_event(
                     BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
                     DockerContainerStateEvent(
-                        self.name, state, docker_container.id, int(time())
+                        self.name, state, cast(str, docker_container.id), int(time())
                     ),
                 )
 
@@ -454,7 +458,9 @@ class DockerInterface(JobGroup):
         expected_arch: CpuArch | None = None,
     ) -> None:
         """Check we have expected image with correct arch."""
-        expected_arch = expected_arch or self.sys_arch.supervisor
+        expected_image_arch = (
+            str(expected_arch) if expected_arch else self.sys_arch.supervisor
+        )
         image_name = f"{expected_image}:{version!s}"
         if self.image == expected_image:
             try:
@@ -472,13 +478,13 @@ class DockerInterface(JobGroup):
                 image_arch = f"{image_arch}/{image.attrs['Variant']}"
 
             # If we have an image and its the right arch, all set
-            if MAP_ARCH[expected_arch] == image_arch:
+            if MAP_ARCH[expected_image_arch] == image_arch:
                 return
 
         # We're missing the image we need. Stop and clean up what we have then pull the right one
         with suppress(DockerError):
             await self.remove()
-        await self.install(version, expected_image, arch=expected_arch)
+        await self.install(version, expected_image, arch=expected_image_arch)
 
     @Job(
         name="docker_interface_update",
@@ -613,9 +619,7 @@ class DockerInterface(JobGroup):
             self.sys_docker.container_run_inside, self.name, command
         )
 
-    async def _validate_trust(
-        self, image_id: str, image: str, version: AwesomeVersion
-    ) -> None:
+    async def _validate_trust(self, image_id: str) -> None:
         """Validate trust of content."""
         checksum = image_id.partition(":")[2]
         return await self.sys_security.verify_own_content(checksum)
@@ -634,4 +638,4 @@ class DockerInterface(JobGroup):
         except (docker.errors.DockerException, requests.RequestException):
             return
 
-        await self._validate_trust(image.id, self.image, self.version)
+        await self._validate_trust(cast(str, image.id))

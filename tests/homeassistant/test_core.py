@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
-from docker.errors import DockerException, ImageNotFound, NotFound
+from docker.errors import APIError, DockerException, ImageNotFound, NotFound
 import pytest
 from time_machine import travel
 
@@ -15,7 +15,6 @@ from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import (
     AudioUpdateError,
-    CodeNotaryError,
     DockerError,
     HomeAssistantCrashError,
     HomeAssistantError,
@@ -69,11 +68,8 @@ async def test_install_landingpage_docker_error(
             DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
         ),
         patch("supervisor.homeassistant.core.asyncio.sleep") as sleep,
-        patch(
-            "supervisor.security.module.cas_validate",
-            side_effect=[CodeNotaryError, None],
-        ),
     ):
+        coresys.docker.images.pull.side_effect = [APIError("fail"), MagicMock()]
         await coresys.homeassistant.core.install_landingpage()
         sleep.assert_awaited_once_with(30)
 
@@ -126,11 +122,8 @@ async def test_install_docker_error(
             DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
         ),
         patch("supervisor.homeassistant.core.asyncio.sleep") as sleep,
-        patch(
-            "supervisor.security.module.cas_validate",
-            side_effect=[CodeNotaryError, None],
-        ),
     ):
+        coresys.docker.images.pull.side_effect = [APIError("fail"), MagicMock()]
         await coresys.homeassistant.core.install()
         sleep.assert_awaited_once_with(30)
 
@@ -398,7 +391,7 @@ async def test_core_loads_wrong_image_for_machine(
     coresys: CoreSys, container: MagicMock
 ):
     """Test core is loaded with wrong image for machine."""
-    coresys.homeassistant.image = "ghcr.io/home-assistant/odroid-n2-homeassistant"
+    coresys.homeassistant.set_image("ghcr.io/home-assistant/odroid-n2-homeassistant")
     coresys.homeassistant.version = AwesomeVersion("2024.4.0")
     container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
 
@@ -424,7 +417,7 @@ async def test_core_loads_wrong_image_for_machine(
 
 async def test_core_load_allows_image_override(coresys: CoreSys, container: MagicMock):
     """Test core does not change image if user overrode it."""
-    coresys.homeassistant.image = "ghcr.io/home-assistant/odroid-n2-homeassistant"
+    coresys.homeassistant.set_image("ghcr.io/home-assistant/odroid-n2-homeassistant")
     coresys.homeassistant.version = AwesomeVersion("2024.4.0")
     container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
 

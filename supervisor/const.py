@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import StrEnum
-from ipaddress import ip_network
+from ipaddress import IPv4Network
 from pathlib import Path
 from sys import version_info as systemversion
 from typing import Self
@@ -41,8 +41,8 @@ SYSTEMD_JOURNAL_PERSISTENT = Path("/var/log/journal")
 SYSTEMD_JOURNAL_VOLATILE = Path("/run/log/journal")
 
 DOCKER_NETWORK = "hassio"
-DOCKER_NETWORK_MASK = ip_network("172.30.32.0/23")
-DOCKER_NETWORK_RANGE = ip_network("172.30.33.0/24")
+DOCKER_NETWORK_MASK = IPv4Network("172.30.32.0/23")
+DOCKER_NETWORK_RANGE = IPv4Network("172.30.33.0/24")
 
 # This needs to match the dockerd --cpu-rt-runtime= argument.
 DOCKER_CPU_RUNTIME_TOTAL = 950_000

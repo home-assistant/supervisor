@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast
 
 import aiohttp
 from aiohttp.http_websocket import WSMsgType
@@ -78,7 +78,7 @@ class WSClient:
         try:
             await self._client.send_json(message, dumps=json_dumps)
         except ConnectionError as err:
-            raise HomeAssistantWSConnectionError(err) from err
+            raise HomeAssistantWSConnectionError(str(err)) from err
 
     async def async_send_command(self, message: dict[str, Any]) -> dict | None:
         """Send a websocket message, and return the response."""
@@ -89,7 +89,7 @@ class WSClient:
         try:
             await self._client.send_json(message, dumps=json_dumps)
         except ConnectionError as err:
-            raise HomeAssistantWSConnectionError(err) from err
+            raise HomeAssistantWSConnectionError(str(err)) from err
 
         try:
             return await self._futures[message["id"]]
@@ -206,7 +206,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 self.sys_websession,
                 self.sys_loop,
                 self.sys_homeassistant.ws_url,
-                self.sys_homeassistant.api.access_token,
+                cast(str, self.sys_homeassistant.api.access_token),
             )
 
             self.sys_create_task(client.start_listener())
@@ -264,24 +264,29 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             return
 
         try:
-            await self._client.async_send_command(message)
+            if self._client:
+                await self._client.async_send_command(message)
         except HomeAssistantWSConnectionError:
             if self._client:
                 await self._client.close()
             self._client = None
 
-    async def async_send_command(self, message: dict[str, Any]) -> dict[str, Any]:
+    async def async_send_command(
+        self, message: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Send a command with the WS client and wait for the response."""
         if not await self._can_send(message):
-            return
+            return None
 
         try:
-            return await self._client.async_send_command(message)
+            if self._client:
+                return await self._client.async_send_command(message)
         except HomeAssistantWSConnectionError:
             if self._client:
                 await self._client.close()
             self._client = None
             raise
+        return None
 
     async def async_supervisor_update_event(
         self,

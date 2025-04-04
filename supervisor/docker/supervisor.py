@@ -39,7 +39,7 @@ class DockerSupervisor(DockerInterface):
     @property
     def host_mounts_available(self) -> bool:
         """Return True if container can see mounts on host within its data directory."""
-        return self._meta and any(
+        return self._meta is not None and any(
             mount.get("Propagation") == PropagationMode.SLAVE
             for mount in self.meta_mounts
             if mount.get("Destination") == "/data"
@@ -89,7 +89,18 @@ class DockerSupervisor(DockerInterface):
         """
         try:
             docker_container = self.sys_docker.containers.get(self.name)
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Could not get Supervisor container for retag: {err}", _LOGGER.error
+            ) from err
 
+        if not self.image or not docker_container.image:
+            raise DockerError(
+                "Could not locate image from container metadata for retag",
+                _LOGGER.error,
+            )
+
+        try:
             docker_container.image.tag(self.image, tag=str(self.version))
             docker_container.image.tag(self.image, tag="latest")
         except (docker.errors.DockerException, requests.RequestException) as err:
@@ -110,7 +121,18 @@ class DockerSupervisor(DockerInterface):
         try:
             docker_container = self.sys_docker.containers.get(self.name)
             docker_image = self.sys_docker.images.get(f"{image}:{version!s}")
+        except (docker.errors.DockerException, requests.RequestException) as err:
+            raise DockerError(
+                f"Can't get image or container to fix start tag: {err}", _LOGGER.error
+            ) from err
 
+        if not docker_container.image:
+            raise DockerError(
+                "Cannot locate image from container metadata to fix start tag",
+                _LOGGER.error,
+            )
+
+        try:
             # Find start tag
             for tag in docker_container.image.tags:
                 start_image = tag.partition(":")[0]

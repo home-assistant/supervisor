@@ -101,7 +101,7 @@ class HomeAssistantCore(JobGroup):
                 await self.instance.check_image(
                     self.sys_homeassistant.version, self.sys_homeassistant.default_image
                 )
-                self.sys_homeassistant.image = self.sys_homeassistant.default_image
+                self.sys_homeassistant.set_image(self.sys_homeassistant.default_image)
         except DockerError:
             _LOGGER.info(
                 "No Home Assistant Docker image %s found.", self.sys_homeassistant.image
@@ -109,7 +109,7 @@ class HomeAssistantCore(JobGroup):
             await self.install_landingpage()
         else:
             self.sys_homeassistant.version = self.instance.version
-            self.sys_homeassistant.image = self.instance.image
+            self.sys_homeassistant.set_image(self.instance.image)
             await self.sys_homeassistant.save_data()
 
         # Start landingpage
@@ -138,7 +138,7 @@ class HomeAssistantCore(JobGroup):
         else:
             _LOGGER.info("Using preinstalled landingpage")
             self.sys_homeassistant.version = LANDINGPAGE
-            self.sys_homeassistant.image = self.instance.image
+            self.sys_homeassistant.set_image(self.instance.image)
             await self.sys_homeassistant.save_data()
             return
 
@@ -166,7 +166,7 @@ class HomeAssistantCore(JobGroup):
             await asyncio.sleep(30)
 
         self.sys_homeassistant.version = LANDINGPAGE
-        self.sys_homeassistant.image = self.sys_updater.image_homeassistant
+        self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
         await self.sys_homeassistant.save_data()
 
     @Job(
@@ -199,7 +199,7 @@ class HomeAssistantCore(JobGroup):
 
         _LOGGER.info("Home Assistant docker now installed")
         self.sys_homeassistant.version = self.instance.version
-        self.sys_homeassistant.image = self.sys_updater.image_homeassistant
+        self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
         await self.sys_homeassistant.save_data()
 
         # finishing
@@ -232,6 +232,12 @@ class HomeAssistantCore(JobGroup):
     ) -> None:
         """Update HomeAssistant version."""
         version = version or self.sys_homeassistant.latest_version
+        if not version:
+            raise HomeAssistantUpdateError(
+                "Cannot determine latest version of Home Assistant for update",
+                _LOGGER.error,
+            )
+
         old_image = self.sys_homeassistant.image
         rollback = self.sys_homeassistant.version if not self.error_state else None
         running = await self.instance.is_running()
@@ -263,7 +269,7 @@ class HomeAssistantCore(JobGroup):
                 ) from err
 
             self.sys_homeassistant.version = self.instance.version
-            self.sys_homeassistant.image = self.sys_updater.image_homeassistant
+            self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
 
             if running:
                 await self.start()
@@ -303,11 +309,11 @@ class HomeAssistantCore(JobGroup):
             # Make a copy of the current log file if it exists
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
             if logfile.exists():
-                backup = (
+                rollback_log = (
                     self.sys_config.path_homeassistant / "home-assistant-rollback.log"
                 )
 
-                shutil.copy(logfile, backup)
+                shutil.copy(logfile, rollback_log)
                 _LOGGER.info(
                     "A backup of the logfile is stored in /config/home-assistant-rollback.log"
                 )
@@ -334,7 +340,7 @@ class HomeAssistantCore(JobGroup):
             except DockerError as err:
                 raise HomeAssistantError() from err
 
-            await self._block_till_run(self.sys_homeassistant.version)
+            await self._block_till_run()
         # No Instance/Container found, extended start
         else:
             # Create new API token
@@ -349,7 +355,7 @@ class HomeAssistantCore(JobGroup):
             except DockerError as err:
                 raise HomeAssistantError() from err
 
-            await self._block_till_run(self.sys_homeassistant.version)
+            await self._block_till_run()
 
     @Job(
         name="home_assistant_core_stop",
@@ -382,7 +388,7 @@ class HomeAssistantCore(JobGroup):
         except DockerError as err:
             raise HomeAssistantError() from err
 
-        await self._block_till_run(self.sys_homeassistant.version)
+        await self._block_till_run()
 
     @Job(
         name="home_assistant_core_rebuild",
@@ -440,7 +446,7 @@ class HomeAssistantCore(JobGroup):
     @property
     def in_progress(self) -> bool:
         """Return True if a task is in progress."""
-        return self.instance.in_progress or self.active_job
+        return self.instance.in_progress or self.active_job is not None
 
     async def check_config(self) -> ConfigResult:
         """Run Home Assistant config check."""
@@ -467,10 +473,10 @@ class HomeAssistantCore(JobGroup):
         _LOGGER.info("Home Assistant config is valid")
         return ConfigResult(True, log)
 
-    async def _block_till_run(self, version: AwesomeVersion) -> None:
+    async def _block_till_run(self) -> None:
         """Block until Home-Assistant is booting up or startup timeout."""
         # Skip landingpage
-        if version == LANDINGPAGE:
+        if self.sys_homeassistant.version == LANDINGPAGE:
             return
         _LOGGER.info("Wait until Home Assistant is ready")
 

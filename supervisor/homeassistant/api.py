@@ -51,15 +51,17 @@ class HomeAssistantAPI(CoreSysAttributes):
     )
     async def ensure_access_token(self) -> None:
         """Ensure there is an access token."""
-        if self.access_token is not None and self._access_token_expires > datetime.now(
-            tz=UTC
+        if (
+            self.access_token
+            and self._access_token_expires
+            and self._access_token_expires > datetime.now(tz=UTC)
         ):
             return
 
         with suppress(asyncio.TimeoutError, aiohttp.ClientError):
             async with self.sys_websession.post(
                 f"{self.sys_homeassistant.api_url}/auth/token",
-                timeout=30,
+                timeout=aiohttp.ClientTimeout(total=30),
                 data={
                     "grant_type": "refresh_token",
                     "refresh_token": self.sys_homeassistant.refresh_token,

@@ -37,7 +37,7 @@ class DockerMonitor(CoreSysAttributes, Thread):
 
     def watch_container(self, container: Container):
         """If container is missing the managed label, add name to list."""
-        if LABEL_MANAGED not in container.labels:
+        if LABEL_MANAGED not in container.labels and container.name:
             self._unlabeled_managed_containers += [container.name]
 
     async def load(self):
@@ -54,8 +54,11 @@ class DockerMonitor(CoreSysAttributes, Thread):
 
         _LOGGER.info("Stopped docker events monitor")
 
-    def run(self):
+    def run(self) -> None:
         """Monitor and process docker events."""
+        if not self._events:
+            raise RuntimeError("Monitor has not been loaded!")
+
         for event in self._events:
             attributes: dict[str, str] = event.get("Actor", {}).get("Attributes", {})
 

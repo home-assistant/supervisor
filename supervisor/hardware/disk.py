@@ -72,7 +72,7 @@ class HwDisk(CoreSysAttributes):
         _, _, free = shutil.disk_usage(path)
         return round(free / (1024.0**3), 1)
 
-    def _get_mountinfo(self, path: str) -> str:
+    def _get_mountinfo(self, path: str) -> list[str] | None:
         mountinfo = _MOUNTINFO.read_text(encoding="utf-8")
         for line in mountinfo.splitlines():
             mountinfoarr = line.split()
@@ -80,7 +80,7 @@ class HwDisk(CoreSysAttributes):
                 return mountinfoarr
         return None
 
-    def _get_mount_source(self, path: str) -> str:
+    def _get_mount_source(self, path: str) -> str | None:
         mountinfoarr = self._get_mountinfo(path)
 
         if mountinfoarr is None:
@@ -92,7 +92,7 @@ class HwDisk(CoreSysAttributes):
             optionsep += 1
         return mountinfoarr[optionsep + 2]
 
-    def _try_get_emmc_life_time(self, device_name: str) -> float:
+    def _try_get_emmc_life_time(self, device_name: str) -> float | None:
         # Get eMMC life_time
         life_time_path = Path(_BLOCK_DEVICE_EMMC_LIFE_TIME.format(device_name))
 
@@ -121,13 +121,13 @@ class HwDisk(CoreSysAttributes):
         # Return the pessimistic estimate (0x02 -> 10%-20%, return 20%)
         return life_time_value * 10.0
 
-    def get_disk_life_time(self, path: str | Path) -> float:
+    def get_disk_life_time(self, path: str | Path) -> float | None:
         """Return life time estimate of the underlying SSD drive.
 
         Must be run in executor.
         """
         mount_source = self._get_mount_source(str(path))
-        if mount_source == "overlay":
+        if not mount_source or mount_source == "overlay":
             return None
 
         mount_source_path = Path(mount_source)

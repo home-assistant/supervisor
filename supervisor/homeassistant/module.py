@@ -112,12 +112,12 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         return self._secrets
 
     @property
-    def machine(self) -> str:
+    def machine(self) -> str | None:
         """Return the system machines."""
         return self.core.instance.machine
 
     @property
-    def arch(self) -> str:
+    def arch(self) -> str | None:
         """Return arch of running Home Assistant."""
         return self.core.instance.arch
 
@@ -184,14 +184,13 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         return f"ghcr.io/home-assistant/{self.sys_machine}-homeassistant"
 
     @property
-    def image(self) -> str:
+    def image(self) -> str | None:
         """Return image name of the Home Assistant container."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
         return self.default_image
 
-    @image.setter
-    def image(self, value: str | None) -> None:
+    def set_image(self, value: str | None) -> None:
         """Set image name of Home Assistant container."""
         self._data[ATTR_IMAGE] = value
 
@@ -284,7 +283,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def need_update(self) -> bool:
         """Return true if a Home Assistant update is available."""
         try:
-            return self.version < self.latest_version
+            return self.version is not None and self.version < self.latest_version
         except (AwesomeVersionException, TypeError):
             return False
 
