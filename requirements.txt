@@ -27,5 +27,5 @@ sentry-sdk==2.25.0
 setuptools==78.1.0
 voluptuous==0.15.2
 dbus-fast==2.44.0
-typing_extensions==4.12.2
+typing_extensions==4.13.1
 zlib-fast==0.2.1
