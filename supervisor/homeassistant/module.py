@@ -566,6 +566,6 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                     username=data.get("username"),
                     display_name=data.get("name"),
                 )
-                for data in list_of_users
+                for data in list_of_users.items()
             ]
         return []
