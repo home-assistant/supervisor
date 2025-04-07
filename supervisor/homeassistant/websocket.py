@@ -80,7 +80,9 @@ class WSClient:
         except ConnectionError as err:
             raise HomeAssistantWSConnectionError(str(err)) from err
 
-    async def async_send_command(self, message: dict[str, Any]) -> dict | None:
+    async def async_send_command(
+        self, message: dict[str, Any]
+    ) -> dict[str, Any] | list | None:
         """Send a websocket message, and return the response."""
         self._message_id += 1
         message["id"] = self._message_id
@@ -273,7 +275,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
     async def async_send_command(
         self, message: dict[str, Any]
-    ) -> dict[str, Any] | None:
+    ) -> dict[str, Any] | list | None:
         """Send a command with the WS client and wait for the response."""
         if not await self._can_send(message):
             return None
@@ -328,7 +330,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
 
     async def async_supervisor_event(
         self, event: WSEvent, data: dict[str, Any] | None = None
-    ):
+    ) -> None:
         """Send a supervisor/event command to Home Assistant."""
         try:
             await self.async_send_message(
@@ -345,7 +347,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         except HomeAssistantWSError as err:
             _LOGGER.error("Could not send message to Home Assistant due to %s", err)
 
-    def supervisor_event(self, event: WSEvent, data: dict[str, Any] | None = None):
+    def supervisor_event(
+        self, event: WSEvent, data: dict[str, Any] | None = None
+    ) -> None:
         """Send a supervisor/event command to Home Assistant."""
         if self.sys_core.state in CLOSING_STATES:
             return

@@ -9,7 +9,7 @@ from pathlib import Path, PurePath
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
@@ -346,8 +346,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         ):
             return
 
-        configuration = await self.sys_homeassistant.websocket.async_send_command(
-            {ATTR_TYPE: "get_config"}
+        configuration = cast(
+            dict[str, Any],
+            await self.sys_homeassistant.websocket.async_send_command(
+                {ATTR_TYPE: "get_config"}
+            ),
         )
         if not configuration or "usb" not in configuration.get("components", []):
             return
@@ -358,8 +361,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def begin_backup(self) -> None:
         """Inform Home Assistant a backup is beginning."""
         try:
-            resp = await self.websocket.async_send_command(
-                {ATTR_TYPE: WSType.BACKUP_START}
+            resp = cast(
+                dict[str, Any],
+                await self.websocket.async_send_command(
+                    {ATTR_TYPE: WSType.BACKUP_START}
+                ),
             )
         except HomeAssistantWSError as err:
             raise HomeAssistantBackupError(
@@ -377,8 +383,9 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def end_backup(self) -> None:
         """Inform Home Assistant the backup is ending."""
         try:
-            resp = await self.websocket.async_send_command(
-                {ATTR_TYPE: WSType.BACKUP_END}
+            resp = cast(
+                dict[str, Any],
+                await self.websocket.async_send_command({ATTR_TYPE: WSType.BACKUP_END}),
             )
         except HomeAssistantWSError as err:
             _LOGGER.warning(
@@ -554,8 +561,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     )
     async def get_users(self) -> list[IngressSessionDataUser]:
         """Get list of all configured users."""
-        list_of_users = await self.sys_homeassistant.websocket.async_send_command(
-            {ATTR_TYPE: "config/auth/list"}
+        list_of_users = cast(
+            list[dict[str, Any]],
+            await self.sys_homeassistant.websocket.async_send_command(
+                {ATTR_TYPE: "config/auth/list"}
+            ),
         )
 
         if list_of_users:
