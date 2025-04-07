@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable, Coroutine, Generator
 from json import dumps
 import logging
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from aiohttp import ClientWebSocketResponse, WSCloseCode
 from aiohttp.http_websocket import WSMessage, WSMsgType
@@ -17,6 +17,7 @@ import pytest
 from supervisor.addons.addon import Addon
 from supervisor.api.proxy import APIProxy
 from supervisor.const import ATTR_ACCESS_TOKEN
+from supervisor.homeassistant.api import HomeAssistantAPI
 
 
 def id_generator() -> Generator[int]:
@@ -220,3 +221,36 @@ async def test_proxy_auth_abort_log(
         assert (
             "Unexpected message during authentication for WebSocket API" in caplog.text
         )
+
+
+@pytest.mark.parametrize("path", ["", "mock_path"])
+async def test_api_proxy_get_request(
+    api_client: TestClient,
+    install_addon_example: Addon,
+    request: pytest.FixtureRequest,
+    path: str,
+):
+    """Test the API proxy request using patch for make_request."""
+    install_addon_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_addon_example.data["homeassistant_api"] = True
+
+    request.param = "local_example"
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        # Mock the response from make_request
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "application/json"
+        mock_response.read.return_value = b"mocked response"
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        response = await api_client.get(
+            f"/core/api/{path}", headers={"Authorization": "Bearer abc123"}
+        )
+
+        assert make_request.call_args[0][0] == "get"
+        assert make_request.call_args[0][1] == f"api/{path}"
+
+        assert response.status == 200
+        assert await response.text() == "mocked response"
+        assert response.content_type == "application/json"
