@@ -117,7 +117,7 @@ class APIProxy(CoreSysAttributes):
             raise HTTPBadGateway()
 
         # Normal request
-        path = request.match_info["path"]
+        path = request.match_info.get("path", "")
         async with self._api_client(request, path) as client:
             data = await client.read()
             return web.Response(
