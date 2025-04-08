@@ -3,7 +3,7 @@
 import asyncio
 import hashlib
 import logging
-from typing import Any, cast
+from typing import Any
 
 from .addons.addon import Addon
 from .const import ATTR_ADDON, ATTR_PASSWORD, ATTR_TYPE, ATTR_USERNAME, FILE_HASSIO_AUTH
@@ -145,16 +145,21 @@ class Auth(FileConfiguration, CoreSysAttributes):
     async def list_users(self) -> list[dict[str, Any]]:
         """List users on the Home Assistant instance."""
         try:
-            return cast(
-                list[dict[str, Any]],
-                await self.sys_homeassistant.websocket.async_send_command(
-                    {ATTR_TYPE: "config/auth/list"}
-                ),
+            users: (
+                list[dict[str, Any]] | None
+            ) = await self.sys_homeassistant.websocket.async_send_command(
+                {ATTR_TYPE: "config/auth/list"}
             )
-        except HomeAssistantWSError:
-            _LOGGER.error("Can't request listing users on Home Assistant!")
+        except HomeAssistantWSError as err:
+            raise AuthListUsersError(
+                f"Can't request listing users on Home Assistant: {err}", _LOGGER.error
+            ) from err
 
-        raise AuthListUsersError()
+        if users is not None:
+            return users
+        raise AuthListUsersError(
+            "Can't request listing users on Home Assistant!", _LOGGER.error
+        )
 
     @staticmethod
     def _rehash(value: str, salt2: str = "") -> str:

@@ -70,7 +70,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.addons = await AddonManager(coresys).load_config()
     coresys.backups = await BackupManager(coresys).load_config()
     coresys.host = await HostManager(coresys).post_init()
-    coresys.hardware = await HardwareManager(coresys).post_init()
+    coresys.hardware = await HardwareManager.create(coresys)
     coresys.ingress = await Ingress(coresys).load_config()
     coresys.tasks = Tasks(coresys)
     coresys.services = await ServiceManager(coresys).load_config()

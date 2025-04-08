@@ -337,7 +337,7 @@ class DockerAddon(DockerInterface):
         """Return mounts for container."""
         addon_mapping = self.addon.map_volumes
 
-        target_data_path: str | None = ""
+        target_data_path: str | None = None
         if MappingType.DATA in addon_mapping:
             target_data_path = addon_mapping[MappingType.DATA].path
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 
 import aiohttp
 from aiohttp.http_websocket import WSMsgType
@@ -38,6 +38,8 @@ MIN_VERSION = {
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+T = TypeVar("T")
+
 
 class WSClient:
     """Home Assistant Websocket client."""
@@ -53,7 +55,7 @@ class WSClient:
         self._client = client
         self._message_id: int = 0
         self._loop = loop
-        self._futures: dict[int, asyncio.Future[dict]] = {}
+        self._futures: dict[int, asyncio.Future[T]] = {}  # type: ignore
 
     @property
     def connected(self) -> bool:
@@ -80,9 +82,7 @@ class WSClient:
         except ConnectionError as err:
             raise HomeAssistantWSConnectionError(str(err)) from err
 
-    async def async_send_command(
-        self, message: dict[str, Any]
-    ) -> dict[str, Any] | list | None:
+    async def async_send_command(self, message: dict[str, Any]) -> T | None:
         """Send a websocket message, and return the response."""
         self._message_id += 1
         message["id"] = self._message_id
@@ -273,9 +273,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 await self._client.close()
             self._client = None
 
-    async def async_send_command(
-        self, message: dict[str, Any]
-    ) -> dict[str, Any] | list | None:
+    async def async_send_command(self, message: dict[str, Any]) -> T | None:
         """Send a command with the WS client and wait for the response."""
         if not await self._can_send(message):
             return None

@@ -9,7 +9,7 @@ from pathlib import Path, PurePath
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
@@ -184,7 +184,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         return f"ghcr.io/home-assistant/{self.sys_machine}-homeassistant"
 
     @property
-    def image(self) -> str | None:
+    def image(self) -> str:
         """Return image name of the Home Assistant container."""
         if self._data.get(ATTR_IMAGE):
             return self._data[ATTR_IMAGE]
@@ -346,11 +346,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         ):
             return
 
-        configuration = cast(
-            dict[str, Any],
-            await self.sys_homeassistant.websocket.async_send_command(
-                {ATTR_TYPE: "get_config"}
-            ),
+        configuration: (
+            dict[str, Any] | None
+        ) = await self.sys_homeassistant.websocket.async_send_command(
+            {ATTR_TYPE: "get_config"}
         )
         if not configuration or "usb" not in configuration.get("components", []):
             return
@@ -361,11 +360,8 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def begin_backup(self) -> None:
         """Inform Home Assistant a backup is beginning."""
         try:
-            resp = cast(
-                dict[str, Any],
-                await self.websocket.async_send_command(
-                    {ATTR_TYPE: WSType.BACKUP_START}
-                ),
+            resp: dict[str, Any] | None = await self.websocket.async_send_command(
+                {ATTR_TYPE: WSType.BACKUP_START}
             )
         except HomeAssistantWSError as err:
             raise HomeAssistantBackupError(
@@ -383,9 +379,8 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def end_backup(self) -> None:
         """Inform Home Assistant the backup is ending."""
         try:
-            resp = cast(
-                dict[str, Any],
-                await self.websocket.async_send_command({ATTR_TYPE: WSType.BACKUP_END}),
+            resp: dict[str, Any] | None = await self.websocket.async_send_command(
+                {ATTR_TYPE: WSType.BACKUP_END}
             )
         except HomeAssistantWSError as err:
             _LOGGER.warning(
@@ -561,11 +556,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     )
     async def get_users(self) -> list[IngressSessionDataUser]:
         """Get list of all configured users."""
-        list_of_users = cast(
-            list[dict[str, Any]],
-            await self.sys_homeassistant.websocket.async_send_command(
-                {ATTR_TYPE: "config/auth/list"}
-            ),
+        list_of_users: (
+            list[dict[str, Any]] | None
+        ) = await self.sys_homeassistant.websocket.async_send_command(
+            {ATTR_TYPE: "config/auth/list"}
         )
 
         if list_of_users:

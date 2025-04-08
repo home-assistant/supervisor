@@ -1,8 +1,9 @@
 """Hardware Manager of Supervisor."""
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Self
 
 import pyudev
 
@@ -48,35 +49,30 @@ _STATIC_NODES: list[Device] = [
 class HardwareManager(CoreSysAttributes):
     """Hardware manager for supervisor."""
 
-    def __init__(self, coresys: CoreSys):
+    def __init__(self, coresys: CoreSys, udev: pyudev.Context) -> None:
         """Initialize Hardware Monitor object."""
         self.coresys: CoreSys = coresys
         self._devices: dict[str, Device] = {}
-        self._udev: pyudev.Context | None = None
+        self._udev: pyudev.Context = udev
 
-        self._monitor: HwMonitor | None = None
+        self._monitor: HwMonitor = HwMonitor(coresys, udev)
         self._helper: HwHelper = HwHelper(coresys)
         self._policy: HwPolicy = HwPolicy(coresys)
         self._disk: HwDisk = HwDisk(coresys)
 
-    async def post_init(self) -> Self:
-        """Complete initialization of obect within event loop."""
-        self._udev = await self.sys_run_in_executor(pyudev.Context)
-        self._monitor = HwMonitor(self.coresys, self.udev)
-        return self
+    @classmethod
+    async def create(cls: type[HardwareManager], coresys: CoreSys) -> HardwareManager:
+        """Complete initialization of a HardwareManager object within event loop."""
+        return cls(coresys, await coresys.run_in_executor(pyudev.Context))
 
     @property
     def udev(self) -> pyudev.Context:
         """Return Udev context instance."""
-        if not self._udev:
-            raise RuntimeError("Udev context not initialized!")
         return self._udev
 
     @property
     def monitor(self) -> HwMonitor:
         """Return Hardware Monitor instance."""
-        if not self._monitor:
-            raise RuntimeError("Hardware monitor not initialized!")
         return self._monitor
 
     @property
