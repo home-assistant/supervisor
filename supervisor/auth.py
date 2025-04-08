@@ -145,13 +145,21 @@ class Auth(FileConfiguration, CoreSysAttributes):
     async def list_users(self) -> list[dict[str, Any]]:
         """List users on the Home Assistant instance."""
         try:
-            return await self.sys_homeassistant.websocket.async_send_command(
+            users: (
+                list[dict[str, Any]] | None
+            ) = await self.sys_homeassistant.websocket.async_send_command(
                 {ATTR_TYPE: "config/auth/list"}
             )
-        except HomeAssistantWSError:
-            _LOGGER.error("Can't request listing users on Home Assistant!")
+        except HomeAssistantWSError as err:
+            raise AuthListUsersError(
+                f"Can't request listing users on Home Assistant: {err}", _LOGGER.error
+            ) from err
 
-        raise AuthListUsersError()
+        if users is not None:
+            return users
+        raise AuthListUsersError(
+            "Can't request listing users on Home Assistant!", _LOGGER.error
+        )
 
     @staticmethod
     def _rehash(value: str, salt2: str = "") -> str:

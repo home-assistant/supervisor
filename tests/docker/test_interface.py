@@ -44,18 +44,26 @@ def mock_verify_content(coresys: CoreSys):
         (CpuArch.AMD64, "linux/amd64"),
     ],
 )
-async def test_docker_image_platform(coresys: CoreSys, cpu_arch: str, platform: str):
+async def test_docker_image_platform(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    cpu_arch: str,
+    platform: str,
+):
     """Test platform set correctly from arch."""
     with patch.object(
         coresys.docker.images, "pull", return_value=Mock(id="test:1.2.3")
     ) as pull:
-        instance = DockerInterface(coresys)
-        await instance.install(AwesomeVersion("1.2.3"), "test", arch=cpu_arch)
+        await test_docker_interface.install(
+            AwesomeVersion("1.2.3"), "test", arch=cpu_arch
+        )
         assert pull.call_count == 1
         assert pull.call_args == call("test:1.2.3", platform=platform)
 
 
-async def test_docker_image_default_platform(coresys: CoreSys):
+async def test_docker_image_default_platform(
+    coresys: CoreSys, test_docker_interface: DockerInterface
+):
     """Test platform set using supervisor arch when omitted."""
     with (
         patch.object(
@@ -65,8 +73,7 @@ async def test_docker_image_default_platform(coresys: CoreSys):
             coresys.docker.images, "pull", return_value=Mock(id="test:1.2.3")
         ) as pull,
     ):
-        instance = DockerInterface(coresys)
-        await instance.install(AwesomeVersion("1.2.3"), "test")
+        await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         assert pull.call_count == 1
         assert pull.call_args == call("test:1.2.3", platform="linux/386")
 

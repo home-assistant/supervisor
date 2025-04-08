@@ -112,12 +112,12 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         return self._secrets
 
     @property
-    def machine(self) -> str:
+    def machine(self) -> str | None:
         """Return the system machines."""
         return self.core.instance.machine
 
     @property
-    def arch(self) -> str:
+    def arch(self) -> str | None:
         """Return arch of running Home Assistant."""
         return self.core.instance.arch
 
@@ -190,8 +190,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
             return self._data[ATTR_IMAGE]
         return self.default_image
 
-    @image.setter
-    def image(self, value: str | None) -> None:
+    def set_image(self, value: str | None) -> None:
         """Set image name of Home Assistant container."""
         self._data[ATTR_IMAGE] = value
 
@@ -284,7 +283,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def need_update(self) -> bool:
         """Return true if a Home Assistant update is available."""
         try:
-            return self.version < self.latest_version
+            return self.version is not None and self.version < self.latest_version
         except (AwesomeVersionException, TypeError):
             return False
 
@@ -347,7 +346,9 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         ):
             return
 
-        configuration = await self.sys_homeassistant.websocket.async_send_command(
+        configuration: (
+            dict[str, Any] | None
+        ) = await self.sys_homeassistant.websocket.async_send_command(
             {ATTR_TYPE: "get_config"}
         )
         if not configuration or "usb" not in configuration.get("components", []):
@@ -359,7 +360,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def begin_backup(self) -> None:
         """Inform Home Assistant a backup is beginning."""
         try:
-            resp = await self.websocket.async_send_command(
+            resp: dict[str, Any] | None = await self.websocket.async_send_command(
                 {ATTR_TYPE: WSType.BACKUP_START}
             )
         except HomeAssistantWSError as err:
@@ -378,7 +379,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def end_backup(self) -> None:
         """Inform Home Assistant the backup is ending."""
         try:
-            resp = await self.websocket.async_send_command(
+            resp: dict[str, Any] | None = await self.websocket.async_send_command(
                 {ATTR_TYPE: WSType.BACKUP_END}
             )
         except HomeAssistantWSError as err:
@@ -555,7 +556,9 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     )
     async def get_users(self) -> list[IngressSessionDataUser]:
         """Get list of all configured users."""
-        list_of_users = await self.sys_homeassistant.websocket.async_send_command(
+        list_of_users: (
+            list[dict[str, Any]] | None
+        ) = await self.sys_homeassistant.websocket.async_send_command(
             {ATTR_TYPE: "config/auth/list"}
         )
 
