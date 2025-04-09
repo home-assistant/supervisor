@@ -87,7 +87,7 @@ class NetworkManager(CoreSysAttributes):
         for config in self.sys_dbus.network.dns.configuration:
             if config.vpn or not config.nameservers:
                 continue
-            servers.extend(config.nameservers)
+            servers.extend([str(ns) for ns in config.nameservers])
 
         return list(dict.fromkeys(servers))
 
@@ -197,10 +197,16 @@ class NetworkManager(CoreSysAttributes):
         with suppress(NetworkInterfaceNotFound):
             inet = self.sys_dbus.network.get(interface.name)
 
-        con: NetworkConnection = None
+        con: NetworkConnection | None = None
 
         # Update exist configuration
-        if inet and interface.equals_dbus_interface(inet) and interface.enabled:
+        if (
+            inet
+            and inet.settings
+            and inet.settings.connection
+            and interface.equals_dbus_interface(inet)
+            and interface.enabled
+        ):
             _LOGGER.debug("Updating existing configuration for %s", interface.name)
             settings = get_connection_from_interface(
                 interface,
@@ -211,12 +217,12 @@ class NetworkManager(CoreSysAttributes):
 
             try:
                 await inet.settings.update(settings)
-                con = await self.sys_dbus.network.activate_connection(
+                con = activated = await self.sys_dbus.network.activate_connection(
                     inet.settings.object_path, inet.object_path
                 )
                 _LOGGER.debug(
                     "activate_connection returns %s",
-                    con.object_path,
+                    activated.object_path,
                 )
             except DBusError as err:
                 raise HostNetworkError(
@@ -236,12 +242,16 @@ class NetworkManager(CoreSysAttributes):
             settings = get_connection_from_interface(interface, self.sys_dbus.network)
 
             try:
-                settings, con = await self.sys_dbus.network.add_and_activate_connection(
+                (
+                    settings,
+                    activated,
+                ) = await self.sys_dbus.network.add_and_activate_connection(
                     settings, inet.object_path
                 )
+                con = activated
                 _LOGGER.debug(
                     "add_and_activate_connection returns %s",
-                    con.object_path,
+                    activated.object_path,
                 )
             except DBusError as err:
                 raise HostNetworkError(
@@ -277,7 +287,7 @@ class NetworkManager(CoreSysAttributes):
             )
 
         if con:
-            async with con.dbus.signal(
+            async with con.connected_dbus.signal(
                 DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED
             ) as signal:
                 # From this point we monitor signals. However, it might be that
@@ -303,7 +313,7 @@ class NetworkManager(CoreSysAttributes):
         """Scan on Interface for AccessPoint."""
         inet = self.sys_dbus.network.get(interface.name)
 
-        if inet.type != DeviceType.WIRELESS:
+        if inet.type != DeviceType.WIRELESS or not inet.wireless:
             raise HostNotSupportedError(
                 f"Can only scan with wireless card - {interface.name}", _LOGGER.error
             )

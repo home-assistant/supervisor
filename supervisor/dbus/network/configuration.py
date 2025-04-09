@@ -1,5 +1,6 @@
 """NetworkConnection objects for Network Manager."""
 
+from abc import ABC
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv6Address
 
@@ -29,7 +30,7 @@ class ConnectionProperties:
 class WirelessProperties:
     """Wireless Properties object for Network Manager."""
 
-    ssid: str | None
+    ssid: str
     assigned_mac: str | None
     mode: str | None
     powersave: int | None
@@ -55,7 +56,7 @@ class EthernetProperties:
 class VlanProperties:
     """Ethernet properties object for Network Manager."""
 
-    id: int | None
+    id: int
     parent: str | None
 
 
@@ -67,14 +68,20 @@ class IpAddress:
     prefix: int
 
 
-@dataclass(slots=True)
-class IpProperties:
+@dataclass
+class IpProperties(ABC):
     """IP properties object for Network Manager."""
 
     method: str | None
     address_data: list[IpAddress] | None
     gateway: str | None
-    dns: list[bytes | int] | None
+
+
+@dataclass(slots=True)
+class Ip4Properties(IpProperties):
+    """IP4 properties object."""
+
+    dns: list[int] | None
 
 
 @dataclass(slots=True)
@@ -83,6 +90,7 @@ class Ip6Properties(IpProperties):
 
     addr_gen_mode: int
     ip6_privacy: int
+    dns: list[bytes] | None
 
 
 @dataclass(slots=True)

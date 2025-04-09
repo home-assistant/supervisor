@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Mapping
 from contextlib import asynccontextmanager
 import json
 import logging
@@ -205,7 +205,7 @@ class LogsControl(CoreSysAttributes):
     async def journald_logs(
         self,
         path: str = "/entries",
-        params: dict[str, str | list[str]] | None = None,
+        params: Mapping[str, str | list[str]] | None = None,
         range_header: str | None = None,
         accept: LogFormat = LogFormat.TEXT,
         timeout: ClientTimeout | None = None,
@@ -226,7 +226,7 @@ class LogsControl(CoreSysAttributes):
                 base_url = "http://localhost/"
                 connector = UnixConnector(path=str(SYSTEMD_JOURNAL_GATEWAYD_SOCKET))
             async with ClientSession(base_url=base_url, connector=connector) as session:
-                headers = {ACCEPT: accept}
+                headers = {ACCEPT: accept.value}
                 if range_header:
                     if range_header.endswith(":"):
                         # Make sure that num_entries is always set - before Systemd v256 it was
