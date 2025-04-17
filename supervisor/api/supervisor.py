@@ -17,6 +17,7 @@ from ..const import (
     ATTR_BLK_WRITE,
     ATTR_CHANNEL,
     ATTR_CONTENT_TRUST,
+    ATTR_COUNTRY,
     ATTR_CPU_PERCENT,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
@@ -76,6 +77,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_FORCE_SECURITY): vol.Boolean(),
         vol.Optional(ATTR_AUTO_UPDATE): vol.Boolean(),
         vol.Optional(ATTR_DETECT_BLOCKING_IO): vol.Coerce(DetectBlockingIO),
+        vol.Optional(ATTR_COUNTRY): str,
     }
 )
 
@@ -109,6 +111,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_AUTO_UPDATE: self.sys_updater.auto_update,
             ATTR_DETECT_BLOCKING_IO: blockbuster_enabled(),
+            ATTR_COUNTRY: self.sys_config.country,
             # Depricated
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
             ATTR_ADDONS: [
@@ -146,6 +149,9 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_CHANNEL in body:
             self.sys_updater.channel = body[ATTR_CHANNEL]
+
+        if ATTR_COUNTRY in body:
+            self.sys_config.country = body[ATTR_COUNTRY]
 
         if ATTR_DEBUG in body:
             self.sys_config.debug = body[ATTR_DEBUG]
