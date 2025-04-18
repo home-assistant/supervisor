@@ -252,6 +252,21 @@ async def test_api_supervisor_options_timezone(
     assert coresys.timezone == "Europe/Zurich"
 
 
+async def test_api_supervisor_options_country(api_client: TestClient, coresys: CoreSys):
+    """Test setting supervisor country via API."""
+    assert coresys.config.country is None
+
+    resp = await api_client.post("/supervisor/options", json={"country": "CH"})
+    assert resp.status == 200
+
+    assert coresys.config.country == "CH"
+
+    resp = await api_client.get("/supervisor/info")
+    assert resp.status == 200
+    body = await resp.json()
+    assert body["data"]["country"] == "CH"
+
+
 @pytest.mark.parametrize(
     ("blockbuster", "option_value", "config_value"),
     [("no_blockbuster", "on", False), ("no_blockbuster", "on_at_startup", True)],

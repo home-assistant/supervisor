@@ -10,6 +10,7 @@ from awesomeversion import AwesomeVersion
 
 from .const import (
     ATTR_ADDONS_CUSTOM_LIST,
+    ATTR_COUNTRY,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
     ATTR_DETECT_BLOCKING_IO,
@@ -92,6 +93,20 @@ class CoreConfig(FileConfiguration):
         self._timezone_tzinfo = await asyncio.get_running_loop().run_in_executor(
             None, get_time_zone, value
         )
+
+    @property
+    def country(self) -> str | None:
+        """Return supervisor country.
+
+        The format follows what Home Assistant Core provides, which today is
+        ISO 3166-1 alpha-2.
+        """
+        return self._data.get(ATTR_COUNTRY)
+
+    @country.setter
+    def country(self, value: str | None) -> None:
+        """Set supervisor country."""
+        self._data[ATTR_COUNTRY] = value
 
     @property
     def version(self) -> AwesomeVersion:
