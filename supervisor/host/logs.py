@@ -8,6 +8,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 from typing import Self
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
@@ -34,6 +35,8 @@ SYSLOG_IDENTIFIERS_JSON: Path = (
 )
 # pylint: enable=no-member
 
+SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX = (1 << 64) - 1
+
 SYSTEMD_JOURNAL_GATEWAYD_SOCKET: Path = Path("/run/systemd-journal-gatewayd.sock")
 
 # From systemd catalog for message IDs (`journalctl --dump-catalog``)
@@ -41,6 +44,10 @@ SYSTEMD_JOURNAL_GATEWAYD_SOCKET: Path = Path("/run/systemd-journal-gatewayd.sock
 # Subject: System start-up is now complete
 # Defined-By: systemd
 BOOT_IDS_QUERY = {"MESSAGE_ID": "b07a249cd024414a82dd00cd181378ff"}
+
+RE_ENTRIES_HEADER = re.compile(
+    r"^entries=(?P<cursor>[^:]*):(?P<num_skip>-?\d+):(?P<num_lines>\d*)$"
+)
 
 
 class LogsControl(CoreSysAttributes):
@@ -186,6 +193,16 @@ class LogsControl(CoreSysAttributes):
             async with ClientSession(base_url=base_url, connector=connector) as session:
                 headers = {ACCEPT: accept}
                 if range_header:
+                    if range_header.endswith(":"):
+                        # Make sure that num_entries is always set - before Systemd v256 it was
+                        # possible to omit it, which made sense when the "follow" option was used,
+                        # but this syntax is now invalid and triggers HTTP 400.
+                        # See: https://github.com/systemd/systemd/issues/37172
+                        if not (matches := re.match(RE_ENTRIES_HEADER, range_header)):
+                            raise HostNotSupportedError(
+                                f"Invalid range header: {range_header}"
+                            )
+                        range_header = f"entries={matches.group('cursor')}:{matches.group('num_skip')}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
                     headers[RANGE] = range_header
                 async with session.get(
                     f"{path}",

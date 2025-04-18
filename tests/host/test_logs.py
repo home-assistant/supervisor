@@ -171,3 +171,24 @@ async def test_connection_refused_handled(
         with pytest.raises(HostServiceError):
             async with coresys.host.logs.journald_logs():
                 pass
+
+
+@pytest.mark.parametrize(
+    "range_header,range_reparse",
+    [
+        ("entries=:-99:", "entries=:-99:18446744073709551615"),
+        ("entries=:-99:100", "entries=:-99:100"),
+        ("entries=cursor:0:100", "entries=cursor:0:100"),
+    ],
+)
+async def test_range_header_reparse(
+    journald_gateway: MagicMock, coresys: CoreSys, range_header: str, range_reparse: str
+):
+    """Test that range header with trailing colon contains num_entries."""
+    async with coresys.host.logs.journald_logs(range_header=range_header):
+        journald_gateway.get.assert_called_with(
+            "/entries",
+            headers={"Accept": "text/plain", "Range": range_reparse},
+            params={},
+            timeout=None,
+        )
