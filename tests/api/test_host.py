@@ -16,7 +16,7 @@ from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 DEFAULT_RANGE = "entries=:-99:100"
-DEFAULT_RANGE_FOLLOW = "entries=:-99:"
+DEFAULT_RANGE_FOLLOW = "entries=:-99:18446744073709551615"
 # pylint: disable=protected-access
 
 
