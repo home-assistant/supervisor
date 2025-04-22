@@ -84,3 +84,11 @@ async def test_send_message_during_startup(coresys: CoreSys, ha_ws_client: Async
             "data": {"state": "running"},
         },
     }
+
+    ha_ws_client.reset_mock()
+    await coresys.core.set_state(CoreState.SHUTDOWN)
+
+    await coresys.homeassistant.websocket.async_supervisor_update_event(
+        "test", {"lorem": "ipsum"}
+    )
+    ha_ws_client.async_send_command.assert_not_called()
