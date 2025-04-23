@@ -33,8 +33,6 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_AUTO_UPDATE,
     ATTR_BOOT,
-    ATTR_DATA,
-    ATTR_EVENT,
     ATTR_IMAGE,
     ATTR_INGRESS_ENTRY,
     ATTR_INGRESS_PANEL,
@@ -50,7 +48,6 @@ from ..const import (
     ATTR_SYSTEM,
     ATTR_SYSTEM_MANAGED,
     ATTR_SYSTEM_MANAGED_CONFIG_ENTRY,
-    ATTR_TYPE,
     ATTR_USER,
     ATTR_UUID,
     ATTR_VERSION,
@@ -79,7 +76,7 @@ from ..exceptions import (
     HostAppArmorError,
 )
 from ..hardware.data import Device
-from ..homeassistant.const import WSEvent, WSType
+from ..homeassistant.const import WSEvent
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, UnhealthyReason
@@ -196,15 +193,12 @@ class Addon(AddonModel):
         ):
             self.sys_resolution.dismiss_issue(self.device_access_missing_issue)
 
-        self.sys_homeassistant.websocket.send_message(
+        self.sys_homeassistant.websocket.supervisor_event_custom(
+            WSEvent.ADDON,
             {
-                ATTR_TYPE: WSType.SUPERVISOR_EVENT,
-                ATTR_DATA: {
-                    ATTR_EVENT: WSEvent.ADDON,
-                    ATTR_SLUG: self.slug,
-                    ATTR_STATE: new_state,
-                },
-            }
+                ATTR_SLUG: self.slug,
+                ATTR_STATE: new_state,
+            },
         )
 
     @property

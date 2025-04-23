@@ -25,7 +25,6 @@ from ..exceptions import (
     HomeAssistantAPIError,
     HomeAssistantWSConnectionError,
     HomeAssistantWSError,
-    HomeAssistantWSNotSupported,
 )
 from ..utils.json import json_dumps
 from .const import CLOSING_STATES, WSEvent, WSType
@@ -254,7 +253,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         )
 
     async def async_send_message(self, message: dict[str, Any]) -> None:
-        """Send a command with the WS client."""
+        """Send a message with the WS client."""
         # Only commands allowed during startup as those tell Home Assistant to do something.
         # Messages may cause clients to make follow-up API calls so those wait.
         if self.sys_core.state in STARTING_STATES:
@@ -288,67 +287,67 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             raise
         return None
 
-    async def async_supervisor_update_event(
-        self,
-        key: str,
-        data: dict[str, Any] | None = None,
-    ) -> None:
-        """Send a supervisor/event command."""
-        try:
-            await self.async_send_message(
-                {
-                    ATTR_TYPE: WSType.SUPERVISOR_EVENT,
-                    ATTR_DATA: {
-                        ATTR_EVENT: WSEvent.SUPERVISOR_UPDATE,
-                        ATTR_UPDATE_KEY: key,
-                        ATTR_DATA: data or {},
-                    },
-                }
-            )
-        except HomeAssistantWSNotSupported:
-            pass
-        except HomeAssistantWSError as err:
-            _LOGGER.error("Could not send message to Home Assistant due to %s", err)
-
-    def supervisor_update_event(
-        self,
-        key: str,
-        data: dict[str, Any] | None = None,
-    ) -> None:
-        """Send a supervisor/event command."""
-        if self.sys_core.state in CLOSING_STATES:
-            return
-        self.sys_create_task(self.async_supervisor_update_event(key, data))
-
     def send_message(self, message: dict[str, Any]) -> None:
-        """Send a supervisor/event command."""
+        """Send a supervisor/event message."""
         if self.sys_core.state in CLOSING_STATES:
             return
         self.sys_create_task(self.async_send_message(message))
 
-    async def async_supervisor_event(
-        self, event: WSEvent, data: dict[str, Any] | None = None
+    async def async_supervisor_event_custom(
+        self, event: WSEvent, extra_data: dict[str, Any] | None = None
     ) -> None:
-        """Send a supervisor/event command to Home Assistant."""
+        """Send a supervisor/event message to Home Assistant with custom data."""
         try:
             await self.async_send_message(
                 {
                     ATTR_TYPE: WSType.SUPERVISOR_EVENT,
                     ATTR_DATA: {
                         ATTR_EVENT: event,
-                        ATTR_DATA: data or {},
+                        **(extra_data or {}),
                     },
                 }
             )
-        except HomeAssistantWSNotSupported:
-            pass
         except HomeAssistantWSError as err:
             _LOGGER.error("Could not send message to Home Assistant due to %s", err)
+
+    def supervisor_event_custom(
+        self, event: WSEvent, extra_data: dict[str, Any] | None = None
+    ) -> None:
+        """Send a supervisor/event message to Home Assistant with custom data."""
+        if self.sys_core.state in CLOSING_STATES:
+            return
+        self.sys_create_task(self.async_supervisor_event_custom(event, extra_data))
 
     def supervisor_event(
         self, event: WSEvent, data: dict[str, Any] | None = None
     ) -> None:
-        """Send a supervisor/event command to Home Assistant."""
+        """Send a supervisor/event message to Home Assistant."""
         if self.sys_core.state in CLOSING_STATES:
             return
-        self.sys_create_task(self.async_supervisor_event(event, data))
+        self.sys_create_task(
+            self.async_supervisor_event_custom(event, {ATTR_DATA: data or {}})
+        )
+
+    async def async_supervisor_update_event(
+        self,
+        key: str,
+        data: dict[str, Any] | None = None,
+    ) -> None:
+        """Send an update supervisor/event message."""
+        await self.async_supervisor_event_custom(
+            WSEvent.SUPERVISOR_UPDATE,
+            {
+                ATTR_UPDATE_KEY: key,
+                ATTR_DATA: data or {},
+            },
+        )
+
+    def supervisor_update_event(
+        self,
+        key: str,
+        data: dict[str, Any] | None = None,
+    ) -> None:
+        """Send an update supervisor/event message."""
+        if self.sys_core.state in CLOSING_STATES:
+            return
+        self.sys_create_task(self.async_supervisor_update_event(key, data))

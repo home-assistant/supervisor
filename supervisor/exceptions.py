@@ -84,10 +84,6 @@ class HomeAssistantWSError(HomeAssistantAPIError):
     """Home Assistant websocket error."""
 
 
-class HomeAssistantWSNotSupported(HomeAssistantWSError):
-    """Raise when WebSockets are not supported."""
-
-
 class HomeAssistantWSConnectionError(HomeAssistantWSError):
     """Raise when the WebSocket connection has an error."""
 
