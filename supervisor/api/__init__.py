@@ -347,7 +347,7 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes([web.get("/info", api_root.info)])
         self.webapp.add_routes([web.post("/reload_updates", api_root.reload_updates)])
 
-        # Deprecated
+        # Discouraged
         self.webapp.add_routes([web.post("/refresh_updates", api_root.refresh_updates)])
         self.webapp.add_routes(
             [web.get("/available_updates", api_root.available_updates)]
