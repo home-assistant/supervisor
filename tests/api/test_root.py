@@ -1,7 +1,9 @@
 """Test Supervisor API."""
 
 # pylint: disable=protected-access
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
+
+from aiohttp.test_utils import TestClient
 
 from supervisor.api.const import ATTR_AVAILABLE_UPDATES
 from supervisor.coresys import CoreSys
@@ -78,3 +80,18 @@ async def test_api_refresh_updates(api_client, coresys: CoreSys):
 
     assert coresys.updater.reload.called
     assert coresys.store.reload.called
+
+
+async def test_api_reload_updates(
+    coresys: CoreSys,
+    api_client: TestClient,
+):
+    """Test reload updates."""
+    with (
+        patch("supervisor.updater.Updater.fetch_data") as fetch_data,
+    ):
+        resp = await api_client.post("/reload_updates")
+
+        fetch_data.assert_called_once_with()
+
+    assert resp.status == 200
