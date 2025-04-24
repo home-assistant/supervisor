@@ -24,7 +24,7 @@ PyYAML==6.0.2
 requests==2.32.3
 securetar==2025.2.1
 sentry-sdk==2.26.1
-setuptools==79.0.0
+setuptools==79.0.1
 voluptuous==0.15.2
 dbus-fast==2.44.1
 zlib-fast==0.2.1
