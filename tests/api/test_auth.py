@@ -3,6 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
+from aiohttp.hdrs import WWW_AUTHENTICATE
 from aiohttp.test_utils import TestClient
 import pytest
 
@@ -137,8 +138,8 @@ async def test_auth_json_invalid_credentials(
     resp = await api_client.post(
         "/auth", json={"username": "test", "password": "wrong"}
     )
-    # Do we really want the API to return 400 here?
-    assert resp.status == 400
+    assert WWW_AUTHENTICATE not in resp.headers
+    assert resp.status == 401
 
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
@@ -184,8 +185,8 @@ async def test_auth_urlencoded_failure(
         data="username=test&password=fail",
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
-    # Do we really want the API to return 400 here?
-    assert resp.status == 400
+    assert WWW_AUTHENTICATE not in resp.headers
+    assert resp.status == 401
 
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
@@ -196,7 +197,7 @@ async def test_auth_unsupported_content_type(
     resp = await api_client.post(
         "/auth", data="something", headers={"Content-Type": "text/plain"}
     )
-    # This probably should be 400 here for better consistency
+    assert "Basic realm" in resp.headers[WWW_AUTHENTICATE]
     assert resp.status == 401
 
 
