@@ -125,22 +125,22 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
         }
     )
 
-    if event.get("request"):
-        if event["request"].get("url"):
-            event["request"]["url"] = sanitize_url(cast(str, event["request"]["url"]))
+    if request := event.get("request"):
+        if request.get("url"):
+            request["url"] = sanitize_url(cast(str, request["url"]))
 
-        headers = cast(dict, event["request"].get("headers", {}))
-        if hdrs.REFERER in headers:
-            headers[hdrs.REFERER] = sanitize_url(headers[hdrs.REFERER])
-        if HEADER_TOKEN in headers:
-            headers[HEADER_TOKEN] = "XXXXXXXXXXXXXXXXXXX"
-        if HEADER_TOKEN_OLD in headers:
-            headers[HEADER_TOKEN_OLD] = "XXXXXXXXXXXXXXXXXXX"
-        if hdrs.HOST in headers:
-            headers[hdrs.HOST] = sanitize_host(headers[hdrs.HOST])
-        if hdrs.X_FORWARDED_HOST in headers:
-            headers[hdrs.X_FORWARDED_HOST] = sanitize_host(
-                headers[hdrs.X_FORWARDED_HOST]
-            )
+        if headers := cast(dict, request.get("headers")):
+            if hdrs.REFERER in headers:
+                headers[hdrs.REFERER] = sanitize_url(headers[hdrs.REFERER])
+            if HEADER_TOKEN in headers:
+                headers[HEADER_TOKEN] = "XXXXXXXXXXXXXXXXXXX"
+            if HEADER_TOKEN_OLD in headers:
+                headers[HEADER_TOKEN_OLD] = "XXXXXXXXXXXXXXXXXXX"
+            if hdrs.HOST in headers:
+                headers[hdrs.HOST] = sanitize_host(headers[hdrs.HOST])
+            if hdrs.X_FORWARDED_HOST in headers:
+                headers[hdrs.X_FORWARDED_HOST] = sanitize_host(
+                    headers[hdrs.X_FORWARDED_HOST]
+                )
 
     return event
