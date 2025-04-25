@@ -142,6 +142,24 @@ async def test_auth_json_invalid_credentials(
 
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+async def test_auth_json_empty_body(api_client: TestClient, install_addon_ssh: Addon):
+    """Test JSON auth with empty body."""
+    resp = await api_client.post(
+        "/auth", data="", headers={"Content-Type": "application/json"}
+    )
+    assert resp.status == 400
+
+
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+async def test_auth_json_invalid_json(api_client: TestClient, install_addon_ssh: Addon):
+    """Test JSON auth with malformed JSON."""
+    resp = await api_client.post(
+        "/auth", data="{not json}", headers={"Content-Type": "application/json"}
+    )
+    assert resp.status == 400
+
+
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
 async def test_auth_urlencoded_success(
     api_client: TestClient, mock_check_login: AsyncMock, install_addon_ssh: Addon
 ):
