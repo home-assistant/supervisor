@@ -196,6 +196,7 @@ async def test_auth_unsupported_content_type(
     resp = await api_client.post(
         "/auth", data="something", headers={"Content-Type": "text/plain"}
     )
+    # This probably should be 400 here for better consistency
     assert resp.status == 401
 
 
