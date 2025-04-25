@@ -14,7 +14,6 @@ from ..addons.addon import Addon
 from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIForbidden
-from ..utils.json import json_loads
 from .const import (
     ATTR_GROUP_IDS,
     ATTR_IS_ACTIVE,
@@ -24,7 +23,7 @@ from .const import (
     CONTENT_TYPE_JSON,
     CONTENT_TYPE_URL,
 )
-from .utils import api_process, api_validate
+from .utils import api_process, api_validate, json_loads
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -68,7 +67,7 @@ class APIAuth(CoreSysAttributes):
         """Process login request."""
         addon = request[REQUEST_FROM]
 
-        if not addon.access_auth_api:
+        if not isinstance(addon, Addon) or not addon.access_auth_api:
             raise APIForbidden("Can't use Home Assistant auth!")
 
         # BasicAuth
