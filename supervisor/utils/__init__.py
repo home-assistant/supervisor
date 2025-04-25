@@ -132,12 +132,14 @@ def remove_folder_with_excludes(
 
 
 def get_latest_mtime(directory: Path) -> tuple[float, Path]:
-    """Get the latest modification time of files in a directory.
+    """Get the last modification time of directories and files in a directory.
 
-    Must be run in an executor.
+    Must be run in an executor. The root directory is included too, this means
+    that often the root directory is returned as the last modified file if a
+    new file is created in it.
     """
-    latest_mtime = 0
-    latest_path = Path()
+    latest_mtime = directory.stat().st_mtime
+    latest_path = directory
     for path in directory.rglob("*"):
         try:
             mtime = path.stat().st_mtime
