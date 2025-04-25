@@ -3,9 +3,11 @@
 import ipaddress
 import os
 import re
+from typing import cast
 
 from aiohttp import hdrs
 import attr
+from sentry_sdk.types import Event, Hint
 
 from ..const import DOCKER_NETWORK_MASK, HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
@@ -39,7 +41,7 @@ def sanitize_url(url: str) -> str:
     return f"{match.group(1)}{host}{match.group(3)}"
 
 
-def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
+def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
     """Filter event data before sending to sentry."""
     # Ignore some  exceptions
     if "exc_info" in hint:
@@ -53,11 +55,12 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
 
     event.setdefault("extra", {}).update({"os.environ": dict(os.environ)})
     event.setdefault("user", {}).update({"id": coresys.machine_id})
-    event.setdefault("tags", {}).update(
-        {
-            "machine": coresys.machine,
-        }
-    )
+    if coresys.machine:
+        event.setdefault("tags", {}).update(
+            {
+                "machine": coresys.machine,
+            }
+        )
 
     # Not full startup - missing information
     if coresys.core.state in (CoreState.INITIALIZE, CoreState.SETUP):
@@ -122,22 +125,22 @@ def filter_data(coresys: CoreSys, event: dict, hint: dict) -> dict:
         }
     )
 
-    if event.get("request"):
-        if event["request"].get("url"):
-            event["request"]["url"] = sanitize_url(event["request"]["url"])
+    if request := event.get("request"):
+        if request.get("url"):
+            request["url"] = sanitize_url(cast(str, request["url"]))
 
-        headers = event["request"].get("headers", {})
-        if hdrs.REFERER in headers:
-            headers[hdrs.REFERER] = sanitize_url(headers[hdrs.REFERER])
-        if HEADER_TOKEN in headers:
-            headers[HEADER_TOKEN] = "XXXXXXXXXXXXXXXXXXX"
-        if HEADER_TOKEN_OLD in headers:
-            headers[HEADER_TOKEN_OLD] = "XXXXXXXXXXXXXXXXXXX"
-        if hdrs.HOST in headers:
-            headers[hdrs.HOST] = sanitize_host(headers[hdrs.HOST])
-        if hdrs.X_FORWARDED_HOST in headers:
-            headers[hdrs.X_FORWARDED_HOST] = sanitize_host(
-                headers[hdrs.X_FORWARDED_HOST]
-            )
+        if headers := cast(dict, request.get("headers")):
+            if hdrs.REFERER in headers:
+                headers[hdrs.REFERER] = sanitize_url(headers[hdrs.REFERER])
+            if HEADER_TOKEN in headers:
+                headers[HEADER_TOKEN] = "XXXXXXXXXXXXXXXXXXX"
+            if HEADER_TOKEN_OLD in headers:
+                headers[HEADER_TOKEN_OLD] = "XXXXXXXXXXXXXXXXXXX"
+            if hdrs.HOST in headers:
+                headers[hdrs.HOST] = sanitize_host(headers[hdrs.HOST])
+            if hdrs.X_FORWARDED_HOST in headers:
+                headers[hdrs.X_FORWARDED_HOST] = sanitize_host(
+                    headers[hdrs.X_FORWARDED_HOST]
+                )
 
     return event
