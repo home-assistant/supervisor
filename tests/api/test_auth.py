@@ -70,8 +70,8 @@ LIST_USERS_RESPONSE = [
 ]
 
 
-@pytest.fixture
-def mock_check_login(coresys: CoreSys):
+@pytest.fixture(name="mock_check_login")
+def fixture_mock_check_login(coresys: CoreSys):
     """Patch sys_auth.check_login."""
     with patch.object(coresys.auth, "check_login", new_callable=AsyncMock) as mock:
         yield mock
