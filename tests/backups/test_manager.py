@@ -5,6 +5,7 @@ import errno
 from functools import partial
 from pathlib import Path
 from shutil import copy, rmtree
+from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -2122,3 +2123,60 @@ async def test_backup_multiple_locations_oserror(
     assert (
         UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
     ) is unhealthy
+
+
+@pytest.mark.parametrize("same_mount", [True, False])
+async def test_get_upload_path_for_backup_location(
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    same_mount,
+):
+    """Test get_upload_path_for_location with local backup location."""
+    manager = BackupManager(coresys)
+
+    target_path = coresys.config.path_backup
+    tmp_path = coresys.config.path_tmp
+
+    def make_stat_mock(target_path: Path, tmp_path: Path, same_mount: bool):
+        def _mock_stat(self):
+            if self == target_path:
+                return SimpleNamespace(st_dev=1)
+            if self == tmp_path:
+                return SimpleNamespace(st_dev=1 if same_mount else 2)
+            raise ValueError(f"Unexpected path: {self}")
+
+        return _mock_stat
+
+    with patch(
+        "pathlib.Path.stat", new=make_stat_mock(target_path, tmp_path, same_mount)
+    ):
+        result = await manager.get_upload_path_for_location(None)
+
+        if same_mount:
+            assert result == tmp_path
+        else:
+            assert result == target_path
+
+
+async def test_get_upload_path_for_mount_location(
+    coresys: CoreSys, tmp_supervisor_data
+):
+    """Test get_upload_path_for_location with a Mount location."""
+    manager = BackupManager(coresys)
+
+    await coresys.mounts.load()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test_mount",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "server.local",
+            "share": "test",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    result = await manager.get_upload_path_for_location(mount)
+
+    assert result == mount.local_where
