@@ -212,3 +212,9 @@ async def test_auth_addon_no_auth_access(
     """Test auth where add-on is not allowed to access auth API."""
     resp = await api_client.post("/auth", json={"username": "test", "password": "pass"})
     assert resp.status == 403
+
+
+async def test_non_addon_token_no_auth_access(api_client: TestClient):
+    """Test auth where add-on is not allowed to access auth API."""
+    resp = await api_client.post("/auth", json={"username": "test", "password": "pass"})
+    assert resp.status == 403
