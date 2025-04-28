@@ -10,8 +10,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import aiohttp
-from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion, AwesomeVersionException
+import requests
 
 from .const import (
     ATTR_SUPERVISOR_INTERNET,
@@ -286,12 +286,13 @@ class Supervisor(CoreSysAttributes):
     )
     async def check_connectivity(self):
         """Check the connection."""
-        timeout = aiohttp.ClientTimeout(total=10)
         try:
-            await self.sys_websession.head(
-                "https://checkonline.home-assistant.io/online.txt", timeout=timeout
+            await self.sys_run_in_executor(
+                requests.head,
+                "https://checkonline.home-assistant.io/online.txt",
+                timeout=10,
             )
-        except (ClientError, TimeoutError):
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
             self.connectivity = False
         else:
             self.connectivity = True
