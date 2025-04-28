@@ -846,9 +846,10 @@ class Addon(AddonModel):
                 await self.sys_ingress.update_hass_panel(self)
 
         # Cleanup Ingress dynamic port assignment
+        need_ingress_token_cleanup = False
         if self.with_ingress:
+            need_ingress_token_cleanup = True
             await self.sys_ingress.del_dynamic_port(self.slug)
-            self.sys_create_task(self.sys_ingress.reload())
 
         # Cleanup discovery data
         for message in self.sys_discovery.list_messages:
@@ -863,8 +864,12 @@ class Addon(AddonModel):
             await service.del_service_data(self)
 
         # Remove from addon manager
-        await self.sys_addons.data.uninstall(self)
         self.sys_addons.local.pop(self.slug)
+        await self.sys_addons.data.uninstall(self)
+
+        # Cleanup Ingress tokens
+        if need_ingress_token_cleanup:
+            await self.sys_ingress.reload()
 
     @Job(
         name="addon_update",
