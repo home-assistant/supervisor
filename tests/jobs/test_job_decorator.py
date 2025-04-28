@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
-from aiohttp.client_exceptions import ClientError
 import pytest
+from requests import Timeout
 import time_machine
 
 from supervisor.const import BusEvent, CoreState
@@ -62,9 +62,9 @@ async def test_healthy(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     "connectivity,head_side_effect,host_result,system_result",
     [
         (4, None, True, True),
-        (4, ClientError(), True, None),
+        (4, Timeout(), True, None),
         (0, None, None, True),
-        (0, ClientError(), None, None),
+        (0, Timeout(), None, None),
     ],
 )
 async def test_internet(
@@ -103,14 +103,10 @@ async def test_internet(
 
     test = TestClass(coresys)
 
-    mock_websession = AsyncMock()
-    mock_websession.head.side_effect = head_side_effect
     coresys.supervisor.connectivity = None
     with (
         patch("supervisor.utils.dbus.DBus.call_dbus", return_value=connectivity),
-        patch.object(
-            CoreSys, "websession", new=PropertyMock(return_value=mock_websession)
-        ),
+        patch("requests.head", side_effect=head_side_effect),
     ):
         assert await test.execute_host() is host_result
         assert await test.execute_system() is system_result
