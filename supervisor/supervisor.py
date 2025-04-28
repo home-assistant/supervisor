@@ -8,6 +8,7 @@ from ipaddress import IPv4Address
 import logging
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Final
 
 import aiohttp
 from aiohttp.client_exceptions import ClientError
@@ -38,6 +39,10 @@ from .resolution.const import ContextType, IssueType, UnhealthyReason
 from .utils.codenotary import calc_checksum
 from .utils.sentry import async_capture_exception
 
+_CONNECTIVITY_CHECK_TIMEOUT: Final[aiohttp.ClientTimeout] = aiohttp.ClientTimeout(
+    total=10
+)
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
@@ -57,6 +62,14 @@ class Supervisor(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self.instance: DockerSupervisor = DockerSupervisor(coresys)
         self._connectivity: bool = True
+        self._connectivity_client: aiohttp.ClientSession = (
+            self._create_connectivity_client()
+        )
+
+    def _create_connectivity_client(self) -> aiohttp.ClientSession:
+        """Create a new connectivity client."""
+        connector = aiohttp.TCPConnector(use_dns_cache=False, force_close=True)
+        return aiohttp.ClientSession(connector=connector)
 
     async def load(self) -> None:
         """Prepare Supervisor object."""
@@ -286,12 +299,17 @@ class Supervisor(CoreSysAttributes):
     )
     async def check_connectivity(self):
         """Check the connection."""
-        timeout = aiohttp.ClientTimeout(total=10)
         try:
-            await self.sys_websession.head(
-                "https://checkonline.home-assistant.io/online.txt", timeout=timeout
+            await self._connectivity_client.head(
+                "https://checkonline.home-assistant.io/online.txt",
+                timeout=_CONNECTIVITY_CHECK_TIMEOUT,
             )
         except (ClientError, TimeoutError):
+            # Need to recreate the websession to avoid stale connection checks
+            self.sys_create_task(self._connectivity_client.close())
+            self._connectivity_client: aiohttp.ClientSession = (
+                self._create_connectivity_client()
+            )
             self.connectivity = False
         else:
             self.connectivity = True
