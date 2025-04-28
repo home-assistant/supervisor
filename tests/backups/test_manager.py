@@ -2128,7 +2128,6 @@ async def test_backup_multiple_locations_oserror(
 @pytest.mark.parametrize("same_mount", [True, False])
 async def test_get_upload_path_for_backup_location(
     coresys: CoreSys,
-    tmp_supervisor_data,
     same_mount,
 ):
     """Test get_upload_path_for_location with local backup location."""
@@ -2159,7 +2158,11 @@ async def test_get_upload_path_for_backup_location(
 
 
 async def test_get_upload_path_for_mount_location(
-    coresys: CoreSys, tmp_supervisor_data
+    coresys: CoreSys,
+    tmp_supervisor_data,
+    path_extern,
+    mount_propagation,
+    mock_is_mount,
 ):
     """Test get_upload_path_for_location with a Mount location."""
     manager = BackupManager(coresys)
