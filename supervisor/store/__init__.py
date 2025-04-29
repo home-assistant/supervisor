@@ -116,7 +116,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             )
 
             # read data from repositories
-            await self.load()
+            await self.data.update()
             await self._read_addons()
 
     @Job(
