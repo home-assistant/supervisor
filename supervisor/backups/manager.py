@@ -122,6 +122,25 @@ class BackupManager(FileConfiguration, JobGroup):
 
         return self.sys_config.path_backup
 
+    async def get_upload_path_for_location(self, location: LOCATION_TYPE) -> Path:
+        """Get a path (temporary) upload path for a backup location."""
+        target_path = self._get_base_path(location)
+
+        # Return target path for mounts since tmp will always be local, mounts
+        # will never be the same device.
+        if location is not None and location != LOCATION_CLOUD_BACKUP:
+            return target_path
+
+        tmp_path = self.sys_config.path_tmp
+
+        def check_same_mount() -> bool:
+            """Check if the target path is on the same mount as the backup location."""
+            return target_path.stat().st_dev == tmp_path.stat().st_dev
+
+        if await self.sys_run_in_executor(check_same_mount):
+            return tmp_path
+        return target_path
+
     async def _check_location(self, location: LOCATION_TYPE | type[DEFAULT] = DEFAULT):
         """Check if backup location is accessible."""
         if location == DEFAULT and self.sys_mounts.default_backup_mount:

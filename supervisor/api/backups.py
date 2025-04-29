@@ -53,7 +53,6 @@ from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound
 from ..jobs import JobSchedulerOptions, SupervisorJob
 from ..mounts.const import MountUsage
-from ..mounts.mount import Mount
 from ..resolution.const import UnhealthyReason
 from .const import (
     ATTR_ADDITIONAL_LOCATIONS,
@@ -495,7 +494,7 @@ class APIBackups(CoreSysAttributes):
         """Upload a backup file."""
         location: LOCATION_TYPE = None
         locations: list[LOCATION_TYPE] | None = None
-        tmp_path = self.sys_config.path_tmp
+
         if ATTR_LOCATION in request.query:
             location_names: list[str] = request.query.getall(ATTR_LOCATION, [])
             self._validate_cloud_backup_location(
@@ -510,9 +509,6 @@ class APIBackups(CoreSysAttributes):
             ]
             location = locations.pop(0)
 
-            if location and location != LOCATION_CLOUD_BACKUP:
-                tmp_path = cast(Mount, location).local_where
-
         filename: str | None = None
         if ATTR_FILENAME in request.query:
             filename = request.query.get(ATTR_FILENAME)
@@ -521,13 +517,14 @@ class APIBackups(CoreSysAttributes):
             except vol.Invalid as ex:
                 raise APIError(humanize_error(filename, ex)) from None
 
+        tmp_path = await self.sys_backups.get_upload_path_for_location(location)
         temp_dir: TemporaryDirectory | None = None
         backup_file_stream: IOBase | None = None
 
         def open_backup_file() -> Path:
             nonlocal temp_dir, backup_file_stream
             temp_dir = TemporaryDirectory(dir=tmp_path.as_posix())
-            tar_file = Path(temp_dir.name, "backup.tar")
+            tar_file = Path(temp_dir.name, "upload.tar")
             backup_file_stream = tar_file.open("wb")
             return tar_file
 
