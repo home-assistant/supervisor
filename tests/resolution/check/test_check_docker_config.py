@@ -53,6 +53,7 @@ async def test_check(
         ["homeassistant", "hassio_audio", "addon_local_ssh"], folder
     )
     with patch.object(DockerInterface, "is_running", return_value=True):
+        await coresys.plugins.dns.load()
         await coresys.plugins.load()
         await coresys.homeassistant.load()
         await coresys.addons.load()
@@ -106,6 +107,7 @@ async def test_check(
     # IF config issue is resolved, all issues are removed except the main one. Which will be removed if check isn't approved
     docker.containers.get = _make_mock_container_get([])
     with patch.object(DockerInterface, "is_running", return_value=True):
+        await coresys.plugins.dns.load()
         await coresys.plugins.load()
         await coresys.homeassistant.load()
         await coresys.addons.load()

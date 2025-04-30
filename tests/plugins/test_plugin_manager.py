@@ -58,12 +58,14 @@ async def test_load(
             new=PropertyMock(return_value=AwesomeVersion("1970-01-01")),
         ),
     ):
+        await coresys.plugins.dns.load()
         await coresys.plugins.load()
 
         assert attach.call_count == 5
         update.assert_not_called()
 
         need_update.return_value = False
+        await coresys.plugins.dns.load()
         await coresys.plugins.load()
 
         assert attach.call_count == 10
