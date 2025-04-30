@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from aiohttp import ClientResponse
 from aiohttp.test_utils import TestClient
@@ -92,7 +92,9 @@ async def test_api_store_repositories_repository(
     assert result["data"]["slug"] == repository.slug
 
 
-async def test_api_store_add_repository(api_client: TestClient, coresys: CoreSys):
+async def test_api_store_add_repository(
+    api_client: TestClient, coresys: CoreSys, supervisor_internet: AsyncMock
+) -> None:
     """Test POST /store/repositories REST API."""
     with (
         patch("supervisor.store.repository.Repository.load", return_value=None),

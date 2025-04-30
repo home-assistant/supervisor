@@ -34,7 +34,7 @@ async def test_write_state(run_supervisor_state: MagicMock, coresys: CoreSys):
     )
 
 
-async def test_adjust_system_datetime(coresys: CoreSys):
+async def test_adjust_system_datetime(coresys: CoreSys, websession: MagicMock):
     """Test _adjust_system_datetime method with successful retrieve_whoami."""
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC)
     with patch(
@@ -52,7 +52,9 @@ async def test_adjust_system_datetime(coresys: CoreSys):
         mock_retrieve_whoami.assert_not_called()
 
 
-async def test_adjust_system_datetime_without_ssl(coresys: CoreSys):
+async def test_adjust_system_datetime_without_ssl(
+    coresys: CoreSys, websession: MagicMock
+):
     """Test _adjust_system_datetime method when retrieve_whoami raises WhoamiSSLError."""
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC)
     with patch(
@@ -67,7 +69,9 @@ async def test_adjust_system_datetime_without_ssl(coresys: CoreSys):
         assert coresys.core.sys_config.timezone == "Europe/Zurich"
 
 
-async def test_adjust_system_datetime_if_time_behind(coresys: CoreSys):
+async def test_adjust_system_datetime_if_time_behind(
+    coresys: CoreSys, websession: MagicMock
+):
     """Test _adjust_system_datetime method when current time is ahead more than 3 days."""
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC) + datetime.timedelta(
         days=4

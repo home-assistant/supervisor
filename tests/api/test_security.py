@@ -1,5 +1,7 @@
 """Test Supervisor API."""
 
+from unittest.mock import AsyncMock
+
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -36,7 +38,9 @@ async def test_api_security_options_pwned(api_client, coresys: CoreSys):
 
 
 @pytest.mark.asyncio
-async def test_api_integrity_check(api_client, coresys: CoreSys):
+async def test_api_integrity_check(
+    api_client, coresys: CoreSys, supervisor_internet: AsyncMock
+):
     """Test security integrity check."""
     coresys.security.content_trust = False
 

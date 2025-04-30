@@ -84,12 +84,14 @@ async def test_api_list_discovery(
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
 async def test_api_send_del_discovery(
-    api_client: TestClient, coresys: CoreSys, install_addon_ssh: Addon
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    websession: MagicMock,
 ):
     """Test adding and removing discovery."""
     install_addon_ssh.data["discovery"] = ["test"]
     coresys.homeassistant.api.ensure_access_token = AsyncMock()
-    coresys.websession.post = MagicMock()
 
     resp = await api_client.post("/discovery", json={"service": "test", "config": {}})
     assert resp.status == 200

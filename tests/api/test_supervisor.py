@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 from blockbuster import BlockingError
@@ -34,7 +34,7 @@ async def test_api_supervisor_options_debug(api_client: TestClient, coresys: Cor
 
 
 async def test_api_supervisor_options_add_repository(
-    api_client: TestClient, coresys: CoreSys
+    api_client: TestClient, coresys: CoreSys, supervisor_internet: AsyncMock
 ):
     """Test add a repository via POST /supervisor/options REST API."""
     assert REPO_URL not in coresys.store.repository_urls
@@ -231,7 +231,9 @@ async def test_api_supervisor_fallback_log_capture(
         capture_exception.assert_called_once()
 
 
-async def test_api_supervisor_reload(api_client: TestClient):
+async def test_api_supervisor_reload(
+    api_client: TestClient, supervisor_internet: AsyncMock, websession: MagicMock
+):
     """Test supervisor reload."""
     resp = await api_client.post("/supervisor/reload")
     assert resp.status == 200
