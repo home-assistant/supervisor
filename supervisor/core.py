@@ -124,6 +124,14 @@ class Core(CoreSysAttributes):
         """Start setting up supervisor orchestration."""
         await self.set_state(CoreState.SETUP)
 
+        # Start DNS plug-in early to make sure we can resolve hostnames using
+        # the DNS plug-in during the rest of the setup.
+        await self.sys_plugins.dns.load()
+
+        # Initializing aiohttp.ClientSession after DNS setup makes sure that
+        # aiodns is using the right DNS servers from the getgo (see #5857).
+        await self.coresys.init_websession()
+
         # Check internet on startup
         await self.sys_supervisor.check_connectivity()
 

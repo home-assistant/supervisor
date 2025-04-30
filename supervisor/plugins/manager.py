@@ -70,6 +70,9 @@ class PluginManager(CoreSysAttributes):
         """Load Supervisor plugins."""
         # Sequential to avoid issue on slow IO
         for plugin in self.all_plugins:
+            if plugin == self.dns:
+                # DNS pug-in is loaded separtely in setup().
+                continue
             try:
                 await plugin.load()
             except Exception as err:  # pylint: disable=broad-except

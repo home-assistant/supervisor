@@ -177,7 +177,6 @@ class PluginDns(PluginBase):
 
         # Update supervisor
         await self._write_resolv(HOST_RESOLV)
-        await self.sys_supervisor.check_connectivity()
 
     async def install(self) -> None:
         """Install CoreDNS."""
