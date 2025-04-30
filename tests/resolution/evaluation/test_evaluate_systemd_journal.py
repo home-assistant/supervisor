@@ -22,7 +22,11 @@ async def test_evaluation_unsupported(coresys: CoreSys):
     systemd_journal = EvaluateSystemdJournal(coresys)
     await coresys.core.set_state(CoreState.SETUP)
 
-    await systemd_journal()
+    with patch("supervisor.host.logs.SYSTEMD_JOURNAL_GATEWAYD_SOCKET") as socket:
+        socket.is_socket.return_value = False
+        await coresys.host.logs.post_init()
+        await systemd_journal()
+
     assert systemd_journal.reason in coresys.resolution.unsupported
 
 
