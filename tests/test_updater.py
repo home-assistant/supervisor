@@ -1,6 +1,7 @@
 """Test updater files."""
 
 import asyncio
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -11,7 +12,7 @@ from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
 from supervisor.jobs import SupervisorJob
 
-from tests.common import load_binary_fixture
+from tests.common import MockResponse, load_binary_fixture
 from tests.dbus_service_mocks.network_manager import (
     NetworkManager as NetworkManagerService,
 )
@@ -20,15 +21,15 @@ URL_TEST = "https://version.home-assistant.io/stable.json"
 
 
 @pytest.mark.usefixtures("no_job_throttle")
-async def test_fetch_versions(coresys: CoreSys) -> None:
+async def test_fetch_versions(
+    coresys: CoreSys, mock_update_data: MockResponse, supervisor_internet: AsyncMock
+) -> None:
     """Test download and sync version."""
 
     coresys.security.force = True
     await coresys.updater.fetch_data()
 
-    async with coresys.websession.get(URL_TEST) as request:
-        data = await request.json()
-
+    data = json.loads(await mock_update_data.text())
     assert coresys.updater.version_supervisor == data["supervisor"]
     assert coresys.updater.version_homeassistant == data["homeassistant"]["default"]
 
@@ -73,7 +74,13 @@ async def test_fetch_versions(coresys: CoreSys) -> None:
         ("4.20", "5.13"),
     ],
 )
-async def test_os_update_path(coresys: CoreSys, version: str, expected: str):
+async def test_os_update_path(
+    coresys: CoreSys,
+    version: str,
+    expected: str,
+    mock_update_data: AsyncMock,
+    supervisor_internet: AsyncMock,
+):
     """Test OS upgrade path across major versions."""
     coresys.os._board = "rpi4"  # pylint: disable=protected-access
     coresys.os._version = AwesomeVersion(version)  # pylint: disable=protected-access
@@ -85,7 +92,9 @@ async def test_os_update_path(coresys: CoreSys, version: str, expected: str):
 
 @pytest.mark.usefixtures("no_job_throttle")
 async def test_delayed_fetch_for_connectivity(
-    coresys: CoreSys, network_manager_service: NetworkManagerService
+    coresys: CoreSys,
+    network_manager_service: NetworkManagerService,
+    websession: MagicMock,
 ):
     """Test initial version fetch waits for connectivity on load."""
     coresys.websession.get = MagicMock()

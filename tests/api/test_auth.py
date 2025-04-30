@@ -1,7 +1,7 @@
 """Test auth API."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -9,6 +9,7 @@ import pytest
 from supervisor.addons.addon import Addon
 from supervisor.coresys import CoreSys
 
+from tests.common import MockResponse
 from tests.const import TEST_ADDON_SLUG
 
 LIST_USERS_RESPONSE = [
@@ -78,7 +79,10 @@ def fixture_mock_check_login(coresys: CoreSys):
 
 
 async def test_password_reset(
-    api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
+    api_client: TestClient,
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    websession: MagicMock,
 ):
     """Test password reset api."""
     coresys.homeassistant.api.access_token = "abc123"
@@ -87,15 +91,12 @@ async def test_password_reset(
         days=1
     )
 
-    mock_websession = AsyncMock()
-    mock_websession.post.return_value.__aenter__.return_value.status = 200
-    with patch("supervisor.coresys.aiohttp.ClientSession.post") as post:
-        post.return_value.__aenter__.return_value.status = 200
-        resp = await api_client.post(
-            "/auth/reset", json={"username": "john", "password": "doe"}
-        )
-        assert resp.status == 200
-        assert "Successful password reset for 'john'" in caplog.text
+    websession.post = MagicMock(return_value=MockResponse(status=200))
+    resp = await api_client.post(
+        "/auth/reset", json={"username": "john", "password": "doe"}
+    )
+    assert resp.status == 200
+    assert "Successful password reset for 'john'" in caplog.text
 
 
 async def test_list_users(

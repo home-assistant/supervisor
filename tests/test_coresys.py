@@ -1,6 +1,7 @@
 """Testing handling with CoreState."""
 
 from datetime import timedelta
+from unittest.mock import MagicMock, patch
 
 from aiohttp.hdrs import USER_AGENT
 
@@ -36,9 +37,13 @@ async def test_now(coresys: CoreSys):
     assert zurich - utc <= timedelta(hours=2)
 
 
-def test_custom_user_agent(coresys: CoreSys):
+async def test_custom_user_agent(coresys: CoreSys):
     """Test custom useragent."""
-    assert (
-        "HomeAssistantSupervisor/9999.09.9.dev9999"
-        in coresys.websession._default_headers[USER_AGENT]  # pylint: disable=protected-access
-    )
+    with patch(
+        "supervisor.coresys.aiohttp.ClientSession", return_value=MagicMock()
+    ) as mock_session:
+        await coresys.init_websession()
+        assert (
+            "HomeAssistantSupervisor/9999.09.9.dev9999"
+            in mock_session.call_args_list[0][1]["headers"][USER_AGENT]
+        )
