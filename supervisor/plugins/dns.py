@@ -177,7 +177,13 @@ class PluginDns(PluginBase):
 
         # Update supervisor
         await self._write_resolv(HOST_RESOLV)
-        await self.sys_supervisor.check_connectivity()
+
+        # Reinitializing aiohttp.ClientSession after DNS setup makes sure that
+        # aiodns is using the right DNS servers (see #5857).
+        # At this point it should be fairly safe to replace the session since
+        # we only use the session synchronously during setup and not thorugh the
+        # API which previously caused issues (see #5851).
+        await self.coresys.init_websession()
 
     async def install(self) -> None:
         """Install CoreDNS."""
