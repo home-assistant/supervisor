@@ -131,6 +131,28 @@ def remove_folder_with_excludes(
             item.rename(folder / item.name)
 
 
+def get_latest_mtime(directory: Path) -> tuple[float, Path]:
+    """Get the last modification time of directories and files in a directory.
+
+    Must be run in an executor. The root directory is included too, this means
+    that often the root directory is returned as the last modified file if a
+    new file is created in it.
+    """
+    latest_mtime = directory.stat().st_mtime
+    latest_path = directory
+    for path in directory.rglob("*"):
+        try:
+            mtime = path.stat().st_mtime
+            if mtime > latest_mtime:
+                latest_mtime = mtime
+                latest_path = path
+        except FileNotFoundError:
+            # File might disappear between listing and stat. Parent
+            # directory modification date will flag such a change.
+            continue
+    return latest_mtime, latest_path
+
+
 def clean_env() -> dict[str, str]:
     """Return a clean env from system."""
     new_env = {}

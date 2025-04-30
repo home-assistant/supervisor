@@ -5,6 +5,8 @@ from pathlib import Path
 
 import voluptuous as vol
 
+from supervisor.utils import get_latest_mtime
+
 from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_URL, FILE_SUFFIX_CONFIGURATION
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError, StoreError
@@ -19,10 +21,10 @@ UNKNOWN = "unknown"
 
 
 class Repository(CoreSysAttributes):
-    """Repository in Supervisor."""
+    """Add-on store repository in Supervisor."""
 
     def __init__(self, coresys: CoreSys, repository: str):
-        """Initialize repository object."""
+        """Initialize add-on store repository object."""
         self.coresys: CoreSys = coresys
         self.git: GitRepo | None = None
 
@@ -30,6 +32,7 @@ class Repository(CoreSysAttributes):
         if repository == StoreType.LOCAL:
             self._slug = repository
             self._type = StoreType.LOCAL
+            self._latest_mtime: float | None = None
         elif repository == StoreType.CORE:
             self.git = GitRepoHassIO(coresys)
             self._slug = repository
@@ -102,14 +105,37 @@ class Repository(CoreSysAttributes):
     async def load(self) -> None:
         """Load addon repository."""
         if not self.git:
+            self._latest_mtime, _ = await self.sys_run_in_executor(
+                get_latest_mtime, self.sys_config.path_addons_local
+            )
             return
         await self.git.load()
 
     async def update(self) -> bool:
-        """Update add-on repository."""
+        """Update add-on repository.
+
+        Returns True if the repository was updated.
+        """
         if not await self.sys_run_in_executor(self.validate):
             return False
-        return self.type == StoreType.LOCAL or await self.git.pull()
+
+        if self.type != StoreType.LOCAL:
+            return await self.git.pull()
+
+        # Check local modifications
+        latest_mtime, modified_path = await self.sys_run_in_executor(
+            get_latest_mtime, self.sys_config.path_addons_local
+        )
+        if self._latest_mtime != latest_mtime:
+            _LOGGER.debug(
+                "Local modifications detected in %s repository: %s",
+                self.slug,
+                modified_path,
+            )
+            self._latest_mtime = latest_mtime
+            return True
+
+        return False
 
     async def remove(self) -> None:
         """Remove add-on repository."""
