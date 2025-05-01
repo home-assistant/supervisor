@@ -114,8 +114,18 @@ class CoreSys:
         if self._websession:
             await self._websession.close()
 
+        resolver = aiohttp.AsyncResolver()
+
+        # pylint: disable=protected-access
+        _LOGGER.debug(
+            "Initialize ClientSession with AsyncResolver. Using nameservers %s",
+            resolver._resolver.nameservers,
+        )
+        connector = aiohttp.TCPConnector(loop=self.loop, resolver=resolver)
+
         session = aiohttp.ClientSession(
-            headers=MappingProxyType({aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE})
+            headers=MappingProxyType({aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE}),
+            connector=connector,
         )
 
         self._websession = session
