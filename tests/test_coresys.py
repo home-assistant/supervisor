@@ -39,6 +39,7 @@ async def test_now(coresys: CoreSys):
     assert zurich - utc <= timedelta(hours=2)
 
 
+@pytest.mark.no_mock_init_websession
 async def test_custom_user_agent(coresys: CoreSys):
     """Test custom useragent."""
     with patch(
@@ -51,6 +52,7 @@ async def test_custom_user_agent(coresys: CoreSys):
         )
 
 
+@pytest.mark.no_mock_init_websession
 async def test_no_init_when_api_running(coresys: CoreSys):
     """Test ClientSession reinitialization is refused when API is running."""
     with patch("supervisor.coresys.aiohttp.ClientSession"):

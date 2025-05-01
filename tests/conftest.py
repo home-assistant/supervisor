@@ -335,6 +335,7 @@ async def coresys(
     aiohttp_client,
     run_supervisor_state,
     supervisor_name,
+    request: pytest.FixtureRequest,
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with (
@@ -402,6 +403,9 @@ async def coresys(
     coresys_obj.homeassistant._websocket._client = AsyncMock(
         ha_version=AwesomeVersion("2021.2.4")
     )
+
+    if not request.node.get_closest_marker("no_mock_init_websession"):
+        coresys_obj.init_websession = AsyncMock()
 
     # Don't remove files/folders related to addons and stores
     with patch("supervisor.store.git.GitRepo._remove"):
@@ -518,7 +522,7 @@ async def api_client(
 
 
 @pytest.fixture
-def supervisor_internet(coresys: CoreSys) -> AsyncMock:
+def supervisor_internet(coresys: CoreSys) -> Generator[AsyncMock]:
     """Fixture which simluate Supervsior internet connection."""
     connectivity_check = AsyncMock(return_value=True)
     coresys.supervisor.check_connectivity = connectivity_check
@@ -526,14 +530,14 @@ def supervisor_internet(coresys: CoreSys) -> AsyncMock:
 
 
 @pytest.fixture
-def websession(coresys: CoreSys):
+def websession(coresys: CoreSys) -> Generator[MagicMock]:
     """Fixture for global aiohttp SessionClient."""
     coresys._websession = MagicMock(spec_set=ClientSession)
     yield coresys._websession
 
 
 @pytest.fixture
-def mock_update_data(websession: MagicMock) -> MockResponse:
+def mock_update_data(websession: MagicMock) -> Generator[MockResponse]:
     """Mock updater JSON data."""
     version_data = load_fixture("version_stable.json")
     client_response = MockResponse(text=version_data)

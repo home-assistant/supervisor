@@ -230,6 +230,9 @@ filterwarnings = [
     "ignore:pkg_resources is deprecated as an API:DeprecationWarning:dirhash",
     "ignore::pytest.PytestUnraisableExceptionWarning",
 ]
+markers = [
+    "no_mock_init_websession: disable the autouse mock of init_websession for this test",
+]
 
 [tool.ruff]
 lint.select = [
