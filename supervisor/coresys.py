@@ -21,6 +21,7 @@ from .const import (
     ENV_SUPERVISOR_MACHINE,
     MACHINE_ID,
     SERVER_SOFTWARE,
+    VALID_API_STATES,
 )
 
 if TYPE_CHECKING:
@@ -111,6 +112,12 @@ class CoreSys:
 
     async def init_websession(self) -> None:
         """Initialize global aiohttp ClientSession."""
+        if self.core.state in VALID_API_STATES:
+            # Make sure we don't reinitialize the session if the API is running (see #5851)
+            raise RuntimeError(
+                "Initialize ClientSession is not safe when API is running"
+            )
+
         if self._websession:
             await self._websession.close()
 

@@ -4,7 +4,9 @@ from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 from aiohttp.hdrs import USER_AGENT
+import pytest
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.timedate import TimeDate
 from supervisor.utils.dt import utcnow
@@ -47,3 +49,13 @@ async def test_custom_user_agent(coresys: CoreSys):
             "HomeAssistantSupervisor/9999.09.9.dev9999"
             in mock_session.call_args_list[0][1]["headers"][USER_AGENT]
         )
+
+
+async def test_no_init_when_api_running(coresys: CoreSys):
+    """Test ClientSession reinitialization is refused when API is running."""
+    with patch("supervisor.coresys.aiohttp.ClientSession"):
+        await coresys.init_websession()
+        await coresys.core.set_state(CoreState.RUNNING)
+        # Reinitialize websession should not be possible while running
+        with pytest.raises(RuntimeError):
+            await coresys.init_websession()

@@ -20,7 +20,7 @@ from ...const import (
     ROLE_DEFAULT,
     ROLE_HOMEASSISTANT,
     ROLE_MANAGER,
-    CoreState,
+    VALID_API_STATES,
 )
 from ...coresys import CoreSys, CoreSysAttributes
 from ...utils import version_is_new_enough
@@ -200,11 +200,7 @@ class SecurityMiddleware(CoreSysAttributes):
     @middleware
     async def system_validation(self, request: Request, handler: Callable) -> Response:
         """Check if core is ready to response."""
-        if self.sys_core.state not in (
-            CoreState.STARTUP,
-            CoreState.RUNNING,
-            CoreState.FREEZE,
-        ):
+        if self.sys_core.state not in VALID_API_STATES:
             return api_return_error(
                 message=f"System is not ready with state: {self.sys_core.state}"
             )
