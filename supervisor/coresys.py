@@ -115,7 +115,7 @@ class CoreSys:
         if self.core.state in VALID_API_STATES:
             # Make sure we don't reinitialize the session if the API is running (see #5851)
             raise RuntimeError(
-                "Initialize ClientSession is not safe when API is running"
+                "Initializing ClientSession is not safe when API is running"
             )
 
         if self._websession:
@@ -125,7 +125,7 @@ class CoreSys:
 
         # pylint: disable=protected-access
         _LOGGER.debug(
-            "Initialize ClientSession with AsyncResolver. Using nameservers %s",
+            "Initializing ClientSession with AsyncResolver. Using nameservers %s",
             resolver._resolver.nameservers,
         )
         connector = aiohttp.TCPConnector(loop=self.loop, resolver=resolver)
