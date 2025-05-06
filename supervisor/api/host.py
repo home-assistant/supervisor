@@ -5,7 +5,7 @@ from contextlib import suppress
 import logging
 from typing import Any
 
-from aiohttp import ClientConnectionResetError, web
+from aiohttp import ClientConnectionResetError, ClientPayloadError, web
 from aiohttp.hdrs import ACCEPT, RANGE
 import voluptuous as vol
 from voluptuous.error import CoerceInvalid
@@ -269,7 +269,8 @@ class APIHost(CoreSysAttributes):
                             err,
                         )
                         break
-            except ConnectionResetError as ex:
+            except (ConnectionResetError, ClientPayloadError) as ex:
+                # ClientPayloadError is most likely caused by the closing the connection
                 raise APIError(
                     "Connection reset when trying to fetch data from systemd-journald."
                 ) from ex
