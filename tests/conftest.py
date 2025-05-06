@@ -9,7 +9,7 @@ import subprocess
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
-from aiohttp import web
+from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from blockbuster import BlockBuster, blockbuster_ctx
@@ -53,7 +53,13 @@ from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
-from .common import load_binary_fixture, load_json_fixture, mock_dbus_services
+from .common import (
+    MockResponse,
+    load_binary_fixture,
+    load_fixture,
+    load_json_fixture,
+    mock_dbus_services,
+)
 from .const import TEST_ADDON_SLUG
 from .dbus_service_mocks.base import DBusServiceMock
 from .dbus_service_mocks.network_connection_settings import (
@@ -329,6 +335,7 @@ async def coresys(
     aiohttp_client,
     run_supervisor_state,
     supervisor_name,
+    request: pytest.FixtureRequest,
 ) -> CoreSys:
     """Create a CoreSys Mock."""
     with (
@@ -397,12 +404,14 @@ async def coresys(
         ha_version=AwesomeVersion("2021.2.4")
     )
 
+    if not request.node.get_closest_marker("no_mock_init_websession"):
+        coresys_obj.init_websession = AsyncMock()
+
     # Don't remove files/folders related to addons and stores
     with patch("supervisor.store.git.GitRepo._remove"):
         yield coresys_obj
 
     await coresys_obj.dbus.unload()
-    await coresys_obj.websession.close()
 
 
 @pytest.fixture
@@ -510,6 +519,31 @@ async def api_client(
     api.start = AsyncMock()
     await api.load()
     yield await aiohttp_client(api.webapp)
+
+
+@pytest.fixture
+def supervisor_internet(coresys: CoreSys) -> Generator[AsyncMock]:
+    """Fixture which simluate Supervsior internet connection."""
+    connectivity_check = AsyncMock(return_value=True)
+    coresys.supervisor.check_connectivity = connectivity_check
+    yield connectivity_check
+
+
+@pytest.fixture
+def websession(coresys: CoreSys) -> Generator[MagicMock]:
+    """Fixture for global aiohttp SessionClient."""
+    coresys._websession = MagicMock(spec_set=ClientSession)
+    yield coresys._websession
+
+
+@pytest.fixture
+def mock_update_data(websession: MagicMock) -> Generator[MockResponse]:
+    """Mock updater JSON data."""
+    version_data = load_fixture("version_stable.json")
+    client_response = MockResponse(text=version_data)
+    client_response.status = 200
+    websession.get = MagicMock(return_value=client_response)
+    yield client_response
 
 
 @pytest.fixture

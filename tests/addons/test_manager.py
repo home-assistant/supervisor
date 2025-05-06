@@ -190,7 +190,7 @@ async def test_addon_shutdown_error(
 
 
 async def test_addon_uninstall_removes_discovery(
-    coresys: CoreSys, install_addon_ssh: Addon
+    coresys: CoreSys, install_addon_ssh: Addon, websession: MagicMock
 ):
     """Test discovery messages removed when addon uninstalled."""
     assert coresys.discovery.list_messages == []
@@ -203,7 +203,6 @@ async def test_addon_uninstall_removes_discovery(
     assert coresys.discovery.list_messages == [message]
 
     coresys.homeassistant.api.ensure_access_token = AsyncMock()
-    coresys.websession.delete = MagicMock()
 
     await coresys.addons.uninstall(TEST_ADDON_SLUG)
     await asyncio.sleep(0)

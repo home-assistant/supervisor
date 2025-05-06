@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 import errno
-from unittest.mock import AsyncMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from aiohttp import ClientTimeout
 from aiohttp.client_exceptions import ClientError
@@ -23,17 +23,7 @@ from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 from supervisor.supervisor import Supervisor
 
-from tests.common import reset_last_call
-
-
-@pytest.fixture(name="websession", scope="function")
-async def fixture_webession(coresys: CoreSys) -> AsyncMock:
-    """Mock of websession."""
-    mock_websession = AsyncMock()
-    with patch.object(
-        type(coresys), "websession", new=PropertyMock(return_value=mock_websession)
-    ):
-        yield mock_websession
+from tests.common import MockResponse, reset_last_call
 
 
 @pytest.mark.parametrize(
@@ -42,14 +32,14 @@ async def fixture_webession(coresys: CoreSys) -> AsyncMock:
 @pytest.mark.usefixtures("no_job_throttle")
 async def test_connectivity_check(
     coresys: CoreSys,
-    websession: AsyncMock,
+    websession: MagicMock,
     side_effect: Exception | None,
     connectivity: bool,
 ):
     """Test connectivity check."""
     assert coresys.supervisor.connectivity is True
 
-    websession.head.side_effect = side_effect
+    websession.head = AsyncMock(side_effect=side_effect)
     await coresys.supervisor.check_connectivity()
 
     assert coresys.supervisor.connectivity is connectivity
@@ -66,14 +56,14 @@ async def test_connectivity_check(
 )
 async def test_connectivity_check_throttling(
     coresys: CoreSys,
-    websession: AsyncMock,
+    websession: MagicMock,
     side_effect: Exception | None,
     call_interval: timedelta,
     throttled: bool,
 ):
     """Test connectivity check throttled when checks succeed."""
     coresys.supervisor.connectivity = None
-    websession.head.side_effect = side_effect
+    websession.head = AsyncMock(side_effect=side_effect)
 
     reset_last_call(Supervisor.check_connectivity)
     with travel(datetime.now(), tick=False) as traveller:
@@ -105,35 +95,32 @@ async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
     "channel", [UpdateChannel.STABLE, UpdateChannel.BETA, UpdateChannel.DEV]
 )
 async def test_update_apparmor(
-    coresys: CoreSys, channel: UpdateChannel, tmp_supervisor_data
+    coresys: CoreSys, channel: UpdateChannel, websession: MagicMock, tmp_supervisor_data
 ):
     """Test updating apparmor."""
+    websession.get = Mock(return_value=MockResponse())
     coresys.updater.channel = channel
     with (
-        patch("supervisor.coresys.aiohttp.ClientSession.get") as get,
         patch.object(AppArmorControl, "load_profile") as load_profile,
     ):
-        get.return_value.__aenter__.return_value.status = 200
-        get.return_value.__aenter__.return_value.text = AsyncMock(return_value="")
         await coresys.supervisor.update_apparmor()
 
-        get.assert_called_once_with(
+        websession.get.assert_called_once_with(
             f"https://version.home-assistant.io/apparmor_{channel}.txt",
             timeout=ClientTimeout(total=10),
         )
         load_profile.assert_called_once()
 
 
-async def test_update_apparmor_error(coresys: CoreSys, tmp_supervisor_data):
+async def test_update_apparmor_error(
+    coresys: CoreSys, websession: MagicMock, tmp_supervisor_data
+):
     """Test error updating apparmor profile."""
+    websession.get = Mock(return_value=MockResponse())
     with (
-        patch("supervisor.coresys.aiohttp.ClientSession.get") as get,
         patch.object(AppArmorControl, "load_profile"),
         patch("supervisor.supervisor.Path.write_text", side_effect=(err := OSError())),
     ):
-        get.return_value.__aenter__.return_value.status = 200
-        get.return_value.__aenter__.return_value.text = AsyncMock(return_value="")
-
         err.errno = errno.EBUSY
         with pytest.raises(SupervisorAppArmorError):
             await coresys.supervisor.update_apparmor()

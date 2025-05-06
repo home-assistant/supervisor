@@ -552,3 +552,12 @@ STARTING_STATES = [
     CoreState.STARTUP,
     CoreState.SETUP,
 ]
+
+# States in which the API can be used (enforced by system_validation())
+VALID_API_STATES = frozenset(
+    {
+        CoreState.STARTUP,
+        CoreState.RUNNING,
+        CoreState.FREEZE,
+    }
+)

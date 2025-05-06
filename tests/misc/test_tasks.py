@@ -1,7 +1,6 @@
 """Test scheduled tasks."""
 
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from pathlib import Path
 from shutil import copy
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
@@ -18,7 +17,7 @@ from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.misc.tasks import Tasks
 from supervisor.supervisor import Supervisor
 
-from tests.common import get_fixture_path, load_fixture
+from tests.common import MockResponse, get_fixture_path
 
 # pylint: disable=protected-access
 
@@ -173,25 +172,17 @@ async def test_watchdog_homeassistant_api_reanimation_limit(
 
 @pytest.mark.usefixtures("no_job_throttle")
 async def test_reload_updater_triggers_supervisor_update(
-    tasks: Tasks, coresys: CoreSys
+    tasks: Tasks,
+    coresys: CoreSys,
+    mock_update_data: MockResponse,
+    supervisor_internet: AsyncMock,
 ):
     """Test an updater reload triggers a supervisor update if there is one."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.security.content_trust = False
 
-    version_data = load_fixture("version_stable.json")
-    version_resp = AsyncMock()
-    version_resp.status = 200
-    version_resp.read.return_value = version_data
-
-    @asynccontextmanager
-    async def mock_get_for_version(*args, **kwargs) -> AsyncGenerator[AsyncMock]:
-        """Mock get call for version information."""
-        yield version_resp
-
     with (
-        patch("supervisor.coresys.aiohttp.ClientSession.get", new=mock_get_for_version),
         patch.object(
             Supervisor,
             "version",
@@ -208,7 +199,8 @@ async def test_reload_updater_triggers_supervisor_update(
         update.assert_not_called()
 
         # Version change causes an update
-        version_resp.read.return_value = version_data.replace("2024.10.0", "2024.10.1")
+        version_data = await mock_update_data.text()
+        mock_update_data.update_text(version_data.replace("2024.10.0", "2024.10.1"))
         await tasks._reload_updater()
         update.assert_called_once()
 

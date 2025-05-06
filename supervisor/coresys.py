@@ -21,6 +21,7 @@ from .const import (
     ENV_SUPERVISOR_MACHINE,
     MACHINE_ID,
     SERVER_SOFTWARE,
+    VALID_API_STATES,
 )
 
 if TYPE_CHECKING:
@@ -68,7 +69,6 @@ class CoreSys:
 
         # External objects
         self._loop: asyncio.BaseEventLoop = asyncio.get_running_loop()
-        self._websession: aiohttp.ClientSession = aiohttp.ClientSession()
 
         # Global objects
         self._config: CoreConfig = CoreConfig()
@@ -100,11 +100,7 @@ class CoreSys:
         self._security: Security | None = None
         self._bus: Bus | None = None
         self._mounts: MountManager | None = None
-
-        # Set default header for aiohttp
-        self._websession._default_headers = MappingProxyType(
-            {aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE}
-        )
+        self._websession: aiohttp.ClientSession | None = None
 
         # Task factory attributes
         self._set_task_context: list[Callable[[Context], Context]] = []
@@ -113,6 +109,33 @@ class CoreSys:
         """Load config in executor."""
         await self.config.read_data()
         return self
+
+    async def init_websession(self) -> None:
+        """Initialize global aiohttp ClientSession."""
+        if self.core.state in VALID_API_STATES:
+            # Make sure we don't reinitialize the session if the API is running (see #5851)
+            raise RuntimeError(
+                "Initializing ClientSession is not safe when API is running"
+            )
+
+        if self._websession:
+            await self._websession.close()
+
+        resolver = aiohttp.AsyncResolver()
+
+        # pylint: disable=protected-access
+        _LOGGER.debug(
+            "Initializing ClientSession with AsyncResolver. Using nameservers %s",
+            resolver._resolver.nameservers,
+        )
+        connector = aiohttp.TCPConnector(loop=self.loop, resolver=resolver)
+
+        session = aiohttp.ClientSession(
+            headers=MappingProxyType({aiohttp.hdrs.USER_AGENT: SERVER_SOFTWARE}),
+            connector=connector,
+        )
+
+        self._websession = session
 
     async def init_machine(self):
         """Initialize machine information."""
@@ -165,6 +188,8 @@ class CoreSys:
     @property
     def websession(self) -> aiohttp.ClientSession:
         """Return websession object."""
+        if self._websession is None:
+            raise RuntimeError("WebSession not setup yet")
         return self._websession
 
     @property

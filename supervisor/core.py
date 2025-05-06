@@ -124,6 +124,19 @@ class Core(CoreSysAttributes):
         """Start setting up supervisor orchestration."""
         await self.set_state(CoreState.SETUP)
 
+        # Initialize websession early. At this point we'll use the Docker DNS proxy
+        # at 127.0.0.11, which does not have the fallback feature and hence might
+        # fail in certain environments. But a websession is required to get the
+        # initial version information after a device wipe or otherwise empty state
+        # (e.g. CI environment, Supervised).
+        #
+        # An OS installation has the plug-in container images pre-installed, so we
+        # setup can continue even if this early websession fails to connect to the
+        # internet. We'll reinitialize the websession when the DNS plug-in is up to
+        # make sure the DNS plug-in along with its fallback capabilities is used
+        # (see #5857).
+        await self.coresys.init_websession()
+
         # Check internet on startup
         await self.sys_supervisor.check_connectivity()
 

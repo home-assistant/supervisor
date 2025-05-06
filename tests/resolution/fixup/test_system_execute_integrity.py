@@ -16,7 +16,7 @@ from supervisor.security.const import ContentTrustResult, IntegrityResult
 from supervisor.utils.dt import utcnow
 
 
-async def test_fixup(coresys: CoreSys):
+async def test_fixup(coresys: CoreSys, supervisor_internet: AsyncMock):
     """Test fixup."""
     system_execute_integrity = FixupSystemExecuteIntegrity(coresys)
 
@@ -42,7 +42,7 @@ async def test_fixup(coresys: CoreSys):
     assert len(coresys.resolution.issues) == 0
 
 
-async def test_fixup_error(coresys: CoreSys):
+async def test_fixup_error(coresys: CoreSys, supervisor_internet: AsyncMock):
     """Test fixup."""
     system_execute_integrity = FixupSystemExecuteIntegrity(coresys)
 

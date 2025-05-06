@@ -103,3 +103,31 @@ def get_job_decorator(func) -> Job:
 def reset_last_call(func, group: str | None = None) -> None:
     """Reset last call for a function using the Job decorator."""
     get_job_decorator(func).set_last_call(datetime.min, group)
+
+
+class MockResponse:
+    """Mock response for aiohttp requests."""
+
+    def __init__(self, *, status=200, text=""):
+        """Initialize mock response."""
+        self.status = status
+        self._text = text
+
+    def update_text(self, text: str):
+        """Update the text of the response."""
+        self._text = text
+
+    async def read(self):
+        """Read the response body."""
+        return self._text.encode("utf-8")
+
+    async def text(self) -> str:
+        """Return the response body as text."""
+        return self._text
+
+    async def __aenter__(self):
+        """Enter the context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Exit the context manager."""
