@@ -287,6 +287,24 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             raise
         return None
 
+    async def async_call_service(
+        self,
+        domain: str,
+        service: str,
+        return_response: bool = False,
+        service_data: dict[str, Any] | None = None,
+    ) -> None:
+        """Call a Home Assistant Core service (action)."""
+        message = {
+            ATTR_TYPE: WSType.CALL_SERVICE,
+            "domain": domain,
+            "service": service,
+            "return_response": return_response,
+            "service_data": service_data or {},
+        }
+        _LOGGER.debug("Sending service call: %s", message)
+        return await self.async_send_command(message)
+
     def send_message(self, message: dict[str, Any]) -> None:
         """Send a supervisor/event message."""
         if self.sys_core.state in CLOSING_STATES:
