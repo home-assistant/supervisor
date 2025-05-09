@@ -636,11 +636,8 @@ class Backup(JobGroup):
         # Save Add-ons sequential avoid issue on slow IO
         start_tasks: list[asyncio.Task] = []
         for addon in addon_list:
-            try:
-                if start_task := await self._addon_save(addon):
-                    start_tasks.append(start_task)
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
+            if start_task := await self._addon_save(addon):
+                start_tasks.append(start_task)
 
         return start_tasks
 
