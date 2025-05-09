@@ -1322,8 +1322,8 @@ class Addon(AddonModel):
                         arcname="data",
                     )
 
-                    # Backup config
-                    if addon_config_used:
+                    # Backup config (if used and existing, restore handles this gracefully)
+                    if addon_config_used and self.path_config.is_dir():
                         atomic_contents_add(
                             backup,
                             self.path_config,
