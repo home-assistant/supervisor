@@ -58,7 +58,7 @@ async def test_check(coresys: CoreSys):
     assert coresys.resolution.suggestions[-1].reference == addon.slug
 
 
-async def test_approve(coresys: CoreSys):
+async def test_approve(coresys: CoreSys, supervisor_internet):
     """Test check."""
     addon_pwned = CheckAddonPwned(coresys)
     await coresys.core.set_state(CoreState.RUNNING)

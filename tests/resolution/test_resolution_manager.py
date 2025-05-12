@@ -203,7 +203,9 @@ def _supervisor_event_message(event: str, data: dict[str, Any]) -> dict[str, Any
     }
 
 
-async def test_events_on_issue_changes(coresys: CoreSys, ha_ws_client: AsyncMock):
+async def test_events_on_issue_changes(
+    coresys: CoreSys, supervisor_internet, ha_ws_client: AsyncMock
+):
     """Test events fired when an issue changes."""
     # Creating an issue with a suggestion should fire exactly one issue changed event
     assert coresys.resolution.issues == []
