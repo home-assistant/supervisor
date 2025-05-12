@@ -245,11 +245,6 @@ class Backup(JobGroup):
         return self._locations[self.location].size_bytes
 
     @property
-    def is_new(self) -> bool:
-        """Return True if there is new."""
-        return not self.tarfile.exists()
-
-    @property
     def tarfile(self) -> Path:
         """Return path to backup tarfile."""
         return self._locations[self.location].path
