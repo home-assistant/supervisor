@@ -228,7 +228,7 @@ async def test_install_unavailable_addon(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_reload(coresys: CoreSys):
+async def test_reload(coresys: CoreSys, supervisor_internet):
     """Test store reload."""
     await coresys.store.load()
     assert len(coresys.store.all) == 5

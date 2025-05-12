@@ -730,6 +730,7 @@ async def test_local_example_start(
     container: MagicMock,
     tmp_supervisor_data: Path,
     install_addon_example: Addon,
+    path_extern,
 ):
     """Test start of an addon."""
     install_addon_example.path_data.mkdir()

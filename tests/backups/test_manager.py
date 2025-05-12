@@ -217,7 +217,9 @@ async def test_do_backup_partial_maximal(
     assert coresys.core.state == CoreState.RUNNING
 
 
-async def test_do_restore_full(coresys: CoreSys, full_backup_mock, install_addon_ssh):
+async def test_do_restore_full(
+    coresys: CoreSys, supervisor_internet, full_backup_mock, install_addon_ssh
+):
     """Test restoring full Backup."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -247,7 +249,7 @@ async def test_do_restore_full(coresys: CoreSys, full_backup_mock, install_addon
 
 
 async def test_do_restore_full_different_addon(
-    coresys: CoreSys, full_backup_mock, install_addon_ssh
+    coresys: CoreSys, supervisor_internet, full_backup_mock, install_addon_ssh
 ):
     """Test restoring full Backup with different addons than installed."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -279,7 +281,7 @@ async def test_do_restore_full_different_addon(
 
 
 async def test_do_restore_partial_minimal(
-    coresys: CoreSys, partial_backup_mock, install_addon_ssh
+    coresys: CoreSys, supervisor_internet, partial_backup_mock, install_addon_ssh
 ):
     """Test restoring partial Backup minimal."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -303,7 +305,9 @@ async def test_do_restore_partial_minimal(
     assert coresys.core.state == CoreState.RUNNING
 
 
-async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock):
+async def test_do_restore_partial_maximal(
+    coresys: CoreSys, supervisor_internet, partial_backup_mock
+):
     """Test restoring partial Backup minimal."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -333,7 +337,10 @@ async def test_do_restore_partial_maximal(coresys: CoreSys, partial_backup_mock)
 
 
 async def test_fail_invalid_full_backup(
-    coresys: CoreSys, full_backup_mock: MagicMock, partial_backup_mock: MagicMock
+    coresys: CoreSys,
+    supervisor_internet,
+    full_backup_mock: MagicMock,
+    partial_backup_mock: MagicMock,
 ):
     """Test restore fails with invalid backup."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -365,7 +372,7 @@ async def test_fail_invalid_full_backup(
 
 
 async def test_fail_invalid_partial_backup(
-    coresys: CoreSys, partial_backup_mock: MagicMock
+    coresys: CoreSys, supervisor_internet, partial_backup_mock: MagicMock
 ):
     """Test restore fails with invalid backup."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -415,7 +422,10 @@ async def test_backup_error(
 
 
 async def test_restore_error(
-    coresys: CoreSys, full_backup_mock: MagicMock, capture_exception: Mock
+    coresys: CoreSys,
+    supervisor_internet,
+    full_backup_mock: MagicMock,
+    capture_exception: Mock,
 ):
     """Test restoring full Backup with errors."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -437,6 +447,7 @@ async def test_restore_error(
 
 async def test_backup_media_with_mounts(
     coresys: CoreSys,
+    supervisor_internet,
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
@@ -499,6 +510,7 @@ async def test_backup_media_with_mounts(
 
 async def test_backup_media_with_mounts_retains_files(
     coresys: CoreSys,
+    supervisor_internet,
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
@@ -553,6 +565,7 @@ async def test_backup_media_with_mounts_retains_files(
 
 async def test_backup_share_with_mounts(
     coresys: CoreSys,
+    supervisor_internet,
     all_dbus_services: dict[str, DBusServiceMock],
     tmp_supervisor_data,
     path_extern,
@@ -622,6 +635,7 @@ async def test_backup_share_with_mounts(
 
 async def test_full_backup_to_mount(
     coresys: CoreSys,
+    supervisor_internet,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -668,6 +682,7 @@ async def test_full_backup_to_mount(
 
 async def test_partial_backup_to_mount(
     coresys: CoreSys,
+    supervisor_internet,
     tmp_supervisor_data,
     path_extern,
     mount_propagation,
@@ -985,6 +1000,7 @@ async def test_backup_with_healthcheck(
 
 async def test_restore_with_healthcheck(
     coresys: CoreSys,
+    supervisor_internet,
     install_addon_ssh: Addon,
     container: MagicMock,
     tmp_supervisor_data,
@@ -1185,6 +1201,7 @@ async def test_backup_progress(
 
 async def test_restore_progress(
     coresys: CoreSys,
+    supervisor_internet,
     install_addon_ssh: Addon,
     container: MagicMock,
     ha_ws_client: AsyncMock,
@@ -1483,6 +1500,7 @@ async def test_cannot_manually_thaw_normal_freeze(coresys: CoreSys):
 
 async def test_restore_only_reloads_ingress_on_change(
     coresys: CoreSys,
+    supervisor_internet,
     install_addon_ssh: Addon,
     tmp_supervisor_data,
     path_extern,
@@ -1543,6 +1561,7 @@ async def test_restore_only_reloads_ingress_on_change(
 
 async def test_restore_new_addon(
     coresys: CoreSys,
+    supervisor_internet,
     install_addon_example: Addon,
     container: MagicMock,
     tmp_supervisor_data,
@@ -1574,6 +1593,7 @@ async def test_restore_new_addon(
 
 async def test_restore_preserves_data_config(
     coresys: CoreSys,
+    supervisor_internet,
     install_addon_example: Addon,
     container: MagicMock,
     tmp_supervisor_data,
@@ -1819,7 +1839,11 @@ async def test_reload_error(
 
 
 async def test_monitoring_after_full_restore(
-    coresys: CoreSys, full_backup_mock, install_addon_ssh, container
+    coresys: CoreSys,
+    supervisor_internet,
+    full_backup_mock,
+    install_addon_ssh,
+    container,
 ):
     """Test monitoring of addon state still works after full restore."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -1840,7 +1864,11 @@ async def test_monitoring_after_full_restore(
 
 
 async def test_monitoring_after_partial_restore(
-    coresys: CoreSys, partial_backup_mock, install_addon_ssh, container
+    coresys: CoreSys,
+    supervisor_internet,
+    partial_backup_mock,
+    install_addon_ssh,
+    container,
 ):
     """Test monitoring of addon state still works after full restore."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -2040,7 +2068,9 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_addon_backup_excludes(coresys: CoreSys, install_addon_example: Addon):
+async def test_addon_backup_excludes(
+    coresys: CoreSys, supervisor_internet, install_addon_example: Addon
+):
     """Test backup excludes option for addons."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000

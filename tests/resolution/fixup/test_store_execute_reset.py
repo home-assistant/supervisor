@@ -11,7 +11,7 @@ from supervisor.resolution.data import Issue, Suggestion
 from supervisor.resolution.fixups.store_execute_reset import FixupStoreExecuteReset
 
 
-async def test_fixup(coresys: CoreSys, tmp_path):
+async def test_fixup(coresys: CoreSys, supervisor_internet, tmp_path):
     """Test fixup."""
     store_execute_reset = FixupStoreExecuteReset(coresys)
     test_repo = Path(tmp_path, "test_repo")

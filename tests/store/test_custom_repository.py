@@ -20,6 +20,12 @@ from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 
 
+@pytest.fixture(autouse=True)
+def _auto_supervisor_internet(supervisor_internet):
+    # Use the supervisor_internet fixture to ensure that all tests has internet access
+    pass
+
+
 @pytest.mark.parametrize("use_update", [True, False])
 async def test_add_valid_repository(
     coresys: CoreSys, store_manager: StoreManager, use_update: bool

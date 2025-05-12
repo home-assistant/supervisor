@@ -9,7 +9,7 @@ from supervisor.resolution.data import Issue, Suggestion
 from supervisor.resolution.fixups.store_execute_reload import FixupStoreExecuteReload
 
 
-async def test_fixup(coresys: CoreSys):
+async def test_fixup(coresys: CoreSys, supervisor_internet):
     """Test fixup."""
     store_execute_reload = FixupStoreExecuteReload(coresys)
 
