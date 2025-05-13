@@ -130,7 +130,9 @@ class CoreSys:
                 resolver._resolver.nameservers,
             )
         except AresError as err:
-            _LOGGER.exception("Unable to initialize async DNS resolver: %s", err)
+            _LOGGER.critical(
+                "Unable to initialize async DNS resolver: %s", err, exc_info=True
+            )
             resolver = aiohttp.ThreadedResolver(loop=self.loop)
 
         connector = aiohttp.TCPConnector(loop=self.loop, resolver=resolver)
