@@ -3,6 +3,7 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
+from typing import Any
 
 import docker
 import requests
@@ -12,6 +13,7 @@ from ..const import (
     DOCKER_IPV4_NETWORK_RANGE,
     DOCKER_IPV6_NETWORK_MASK,
     DOCKER_NETWORK,
+    DOCKER_NETWORK_DRIVER,
 )
 from ..exceptions import DockerError
 
@@ -74,27 +76,37 @@ class DockerNetwork:
         """Return observer of the network."""
         return DOCKER_IPV4_NETWORK_MASK[6]
 
+    def get(self, network_id: str) -> docker.models.networks.Network:
+        """Get a network by ID."""
+        return self.docker.networks.get(network_id)
+
+    def create(self, **kwargs: Any) -> docker.models.networks.Network:
+        """Create a new network."""
+        return self.docker.networks.create(**kwargs)
+
     def _get_network(self) -> docker.models.networks.Network:
         """Get supervisor network."""
         try:
-            return self.docker.networks.get(DOCKER_NETWORK)
+            if (network := self.get(DOCKER_NETWORK))["EnableIPv6"]:
+                return network
+            network.remove()
+            _LOGGER.info("Migrating Supervisor network to IPv4/IPv6 Dual Stack")
         except docker.errors.NotFound:
             _LOGGER.info("Can't find Supervisor network, creating a new network")
 
-        ip6am_pool = docker.types.IPAMPool(DOCKER_IPV6_NETWORK_MASK)
-
-        ip4am_pool = docker.types.IPAMPool(
-            subnet=str(DOCKER_IPV4_NETWORK_MASK),
-            gateway=str(self.gateway),
-            iprange=str(DOCKER_IPV4_NETWORK_RANGE),
-        )
-
-        ipam_config = docker.types.IPAMConfig(pool_configs=[ip6am_pool, ip4am_pool])
-
-        return self.docker.networks.create(
-            DOCKER_NETWORK,
-            driver="bridge",
-            ipam=ipam_config,
+        return self.create(
+            name=DOCKER_NETWORK,
+            driver=DOCKER_NETWORK_DRIVER,
+            ipam=docker.types.IPAMConfig(
+                pool_configs=[
+                    docker.types.IPAMPool(subnet=str(DOCKER_IPV6_NETWORK_MASK)),
+                    docker.types.IPAMPool(
+                        subnet=str(DOCKER_IPV4_NETWORK_MASK),
+                        gateway=str(self.gateway),
+                        iprange=str(DOCKER_IPV4_NETWORK_RANGE),
+                    ),
+                ]
+            ),
             enable_ipv6=True,
             options={"com.docker.network.bridge.name": DOCKER_NETWORK},
         )
@@ -137,7 +149,7 @@ class DockerNetwork:
         Need run inside executor.
         """
         try:
-            default_network = self.docker.networks.get("bridge")
+            default_network = self.docker.networks.get(DOCKER_NETWORK_DRIVER)
             default_network.disconnect(container)
 
         except docker.errors.NotFound:
