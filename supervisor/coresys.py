@@ -13,6 +13,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self, TypeVar
 
 import aiohttp
+from pycares import AresError
 
 from .config import CoreConfig
 from .const import (
@@ -121,13 +122,17 @@ class CoreSys:
         if self._websession:
             await self._websession.close()
 
-        resolver = aiohttp.AsyncResolver()
+        try:
+            resolver = aiohttp.AsyncResolver(loop=self.loop)
+            # pylint: disable=protected-access
+            _LOGGER.debug(
+                "Initializing ClientSession with AsyncResolver. Using nameservers %s",
+                resolver._resolver.nameservers,
+            )
+        except AresError as err:
+            _LOGGER.exception("Unable to initialize async DNS resolver: %s", err)
+            resolver = aiohttp.ThreadedResolver(loop=self.loop)
 
-        # pylint: disable=protected-access
-        _LOGGER.debug(
-            "Initializing ClientSession with AsyncResolver. Using nameservers %s",
-            resolver._resolver.nameservers,
-        )
         connector = aiohttp.TCPConnector(loop=self.loop, resolver=resolver)
 
         session = aiohttp.ClientSession(
