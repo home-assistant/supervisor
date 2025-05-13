@@ -518,7 +518,8 @@ class BackupManager(FileConfiguration, JobGroup):
     ) -> Backup | None:
         """Create a backup.
 
-        Must be called from an existing backup job.
+        Must be called from an existing backup job. If the backup failed, the
+        backup file is being deleted and None is returned.
         """
         addon_start_tasks: list[Awaitable[None]] | None = None
 
@@ -548,9 +549,12 @@ class BackupManager(FileConfiguration, JobGroup):
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
         except BackupError as err:
+            await self.sys_run_in_executor(backup.tarfile.unlink)
+            _LOGGER.error("Backup %s error: %s", backup.slug, err)
             self.sys_jobs.current.capture_error(err)
             return None
         except Exception as err:  # pylint: disable=broad-except
+            await self.sys_run_in_executor(backup.tarfile.unlink)
             _LOGGER.exception("Backup %s error", backup.slug)
             await async_capture_exception(err)
             self.sys_jobs.current.capture_error(
