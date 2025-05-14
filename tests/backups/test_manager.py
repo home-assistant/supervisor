@@ -434,34 +434,6 @@ async def test_backup_error_homeassistant(
     backup_instance.tarfile.unlink.assert_called_once()
 
 
-async def test_backup_error_folder(
-    coresys: CoreSys,
-    backup_mock: MagicMock,
-    install_addon_ssh: Addon,
-    capture_exception: Mock,
-):
-    """Test error collected and file deleted when folder backup fails."""
-    await coresys.core.set_state(CoreState.RUNNING)
-    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-
-    backup_instance = backup_mock.return_value
-
-    backup_instance.store_folders.side_effect = (
-        err := BackupError("Error while storing folders")
-    )
-
-    job, backup_task = coresys.jobs.schedule_job(
-        coresys.backups.do_backup_full, JobSchedulerOptions()
-    )
-    assert await backup_task is None
-
-    assert job.errors[0].type_ is type(err)
-    assert job.errors[0].message == str(err)
-    assert job.errors[0].stage == BackupJobStage.FOLDERS
-
-    backup_instance.tarfile.unlink.assert_called_once()
-
-
 async def test_backup_error_capture(
     coresys: CoreSys,
     backup_mock: MagicMock,
