@@ -372,7 +372,9 @@ async def test_api_backup_errors(
 
     assert coresys.jobs.jobs == []
 
-    with patch.object(Addon, "backup", side_effect=AddonsError("Backup error")):
+    with patch.object(
+        Addon, "backup", side_effect=(err := AddonsError("Backup error"))
+    ):
         resp = await api_client.post(
             f"/backups/new/{backup_type}",
             json={"name": f"{backup_type} backup"} | options,
@@ -397,7 +399,7 @@ async def test_api_backup_errors(
     assert job["child_jobs"][1]["child_jobs"][0]["errors"] == [
         {
             "type": "BackupError",
-            "message": "Can't create backup for local_ssh",
+            "message": str(err),
             "stage": None,
         }
     ]
