@@ -34,9 +34,7 @@ async def test_network_recreate_as_ipv6():
             return_value=True,
         ) as mock_create,
     ):
-        network = DockerNetwork(MagicMock()).network
-
-        assert network
+        assert DockerNetwork(MagicMock()).network is True
 
         mock_get.assert_called_with(DOCKER_NETWORK)
 
