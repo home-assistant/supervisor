@@ -29,9 +29,14 @@ async def test_network_recreate_as_ipv6():
             "supervisor.docker.network.DockerNetwork.get",
             return_value=MockNetwork(EnableIPv6=False),
         ) as mock_get,
-        patch("supervisor.docker.network.DockerNetwork.create") as mock_create,
+        patch(
+            "supervisor.docker.network.DockerNetwork.create",
+            return_value=True,
+        ) as mock_create,
     ):
-        _ = DockerNetwork(MagicMock()).network
+        network = DockerNetwork(MagicMock()).network
+
+        assert network
 
         mock_get.assert_called_with(DOCKER_NETWORK)
 
