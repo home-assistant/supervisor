@@ -8,16 +8,20 @@ import tarfile
 from unittest.mock import MagicMock, patch
 
 import pytest
+from securetar import AddFileError
 
+from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
+    AddonsError,
     BackupFileExistError,
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupPermissionError,
 )
+from supervisor.jobs import JobSchedulerOptions
 
 from tests.common import get_fixture_path
 
@@ -66,6 +70,70 @@ async def test_new_backup_exists_error(coresys: CoreSys, tmp_path: Path):
     ):
         async with backup.create():
             pass
+
+
+async def test_backup_error_addon(
+    coresys: CoreSys, install_addon_ssh: Addon, tmp_path: Path
+):
+    """Test if errors during add-on backup is correctly recorded in jobs."""
+    backup_file = tmp_path / "my_backup.tar"
+    backup = Backup(coresys, backup_file, "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    install_addon_ssh.backup = MagicMock(
+        side_effect=(err := AddonsError("Fake add-on backup error"))
+    )
+
+    async with backup.create():
+        # Validate that the add-on exception is collected in the main job
+        backup_store_addons_job, backup_task = coresys.jobs.schedule_job(
+            backup.store_addons, JobSchedulerOptions(), [install_addon_ssh]
+        )
+        await backup_task
+        assert len(backup_store_addons_job.errors) == 1
+        assert str(err) in backup_store_addons_job.errors[0].message
+
+        # Check backup_addon_restore child job has the same error
+        child_jobs = [
+            job
+            for job in coresys.jobs.jobs
+            if job.parent_id == backup_store_addons_job.uuid
+        ]
+        assert len(child_jobs) == 1
+        assert child_jobs[0].errors[0].message == str(err)
+
+
+async def test_backup_error_folder(
+    coresys: CoreSys, tmp_supervisor_data: Path, tmp_path: Path
+):
+    """Test if errors during folder backup is correctly recorded in jobs."""
+    backup_file = tmp_path / "my_backup.tar"
+    backup = Backup(coresys, backup_file, "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    async with backup.create():
+        # Validate that the folder exception is collected in the main job
+        with patch(
+            "supervisor.backups.backup.atomic_contents_add",
+            MagicMock(
+                side_effect=(err := AddFileError(".", "Fake folder backup error"))
+            ),
+        ):
+            backup_store_folders, backup_task = coresys.jobs.schedule_job(
+                backup.store_folders, JobSchedulerOptions(), ["media"]
+            )
+            await backup_task
+            assert len(backup_store_folders.errors) == 1
+            assert str(err) in backup_store_folders.errors[0].message
+
+            # Check backup_folder_save child job has the same error
+            child_jobs = [
+                job
+                for job in coresys.jobs.jobs
+                if job.parent_id == backup_store_folders.uuid
+            ]
+            assert len(child_jobs) == 1
+            assert str(err) in child_jobs[0].errors[0].message
 
 
 async def test_consolidate_conflict_varied_encryption(

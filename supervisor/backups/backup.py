@@ -603,9 +603,7 @@ class Backup(JobGroup):
         try:
             start_task = await addon.backup(addon_file)
         except AddonsError as err:
-            raise BackupError(
-                f"Can't create backup for {addon.slug}", _LOGGER.error
-            ) from err
+            raise BackupError(str(err)) from err
 
         # Store to config
         self._data[ATTR_ADDONS].append(
@@ -634,8 +632,11 @@ class Backup(JobGroup):
             try:
                 if start_task := await self._addon_save(addon):
                     start_tasks.append(start_task)
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning("Can't save Add-on %s: %s", addon.slug, err)
+            except BackupError as err:
+                err = BackupError(
+                    f"Can't backup add-on {addon.slug}: {str(err)}", _LOGGER.error
+                )
+                self.sys_jobs.current.capture_error(err)
 
         return start_tasks
 
@@ -764,16 +765,20 @@ class Backup(JobGroup):
             if await self.sys_run_in_executor(_save):
                 self._data[ATTR_FOLDERS].append(name)
         except (tarfile.TarError, OSError, AddFileError) as err:
-            raise BackupError(
-                f"Can't backup folder {name}: {str(err)}", _LOGGER.error
-            ) from err
+            raise BackupError(f"Can't write tarfile: {str(err)}") from err
 
     @Job(name="backup_store_folders", cleanup=False)
     async def store_folders(self, folder_list: list[str]):
         """Backup Supervisor data into backup."""
         # Save folder sequential avoid issue on slow IO
         for folder in folder_list:
-            await self._folder_save(folder)
+            try:
+                await self._folder_save(folder)
+            except BackupError as err:
+                err = BackupError(
+                    f"Can't backup folder {folder}: {str(err)}", _LOGGER.error
+                )
+                self.sys_jobs.current.capture_error(err)
 
     @Job(name="backup_folder_restore", cleanup=False)
     async def _folder_restore(self, name: str) -> None:
