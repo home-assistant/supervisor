@@ -104,7 +104,7 @@ class DockerNetwork:
     def _get_network(self) -> docker.models.networks.Network:
         """Get supervisor network."""
         try:
-            if (network := self._get(DOCKER_NETWORK))["EnableIPv6"]:
+            if (network := self._get(DOCKER_NETWORK)).attrs.get("EnableIPv6", False):
                 return network
             network.remove()
             _LOGGER.info("Migrating Supervisor network to IPv4/IPv6 Dual Stack")

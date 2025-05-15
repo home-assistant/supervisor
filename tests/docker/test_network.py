@@ -6,10 +6,14 @@ from supervisor.const import DOCKER_NETWORK
 from supervisor.docker.network import DOCKER_NETWORK_PARAMS, DockerNetwork
 
 
-class MockNetwork(dict):
-    """Mock implementation of Docker internal network."""
+class MockNetwork:
+    """Mock implementation of internal network."""
 
-    def remove(self):
+    def __init__(self, enableIPv6: bool) -> None:
+        """Initialize a mock network."""
+        self.attrs = {"EnableIPv6": enableIPv6}
+
+    def remove(self) -> None:
         """Simulate a network removal."""
 
 
@@ -19,17 +23,17 @@ async def test_network_recreate_as_ipv6():
     with (
         patch(
             "supervisor.docker.network.DockerNetwork._get",
-            return_value=MockNetwork(EnableIPv6=False),
+            return_value=MockNetwork(False),
         ) as mock_get,
         patch(
             "supervisor.docker.network.DockerNetwork._create",
-            return_value=MockNetwork(EnableIPv6=True),
+            return_value=MockNetwork(True),
         ) as mock_create,
     ):
         network = DockerNetwork(MagicMock()).network
 
         assert network is not None
-        assert network["EnableIPv6"] is True
+        assert network.attrs.get("EnableIPv6", False) is True
 
         mock_get.assert_called_with(DOCKER_NETWORK)
 
