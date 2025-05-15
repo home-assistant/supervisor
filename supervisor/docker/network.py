@@ -19,6 +19,23 @@ from ..exceptions import DockerError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+DOCKER_NETWORK_PARAMS = {
+    "name": DOCKER_NETWORK,
+    "driver": DOCKER_NETWORK_DRIVER,
+    "ipam": docker.types.IPAMConfig(
+        pool_configs=[
+            docker.types.IPAMPool(subnet=str(DOCKER_IPV6_NETWORK_MASK)),
+            docker.types.IPAMPool(
+                subnet=str(DOCKER_IPV4_NETWORK_MASK),
+                gateway=str(DOCKER_IPV4_NETWORK_MASK[1]),
+                iprange=str(DOCKER_IPV4_NETWORK_RANGE),
+            ),
+        ]
+    ),
+    "enable_ipv6": True,
+    "options": {"com.docker.network.bridge.name": DOCKER_NETWORK},
+}
+
 
 class DockerNetwork:
     """Internal Supervisor Network.
@@ -76,40 +93,25 @@ class DockerNetwork:
         """Return observer of the network."""
         return DOCKER_IPV4_NETWORK_MASK[6]
 
-    def get(self, network_id: str) -> docker.models.networks.Network:
+    def _get(self, network_id: str) -> docker.models.networks.Network:
         """Get a network by ID."""
         return self.docker.networks.get(network_id)
 
-    def create(self, **kwargs: Any) -> docker.models.networks.Network:
+    def _create(self, **kwargs: Any) -> docker.models.networks.Network:
         """Create a new network."""
         return self.docker.networks.create(**kwargs)
 
     def _get_network(self) -> docker.models.networks.Network:
         """Get supervisor network."""
         try:
-            if (network := self.get(DOCKER_NETWORK))["EnableIPv6"]:
+            if (network := self._get(DOCKER_NETWORK))["EnableIPv6"]:
                 return network
             network.remove()
             _LOGGER.info("Migrating Supervisor network to IPv4/IPv6 Dual Stack")
         except docker.errors.NotFound:
             _LOGGER.info("Can't find Supervisor network, creating a new network")
 
-        return self.create(
-            name=DOCKER_NETWORK,
-            driver=DOCKER_NETWORK_DRIVER,
-            ipam=docker.types.IPAMConfig(
-                pool_configs=[
-                    docker.types.IPAMPool(subnet=str(DOCKER_IPV6_NETWORK_MASK)),
-                    docker.types.IPAMPool(
-                        subnet=str(DOCKER_IPV4_NETWORK_MASK),
-                        gateway=str(self.gateway),
-                        iprange=str(DOCKER_IPV4_NETWORK_RANGE),
-                    ),
-                ]
-            ),
-            enable_ipv6=True,
-            options={"com.docker.network.bridge.name": DOCKER_NETWORK},
-        )
+        return self._create(**DOCKER_NETWORK_PARAMS)
 
     def attach_container(
         self,

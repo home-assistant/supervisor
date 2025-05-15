@@ -2,16 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
-from docker.types import IPAMConfig, IPAMPool
-
-from supervisor.const import (
-    DOCKER_IPV4_NETWORK_MASK,
-    DOCKER_IPV4_NETWORK_RANGE,
-    DOCKER_IPV6_NETWORK_MASK,
-    DOCKER_NETWORK,
-    DOCKER_NETWORK_DRIVER,
-)
-from supervisor.docker.network import DockerNetwork
+from supervisor.const import DOCKER_NETWORK
+from supervisor.docker.network import DOCKER_NETWORK_PARAMS, DockerNetwork
 
 
 class MockNetwork(dict):
@@ -26,31 +18,19 @@ async def test_network_recreate_as_ipv6():
 
     with (
         patch(
-            "supervisor.docker.network.DockerNetwork.get",
+            "supervisor.docker.network.DockerNetwork._get",
             return_value=MockNetwork(EnableIPv6=False),
         ) as mock_get,
         patch(
-            "supervisor.docker.network.DockerNetwork.create",
-            return_value=True,
+            "supervisor.docker.network.DockerNetwork._create",
+            return_value=MockNetwork(EnableIPv6=True),
         ) as mock_create,
     ):
-        assert DockerNetwork(MagicMock()).network is True
+        network = DockerNetwork(MagicMock()).network
+
+        assert network is not None
+        assert network["EnableIPv6"] is True
 
         mock_get.assert_called_with(DOCKER_NETWORK)
 
-        mock_create.assert_called_with(
-            name=DOCKER_NETWORK,
-            driver=DOCKER_NETWORK_DRIVER,
-            ipam=IPAMConfig(
-                pool_configs=[
-                    IPAMPool(subnet=str(DOCKER_IPV6_NETWORK_MASK)),
-                    IPAMPool(
-                        subnet=str(DOCKER_IPV4_NETWORK_MASK),
-                        gateway=str(DOCKER_IPV4_NETWORK_MASK[1]),
-                        iprange=str(DOCKER_IPV4_NETWORK_RANGE),
-                    ),
-                ]
-            ),
-            enable_ipv6=True,
-            options={"com.docker.network.bridge.name": DOCKER_NETWORK},
-        )
+        mock_create.assert_called_with(**DOCKER_NETWORK_PARAMS)
