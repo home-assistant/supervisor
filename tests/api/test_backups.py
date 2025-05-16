@@ -729,11 +729,26 @@ async def test_backup_to_multiple_locations_error_on_copy(
     assert result["data"]["jobs"][0]["name"] == f"backup_manager_{backup_type}_backup"
     assert result["data"]["jobs"][0]["reference"] == slug
     assert result["data"]["jobs"][0]["done"] is True
-    assert result["data"]["jobs"][0]["errors"] == [
+    assert len(result["data"]["jobs"][0]["errors"]) == 0
+
+    # Errors during copy to additional location should be recorded in child jobs only.
+    assert (
+        result["data"]["jobs"][0]["child_jobs"][-1]["name"]
+        == "backup_copy_to_additional_locations"
+    )
+    assert (
+        result["data"]["jobs"][0]["child_jobs"][-1]["child_jobs"][0]["name"]
+        == "backup_copy_to_location"
+    )
+    assert (
+        result["data"]["jobs"][0]["child_jobs"][-1]["child_jobs"][0]["reference"]
+        == ".cloud_backup"
+    )
+    assert result["data"]["jobs"][0]["child_jobs"][-1]["child_jobs"][0]["errors"] == [
         {
             "type": "BackupError",
             "message": "Could not copy backup to .cloud_backup due to: ",
-            "stage": "copy_additional_locations",
+            "stage": None,
         }
     ]
 
