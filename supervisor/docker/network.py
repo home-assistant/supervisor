@@ -3,14 +3,38 @@
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
+from typing import Any
 
 import docker
 import requests
 
-from ..const import DOCKER_NETWORK, DOCKER_NETWORK_MASK, DOCKER_NETWORK_RANGE
+from ..const import (
+    DOCKER_IPV4_NETWORK_MASK,
+    DOCKER_IPV4_NETWORK_RANGE,
+    DOCKER_IPV6_NETWORK_MASK,
+    DOCKER_NETWORK,
+    DOCKER_NETWORK_DRIVER,
+)
 from ..exceptions import DockerError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+DOCKER_NETWORK_PARAMS = {
+    "name": DOCKER_NETWORK,
+    "driver": DOCKER_NETWORK_DRIVER,
+    "ipam": docker.types.IPAMConfig(
+        pool_configs=[
+            docker.types.IPAMPool(subnet=str(DOCKER_IPV6_NETWORK_MASK)),
+            docker.types.IPAMPool(
+                subnet=str(DOCKER_IPV4_NETWORK_MASK),
+                gateway=str(DOCKER_IPV4_NETWORK_MASK[1]),
+                iprange=str(DOCKER_IPV4_NETWORK_RANGE),
+            ),
+        ]
+    ),
+    "enable_ipv6": True,
+    "options": {"com.docker.network.bridge.name": DOCKER_NETWORK},
+}
 
 
 class DockerNetwork:
@@ -42,55 +66,52 @@ class DockerNetwork:
     @property
     def gateway(self) -> IPv4Address:
         """Return gateway of the network."""
-        return DOCKER_NETWORK_MASK[1]
+        return DOCKER_IPV4_NETWORK_MASK[1]
 
     @property
     def supervisor(self) -> IPv4Address:
         """Return supervisor of the network."""
-        return DOCKER_NETWORK_MASK[2]
+        return DOCKER_IPV4_NETWORK_MASK[2]
 
     @property
     def dns(self) -> IPv4Address:
         """Return dns of the network."""
-        return DOCKER_NETWORK_MASK[3]
+        return DOCKER_IPV4_NETWORK_MASK[3]
 
     @property
     def audio(self) -> IPv4Address:
         """Return audio of the network."""
-        return DOCKER_NETWORK_MASK[4]
+        return DOCKER_IPV4_NETWORK_MASK[4]
 
     @property
     def cli(self) -> IPv4Address:
         """Return cli of the network."""
-        return DOCKER_NETWORK_MASK[5]
+        return DOCKER_IPV4_NETWORK_MASK[5]
 
     @property
     def observer(self) -> IPv4Address:
         """Return observer of the network."""
-        return DOCKER_NETWORK_MASK[6]
+        return DOCKER_IPV4_NETWORK_MASK[6]
+
+    def _get(self, network_id: str) -> docker.models.networks.Network:
+        """Get a network by ID."""
+        return self.docker.networks.get(network_id)
+
+    def _create(self, **kwargs: Any) -> docker.models.networks.Network:
+        """Create a new network."""
+        return self.docker.networks.create(**kwargs)
 
     def _get_network(self) -> docker.models.networks.Network:
         """Get supervisor network."""
         try:
-            return self.docker.networks.get(DOCKER_NETWORK)
+            if (network := self._get(DOCKER_NETWORK)).attrs.get("EnableIPv6", False):
+                return network
+            network.remove()
+            _LOGGER.info("Migrating Supervisor network to IPv4/IPv6 Dual Stack")
         except docker.errors.NotFound:
             _LOGGER.info("Can't find Supervisor network, creating a new network")
 
-        ipam_pool = docker.types.IPAMPool(
-            subnet=str(DOCKER_NETWORK_MASK),
-            gateway=str(self.gateway),
-            iprange=str(DOCKER_NETWORK_RANGE),
-        )
-
-        ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
-
-        return self.docker.networks.create(
-            DOCKER_NETWORK,
-            driver="bridge",
-            ipam=ipam_config,
-            enable_ipv6=False,
-            options={"com.docker.network.bridge.name": DOCKER_NETWORK},
-        )
+        return self._create(**DOCKER_NETWORK_PARAMS)
 
     def attach_container(
         self,
@@ -130,7 +151,7 @@ class DockerNetwork:
         Need run inside executor.
         """
         try:
-            default_network = self.docker.networks.get("bridge")
+            default_network = self.docker.networks.get(DOCKER_NETWORK_DRIVER)
             default_network.disconnect(container)
 
         except docker.errors.NotFound:
