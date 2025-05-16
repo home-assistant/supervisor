@@ -15,6 +15,21 @@ class InterfaceMethod(StrEnum):
     AUTO = "auto"
 
 
+class InterfaceAddrGenMode(StrEnum):
+    """Configuration of an interface."""
+
+    EUI64 = "eui64"
+    STABLE_PRIVACY = "stable-privacy"
+
+
+class InterfaceIp6Privacy(StrEnum):
+    """Configuration of an interface."""
+
+    DISABLED = "disabled"
+    ENABLED_PREFER_PUBLIC = "enabled-prefer-public"
+    ENABLED = "enabled"
+
+
 class InterfaceType(StrEnum):
     """Configuration of an interface."""
 

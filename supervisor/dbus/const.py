@@ -210,6 +210,21 @@ class InterfaceMethod(StrEnum):
     LINK_LOCAL = "link-local"
 
 
+class InterfaceAddrGenMode(IntEnum):
+    """Interface addr gen mode."""
+
+    EUI64 = 0
+    STABLE_PRIVACY = 1
+
+
+class InterfaceIp6Privacy(IntEnum):
+    """Interface addr gen mode."""
+
+    DISABLED = 0
+    ENABLED_PREFER_PUBLIC = 1
+    ENABLED = 2
+
+
 class ConnectionType(StrEnum):
     """Connection type."""
 
