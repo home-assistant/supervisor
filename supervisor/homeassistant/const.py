@@ -32,6 +32,7 @@ class WSType(StrEnum):
     SUPERVISOR_EVENT = "supervisor/event"
     BACKUP_START = "backup/start"
     BACKUP_END = "backup/end"
+    HASSIO_UPDATE_ADDON = "hassio/update/addon"
 
 
 class WSEvent(StrEnum):
