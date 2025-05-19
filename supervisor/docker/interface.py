@@ -478,8 +478,16 @@ class DockerInterface(JobGroup, ABC):
                 image_arch = f"{image_arch}/{image.attrs['Variant']}"
 
             # If we have an image and its the right arch, all set
-            if MAP_ARCH[expected_image_arch] == image_arch:
+            # It seems that newer Docker version return a variant for arm64 images.
+            # Make sure we match linux/arm64 and linux/arm64/v8.
+            if image_arch.startswith(MAP_ARCH[expected_image_arch]):
                 return
+            _LOGGER.info(
+                "Image %s has arch %s, expected %s. Reinstalling.",
+                image_name,
+                image_arch,
+                expected_image_arch,
+            )
 
         # We're missing the image we need. Stop and clean up what we have then pull the right one
         with suppress(DockerError):
