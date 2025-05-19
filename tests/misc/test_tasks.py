@@ -9,7 +9,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.addons.addon import Addon
-from supervisor.const import CoreState
+from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import HomeAssistantAPI
@@ -244,8 +244,8 @@ async def test_update_addons_auto_update_success(
     await coresys.core.set_state(CoreState.RUNNING)
 
     # Set up the add-on as eligible for auto-update
-
     install_addon_example.auto_update = True
+    install_addon_example.data_store[ATTR_VERSION_TIMESTAMP] = 0
     with patch.object(
         Addon, "version", new=PropertyMock(return_value=AwesomeVersion("1.0"))
     ):
