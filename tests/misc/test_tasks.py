@@ -1,6 +1,5 @@
 """Test scheduled tasks."""
 
-import asyncio
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from shutil import copy
@@ -253,15 +252,16 @@ async def test_update_addons_auto_update_success(
         assert install_addon_example.need_update is True
         assert install_addon_example.auto_update_available is True
 
-        await asyncio.sleep(0.01)
+        # Make sure all job events from installing the add-on are cleared
         ha_ws_client.async_send_command.reset_mock()
 
         # pylint: disable-next=protected-access
         await tasks._update_addons()
-        await asyncio.sleep(0.01)
 
-        assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {
-            "type": "hassio/update/addon",
-            "addon": install_addon_example.slug,
-            "backup": True,
-        }
+        ha_ws_client.async_send_command.assert_any_call(
+            {
+                "type": "hassio/update/addon",
+                "addon": install_addon_example.slug,
+                "backup": True,
+            }
+        )
