@@ -258,6 +258,7 @@ async def test_update_addons_auto_update_success(
 
         # pylint: disable-next=protected-access
         await tasks._update_addons()
+        await asyncio.sleep(0)
 
         assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {
             "type": "hassio/update/addon",
