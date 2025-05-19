@@ -227,6 +227,8 @@ class NetworkSetting(DBusInterface):
                 data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_UUID),
                 data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_TYPE),
                 data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_INTERFACE_NAME),
+                data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_MDNS),
+                data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_LLMNR),
             )
 
         if CONF_ATTR_802_ETHERNET in data:

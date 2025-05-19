@@ -9,7 +9,8 @@ from uuid import uuid4
 from dbus_fast import Variant
 
 from ....host.configuration import VlanConfig
-from ....host.const import InterfaceMethod, InterfaceType
+from ....host.const import InterfaceMethod, InterfaceType, MulticastDnsMode
+from ...const import MulticastDnsValue
 from .. import NetworkManager
 from . import (
     CONF_ATTR_802_ETHERNET,
@@ -134,6 +135,16 @@ def _get_ipv6_connection_settings(ipv6setting) -> dict:
     return ipv6
 
 
+def _map_mdns_setting(mode: MulticastDnsMode | None) -> int:
+    mapping = {
+        MulticastDnsMode.OFF: MulticastDnsValue.OFF,
+        MulticastDnsMode.RESOLVE: MulticastDnsValue.RESOLVE,
+        MulticastDnsMode.ANNOUNCE: MulticastDnsValue.ANNOUNCE,
+    }
+
+    return int(mapping[mode] if mode else MulticastDnsValue.ANNOUNCE)
+
+
 def get_connection_from_interface(
     interface: Interface,
     network_manager: NetworkManager,
@@ -162,13 +173,16 @@ def get_connection_from_interface(
     if not uuid:
         uuid = str(uuid4())
 
+    llmnr = _map_mdns_setting(interface.llmnr)
+    mdns = _map_mdns_setting(interface.mdns)
+
     conn: dict[str, dict[str, Variant]] = {
         CONF_ATTR_CONNECTION: {
             CONF_ATTR_CONNECTION_ID: Variant("s", name),
             CONF_ATTR_CONNECTION_UUID: Variant("s", uuid),
             CONF_ATTR_CONNECTION_TYPE: Variant("s", iftype),
-            CONF_ATTR_CONNECTION_LLMNR: Variant("i", 2),
-            CONF_ATTR_CONNECTION_MDNS: Variant("i", 2),
+            CONF_ATTR_CONNECTION_LLMNR: Variant("i", llmnr),
+            CONF_ATTR_CONNECTION_MDNS: Variant("i", mdns),
             CONF_ATTR_CONNECTION_AUTOCONNECT: Variant("b", True),
         },
     }
