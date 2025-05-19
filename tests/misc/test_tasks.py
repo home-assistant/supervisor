@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.addons.addon import Addon
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantError
@@ -230,3 +231,33 @@ async def test_core_backup_cleanup(
     assert not coresys.backups.get("7fed74c8")
     assert new_tar.exists()
     assert not old_tar.exists()
+
+
+async def test_update_addons_auto_update_success(
+    tasks: Tasks,
+    coresys: CoreSys,
+    tmp_supervisor_data: Path,
+    ha_ws_client: AsyncMock,
+    install_addon_example: Addon,
+):
+    """Test that an eligible add-on is auto-updated via websocket command."""
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    # Set up the add-on as eligible for auto-update
+
+    install_addon_example.auto_update = True
+    with patch.object(
+        Addon, "version", new=PropertyMock(return_value=AwesomeVersion("1.0"))
+    ):
+        assert install_addon_example.need_update is True
+        assert install_addon_example.auto_update_available is True
+
+        # pylint: disable-next=protected-access
+        ha_ws_client.async_send_command.reset_mock()
+        await tasks._update_addons()
+
+        assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {
+            "type": "hassio/update/addon",
+            "addon": install_addon_example.slug,
+            "backup": True,
+        }
