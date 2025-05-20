@@ -261,11 +261,12 @@ class APIHost(CoreSysAttributes):
                             await response.prepare(request)
                             headers_returned = True
                         await response.write(line.encode("utf-8") + b"\n")
-                    except ClientConnectionResetError as err:
+                    except (ClientConnectionResetError, ConnectionError) as err:
                         # When client closes the connection while reading busy logs, we
                         # sometimes get this exception. It should be safe to ignore it.
                         _LOGGER.debug(
-                            "ClientConnectionResetError raised when returning journal logs: %s",
+                            "%s raised when returning journal logs: %s",
+                            type(err).__name__,
                             err,
                         )
                         break
