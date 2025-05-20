@@ -455,11 +455,11 @@ class DockerInterface(JobGroup, ABC):
         self,
         version: AwesomeVersion,
         expected_image: str,
-        expected_arch: CpuArch | None = None,
+        expected_cpu_arch: CpuArch | None = None,
     ) -> None:
         """Check we have expected image with correct arch."""
-        expected_image_arch = (
-            str(expected_arch) if expected_arch else self.sys_arch.supervisor
+        expected_image_cpu_arch = (
+            str(expected_cpu_arch) if expected_cpu_arch else self.sys_arch.supervisor
         )
         image_name = f"{expected_image}:{version!s}"
         if self.image == expected_image:
@@ -480,7 +480,8 @@ class DockerInterface(JobGroup, ABC):
             # If we have an image and its the right arch, all set
             # It seems that newer Docker version return a variant for arm64 images.
             # Make sure we match linux/arm64 and linux/arm64/v8.
-            if image_arch.startswith(MAP_ARCH[expected_image_arch]):
+            expected_image_arch = MAP_ARCH[expected_image_cpu_arch]
+            if image_arch.startswith(expected_image_arch):
                 return
             _LOGGER.info(
                 "Image %s has arch %s, expected %s. Reinstalling.",
@@ -492,7 +493,7 @@ class DockerInterface(JobGroup, ABC):
         # We're missing the image we need. Stop and clean up what we have then pull the right one
         with suppress(DockerError):
             await self.remove()
-        await self.install(version, expected_image, arch=expected_image_arch)
+        await self.install(version, expected_image, arch=expected_image_cpu_arch)
 
     @Job(
         name="docker_interface_update",
