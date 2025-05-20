@@ -213,7 +213,7 @@ def get_connection_from_interface(
     conn[CONF_ATTR_IPV4] = _get_ipv4_connection_settings(interface.ipv4setting)
 
     conn[CONF_ATTR_IPV6] = _get_ipv6_connection_settings(
-        interface.ipv6setting, network_manager.version > "1.40.0"
+        interface.ipv6setting, network_manager.version >= "1.40.0"
     )
 
     if interface.type == InterfaceType.ETHERNET:

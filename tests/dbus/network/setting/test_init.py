@@ -1,5 +1,8 @@
 """Test Network Manager Connection object."""
 
+from unittest.mock import MagicMock, PropertyMock
+
+from awesomeversion import AwesomeVersion
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
@@ -8,6 +11,7 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting import NetworkSetting
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
+from supervisor.host.configuration import Ip6Setting
 from supervisor.host.const import InterfaceMethod
 from supervisor.host.network import Interface
 
@@ -140,6 +144,33 @@ async def test_ipv6_disabled_is_link_local(
 
     assert conn["ipv4"]["method"] == Variant("s", "disabled")
     assert conn["ipv6"]["method"] == Variant("s", "link-local")
+
+
+@pytest.mark.parametrize(
+    ["version", "addr_gen_mode"],
+    [
+        ("1.38.0", 1),
+        ("1.40.0", 3),
+    ],
+)
+async def test_ipv6_addr_gen_mode(
+    dbus_interface: NetworkInterface, version: str, addr_gen_mode: int
+):
+    """Test addr_gen_mode with various NetworkManager versions."""
+    interface = Interface.from_dbus_interface(dbus_interface)
+    interface.ipv6setting = Ip6Setting(InterfaceMethod.AUTO, [], None, [])
+
+    network_manager = MagicMock()
+    type(network_manager).version = PropertyMock(return_value=AwesomeVersion(version))
+    conn = get_connection_from_interface(
+        interface,
+        network_manager,
+        name=dbus_interface.settings.connection.id,
+        uuid=dbus_interface.settings.connection.uuid,
+    )
+
+    assert conn["ipv6"]["method"] == Variant("s", "auto")
+    assert conn["ipv6"]["addr-gen-mode"] == Variant("i", addr_gen_mode)
 
 
 async def test_watching_updated_signal(
