@@ -269,6 +269,13 @@ class APIHost(CoreSysAttributes):
                             err,
                         )
                         break
+                    except ConnectionError as err:
+                        _LOGGER.warning(
+                            "%s raised when returning journal logs: %s",
+                            type(err).__name__,
+                            err,
+                        )
+                        break
             except (ConnectionResetError, ClientPayloadError) as ex:
                 # ClientPayloadError is most likely caused by the closing the connection
                 raise APIError(
