@@ -1,13 +1,11 @@
 """A collection of tasks."""
 
-import asyncio
-from collections.abc import Awaitable
 from datetime import datetime, timedelta
 import logging
 
 from ..addons.const import ADDON_UPDATE_CONDITIONS
 from ..backups.const import LOCATION_CLOUD_BACKUP
-from ..const import AddonState
+from ..const import ATTR_TYPE, AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
     AddonsError,
@@ -15,7 +13,7 @@ from ..exceptions import (
     HomeAssistantError,
     ObserverError,
 )
-from ..homeassistant.const import LANDINGPAGE
+from ..homeassistant.const import LANDINGPAGE, WSType
 from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 from ..utils.dt import utcnow
@@ -106,7 +104,6 @@ class Tasks(CoreSysAttributes):
     )
     async def _update_addons(self):
         """Check if an update is available for an Add-on and update it."""
-        start_tasks: list[Awaitable[None]] = []
         for addon in self.sys_addons.all:
             if not addon.is_installed or not addon.auto_update:
                 continue
@@ -131,16 +128,21 @@ class Tasks(CoreSysAttributes):
                 )
                 continue
 
-            # Run Add-on update sequential
-            # avoid issue on slow IO
             _LOGGER.info("Add-on auto update process %s", addon.slug)
-            try:
-                if start_task := await self.sys_addons.update(addon.slug, backup=True):
-                    start_tasks.append(start_task)
-            except AddonsError:
-                _LOGGER.error("Can't auto update Add-on %s", addon.slug)
-
-        await asyncio.gather(*start_tasks)
+            # Call Home Assistant Core to update add-on to make sure that backups
+            # get created through the Home Assistant Core API (categorized correctly).
+            # Ultimately auto updates should be handled by Home Assistant Core itself
+            # through a update entity feature.
+            message = {
+                ATTR_TYPE: WSType.HASSIO_UPDATE_ADDON,
+                "addon": addon.slug,
+                "backup": True,
+            }
+            _LOGGER.debug(
+                "Sending update add-on WebSocket command to Home Assistant Core: %s",
+                message,
+            )
+            await self.sys_homeassistant.websocket.async_send_command(message)
 
     @Job(
         name="tasks_update_supervisor",
