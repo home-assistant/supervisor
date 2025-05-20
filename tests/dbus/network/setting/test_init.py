@@ -1,11 +1,10 @@
 """Test Network Manager Connection object."""
 
-from unittest.mock import MagicMock
-
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
+from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting import NetworkSetting
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
@@ -48,6 +47,7 @@ async def fixture_dbus_interface(
 async def test_ethernet_update(
     dbus_interface: NetworkInterface,
     connection_settings_service: ConnectionSettingsService,
+    network_manager: NetworkManager,
 ):
     """Test network manager update."""
     connection_settings_service.Update.calls.clear()
@@ -55,7 +55,7 @@ async def test_ethernet_update(
     interface = Interface.from_dbus_interface(dbus_interface)
     conn = get_connection_from_interface(
         interface,
-        MagicMock(),
+        network_manager,
         name=dbus_interface.settings.connection.id,
         uuid=dbus_interface.settings.connection.uuid,
     )
@@ -124,14 +124,16 @@ async def test_ethernet_update(
         assert "802-11-wireless-security" not in settings
 
 
-async def test_ipv6_disabled_is_link_local(dbus_interface: NetworkInterface):
+async def test_ipv6_disabled_is_link_local(
+    dbus_interface: NetworkInterface, network_manager: NetworkManager
+):
     """Test disabled equals link local for ipv6."""
     interface = Interface.from_dbus_interface(dbus_interface)
     interface.ipv4setting.method = InterfaceMethod.DISABLED
     interface.ipv6setting.method = InterfaceMethod.DISABLED
     conn = get_connection_from_interface(
         interface,
-        MagicMock(),
+        network_manager,
         name=dbus_interface.settings.connection.id,
         uuid=dbus_interface.settings.connection.uuid,
     )
