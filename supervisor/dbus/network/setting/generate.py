@@ -8,8 +8,13 @@ from uuid import uuid4
 
 from dbus_fast import Variant
 
-from ....host.configuration import VlanConfig
-from ....host.const import InterfaceMethod, InterfaceType
+from ....host.configuration import Ip6Setting, IpSetting, VlanConfig
+from ....host.const import (
+    InterfaceAddrGenMode,
+    InterfaceIp6Privacy,
+    InterfaceMethod,
+    InterfaceType,
+)
 from .. import NetworkManager
 from . import (
     CONF_ATTR_802_ETHERNET,
@@ -36,10 +41,12 @@ from . import (
     CONF_ATTR_IPV4_GATEWAY,
     CONF_ATTR_IPV4_METHOD,
     CONF_ATTR_IPV6,
+    CONF_ATTR_IPV6_ADDR_GEN_MODE,
     CONF_ATTR_IPV6_ADDRESS_DATA,
     CONF_ATTR_IPV6_DNS,
     CONF_ATTR_IPV6_GATEWAY,
     CONF_ATTR_IPV6_METHOD,
+    CONF_ATTR_IPV6_PRIVACY,
     CONF_ATTR_MATCH,
     CONF_ATTR_MATCH_PATH,
     CONF_ATTR_VLAN,
@@ -51,7 +58,7 @@ if TYPE_CHECKING:
     from ....host.configuration import Interface
 
 
-def _get_ipv4_connection_settings(ipv4setting) -> dict:
+def _get_ipv4_connection_settings(ipv4setting: IpSetting | None) -> dict:
     ipv4 = {}
     if not ipv4setting or ipv4setting.method == InterfaceMethod.AUTO:
         ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "auto")
@@ -93,10 +100,32 @@ def _get_ipv4_connection_settings(ipv4setting) -> dict:
     return ipv4
 
 
-def _get_ipv6_connection_settings(ipv6setting) -> dict:
+def _get_ipv6_connection_settings(
+    ipv6setting: Ip6Setting | None, support_addr_gen_mode_defaults: bool = False
+) -> dict:
     ipv6 = {}
     if not ipv6setting or ipv6setting.method == InterfaceMethod.AUTO:
         ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "auto")
+        if ipv6setting:
+            if ipv6setting.addr_gen_mode == InterfaceAddrGenMode.EUI64:
+                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant("i", 0)
+            elif (
+                not support_addr_gen_mode_defaults
+                or ipv6setting.addr_gen_mode == InterfaceAddrGenMode.STABLE_PRIVACY
+            ):
+                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant("i", 1)
+            elif ipv6setting.addr_gen_mode == InterfaceAddrGenMode.DEFAULT_OR_EUI64:
+                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant("i", 2)
+            else:
+                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant("i", 3)
+            if ipv6setting.ip6_privacy == InterfaceIp6Privacy.DISABLED:
+                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant("i", 0)
+            elif ipv6setting.ip6_privacy == InterfaceIp6Privacy.ENABLED_PREFER_PUBLIC:
+                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant("i", 1)
+            elif ipv6setting.ip6_privacy == InterfaceIp6Privacy.ENABLED:
+                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant("i", 2)
+            else:
+                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant("i", -1)
     elif ipv6setting.method == InterfaceMethod.DISABLED:
         ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "link-local")
     elif ipv6setting.method == InterfaceMethod.STATIC:
@@ -183,7 +212,9 @@ def get_connection_from_interface(
 
     conn[CONF_ATTR_IPV4] = _get_ipv4_connection_settings(interface.ipv4setting)
 
-    conn[CONF_ATTR_IPV6] = _get_ipv6_connection_settings(interface.ipv6setting)
+    conn[CONF_ATTR_IPV6] = _get_ipv6_connection_settings(
+        interface.ipv6setting, network_manager.version > "1.40.0"
+    )
 
     if interface.type == InterfaceType.ETHERNET:
         conn[CONF_ATTR_802_ETHERNET] = {

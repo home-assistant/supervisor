@@ -51,8 +51,10 @@ async def test_api_network_info(api_client: TestClient, coresys: CoreSys):
                 "ready": False,
             }
             assert interface["ipv6"] == {
+                "addr_gen_mode": "default",
                 "address": [],
                 "gateway": None,
+                "ip6_privacy": "default",
                 "method": "disabled",
                 "nameservers": [],
                 "ready": False,
