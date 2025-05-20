@@ -1,24 +1,28 @@
 """Activate and deactivate blockbuster for finding blocking I/O."""
 
-from functools import cache
 import logging
 
 from blockbuster import BlockBuster
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+_blockbuster: BlockBuster | None = None
 
 
-@cache
 def _get_blockbuster() -> BlockBuster:
-    """Get blockbuster instance."""
-    return BlockBuster()
+    # pylint: disable=global-statement
+    global _blockbuster  # noqa: PLW0603
+    if _blockbuster is None:
+        _blockbuster = BlockBuster()
+    return _blockbuster
 
 
 def blockbuster_enabled() -> bool:
     """Return true if blockbuster detection is enabled."""
-    blockbuster = _get_blockbuster()
+    if _blockbuster is None:
+        return False
+
     # We activate all or none so just check the first one
-    for _, fn in blockbuster.functions.items():
+    for _, fn in _blockbuster.functions.items():
         return fn.activated
     return False
 
