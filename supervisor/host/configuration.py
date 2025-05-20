@@ -8,11 +8,20 @@ from ..dbus.const import (
     ConnectionStateFlags,
     ConnectionStateType,
     DeviceType,
+    InterfaceAddrGenMode as NMInterfaceAddrGenMode,
+    InterfaceIp6Privacy as NMInterfaceIp6Privacy,
     InterfaceMethod as NMInterfaceMethod,
 )
 from ..dbus.network.connection import NetworkConnection
 from ..dbus.network.interface import NetworkInterface
-from .const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
+from .const import (
+    AuthMethod,
+    InterfaceAddrGenMode,
+    InterfaceIp6Privacy,
+    InterfaceMethod,
+    InterfaceType,
+    WifiMode,
+)
 
 
 @dataclass(slots=True)
@@ -44,6 +53,14 @@ class IpSetting:
     address: list[IPv4Interface | IPv6Interface]
     gateway: IPv4Address | IPv6Address | None
     nameservers: list[IPv4Address | IPv6Address]
+
+
+@dataclass(slots=True)
+class Ip6Setting(IpSetting):
+    """Represent a user IPv6 setting."""
+
+    addr_gen_mode: InterfaceAddrGenMode = InterfaceAddrGenMode.DEFAULT
+    ip6_privacy: InterfaceIp6Privacy = InterfaceIp6Privacy.DEFAULT
 
 
 @dataclass(slots=True)
@@ -79,7 +96,7 @@ class Interface:
     ipv4: IpConfig | None
     ipv4setting: IpSetting | None
     ipv6: IpConfig | None
-    ipv6setting: IpSetting | None
+    ipv6setting: Ip6Setting | None
     wifi: WifiConfig | None
     vlan: VlanConfig | None
 
@@ -118,8 +135,14 @@ class Interface:
             ipv4_setting = IpSetting(InterfaceMethod.DISABLED, [], None, [])
 
         if inet.settings and inet.settings.ipv6:
-            ipv6_setting = IpSetting(
+            ipv6_setting = Ip6Setting(
                 method=Interface._map_nm_method(inet.settings.ipv6.method),
+                addr_gen_mode=Interface._map_nm_addr_gen_mode(
+                    inet.settings.ipv6.addr_gen_mode
+                ),
+                ip6_privacy=Interface._map_nm_ip6_privacy(
+                    inet.settings.ipv6.ip6_privacy
+                ),
                 address=[
                     IPv6Interface(f"{ip.address}/{ip.prefix}")
                     for ip in inet.settings.ipv6.address_data
@@ -134,7 +157,7 @@ class Interface:
                 else [],
             )
         else:
-            ipv6_setting = IpSetting(InterfaceMethod.DISABLED, [], None, [])
+            ipv6_setting = Ip6Setting(InterfaceMethod.DISABLED, [], None, [])
 
         ipv4_ready = (
             bool(inet.connection)
@@ -194,6 +217,28 @@ class Interface:
         }
 
         return mapping.get(method, InterfaceMethod.DISABLED)
+
+    @staticmethod
+    def _map_nm_addr_gen_mode(addr_gen_mode: int) -> InterfaceAddrGenMode:
+        """Map IPv6 interface addr_gen_mode."""
+        mapping = {
+            NMInterfaceAddrGenMode.EUI64: InterfaceAddrGenMode.EUI64,
+            NMInterfaceAddrGenMode.STABLE_PRIVACY: InterfaceAddrGenMode.STABLE_PRIVACY,
+            NMInterfaceAddrGenMode.DEFAULT_OR_EUI64: InterfaceAddrGenMode.DEFAULT_OR_EUI64,
+        }
+
+        return mapping.get(addr_gen_mode, InterfaceAddrGenMode.DEFAULT)
+
+    @staticmethod
+    def _map_nm_ip6_privacy(ip6_privacy: int) -> InterfaceIp6Privacy:
+        """Map IPv6 interface ip6_privacy."""
+        mapping = {
+            NMInterfaceIp6Privacy.DISABLED: InterfaceIp6Privacy.DISABLED,
+            NMInterfaceIp6Privacy.ENABLED_PREFER_PUBLIC: InterfaceIp6Privacy.ENABLED_PREFER_PUBLIC,
+            NMInterfaceIp6Privacy.ENABLED: InterfaceIp6Privacy.ENABLED,
+        }
+
+        return mapping.get(ip6_privacy, InterfaceIp6Privacy.DEFAULT)
 
     @staticmethod
     def _map_nm_connected(connection: NetworkConnection | None) -> bool:

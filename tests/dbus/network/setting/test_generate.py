@@ -5,7 +5,7 @@ from unittest.mock import PropertyMock, patch
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
-from supervisor.host.configuration import IpConfig, IpSetting, VlanConfig
+from supervisor.host.configuration import Ip6Setting, IpConfig, IpSetting, VlanConfig
 from supervisor.host.const import InterfaceMethod, InterfaceType
 from supervisor.host.network import Interface
 
@@ -57,8 +57,8 @@ async def test_generate_from_vlan(network_manager: NetworkManager):
         type=InterfaceType.VLAN,
         ipv4=IpConfig([], None, [], None),
         ipv4setting=IpSetting(InterfaceMethod.AUTO, [], None, []),
-        ipv6=None,
-        ipv6setting=None,
+        ipv6=IpConfig([], None, [], None),
+        ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, []),
         wifi=None,
         vlan=VlanConfig(1, "eth0"),
     )
@@ -70,6 +70,8 @@ async def test_generate_from_vlan(network_manager: NetworkManager):
     assert "match" not in connection_payload["connection"]
     assert "interface-name" not in connection_payload["connection"]
     assert connection_payload["ipv4"]["method"].value == "auto"
+    assert connection_payload["ipv6"]["addr-gen-mode"].value == 1
+    assert connection_payload["ipv6"]["ip6-privacy"].value == -1
 
     assert connection_payload["vlan"]["id"].value == 1
     assert (

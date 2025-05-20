@@ -12,6 +12,7 @@ from ...utils import dbus_connected
 from ..configuration import (
     ConnectionProperties,
     EthernetProperties,
+    Ip6Properties,
     IpAddress,
     IpProperties,
     MatchProperties,
@@ -58,6 +59,8 @@ CONF_ATTR_IPV4_GATEWAY = "gateway"
 CONF_ATTR_IPV4_DNS = "dns"
 
 CONF_ATTR_IPV6_METHOD = "method"
+CONF_ATTR_IPV6_ADDR_GEN_MODE = "addr-gen-mode"
+CONF_ATTR_IPV6_PRIVACY = "ip6-privacy"
 CONF_ATTR_IPV6_ADDRESS_DATA = "address-data"
 CONF_ATTR_IPV6_GATEWAY = "gateway"
 CONF_ATTR_IPV6_DNS = "dns"
@@ -69,6 +72,8 @@ IPV4_6_IGNORE_FIELDS = [
     "dns-data",
     "gateway",
     "method",
+    "addr-gen-mode",
+    "ip6-privacy",
 ]
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -111,7 +116,7 @@ class NetworkSetting(DBusInterface):
         self._ethernet: EthernetProperties | None = None
         self._vlan: VlanProperties | None = None
         self._ipv4: IpProperties | None = None
-        self._ipv6: IpProperties | None = None
+        self._ipv6: Ip6Properties | None = None
         self._match: MatchProperties | None = None
         super().__init__()
 
@@ -151,7 +156,7 @@ class NetworkSetting(DBusInterface):
         return self._ipv4
 
     @property
-    def ipv6(self) -> IpProperties | None:
+    def ipv6(self) -> Ip6Properties | None:
         """Return ipv6 properties if any."""
         return self._ipv6
 
@@ -223,44 +228,52 @@ class NetworkSetting(DBusInterface):
         # See: https://developer-old.gnome.org/NetworkManager/stable/ch01.html
         if CONF_ATTR_CONNECTION in data:
             self._connection = ConnectionProperties(
-                data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_ID),
-                data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_UUID),
-                data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_TYPE),
-                data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_INTERFACE_NAME),
+                id=data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_ID),
+                uuid=data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_UUID),
+                type=data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_TYPE),
+                interface_name=data[CONF_ATTR_CONNECTION].get(
+                    CONF_ATTR_CONNECTION_INTERFACE_NAME
+                ),
             )
 
         if CONF_ATTR_802_ETHERNET in data:
             self._ethernet = EthernetProperties(
-                data[CONF_ATTR_802_ETHERNET].get(CONF_ATTR_802_ETHERNET_ASSIGNED_MAC),
+                assigned_mac=data[CONF_ATTR_802_ETHERNET].get(
+                    CONF_ATTR_802_ETHERNET_ASSIGNED_MAC
+                ),
             )
 
         if CONF_ATTR_802_WIRELESS in data:
             self._wireless = WirelessProperties(
-                bytes(
+                ssid=bytes(
                     data[CONF_ATTR_802_WIRELESS].get(CONF_ATTR_802_WIRELESS_SSID, [])
                 ).decode(),
-                data[CONF_ATTR_802_WIRELESS].get(CONF_ATTR_802_WIRELESS_ASSIGNED_MAC),
-                data[CONF_ATTR_802_WIRELESS].get(CONF_ATTR_802_WIRELESS_MODE),
-                data[CONF_ATTR_802_WIRELESS].get(CONF_ATTR_802_WIRELESS_POWERSAVE),
+                assigned_mac=data[CONF_ATTR_802_WIRELESS].get(
+                    CONF_ATTR_802_WIRELESS_ASSIGNED_MAC
+                ),
+                mode=data[CONF_ATTR_802_WIRELESS].get(CONF_ATTR_802_WIRELESS_MODE),
+                powersave=data[CONF_ATTR_802_WIRELESS].get(
+                    CONF_ATTR_802_WIRELESS_POWERSAVE
+                ),
             )
 
         if CONF_ATTR_802_WIRELESS_SECURITY in data:
             self._wireless_security = WirelessSecurityProperties(
-                data[CONF_ATTR_802_WIRELESS_SECURITY].get(
+                auth_alg=data[CONF_ATTR_802_WIRELESS_SECURITY].get(
                     CONF_ATTR_802_WIRELESS_SECURITY_AUTH_ALG
                 ),
-                data[CONF_ATTR_802_WIRELESS_SECURITY].get(
+                key_mgmt=data[CONF_ATTR_802_WIRELESS_SECURITY].get(
                     CONF_ATTR_802_WIRELESS_SECURITY_KEY_MGMT
                 ),
-                data[CONF_ATTR_802_WIRELESS_SECURITY].get(
+                psk=data[CONF_ATTR_802_WIRELESS_SECURITY].get(
                     CONF_ATTR_802_WIRELESS_SECURITY_PSK
                 ),
             )
 
         if CONF_ATTR_VLAN in data:
             self._vlan = VlanProperties(
-                data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_ID),
-                data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_PARENT),
+                id=data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_ID),
+                parent=data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_PARENT),
             )
 
         if CONF_ATTR_IPV4 in data:
@@ -268,21 +281,23 @@ class NetworkSetting(DBusInterface):
             if ips := data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_ADDRESS_DATA):
                 address_data = [IpAddress(ip["address"], ip["prefix"]) for ip in ips]
             self._ipv4 = IpProperties(
-                data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_METHOD),
-                address_data,
-                data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_GATEWAY),
-                data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_DNS),
+                method=data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_METHOD),
+                address_data=address_data,
+                gateway=data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_GATEWAY),
+                dns=data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_DNS),
             )
 
         if CONF_ATTR_IPV6 in data:
             address_data = None
             if ips := data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_ADDRESS_DATA):
                 address_data = [IpAddress(ip["address"], ip["prefix"]) for ip in ips]
-            self._ipv6 = IpProperties(
-                data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_METHOD),
-                address_data,
-                data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_GATEWAY),
-                data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_DNS),
+            self._ipv6 = Ip6Properties(
+                method=data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_METHOD),
+                addr_gen_mode=data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_ADDR_GEN_MODE),
+                ip6_privacy=data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_PRIVACY),
+                address_data=address_data,
+                gateway=data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_GATEWAY),
+                dns=data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_DNS),
             )
 
         if CONF_ATTR_MATCH in data:

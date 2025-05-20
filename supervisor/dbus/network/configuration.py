@@ -78,6 +78,14 @@ class IpProperties:
 
 
 @dataclass(slots=True)
+class Ip6Properties(IpProperties):
+    """IPv6 properties object for Network Manager."""
+
+    addr_gen_mode: int
+    ip6_privacy: int
+
+
+@dataclass(slots=True)
 class MatchProperties:
     """Match properties object for Network Manager."""
 
