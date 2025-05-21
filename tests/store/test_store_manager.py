@@ -1,5 +1,7 @@
 """Test store manager."""
 
+from datetime import datetime
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import PropertyMock, patch
 
@@ -251,7 +253,11 @@ async def test_addon_version_timestamp(coresys: CoreSys, install_addon_example: 
     # If a new version is seen processing repo, reset to utc now
     install_addon_example.data_store["version"] = "1.1.0"
 
-    # Signal the store repositories got updated
-    with patch("supervisor.store.repository.Repository.update", return_value=True):
+    with patch(
+        "pathlib.Path.stat",
+        return_value=SimpleNamespace(
+            st_mode=0o100644, st_mtime=datetime.now().timestamp()
+        ),
+    ):
         await coresys.store.reload()
-        assert timestamp < install_addon_example.latest_version_timestamp
+    assert timestamp < install_addon_example.latest_version_timestamp
