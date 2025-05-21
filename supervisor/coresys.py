@@ -167,7 +167,7 @@ class CoreSys:
     @property
     def dev(self) -> bool:
         """Return True if we run dev mode."""
-        return bool(os.environ.get(ENV_SUPERVISOR_DEV, 0))
+        return bool(os.environ.get(ENV_SUPERVISOR_DEV) == "1")
 
     @property
     def timezone(self) -> str:
