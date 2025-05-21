@@ -185,10 +185,14 @@ class NetworkManager(DBusInterfaceProxy):
         if not changed and self.dns.is_connected:
             await self.dns.update()
 
-        if changed and (
-            DBUS_ATTR_DEVICES not in changed
-            or {intr.object_path for intr in self.interfaces if intr.managed}.issubset(
-                set(changed[DBUS_ATTR_DEVICES])
+        if (
+            changed
+            and DBUS_ATTR_PRIMARY_CONNECTION not in changed
+            and (
+                DBUS_ATTR_DEVICES not in changed
+                or {
+                    intr.object_path for intr in self.interfaces if intr.managed
+                }.issubset(set(changed[DBUS_ATTR_DEVICES]))
             )
         ):
             # If none of our managed devices were removed then most likely this is just veths changing.

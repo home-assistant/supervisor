@@ -249,3 +249,25 @@ async def test_network_manager_stopped(
     capture_exception.assert_called_once()
     assert isinstance(capture_exception.call_args.args[0], DBusServiceUnkownError)
     assert "NetworkManager not responding" in caplog.text
+
+
+async def test_primary_connection_update(
+    network_manager_service: NetworkManagerService,
+    network_manager: NetworkManager,
+):
+    """Test handling of primary connection change."""
+    interface = next(
+        (
+            intr
+            for intr in network_manager.interfaces
+            if intr.object_path == "/org/freedesktop/NetworkManager/Devices/1"
+        ),
+        None,
+    )
+    await network_manager.update({"PrimaryConnection": "/"})
+    assert interface.primary is False
+
+    await network_manager.update(
+        {"PrimaryConnection": "/org/freedesktop/NetworkManager/ActiveConnection/1"}
+    )
+    assert interface.primary is True
