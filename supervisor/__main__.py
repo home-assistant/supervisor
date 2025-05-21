@@ -13,7 +13,7 @@ zlib_fast.enable()
 
 # pylint: disable=wrong-import-position
 from supervisor import bootstrap  # noqa: E402
-from supervisor.utils.blockbuster import activate_blockbuster  # noqa: E402
+from supervisor.utils.blockbuster import BlockBusterManager  # noqa: E402
 from supervisor.utils.logging import activate_log_queue_handler  # noqa: E402
 
 # pylint: enable=wrong-import-position
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     coresys = loop.run_until_complete(bootstrap.initialize_coresys())
     loop.set_debug(coresys.config.debug)
     if coresys.config.detect_blocking_io:
-        activate_blockbuster()
+        BlockBusterManager.activate()
     loop.run_until_complete(coresys.core.connect())
 
     loop.run_until_complete(bootstrap.supervisor_debugger(coresys))
