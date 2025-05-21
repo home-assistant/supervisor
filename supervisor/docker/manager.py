@@ -83,7 +83,7 @@ class DockerInfo:
         """Return true, if CONFIG_RT_GROUP_SCHED is loaded."""
         if not Path("/sys/fs/cgroup/cpu/cpu.rt_runtime_us").exists():
             return False
-        return bool(os.environ.get(ENV_SUPERVISOR_CPU_RT, 0))
+        return bool(os.environ.get(ENV_SUPERVISOR_CPU_RT) == "1")
 
 
 class DockerConfig(FileConfiguration):
@@ -202,7 +202,7 @@ class DockerAPI:
         if "labels" not in kwargs:
             kwargs["labels"] = {}
         elif isinstance(kwargs["labels"], list):
-            kwargs["labels"] = {label: "" for label in kwargs["labels"]}
+            kwargs["labels"] = dict.fromkeys(kwargs["labels"], "")
 
         kwargs["labels"][LABEL_MANAGED] = ""
 

@@ -103,7 +103,7 @@ def test_not_supported(coresys):
 def test_is_dev(coresys):
     """Test if dev."""
     coresys.config.diagnostics = True
-    with patch("os.environ", return_value=[("ENV_SUPERVISOR_DEV", "1")]):
+    with patch.dict(os.environ, {"SUPERVISOR_DEV": "1"}):
         assert filter_data(coresys, SAMPLE_EVENT, {}) is None
 
 
