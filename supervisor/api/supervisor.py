@@ -49,11 +49,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError
 from ..store.validate import repositories
-from ..utils.blockbuster import (
-    activate_blockbuster,
-    blockbuster_enabled,
-    deactivate_blockbuster,
-)
+from ..utils.blockbuster import BlockBusterManager
 from ..utils.sentry import close_sentry, init_sentry
 from ..utils.validate import validate_timezone
 from ..validate import version_tag, wait_boot
@@ -110,7 +106,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DEBUG_BLOCK: self.sys_config.debug_block,
             ATTR_DIAGNOSTICS: self.sys_config.diagnostics,
             ATTR_AUTO_UPDATE: self.sys_updater.auto_update,
-            ATTR_DETECT_BLOCKING_IO: blockbuster_enabled(),
+            ATTR_DETECT_BLOCKING_IO: BlockBusterManager.is_enabled(),
             ATTR_COUNTRY: self.sys_config.country,
             # Depricated
             ATTR_WAIT_BOOT: self.sys_config.wait_boot,
@@ -180,10 +176,10 @@ class APISupervisor(CoreSysAttributes):
                 detect_blocking_io = DetectBlockingIO.ON
 
             if detect_blocking_io == DetectBlockingIO.ON:
-                activate_blockbuster()
+                BlockBusterManager.activate()
             elif detect_blocking_io == DetectBlockingIO.OFF:
                 self.sys_config.detect_blocking_io = False
-                deactivate_blockbuster()
+                BlockBusterManager.deactivate()
 
         # Deprecated
         if ATTR_WAIT_BOOT in body:
