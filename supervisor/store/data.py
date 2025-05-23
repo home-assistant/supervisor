@@ -197,7 +197,7 @@ class StoreData(CoreSysAttributes):
                     addon = read_json_or_yaml_file(addon_config)
                 except ConfigurationFileError:
                     _LOGGER.warning(
-                        "Can't read %s from repository %s", addon, repository
+                        "Can't read %s from repository %s", addon_config, repository
                     )
                     continue
 
@@ -206,7 +206,7 @@ class StoreData(CoreSysAttributes):
                     addon = SCHEMA_ADDON_CONFIG(addon)
                 except vol.Invalid as ex:
                     _LOGGER.warning(
-                        "Can't read %s: %s", addon, humanize_error(addon, ex)
+                        "Can't read %s: %s", addon_config, humanize_error(addon, ex)
                     )
                     continue
 
