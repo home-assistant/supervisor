@@ -552,12 +552,12 @@ class BackupManager(FileConfiguration, JobGroup):
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
         except BackupError as err:
-            await self.sys_run_in_executor(backup.tarfile.unlink)
+            await self.sys_run_in_executor(backup.tarfile.unlink, missing_ok=True)
             _LOGGER.error("Backup %s error: %s", backup.slug, err)
             self.sys_jobs.current.capture_error(err)
             return None
         except Exception as err:  # pylint: disable=broad-except
-            await self.sys_run_in_executor(backup.tarfile.unlink)
+            await self.sys_run_in_executor(backup.tarfile.unlink, missing_ok=True)
             _LOGGER.exception("Backup %s error", backup.slug)
             await async_capture_exception(err)
             self.sys_jobs.current.capture_error(
