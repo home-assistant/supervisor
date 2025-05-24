@@ -7,6 +7,7 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ENABLE_IPV6,
     ATTR_HOSTNAME,
     ATTR_LOGGING,
     ATTR_PASSWORD,
@@ -30,9 +31,42 @@ SCHEMA_DOCKER_REGISTRY = vol.Schema(
     }
 )
 
+# pylint: disable=no-value-for-parameter
+SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLE_IPV6): vol.Boolean()})
+
 
 class APIDocker(CoreSysAttributes):
     """Handle RESTful API for Docker configuration."""
+
+    @api_process
+    async def info(self, request: web.Request):
+        """Get docker info."""
+        data_registries = {}
+        for hostname, registry in self.sys_docker.config.registries.items():
+            data_registries[hostname] = {
+                ATTR_USERNAME: registry[ATTR_USERNAME],
+            }
+        return {
+            ATTR_VERSION: self.sys_docker.info.version,
+            ATTR_ENABLE_IPV6: self.sys_config.enable_ipv6,
+            ATTR_STORAGE: self.sys_docker.info.storage,
+            ATTR_LOGGING: self.sys_docker.info.logging,
+            ATTR_REGISTRIES: data_registries,
+        }
+
+    @api_process
+    async def options(self, request: web.Request) -> None:
+        """Set docker options."""
+        body = await api_validate(SCHEMA_OPTIONS, request)
+
+        if ATTR_ENABLE_IPV6 in body:
+            self.sys_config.enable_ipv6 = body[ATTR_ENABLE_IPV6]
+
+        # Save changes before processing addons in case of errors
+        await self.sys_updater.save_data()
+        await self.sys_config.save_data()
+
+        await self.sys_resolution.evaluate.evaluate_system()
 
     @api_process
     async def registries(self, request) -> dict[str, Any]:
@@ -64,18 +98,3 @@ class APIDocker(CoreSysAttributes):
 
         del self.sys_docker.config.registries[hostname]
         await self.sys_docker.config.save_data()
-
-    @api_process
-    async def info(self, request: web.Request):
-        """Get docker info."""
-        data_registries = {}
-        for hostname, registry in self.sys_docker.config.registries.items():
-            data_registries[hostname] = {
-                ATTR_USERNAME: registry[ATTR_USERNAME],
-            }
-        return {
-            ATTR_VERSION: self.sys_docker.info.version,
-            ATTR_STORAGE: self.sys_docker.info.storage,
-            ATTR_LOGGING: self.sys_docker.info.logging,
-            ATTR_REGISTRIES: data_registries,
-        }

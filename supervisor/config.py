@@ -15,6 +15,7 @@ from .const import (
     ATTR_DEBUG_BLOCK,
     ATTR_DETECT_BLOCKING_IO,
     ATTR_DIAGNOSTICS,
+    ATTR_ENABLE_IPV6,
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
@@ -117,6 +118,16 @@ class CoreConfig(FileConfiguration):
     def version(self, value: AwesomeVersion) -> None:
         """Set supervisor version."""
         self._data[ATTR_VERSION] = value
+
+    @property
+    def enable_ipv6(self) -> bool | None:
+        """Return IPv6 configuration for docker network."""
+        return self._data.get(ATTR_ENABLE_IPV6)
+
+    @enable_ipv6.setter
+    def enable_ipv6(self, value: bool) -> None:
+        """Set IPv6 configuration for docker network."""
+        self._data[ATTR_ENABLE_IPV6] = value
 
     @property
     def image(self) -> str | None:
