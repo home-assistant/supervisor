@@ -1,5 +1,5 @@
 astroid==3.3.10
-coverage==7.8.1
+coverage==7.8.2
 pre-commit==4.2.0
 pylint==3.3.7
 pytest-aiohttp==1.1.0
