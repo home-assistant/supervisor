@@ -8,6 +8,7 @@ import pytest
 from supervisor.exceptions import MalformedBinaryEntryError
 from supervisor.host.const import LogFormatter
 from supervisor.utils.systemd_journal import (
+    journal_boots_reader,
     journal_logs_reader,
     journal_plain_formatter,
     journal_verbose_formatter,
@@ -205,3 +206,51 @@ async def test_parsing_colored_supervisor_logs():
         line
         == "\x1b[32m24-03-04 23:56:56 INFO (MainThread) [__main__] Closing Supervisor\x1b[0m"
     )
+
+
+async def test_parsing_boots():
+    """Test parsing of boots."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b'\x1e{"index":0,"boot_id":"e9ba6e5d9bc745c591686a502e3ed817","first_entry":1748251653514247,"last_entry":1748258595644563}\x0a'
+        b'\x1e{"index":-1,"boot_id":"2087f5f269724a48852c92a2e663fb94","first_entry":1748012078520355,"last_entry":1748023322834353}\x0a'
+        b'\x1e{"index":-2,"boot_id":"865a4aa6128e4747917047c09f400d0d","first_entry":1748011941404183,"last_entry":1748012025742472}'
+    )
+    stream.feed_eof()
+
+    boots = []
+    async for index, boot_id in journal_boots_reader(journal_logs):
+        boots.append((index, boot_id))
+
+    assert boots == [
+        (0, "e9ba6e5d9bc745c591686a502e3ed817"),
+        (-1, "2087f5f269724a48852c92a2e663fb94"),
+        (-2, "865a4aa6128e4747917047c09f400d0d"),
+    ]
+
+
+async def test_parsing_boots_single():
+    """Test parsing of single boot with trailing LF."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b'\x1e{"index":0,"boot_id":"e9ba6e5d9bc745c591686a502e3ed817","first_entry":1748251653514247,"last_entry":1748258595644563}\x0a'
+    )
+    stream.feed_eof()
+
+    boots = []
+    async for index, boot_id in journal_boots_reader(journal_logs):
+        boots.append((index, boot_id))
+
+    assert boots == [(0, "e9ba6e5d9bc745c591686a502e3ed817")]
+
+
+async def test_parsing_boots_none():
+    """Test parsing of empty boot response."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_eof()
+
+    boots = []
+    async for index, boot_id in journal_boots_reader(journal_logs):
+        boots.append((index, boot_id))
+
+    assert boots == []
