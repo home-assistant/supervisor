@@ -102,7 +102,7 @@ async def test_addon_state_listener(coresys: CoreSys, install_addon_ssh: Addon) 
     with patch.object(DockerAddon, "attach"):
         await install_addon_ssh.load()
 
-    assert install_addon_ssh.state == AddonState.UNKNOWN
+    assert install_addon_ssh.state == AddonState.STOPPED
 
     with patch.object(Addon, "watchdog_container"):
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
