@@ -180,7 +180,7 @@ class LogsControl(CoreSysAttributes):
         try:
             self._boot_ids = await self._get_boot_ids_native()
         except HostLogError:
-            _LOGGER.warning(
+            _LOGGER.info(
                 "Could not get /boots from systemd-journal-gatewayd, using fallback."
             )
             self._boot_ids = await self._get_boot_ids_legacy()
