@@ -1,5 +1,6 @@
 """Utilities for working with systemd journal export format."""
 
+from asyncio import IncompleteReadError
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from functools import wraps
@@ -135,19 +136,17 @@ async def journal_boots_reader(
     Returns generator of (index, boot_id) tuples.
     """
     async with response as resp:
-        buf = b""
 
-        while line := await resp.content.readline():
-            line = line.rstrip(b"\n")
+        async def read_record() -> bytes:
+            try:
+                return await resp.content.readuntil(b"\x1e")
+            except IncompleteReadError as e:
+                return e.partial
 
-            if line.startswith(b"\x1e"):
-                if buf:
-                    yield _parse_boot_json(buf)
-                buf = line.lstrip(b"\x1e")
-            else:
-                buf += line
-
-        if buf:
-            yield _parse_boot_json(buf)
+        while line := await read_record():
+            line = line.strip(b"\x1e\n")
+            if not line:
+                continue
+            yield _parse_boot_json(line)
 
         return
