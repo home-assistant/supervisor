@@ -144,7 +144,7 @@ async def journal_boots_reader(
                 return e.partial
 
         while line := await read_record():
-            line = line.strip(b"\x1e\n")
+            line = line.strip(b"\x1e")
             if not line:
                 continue
             yield _parse_boot_json(line)
