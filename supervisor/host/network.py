@@ -158,6 +158,7 @@ class NetworkManager(CoreSysAttributes):
             DBUS_ATTR_PRIMARY_CONNECTION in changed
             and changed[DBUS_ATTR_PRIMARY_CONNECTION]
             and changed[DBUS_ATTR_PRIMARY_CONNECTION] != DBUS_OBJECT_BASE
+            and await self.sys_plugins.dns.is_running()
         ):
             await self.sys_plugins.dns.restart()
 
