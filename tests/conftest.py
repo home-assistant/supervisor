@@ -40,7 +40,6 @@ from supervisor.const import (
     ATTR_TYPE,
     ATTR_VERSION,
     REQUEST_FROM,
-    AddonState,
     CoreState,
 )
 from supervisor.coresys import CoreSys
@@ -632,7 +631,6 @@ async def install_addon_ssh(coresys: CoreSys, repository):
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 
     addon = Addon(coresys, store.slug)
-    addon.state = AddonState.STOPPED
     coresys.addons.local[addon.slug] = addon
     yield addon
 
@@ -645,7 +643,6 @@ async def install_addon_example(coresys: CoreSys, repository):
     coresys.addons.data._data = coresys.addons.data._schema(coresys.addons.data._data)
 
     addon = Addon(coresys, store.slug)
-    addon.state = AddonState.STOPPED
     coresys.addons.local[addon.slug] = addon
     yield addon
 
