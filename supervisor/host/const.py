@@ -80,6 +80,7 @@ class LogFormat(StrEnum):
 
     JOURNAL = "application/vnd.fdo.journal"
     JSON = "application/json"
+    JSON_SEQ = "application/json-seq"
     TEXT = "text/plain"
 
 

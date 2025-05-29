@@ -47,6 +47,7 @@ from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
+from supervisor.exceptions import HostLogError
 from supervisor.homeassistant.api import APIState
 from supervisor.host.logs import LogsControl
 from supervisor.os.manager import OSManager
@@ -463,12 +464,27 @@ async def journald_gateway() -> AsyncGenerator[MagicMock]:
             return (await client_response.content.read()).decode("utf-8")
 
         client_response.text = response_text
+        client_response.status = 200
 
         get.return_value.__aenter__.return_value = client_response
         get.return_value.__aenter__.return_value.__aenter__.return_value = (
             client_response
         )
         yield client_response
+
+
+@pytest.fixture
+async def without_journal_gatewayd_boots() -> AsyncGenerator[MagicMock]:
+    """Make method using /boots of systemd-journald-gateway fail."""
+
+    def raise_host_log_error_side_effect(*args, **kwargs):
+        raise HostLogError("Mocked error")
+
+    with patch(
+        "supervisor.host.logs.LogsControl._get_boot_ids_native"
+    ) as get_boot_ids_native:
+        get_boot_ids_native.side_effect = raise_host_log_error_side_effect
+        yield get_boot_ids_native
 
 
 @pytest.fixture

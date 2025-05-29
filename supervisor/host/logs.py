@@ -25,6 +25,7 @@ from ..exceptions import (
     HostServiceError,
 )
 from ..utils.json import read_json_file
+from ..utils.systemd_journal import journal_boots_reader
 from .const import PARAM_BOOT_ID, PARAM_SYSLOG_IDENTIFIER, LogFormat
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -108,12 +109,8 @@ class LogsControl(CoreSysAttributes):
 
         return boot_ids[offset]
 
-    async def get_boot_ids(self) -> list[str]:
-        """Get boot IDs from oldest to newest."""
-        if self._boot_ids:
-            # Doesn't change without a reboot, no reason to query again once cached
-            return self._boot_ids
-
+    async def _get_boot_ids_legacy(self) -> list[str]:
+        """Get boots IDs using suboptimal method where /boots is not available."""
         try:
             async with self.journald_logs(
                 params=BOOT_IDS_QUERY,
@@ -142,13 +139,51 @@ class LogsControl(CoreSysAttributes):
                 _LOGGER.error,
             ) from err
 
-        self._boot_ids = []
+        _boot_ids = []
         for entry in text.split("\n"):
-            if (
-                entry
-                and (boot_id := json.loads(entry)[PARAM_BOOT_ID]) not in self._boot_ids
-            ):
-                self._boot_ids.append(boot_id)
+            if entry and (boot_id := json.loads(entry)[PARAM_BOOT_ID]) not in _boot_ids:
+                _boot_ids.append(boot_id)
+
+        return _boot_ids
+
+    async def _get_boot_ids_native(self):
+        """Get boot IDs using /boots endpoint."""
+        try:
+            async with self.journald_logs(
+                path="/boots",
+                accept=LogFormat.JSON_SEQ,
+                timeout=ClientTimeout(total=20),
+            ) as resp:
+                if resp.status != 200:
+                    raise HostLogError(
+                        f"Got HTTP {resp.status} from /boots.",
+                        _LOGGER.debug,
+                    )
+                # Don't rely solely on the order of boots in the response,
+                # sort the boots by index returned in the response.
+                boot_id_tuples = [boot async for boot in journal_boots_reader(resp)]
+                return [
+                    boot_id for _, boot_id in sorted(boot_id_tuples, key=lambda x: x[0])
+                ]
+        except (ClientError, TimeoutError) as err:
+            raise HostLogError(
+                "Could not get a list of boot IDs from systemd-journal-gatewayd",
+                _LOGGER.error,
+            ) from err
+
+    async def get_boot_ids(self) -> list[str]:
+        """Get boot IDs from oldest to newest."""
+        if self._boot_ids:
+            # Doesn't change without a reboot, no reason to query again once cached
+            return self._boot_ids
+
+        try:
+            self._boot_ids = await self._get_boot_ids_native()
+        except HostLogError:
+            _LOGGER.info(
+                "Could not get /boots from systemd-journal-gatewayd, using fallback."
+            )
+            self._boot_ids = await self._get_boot_ids_legacy()
 
         return self._boot_ids
 

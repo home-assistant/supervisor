@@ -1,8 +1,10 @@
 """Utilities for working with systemd journal export format."""
 
+from asyncio import IncompleteReadError
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from functools import wraps
+import json
 
 from aiohttp import ClientResponse
 
@@ -116,3 +118,35 @@ async def journal_logs_reader(
 
             # strip \n for simple fields before decoding
             entries[name] = data[:-1].decode("utf-8")
+
+
+def _parse_boot_json(boot_json_bytes: bytes) -> tuple[int, str]:
+    boot_dict = json.loads(boot_json_bytes.decode("utf-8"))
+    return (
+        int(boot_dict["index"]),
+        boot_dict["boot_id"],
+    )
+
+
+async def journal_boots_reader(
+    response: ClientResponse,
+) -> AsyncGenerator[tuple[int, str]]:
+    """Read boots from json-seq response from systemd journal gateway.
+
+    Returns generator of (index, boot_id) tuples.
+    """
+    async with response as resp:
+
+        async def read_record() -> bytes:
+            try:
+                return await resp.content.readuntil(b"\x1e")
+            except IncompleteReadError as e:
+                return e.partial
+
+        while line := await read_record():
+            line = line.strip(b"\x1e")
+            if not line:
+                continue
+            yield _parse_boot_json(line)
+
+        return
