@@ -1335,13 +1335,6 @@ class Addon(AddonModel):
 
         wait_for_start: asyncio.Task | None = None
 
-        # Refuse to backup if add-on is unknown (e.g. has been uninstalled by the user
-        # since the backup got started).
-        if self.state == AddonState.UNKNOWN:
-            raise AddonsError(
-                f"Add-on {self.slug} is not installed, cannot backup!", _LOGGER.error
-            )
-
         data = {
             ATTR_USER: self.persist,
             ATTR_SYSTEM: self.data,
