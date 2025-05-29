@@ -211,7 +211,7 @@ class PluginDns(PluginBase):
         try:
             await self.instance.restart()
         except DockerError as err:
-            raise CoreDNSError("Can't start CoreDNS plugin", _LOGGER.error) from err
+            raise CoreDNSError("Can't restart CoreDNS plugin", _LOGGER.error) from err
 
     async def start(self) -> None:
         """Run CoreDNS."""

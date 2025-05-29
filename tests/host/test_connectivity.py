@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access
 import asyncio
-from unittest.mock import PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
 
@@ -92,7 +92,12 @@ async def test_dns_restart_on_connection_change(
 ):
     """Test dns plugin is restarted when primary connection changes."""
     await coresys.host.network.load()
-    with patch.object(PluginDns, "restart") as restart:
+    with (
+        patch.object(PluginDns, "restart") as restart,
+        patch.object(
+            PluginDns, "is_running", new_callable=AsyncMock, return_value=True
+        ),
+    ):
         network_manager_service.emit_properties_changed({"PrimaryConnection": "/"})
         await network_manager_service.ping()
         restart.assert_not_called()
