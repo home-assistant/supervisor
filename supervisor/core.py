@@ -188,7 +188,10 @@ class Core(CoreSysAttributes):
                 await setup_task
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.critical(
-                    "Fatal error happening on load Task %s: %s", setup_task, err
+                    "Fatal error happening on load Task %s: %s",
+                    setup_task,
+                    err,
+                    exc_info=True,
                 )
                 self.sys_resolution.add_unhealthy_reason(UnhealthyReason.SETUP)
                 await async_capture_exception(err)
@@ -237,10 +240,10 @@ class Core(CoreSysAttributes):
                     await self.sys_supervisor.update()
                     return
 
-        # Start addon mark as initialize
-        await self.sys_addons.boot(AddonStartup.INITIALIZE)
-
         try:
+            # Start addon mark as initialize
+            await self.sys_addons.boot(AddonStartup.INITIALIZE)
+
             # HomeAssistant is already running, only Supervisor restarted
             if await self.sys_hardware.helper.last_boot() == self.sys_config.last_boot:
                 _LOGGER.info("Detected Supervisor restart")

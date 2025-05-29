@@ -1,6 +1,7 @@
 """Bootstrap Supervisor."""
 
 # ruff: noqa: T100
+import asyncio
 from importlib import import_module
 import logging
 import os
@@ -284,8 +285,8 @@ def check_environment() -> None:
         _LOGGER.critical("Can't find Docker socket!")
 
 
-def reg_signal(loop, coresys: CoreSys) -> None:
-    """Register SIGTERM and SIGKILL to stop system."""
+def register_signal_handlers(loop: asyncio.BaseEventLoop, coresys: CoreSys) -> None:
+    """Register SIGTERM, SIGHUP and SIGKILL to stop the Supervisor."""
     try:
         loop.add_signal_handler(
             signal.SIGTERM, lambda: loop.create_task(coresys.core.stop())

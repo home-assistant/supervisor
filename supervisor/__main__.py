@@ -66,8 +66,15 @@ if __name__ == "__main__":
     _LOGGER.info("Setting up Supervisor")
     loop.run_until_complete(coresys.core.setup())
 
-    loop.call_soon_threadsafe(loop.create_task, coresys.core.start())
-    loop.call_soon_threadsafe(bootstrap.reg_signal, loop, coresys)
+    bootstrap.register_signal_handlers(loop, coresys)
+
+    try:
+        loop.run_until_complete(coresys.core.start())
+    except Exception as err:  # pylint: disable=broad-except
+        # Supervisor itself is running at this point, just something didn't
+        # start as expected. Log with traceback to get more insights for
+        # such cases.
+        _LOGGER.critical("Supervisor start failed: %s", err, exc_info=True)
 
     try:
         _LOGGER.info("Running Supervisor")
