@@ -36,14 +36,14 @@ IMAGE_NAME_BAD = [
 ]
 
 
-async def test_dns_url_v4_good():
-    """Test the DNS validator with known-good ipv6 DNS URLs."""
+def test_dns_url_v4_good():
+    """Test the DNS validator with known-good IPv4 DNS URLs."""
     for url in DNS_GOOD_V4:
         assert validate.dns_url(url)
 
 
 def test_dns_url_v6_good():
-    """Test the DNS validator with known-good ipv6 DNS URLs."""
+    """Test the DNS validator with known-good IPv6 DNS URLs."""
     with pytest.raises(vol.error.Invalid):
         for url in DNS_GOOD_V6:
             assert validate.dns_url(url)
