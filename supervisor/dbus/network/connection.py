@@ -96,7 +96,7 @@ class NetworkConnection(DBusInterfaceProxy):
 
     @ipv4.setter
     def ipv4(self, ipv4: IpConfiguration | None) -> None:
-        """Set ipv4 configuration."""
+        """Set IPv4 configuration."""
         if self._ipv4 and self._ipv4 is not ipv4:
             self._ipv4.shutdown()
 
@@ -109,7 +109,7 @@ class NetworkConnection(DBusInterfaceProxy):
 
     @ipv6.setter
     def ipv6(self, ipv6: IpConfiguration | None) -> None:
-        """Set ipv6 configuration."""
+        """Set IPv6 configuration."""
         if self._ipv6 and self._ipv6 is not ipv6:
             self._ipv6.shutdown()
 

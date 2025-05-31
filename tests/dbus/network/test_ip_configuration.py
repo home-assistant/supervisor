@@ -31,7 +31,7 @@ async def fixture_ip6config_service(dbus_session_bus: MessageBus) -> IP4ConfigSe
 async def test_ipv4_configuration(
     ip4config_service: IP4ConfigService, dbus_session_bus: MessageBus
 ):
-    """Test ipv4 configuration object."""
+    """Test IPv4 configuration object."""
     ip4 = IpConfiguration("/org/freedesktop/NetworkManager/IP4Config/1")
 
     assert ip4.gateway is None
@@ -55,7 +55,7 @@ async def test_ipv4_configuration(
 async def test_ipv6_configuration(
     ip6config_service: IP6ConfigService, dbus_session_bus: MessageBus
 ):
-    """Test ipv4 configuration object."""
+    """Test IPv6 configuration object."""
     ip6 = IpConfiguration("/org/freedesktop/NetworkManager/IP6Config/1", ip4=False)
 
     assert ip6.gateway is None
