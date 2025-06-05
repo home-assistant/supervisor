@@ -6,7 +6,7 @@ from aiohttp.test_utils import TestClient
 from dbus_fast import Variant
 import pytest
 
-from supervisor.const import DOCKER_NETWORK, DOCKER_NETWORK_MASK
+from supervisor.const import DOCKER_IPV4_NETWORK_MASK, DOCKER_NETWORK
 from supervisor.coresys import CoreSys
 
 from tests.const import (
@@ -61,7 +61,7 @@ async def test_api_network_info(api_client: TestClient, coresys: CoreSys):
             }
 
     assert result["data"]["docker"]["interface"] == DOCKER_NETWORK
-    assert result["data"]["docker"]["address"] == str(DOCKER_NETWORK_MASK)
+    assert result["data"]["docker"]["address"] == str(DOCKER_IPV4_NETWORK_MASK)
     assert result["data"]["docker"]["dns"] == str(coresys.docker.network.dns)
     assert result["data"]["docker"]["gateway"] == str(coresys.docker.network.gateway)
 

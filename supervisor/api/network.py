@@ -40,8 +40,8 @@ from ..const import (
     ATTR_TYPE,
     ATTR_VLAN,
     ATTR_WIFI,
+    DOCKER_IPV4_NETWORK_MASK,
     DOCKER_NETWORK,
-    DOCKER_NETWORK_MASK,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APINotFound, HostNetworkNotFound
@@ -203,7 +203,7 @@ class APINetwork(CoreSysAttributes):
             ],
             ATTR_DOCKER: {
                 ATTR_INTERFACE: DOCKER_NETWORK,
-                ATTR_ADDRESS: str(DOCKER_NETWORK_MASK),
+                ATTR_ADDRESS: str(DOCKER_IPV4_NETWORK_MASK),
                 ATTR_GATEWAY: str(self.sys_docker.network.gateway),
                 ATTR_DNS: str(self.sys_docker.network.dns),
             },
