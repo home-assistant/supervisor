@@ -56,7 +56,7 @@ async def test_active_connection(
 async def test_old_ipv4_disconnect(
     network_manager: NetworkManager, active_connection_service: ActiveConnectionService
 ):
-    """Test old ipv4 disconnects on ipv4 change."""
+    """Test old IPv4 disconnects on IPv4 change."""
     connection = network_manager.get(TEST_INTERFACE_ETH_NAME).connection
     ipv4 = connection.ipv4
     assert ipv4.is_connected is True
@@ -71,7 +71,7 @@ async def test_old_ipv4_disconnect(
 async def test_old_ipv6_disconnect(
     network_manager: NetworkManager, active_connection_service: ActiveConnectionService
 ):
-    """Test old ipv6 disconnects on ipv6 change."""
+    """Test old IPv6 disconnects on IPv6 change."""
     connection = network_manager.get(TEST_INTERFACE_ETH_NAME).connection
     ipv6 = connection.ipv6
     assert ipv6.is_connected is True
