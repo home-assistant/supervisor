@@ -1,13 +1,13 @@
 """Supervisor job manager."""
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from contextlib import contextmanager
+from collections.abc import Callable, Coroutine, Generator
+from contextlib import contextmanager, suppress
 from contextvars import Context, ContextVar, Token
 from dataclasses import dataclass
 from datetime import datetime
 import logging
-from typing import Any
+from typing import Any, Self
 from uuid import uuid4
 
 from attrs import Attribute, define, field
@@ -27,7 +27,7 @@ from .validate import SCHEMA_JOBS_CONFIG
 # When a new asyncio task is started the current context is copied over.
 # Modifications to it in one task are not visible to others though.
 # This allows us to track what job is currently in progress in each task.
-_CURRENT_JOB: ContextVar[str] = ContextVar("current_job")
+_CURRENT_JOB: ContextVar[str | None] = ContextVar("current_job", default=None)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class SupervisorJobError:
     message: str = "Unknown error, see supervisor logs"
     stage: str | None = None
 
-    def as_dict(self) -> dict[str, str]:
+    def as_dict(self) -> dict[str, str | None]:
         """Return dictionary representation."""
         return {
             "type": self.type_.__name__,
@@ -101,9 +101,7 @@ class SupervisorJob:
     stage: str | None = field(
         default=None, validator=[_invalid_if_done], on_setattr=_on_change
     )
-    parent_id: str | None = field(
-        factory=lambda: _CURRENT_JOB.get(None), on_setattr=frozen
-    )
+    parent_id: str | None = field(factory=_CURRENT_JOB.get, on_setattr=frozen)
     done: bool | None = field(init=False, default=None, on_setattr=_on_change)
     on_change: Callable[["SupervisorJob", Attribute, Any], None] | None = field(
         default=None, on_setattr=frozen
@@ -137,7 +135,7 @@ class SupervisorJob:
         self.errors += [new_error]
 
     @contextmanager
-    def start(self):
+    def start(self) -> Generator[Self]:
         """Start the job in the current task.
 
         This can only be called if the parent ID matches the job running in the current task.
@@ -146,11 +144,11 @@ class SupervisorJob:
         """
         if self.done is not None:
             raise JobStartException("Job has already been started")
-        if _CURRENT_JOB.get(None) != self.parent_id:
+        if _CURRENT_JOB.get() != self.parent_id:
             raise JobStartException("Job has a different parent from current job")
 
         self.done = False
-        token: Token[str] | None = None
+        token: Token[str | None] | None = None
         try:
             token = _CURRENT_JOB.set(self.uuid)
             yield self
@@ -193,17 +191,15 @@ class JobManager(FileConfiguration, CoreSysAttributes):
 
         Must be called from within a job. Raises RuntimeError if there is no current job.
         """
-        try:
-            return self.get_job(_CURRENT_JOB.get())
-        except (LookupError, JobNotFound):
-            raise RuntimeError(
-                "No job for the current asyncio task!", _LOGGER.critical
-            ) from None
+        if job_id := _CURRENT_JOB.get():
+            with suppress(JobNotFound):
+                return self.get_job(job_id)
+        raise RuntimeError("No job for the current asyncio task!", _LOGGER.critical)
 
     @property
     def is_job(self) -> bool:
         """Return true if there is an active job for the current asyncio task."""
-        return bool(_CURRENT_JOB.get(None))
+        return _CURRENT_JOB.get() is not None
 
     def _notify_on_job_change(
         self, job: SupervisorJob, attribute: Attribute, value: Any
@@ -265,7 +261,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
 
     def schedule_job(
         self,
-        job_method: Callable[..., Awaitable[Any]],
+        job_method: Callable[..., Coroutine],
         options: JobSchedulerOptions,
         *args,
         **kwargs,

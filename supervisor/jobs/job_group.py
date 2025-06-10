@@ -41,7 +41,7 @@ class JobGroup(CoreSysAttributes):
     def has_lock(self) -> bool:
         """Return true if current task has the lock on this job group."""
         return (
-            self.active_job
+            self.active_job is not None
             and self.sys_jobs.is_job
             and self.active_job == self.sys_jobs.current
         )
