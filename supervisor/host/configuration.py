@@ -226,9 +226,9 @@ class Interface:
     def _map_nm_addr_gen_mode(addr_gen_mode: int) -> InterfaceAddrGenMode:
         """Map IPv6 interface addr_gen_mode."""
         mapping = {
-            NMInterfaceAddrGenMode.EUI64: InterfaceAddrGenMode.EUI64,
-            NMInterfaceAddrGenMode.STABLE_PRIVACY: InterfaceAddrGenMode.STABLE_PRIVACY,
-            NMInterfaceAddrGenMode.DEFAULT_OR_EUI64: InterfaceAddrGenMode.DEFAULT_OR_EUI64,
+            NMInterfaceAddrGenMode.EUI64.value: InterfaceAddrGenMode.EUI64,
+            NMInterfaceAddrGenMode.STABLE_PRIVACY.value: InterfaceAddrGenMode.STABLE_PRIVACY,
+            NMInterfaceAddrGenMode.DEFAULT_OR_EUI64.value: InterfaceAddrGenMode.DEFAULT_OR_EUI64,
         }
 
         return mapping.get(addr_gen_mode, InterfaceAddrGenMode.DEFAULT)
@@ -237,9 +237,9 @@ class Interface:
     def _map_nm_ip6_privacy(ip6_privacy: int) -> InterfaceIp6Privacy:
         """Map IPv6 interface ip6_privacy."""
         mapping = {
-            NMInterfaceIp6Privacy.DISABLED: InterfaceIp6Privacy.DISABLED,
-            NMInterfaceIp6Privacy.ENABLED_PREFER_PUBLIC: InterfaceIp6Privacy.ENABLED_PREFER_PUBLIC,
-            NMInterfaceIp6Privacy.ENABLED: InterfaceIp6Privacy.ENABLED,
+            NMInterfaceIp6Privacy.DISABLED.value: InterfaceIp6Privacy.DISABLED,
+            NMInterfaceIp6Privacy.ENABLED_PREFER_PUBLIC.value: InterfaceIp6Privacy.ENABLED_PREFER_PUBLIC,
+            NMInterfaceIp6Privacy.ENABLED.value: InterfaceIp6Privacy.ENABLED,
         }
 
         return mapping.get(ip6_privacy, InterfaceIp6Privacy.DEFAULT)
