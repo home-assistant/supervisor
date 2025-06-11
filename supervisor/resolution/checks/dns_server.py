@@ -15,6 +15,22 @@ from ..const import DNS_CHECK_HOST, ContextType, IssueType
 from .base import CheckBase
 
 
+async def check_server(
+    loop: asyncio.AbstractEventLoop, server: str, qtype: str
+) -> None:
+    """Check a DNS server and report issues."""
+    ip_addr = server[6:] if server.startswith("dns://") else server
+    resolver = DNSResolver(nameservers=[ip_addr])
+    await resolver.query(DNS_CHECK_HOST, "A")
+
+    def _delete_resolver():
+        """Close resolver to avoid memory leaks."""
+        nonlocal resolver
+        del resolver
+
+    loop.call_later(1, _delete_resolver)
+
+
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
     return CheckDNSServer(coresys)
@@ -33,7 +49,7 @@ class CheckDNSServer(CheckBase):
         """Run check if not affected by issue."""
         dns_servers = self.dns_servers
         results = await asyncio.gather(
-            *[self._check_server(server) for server in dns_servers],
+            *[check_server(self.sys_loop, server, "A") for server in dns_servers],
             return_exceptions=True,
         )
         for i in (r for r in range(len(results)) if isinstance(results[r], DNSError)):
@@ -51,17 +67,11 @@ class CheckDNSServer(CheckBase):
             return False
 
         try:
-            await self._check_server(reference)
+            await check_server(self.sys_loop, reference, "A")
         except DNSError:
             return True
 
         return False
-
-    async def _check_server(self, server: str):
-        """Check a DNS server and report issues."""
-        ip_addr = server[6:] if server.startswith("dns://") else server
-        resolver = DNSResolver(nameservers=[ip_addr])
-        await resolver.query(DNS_CHECK_HOST, "A")
 
     @property
     def dns_servers(self) -> list[str]:
