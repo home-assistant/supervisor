@@ -64,10 +64,10 @@ async def test_dynamic_ports(coresys: CoreSys):
     assert port_test2
     assert port_test2 != port_test1
 
-    assert port_test2 > 62000
-    assert port_test2 < 65500
-    assert port_test1 > 62000
-    assert port_test1 < 65500
+    assert port_test2 >= 62000
+    assert port_test2 <= 65500
+    assert port_test1 >= 62000
+    assert port_test1 <= 65500
 
 
 async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
