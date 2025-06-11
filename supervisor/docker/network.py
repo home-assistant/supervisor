@@ -1,16 +1,51 @@
 """Internal network manager for Supervisor."""
 
+import asyncio
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
+from typing import Self
 
 import docker
 import requests
 
-from ..const import DOCKER_NETWORK, DOCKER_NETWORK_MASK, DOCKER_NETWORK_RANGE
+from ..const import (
+    ATTR_AUDIO,
+    ATTR_CLI,
+    ATTR_DNS,
+    ATTR_ENABLE_IPV6,
+    ATTR_OBSERVER,
+    ATTR_SUPERVISOR,
+    DOCKER_IPV4_NETWORK_MASK,
+    DOCKER_IPV4_NETWORK_RANGE,
+    DOCKER_IPV6_NETWORK_MASK,
+    DOCKER_NETWORK,
+    DOCKER_NETWORK_DRIVER,
+    DOCKER_PREFIX,
+    OBSERVER_DOCKER_NAME,
+    SUPERVISOR_DOCKER_NAME,
+)
 from ..exceptions import DockerError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+DOCKER_ENABLEIPV6 = "EnableIPv6"
+DOCKER_NETWORK_PARAMS = {
+    "name": DOCKER_NETWORK,
+    "driver": DOCKER_NETWORK_DRIVER,
+    "ipam": docker.types.IPAMConfig(
+        pool_configs=[
+            docker.types.IPAMPool(subnet=str(DOCKER_IPV6_NETWORK_MASK)),
+            docker.types.IPAMPool(
+                subnet=str(DOCKER_IPV4_NETWORK_MASK),
+                gateway=str(DOCKER_IPV4_NETWORK_MASK[1]),
+                iprange=str(DOCKER_IPV4_NETWORK_RANGE),
+            ),
+        ]
+    ),
+    ATTR_ENABLE_IPV6: True,
+    "options": {"com.docker.network.bridge.name": DOCKER_NETWORK},
+}
 
 
 class DockerNetwork:
@@ -22,7 +57,14 @@ class DockerNetwork:
     def __init__(self, docker_client: docker.DockerClient):
         """Initialize internal Supervisor network."""
         self.docker: docker.DockerClient = docker_client
-        self._network: docker.models.networks.Network = self._get_network()
+        self._network: docker.models.networks.Network | None = None
+
+    async def post_init(self, enable_ipv6: bool = False) -> Self:
+        """Post init actions that must be done in event loop."""
+        self._network = await asyncio.get_running_loop().run_in_executor(
+            None, self._get_network, enable_ipv6
+        )
+        return self
 
     @property
     def name(self) -> str:
@@ -42,55 +84,101 @@ class DockerNetwork:
     @property
     def gateway(self) -> IPv4Address:
         """Return gateway of the network."""
-        return DOCKER_NETWORK_MASK[1]
+        return DOCKER_IPV4_NETWORK_MASK[1]
 
     @property
     def supervisor(self) -> IPv4Address:
         """Return supervisor of the network."""
-        return DOCKER_NETWORK_MASK[2]
+        return DOCKER_IPV4_NETWORK_MASK[2]
 
     @property
     def dns(self) -> IPv4Address:
         """Return dns of the network."""
-        return DOCKER_NETWORK_MASK[3]
+        return DOCKER_IPV4_NETWORK_MASK[3]
 
     @property
     def audio(self) -> IPv4Address:
         """Return audio of the network."""
-        return DOCKER_NETWORK_MASK[4]
+        return DOCKER_IPV4_NETWORK_MASK[4]
 
     @property
     def cli(self) -> IPv4Address:
         """Return cli of the network."""
-        return DOCKER_NETWORK_MASK[5]
+        return DOCKER_IPV4_NETWORK_MASK[5]
 
     @property
     def observer(self) -> IPv4Address:
         """Return observer of the network."""
-        return DOCKER_NETWORK_MASK[6]
+        return DOCKER_IPV4_NETWORK_MASK[6]
 
-    def _get_network(self) -> docker.models.networks.Network:
+    def _get_network(self, enable_ipv6: bool = False) -> docker.models.networks.Network:
         """Get supervisor network."""
         try:
-            return self.docker.networks.get(DOCKER_NETWORK)
+            if network := self.docker.networks.get(DOCKER_NETWORK):
+                if network.attrs.get(DOCKER_ENABLEIPV6) == enable_ipv6:
+                    return network
+                _LOGGER.info(
+                    "Migrating Supervisor network to %s",
+                    "IPv4/IPv6 Dual-Stack" if enable_ipv6 else "IPv4-Only",
+                )
+                if (containers := network.containers) and (
+                    containers_all := all(
+                        container.name in (OBSERVER_DOCKER_NAME, SUPERVISOR_DOCKER_NAME)
+                        for container in containers
+                    )
+                ):
+                    for container in containers:
+                        with suppress(
+                            docker.errors.APIError,
+                            docker.errors.DockerException,
+                            requests.RequestException,
+                        ):
+                            network.disconnect(container, force=True)
+                if not containers or containers_all:
+                    try:
+                        network.remove()
+                    except docker.errors.APIError:
+                        _LOGGER.warning("Failed to remove existing Supervisor network")
+                        return network
+                else:
+                    _LOGGER.warning(
+                        "System appears to be running, "
+                        "not applying Supervisor network change. "
+                        "Reboot your system to apply the change."
+                    )
+                    return network
         except docker.errors.NotFound:
             _LOGGER.info("Can't find Supervisor network, creating a new network")
 
-        ipam_pool = docker.types.IPAMPool(
-            subnet=str(DOCKER_NETWORK_MASK),
-            gateway=str(self.gateway),
-            iprange=str(DOCKER_NETWORK_RANGE),
-        )
+        network_params = DOCKER_NETWORK_PARAMS.copy()
+        network_params[ATTR_ENABLE_IPV6] = enable_ipv6
 
-        ipam_config = docker.types.IPAMConfig(pool_configs=[ipam_pool])
+        try:
+            self._network = self.docker.networks.create(**network_params)
+        except docker.errors.APIError as err:
+            raise DockerError(
+                f"Can't create Supervisor network: {err}", _LOGGER.error
+            ) from err
 
-        return self.docker.networks.create(
-            DOCKER_NETWORK,
-            driver="bridge",
-            ipam=ipam_config,
-            enable_ipv6=False,
-            options={"com.docker.network.bridge.name": DOCKER_NETWORK},
-        )
+        with suppress(DockerError):
+            self.attach_container_by_name(
+                SUPERVISOR_DOCKER_NAME, [ATTR_SUPERVISOR], self.supervisor
+            )
+
+        with suppress(DockerError):
+            self.attach_container_by_name(
+                OBSERVER_DOCKER_NAME, [ATTR_OBSERVER], self.observer
+            )
+
+        for name, ip in (
+            (ATTR_CLI, self.cli),
+            (ATTR_DNS, self.dns),
+            (ATTR_AUDIO, self.audio),
+        ):
+            with suppress(DockerError):
+                self.attach_container_by_name(f"{DOCKER_PREFIX}_{name}", [name], ip)
+
+        return self._network
 
     def attach_container(
         self,
@@ -102,8 +190,6 @@ class DockerNetwork:
 
         Need run inside executor.
         """
-        ipv4_address = str(ipv4) if ipv4 else None
-
         # Reload Network information
         with suppress(docker.errors.DockerException, requests.RequestException):
             self.network.reload()
@@ -116,11 +202,42 @@ class DockerNetwork:
 
         # Attach Network
         try:
-            self.network.connect(container, aliases=alias, ipv4_address=ipv4_address)
-        except docker.errors.APIError as err:
+            self.network.connect(
+                container, aliases=alias, ipv4_address=str(ipv4) if ipv4 else None
+            )
+        except (
+            docker.errors.NotFound,
+            docker.errors.APIError,
+            docker.errors.DockerException,
+            requests.RequestException,
+        ) as err:
             raise DockerError(
-                f"Can't link container to hassio-net: {err}", _LOGGER.error
+                f"Can't connect {container.name} to Supervisor network: {err}",
+                _LOGGER.error,
             ) from err
+
+    def attach_container_by_name(
+        self,
+        name: str,
+        alias: list[str] | None = None,
+        ipv4: IPv4Address | None = None,
+    ) -> None:
+        """Attach container to Supervisor network.
+
+        Need run inside executor.
+        """
+        try:
+            container = self.docker.containers.get(name)
+        except (
+            docker.errors.NotFound,
+            docker.errors.APIError,
+            docker.errors.DockerException,
+            requests.RequestException,
+        ) as err:
+            raise DockerError(f"Can't find {name}: {err}", _LOGGER.error) from err
+
+        if container.id not in self.containers:
+            self.attach_container(container, alias, ipv4)
 
     def detach_default_bridge(
         self, container: docker.models.containers.Container
@@ -130,25 +247,33 @@ class DockerNetwork:
         Need run inside executor.
         """
         try:
-            default_network = self.docker.networks.get("bridge")
+            default_network = self.docker.networks.get(DOCKER_NETWORK_DRIVER)
             default_network.disconnect(container)
-
         except docker.errors.NotFound:
-            return
-
-        except docker.errors.APIError as err:
+            pass
+        except (
+            docker.errors.APIError,
+            docker.errors.DockerException,
+            requests.RequestException,
+        ) as err:
             raise DockerError(
-                f"Can't disconnect container from default: {err}", _LOGGER.warning
+                f"Can't disconnect {container.name} from default network: {err}",
+                _LOGGER.warning,
             ) from err
 
-    def stale_cleanup(self, container_name: str):
-        """Remove force a container from Network.
+    def stale_cleanup(self, name: str) -> None:
+        """Force remove a container from Network.
 
         Fix: https://github.com/moby/moby/issues/23302
         """
         try:
-            self.network.disconnect(container_name, force=True)
-        except docker.errors.NotFound:
-            pass
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
+            self.network.disconnect(name, force=True)
+        except (
+            docker.errors.APIError,
+            docker.errors.DockerException,
+            requests.RequestException,
+        ) as err:
+            raise DockerError(
+                f"Can't disconnect {name} from Supervisor network: {err}",
+                _LOGGER.warning,
+            ) from err
