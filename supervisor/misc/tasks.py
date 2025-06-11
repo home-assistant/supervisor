@@ -2,9 +2,10 @@
 
 from datetime import datetime, timedelta
 import logging
+from typing import cast
 
 from ..addons.const import ADDON_UPDATE_CONDITIONS
-from ..backups.const import LOCATION_CLOUD_BACKUP
+from ..backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE
 from ..const import ATTR_TYPE, AddonState
 from ..coresys import CoreSysAttributes
 from ..exceptions import (
@@ -378,6 +379,8 @@ class Tasks(CoreSysAttributes):
         ]
         for backup in old_backups:
             try:
-                await self.sys_backups.remove(backup, [LOCATION_CLOUD_BACKUP])
+                await self.sys_backups.remove(
+                    backup, [cast(LOCATION_TYPE, LOCATION_CLOUD_BACKUP)]
+                )
             except BackupFileNotFoundError as err:
                 _LOGGER.debug("Can't remove backup %s: %s", backup.slug, err)

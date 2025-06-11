@@ -5,7 +5,7 @@ from collections.abc import Awaitable
 from dataclasses import dataclass
 import logging
 from pathlib import PurePath
-from typing import Self
+from typing import Self, cast
 
 from attr import evolve
 
@@ -56,7 +56,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     async def load_config(self) -> Self:
         """Load config in executor."""
         await super().load_config()
-        self._mounts: dict[str, Mount] = {
+        self._mounts = {
             mount[ATTR_NAME]: Mount.from_dict(self.coresys, mount)
             for mount in self._data[ATTR_MOUNTS]
         }
@@ -177,7 +177,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
             if not isinstance(errors[i], MountError):
-                await async_capture_exception(errors[i])
+                await async_capture_exception(cast(Exception, errors[i]))
 
             self.sys_resolution.add_issue(
                 evolve(mounts[i].failed_issue),
@@ -219,7 +219,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         conditions=[JobCondition.MOUNT_AVAILABLE],
         on_condition=MountJobError,
     )
-    async def remove_mount(self, name: str, *, retain_entry: bool = False) -> None:
+    async def remove_mount(self, name: str, *, retain_entry: bool = False) -> Mount:
         """Remove a mount."""
         # Add mount name to job
         self.sys_jobs.current.reference = name

@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 import asyncio
+from collections.abc import Callable
 from functools import cached_property
 import logging
 from pathlib import Path, PurePath
@@ -9,14 +10,6 @@ from pathlib import Path, PurePath
 from dbus_fast import Variant
 from voluptuous import Coerce
 
-from ..const import (
-    ATTR_NAME,
-    ATTR_PASSWORD,
-    ATTR_PORT,
-    ATTR_TYPE,
-    ATTR_USERNAME,
-    ATTR_VERSION,
-)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
     DBUS_ATTR_ACTIVE_STATE,
@@ -41,22 +34,13 @@ from ..exceptions import (
 from ..resolution.const import ContextType, IssueType
 from ..resolution.data import Issue
 from ..utils.sentry import async_capture_exception
-from .const import (
-    ATTR_PATH,
-    ATTR_READ_ONLY,
-    ATTR_SERVER,
-    ATTR_SHARE,
-    ATTR_USAGE,
-    MountCifsVersion,
-    MountType,
-    MountUsage,
-)
+from .const import MountCifsVersion, MountType, MountUsage
 from .validate import MountData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-COERCE_MOUNT_TYPE = Coerce(MountType)
-COERCE_MOUNT_USAGE = Coerce(MountUsage)
+COERCE_MOUNT_TYPE: Callable[[str], MountType] = Coerce(MountType)
+COERCE_MOUNT_USAGE: Callable[[str], MountUsage] = Coerce(MountUsage)
 
 
 class Mount(CoreSysAttributes, ABC):
@@ -80,7 +64,7 @@ class Mount(CoreSysAttributes, ABC):
         if cls not in [Mount, NetworkMount]:
             return cls(coresys, data)
 
-        type_ = COERCE_MOUNT_TYPE(data[ATTR_TYPE])
+        type_ = COERCE_MOUNT_TYPE(data["type"])
         if type_ == MountType.CIFS:
             return CIFSMount(coresys, data)
         if type_ == MountType.NFS:
@@ -90,32 +74,33 @@ class Mount(CoreSysAttributes, ABC):
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""
         return MountData(
-            name=self.name, type=self.type, usage=self.usage, read_only=self.read_only
+            name=self.name,
+            type=self.type,
+            usage=self.usage and self.usage.value,
+            read_only=self.read_only,
         )
 
     @property
     def name(self) -> str:
         """Get name."""
-        return self._data[ATTR_NAME]
+        return self._data["name"]
 
     @property
     def type(self) -> MountType:
         """Get mount type."""
-        return COERCE_MOUNT_TYPE(self._data[ATTR_TYPE])
+        return COERCE_MOUNT_TYPE(self._data["type"])
 
     @property
     def usage(self) -> MountUsage | None:
         """Get mount usage."""
-        return (
-            COERCE_MOUNT_USAGE(self._data[ATTR_USAGE])
-            if ATTR_USAGE in self._data
-            else None
-        )
+        if self._data["usage"] is None:
+            return None
+        return COERCE_MOUNT_USAGE(self._data["usage"])
 
     @property
     def read_only(self) -> bool:
         """Is mount read-only."""
-        return self._data.get(ATTR_READ_ONLY, False)
+        return self._data.get("read_only", False)
 
     @property
     @abstractmethod
@@ -196,8 +181,11 @@ class Mount(CoreSysAttributes, ABC):
         if not await self.is_mounted():
             await self.reload()
 
-    async def _update_state(self) -> UnitActiveState | None:
+    async def _update_state(self) -> None:
         """Update mount unit state."""
+        if not self.unit:
+            return
+
         try:
             self._state = await self.unit.get_active_state()
         except DBusError as err:
@@ -381,18 +369,18 @@ class NetworkMount(Mount, ABC):
         """Return dictionary representation."""
         out = MountData(server=self.server, **super().to_dict())
         if self.port is not None:
-            out[ATTR_PORT] = self.port
+            out["port"] = self.port
         return out
 
     @property
     def server(self) -> str:
         """Get server."""
-        return self._data[ATTR_SERVER]
+        return self._data["server"]
 
     @property
     def port(self) -> int | None:
         """Get port, returns none if using the protocol default."""
-        return self._data.get(ATTR_PORT)
+        return self._data.get("port")
 
     @property
     def where(self) -> PurePath:
@@ -420,31 +408,31 @@ class CIFSMount(NetworkMount):
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""
         out = MountData(share=self.share, **super().to_dict())
-        if not skip_secrets and self.username is not None:
-            out[ATTR_USERNAME] = self.username
-            out[ATTR_PASSWORD] = self.password
-        out[ATTR_VERSION] = self.version
+        if not skip_secrets and self.username is not None and self.password is not None:
+            out["username"] = self.username
+            out["password"] = self.password
+        out["version"] = self.version
         return out
 
     @property
     def share(self) -> str:
         """Get share."""
-        return self._data[ATTR_SHARE]
+        return self._data["share"]
 
     @property
     def username(self) -> str | None:
         """Get username, returns none if auth is not used."""
-        return self._data.get(ATTR_USERNAME)
+        return self._data.get("username")
 
     @property
     def password(self) -> str | None:
         """Get password, returns none if auth is not used."""
-        return self._data.get(ATTR_PASSWORD)
+        return self._data.get("password")
 
     @property
     def version(self) -> str | None:
-        """Get password, returns none if auth is not used."""
-        version = self._data.get(ATTR_VERSION)
+        """Get cifs version, returns none if using default."""
+        version = self._data.get("version")
         if version == MountCifsVersion.LEGACY_1_0:
             return "1.0"
         if version == MountCifsVersion.LEGACY_2_0:
@@ -513,7 +501,7 @@ class NFSMount(NetworkMount):
     @property
     def path(self) -> PurePath:
         """Get path."""
-        return PurePath(self._data[ATTR_PATH])
+        return PurePath(self._data["path"])
 
     @property
     def what(self) -> str:
@@ -543,7 +531,7 @@ class BindMount(Mount):
     def create(
         coresys: CoreSys,
         name: str,
-        path: Path,
+        path: PurePath,
         usage: MountUsage | None = None,
         where: PurePath | None = None,
         read_only: bool = False,
@@ -568,7 +556,7 @@ class BindMount(Mount):
     @property
     def path(self) -> PurePath:
         """Get path."""
-        return PurePath(self._data[ATTR_PATH])
+        return PurePath(self._data["path"])
 
     @property
     def what(self) -> str:
