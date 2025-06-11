@@ -79,7 +79,7 @@ class IpProperties(ABC):
 
 @dataclass(slots=True)
 class Ip4Properties(IpProperties):
-    """IP4 properties object."""
+    """IPv4 properties object."""
 
     dns: list[int] | None
 
