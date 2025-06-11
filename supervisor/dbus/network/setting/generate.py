@@ -222,8 +222,10 @@ def get_connection_from_interface(
         }
     elif interface.type == "vlan":
         parent = cast(VlanConfig, interface.vlan).interface
-        if parent in network_manager and (
-            parent_connection := network_manager.get(parent).connection
+        if (
+            parent
+            and parent in network_manager
+            and (parent_connection := network_manager.get(parent).connection)
         ):
             parent = parent_connection.uuid
 

@@ -12,9 +12,9 @@ from ...utils import dbus_connected
 from ..configuration import (
     ConnectionProperties,
     EthernetProperties,
+    Ip4Properties,
     Ip6Properties,
     IpAddress,
-    IpProperties,
     MatchProperties,
     VlanProperties,
     WirelessProperties,
@@ -115,7 +115,7 @@ class NetworkSetting(DBusInterface):
         self._wireless_security: WirelessSecurityProperties | None = None
         self._ethernet: EthernetProperties | None = None
         self._vlan: VlanProperties | None = None
-        self._ipv4: IpProperties | None = None
+        self._ipv4: Ip4Properties | None = None
         self._ipv6: Ip6Properties | None = None
         self._match: MatchProperties | None = None
         super().__init__()
@@ -151,7 +151,7 @@ class NetworkSetting(DBusInterface):
         return self._vlan
 
     @property
-    def ipv4(self) -> IpProperties | None:
+    def ipv4(self) -> Ip4Properties | None:
         """Return ipv4 properties if any."""
         return self._ipv4
 
@@ -271,16 +271,23 @@ class NetworkSetting(DBusInterface):
             )
 
         if CONF_ATTR_VLAN in data:
-            self._vlan = VlanProperties(
-                id=data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_ID),
-                parent=data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_PARENT),
-            )
+            if CONF_ATTR_VLAN_ID in data[CONF_ATTR_VLAN]:
+                self._vlan = VlanProperties(
+                    data[CONF_ATTR_VLAN][CONF_ATTR_VLAN_ID],
+                    data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_PARENT),
+                )
+            else:
+                self._vlan = None
+                _LOGGER.warning(
+                    "Network settings for vlan connection %s missing required vlan id, cannot process it",
+                    self.connection.interface_name,
+                )
 
         if CONF_ATTR_IPV4 in data:
             address_data = None
             if ips := data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_ADDRESS_DATA):
                 address_data = [IpAddress(ip["address"], ip["prefix"]) for ip in ips]
-            self._ipv4 = IpProperties(
+            self._ipv4 = Ip4Properties(
                 method=data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_METHOD),
                 address_data=address_data,
                 gateway=data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_GATEWAY),
