@@ -9,7 +9,7 @@ from aiohttp import hdrs
 import attr
 from sentry_sdk.types import Event, Hint
 
-from ..const import DOCKER_NETWORK_MASK, HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
+from ..const import DOCKER_IPV4_NETWORK_MASK, HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
 from ..exceptions import AddonConfigurationError
 
@@ -21,7 +21,7 @@ def sanitize_host(host: str) -> str:
     try:
         # Allow internal URLs
         ip = ipaddress.ip_address(host)
-        if ip in ipaddress.ip_network(DOCKER_NETWORK_MASK):
+        if ip in ipaddress.ip_network(DOCKER_IPV4_NETWORK_MASK):
             return host
     except ValueError:
         pass

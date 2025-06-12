@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from enum import StrEnum
-from ipaddress import IPv4Network
+from ipaddress import IPv4Network, IPv6Network
 from pathlib import Path
 from sys import version_info as systemversion
 from typing import Self
@@ -11,6 +11,10 @@ from aiohttp import __version__ as aiohttpversion
 
 SUPERVISOR_VERSION = "9999.09.9.dev9999"
 SERVER_SOFTWARE = f"HomeAssistantSupervisor/{SUPERVISOR_VERSION} aiohttp/{aiohttpversion} Python/{systemversion[0]}.{systemversion[1]}"
+
+DOCKER_PREFIX: str = "hassio"
+OBSERVER_DOCKER_NAME: str = f"{DOCKER_PREFIX}_observer"
+SUPERVISOR_DOCKER_NAME: str = f"{DOCKER_PREFIX}_supervisor"
 
 URL_HASSIO_ADDONS = "https://github.com/home-assistant/addons"
 URL_HASSIO_APPARMOR = "https://version.home-assistant.io/apparmor_{channel}.txt"
@@ -41,8 +45,10 @@ SYSTEMD_JOURNAL_PERSISTENT = Path("/var/log/journal")
 SYSTEMD_JOURNAL_VOLATILE = Path("/run/log/journal")
 
 DOCKER_NETWORK = "hassio"
-DOCKER_NETWORK_MASK = IPv4Network("172.30.32.0/23")
-DOCKER_NETWORK_RANGE = IPv4Network("172.30.33.0/24")
+DOCKER_NETWORK_DRIVER = "bridge"
+DOCKER_IPV6_NETWORK_MASK = IPv6Network("fd0c:ac1e:2100::/48")
+DOCKER_IPV4_NETWORK_MASK = IPv4Network("172.30.32.0/23")
+DOCKER_IPV4_NETWORK_RANGE = IPv4Network("172.30.33.0/24")
 
 # This needs to match the dockerd --cpu-rt-runtime= argument.
 DOCKER_CPU_RUNTIME_TOTAL = 950_000
@@ -172,6 +178,7 @@ ATTR_DOCKER_API = "docker_api"
 ATTR_DOCUMENTATION = "documentation"
 ATTR_DOMAINS = "domains"
 ATTR_ENABLE = "enable"
+ATTR_ENABLE_IPV6 = "enable_ipv6"
 ATTR_ENABLED = "enabled"
 ATTR_ENVIRONMENT = "environment"
 ATTR_EVENT = "event"

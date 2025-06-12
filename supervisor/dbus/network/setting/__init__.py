@@ -152,12 +152,12 @@ class NetworkSetting(DBusInterface):
 
     @property
     def ipv4(self) -> Ip4Properties | None:
-        """Return ipv4 properties if any."""
+        """Return IPv4 properties if any."""
         return self._ipv4
 
     @property
     def ipv6(self) -> Ip6Properties | None:
-        """Return ipv6 properties if any."""
+        """Return IPv6 properties if any."""
         return self._ipv6
 
     @property

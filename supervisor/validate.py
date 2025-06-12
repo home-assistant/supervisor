@@ -20,6 +20,7 @@ from .const import (
     ATTR_DIAGNOSTICS,
     ATTR_DISPLAYNAME,
     ATTR_DNS,
+    ATTR_ENABLE_IPV6,
     ATTR_FORCE_SECURITY,
     ATTR_HASSOS,
     ATTR_HOMEASSISTANT,
@@ -81,7 +82,7 @@ def dns_url(url: str) -> str:
         raise vol.Invalid("Doesn't start with dns://") from None
     address: str = url[6:]  # strip the dns:// off
     try:
-        ip = ipaddress.ip_address(address)  # matches ipv4 or ipv6 addresses
+        ip = ipaddress.ip_address(address)  # matches IPv4 or IPv6 addresses
     except ValueError:
         raise vol.Invalid(f"Invalid DNS URL: {url}") from None
 
@@ -180,7 +181,8 @@ SCHEMA_DOCKER_CONFIG = vol.Schema(
                     vol.Required(ATTR_PASSWORD): str,
                 }
             }
-        )
+        ),
+        vol.Optional(ATTR_ENABLE_IPV6): vol.Boolean(),
     }
 )
 
