@@ -21,10 +21,6 @@ def fixture_mock_dns_query():
             "supervisor.resolution.checks.dns_server.DNSResolver.query",
             new_callable=AsyncMock,
         ),
-        patch(
-            "supervisor.resolution.checks.dns_server_ipv6.DNSResolver.query",
-            new_callable=AsyncMock,
-        ),
     ):
         yield
 
