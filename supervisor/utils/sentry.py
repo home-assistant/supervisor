@@ -78,7 +78,7 @@ async def async_capture_event(event: dict[str, Any], only_once: str | None = Non
         )
 
 
-def capture_exception(err: Exception) -> None:
+def capture_exception(err: BaseException) -> None:
     """Capture an exception and send to sentry.
 
     Must be called in executor.
@@ -87,7 +87,7 @@ def capture_exception(err: Exception) -> None:
         sentry_sdk.capture_exception(err)
 
 
-async def async_capture_exception(err: Exception) -> None:
+async def async_capture_exception(err: BaseException) -> None:
     """Capture an exception and send to sentry.
 
     Safe to call in event loop.

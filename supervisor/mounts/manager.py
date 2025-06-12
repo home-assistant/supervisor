@@ -5,7 +5,7 @@ from collections.abc import Awaitable
 from dataclasses import dataclass
 import logging
 from pathlib import PurePath
-from typing import Self, cast
+from typing import Self
 
 from attr import evolve
 
@@ -172,12 +172,12 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         errors = await asyncio.gather(*mount_tasks, return_exceptions=True)
 
         for i in range(len(errors)):  # pylint: disable=consider-using-enumerate
-            if not errors[i]:
+            if not (err := errors[i]):
                 continue
             if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
-            if not isinstance(errors[i], MountError):
-                await async_capture_exception(cast(Exception, errors[i]))
+            if not isinstance(err, MountError):
+                await async_capture_exception(err)
 
             self.sys_resolution.add_issue(
                 evolve(mounts[i].failed_issue),
