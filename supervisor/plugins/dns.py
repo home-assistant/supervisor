@@ -71,8 +71,8 @@ class PluginDns(PluginBase):
         self.slug = "dns"
         self.coresys: CoreSys = coresys
         self.instance: DockerDNS = DockerDNS(coresys)
-        self.resolv_template: jinja2.Template | None = None
-        self.hosts_template: jinja2.Template | None = None
+        self._resolv_template: jinja2.Template | None = None
+        self._hosts_template: jinja2.Template | None = None
 
         self._hosts: list[HostEntry] = []
         self._loop: bool = False
@@ -147,11 +147,25 @@ class PluginDns(PluginBase):
         """Set fallback DNS enabled."""
         self._data[ATTR_FALLBACK] = value
 
+    @property
+    def hosts_template(self) -> jinja2.Template:
+        """Get hosts jinja template."""
+        if not self._hosts_template:
+            raise RuntimeError("Hosts template not set!")
+        return self._hosts_template
+
+    @property
+    def resolv_template(self) -> jinja2.Template:
+        """Get resolv jinja template."""
+        if not self._resolv_template:
+            raise RuntimeError("Resolv template not set!")
+        return self._resolv_template
+
     async def load(self) -> None:
         """Load DNS setup."""
         # Initialize CoreDNS Template
         try:
-            self.resolv_template = jinja2.Template(
+            self._resolv_template = jinja2.Template(
                 await self.sys_run_in_executor(RESOLV_TMPL.read_text, encoding="utf-8")
             )
         except OSError as err:
@@ -162,7 +176,7 @@ class PluginDns(PluginBase):
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
 
         try:
-            self.hosts_template = jinja2.Template(
+            self._hosts_template = jinja2.Template(
                 await self.sys_run_in_executor(HOSTS_TMPL.read_text, encoding="utf-8")
             )
         except OSError as err:
@@ -428,12 +442,6 @@ class PluginDns(PluginBase):
 
     async def _write_resolv(self, resolv_conf: Path) -> None:
         """Update/Write resolv.conf file."""
-        if not self.resolv_template:
-            _LOGGER.warning(
-                "Resolv template is missing, cannot write/update %s", resolv_conf
-            )
-            return
-
         nameservers = [str(self.sys_docker.network.dns), "127.0.0.11"]
 
         # Read resolv config
