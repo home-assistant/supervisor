@@ -20,7 +20,10 @@ class FixupAddonExecuteRebuild(FixupBase):
 
     async def process_fixup(self, reference: str | None = None) -> None:
         """Rebuild the addon's container."""
-        addon = self.sys_addons.get(reference, local_only=True)
+        if not reference:
+            return
+
+        addon = self.sys_addons.get_local_only(reference)
         if not addon:
             _LOGGER.info(
                 "Cannot rebuild addon %s as it is not installed, dismissing suggestion",

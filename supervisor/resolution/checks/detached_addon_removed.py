@@ -27,9 +27,11 @@ class CheckDetachedAddonRemoved(CheckBase):
 
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
-        return (
-            addon := self.sys_addons.get(reference, local_only=True)
-        ) and addon.is_detached
+        if not reference:
+            return False
+
+        addon = self.sys_addons.get_local_only(reference)
+        return addon is not None and addon.is_detached
 
     @property
     def issue(self) -> IssueType:

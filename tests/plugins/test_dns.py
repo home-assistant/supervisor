@@ -209,7 +209,6 @@ async def test_load_error(
 
         assert "Can't read resolve.tmpl" in caplog.text
         assert "Can't read hosts.tmpl" in caplog.text
-        assert "Resolv template is missing" in caplog.text
         assert coresys.core.healthy is True
 
         caplog.clear()
@@ -218,7 +217,6 @@ async def test_load_error(
 
         assert "Can't read resolve.tmpl" in caplog.text
         assert "Can't read hosts.tmpl" in caplog.text
-        assert "Resolv template is missing" in caplog.text
         assert coresys.core.healthy is False
 
 

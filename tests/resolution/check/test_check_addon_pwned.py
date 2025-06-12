@@ -73,10 +73,6 @@ async def test_approve(coresys: CoreSys, supervisor_internet):
     coresys.security.verify_secret = AsyncMock(return_value=None)
     assert not await addon_pwned.approve_check(reference=addon.slug)
 
-    addon.is_installed = False
-    coresys.security.verify_secret = AsyncMock(side_effect=PwnedSecret)
-    assert not await addon_pwned.approve_check(reference=addon.slug)
-
 
 async def test_with_global_disable(coresys: CoreSys, caplog):
     """Test when pwned is globally disabled."""

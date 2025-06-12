@@ -29,7 +29,7 @@ class EvaluateDNSServer(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.RUNNING]
 
-    async def evaluate(self) -> None:
+    async def evaluate(self) -> bool:
         """Run evaluation."""
         return (
             not self.sys_plugins.dns.fallback

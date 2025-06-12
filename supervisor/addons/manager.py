@@ -67,6 +67,10 @@ class AddonManager(CoreSysAttributes):
             return self.store.get(addon_slug)
         return None
 
+    def get_local_only(self, addon_slug: str) -> Addon | None:
+        """Return an installed add-on from slug."""
+        return self.local.get(addon_slug)
+
     def from_token(self, token: str) -> Addon | None:
         """Return an add-on from Supervisor token."""
         for addon in self.installed:

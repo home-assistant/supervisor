@@ -126,9 +126,7 @@ class APIStore(CoreSysAttributes):
         """Generate addon information."""
 
         installed = (
-            cast(Addon, self.sys_addons.get(addon.slug, local_only=True))
-            if addon.is_installed
-            else None
+            self.sys_addons.get_local_only(addon.slug) if addon.is_installed else None
         )
 
         data = {

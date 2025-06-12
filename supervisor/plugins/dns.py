@@ -190,7 +190,9 @@ class PluginDns(PluginBase):
         await super().load()
 
         # Update supervisor
-        await self._write_resolv(HOST_RESOLV)
+        # Resolv template should always be set but just in case don't fail load
+        if self._resolv_template:
+            await self._write_resolv(HOST_RESOLV)
 
         # Reinitializing aiohttp.ClientSession after DNS setup makes sure that
         # aiodns is using the right DNS servers (see #5857).

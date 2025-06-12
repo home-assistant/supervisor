@@ -5,8 +5,6 @@ from datetime import timedelta
 
 from aiodns.error import DNSError
 
-from supervisor.resolution.checks.dns_server import check_server
-
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...jobs.const import JobCondition, JobExecutionLimit
@@ -14,6 +12,7 @@ from ...jobs.decorator import Job
 from ...utils.sentry import async_capture_exception
 from ..const import DNS_ERROR_NO_DATA, ContextType, IssueType
 from .base import CheckBase
+from .dns_server import check_server
 
 
 def setup(coresys: CoreSys) -> CheckBase:
@@ -40,8 +39,8 @@ class CheckDNSServerIPv6(CheckBase):
         for i in (
             r
             for r in range(len(results))
-            if isinstance(results[r], DNSError)
-            and results[r].args[0] != DNS_ERROR_NO_DATA
+            if isinstance((result := results[r]), DNSError)
+            and result.args[0] != DNS_ERROR_NO_DATA
         ):
             self.sys_resolution.create_issue(
                 IssueType.DNS_SERVER_IPV6_ERROR,
