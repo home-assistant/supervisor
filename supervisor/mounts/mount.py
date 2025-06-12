@@ -171,23 +171,20 @@ class Mount(CoreSysAttributes, ABC):
     async def load(self) -> None:
         """Initialize object."""
         # If there's no mount unit, mount it to make one
-        if not await self._update_unit():
+        if not (unit := await self._update_unit()):
             await self.mount()
             return
 
-        await self._update_state_await(not_state=UnitActiveState.ACTIVATING)
+        await self._update_state_await(unit, not_state=UnitActiveState.ACTIVATING)
 
         # If mount is not available, try to reload it
         if not await self.is_mounted():
             await self.reload()
 
-    async def _update_state(self) -> None:
+    async def _update_state(self, unit: SystemdUnit) -> None:
         """Update mount unit state."""
-        if not self.unit:
-            return
-
         try:
-            self._state = await self.unit.get_active_state()
+            self._state = await unit.get_active_state()
         except DBusError as err:
             await async_capture_exception(err)
             raise MountError(
@@ -208,10 +205,10 @@ class Mount(CoreSysAttributes, ABC):
 
     async def update(self) -> bool:
         """Update info about mount from dbus. Return true if it is mounted and available."""
-        if not await self._update_unit():
+        if not (unit := await self._update_unit()):
             return False
 
-        await self._update_state()
+        await self._update_state(unit)
 
         # If active, dismiss corresponding failed mount issue if found
         if (
@@ -223,16 +220,14 @@ class Mount(CoreSysAttributes, ABC):
 
     async def _update_state_await(
         self,
+        unit: SystemdUnit,
         expected_states: list[UnitActiveState] | None = None,
         not_state: UnitActiveState = UnitActiveState.ACTIVATING,
     ) -> None:
         """Update state info about mount from dbus. Wait for one of expected_states to appear or state to change from not_state."""
-        if not self.unit:
-            return
-
         try:
-            async with asyncio.timeout(30), self.unit.properties_changed() as signal:
-                await self._update_state()
+            async with asyncio.timeout(30), unit.properties_changed() as signal:
+                await self._update_state(unit)
                 while (
                     expected_states
                     and self.state not in expected_states
@@ -300,8 +295,8 @@ class Mount(CoreSysAttributes, ABC):
                 f"Could not mount {self.name} due to: {err!s}", _LOGGER.error
             ) from err
 
-        if await self._update_unit():
-            await self._update_state_await(not_state=UnitActiveState.ACTIVATING)
+        if unit := await self._update_unit():
+            await self._update_state_await(unit, not_state=UnitActiveState.ACTIVATING)
 
         if not await self.is_mounted():
             raise MountActivationError(
@@ -311,17 +306,17 @@ class Mount(CoreSysAttributes, ABC):
 
     async def unmount(self) -> None:
         """Unmount using systemd."""
-        if not await self._update_unit():
+        if not (unit := await self._update_unit()):
             _LOGGER.info("Mount %s is not mounted, skipping unmount", self.name)
             return
 
-        await self._update_state()
+        await self._update_state(unit)
         try:
             if self.state != UnitActiveState.FAILED:
                 await self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL)
 
             await self._update_state_await(
-                [UnitActiveState.INACTIVE, UnitActiveState.FAILED]
+                unit, [UnitActiveState.INACTIVE, UnitActiveState.FAILED]
             )
 
             if self.state == UnitActiveState.FAILED:
@@ -348,8 +343,10 @@ class Mount(CoreSysAttributes, ABC):
                 f"Could not reload mount {self.name} due to: {err!s}", _LOGGER.error
             ) from err
         else:
-            if await self._update_unit():
-                await self._update_state_await(not_state=UnitActiveState.ACTIVATING)
+            if unit := await self._update_unit():
+                await self._update_state_await(
+                    unit, not_state=UnitActiveState.ACTIVATING
+                )
 
             if not await self.is_mounted():
                 raise MountActivationError(

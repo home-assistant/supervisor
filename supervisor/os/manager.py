@@ -1,6 +1,5 @@
 """OS support on supervisor."""
 
-from ctypes import c_uint32, c_uint64
 from dataclasses import dataclass
 from datetime import datetime
 import errno
@@ -81,42 +80,6 @@ class SlotStatus:
             bootname=data.get("bootname"),
             parent=data.get("parent"),
         )
-
-    def to_dict(self) -> SlotStatusDataType:
-        """Get dictionary representation."""
-        out: SlotStatusDataType = {
-            "class": self.class_,
-            "type": self.type_,
-            "state": self.state,
-            "device": self.device.as_posix(),
-        }
-
-        if self.bundle_compatible is not None:
-            out["bundle.compatible"] = self.bundle_compatible
-        if self.sha256 is not None:
-            out["sha256"] = self.sha256
-        if self.size is not None:
-            out["size"] = cast(c_uint64, self.size)
-        if self.installed_count is not None:
-            out["installed.count"] = cast(c_uint32, self.installed_count)
-        if self.bundle_version is not None:
-            out["bundle.version"] = str(self.bundle_version)
-        if self.installed_timestamp is not None:
-            out["installed.timestamp"] = str(self.installed_timestamp)
-        if self.status is not None:
-            out["status"] = self.status
-        if self.activated_count is not None:
-            out["activated.count"] = cast(c_uint32, self.activated_count)
-        if self.activated_timestamp:
-            out["activated.timestamp"] = str(self.activated_timestamp)
-        if self.boot_status:
-            out["boot-status"] = self.boot_status
-        if self.bootname is not None:
-            out["bootname"] = self.bootname
-        if self.parent is not None:
-            out["parent"] = self.parent
-
-        return out
 
 
 class OSManager(CoreSysAttributes):
