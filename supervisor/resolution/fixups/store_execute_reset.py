@@ -34,6 +34,9 @@ class FixupStoreExecuteReset(FixupBase):
     )
     async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
+        if not reference:
+            return
+
         _LOGGER.info("Reset corrupt Store: %s", reference)
         try:
             repository = self.sys_store.get(reference)
@@ -41,9 +44,11 @@ class FixupStoreExecuteReset(FixupBase):
             _LOGGER.warning("Can't find store %s for fixup", reference)
             return
 
-        await self.sys_run_in_executor(
-            partial(remove_folder, folder=repository.git.path, content_only=True)
-        )
+        # Local add-ons are not a git repo, can't remove and re-pull
+        if repository.git:
+            await self.sys_run_in_executor(
+                partial(remove_folder, folder=repository.git.path, content_only=True)
+            )
 
         # Load data again
         try:

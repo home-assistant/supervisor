@@ -29,6 +29,6 @@ class EvaluateDbus(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 
-    async def evaluate(self) -> None:
+    async def evaluate(self) -> bool:
         """Run evaluation."""
-        return not SOCKET_DBUS.exists()
+        return not await self.sys_run_in_executor(SOCKET_DBUS.exists)

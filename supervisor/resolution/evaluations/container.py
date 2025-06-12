@@ -38,7 +38,7 @@ class EvaluateContainer(EvaluateBase):
         """Initialize the evaluation class."""
         super().__init__(coresys)
         self.coresys = coresys
-        self._images = set()
+        self._images: set[str] = set()
 
     @property
     def reason(self) -> UnsupportedReason:
@@ -61,8 +61,8 @@ class EvaluateContainer(EvaluateBase):
         return {
             self.sys_homeassistant.image,
             self.sys_supervisor.image,
-            *(plugin.image for plugin in self.sys_plugins.all_plugins),
-            *(addon.image for addon in self.sys_addons.installed),
+            *(plugin.image for plugin in self.sys_plugins.all_plugins if plugin.image),
+            *(addon.image for addon in self.sys_addons.installed if addon.image),
         }
 
     async def evaluate(self) -> bool:

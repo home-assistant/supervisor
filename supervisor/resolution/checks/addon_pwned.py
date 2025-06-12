@@ -67,10 +67,11 @@ class CheckAddonPwned(CheckBase):
     @Job(name="check_addon_pwned_approve", conditions=[JobCondition.INTERNET_SYSTEM])
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
-        addon = self.sys_addons.get(reference)
+        if not reference:
+            return False
 
         # Uninstalled
-        if not addon or not addon.is_installed:
+        if not (addon := self.sys_addons.get_local_only(reference)):
             return False
 
         # Not in use anymore

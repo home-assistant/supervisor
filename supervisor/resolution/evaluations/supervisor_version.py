@@ -29,6 +29,6 @@ class EvaluateSupervisorVersion(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.RUNNING, CoreState.STARTUP]
 
-    async def evaluate(self) -> None:
+    async def evaluate(self) -> bool:
         """Run evaluation."""
         return not self.sys_updater.auto_update and self.sys_supervisor.need_update

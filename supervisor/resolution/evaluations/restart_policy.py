@@ -21,7 +21,7 @@ class EvaluateRestartPolicy(EvaluateBase):
         """Initialize the evaluation class."""
         super().__init__(coresys)
         self.coresys = coresys
-        self._containers: list[str] = []
+        self._containers: set[str] = set()
 
     @property
     def reason(self) -> UnsupportedReason:

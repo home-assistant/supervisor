@@ -5,6 +5,7 @@ Code: https://github.com/home-assistant/plugin-observer
 
 import logging
 import secrets
+from typing import cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion
@@ -60,7 +61,7 @@ class PluginObserver(PluginBase):
     @property
     def supervisor_token(self) -> str:
         """Return an access token for the Observer API."""
-        return self._data.get(ATTR_ACCESS_TOKEN)
+        return cast(str, self._data[ATTR_ACCESS_TOKEN])
 
     @Job(
         name="plugin_observer_update",
@@ -89,6 +90,10 @@ class PluginObserver(PluginBase):
         except DockerError as err:
             _LOGGER.error("Can't start observer plugin")
             raise ObserverError() from err
+
+    async def stop(self) -> None:
+        """Raise. Supervisor should not stop observer."""
+        raise RuntimeError("Stopping observer without a restart is not supported!")
 
     async def stats(self) -> DockerStats:
         """Return stats of observer."""
