@@ -8,7 +8,7 @@ from dbus_fast.aio.message_bus import MessageBus
 
 from ..const import SOCKET_DBUS
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DBusFatalError
+from ..exceptions import DBusFatalError, DBusNotConnectedError
 from .agent import OSAgent
 from .hostname import Hostname
 from .interface import DBusInterface
@@ -90,6 +90,13 @@ class DBusManager(CoreSysAttributes):
     def bus(self) -> MessageBus | None:
         """Return the message bus."""
         return self._bus
+
+    @property
+    def connected_bus(self) -> MessageBus:
+        """Return the message bus. Raise if not connected."""
+        if not self.bus:
+            raise DBusNotConnectedError()
+        return self.bus
 
     @property
     def all(self) -> list[DBusInterface]:

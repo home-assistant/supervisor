@@ -1,11 +1,12 @@
 """OS support on supervisor."""
 
-from collections.abc import Awaitable
+from ctypes import c_uint32, c_uint64
 from dataclasses import dataclass
 from datetime import datetime
 import errno
 import logging
 from pathlib import Path, PurePath
+from typing import cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
@@ -61,8 +62,8 @@ class SlotStatus:
             device=PurePath(data["device"]),
             bundle_compatible=data.get("bundle.compatible"),
             sha256=data.get("sha256"),
-            size=data.get("size"),
-            installed_count=data.get("installed.count"),
+            size=cast(int | None, data.get("size")),
+            installed_count=cast(int | None, data.get("installed.count")),
             bundle_version=AwesomeVersion(data["bundle.version"])
             if "bundle.version" in data
             else None,
@@ -70,11 +71,13 @@ class SlotStatus:
             if "installed.timestamp" in data
             else None,
             status=data.get("status"),
-            activated_count=data.get("activated.count"),
+            activated_count=cast(int | None, data.get("activated.count")),
             activated_timestamp=datetime.fromisoformat(data["activated.timestamp"])
             if "activated.timestamp" in data
             else None,
-            boot_status=data.get("boot-status"),
+            boot_status=RaucState(data["boot-status"])
+            if "boot-status" in data
+            else None,
             bootname=data.get("bootname"),
             parent=data.get("parent"),
         )
@@ -93,9 +96,9 @@ class SlotStatus:
         if self.sha256 is not None:
             out["sha256"] = self.sha256
         if self.size is not None:
-            out["size"] = self.size
+            out["size"] = cast(c_uint64, self.size)
         if self.installed_count is not None:
-            out["installed.count"] = self.installed_count
+            out["installed.count"] = cast(c_uint32, self.installed_count)
         if self.bundle_version is not None:
             out["bundle.version"] = str(self.bundle_version)
         if self.installed_timestamp is not None:
@@ -103,7 +106,7 @@ class SlotStatus:
         if self.status is not None:
             out["status"] = self.status
         if self.activated_count is not None:
-            out["activated.count"] = self.activated_count
+            out["activated.count"] = cast(c_uint32, self.activated_count)
         if self.activated_timestamp:
             out["activated.timestamp"] = str(self.activated_timestamp)
         if self.boot_status:
@@ -148,7 +151,11 @@ class OSManager(CoreSysAttributes):
     def need_update(self) -> bool:
         """Return true if a HassOS update is available."""
         try:
-            return self.version < self.latest_version
+            return (
+                self.version is not None
+                and self.latest_version is not None
+                and self.version < self.latest_version
+            )
         except (AwesomeVersionException, TypeError):
             return False
 
@@ -176,6 +183,9 @@ class OSManager(CoreSysAttributes):
 
     def get_slot_name(self, boot_name: str) -> str:
         """Get slot name from boot name."""
+        if not self._slots:
+            raise HassOSSlotNotFound()
+
         for name, status in self._slots.items():
             if status.bootname == boot_name:
                 return name
@@ -288,11 +298,8 @@ class OSManager(CoreSysAttributes):
         conditions=[JobCondition.HAOS],
         on_condition=HassOSJobError,
     )
-    async def config_sync(self) -> Awaitable[None]:
-        """Trigger a host config reload from usb.
-
-        Return a coroutine.
-        """
+    async def config_sync(self) -> None:
+        """Trigger a host config reload from usb."""
         _LOGGER.info(
             "Synchronizing configuration from USB with Home Assistant Operating System."
         )
@@ -314,6 +321,10 @@ class OSManager(CoreSysAttributes):
         version = version or self.latest_version
 
         # Check installed version
+        if not version:
+            raise HassOSUpdateError(
+                "No version information available, cannot update", _LOGGER.error
+            )
         if version == self.version:
             raise HassOSUpdateError(
                 f"Version {version!s} is already installed", _LOGGER.warning
