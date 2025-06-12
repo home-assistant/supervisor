@@ -63,7 +63,11 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     def need_update(self) -> bool:
         """Return True if an update is available."""
         try:
-            return self.version < self.latest_version
+            return (
+                self.version is not None
+                and self.latest_version is not None
+                and self.version < self.latest_version
+            )
         except (AwesomeVersionException, TypeError):
             return False
 
@@ -152,6 +156,10 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     @abstractmethod
     async def start(self) -> None:
         """Start system plugin."""
+
+    @abstractmethod
+    async def stop(self) -> None:
+        """Stop system plugin."""
 
     async def load(self) -> None:
         """Load system plugin."""
