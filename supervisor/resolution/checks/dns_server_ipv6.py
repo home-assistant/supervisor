@@ -3,15 +3,16 @@
 import asyncio
 from datetime import timedelta
 
-from aiodns import DNSResolver
 from aiodns.error import DNSError
+
+from supervisor.resolution.checks.dns_server import check_server
 
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...jobs.const import JobCondition, JobExecutionLimit
 from ...jobs.decorator import Job
 from ...utils.sentry import async_capture_exception
-from ..const import DNS_CHECK_HOST, DNS_ERROR_NO_DATA, ContextType, IssueType
+from ..const import DNS_ERROR_NO_DATA, ContextType, IssueType
 from .base import CheckBase
 
 
@@ -33,7 +34,7 @@ class CheckDNSServerIPv6(CheckBase):
         """Run check if not affected by issue."""
         dns_servers = self.dns_servers
         results = await asyncio.gather(
-            *[self._check_server(server) for server in dns_servers],
+            *[check_server(self.sys_loop, server, "AAAA") for server in dns_servers],
             return_exceptions=True,
         )
         for i in (
@@ -58,18 +59,12 @@ class CheckDNSServerIPv6(CheckBase):
             return False
 
         try:
-            await self._check_server(reference)
+            await check_server(self.sys_loop, reference, "AAAA")
         except DNSError as dns_error:
             if dns_error.args[0] != DNS_ERROR_NO_DATA:
                 return True
 
         return False
-
-    async def _check_server(self, server: str):
-        """Check a DNS server and report issues."""
-        ip_addr = server[6:] if server.startswith("dns://") else server
-        resolver = DNSResolver(nameservers=[ip_addr])
-        await resolver.query(DNS_CHECK_HOST, "AAAA")
 
     @property
     def dns_servers(self) -> list[str]:
