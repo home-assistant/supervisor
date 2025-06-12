@@ -10,6 +10,7 @@ from dbus_fast.aio.message_bus import MessageBus
 from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
 from ..utils.dt import get_time_zone, utc_from_timestamp
 from .const import (
+    DBUS_ATTR_LOCAL_RTC,
     DBUS_ATTR_NTP,
     DBUS_ATTR_NTPSYNCHRONIZED,
     DBUS_ATTR_TIMEUSEC,
@@ -45,6 +46,12 @@ class TimeDate(DBusInterfaceProxy):
     def timezone(self) -> str:
         """Return host timezone."""
         return self.properties[DBUS_ATTR_TIMEZONE]
+
+    @property
+    @dbus_property
+    def local_rtc(self) -> bool:
+        """Return whether rtc is local time or utc."""
+        return self.properties[DBUS_ATTR_LOCAL_RTC]
 
     @property
     @dbus_property
