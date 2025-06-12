@@ -56,7 +56,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
     async def load_config(self) -> Self:
         """Load config in executor."""
         await super().load_config()
-        self._mounts: dict[str, Mount] = {
+        self._mounts = {
             mount[ATTR_NAME]: Mount.from_dict(self.coresys, mount)
             for mount in self._data[ATTR_MOUNTS]
         }
@@ -172,12 +172,12 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         errors = await asyncio.gather(*mount_tasks, return_exceptions=True)
 
         for i in range(len(errors)):  # pylint: disable=consider-using-enumerate
-            if not errors[i]:
+            if not (err := errors[i]):
                 continue
             if mounts[i].failed_issue in self.sys_resolution.issues:
                 continue
-            if not isinstance(errors[i], MountError):
-                await async_capture_exception(errors[i])
+            if not isinstance(err, MountError):
+                await async_capture_exception(err)
 
             self.sys_resolution.add_issue(
                 evolve(mounts[i].failed_issue),
@@ -219,7 +219,7 @@ class MountManager(FileConfiguration, CoreSysAttributes):
         conditions=[JobCondition.MOUNT_AVAILABLE],
         on_condition=MountJobError,
     )
-    async def remove_mount(self, name: str, *, retain_entry: bool = False) -> None:
+    async def remove_mount(self, name: str, *, retain_entry: bool = False) -> Mount:
         """Remove a mount."""
         # Add mount name to job
         self.sys_jobs.current.reference = name

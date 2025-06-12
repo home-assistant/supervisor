@@ -103,7 +103,7 @@ class MountData(TypedDict):
     name: str
     type: str
     read_only: bool
-    usage: NotRequired[str]
+    usage: str | None
 
     # CIFS and NFS fields
     server: NotRequired[str]
@@ -113,6 +113,7 @@ class MountData(TypedDict):
     share: NotRequired[str]
     username: NotRequired[str]
     password: NotRequired[str]
+    version: NotRequired[str | None]
 
     # NFS and Bind fields
     path: NotRequired[str]
