@@ -55,6 +55,15 @@ async def api_token_validation(aiohttp_client, coresys: CoreSys) -> TestClient:
     yield await aiohttp_client(api.webapp)
 
 
+@pytest.fixture(name="plugin_tokens")
+async def fixture_plugin_tokens(coresys: CoreSys) -> None:
+    """Mock plugin tokens used in middleware."""
+    # pylint: disable=protected-access
+    coresys.plugins.cli._data["access_token"] = "c_123456"
+    coresys.plugins.observer._data["access_token"] = "o_123456"
+    # pylint: enable=protected-access
+
+
 @pytest.mark.asyncio
 async def test_api_security_system_initialize(api_system: TestClient, coresys: CoreSys):
     """Test security."""
@@ -185,6 +194,7 @@ async def test_bad_requests(
         ("post", "/addons/abc123/sys_options", set()),
     ],
 )
+@pytest.mark.usefixtures("plugin_tokens")
 async def test_token_validation(
     api_token_validation: TestClient,
     install_addon_example: Addon,
@@ -210,6 +220,7 @@ async def test_token_validation(
         assert resp.status == 403
 
 
+@pytest.mark.usefixtures("plugin_tokens")
 async def test_home_assistant_paths(api_token_validation: TestClient, coresys: CoreSys):
     """Test Home Assistant only paths."""
     coresys.homeassistant.supervisor_token = "abc123"

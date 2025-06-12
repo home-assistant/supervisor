@@ -1,7 +1,7 @@
 """Init file for Supervisor network RESTful API."""
 
 import logging
-from typing import Any, cast
+from typing import Any
 
 from aiohttp import web
 import voluptuous as vol
@@ -56,8 +56,8 @@ class APIDiscovery(CoreSysAttributes):
             }
             for message in self.sys_discovery.list_messages
             if (
-                discovered := cast(
-                    Addon, self.sys_addons.get(message.addon, local_only=True)
+                discovered := self.sys_addons.get_local_only(
+                    message.addon,
                 )
             )
             and discovered.state == AddonState.STARTED

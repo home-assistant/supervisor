@@ -33,7 +33,7 @@ class EvaluateAppArmor(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 
-    async def evaluate(self) -> None:
+    async def evaluate(self) -> bool:
         """Run evaluation."""
         try:
             apparmor = await self.sys_run_in_executor(

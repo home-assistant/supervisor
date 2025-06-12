@@ -22,9 +22,7 @@ class FixupBase(ABC, CoreSysAttributes):
         """Execute the evaluation."""
         if not fixing_suggestion:
             # Get suggestion to fix
-            fixing_suggestion: Suggestion | None = next(
-                iter(self.all_suggestions), None
-            )
+            fixing_suggestion = next(iter(self.all_suggestions), None)
 
         # No suggestion
         if fixing_suggestion is None:

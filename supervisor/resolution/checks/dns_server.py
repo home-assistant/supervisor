@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import timedelta
+from typing import Literal
 
 from aiodns import DNSResolver
 from aiodns.error import DNSError
@@ -16,7 +17,7 @@ from .base import CheckBase
 
 
 async def check_server(
-    loop: asyncio.AbstractEventLoop, server: str, qtype: str
+    loop: asyncio.AbstractEventLoop, server: str, qtype: Literal["A"] | Literal["AAAA"]
 ) -> None:
     """Check a DNS server and report issues."""
     ip_addr = server[6:] if server.startswith("dns://") else server

@@ -20,7 +20,10 @@ class FixupAddonDisableBoot(FixupBase):
 
     async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
-        if not (addon := self.sys_addons.get(reference, local_only=True)):
+        if not reference:
+            return
+
+        if not (addon := self.sys_addons.get_local_only(reference)):
             _LOGGER.info("Cannot change addon %s as it does not exist", reference)
             return
 

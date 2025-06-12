@@ -20,6 +20,9 @@ class FixupStoreExecuteRemove(FixupBase):
 
     async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
+        if not reference:
+            return
+
         _LOGGER.info("Remove invalid Store: %s", reference)
         try:
             repository = self.sys_store.get(reference)
