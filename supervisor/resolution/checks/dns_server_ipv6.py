@@ -36,18 +36,18 @@ class CheckDNSServerIPv6(CheckBase):
             *[check_server(self.sys_loop, server, "AAAA") for server in dns_servers],
             return_exceptions=True,
         )
-        for i in (
-            r
-            for r in range(len(results))
-            if isinstance((result := results[r]), DNSError)
-            and result.args[0] != DNS_ERROR_NO_DATA
-        ):
-            self.sys_resolution.create_issue(
-                IssueType.DNS_SERVER_IPV6_ERROR,
-                ContextType.DNS_SERVER,
-                reference=dns_servers[i],
-            )
-            await async_capture_exception(results[i])
+        # pylint: disable-next=consider-using-enumerate
+        for i in range(len(results)):
+            if (
+                isinstance(result := results[i], DNSError)
+                and result.args[0] != DNS_ERROR_NO_DATA
+            ):
+                self.sys_resolution.create_issue(
+                    IssueType.DNS_SERVER_IPV6_ERROR,
+                    ContextType.DNS_SERVER,
+                    reference=dns_servers[i],
+                )
+                await async_capture_exception(result)
 
     @Job(
         name="check_dns_server_ipv6_approve", conditions=[JobCondition.INTERNET_SYSTEM]
