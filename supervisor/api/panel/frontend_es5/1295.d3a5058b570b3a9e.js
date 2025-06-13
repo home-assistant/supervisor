@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkhome_assistant_frontend=self.webpackChunkhome_assistant_frontend||[]).push([["1295"],{21393:function(s,n,e){e.r(n)}}]);
