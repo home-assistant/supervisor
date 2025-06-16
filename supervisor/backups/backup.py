@@ -18,8 +18,6 @@ import time
 from typing import Any, Self, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
@@ -62,7 +60,7 @@ from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
 from ..utils.sentinel import DEFAULT
 from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
-from .utils import key_to_iv, password_to_key
+from .utils import password_to_key
 from .validate import SCHEMA_BACKUP
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -102,7 +100,6 @@ class Backup(JobGroup):
         self._tmp: TemporaryDirectory | None = None
         self._outer_secure_tarfile: SecureTarFile | None = None
         self._key: bytes | None = None
-        self._aes: Cipher | None = None
         self._locations: dict[str | None, BackupLocation] = {
             location: BackupLocation(
                 path=tar_file,
@@ -348,16 +345,10 @@ class Backup(JobGroup):
             self._init_password(password)
         else:
             self._key = None
-            self._aes = None
 
     def _init_password(self, password: str) -> None:
-        """Set password + init aes cipher."""
+        """Create key from password."""
         self._key = password_to_key(password)
-        self._aes = Cipher(
-            algorithms.AES(self._key),
-            modes.CBC(key_to_iv(self._key)),
-            backend=default_backend(),
-        )
 
     async def validate_backup(self, location: str | None) -> None:
         """Validate backup.
