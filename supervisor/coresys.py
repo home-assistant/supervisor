@@ -673,7 +673,7 @@ class CoreSysAttributes:
 
     @property
     def sys_machine_id(self) -> str | None:
-        """Return machine id."""
+        """Return machine ID."""
         return self.coresys.machine_id
 
     @property
