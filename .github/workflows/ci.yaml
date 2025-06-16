@@ -301,7 +301,7 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.8.2
         with:
-          cosign-release: "v2.4.0"
+          cosign-release: "v2.4.3"
       - name: Restore Python virtual environment
         id: cache-venv
         uses: actions/cache@v4.2.3
