@@ -31,7 +31,9 @@ class GitRepo(CoreSysAttributes):
         self.path: Path = path
         self.lock: asyncio.Lock = asyncio.Lock()
 
-        self.data: dict[str, str] = RE_REPOSITORY.match(url).groupdict()
+        if not (repository := RE_REPOSITORY.match(url)):
+            raise ValueError(f"Invalid url provided for repository GitRepo: {url}")
+        self.data: dict[str, str] = repository.groupdict()
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -102,7 +104,10 @@ class GitRepo(CoreSysAttributes):
                 )
                 self.repo = await self.sys_run_in_executor(
                     ft.partial(
-                        git.Repo.clone_from, self.url, str(self.path), **git_args
+                        git.Repo.clone_from,
+                        self.url,
+                        str(self.path),
+                        **git_args,  # type: ignore
                     )
                 )
 
@@ -124,10 +129,10 @@ class GitRepo(CoreSysAttributes):
         """Pull Git add-on repo."""
         if self.lock.locked():
             _LOGGER.warning("There is already a task in progress")
-            return
+            return False
         if self.repo is None:
             _LOGGER.warning("No valid repository for %s", self.url)
-            return
+            return False
 
         async with self.lock:
             _LOGGER.info("Update add-on %s repository from %s", self.path, self.url)
@@ -146,7 +151,7 @@ class GitRepo(CoreSysAttributes):
                 await self.sys_run_in_executor(
                     ft.partial(
                         self.repo.remotes.origin.fetch,
-                        **{"update-shallow": True, "depth": 1},
+                        **{"update-shallow": True, "depth": 1},  # type: ignore
                     )
                 )
 

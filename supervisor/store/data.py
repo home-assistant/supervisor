@@ -47,7 +47,7 @@ def _read_addon_translations(addon_path: Path) -> dict:
     Should be run in the executor.
     """
     translations_dir = addon_path / "translations"
-    translations = {}
+    translations: dict[str, Any] = {}
 
     if not translations_dir.exists():
         return translations
@@ -144,7 +144,7 @@ class StoreData(CoreSysAttributes):
         self.addons = addons
 
     async def _find_addon_configs(
-        self, path: Path, repository: dict
+        self, path: Path, repository: str
     ) -> list[Path] | None:
         """Find add-ons in the path."""
 
