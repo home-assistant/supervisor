@@ -29,11 +29,11 @@ class EvaluateVirtualizationImage(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.SETUP]
 
-    async def evaluate(self):
+    async def evaluate(self) -> bool:
         """Run evaluation."""
         if not self.sys_os.available:
             return False
-        return self.sys_host.info.virtualization and self.sys_os.board not in {
+        return bool(self.sys_host.info.virtualization) and self.sys_os.board not in {
             "ova",
             "generic-aarch64",
         }

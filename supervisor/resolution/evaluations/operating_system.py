@@ -31,7 +31,7 @@ class EvaluateOperatingSystem(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.SETUP]
 
-    async def evaluate(self):
+    async def evaluate(self) -> bool:
         """Run evaluation."""
         if self.sys_os.available:
             return False

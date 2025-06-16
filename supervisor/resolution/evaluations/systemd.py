@@ -30,7 +30,7 @@ class EvaluateSystemd(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.SETUP]
 
-    async def evaluate(self):
+    async def evaluate(self) -> bool:
         """Run evaluation."""
         return any(
             feature not in self.sys_host.features
