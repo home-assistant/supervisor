@@ -6,6 +6,14 @@ from ...host.const import HostFeature
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 
+FEATURES_REQUIRED: tuple[HostFeature, ...] = (
+    HostFeature.HOSTNAME,
+    HostFeature.SERVICES,
+    HostFeature.SHUTDOWN,
+    HostFeature.REBOOT,
+    HostFeature.TIMEDATE,
+)
+
 
 def setup(coresys: CoreSys) -> EvaluateBase:
     """Initialize evaluation-setup function."""
@@ -33,12 +41,5 @@ class EvaluateSystemd(EvaluateBase):
     async def evaluate(self) -> bool:
         """Run evaluation."""
         return any(
-            feature not in self.sys_host.features
-            for feature in (
-                HostFeature.HOSTNAME,
-                HostFeature.SERVICES,
-                HostFeature.SHUTDOWN,
-                HostFeature.REBOOT,
-                HostFeature.TIMEDATE,
-            )
+            feature not in self.sys_host.features for feature in FEATURES_REQUIRED
         )

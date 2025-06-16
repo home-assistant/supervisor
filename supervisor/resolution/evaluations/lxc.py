@@ -35,7 +35,7 @@ class EvaluateLxc(EvaluateBase):
     async def evaluate(self) -> bool:
         """Run evaluation."""
 
-        def check_lxc():
+        def check_lxc() -> bool:
             with suppress(OSError):
                 if "container=lxc" in Path("/proc/1/environ").read_text(
                     encoding="utf-8"
