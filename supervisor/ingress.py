@@ -35,7 +35,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         """Return addon they have this ingress token."""
         if token not in self.tokens:
             return None
-        return self.sys_addons.get(self.tokens[token], local_only=True)
+        return self.sys_addons.get_local_only(self.tokens[token])
 
     def get_session_data(self, session_id: str) -> IngressSessionData | None:
         """Return complementary data of current session or None."""

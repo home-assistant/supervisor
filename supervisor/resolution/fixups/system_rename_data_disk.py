@@ -23,6 +23,9 @@ class FixupSystemRenameDataDisk(FixupBase):
 
     async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
+        if not reference:
+            return
+
         resolved = await self.sys_dbus.udisks2.resolve_device(
             DeviceSpecification(path=Path(reference))
         )

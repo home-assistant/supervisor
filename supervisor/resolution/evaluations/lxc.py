@@ -32,10 +32,10 @@ class EvaluateLxc(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 
-    async def evaluate(self):
+    async def evaluate(self) -> bool:
         """Run evaluation."""
 
-        def check_lxc():
+        def check_lxc() -> bool:
             with suppress(OSError):
                 if "container=lxc" in Path("/proc/1/environ").read_text(
                     encoding="utf-8"

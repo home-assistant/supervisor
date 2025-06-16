@@ -35,6 +35,9 @@ class CheckDisabledDataDisk(CheckBase):
 
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
+        if not reference:
+            return False
+
         resolved = await self.sys_dbus.udisks2.resolve_device(
             DeviceSpecification(path=Path(reference))
         )
@@ -43,7 +46,7 @@ class CheckDisabledDataDisk(CheckBase):
     def _is_disabled_data_disk(self, block_device: UDisks2Block) -> bool:
         """Return true if filesystem block device has name indicating it was disabled by OS."""
         return (
-            block_device.filesystem
+            block_device.filesystem is not None
             and block_device.id_label == FILESYSTEM_LABEL_DISABLED_DATA_DISK
         )
 

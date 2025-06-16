@@ -257,7 +257,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             if not self.issues_for_suggestion(suggestion):
                 self.dismiss_suggestion(suggestion)
 
-    def dismiss_unsupported(self, reason: Issue) -> None:
+    def dismiss_unsupported(self, reason: UnsupportedReason) -> None:
         """Dismiss a reason for unsupported."""
         if reason not in self._unsupported:
             raise ResolutionError(f"The reason {reason} is not active", _LOGGER.warning)

@@ -29,6 +29,6 @@ class EvaluatePrivileged(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         return [CoreState.INITIALIZE]
 
-    async def evaluate(self):
+    async def evaluate(self) -> bool:
         """Run evaluation."""
         return not self.sys_supervisor.instance.privileged

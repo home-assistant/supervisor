@@ -32,6 +32,9 @@ class FixupStoreExecuteReload(FixupBase):
     )
     async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""
+        if not reference:
+            return
+
         _LOGGER.info("Reload Store: %s", reference)
         try:
             repository = self.sys_store.get(reference)
