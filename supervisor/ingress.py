@@ -12,6 +12,7 @@ from .const import (
     ATTR_SESSION_DATA,
     FILE_HASSIO_INGRESS,
     IngressSessionData,
+    IngressSessionDataDict,
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .utils import check_port
@@ -49,7 +50,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         return self._data[ATTR_SESSION]
 
     @property
-    def sessions_data(self) -> dict[str, dict[str, str | None]]:
+    def sessions_data(self) -> dict[str, IngressSessionDataDict]:
         """Return sessions_data."""
         return self._data[ATTR_SESSION_DATA]
 
@@ -89,7 +90,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         now = utcnow()
 
         sessions = {}
-        sessions_data: dict[str, dict[str, str | None]] = {}
+        sessions_data: dict[str, IngressSessionDataDict] = {}
         for session, valid in self.sessions.items():
             # check if timestamp valid, to avoid crash on malformed timestamp
             try:
@@ -118,7 +119,8 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
         # Read all ingress token and build a map
         for addon in self.addons:
-            self.tokens[addon.ingress_token] = addon.slug
+            if addon.ingress_token:
+                self.tokens[addon.ingress_token] = addon.slug
 
     def create_session(self, data: IngressSessionData | None = None) -> str:
         """Create new session."""
@@ -141,7 +143,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         try:
             valid_until = utc_from_timestamp(self.sessions[session])
         except OverflowError:
-            self.sessions[session] = utcnow() + timedelta(minutes=15)
+            self.sessions[session] = (utcnow() + timedelta(minutes=15)).timestamp()
             return True
 
         # Is still valid?

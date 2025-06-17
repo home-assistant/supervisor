@@ -285,7 +285,7 @@ def check_environment() -> None:
         _LOGGER.critical("Can't find Docker socket!")
 
 
-def register_signal_handlers(loop: asyncio.BaseEventLoop, coresys: CoreSys) -> None:
+def register_signal_handlers(loop: asyncio.AbstractEventLoop, coresys: CoreSys) -> None:
     """Register SIGTERM, SIGHUP and SIGKILL to stop the Supervisor."""
     try:
         loop.add_signal_handler(

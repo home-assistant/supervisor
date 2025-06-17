@@ -40,7 +40,7 @@ class CpuArch(CoreSysAttributes):
     @property
     def supervisor(self) -> str:
         """Return supervisor arch."""
-        return self.sys_supervisor.arch
+        return self.sys_supervisor.arch or self._default_arch
 
     @property
     def supported(self) -> list[str]:
@@ -91,4 +91,4 @@ class CpuArch(CoreSysAttributes):
         for check, value in MAP_CPU.items():
             if cpu.startswith(check):
                 return value
-        return self.sys_supervisor.arch
+        return self.supervisor

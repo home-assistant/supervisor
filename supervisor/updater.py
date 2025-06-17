@@ -27,7 +27,7 @@ from .const import (
     BusEvent,
     UpdateChannel,
 )
-from .coresys import CoreSysAttributes
+from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     CodeNotaryError,
     CodeNotaryUntrusted,
@@ -45,7 +45,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class Updater(FileConfiguration, CoreSysAttributes):
     """Fetch last versions from version.json."""
 
-    def __init__(self, coresys):
+    def __init__(self, coresys: CoreSys) -> None:
         """Initialize updater."""
         super().__init__(FILE_HASSIO_UPDATER, SCHEMA_UPDATER_CONFIG)
         self.coresys = coresys

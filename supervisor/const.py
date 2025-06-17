@@ -5,7 +5,7 @@ from enum import StrEnum
 from ipaddress import IPv4Network, IPv6Network
 from pathlib import Path
 from sys import version_info as systemversion
-from typing import Self
+from typing import NotRequired, Self, TypedDict
 
 from aiohttp import __version__ as aiohttpversion
 
@@ -415,10 +415,12 @@ class AddonBoot(StrEnum):
     MANUAL = "manual"
 
     @classmethod
-    def _missing_(cls, value: str) -> Self | None:
+    def _missing_(cls, value: object) -> Self | None:
         """Convert 'forced' config values to their counterpart."""
         if value == AddonBootConfig.MANUAL_ONLY:
-            return AddonBoot.MANUAL
+            for member in cls:
+                if member == AddonBoot.MANUAL:
+                    return member
         return None
 
 
@@ -515,6 +517,14 @@ class CpuArch(StrEnum):
     AMD64 = "amd64"
 
 
+class IngressSessionDataUserDict(TypedDict):
+    """Response object for ingress session user."""
+
+    id: str
+    name: NotRequired[str | None]
+    username: NotRequired[str | None]
+
+
 @dataclass
 class IngressSessionDataUser:
     """Format of an IngressSessionDataUser object."""
@@ -523,22 +533,26 @@ class IngressSessionDataUser:
     display_name: str | None = None
     username: str | None = None
 
-    def to_dict(self) -> dict[str, str | None]:
+    def to_dict(self) -> IngressSessionDataUserDict:
         """Get dictionary representation."""
-        return {
-            ATTR_ID: self.id,
-            ATTR_DISPLAYNAME: self.display_name,
-            ATTR_USERNAME: self.username,
-        }
+        return IngressSessionDataUserDict(
+            id=self.id, name=self.display_name, username=self.username
+        )
 
     @classmethod
-    def from_dict(cls, data: dict[str, str | None]) -> Self:
+    def from_dict(cls, data: IngressSessionDataUserDict) -> Self:
         """Return object from dictionary representation."""
         return cls(
-            id=data[ATTR_ID],
-            display_name=data.get(ATTR_DISPLAYNAME),
-            username=data.get(ATTR_USERNAME),
+            id=data["id"],
+            display_name=data.get("name"),
+            username=data.get("username"),
         )
+
+
+class IngressSessionDataDict(TypedDict):
+    """Response object for ingress session data."""
+
+    user: IngressSessionDataUserDict
 
 
 @dataclass
@@ -547,14 +561,14 @@ class IngressSessionData:
 
     user: IngressSessionDataUser
 
-    def to_dict(self) -> dict[str, dict[str, str | None]]:
+    def to_dict(self) -> IngressSessionDataDict:
         """Get dictionary representation."""
-        return {ATTR_USER: self.user.to_dict()}
+        return IngressSessionDataDict(user=self.user.to_dict())
 
     @classmethod
-    def from_dict(cls, data: dict[str, dict[str, str | None]]) -> Self:
+    def from_dict(cls, data: IngressSessionDataDict) -> Self:
         """Return object from dictionary representation."""
-        return cls(user=IngressSessionDataUser.from_dict(data[ATTR_USER]))
+        return cls(user=IngressSessionDataUser.from_dict(data["user"]))
 
 
 STARTING_STATES = [

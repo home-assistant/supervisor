@@ -3,10 +3,10 @@
 import asyncio
 import hashlib
 import logging
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from .addons.addon import Addon
-from .const import ATTR_ADDON, ATTR_PASSWORD, ATTR_TYPE, ATTR_USERNAME, FILE_HASSIO_AUTH
+from .const import ATTR_PASSWORD, ATTR_TYPE, ATTR_USERNAME, FILE_HASSIO_AUTH
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     AuthError,
@@ -19,6 +19,17 @@ from .utils.common import FileConfiguration
 from .validate import SCHEMA_AUTH_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+class BackendAuthRequest(TypedDict):
+    """Model for a backend auth request.
+
+    https://github.com/home-assistant/core/blob/ed9503324d9d255e6fb077f1614fb6d55800f389/homeassistant/components/hassio/auth.py#L66-L73
+    """
+
+    username: str
+    password: str
+    addon: str
 
 
 class Auth(FileConfiguration, CoreSysAttributes):
@@ -74,6 +85,9 @@ class Auth(FileConfiguration, CoreSysAttributes):
         """Check username login."""
         if password is None:
             raise AuthError("None as password is not supported!", _LOGGER.error)
+        if username is None:
+            raise AuthError("None as username is not supported!", _LOGGER.error)
+
         _LOGGER.info("Auth request from '%s' for '%s'", addon.slug, username)
 
         # Get from cache
@@ -103,11 +117,12 @@ class Auth(FileConfiguration, CoreSysAttributes):
             async with self.sys_homeassistant.api.make_request(
                 "post",
                 "api/hassio_auth",
-                json={
-                    ATTR_USERNAME: username,
-                    ATTR_PASSWORD: password,
-                    ATTR_ADDON: addon.slug,
-                },
+                json=cast(
+                    dict[str, Any],
+                    BackendAuthRequest(
+                        username=username, password=password, addon=addon.slug
+                    ),
+                ),
             ) as req:
                 if req.status == 200:
                     _LOGGER.info("Successful login for '%s'", username)
