@@ -138,8 +138,8 @@ class NetworkManager(CoreSysAttributes):
                 ]
             )
 
-        self.sys_dbus.network.dbus.properties.on_properties_changed(
-            self._check_connectivity_changed
+        self.sys_dbus.network.dbus.properties.on(
+            "properties_changed", self._check_connectivity_changed
         )
 
     async def _check_connectivity_changed(

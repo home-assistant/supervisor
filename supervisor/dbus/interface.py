@@ -117,7 +117,7 @@ class DBusInterfaceProxy(DBusInterface, ABC):
         """Initialize object with already connected dbus object."""
         await super().initialize(connected_dbus)
 
-        if not self.connected_dbus.properties:
+        if not self.connected_dbus.supports_properties:
             self.disconnect()
             raise DBusInterfaceError(
                 f"D-Bus object {self.object_path} is not usable, introspection is missing required properties interface"

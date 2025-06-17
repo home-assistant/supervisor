@@ -87,13 +87,15 @@ class FileConfiguration:
         if not self._file:
             raise RuntimeError("Path to config file must be set!")
 
-        def _read_data() -> dict[str, Any]:
-            if self._file.is_file():
+        def _read_data(file: Path) -> dict[str, Any]:
+            if file.is_file():
                 with suppress(ConfigurationFileError):
-                    return read_json_or_yaml_file(self._file)
+                    return read_json_or_yaml_file(file)
             return _DEFAULT
 
-        self._data = await asyncio.get_running_loop().run_in_executor(None, _read_data)
+        self._data = await asyncio.get_running_loop().run_in_executor(
+            None, _read_data, self._file
+        )
 
         # Validate
         try:

@@ -107,17 +107,17 @@ async def journal_logs_reader(
                 # followed by a newline as separator to the next field.
                 if not data.endswith(b"\n"):
                     raise MalformedBinaryEntryError(
-                        f"Failed parsing binary entry {data}"
+                        f"Failed parsing binary entry {data.decode('utf-8')}"
                     )
 
-            name = name.decode("utf-8")
-            if name not in formatter_.required_fields:
+            field_name = name.decode("utf-8")
+            if field_name not in formatter_.required_fields:
                 # we must read to the end of the entry in the stream, so we can
                 # only continue the loop here
                 continue
 
             # strip \n for simple fields before decoding
-            entries[name] = data[:-1].decode("utf-8")
+            entries[field_name] = data[:-1].decode("utf-8")
 
 
 def _parse_boot_json(boot_json_bytes: bytes) -> tuple[int, str]:
