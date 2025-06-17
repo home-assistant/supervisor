@@ -521,8 +521,10 @@ class IngressSessionDataUserDict(TypedDict):
     """Response object for ingress session user."""
 
     id: str
-    name: NotRequired[str | None]
     username: NotRequired[str | None]
+    # Name is an alias for displayname, only one should be used
+    displayname: NotRequired[str | None]
+    name: NotRequired[str | None]
 
 
 @dataclass
@@ -536,7 +538,7 @@ class IngressSessionDataUser:
     def to_dict(self) -> IngressSessionDataUserDict:
         """Get dictionary representation."""
         return IngressSessionDataUserDict(
-            id=self.id, name=self.display_name, username=self.username
+            id=self.id, displayname=self.display_name, username=self.username
         )
 
     @classmethod
@@ -544,7 +546,7 @@ class IngressSessionDataUser:
         """Return object from dictionary representation."""
         return cls(
             id=data["id"],
-            display_name=data.get("name"),
+            display_name=data.get("displayname") or data.get("name"),
             username=data.get("username"),
         )
 
