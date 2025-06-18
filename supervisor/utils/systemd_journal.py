@@ -107,7 +107,7 @@ async def journal_logs_reader(
                 # followed by a newline as separator to the next field.
                 if not data.endswith(b"\n"):
                     raise MalformedBinaryEntryError(
-                        f"Failed parsing binary entry {data.decode('utf-8')}"
+                        f"Failed parsing binary entry {data.decode('utf-8', errors='replace')}"
                     )
 
             field_name = name.decode("utf-8")

@@ -91,4 +91,14 @@ class CpuArch(CoreSysAttributes):
         for check, value in MAP_CPU.items():
             if cpu.startswith(check):
                 return value
-        return self.supervisor
+        if self.sys_supervisor.arch:
+            _LOGGER.warning(
+                "Unknown CPU architecture %s, falling back to Supervisor architecture.",
+                cpu,
+            )
+            return self.sys_supervisor.arch
+        _LOGGER.warning(
+            "Unknown CPU architecture %s, assuming CPU architecture equals Supervisor architecture.",
+            cpu,
+        )
+        return cpu
