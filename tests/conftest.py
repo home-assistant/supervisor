@@ -763,16 +763,6 @@ async def capture_exception() -> Mock:
 
 
 @pytest.fixture
-async def capture_event() -> Mock:
-    """Mock capture event for testing."""
-    with (
-        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
-        patch("supervisor.utils.sentry.sentry_sdk.capture_event") as capture_event,
-    ):
-        yield capture_event
-
-
-@pytest.fixture
 async def os_available(request: pytest.FixtureRequest) -> None:
     """Mock os as available."""
     version = (

@@ -35,6 +35,7 @@ from ..const import (
     FILE_HASSIO_HOMEASSISTANT,
     BusEvent,
     IngressSessionDataUser,
+    IngressSessionDataUserDict,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -557,18 +558,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     async def get_users(self) -> list[IngressSessionDataUser]:
         """Get list of all configured users."""
         list_of_users: (
-            list[dict[str, Any]] | None
+            list[IngressSessionDataUserDict] | None
         ) = await self.sys_homeassistant.websocket.async_send_command(
             {ATTR_TYPE: "config/auth/list"}
         )
 
         if list_of_users:
-            return [
-                IngressSessionDataUser(
-                    id=data["id"],
-                    username=data.get("username"),
-                    display_name=data.get("name"),
-                )
-                for data in list_of_users
-            ]
+            return [IngressSessionDataUser.from_dict(data) for data in list_of_users]
         return []

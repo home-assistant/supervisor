@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import cast
 
 import voluptuous as vol
 
@@ -81,7 +82,7 @@ class Repository(CoreSysAttributes):
 
         Must be run in executor.
         """
-        if self.type != StoreType.GIT:
+        if not self.git or self.type == StoreType.CORE:
             return True
 
         # If exists?
@@ -119,7 +120,7 @@ class Repository(CoreSysAttributes):
         if not await self.sys_run_in_executor(self.validate):
             return False
 
-        if self.type != StoreType.LOCAL:
+        if self.git:
             return await self.git.pull()
 
         # Check local modifications
@@ -139,7 +140,7 @@ class Repository(CoreSysAttributes):
 
     async def remove(self) -> None:
         """Remove add-on repository."""
-        if self.type != StoreType.GIT:
+        if not self.git or self.type == StoreType.CORE:
             raise StoreError("Can't remove built-in repositories!", _LOGGER.error)
 
-        await self.git.remove()
+        await cast(GitRepoCustom, self.git).remove()

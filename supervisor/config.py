@@ -66,7 +66,7 @@ _UTC = "UTC"
 class CoreConfig(FileConfiguration):
     """Hold all core config data."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize config object."""
         super().__init__(FILE_HASSIO_CONFIG, SCHEMA_SUPERVISOR_CONFIG)
         self._timezone_tzinfo: tzinfo | None = None

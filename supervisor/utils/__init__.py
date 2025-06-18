@@ -56,7 +56,7 @@ async def check_port(address: IPv4Address, port: int) -> bool:
     return True
 
 
-def check_exception_chain(err: Exception, object_type: Any) -> bool:
+def check_exception_chain(err: BaseException, object_type: Any) -> bool:
     """Check if exception chain include sub exception.
 
     It's not full recursive because we need mostly only access to the latest.
@@ -70,7 +70,7 @@ def check_exception_chain(err: Exception, object_type: Any) -> bool:
     return check_exception_chain(err.__context__, object_type)
 
 
-def get_message_from_exception_chain(err: Exception) -> str:
+def get_message_from_exception_chain(err: BaseException) -> str:
     """Get the first message from the exception chain."""
     if str(err):
         return str(err)
@@ -119,8 +119,8 @@ def remove_folder_with_excludes(
 
     Must be run in executor.
     """
-    with TemporaryDirectory(dir=tmp_dir) as temp_path:
-        temp_path = Path(temp_path)
+    with TemporaryDirectory(dir=tmp_dir) as temp_path_str:
+        temp_path = Path(temp_path_str)
         moved_files: list[Path] = []
         for item in folder.iterdir():
             if any(item.match(exclude) for exclude in excludes):

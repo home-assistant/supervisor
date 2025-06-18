@@ -60,7 +60,7 @@ class EvaluateContainer(EvaluateBase):
         """Return a set of all known images."""
         return {
             self.sys_homeassistant.image,
-            self.sys_supervisor.image,
+            self.sys_supervisor.image or self.sys_supervisor.default_image,
             *(plugin.image for plugin in self.sys_plugins.all_plugins if plugin.image),
             *(addon.image for addon in self.sys_addons.installed if addon.image),
         }

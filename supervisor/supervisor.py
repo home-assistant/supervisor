@@ -106,17 +106,22 @@ class Supervisor(CoreSysAttributes):
         return AwesomeVersion(SUPERVISOR_VERSION)
 
     @property
-    def latest_version(self) -> AwesomeVersion:
-        """Return last available version of Home Assistant."""
+    def latest_version(self) -> AwesomeVersion | None:
+        """Return last available version of ."""
         return self.sys_updater.version_supervisor
 
     @property
-    def image(self) -> str:
-        """Return image name of Home Assistant container."""
+    def default_image(self) -> str:
+        """Return the default image for this system."""
+        return f"ghcr.io/home-assistant/{self.sys_arch.supervisor}-hassio-supervisor"
+
+    @property
+    def image(self) -> str | None:
+        """Return image name of Supervisor container."""
         return self.instance.image
 
     @property
-    def arch(self) -> str:
+    def arch(self) -> str | None:
         """Return arch of the Supervisor container."""
         return self.instance.arch
 
@@ -192,9 +197,9 @@ class Supervisor(CoreSysAttributes):
 
     async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Supervisor version."""
-        version = version or self.latest_version
+        version = version or self.latest_version or self.version
 
-        if version == self.sys_supervisor.version:
+        if version == self.version:
             raise SupervisorUpdateError(
                 f"Version {version!s} is already installed", _LOGGER.warning
             )

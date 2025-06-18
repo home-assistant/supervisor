@@ -47,7 +47,7 @@ class DockerAudio(DockerInterface, CoreSysAttributes):
         mounts = [
             MOUNT_DEV,
             Mount(
-                type=MountType.BIND,
+                type=MountType.BIND.value,
                 source=self.sys_config.path_extern_audio.as_posix(),
                 target=PATH_PRIVATE_DATA.as_posix(),
                 read_only=False,

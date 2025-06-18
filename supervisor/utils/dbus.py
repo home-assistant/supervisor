@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Coroutine
+from collections.abc import Awaitable, Callable
 import logging
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 from dbus_fast import (
     ErrorType,
@@ -44,6 +44,20 @@ _LOGGER.addFilter(StreamRateLimitFilter(period_sec=30, allow_next_n=2))
 DBUS_INTERFACE_OBJECT_MANAGER: str = "org.freedesktop.DBus.ObjectManager"
 DBUS_INTERFACE_PROPERTIES: str = "org.freedesktop.DBus.Properties"
 DBUS_METHOD_GETALL: str = "org.freedesktop.DBus.Properties.GetAll"
+
+
+class GetWithUnpack(Protocol):
+    """Protocol class for dbus get signature."""
+
+    def __call__(self, *, unpack_variants: bool = True) -> Awaitable[Any]:
+        """Signature for dbus get unpack kwarg."""
+
+
+class UpdatePropertiesCallback(Protocol):
+    """Protocol class for update properties callback."""
+
+    def __call__(self, changed: dict[str, Any] | None = None) -> Awaitable[None]:
+        """Signature for an update properties callback function."""
 
 
 class DBus:
@@ -216,10 +230,17 @@ class DBus:
         return self._proxy_obj is not None
 
     @property
-    def properties(self) -> DBusCallWrapper | None:
+    def supports_properties(self) -> bool:
+        """Return true if properties interface supported by DBus object."""
+        return DBUS_INTERFACE_PROPERTIES in self._proxies
+
+    @property
+    def properties(self) -> DBusCallWrapper:
         """Get properties proxy interface."""
-        if DBUS_INTERFACE_PROPERTIES not in self._proxies:
-            return None
+        if not self.supports_properties:
+            raise DBusInterfaceError(
+                f"DBus Object does not have interface {DBUS_INTERFACE_PROPERTIES}"
+            )
         return DBusCallWrapper(self, DBUS_INTERFACE_PROPERTIES)
 
     @property
@@ -231,16 +252,12 @@ class DBus:
 
     async def get_properties(self, interface: str) -> dict[str, Any]:
         """Read all properties from interface."""
-        if not self.properties:
-            raise DBusInterfaceError(
-                f"DBus Object does not have interface {DBUS_INTERFACE_PROPERTIES}"
-            )
-        return await self.properties.call_get_all(interface)
+        return await self.properties.call("get_all", interface)
 
     def sync_property_changes(
         self,
         interface: str,
-        update: Callable[[dict[str, Any]], Coroutine[None]],
+        update: UpdatePropertiesCallback,
     ) -> Callable:
         """Sync property changes for interface with cache.
 
@@ -249,7 +266,7 @@ class DBus:
 
         async def sync_property_change(
             prop_interface: str, changed: dict[str, Variant], invalidated: list[str]
-        ):
+        ) -> None:
             """Sync property changes to cache."""
             if interface != prop_interface:
                 return
@@ -267,12 +284,12 @@ class DBus:
             else:
                 await update(changed)
 
-        self.properties.on_properties_changed(sync_property_change)
+        self.properties.on("properties_changed", sync_property_change)
         return sync_property_change
 
     def stop_sync_property_changes(self, sync_property_change: Callable):
         """Stop syncing property changes with cache."""
-        self.properties.off_properties_changed(sync_property_change)
+        self.properties.off("properties_changed", sync_property_change)
 
     def disconnect(self):
         """Remove all active signal listeners."""
@@ -356,10 +373,11 @@ class DBusCallWrapper:
         if not self._proxy:
             return DBusCallWrapper(self.dbus, f"{self.interface}.{name}")
 
+        dbus_proxy = self._proxy
         dbus_parts = name.split("_", 1)
         dbus_type = dbus_parts[0]
 
-        if not hasattr(self._proxy, name):
+        if not hasattr(dbus_proxy, name):
             message = f"{name} does not exist in D-Bus interface {self.interface}!"
             if dbus_type == "call":
                 raise DBusInterfaceMethodError(message, _LOGGER.error)
@@ -383,7 +401,7 @@ class DBusCallWrapper:
             if dbus_type == "on":
 
                 def _on_signal(callback: Callable):
-                    getattr(self._proxy, name)(callback, unpack_variants=True)
+                    getattr(dbus_proxy, name)(callback, unpack_variants=True)
 
                     # pylint: disable=protected-access
                     self.dbus._add_signal_monitor(self.interface, dbus_name, callback)
@@ -392,7 +410,7 @@ class DBusCallWrapper:
                 return _on_signal
 
             def _off_signal(callback: Callable):
-                getattr(self._proxy, name)(callback, unpack_variants=True)
+                getattr(dbus_proxy, name)(callback, unpack_variants=True)
 
                 # pylint: disable=protected-access
                 if (
@@ -421,7 +439,7 @@ class DBusCallWrapper:
 
             def _method_wrapper(*args, unpack_variants: bool = True) -> Awaitable:
                 return DBus.call_dbus(
-                    self._proxy, name, *args, unpack_variants=unpack_variants
+                    dbus_proxy, name, *args, unpack_variants=unpack_variants
                 )
 
             return _method_wrapper
@@ -429,7 +447,7 @@ class DBusCallWrapper:
         elif dbus_type == "set":
 
             def _set_wrapper(*args) -> Awaitable:
-                return DBus.call_dbus(self._proxy, name, *args, unpack_variants=False)
+                return DBus.call_dbus(dbus_proxy, name, *args, unpack_variants=False)
 
             return _set_wrapper
 
@@ -448,7 +466,7 @@ class DBusCallWrapper:
 
     def get(self, name: str, *, unpack_variants: bool = True) -> Awaitable[Any]:
         """Get a dbus property value."""
-        return cast(Callable[[bool], Awaitable[Any]], self._dbus_action(f"get_{name}"))(
+        return cast(GetWithUnpack, self._dbus_action(f"get_{name}"))(
             unpack_variants=unpack_variants
         )
 

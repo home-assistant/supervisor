@@ -344,7 +344,7 @@ class DockerAddon(DockerInterface):
         mounts = [
             MOUNT_DEV,
             Mount(
-                type=MountType.BIND,
+                type=MountType.BIND.value,
                 source=self.addon.path_extern_data.as_posix(),
                 target=target_data_path or PATH_PRIVATE_DATA.as_posix(),
                 read_only=False,
@@ -355,7 +355,7 @@ class DockerAddon(DockerInterface):
         if MappingType.CONFIG in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
                     target=addon_mapping[MappingType.CONFIG].path
                     or PATH_HOMEASSISTANT_CONFIG_LEGACY.as_posix(),
@@ -368,7 +368,7 @@ class DockerAddon(DockerInterface):
             if self.addon.addon_config_used:
                 mounts.append(
                     Mount(
-                        type=MountType.BIND,
+                        type=MountType.BIND.value,
                         source=self.addon.path_extern_config.as_posix(),
                         target=addon_mapping[MappingType.ADDON_CONFIG].path
                         or PATH_PUBLIC_CONFIG.as_posix(),
@@ -380,7 +380,7 @@ class DockerAddon(DockerInterface):
             if MappingType.HOMEASSISTANT_CONFIG in addon_mapping:
                 mounts.append(
                     Mount(
-                        type=MountType.BIND,
+                        type=MountType.BIND.value,
                         source=self.sys_config.path_extern_homeassistant.as_posix(),
                         target=addon_mapping[MappingType.HOMEASSISTANT_CONFIG].path
                         or PATH_HOMEASSISTANT_CONFIG.as_posix(),
@@ -393,7 +393,7 @@ class DockerAddon(DockerInterface):
         if MappingType.ALL_ADDON_CONFIGS in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_config.path_extern_addon_configs.as_posix(),
                     target=addon_mapping[MappingType.ALL_ADDON_CONFIGS].path
                     or PATH_ALL_ADDON_CONFIGS.as_posix(),
@@ -404,7 +404,7 @@ class DockerAddon(DockerInterface):
         if MappingType.SSL in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_config.path_extern_ssl.as_posix(),
                     target=addon_mapping[MappingType.SSL].path or PATH_SSL.as_posix(),
                     read_only=addon_mapping[MappingType.SSL].read_only,
@@ -414,7 +414,7 @@ class DockerAddon(DockerInterface):
         if MappingType.ADDONS in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_config.path_extern_addons_local.as_posix(),
                     target=addon_mapping[MappingType.ADDONS].path
                     or PATH_LOCAL_ADDONS.as_posix(),
@@ -425,7 +425,7 @@ class DockerAddon(DockerInterface):
         if MappingType.BACKUP in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_config.path_extern_backup.as_posix(),
                     target=addon_mapping[MappingType.BACKUP].path
                     or PATH_BACKUP.as_posix(),
@@ -436,7 +436,7 @@ class DockerAddon(DockerInterface):
         if MappingType.SHARE in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_config.path_extern_share.as_posix(),
                     target=addon_mapping[MappingType.SHARE].path
                     or PATH_SHARE.as_posix(),
@@ -448,7 +448,7 @@ class DockerAddon(DockerInterface):
         if MappingType.MEDIA in addon_mapping:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_config.path_extern_media.as_posix(),
                     target=addon_mapping[MappingType.MEDIA].path
                     or PATH_MEDIA.as_posix(),
@@ -466,7 +466,7 @@ class DockerAddon(DockerInterface):
                     continue
                 mounts.append(
                     Mount(
-                        type=MountType.BIND,
+                        type=MountType.BIND.value,
                         source=gpio_path,
                         target=gpio_path,
                         read_only=False,
@@ -477,7 +477,7 @@ class DockerAddon(DockerInterface):
         if self.addon.with_devicetree:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source="/sys/firmware/devicetree/base",
                     target="/device-tree",
                     read_only=True,
@@ -492,7 +492,7 @@ class DockerAddon(DockerInterface):
         if self.addon.with_kernel_modules:
             mounts.append(
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source="/lib/modules",
                     target="/lib/modules",
                     read_only=True,
@@ -511,19 +511,19 @@ class DockerAddon(DockerInterface):
         if self.addon.with_audio:
             mounts += [
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.addon.path_extern_pulse.as_posix(),
                     target="/etc/pulse/client.conf",
                     read_only=True,
                 ),
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
                     target="/run/audio",
                     read_only=True,
                 ),
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_plugins.audio.path_extern_asound.as_posix(),
                     target="/etc/asound.conf",
                     read_only=True,
@@ -534,13 +534,13 @@ class DockerAddon(DockerInterface):
         if self.addon.with_journald:
             mounts += [
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=SYSTEMD_JOURNAL_PERSISTENT.as_posix(),
                     target=SYSTEMD_JOURNAL_PERSISTENT.as_posix(),
                     read_only=True,
                 ),
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=SYSTEMD_JOURNAL_VOLATILE.as_posix(),
                     target=SYSTEMD_JOURNAL_VOLATILE.as_posix(),
                     read_only=True,

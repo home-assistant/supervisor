@@ -89,7 +89,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         """Update add-ons from repository and reload list."""
         # Make a copy to prevent race with other tasks
         repositories = [repository] if repository else self.all.copy()
-        results: list[bool | Exception] = await asyncio.gather(
+        results: list[bool | BaseException] = await asyncio.gather(
             *[repo.update() for repo in repositories], return_exceptions=True
         )
 
