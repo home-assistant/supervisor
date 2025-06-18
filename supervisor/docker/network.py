@@ -57,7 +57,7 @@ class DockerNetwork:
     def __init__(self, docker_client: docker.DockerClient):
         """Initialize internal Supervisor network."""
         self.docker: docker.DockerClient = docker_client
-        self._network: docker.models.networks.Network | None = None
+        self._network: docker.models.networks.Network
 
     async def post_init(self, enable_ipv6: bool = False) -> Self:
         """Post init actions that must be done in event loop."""
@@ -154,7 +154,7 @@ class DockerNetwork:
         network_params[ATTR_ENABLE_IPV6] = enable_ipv6
 
         try:
-            self._network = self.docker.networks.create(**network_params)
+            self._network = self.docker.networks.create(**network_params)  # type: ignore
         except docker.errors.APIError as err:
             raise DockerError(
                 f"Can't create Supervisor network: {err}", _LOGGER.error

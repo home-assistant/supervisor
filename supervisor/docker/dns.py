@@ -48,7 +48,7 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
             environment={ENV_TIME: self.sys_timezone},
             mounts=[
                 Mount(
-                    type=MountType.BIND,
+                    type=MountType.BIND.value,
                     source=self.sys_config.path_extern_dns.as_posix(),
                     target="/config",
                     read_only=False,
