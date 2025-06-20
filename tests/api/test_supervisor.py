@@ -271,7 +271,7 @@ async def test_api_supervisor_options_country(api_client: TestClient, coresys: C
 
 @pytest.mark.parametrize(
     ("blockbuster", "option_value", "config_value"),
-    [("no_blockbuster", "on", False), ("no_blockbuster", "on_at_startup", True)],
+    [("no_blockbuster", "on", False), ("no_blockbuster", "on-at-startup", True)],
     indirect=["blockbuster"],
 )
 async def test_api_supervisor_options_blocking_io(
