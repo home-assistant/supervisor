@@ -21,17 +21,8 @@ async def check_server(
 ) -> None:
     """Check a DNS server and report issues."""
     ip_addr = server[6:] if server.startswith("dns://") else server
-    resolver = DNSResolver(loop=loop, nameservers=[ip_addr])
-    try:
+    async with DNSResolver(loop=loop, nameservers=[ip_addr]) as resolver:
         await resolver.query(DNS_CHECK_HOST, qtype)
-    finally:
-
-        def _delete_resolver():
-            """Close resolver to avoid memory leaks."""
-            nonlocal resolver
-            del resolver
-
-        loop.call_later(1, _delete_resolver)
 
 
 def setup(coresys: CoreSys) -> CheckBase:
