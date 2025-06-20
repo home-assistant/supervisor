@@ -43,7 +43,22 @@ class Job(CoreSysAttributes):
         throttle_max_calls: int | None = None,
         internal: bool = False,
     ):
-        """Initialize the Job class."""
+        """Initialize the Job decorator.
+
+        Args:
+            name (str): Unique name for the job. Must not be duplicated.
+            conditions (list[JobCondition] | None): List of conditions that must be met before the job runs.
+            cleanup (bool): Whether to clean up the job after execution. Defaults to True. If set to False, the job will remain accessible through the Supervisor API until the next restart.
+            on_condition (type[JobException] | None): Exception type to raise if a job condition fails. If None, logs the failure.
+            limit (JobExecutionLimit | None): Execution limit policy for the job (e.g., throttle, once, group-based).
+            throttle_period (timedelta | Callable | None): Throttle period as a timedelta or a callable returning a timedelta (for rate-limited jobs).
+            throttle_max_calls (int | None): Maximum number of calls allowed within the throttle period (for rate-limited jobs).
+            internal (bool): Whether the job is internal (not exposed through the Supervisor API). Defaults to False.
+
+        Raises:
+            RuntimeError: If job name is not unique, or required throttle parameters are missing for the selected limit.
+
+        """
         if name in _JOB_NAMES:
             raise RuntimeError(f"A job already exists with name {name}!")
 
