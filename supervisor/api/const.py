@@ -87,4 +87,4 @@ class DetectBlockingIO(StrEnum):
 
     OFF = "off"
     ON = "on"
-    ON_AT_STARTUP = "on_at_startup"
+    ON_AT_STARTUP = "on-at-startup"
