@@ -1,4 +1,4 @@
-name: Bug Report Form
+name: Report an issue with Home Assistant Supervisor
 description: Report an issue related to the Home Assistant Supervisor.
 body:
   - type: markdown
