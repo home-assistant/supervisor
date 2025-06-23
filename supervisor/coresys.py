@@ -587,7 +587,7 @@ class CoreSys:
         return self._machine_id
 
     @machine_id.setter
-    def machine_id(self, value: str) -> None:
+    def machine_id(self, value: str | None) -> None:
         """Set a machine-id type string."""
         if self._machine_id:
             raise RuntimeError("Machine-ID type already set!")

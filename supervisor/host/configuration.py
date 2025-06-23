@@ -175,7 +175,7 @@ class Interface:
         )
 
         return Interface(
-            name=inet.name,
+            name=inet.interface_name,
             mac=inet.hw_address,
             path=inet.path,
             enabled=inet.settings is not None,
@@ -286,7 +286,7 @@ class Interface:
                     _LOGGER.warning(
                         "Auth method %s for network interface %s unsupported, skipping",
                         inet.settings.wireless_security.key_mgmt,
-                        inet.name,
+                        inet.interface_name,
                     )
                     return None
 

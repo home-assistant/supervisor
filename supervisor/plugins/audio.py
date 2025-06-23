@@ -22,6 +22,7 @@ from ..exceptions import (
     AudioUpdateError,
     ConfigurationFileError,
     DockerError,
+    PluginError,
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
@@ -127,7 +128,7 @@ class PluginAudio(PluginBase):
         """Update Audio plugin."""
         try:
             await super().update(version)
-        except DockerError as err:
+        except (DockerError, PluginError) as err:
             raise AudioUpdateError("Audio update failed", _LOGGER.error) from err
 
     async def restart(self) -> None:

@@ -16,6 +16,7 @@ from ..exceptions import (
     MulticastError,
     MulticastJobError,
     MulticastUpdateError,
+    PluginError,
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
@@ -63,7 +64,7 @@ class PluginMulticast(PluginBase):
         """Update Multicast plugin."""
         try:
             await super().update(version)
-        except DockerError as err:
+        except (DockerError, PluginError) as err:
             raise MulticastUpdateError(
                 "Multicast update failed", _LOGGER.error
             ) from err

@@ -20,6 +20,7 @@ from ..exceptions import (
     ObserverError,
     ObserverJobError,
     ObserverUpdateError,
+    PluginError,
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
@@ -72,7 +73,7 @@ class PluginObserver(PluginBase):
         """Update local HA observer."""
         try:
             await super().update(version)
-        except DockerError as err:
+        except (DockerError, PluginError) as err:
             raise ObserverUpdateError(
                 "HA observer update failed", _LOGGER.error
             ) from err

@@ -168,14 +168,14 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         # Check plugin state
         try:
             # Evaluate Version if we lost this information
-            if not self.version:
-                self.version = await self.instance.get_latest_version()
+            if self.version:
+                version = self.version
+            else:
+                self.version = version = await self.instance.get_latest_version()
 
-            await self.instance.attach(
-                version=self.version, skip_state_event_if_down=True
-            )
+            await self.instance.attach(version=version, skip_state_event_if_down=True)
 
-            await self.instance.check_image(self.version, self.default_image)
+            await self.instance.check_image(version, self.default_image)
         except DockerError:
             _LOGGER.info(
                 "No %s plugin Docker image %s found.", self.slug, self.instance.image
@@ -185,7 +185,7 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
             with suppress(PluginError):
                 await self.install()
         else:
-            self.version = self.instance.version
+            self.version = self.instance.version or version
             self.image = self.default_image
             await self.save_data()
 
@@ -202,11 +202,10 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
             if not self.latest_version:
                 await self.sys_updater.reload()
 
-            if self.latest_version:
+            if to_version := self.latest_version:
                 with suppress(DockerError):
-                    await self.instance.install(
-                        self.latest_version, image=self.default_image
-                    )
+                    await self.instance.install(to_version, image=self.default_image)
+                    self.version = self.instance.version or to_version
                     break
             _LOGGER.warning(
                 "Error on installing %s plugin, retrying in 30sec", self.slug
@@ -214,23 +213,28 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
             await asyncio.sleep(30)
 
         _LOGGER.info("%s plugin now installed", self.slug)
-        self.version = self.instance.version
         self.image = self.default_image
         await self.save_data()
 
     async def update(self, version: str | None = None) -> None:
         """Update system plugin."""
-        version = version or self.latest_version
+        to_version = AwesomeVersion(version) if version else self.latest_version
+        if not to_version:
+            raise PluginError(
+                f"Cannot determine latest version of plugin {self.slug} for update",
+                _LOGGER.error,
+            )
+
         old_image = self.image
 
-        if version == self.version:
+        if to_version == self.version:
             _LOGGER.warning(
-                "Version %s is already installed for %s", version, self.slug
+                "Version %s is already installed for %s", to_version, self.slug
             )
             return
 
-        await self.instance.update(version, image=self.default_image)
-        self.version = self.instance.version
+        await self.instance.update(to_version, image=self.default_image)
+        self.version = self.instance.version or to_version
         self.image = self.default_image
         await self.save_data()
 

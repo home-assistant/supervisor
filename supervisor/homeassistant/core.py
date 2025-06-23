@@ -87,19 +87,19 @@ class HomeAssistantCore(JobGroup):
 
         try:
             # Evaluate Version if we lost this information
-            if not self.sys_homeassistant.version:
+            if self.sys_homeassistant.version:
+                version = self.sys_homeassistant.version
+            else:
                 self.sys_homeassistant.version = (
-                    await self.instance.get_latest_version()
-                )
+                    version
+                ) = await self.instance.get_latest_version()
 
-            await self.instance.attach(
-                version=self.sys_homeassistant.version, skip_state_event_if_down=True
-            )
+            await self.instance.attach(version=version, skip_state_event_if_down=True)
 
             # Ensure we are using correct image for this system (unless user has overridden it)
             if not self.sys_homeassistant.override_image:
                 await self.instance.check_image(
-                    self.sys_homeassistant.version, self.sys_homeassistant.default_image
+                    version, self.sys_homeassistant.default_image
                 )
                 self.sys_homeassistant.set_image(self.sys_homeassistant.default_image)
         except DockerError:
@@ -108,7 +108,7 @@ class HomeAssistantCore(JobGroup):
             )
             await self.install_landingpage()
         else:
-            self.sys_homeassistant.version = self.instance.version
+            self.sys_homeassistant.version = self.instance.version or version
             self.sys_homeassistant.set_image(self.instance.image)
             await self.sys_homeassistant.save_data()
 
@@ -182,12 +182,13 @@ class HomeAssistantCore(JobGroup):
             if not self.sys_homeassistant.latest_version:
                 await self.sys_updater.reload()
 
-            if self.sys_homeassistant.latest_version:
+            if to_version := self.sys_homeassistant.latest_version:
                 try:
                     await self.instance.update(
-                        self.sys_homeassistant.latest_version,
+                        to_version,
                         image=self.sys_updater.image_homeassistant,
                     )
+                    self.sys_homeassistant.version = self.instance.version or to_version
                     break
                 except (DockerError, JobException):
                     pass
@@ -198,7 +199,6 @@ class HomeAssistantCore(JobGroup):
             await asyncio.sleep(30)
 
         _LOGGER.info("Home Assistant docker now installed")
-        self.sys_homeassistant.version = self.instance.version
         self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
         await self.sys_homeassistant.save_data()
 
@@ -231,8 +231,8 @@ class HomeAssistantCore(JobGroup):
         backup: bool | None = False,
     ) -> None:
         """Update HomeAssistant version."""
-        version = version or self.sys_homeassistant.latest_version
-        if not version:
+        to_version = version or self.sys_homeassistant.latest_version
+        if not to_version:
             raise HomeAssistantUpdateError(
                 "Cannot determine latest version of Home Assistant for update",
                 _LOGGER.error,
@@ -243,9 +243,9 @@ class HomeAssistantCore(JobGroup):
         running = await self.instance.is_running()
         exists = await self.instance.exists()
 
-        if exists and version == self.instance.version:
+        if exists and to_version == self.instance.version:
             raise HomeAssistantUpdateError(
-                f"Version {version!s} is already installed", _LOGGER.warning
+                f"Version {to_version!s} is already installed", _LOGGER.warning
             )
 
         if backup:
@@ -268,7 +268,7 @@ class HomeAssistantCore(JobGroup):
                     "Updating Home Assistant image failed", _LOGGER.warning
                 ) from err
 
-            self.sys_homeassistant.version = self.instance.version
+            self.sys_homeassistant.version = self.instance.version or to_version
             self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
 
             if running:
@@ -282,7 +282,7 @@ class HomeAssistantCore(JobGroup):
 
         # Update Home Assistant
         with suppress(HomeAssistantError):
-            await _update(version)
+            await _update(to_version)
 
         if not self.error_state and rollback:
             try:

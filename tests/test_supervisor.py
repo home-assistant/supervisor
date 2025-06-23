@@ -76,6 +76,10 @@ async def test_connectivity_check_throttling(
 
 async def test_update_failed(coresys: CoreSys, capture_exception: Mock):
     """Test update failure."""
+    # pylint: disable-next=protected-access
+    coresys.updater._data.setdefault("image", {})["supervisor"] = (
+        "ghcr.io/home-assistant/aarch64-hassio-supervisor"
+    )
     err = DockerError()
     with (
         patch.object(DockerSupervisor, "install", side_effect=err),

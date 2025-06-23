@@ -664,11 +664,15 @@ class AddonModel(JobGroup, ABC):
         """Validate if addon is available for current system."""
         return self._validate_availability(self.data, logger=_LOGGER.error)
 
-    def __eq__(self, other):
-        """Compaired add-on objects."""
+    def __eq__(self, other: Any) -> bool:
+        """Compare add-on objects."""
         if not isinstance(other, AddonModel):
             return False
         return self.slug == other.slug
+
+    def __hash__(self) -> int:
+        """Hash for add-on objects."""
+        return hash(self.slug)
 
     def _validate_availability(
         self, config, *, logger: Callable[..., None] | None = None

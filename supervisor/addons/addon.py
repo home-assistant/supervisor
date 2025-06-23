@@ -360,7 +360,7 @@ class Addon(AddonModel):
     @property
     def auto_update(self) -> bool:
         """Return if auto update is enable."""
-        return self.persist.get(ATTR_AUTO_UPDATE, super().auto_update)
+        return self.persist.get(ATTR_AUTO_UPDATE, False)
 
     @auto_update.setter
     def auto_update(self, value: bool) -> None:
