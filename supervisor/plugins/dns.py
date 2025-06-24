@@ -28,6 +28,7 @@ from ..exceptions import (
     CoreDNSJobError,
     CoreDNSUpdateError,
     DockerError,
+    PluginError,
 )
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
@@ -217,7 +218,7 @@ class PluginDns(PluginBase):
         """Update CoreDNS plugin."""
         try:
             await super().update(version)
-        except DockerError as err:
+        except (DockerError, PluginError) as err:
             raise CoreDNSUpdateError("CoreDNS update failed", _LOGGER.error) from err
 
     async def restart(self) -> None:

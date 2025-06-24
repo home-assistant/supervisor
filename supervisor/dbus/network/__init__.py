@@ -259,7 +259,7 @@ class NetworkManager(DBusInterfaceProxy):
             else:
                 interface.primary = False
 
-            interfaces[interface.name] = interface
+            interfaces[interface.interface_name] = interface
             interfaces[interface.hw_address] = interface
 
         # Disconnect removed devices

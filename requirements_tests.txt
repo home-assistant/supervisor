@@ -1,5 +1,6 @@
 astroid==3.3.10
 coverage==7.9.1
+mypy==1.16.1
 pre-commit==4.2.0
 pylint==3.3.7
 pytest-aiohttp==1.1.0
@@ -9,4 +10,7 @@ pytest-timeout==2.4.0
 pytest==8.4.1
 ruff==0.12.0
 time-machine==2.16.0
+types-docker==7.1.0.20250523
+types-pyyaml==6.0.12.20250516
+types-requests==2.32.4.20250611
 urllib3==2.5.0

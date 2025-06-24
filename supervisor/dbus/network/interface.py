@@ -49,7 +49,7 @@ class NetworkInterface(DBusInterfaceProxy):
 
     @property
     @dbus_property
-    def name(self) -> str:
+    def interface_name(self) -> str:
         """Return interface name."""
         return self.properties[DBUS_ATTR_DEVICE_INTERFACE]
 

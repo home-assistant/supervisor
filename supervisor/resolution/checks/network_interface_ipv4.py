@@ -19,12 +19,12 @@ class CheckNetworkInterfaceIPV4(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
-        for interface in self.sys_dbus.network.interfaces:
-            if CheckNetworkInterfaceIPV4.check_interface(interface):
+        for inet in self.sys_dbus.network.interfaces:
+            if CheckNetworkInterfaceIPV4.check_interface(inet):
                 self.sys_resolution.create_issue(
                     IssueType.IPV4_CONNECTION_PROBLEM,
                     ContextType.SYSTEM,
-                    interface.name,
+                    inet.interface_name,
                 )
 
     async def approve_check(self, reference: str | None = None) -> bool:

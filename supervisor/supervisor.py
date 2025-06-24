@@ -204,6 +204,12 @@ class Supervisor(CoreSysAttributes):
                 f"Version {version!s} is already installed", _LOGGER.warning
             )
 
+        image = self.sys_updater.image_supervisor or self.instance.image
+        if not image:
+            raise SupervisorUpdateError(
+                "Cannot determine image to use for supervisor update!", _LOGGER.error
+            )
+
         # First update own AppArmor
         try:
             await self.update_apparmor()
@@ -216,12 +222,8 @@ class Supervisor(CoreSysAttributes):
         # Update container
         _LOGGER.info("Update Supervisor to version %s", version)
         try:
-            await self.instance.install(
-                version, image=self.sys_updater.image_supervisor
-            )
-            await self.instance.update_start_tag(
-                self.sys_updater.image_supervisor, version
-            )
+            await self.instance.install(version, image=image)
+            await self.instance.update_start_tag(image, version)
         except DockerError as err:
             self.sys_resolution.create_issue(
                 IssueType.UPDATE_FAILED, ContextType.SUPERVISOR
@@ -232,7 +234,7 @@ class Supervisor(CoreSysAttributes):
             ) from err
 
         self.sys_config.version = version
-        self.sys_config.image = self.sys_updater.image_supervisor
+        self.sys_config.image = image
         await self.sys_config.save_data()
 
         self.sys_create_task(self.sys_core.stop())

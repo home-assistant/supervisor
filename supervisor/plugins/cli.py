@@ -15,7 +15,7 @@ from ..coresys import CoreSys
 from ..docker.cli import DockerCli
 from ..docker.const import ContainerState
 from ..docker.stats import DockerStats
-from ..exceptions import CliError, CliJobError, CliUpdateError, DockerError
+from ..exceptions import CliError, CliJobError, CliUpdateError, DockerError, PluginError
 from ..jobs.const import JobExecutionLimit
 from ..jobs.decorator import Job
 from ..utils.sentry import async_capture_exception
@@ -67,7 +67,7 @@ class PluginCli(PluginBase):
         """Update local HA cli."""
         try:
             await super().update(version)
-        except DockerError as err:
+        except (DockerError, PluginError) as err:
             raise CliUpdateError("CLI update failed", _LOGGER.error) from err
 
     async def start(self) -> None:

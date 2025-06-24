@@ -3,11 +3,13 @@
 import asyncio
 from collections.abc import Awaitable
 import logging
-from typing import Any
+from typing import Any, cast
 
 from aiohttp import BasicAuth, web
 from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE, WWW_AUTHENTICATE
+from aiohttp.web import FileField
 from aiohttp.web_exceptions import HTTPUnauthorized
+from multidict import MultiDictProxy
 import voluptuous as vol
 
 from ..addons.addon import Addon
@@ -51,7 +53,10 @@ class APIAuth(CoreSysAttributes):
         return self.sys_auth.check_login(addon, auth.login, auth.password)
 
     def _process_dict(
-        self, request: web.Request, addon: Addon, data: dict[str, str]
+        self,
+        request: web.Request,
+        addon: Addon,
+        data: dict[str, Any] | MultiDictProxy[str | bytes | FileField],
     ) -> Awaitable[bool]:
         """Process login with dict data.
 
@@ -60,7 +65,15 @@ class APIAuth(CoreSysAttributes):
         username = data.get("username") or data.get("user")
         password = data.get("password")
 
-        return self.sys_auth.check_login(addon, username, password)
+        # Test that we did receive strings and not something else, raise if so
+        try:
+            _ = username.encode and password.encode  # type: ignore
+        except AttributeError:
+            raise HTTPUnauthorized(headers=REALM_HEADER) from None
+
+        return self.sys_auth.check_login(
+            addon, cast(str, username), cast(str, password)
+        )
 
     @api_process
     async def auth(self, request: web.Request) -> bool:

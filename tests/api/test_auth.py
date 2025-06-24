@@ -137,25 +137,24 @@ async def test_auth_json_success(
 
 
 @pytest.mark.parametrize(
-    ("user", "password", "message", "api_client"),
+    ("user", "password", "api_client"),
     [
-        (None, "password", "None as username is not supported!", TEST_ADDON_SLUG),
-        ("user", None, "None as password is not supported!", TEST_ADDON_SLUG),
+        (None, "password", TEST_ADDON_SLUG),
+        ("user", None, TEST_ADDON_SLUG),
     ],
     indirect=["api_client"],
 )
 async def test_auth_json_failure_none(
     api_client: TestClient,
+    mock_check_login: AsyncMock,
     install_addon_ssh: Addon,
     user: str | None,
     password: str | None,
-    message: str,
 ):
     """Test failed JSON auth with none user or password."""
+    mock_check_login.return_value = True
     resp = await api_client.post("/auth", json={"username": user, "password": password})
-    assert resp.status == 400
-    body = await resp.json()
-    assert body["message"] == message
+    assert resp.status == 401
 
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
@@ -177,7 +176,7 @@ async def test_auth_json_empty_body(api_client: TestClient, install_addon_ssh: A
     resp = await api_client.post(
         "/auth", data="", headers={"Content-Type": "application/json"}
     )
-    assert resp.status == 400
+    assert resp.status == 401
 
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)

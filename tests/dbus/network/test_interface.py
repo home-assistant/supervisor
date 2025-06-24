@@ -55,13 +55,13 @@ async def test_network_interface_ethernet(
     interface = NetworkInterface("/org/freedesktop/NetworkManager/Devices/1")
 
     assert interface.sync_properties is False
-    assert interface.name is None
+    assert interface.interface_name is None
     assert interface.type is None
 
     await interface.connect(dbus_session_bus)
 
     assert interface.sync_properties is True
-    assert interface.name == TEST_INTERFACE_ETH_NAME
+    assert interface.interface_name == TEST_INTERFACE_ETH_NAME
     assert interface.type == DeviceType.ETHERNET
     assert interface.managed is True
     assert interface.wireless is None
@@ -108,7 +108,7 @@ async def test_network_interface_wlan(
     await interface.connect(dbus_session_bus)
 
     assert interface.sync_properties is True
-    assert interface.name == TEST_INTERFACE_WLAN_NAME
+    assert interface.interface_name == TEST_INTERFACE_WLAN_NAME
     assert interface.type == DeviceType.WIRELESS
     assert interface.wireless is not None
     assert interface.wireless.bitrate == 0

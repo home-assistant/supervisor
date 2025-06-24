@@ -13,3 +13,15 @@ repos:
       - id: check-executables-have-shebangs
         stages: [manual]
       - id: check-json
+  - repo: local
+    hooks:
+      # Run mypy through our wrapper script in order to get the possible
+      # pyenv and/or virtualenv activated; it may not have been e.g. if
+      # committing from a GUI tool that was not launched from an activated
+      # shell.
+      - id: mypy
+        name: mypy
+        entry: script/run-in-env.sh mypy --ignore-missing-imports
+        language: script
+        types_or: [python, pyi]
+        files: ^supervisor/.+\.(py|pyi)$
