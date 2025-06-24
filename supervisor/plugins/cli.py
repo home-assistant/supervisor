@@ -6,7 +6,6 @@ Code: https://github.com/home-assistant/plugin-cli
 from collections.abc import Awaitable
 import logging
 import secrets
-from typing import cast
 
 from awesomeversion import AwesomeVersion
 
@@ -54,9 +53,9 @@ class PluginCli(PluginBase):
         return self.sys_updater.version_cli
 
     @property
-    def supervisor_token(self) -> str:
+    def supervisor_token(self) -> str | None:
         """Return an access token for the Supervisor API."""
-        return cast(str, self._data[ATTR_ACCESS_TOKEN])
+        return self._data.get(ATTR_ACCESS_TOKEN)
 
     @Job(
         name="plugin_cli_update",

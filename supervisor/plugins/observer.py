@@ -5,7 +5,6 @@ Code: https://github.com/home-assistant/plugin-observer
 
 import logging
 import secrets
-from typing import cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion
@@ -60,9 +59,9 @@ class PluginObserver(PluginBase):
         return self.sys_updater.version_observer
 
     @property
-    def supervisor_token(self) -> str:
+    def supervisor_token(self) -> str | None:
         """Return an access token for the Observer API."""
-        return cast(str, self._data[ATTR_ACCESS_TOKEN])
+        return self._data.get(ATTR_ACCESS_TOKEN)
 
     @Job(
         name="plugin_observer_update",
