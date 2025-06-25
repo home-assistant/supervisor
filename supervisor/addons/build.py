@@ -121,11 +121,6 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         except HassioArchNotFound:
             return False
 
-    def _fix_label(self, label_name: str) -> str:
-        """Remove characters they are not supported."""
-        label = getattr(self.addon, label_name, "")
-        return label.replace("'", "")
-
     def get_docker_args(
         self, version: AwesomeVersion, image_tag: str
     ) -> dict[str, Any]:
@@ -185,3 +180,8 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             },
             "working_dir": "/addon",
         }
+
+    def _fix_label(self, label_name: str) -> str:
+        """Remove characters they are not supported."""
+        label = getattr(self.addon, label_name, "")
+        return label.replace("'", "")
