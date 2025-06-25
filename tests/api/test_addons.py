@@ -243,7 +243,7 @@ async def test_api_addon_rebuild_healthcheck(
         patch.object(
             coresys.docker,
             "run_command",
-            MagicMock(return_value=CommandReturn(0, b"Build successful")),
+            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
         ),
         patch.object(
             DockerAddon, "healthcheck", new=PropertyMock(return_value={"exists": True})

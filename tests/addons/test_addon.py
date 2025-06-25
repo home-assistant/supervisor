@@ -846,7 +846,7 @@ async def test_addon_loads_wrong_image(
         patch.object(
             coresys.docker,
             "run_command",
-            MagicMock(return_value=CommandReturn(0, b"Build successful")),
+            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
         ) as mock_run_command,
     ):
         await install_addon_ssh.load()
@@ -894,7 +894,7 @@ async def test_addon_loads_missing_image(
         patch.object(
             coresys.docker,
             "run_command",
-            MagicMock(return_value=CommandReturn(0, b"Build successful")),
+            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
         ) as mock_run_command,
     ):
         await install_addon_ssh.load()
