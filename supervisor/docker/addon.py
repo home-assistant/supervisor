@@ -676,7 +676,7 @@ class DockerAddon(DockerInterface):
         def build_image():
             if build_env.squash:
                 _LOGGER.warning(
-                    "Squash is enabled for %s, using legacy Docker Builder instead of BuildKit for compatibility",
+                    "Ignoring squash build option for %s as Docker BuildKit does not support it.",
                     self.addon.slug,
                 )
 
