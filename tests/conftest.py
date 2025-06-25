@@ -44,7 +44,7 @@ from supervisor.const import (
 )
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
-from supervisor.docker.manager import CommandReturn, DockerAPI
+from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerMonitor
 from supervisor.exceptions import HostLogError
 from supervisor.homeassistant.api import APIState
@@ -132,10 +132,6 @@ async def docker() -> DockerAPI:
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
         docker_obj.info.version = AwesomeVersion("1.0.0")
-
-        docker_obj.run_command = MagicMock(
-            return_value=CommandReturn(0, b"Build successful")
-        )
 
         yield docker_obj
 

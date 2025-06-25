@@ -18,6 +18,7 @@ from supervisor.const import AddonBoot, AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
+from supervisor.docker.manager import CommandReturn
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
 from supervisor.hardware.helper import HwHelper
@@ -840,10 +841,20 @@ async def test_addon_loads_wrong_image(
     install_addon_ssh.persist["image"] = "local/aarch64-addon-ssh"
     assert install_addon_ssh.image == "local/aarch64-addon-ssh"
 
-    with patch("pathlib.Path.is_file", return_value=True):
+    with (
+        patch("pathlib.Path.is_file", return_value=True),
+        patch.object(
+            coresys.docker,
+            "run_command",
+            MagicMock(return_value=CommandReturn(0, b"Build successful")),
+        ) as mock_run_command,
+    ):
         await install_addon_ssh.load()
 
-    container.remove.assert_called_once_with(force=True, v=True)
+    container.remove.assert_called_with(force=True, v=True)
+    # one for removing the addon, one for removing the addon builder
+    assert coresys.docker.images.remove.call_count == 2
+
     assert coresys.docker.images.remove.call_args_list[0].kwargs == {
         "image": "local/aarch64-addon-ssh:latest",
         "force": True,
@@ -852,11 +863,11 @@ async def test_addon_loads_wrong_image(
         "image": "local/aarch64-addon-ssh:9.2.1",
         "force": True,
     }
-    coresys.docker.run_command.assert_called_once()
+    mock_run_command.assert_called_once()
     # First positional argument is image, second positional argument (or tag kwarg) is tag
-    assert coresys.docker.run_command.call_args.args[0] == "docker"
-    assert coresys.docker.run_command.call_args.kwargs["version"] == "1.0.0-cli"
-    command = coresys.docker.run_command.call_args.kwargs["command"]
+    assert mock_run_command.call_args.args[0] == "docker"
+    assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
+    command = mock_run_command.call_args.kwargs["command"]
     assert is_in_list(
         ["--platform", "linux/amd64"],
         command,
@@ -878,14 +889,21 @@ async def test_addon_loads_missing_image(
     """Test addon corrects a missing image on load."""
     coresys.docker.images.get.side_effect = ImageNotFound("missing")
 
-    with patch("pathlib.Path.is_file", return_value=True):
+    with (
+        patch("pathlib.Path.is_file", return_value=True),
+        patch.object(
+            coresys.docker,
+            "run_command",
+            MagicMock(return_value=CommandReturn(0, b"Build successful")),
+        ) as mock_run_command,
+    ):
         await install_addon_ssh.load()
 
-    coresys.docker.run_command.assert_called_once()
+    mock_run_command.assert_called_once()
     # First positional argument is image, second positional argument (or tag kwarg) is tag
-    assert coresys.docker.run_command.call_args.args[0] == "docker"
-    assert coresys.docker.run_command.call_args.kwargs["version"] == "1.0.0-cli"
-    command = coresys.docker.run_command.call_args.kwargs["command"]
+    assert mock_run_command.call_args.args[0] == "docker"
+    assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
+    command = mock_run_command.call_args.kwargs["command"]
     assert is_in_list(
         ["--platform", "linux/amd64"],
         command,

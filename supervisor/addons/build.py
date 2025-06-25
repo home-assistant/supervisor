@@ -5,7 +5,6 @@ from __future__ import annotations
 from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from warnings import deprecated
 
 from awesomeversion import AwesomeVersion
 
@@ -83,9 +82,6 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         return self._data[ATTR_BUILD_FROM][self.arch]
 
     @property
-    @deprecated(
-        "Squash build option is ignored as Docker BuildKit does not support it."
-    )
     def squash(self) -> bool:
         """Return True or False if squash is active."""
         return self._data[ATTR_SQUASH]
