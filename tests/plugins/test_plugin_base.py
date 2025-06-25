@@ -363,7 +363,7 @@ async def test_load_with_incorrect_image(
 
     await plugin.load()
 
-    container.remove.assert_called_once_with(force=True)
+    container.remove.assert_called_once_with(force=True, v=True)
     assert coresys.docker.images.remove.call_args_list[0].kwargs == {
         "image": f"{old_image}:latest",
         "force": True,
