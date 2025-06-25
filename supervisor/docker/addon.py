@@ -698,15 +698,15 @@ class DockerAddon(DockerInterface):
                 **build_env.get_docker_args(version, addon_image_tag),
             )
 
-            log = result.output.decode("utf-8")
+            logs = result.output.decode("utf-8")
 
             if result.exit_code != 0:
-                error_message = f"The docker build command for {addon_image_tag} failed with exit code {result.exit_code}. Output:\n{log}"
+                error_message = f"Docker build failed for {addon_image_tag} (exit code {result.exit_code}). Build output:\n{logs}"
                 raise docker.errors.DockerException(error_message)
 
             addon_image = self.sys_docker.images.get(addon_image_tag)
 
-            return addon_image, log
+            return addon_image, logs
 
         try:
             docker_image, log = await self.sys_run_in_executor(build_image)
