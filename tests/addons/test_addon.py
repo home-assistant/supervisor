@@ -852,12 +852,19 @@ async def test_addon_loads_wrong_image(
         "image": "local/aarch64-addon-ssh:9.2.1",
         "force": True,
     }
-    coresys.docker.images.build.assert_called_once()
-    assert (
-        coresys.docker.images.build.call_args.kwargs["tag"]
-        == "local/amd64-addon-ssh:9.2.1"
+    coresys.docker.run_command.assert_called_once()
+    # First positional argument is image, second positional argument (or tag kwarg) is tag
+    assert coresys.docker.run_command.call_args.args[0] == "docker"
+    assert coresys.docker.run_command.call_args.kwargs["tag"] == "1.0.0-cli"
+    command = coresys.docker.run_command.call_args.kwargs["command"]
+    assert is_in_list(
+        ["--platform", "linux/amd64"],
+        command,
     )
-    assert coresys.docker.images.build.call_args.kwargs["platform"] == "linux/amd64"
+    assert is_in_list(
+        ["--tag", "local/amd64-addon-ssh:9.2.1"],
+        command,
+    )
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
     coresys.addons.data.save_data.assert_called_once()
 
@@ -874,12 +881,19 @@ async def test_addon_loads_missing_image(
     with patch("pathlib.Path.is_file", return_value=True):
         await install_addon_ssh.load()
 
-    coresys.docker.images.build.assert_called_once()
-    assert (
-        coresys.docker.images.build.call_args.kwargs["tag"]
-        == "local/amd64-addon-ssh:9.2.1"
+    coresys.docker.run_command.assert_called_once()
+    # First positional argument is image, second positional argument (or tag kwarg) is tag
+    assert coresys.docker.run_command.call_args.args[0] == "docker"
+    assert coresys.docker.run_command.call_args.kwargs["tag"] == "1.0.0-cli"
+    command = coresys.docker.run_command.call_args.kwargs["command"]
+    assert is_in_list(
+        ["--platform", "linux/amd64"],
+        command,
     )
-    assert coresys.docker.images.build.call_args.kwargs["platform"] == "linux/amd64"
+    assert is_in_list(
+        ["--tag", "local/amd64-addon-ssh:9.2.1"],
+        command,
+    )
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
 
 
@@ -951,3 +965,17 @@ async def test_addon_disable_boot_dismisses_boot_fail(
     install_addon_ssh.boot = AddonBoot.MANUAL
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
+
+
+def is_in_list(a: list, b: list):
+    """Check if all elements in list a are in list b in order.
+
+    Taken from https://stackoverflow.com/a/69175987/12156188.
+    """
+
+    for c in a:
+        if c in b:
+            b = b[b.index(c) :]
+        else:
+            return False
+    return True

@@ -208,12 +208,11 @@ class DockerHomeAssistant(DockerInterface):
         return await self.sys_run_in_executor(
             self.sys_docker.run_command,
             self.image,
-            version=self.sys_homeassistant.version,
+            tag=self.sys_homeassistant.version,
             command=command,
             privileged=True,
             init=True,
             entrypoint=[],
-            detach=True,
             stdout=True,
             stderr=True,
             mounts=[

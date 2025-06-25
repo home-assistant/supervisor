@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, cast
 from attr import evolve
 from awesomeversion import AwesomeVersion
 import docker
+import docker.errors
 from docker.types import Mount
 import requests
 
@@ -673,9 +674,39 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Starting build for %s:%s", self.image, version)
 
         def build_image():
-            return self.sys_docker.images.build(
-                use_config_proxy=False, **build_env.get_docker_args(version, image)
+            if build_env.squash:
+                _LOGGER.warning(
+                    "Squash is enabled for %s, using legacy Docker Builder instead of BuildKit for compatibility",
+                    self.addon.slug,
+                )
+
+            addon_image_tag = f"{image or self.addon.image}:{version!s}"
+
+            docker_version = self.sys_docker.info.version
+            builder_tag = f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
+
+            builder_name = f"addon_builder_{self.addon.slug}_{builder_tag}"
+
+            # Remove old builder container if exists by any chance
+            with suppress(docker.errors.NotFound):
+                self.sys_docker.containers.get(builder_name).remove(force=True, v=True)
+
+            result = self.sys_docker.run_command(
+                "docker",  # https://hub.docker.com/_/docker
+                tag=builder_tag,
+                name=builder_name,
+                **build_env.get_docker_args(version, addon_image_tag),
             )
+
+            log = result.output.decode("utf-8")
+
+            if result.exit_code != 0:
+                error_message = f"The docker build command for {addon_image_tag} failed with exit code {result.exit_code}. Output:\n{log}"
+                raise docker.errors.DockerException(error_message)
+
+            addon_image = self.sys_docker.images.get(addon_image_tag)
+
+            return addon_image, log
 
         try:
             docker_image, log = await self.sys_run_in_executor(build_image)
@@ -687,15 +718,6 @@ class DockerAddon(DockerInterface):
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't build %s:%s: %s", self.image, version, err)
-            if hasattr(err, "build_log"):
-                log = "\n".join(
-                    [
-                        x["stream"]
-                        for x in err.build_log  # pylint: disable=no-member
-                        if isinstance(x, dict) and "stream" in x
-                    ]
-                )
-                _LOGGER.error("Build log: \n%s", log)
             raise DockerError() from err
 
         _LOGGER.info("Build %s:%s done", self.image, version)

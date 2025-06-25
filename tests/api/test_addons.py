@@ -239,6 +239,9 @@ async def test_api_addon_rebuild_healthcheck(
         patch.object(Addon, "need_build", new=PropertyMock(return_value=True)),
         patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
         patch.object(DockerAddon, "run", new=container_events_task),
+        patch.object(
+            DockerAddon, "healthcheck", new=PropertyMock(return_value={"exists": True})
+        ),
     ):
         resp = await api_client.post("/addons/local_ssh/rebuild")
 
