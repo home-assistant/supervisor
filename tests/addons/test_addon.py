@@ -855,7 +855,7 @@ async def test_addon_loads_wrong_image(
     coresys.docker.run_command.assert_called_once()
     # First positional argument is image, second positional argument (or tag kwarg) is tag
     assert coresys.docker.run_command.call_args.args[0] == "docker"
-    assert coresys.docker.run_command.call_args.kwargs["tag"] == "1.0.0-cli"
+    assert coresys.docker.run_command.call_args.kwargs["version"] == "1.0.0-cli"
     command = coresys.docker.run_command.call_args.kwargs["command"]
     assert is_in_list(
         ["--platform", "linux/amd64"],
@@ -884,7 +884,7 @@ async def test_addon_loads_missing_image(
     coresys.docker.run_command.assert_called_once()
     # First positional argument is image, second positional argument (or tag kwarg) is tag
     assert coresys.docker.run_command.call_args.args[0] == "docker"
-    assert coresys.docker.run_command.call_args.kwargs["tag"] == "1.0.0-cli"
+    assert coresys.docker.run_command.call_args.kwargs["version"] == "1.0.0-cli"
     command = coresys.docker.run_command.call_args.kwargs["command"]
     assert is_in_list(
         ["--platform", "linux/amd64"],

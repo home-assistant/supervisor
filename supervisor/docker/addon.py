@@ -683,17 +683,17 @@ class DockerAddon(DockerInterface):
             addon_image_tag = f"{image or self.addon.image}:{version!s}"
 
             docker_version = self.sys_docker.info.version
-            builder_tag = f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
+            builder_version_tag = f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
 
-            builder_name = f"addon_builder_{self.addon.slug}_{builder_tag}"
+            builder_name = f"addon_builder_{self.addon.slug}"
 
-            # Remove old builder container if exists by any chance
+            # Remove dangling builder container if it exists by any chance
             with suppress(docker.errors.NotFound):
                 self.sys_docker.containers.get(builder_name).remove(force=True, v=True)
 
             result = self.sys_docker.run_command(
                 "docker",  # https://hub.docker.com/_/docker
-                tag=builder_tag,
+                version=builder_version_tag,
                 name=builder_name,
                 **build_env.get_docker_args(version, addon_image_tag),
             )
