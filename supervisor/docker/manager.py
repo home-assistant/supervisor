@@ -294,7 +294,7 @@ class DockerAPI:
     def run_command(
         self,
         image: str,
-        tag: str = "latest",
+        version: str = "latest",
         command: str | None = None,
         **kwargs: Any,
     ) -> CommandReturn:
@@ -305,11 +305,13 @@ class DockerAPI:
         stdout = kwargs.get("stdout", True)
         stderr = kwargs.get("stderr", True)
 
-        _LOGGER.info("Runing command '%s' on %s", command, image)
+        image_tag = f"{image}:{version}"
+
+        _LOGGER.info("Runing command '%s' on %s", command, image_tag)
         container = None
         try:
             container = self.docker.containers.run(
-                f"{image}:{tag}",
+                image_tag,
                 command=command,
                 network=self.network.name,
                 use_config_proxy=False,
