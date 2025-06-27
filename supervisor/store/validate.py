@@ -1,21 +1,62 @@
 """Validate add-ons options schema."""
 
+from enum import StrEnum
+from pathlib import Path
+
 import voluptuous as vol
 
-from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_REPOSITORIES, ATTR_URL
+from ..const import (
+    ATTR_MAINTAINER,
+    ATTR_NAME,
+    ATTR_REPOSITORIES,
+    ATTR_URL,
+    URL_HASSIO_ADDONS,
+)
+from ..coresys import CoreSys
 from ..validate import RE_REPOSITORY
 from .const import StoreType
+from .utils import get_hash_from_repository
 
 URL_COMMUNITY_ADDONS = "https://github.com/hassio-addons/repository"
 URL_ESPHOME = "https://github.com/esphome/home-assistant-addon"
 URL_MUSIC_ASSISTANT = "https://github.com/music-assistant/home-assistant-addon"
-BUILTIN_REPOSITORIES = {
-    StoreType.CORE,
-    StoreType.LOCAL,
-    URL_COMMUNITY_ADDONS,
-    URL_ESPHOME,
-    URL_MUSIC_ASSISTANT,
-}
+
+
+class BuiltinRepository(StrEnum):
+    """Built-in add-on repository."""
+
+    CORE = StoreType.CORE.value
+    LOCAL = StoreType.LOCAL.value
+    COMMUNITY_ADDONS = URL_COMMUNITY_ADDONS
+    ESPHOME = URL_ESPHOME
+    MUSIC_ASSISTANT = URL_MUSIC_ASSISTANT
+
+    def __init__(self, value: str) -> None:
+        """Initialize repository item."""
+        if value == StoreType.LOCAL:
+            self.id = value
+            self.url = ""
+            self.type = StoreType.LOCAL
+        elif value == StoreType.CORE:
+            self.id = value
+            self.url = URL_HASSIO_ADDONS
+            self.type = StoreType.CORE
+        else:
+            self.id = get_hash_from_repository(value)
+            self.url = value
+            self.type = StoreType.GIT
+
+    def get_path(self, coresys: CoreSys) -> Path:
+        """Get path to git repo for repository."""
+        if self.id == StoreType.LOCAL:
+            return coresys.config.path_addons_local
+        if self.id == StoreType.CORE:
+            return coresys.config.path_addons_core
+        return Path(coresys.config.path_addons_git, self.id)
+
+
+BUILTIN_REPOSITORIES = {r.value for r in BuiltinRepository}
+
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_REPOSITORY_CONFIG = vol.Schema(
