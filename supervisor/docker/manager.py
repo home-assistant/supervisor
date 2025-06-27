@@ -327,7 +327,7 @@ class DockerAPI:
             # cleanup container
             if container:
                 with suppress(docker_errors.DockerException, requests.RequestException):
-                    container.remove(force=True)
+                    container.remove(force=True, v=True)
 
         return CommandReturn(result.get("StatusCode"), output)
 
@@ -442,7 +442,7 @@ class DockerAPI:
         if remove_container:
             with suppress(DockerException, requests.RequestException):
                 _LOGGER.info("Cleaning %s application", name)
-                docker_container.remove(force=True)
+                docker_container.remove(force=True, v=True)
 
     def start_container(self, name: str) -> None:
         """Start Docker container."""

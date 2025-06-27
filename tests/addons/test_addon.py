@@ -843,7 +843,7 @@ async def test_addon_loads_wrong_image(
     with patch("pathlib.Path.is_file", return_value=True):
         await install_addon_ssh.load()
 
-    container.remove.assert_called_once_with(force=True)
+    container.remove.assert_called_once_with(force=True, v=True)
     assert coresys.docker.images.remove.call_args_list[0].kwargs == {
         "image": "local/aarch64-addon-ssh:latest",
         "force": True,
