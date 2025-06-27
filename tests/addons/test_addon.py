@@ -18,6 +18,7 @@ from supervisor.const import AddonBoot, AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
+from supervisor.docker.manager import CommandReturn
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
 from supervisor.hardware.helper import HwHelper
@@ -840,10 +841,20 @@ async def test_addon_loads_wrong_image(
     install_addon_ssh.persist["image"] = "local/aarch64-addon-ssh"
     assert install_addon_ssh.image == "local/aarch64-addon-ssh"
 
-    with patch("pathlib.Path.is_file", return_value=True):
+    with (
+        patch("pathlib.Path.is_file", return_value=True),
+        patch.object(
+            coresys.docker,
+            "run_command",
+            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
+        ) as mock_run_command,
+    ):
         await install_addon_ssh.load()
 
-    container.remove.assert_called_once_with(force=True)
+    container.remove.assert_called_with(force=True, v=True)
+    # one for removing the addon, one for removing the addon builder
+    assert coresys.docker.images.remove.call_count == 2
+
     assert coresys.docker.images.remove.call_args_list[0].kwargs == {
         "image": "local/aarch64-addon-ssh:latest",
         "force": True,
@@ -852,12 +863,19 @@ async def test_addon_loads_wrong_image(
         "image": "local/aarch64-addon-ssh:9.2.1",
         "force": True,
     }
-    coresys.docker.images.build.assert_called_once()
-    assert (
-        coresys.docker.images.build.call_args.kwargs["tag"]
-        == "local/amd64-addon-ssh:9.2.1"
+    mock_run_command.assert_called_once()
+    # First positional argument is image, second positional argument (or tag kwarg) is tag
+    assert mock_run_command.call_args.args[0] == "docker"
+    assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
+    command = mock_run_command.call_args.kwargs["command"]
+    assert is_in_list(
+        ["--platform", "linux/amd64"],
+        command,
     )
-    assert coresys.docker.images.build.call_args.kwargs["platform"] == "linux/amd64"
+    assert is_in_list(
+        ["--tag", "local/amd64-addon-ssh:9.2.1"],
+        command,
+    )
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
     coresys.addons.data.save_data.assert_called_once()
 
@@ -871,15 +889,29 @@ async def test_addon_loads_missing_image(
     """Test addon corrects a missing image on load."""
     coresys.docker.images.get.side_effect = ImageNotFound("missing")
 
-    with patch("pathlib.Path.is_file", return_value=True):
+    with (
+        patch("pathlib.Path.is_file", return_value=True),
+        patch.object(
+            coresys.docker,
+            "run_command",
+            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
+        ) as mock_run_command,
+    ):
         await install_addon_ssh.load()
 
-    coresys.docker.images.build.assert_called_once()
-    assert (
-        coresys.docker.images.build.call_args.kwargs["tag"]
-        == "local/amd64-addon-ssh:9.2.1"
+    mock_run_command.assert_called_once()
+    # First positional argument is image, second positional argument (or tag kwarg) is tag
+    assert mock_run_command.call_args.args[0] == "docker"
+    assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
+    command = mock_run_command.call_args.kwargs["command"]
+    assert is_in_list(
+        ["--platform", "linux/amd64"],
+        command,
     )
-    assert coresys.docker.images.build.call_args.kwargs["platform"] == "linux/amd64"
+    assert is_in_list(
+        ["--tag", "local/amd64-addon-ssh:9.2.1"],
+        command,
+    )
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
 
 
@@ -951,3 +983,17 @@ async def test_addon_disable_boot_dismisses_boot_fail(
     install_addon_ssh.boot = AddonBoot.MANUAL
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
+
+
+def is_in_list(a: list, b: list):
+    """Check if all elements in list a are in list b in order.
+
+    Taken from https://stackoverflow.com/a/69175987/12156188.
+    """
+
+    for c in a:
+        if c in b:
+            b = b[b.index(c) :]
+        else:
+            return False
+    return True

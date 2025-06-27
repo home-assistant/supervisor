@@ -10,7 +10,7 @@ from supervisor.coresys import CoreSys
 
 
 async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
-    """Test platform set in docker args."""
+    """Test platform set in container build args."""
     build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
@@ -21,14 +21,17 @@ async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
         ),
     ):
         args = await coresys.run_in_executor(
-            build.get_docker_args, AwesomeVersion("latest")
+            build.get_docker_args, AwesomeVersion("latest"), "test-image:latest"
         )
 
-    assert args["platform"] == "linux/amd64"
+    # Check that the platform argument is correctly included in the command
+    command = args["command"]
+    platform_index = command.index("--platform")
+    assert command[platform_index + 1] == "linux/amd64"
 
 
 async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon):
-    """Test platform set in docker args."""
+    """Test dockerfile path in container build args."""
     build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
@@ -39,10 +42,14 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon)
         ),
     ):
         args = await coresys.run_in_executor(
-            build.get_docker_args, AwesomeVersion("latest")
+            build.get_docker_args, AwesomeVersion("latest"), "test-image:latest"
         )
 
-    assert args["dockerfile"].endswith("fixtures/addons/local/ssh/Dockerfile")
+    # Check that the dockerfile argument is correctly included in the command
+    command = args["command"]
+    file_index = command.index("--file")
+    assert command[file_index + 1] == "Dockerfile"
+
     assert str(await coresys.run_in_executor(build.get_dockerfile)).endswith(
         "fixtures/addons/local/ssh/Dockerfile"
     )
@@ -50,7 +57,7 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon)
 
 
 async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: Addon):
-    """Test platform set in docker args."""
+    """Test dockerfile arch evaluation in container build args."""
     build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
@@ -61,10 +68,14 @@ async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: A
         ),
     ):
         args = await coresys.run_in_executor(
-            build.get_docker_args, AwesomeVersion("latest")
+            build.get_docker_args, AwesomeVersion("latest"), "test-image:latest"
         )
 
-    assert args["dockerfile"].endswith("fixtures/addons/local/ssh/Dockerfile.aarch64")
+    # Check that the dockerfile argument is correctly included in the command
+    command = args["command"]
+    file_index = command.index("--file")
+    assert command[file_index + 1] == "Dockerfile.aarch64"
+
     assert str(await coresys.run_in_executor(build.get_dockerfile)).endswith(
         "fixtures/addons/local/ssh/Dockerfile.aarch64"
     )

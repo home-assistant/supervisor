@@ -213,7 +213,6 @@ class DockerHomeAssistant(DockerInterface):
             privileged=True,
             init=True,
             entrypoint=[],
-            detach=True,
             stdout=True,
             stderr=True,
             mounts=[
