@@ -44,6 +44,7 @@ from ..jobs.decorator import Job
 from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
 from ..utils.sentry import async_capture_exception
 from .const import (
+    ADDON_BUILDER_IMAGE,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_OLD,
@@ -692,7 +693,7 @@ class DockerAddon(DockerInterface):
                 self.sys_docker.containers.get(builder_name).remove(force=True, v=True)
 
             result = self.sys_docker.run_command(
-                "docker",  # https://hub.docker.com/_/docker
+                ADDON_BUILDER_IMAGE,
                 version=builder_version_tag,
                 name=builder_name,
                 **build_env.get_docker_args(version, addon_image_tag),

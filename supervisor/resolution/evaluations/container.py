@@ -5,6 +5,8 @@ import logging
 from docker.errors import DockerException
 from requests import RequestException
 
+from supervisor.docker.const import ADDON_BUILDER_IMAGE
+
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import (
@@ -63,6 +65,7 @@ class EvaluateContainer(EvaluateBase):
             self.sys_supervisor.image or self.sys_supervisor.default_image,
             *(plugin.image for plugin in self.sys_plugins.all_plugins if plugin.image),
             *(addon.image for addon in self.sys_addons.installed if addon.image),
+            ADDON_BUILDER_IMAGE,
         }
 
     async def evaluate(self) -> bool:
