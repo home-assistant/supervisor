@@ -200,7 +200,8 @@ async def test_start(
     coresys.docker.containers.get.return_value.stop.assert_not_called()
     if container_exists:
         coresys.docker.containers.get.return_value.remove.assert_called_once_with(
-            force=True
+            force=True,
+            v=True,
         )
     else:
         coresys.docker.containers.get.return_value.remove.assert_not_called()
@@ -397,7 +398,7 @@ async def test_core_loads_wrong_image_for_machine(
 
     await coresys.homeassistant.core.load()
 
-    container.remove.assert_called_once_with(force=True)
+    container.remove.assert_called_once_with(force=True, v=True)
     assert coresys.docker.images.remove.call_args_list[0].kwargs == {
         "image": "ghcr.io/home-assistant/odroid-n2-homeassistant:latest",
         "force": True,
@@ -444,7 +445,7 @@ async def test_core_loads_wrong_image_for_architecture(
 
     await coresys.homeassistant.core.load()
 
-    container.remove.assert_called_once_with(force=True)
+    container.remove.assert_called_once_with(force=True, v=True)
     assert coresys.docker.images.remove.call_args_list[0].kwargs == {
         "image": "ghcr.io/home-assistant/qemux86-64-homeassistant:latest",
         "force": True,
