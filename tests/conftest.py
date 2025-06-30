@@ -409,7 +409,7 @@ async def coresys(
         coresys_obj.init_websession = AsyncMock()
 
     # Don't remove files/folders related to addons and stores
-    with patch("supervisor.store.git.GitRepo._remove"):
+    with patch("supervisor.store.git.GitRepoCustom.remove"):
         yield coresys_obj
 
     await coresys_obj.dbus.unload()

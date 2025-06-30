@@ -2,7 +2,6 @@
 
 import logging
 from pathlib import Path
-from typing import cast
 
 import voluptuous as vol
 
@@ -13,9 +12,9 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError, StoreError
 from ..utils.common import read_json_or_yaml_file
 from .const import StoreType
-from .git import GitRepo, GitRepoCustom, GitRepoHassIO
+from .git import GitRepo, GitRepoBuiltin, GitRepoCustom
 from .utils import get_hash_from_repository
-from .validate import SCHEMA_REPOSITORY_CONFIG
+from .validate import SCHEMA_REPOSITORY_CONFIG, BuiltinRepository
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 UNKNOWN = "unknown"
@@ -34,10 +33,11 @@ class Repository(CoreSysAttributes):
             self._slug = repository
             self._type = StoreType.LOCAL
             self._latest_mtime: float | None = None
-        elif repository == StoreType.CORE:
-            self.git = GitRepoHassIO(coresys)
-            self._slug = repository
-            self._type = StoreType.CORE
+        elif repository in BuiltinRepository:
+            builtin = BuiltinRepository(repository)
+            self.git = GitRepoBuiltin(coresys, builtin)
+            self._slug = builtin.id
+            self._type = builtin.type
         else:
             self.git = GitRepoCustom(coresys, repository)
             self._slug = get_hash_from_repository(repository)
@@ -140,7 +140,7 @@ class Repository(CoreSysAttributes):
 
     async def remove(self) -> None:
         """Remove add-on repository."""
-        if not self.git or self.type == StoreType.CORE:
+        if not self.git or self.git.builtin:
             raise StoreError("Can't remove built-in repositories!", _LOGGER.error)
 
-        await cast(GitRepoCustom, self.git).remove()
+        await self.git.remove()
