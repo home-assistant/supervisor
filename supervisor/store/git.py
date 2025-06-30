@@ -5,6 +5,7 @@ import asyncio
 import functools as ft
 import logging
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import git
 
@@ -87,6 +88,32 @@ class GitRepo(CoreSysAttributes, ABC):
     )
     async def clone(self) -> None:
         """Clone git add-on repository."""
+        await self._clone()
+
+    @Job(
+        name="git_repo_reset",
+        conditions=[JobCondition.FREE_SPACE, JobCondition.INTERNET_SYSTEM],
+        on_condition=StoreJobError,
+    )
+    async def reset(self) -> None:
+        """Reset repository to fix issue with local copy."""
+        # Clone into temporary folder
+        temp_dir = await self.sys_run_in_executor(
+            TemporaryDirectory, dir=self.sys_config.path_tmp
+        )
+        temp_path = Path(temp_dir.name)
+        await self._clone(temp_path)
+
+        # Remove corrupted repo and move temp clone to its place
+        def move_clone():
+            remove_folder(folder=self.path)
+            temp_path.rename(self.path)
+
+        await self.sys_run_in_executor(move_clone)
+
+    async def _clone(self, path: Path | None = None) -> None:
+        """Clone git add-on repository to location."""
+        path = path or self.path
         async with self.lock:
             git_args = {
                 attribute: value
@@ -100,14 +127,12 @@ class GitRepo(CoreSysAttributes, ABC):
             }
 
             try:
-                _LOGGER.info(
-                    "Cloning add-on %s repository from %s", self.path, self.url
-                )
+                _LOGGER.info("Cloning add-on %s repository from %s", path, self.url)
                 self.repo = await self.sys_run_in_executor(
                     ft.partial(
                         git.Repo.clone_from,
                         self.url,
-                        str(self.path),
+                        str(path),
                         **git_args,  # type: ignore
                     )
                 )
