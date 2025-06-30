@@ -15,6 +15,7 @@ from ..const import (
     ATTR_SQUASH,
     FILE_SUFFIX_CONFIGURATION,
     META_ADDON,
+    SOCKET_DOCKER,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.interface import MAP_ARCH
@@ -168,15 +169,17 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         for key, value in build_args.items():
             build_cmd.extend(["--build-arg", f"{key}={value}"])
 
-        # The build path must be the addon path in the host filesystem
-        build_path = str(self.addon.path_location).removeprefix("/data/")
-        build_path = f"/mnt/supervisor/{build_path}"
+        # The addon path will be mounted from the host system
+        relative_path = self.addon.path_location.relative_to(
+            self.sys_config.path_supervisor
+        )
+        addon_host_path = str(self.sys_config.path_extern_supervisor / relative_path)
 
         return {
             "command": build_cmd,
             "volumes": {
-                "/var/run/docker.sock": {"bind": "/var/run/docker.sock", "mode": "rw"},
-                build_path: {"bind": "/addon", "mode": "ro"},
+                SOCKET_DOCKER: {"bind": "/var/run/docker.sock", "mode": "rw"},
+                addon_host_path: {"bind": "/addon", "mode": "ro"},
             },
             "working_dir": "/addon",
         }
