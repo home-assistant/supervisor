@@ -8,6 +8,8 @@ from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
 from supervisor.coresys import CoreSys
 
+from tests.common import is_in_list
+
 
 async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
     """Test platform set in container build args."""
@@ -24,10 +26,7 @@ async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
             build.get_docker_args, AwesomeVersion("latest"), "test-image:latest"
         )
 
-    # Check that the platform argument is correctly included in the command
-    command = args["command"]
-    platform_index = command.index("--platform")
-    assert command[platform_index + 1] == "linux/amd64"
+    assert is_in_list(["--platform", "linux/amd64"], args["command"])
 
 
 async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon):
@@ -45,11 +44,7 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon)
             build.get_docker_args, AwesomeVersion("latest"), "test-image:latest"
         )
 
-    # Check that the dockerfile argument is correctly included in the command
-    command = args["command"]
-    file_index = command.index("--file")
-    assert command[file_index + 1] == "Dockerfile"
-
+    assert is_in_list(["--file", "Dockerfile"], args["command"])
     assert str(await coresys.run_in_executor(build.get_dockerfile)).endswith(
         "fixtures/addons/local/ssh/Dockerfile"
     )
@@ -71,11 +66,7 @@ async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: A
             build.get_docker_args, AwesomeVersion("latest"), "test-image:latest"
         )
 
-    # Check that the dockerfile argument is correctly included in the command
-    command = args["command"]
-    file_index = command.index("--file")
-    assert command[file_index + 1] == "Dockerfile.aarch64"
-
+    assert is_in_list(["--file", "Dockerfile.aarch64"], args["command"])
     assert str(await coresys.run_in_executor(build.get_dockerfile)).endswith(
         "fixtures/addons/local/ssh/Dockerfile.aarch64"
     )

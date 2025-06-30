@@ -28,7 +28,7 @@ from supervisor.utils.dt import utcnow
 
 from .test_manager import BOOT_FAIL_ISSUE, BOOT_FAIL_SUGGESTIONS
 
-from tests.common import get_fixture_path
+from tests.common import get_fixture_path, is_in_list
 from tests.const import TEST_ADDON_SLUG
 
 
@@ -864,7 +864,6 @@ async def test_addon_loads_wrong_image(
         "force": True,
     }
     mock_run_command.assert_called_once()
-    # First positional argument is image, second positional argument (or tag kwarg) is tag
     assert mock_run_command.call_args.args[0] == "docker"
     assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
     command = mock_run_command.call_args.kwargs["command"]
@@ -900,7 +899,6 @@ async def test_addon_loads_missing_image(
         await install_addon_ssh.load()
 
     mock_run_command.assert_called_once()
-    # First positional argument is image, second positional argument (or tag kwarg) is tag
     assert mock_run_command.call_args.args[0] == "docker"
     assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
     command = mock_run_command.call_args.kwargs["command"]
@@ -983,17 +981,3 @@ async def test_addon_disable_boot_dismisses_boot_fail(
     install_addon_ssh.boot = AddonBoot.MANUAL
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
-
-
-def is_in_list(a: list, b: list):
-    """Check if all elements in list a are in list b in order.
-
-    Taken from https://stackoverflow.com/a/69175987/12156188.
-    """
-
-    for c in a:
-        if c in b:
-            b = b[b.index(c) :]
-        else:
-            return False
-    return True
