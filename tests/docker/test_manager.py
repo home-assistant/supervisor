@@ -22,7 +22,7 @@ async def test_run_command_success(docker: DockerAPI):
 
     # Execute the command
     result = docker.run_command(
-        image="alpine", tag="3.18", command="echo hello", stdout=True, stderr=True
+        image="alpine", version="3.18", command="echo hello", stdout=True, stderr=True
     )
 
     # Verify the result
