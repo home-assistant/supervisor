@@ -864,7 +864,7 @@ async def test_addon_loads_wrong_image(
         "force": True,
     }
     mock_run_command.assert_called_once()
-    assert mock_run_command.call_args.args[0] == "docker"
+    assert mock_run_command.call_args.args[0] == "docker.io/library/docker"
     assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
     command = mock_run_command.call_args.kwargs["command"]
     assert is_in_list(
@@ -899,7 +899,7 @@ async def test_addon_loads_missing_image(
         await install_addon_ssh.load()
 
     mock_run_command.assert_called_once()
-    assert mock_run_command.call_args.args[0] == "docker"
+    assert mock_run_command.call_args.args[0] == "docker.io/library/docker"
     assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
     command = mock_run_command.call_args.kwargs["command"]
     assert is_in_list(
