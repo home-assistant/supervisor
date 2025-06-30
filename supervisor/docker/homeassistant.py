@@ -213,8 +213,6 @@ class DockerHomeAssistant(DockerInterface):
             privileged=True,
             init=True,
             entrypoint=[],
-            stdout=True,
-            stderr=True,
             mounts=[
                 Mount(
                     type=MountType.BIND.value,

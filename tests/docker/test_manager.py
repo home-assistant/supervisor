@@ -22,7 +22,7 @@ async def test_run_command_success(docker: DockerAPI):
 
     # Execute the command
     result = docker.run_command(
-        image="alpine", tag="3.18", command="echo hello", stdout=True, stderr=True
+        image="alpine", version="3.18", command="echo hello", stdout=True, stderr=True
     )
 
     # Verify the result
@@ -34,6 +34,7 @@ async def test_run_command_success(docker: DockerAPI):
     docker.docker.containers.run.assert_called_once_with(
         "alpine:3.18",
         command="echo hello",
+        detach=True,
         network=docker.network.name,
         use_config_proxy=False,
         stdout=True,
@@ -66,6 +67,7 @@ async def test_run_command_with_defaults(docker: DockerAPI):
     docker.docker.containers.run.assert_called_once_with(
         "ubuntu:latest",  # default tag
         command=None,  # default command
+        detach=True,
         network=docker.network.name,
         use_config_proxy=False,
     )
