@@ -311,6 +311,7 @@ class DockerAPI:
             container = self.docker.containers.run(
                 f"{image}:{tag}",
                 command=command,
+                detach=True,
                 network=self.network.name,
                 use_config_proxy=False,
                 **kwargs,
@@ -329,7 +330,7 @@ class DockerAPI:
                 with suppress(docker_errors.DockerException, requests.RequestException):
                     container.remove(force=True, v=True)
 
-        return CommandReturn(result.get("StatusCode"), output)
+        return CommandReturn(result["StatusCode"], output)
 
     def repair(self) -> None:
         """Repair local docker overlayfs2 issues."""
