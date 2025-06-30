@@ -1,5 +1,6 @@
 """Init file for Supervisor add-on Git."""
 
+from abc import ABC, abstractmethod
 import asyncio
 import functools as ft
 import logging
@@ -7,19 +8,19 @@ from pathlib import Path
 
 import git
 
-from ..const import ATTR_BRANCH, ATTR_URL, URL_HASSIO_ADDONS
+from ..const import ATTR_BRANCH, ATTR_URL
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import StoreGitCloneError, StoreGitError, StoreJobError
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import remove_folder
 from .utils import get_hash_from_repository
-from .validate import RE_REPOSITORY
+from .validate import RE_REPOSITORY, BuiltinRepository
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class GitRepo(CoreSysAttributes):
+class GitRepo(CoreSysAttributes, ABC):
     """Manage Add-on Git repository."""
 
     builtin: bool
@@ -197,29 +198,23 @@ class GitRepo(CoreSysAttributes):
                 )
                 raise StoreGitError() from err
 
-    async def _remove(self):
+    @abstractmethod
+    async def remove(self) -> None:
         """Remove a repository."""
-        if self.lock.locked():
-            _LOGGER.warning("There is already a task in progress")
-            return
-
-        def _remove_git_dir(path: Path) -> None:
-            if not path.is_dir():
-                return
-            remove_folder(path)
-
-        async with self.lock:
-            await self.sys_run_in_executor(_remove_git_dir, self.path)
 
 
-class GitRepoHassIO(GitRepo):
-    """Supervisor add-ons repository."""
+class GitRepoBuiltin(GitRepo):
+    """Built-in add-ons repository."""
 
-    builtin: bool = False
+    builtin: bool = True
 
-    def __init__(self, coresys):
+    def __init__(self, coresys: CoreSys, repository: BuiltinRepository):
         """Initialize Git Supervisor add-on repository."""
-        super().__init__(coresys, coresys.config.path_addons_core, URL_HASSIO_ADDONS)
+        super().__init__(coresys, repository.get_path(coresys), repository.url)
+
+    async def remove(self) -> None:
+        """Raise. Cannot remove built-in repositories."""
+        raise RuntimeError("Cannot remove built-in repositories!")
 
 
 class GitRepoCustom(GitRepo):
@@ -233,7 +228,21 @@ class GitRepoCustom(GitRepo):
 
         super().__init__(coresys, path, url)
 
-    async def remove(self):
+    async def remove(self) -> None:
         """Remove a custom repository."""
+        if self.lock.locked():
+            _LOGGER.warning(
+                "Cannot remove add-on repository %s, there is already a task in progress",
+                self.url,
+            )
+            return
+
         _LOGGER.info("Removing custom add-on repository %s", self.url)
-        await self._remove()
+
+        def _remove_git_dir(path: Path) -> None:
+            if not path.is_dir():
+                return
+            remove_folder(path)
+
+        async with self.lock:
+            await self.sys_run_in_executor(_remove_git_dir, self.path)
