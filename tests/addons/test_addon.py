@@ -12,7 +12,6 @@ import pytest
 from securetar import SecureTarFile
 
 from supervisor.addons.addon import Addon
-from supervisor.addons.build import AddonBuild
 from supervisor.addons.const import AddonBackupMode
 from supervisor.addons.model import AddonModel
 from supervisor.const import AddonBoot, AddonState, BusEvent
@@ -850,7 +849,9 @@ async def test_addon_loads_wrong_image(
             new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
         ) as mock_run_command,
         patch.object(
-            AddonBuild, "get_addon_host_path", return_value="/addon/path/on/host"
+            type(coresys.config),
+            "local_to_extern_path",
+            return_value="/addon/path/on/host",
         ),
     ):
         await install_addon_ssh.load()
@@ -900,7 +901,9 @@ async def test_addon_loads_missing_image(
             new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
         ) as mock_run_command,
         patch.object(
-            AddonBuild, "get_addon_host_path", return_value="/addon/path/on/host"
+            type(coresys.config),
+            "local_to_extern_path",
+            return_value="/addon/path/on/host",
         ),
     ):
         await install_addon_ssh.load()
@@ -940,7 +943,9 @@ async def test_addon_load_succeeds_with_docker_errors(
     with (
         patch("pathlib.Path.is_file", return_value=True),
         patch.object(
-            AddonBuild, "get_addon_host_path", return_value="/addon/path/on/host"
+            type(coresys.config),
+            "local_to_extern_path",
+            return_value="/addon/path/on/host",
         ),
     ):
         await install_addon_ssh.load()

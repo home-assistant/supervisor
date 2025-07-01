@@ -689,6 +689,7 @@ class DockerAddon(DockerInterface):
             builder_name = f"addon_builder_{self.addon.slug}"
 
             # Remove dangling builder container if it exists by any chance
+            # E.g. because of an abrupt host shutdown/reboot during a build
             with suppress(docker.errors.NotFound):
                 self.sys_docker.containers.get(builder_name).remove(force=True, v=True)
 
