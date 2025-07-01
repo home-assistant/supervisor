@@ -122,6 +122,17 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         except HassioArchNotFound:
             return False
 
+    def get_addon_host_path(self) -> str:
+        """Get the host path for the addon directory.
+
+        Must be run in executor.
+        """
+        # The addon path will be mounted from the host system
+        relative_path = self.addon.path_location.relative_to(
+            self.sys_config.path_supervisor
+        )
+        return str(self.sys_config.path_extern_supervisor / relative_path)
+
     def get_docker_args(
         self, version: AwesomeVersion, image_tag: str
     ) -> dict[str, Any]:
@@ -169,11 +180,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         for key, value in build_args.items():
             build_cmd.extend(["--build-arg", f"{key}={value}"])
 
-        # The addon path will be mounted from the host system
-        relative_path = self.addon.path_location.relative_to(
-            self.sys_config.path_supervisor
-        )
-        addon_host_path = str(self.sys_config.path_extern_supervisor / relative_path)
+        addon_host_path = self.get_addon_host_path()
 
         return {
             "command": build_cmd,

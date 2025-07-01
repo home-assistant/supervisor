@@ -248,6 +248,9 @@ async def test_api_addon_rebuild_healthcheck(
         patch.object(
             DockerAddon, "healthcheck", new=PropertyMock(return_value={"exists": True})
         ),
+        patch.object(
+            AddonBuild, "get_addon_host_path", return_value="/addon/path/on/host"
+        ),
     ):
         resp = await api_client.post("/addons/local_ssh/rebuild")
 
