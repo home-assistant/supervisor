@@ -280,6 +280,8 @@ class APIIngress(CoreSysAttributes):
                 response.headers["X-Accel-Buffering"] = "no"
                 await response.prepare(request)
                 async for data, _ in result.content.iter_chunks():
+                    if not data:
+                        break
                     await response.write(data)
 
             except (
