@@ -33,7 +33,7 @@ async def test_add_valid_repository(
     """Test add custom repository."""
     current = coresys.store.repository_urls
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
         patch(
             "supervisor.utils.common.read_yaml_file",
             return_value={"name": "Awesome repository"},
@@ -54,7 +54,7 @@ async def test_add_invalid_repository(coresys: CoreSys, store_manager: StoreMana
     """Test add invalid custom repository."""
     current = coresys.store.repository_urls
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
         patch(
             "pathlib.Path.read_text",
             return_value="",
@@ -79,7 +79,7 @@ async def test_error_on_invalid_repository(
     """Test invalid repository not added."""
     current = coresys.store.repository_urls
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
         patch(
             "pathlib.Path.read_text",
             return_value="",
@@ -103,7 +103,7 @@ async def test_add_invalid_repository_file(
     """Test add invalid custom repository file."""
     current = coresys.store.repository_urls
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
         patch(
             "pathlib.Path.read_text",
             return_value=json.dumps({"name": "Awesome repository"}),
@@ -135,7 +135,7 @@ async def test_add_repository_with_git_error(
 ):
     """Test repo added with issue on git error."""
     current = coresys.store.repository_urls
-    with patch("supervisor.store.repository.Repository.load", side_effect=git_error):
+    with patch("supervisor.store.repository.RepositoryGit.load", side_effect=git_error):
         await store_manager.update_repositories(
             current + ["http://example.com"], add_with_errors=True
         )
@@ -163,7 +163,7 @@ async def test_error_on_repository_with_git_error(
     """Test repo not added on git error."""
     current = coresys.store.repository_urls
     with (
-        patch("supervisor.store.repository.Repository.load", side_effect=git_error),
+        patch("supervisor.store.repository.RepositoryGit.load", side_effect=git_error),
         pytest.raises(StoreError),
     ):
         if use_update:
@@ -182,7 +182,7 @@ async def test_preinstall_valid_repository(
     coresys: CoreSys, store_manager: StoreManager
 ):
     """Test add core repository valid."""
-    with patch("supervisor.store.repository.Repository.load", return_value=None):
+    with patch("supervisor.store.repository.RepositoryGit.load", return_value=None):
         await store_manager.update_repositories(BUILTIN_REPOSITORIES)
 
         def validate():
@@ -244,8 +244,8 @@ async def test_remove_used_repository(
 
 async def test_update_partial_error(coresys: CoreSys, store_manager: StoreManager):
     """Test partial error on update does partial save and errors."""
-    with patch("supervisor.store.repository.Repository.validate", return_value=True):
-        with patch("supervisor.store.repository.Repository.load", return_value=None):
+    with patch("supervisor.store.repository.RepositoryGit.validate", return_value=True):
+        with patch("supervisor.store.repository.RepositoryGit.load", return_value=None):
             await store_manager.update_repositories([])
 
         store_manager.data.update.assert_called_once()
@@ -256,7 +256,7 @@ async def test_update_partial_error(coresys: CoreSys, store_manager: StoreManage
 
         with (
             patch(
-                "supervisor.store.repository.Repository.load",
+                "supervisor.store.repository.RepositoryGit.load",
                 side_effect=[None, StoreGitError()],
             ),
             pytest.raises(StoreError),
@@ -275,8 +275,8 @@ async def test_error_adding_duplicate(
     """Test adding a duplicate repository causes an error."""
     assert repository.source in coresys.store.repository_urls
     with (
-        patch("supervisor.store.repository.Repository.validate", return_value=True),
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
         pytest.raises(StoreError),
     ):
         await store_manager.add_repository(repository.source)
@@ -290,7 +290,7 @@ async def test_add_with_update_repositories(
     assert "http://example.com" not in coresys.store.repository_urls
 
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
         patch(
             "supervisor.utils.common.read_yaml_file",
             return_value={"name": "Awesome repository"},
@@ -328,7 +328,7 @@ async def test_repositories_loaded_ignore_updates(
 ):
     """Test repositories loaded whether or not supervisor needs an update."""
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
         patch.object(
             type(coresys.supervisor),
             "need_update",

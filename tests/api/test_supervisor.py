@@ -42,8 +42,8 @@ async def test_api_supervisor_options_add_repository(
         coresys.store.get_from_url(REPO_URL)
 
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
-        patch("supervisor.store.repository.Repository.validate", return_value=True),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
     ):
         response = await api_client.post(
             "/supervisor/options", json={"addons_repositories": [REPO_URL]}
@@ -76,9 +76,9 @@ async def test_api_supervisor_options_repositories_skipped_on_error(
 ):
     """Test repositories skipped on error via POST /supervisor/options REST API."""
     with (
-        patch("supervisor.store.repository.Repository.load", side_effect=git_error),
-        patch("supervisor.store.repository.Repository.validate", return_value=False),
-        patch("supervisor.store.repository.Repository.remove"),
+        patch("supervisor.store.repository.RepositoryGit.load", side_effect=git_error),
+        patch("supervisor.store.repository.RepositoryGit.validate", return_value=False),
+        patch("supervisor.store.repository.RepositoryCustom.remove"),
     ):
         response = await api_client.post(
             "/supervisor/options", json={"addons_repositories": [REPO_URL]}
@@ -98,7 +98,7 @@ async def test_api_supervisor_options_repo_error_with_config_change(
     assert not coresys.config.debug
 
     with patch(
-        "supervisor.store.repository.Repository.load", side_effect=StoreGitError()
+        "supervisor.store.repository.RepositoryGit.load", side_effect=StoreGitError()
     ):
         response = await api_client.post(
             "/supervisor/options",

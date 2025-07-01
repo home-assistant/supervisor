@@ -135,7 +135,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         if url == URL_HASSIO_ADDONS:
             url = StoreType.CORE
 
-        repository = Repository(self.coresys, url)
+        repository = Repository.create(self.coresys, url)
 
         if repository.slug in self.repositories:
             raise StoreError(f"Can't add {url}, already in the store", _LOGGER.error)

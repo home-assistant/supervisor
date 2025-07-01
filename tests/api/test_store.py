@@ -97,8 +97,8 @@ async def test_api_store_add_repository(
 ) -> None:
     """Test POST /store/repositories REST API."""
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
-        patch("supervisor.store.repository.Repository.validate", return_value=True),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
     ):
         response = await api_client.post(
             "/store/repositories", json={"repository": REPO_URL}

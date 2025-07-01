@@ -611,7 +611,7 @@ async def repository(coresys: CoreSys):
     ):
         await coresys.store.load()
 
-        repository_obj = Repository(
+        repository_obj = Repository.create(
             coresys, "https://github.com/awesome-developer/awesome-repo"
         )
 

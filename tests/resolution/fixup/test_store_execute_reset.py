@@ -67,7 +67,7 @@ async def test_fixup(coresys: CoreSys):
         path = path or obj.path
         await coresys.run_in_executor((path / ".git").mkdir)
 
-    coresys.store.repositories["94cfad5a"] = Repository(
+    coresys.store.repositories["94cfad5a"] = Repository.create(
         coresys, "https://github.com/home-assistant/addons-example"
     )
     with (
@@ -97,7 +97,7 @@ async def test_fixup_clone_fail(coresys: CoreSys):
     assert test_repo.exists()
     assert corrupt_marker.exists()
 
-    coresys.store.repositories["94cfad5a"] = Repository(
+    coresys.store.repositories["94cfad5a"] = Repository.create(
         coresys, "https://github.com/home-assistant/addons-example"
     )
     with (
@@ -129,7 +129,7 @@ async def test_fixup_move_fail(coresys: CoreSys, error_num: int, unhealthy: bool
 
     add_store_reset_suggestion(coresys)
     test_repo.mkdir(parents=True)
-    coresys.store.repositories["94cfad5a"] = Repository(
+    coresys.store.repositories["94cfad5a"] = Repository.create(
         coresys, "https://github.com/home-assistant/addons-example"
     )
     with (

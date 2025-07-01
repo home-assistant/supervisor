@@ -42,13 +42,8 @@ class FixupStoreExecuteReset(FixupBase):
             _LOGGER.warning("Can't find store %s for fixup", reference)
             return
 
-        # Local add-ons are not a git repo, can't remove and re-pull
         try:
-            if repository.git:
-                await repository.git.reset()
-
-            # Load data again
-            await repository.load()
+            await repository.reset()
         except StoreError:
             raise ResolutionFixupError() from None
 
