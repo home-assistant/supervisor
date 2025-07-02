@@ -89,7 +89,8 @@ class GitRepo(CoreSysAttributes, ABC):
     )
     async def clone(self) -> None:
         """Clone git add-on repository."""
-        await self._clone()
+        async with self.lock:
+            await self._clone()
 
     @Job(
         name="git_repo_reset",
@@ -111,16 +112,17 @@ class GitRepo(CoreSysAttributes, ABC):
                 remove_folder(folder=self.path)
                 temp_path.rename(self.path)
 
-            try:
-                await self.sys_run_in_executor(move_clone)
-            except OSError as err:
-                if err.errno == errno.EBADMSG:
-                    self.sys_resolution.add_unhealthy_reason(
-                        UnhealthyReason.OSERROR_BAD_MESSAGE
-                    )
-                raise StoreGitCloneError(
-                    f"Can't move clone due to: {err!s}", _LOGGER.error
-                ) from err
+            async with self.lock:
+                try:
+                    await self.sys_run_in_executor(move_clone)
+                except OSError as err:
+                    if err.errno == errno.EBADMSG:
+                        self.sys_resolution.add_unhealthy_reason(
+                            UnhealthyReason.OSERROR_BAD_MESSAGE
+                        )
+                    raise StoreGitCloneError(
+                        f"Can't move clone due to: {err!s}", _LOGGER.error
+                    ) from err
         finally:
             # Clean up temporary directory in case of error
             # If the folder was moved this will do nothing
@@ -129,37 +131,36 @@ class GitRepo(CoreSysAttributes, ABC):
     async def _clone(self, path: Path | None = None) -> None:
         """Clone git add-on repository to location."""
         path = path or self.path
-        async with self.lock:
-            git_args = {
-                attribute: value
-                for attribute, value in (
-                    ("recursive", True),
-                    ("branch", self.branch),
-                    ("depth", 1),
-                    ("shallow-submodules", True),
-                )
-                if value is not None
-            }
+        git_args = {
+            attribute: value
+            for attribute, value in (
+                ("recursive", True),
+                ("branch", self.branch),
+                ("depth", 1),
+                ("shallow-submodules", True),
+            )
+            if value is not None
+        }
 
-            try:
-                _LOGGER.info("Cloning add-on %s repository from %s", path, self.url)
-                self.repo = await self.sys_run_in_executor(
-                    ft.partial(
-                        git.Repo.clone_from,
-                        self.url,
-                        str(path),
-                        **git_args,  # type: ignore
-                    )
+        try:
+            _LOGGER.info("Cloning add-on %s repository from %s", path, self.url)
+            self.repo = await self.sys_run_in_executor(
+                ft.partial(
+                    git.Repo.clone_from,
+                    self.url,
+                    str(path),
+                    **git_args,  # type: ignore
                 )
+            )
 
-            except (
-                git.InvalidGitRepositoryError,
-                git.NoSuchPathError,
-                git.CommandError,
-                UnicodeDecodeError,
-            ) as err:
-                _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
-                raise StoreGitCloneError() from err
+        except (
+            git.InvalidGitRepositoryError,
+            git.NoSuchPathError,
+            git.CommandError,
+            UnicodeDecodeError,
+        ) as err:
+            _LOGGER.error("Can't clone %s repository: %s.", self.url, err)
+            raise StoreGitCloneError() from err
 
     @Job(
         name="git_repo_pull",
