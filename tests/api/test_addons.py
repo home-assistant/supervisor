@@ -14,6 +14,7 @@ from supervisor.const import AddonState
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
+from supervisor.docker.manager import CommandReturn
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import HassioError
 from supervisor.store.repository import Repository
@@ -239,6 +240,19 @@ async def test_api_addon_rebuild_healthcheck(
         patch.object(Addon, "need_build", new=PropertyMock(return_value=True)),
         patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
         patch.object(DockerAddon, "run", new=container_events_task),
+        patch.object(
+            coresys.docker,
+            "run_command",
+            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
+        ),
+        patch.object(
+            DockerAddon, "healthcheck", new=PropertyMock(return_value={"exists": True})
+        ),
+        patch.object(
+            type(coresys.config),
+            "local_to_extern_path",
+            return_value="/addon/path/on/host",
+        ),
     ):
         resp = await api_client.post("/addons/local_ssh/rebuild")
 

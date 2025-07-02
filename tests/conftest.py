@@ -131,7 +131,7 @@ async def docker() -> DockerAPI:
 
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
-        docker_obj.info.version = "1.0.0"
+        docker_obj.info.version = AwesomeVersion("1.0.0")
 
         yield docker_obj
 

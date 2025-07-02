@@ -105,6 +105,20 @@ def reset_last_call(func, group: str | None = None) -> None:
     get_job_decorator(func).set_last_call(datetime.min, group)
 
 
+def is_in_list(a: list, b: list):
+    """Check if all elements in list a are in list b in order.
+
+    Taken from https://stackoverflow.com/a/69175987/12156188.
+    """
+
+    for c in a:
+        if c in b:
+            b = b[b.index(c) :]
+        else:
+            return False
+    return True
+
+
 class MockResponse:
     """Mock response for aiohttp requests."""
 

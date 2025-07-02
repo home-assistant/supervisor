@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, cast
 from attr import evolve
 from awesomeversion import AwesomeVersion
 import docker
+import docker.errors
 from docker.types import Mount
 import requests
 
@@ -43,6 +44,7 @@ from ..jobs.decorator import Job
 from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
 from ..utils.sentry import async_capture_exception
 from .const import (
+    ADDON_BUILDER_IMAGE,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_OLD,
@@ -673,9 +675,40 @@ class DockerAddon(DockerInterface):
         _LOGGER.info("Starting build for %s:%s", self.image, version)
 
         def build_image():
-            return self.sys_docker.images.build(
-                use_config_proxy=False, **build_env.get_docker_args(version, image)
+            if build_env.squash:
+                _LOGGER.warning(
+                    "Ignoring squash build option for %s as Docker BuildKit does not support it.",
+                    self.addon.slug,
+                )
+
+            addon_image_tag = f"{image or self.addon.image}:{version!s}"
+
+            docker_version = self.sys_docker.info.version
+            builder_version_tag = f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
+
+            builder_name = f"addon_builder_{self.addon.slug}"
+
+            # Remove dangling builder container if it exists by any chance
+            # E.g. because of an abrupt host shutdown/reboot during a build
+            with suppress(docker.errors.NotFound):
+                self.sys_docker.containers.get(builder_name).remove(force=True, v=True)
+
+            result = self.sys_docker.run_command(
+                ADDON_BUILDER_IMAGE,
+                version=builder_version_tag,
+                name=builder_name,
+                **build_env.get_docker_args(version, addon_image_tag),
             )
+
+            logs = result.output.decode("utf-8")
+
+            if result.exit_code != 0:
+                error_message = f"Docker build failed for {addon_image_tag} (exit code {result.exit_code}). Build output:\n{logs}"
+                raise docker.errors.DockerException(error_message)
+
+            addon_image = self.sys_docker.images.get(addon_image_tag)
+
+            return addon_image, logs
 
         try:
             docker_image, log = await self.sys_run_in_executor(build_image)
@@ -687,15 +720,6 @@ class DockerAddon(DockerInterface):
 
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't build %s:%s: %s", self.image, version, err)
-            if hasattr(err, "build_log"):
-                log = "\n".join(
-                    [
-                        x["stream"]
-                        for x in err.build_log  # pylint: disable=no-member
-                        if isinstance(x, dict) and "stream" in x
-                    ]
-                )
-                _LOGGER.error("Build log: \n%s", log)
             raise DockerError() from err
 
         _LOGGER.info("Build %s:%s done", self.image, version)

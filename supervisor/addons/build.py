@@ -15,6 +15,7 @@ from ..const import (
     ATTR_SQUASH,
     FILE_SUFFIX_CONFIGURATION,
     META_ADDON,
+    SOCKET_DOCKER,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.interface import MAP_ARCH
@@ -121,39 +122,64 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         except HassioArchNotFound:
             return False
 
-    def get_docker_args(self, version: AwesomeVersion, image: str | None = None):
-        """Create a dict with Docker build arguments.
+    def get_docker_args(
+        self, version: AwesomeVersion, image_tag: str
+    ) -> dict[str, Any]:
+        """Create a dict with Docker run args."""
+        dockerfile_path = self.get_dockerfile().relative_to(self.addon.path_location)
 
-        Must be run in executor.
-        """
-        args: dict[str, Any] = {
-            "path": str(self.addon.path_location),
-            "tag": f"{image or self.addon.image}:{version!s}",
-            "dockerfile": str(self.get_dockerfile()),
-            "pull": True,
-            "forcerm": not self.sys_dev,
-            "squash": self.squash,
-            "platform": MAP_ARCH[self.arch],
-            "labels": {
-                "io.hass.version": version,
-                "io.hass.arch": self.arch,
-                "io.hass.type": META_ADDON,
-                "io.hass.name": self._fix_label("name"),
-                "io.hass.description": self._fix_label("description"),
-                **self.additional_labels,
-            },
-            "buildargs": {
-                "BUILD_FROM": self.base_image,
-                "BUILD_VERSION": version,
-                "BUILD_ARCH": self.sys_arch.default,
-                **self.additional_args,
-            },
+        build_cmd = [
+            "docker",
+            "buildx",
+            "build",
+            ".",
+            "--tag",
+            image_tag,
+            "--file",
+            str(dockerfile_path),
+            "--platform",
+            MAP_ARCH[self.arch],
+            "--pull",
+        ]
+
+        labels = {
+            "io.hass.version": version,
+            "io.hass.arch": self.arch,
+            "io.hass.type": META_ADDON,
+            "io.hass.name": self._fix_label("name"),
+            "io.hass.description": self._fix_label("description"),
+            **self.additional_labels,
         }
 
         if self.addon.url:
-            args["labels"]["io.hass.url"] = self.addon.url
+            labels["io.hass.url"] = self.addon.url
 
-        return args
+        for key, value in labels.items():
+            build_cmd.extend(["--label", f"{key}={value}"])
+
+        build_args = {
+            "BUILD_FROM": self.base_image,
+            "BUILD_VERSION": version,
+            "BUILD_ARCH": self.sys_arch.default,
+            **self.additional_args,
+        }
+
+        for key, value in build_args.items():
+            build_cmd.extend(["--build-arg", f"{key}={value}"])
+
+        # The addon path will be mounted from the host system
+        addon_extern_path = self.sys_config.local_to_extern_path(
+            self.addon.path_location
+        )
+
+        return {
+            "command": build_cmd,
+            "volumes": {
+                SOCKET_DOCKER: {"bind": "/var/run/docker.sock", "mode": "rw"},
+                addon_extern_path: {"bind": "/addon", "mode": "ro"},
+            },
+            "working_dir": "/addon",
+        }
 
     def _fix_label(self, label_name: str) -> str:
         """Remove characters they are not supported."""

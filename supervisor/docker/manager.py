@@ -295,7 +295,7 @@ class DockerAPI:
         self,
         image: str,
         version: str = "latest",
-        command: str | None = None,
+        command: str | list[str] | None = None,
         **kwargs: Any,
     ) -> CommandReturn:
         """Create a temporary container and run command.
