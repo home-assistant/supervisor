@@ -130,6 +130,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
 
         build_cmd = [
             "docker",
+            "buildx",
             "build",
             ".",
             "--tag",
