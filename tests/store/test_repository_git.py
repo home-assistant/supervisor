@@ -15,13 +15,6 @@ from supervisor.store.git import GitRepo
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 
 
-class GitRepoTest(GitRepo):
-    """Implementation of GitRepo for tests that allows direct setting of path."""
-
-    async def remove(self) -> None:
-        """Not implemented."""
-
-
 @pytest.fixture(name="clone_from")
 async def fixture_clone_from():
     """Mock git clone_from."""
@@ -35,7 +28,7 @@ async def test_git_clone(
 ):
     """Test git clone."""
     fragment = f"#{branch}" if branch else ""
-    repo = GitRepoTest(coresys, tmp_path, f"{REPO_URL}{fragment}")
+    repo = GitRepo(coresys, tmp_path, f"{REPO_URL}{fragment}")
 
     await repo.clone.__wrapped__(repo)
 
@@ -63,7 +56,7 @@ async def test_git_clone_error(
     coresys: CoreSys, tmp_path: Path, clone_from: AsyncMock, git_error: Exception
 ):
     """Test git clone error."""
-    repo = GitRepoTest(coresys, tmp_path, REPO_URL)
+    repo = GitRepo(coresys, tmp_path, REPO_URL)
 
     clone_from.side_effect = git_error
     with pytest.raises(StoreGitCloneError):
@@ -75,7 +68,7 @@ async def test_git_clone_error(
 async def test_git_load(coresys: CoreSys, tmp_path: Path):
     """Test git load."""
     repo_dir = tmp_path / "repo"
-    repo = GitRepoTest(coresys, repo_dir, REPO_URL)
+    repo = GitRepo(coresys, repo_dir, REPO_URL)
     repo.clone = AsyncMock()
 
     # Test with non-existing git repo root directory
@@ -113,7 +106,7 @@ async def test_git_load(coresys: CoreSys, tmp_path: Path):
 async def test_git_load_error(coresys: CoreSys, tmp_path: Path, git_errors: Exception):
     """Test git load error."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    repo = GitRepoTest(coresys, tmp_path, REPO_URL)
+    repo = GitRepo(coresys, tmp_path, REPO_URL)
 
     # Pretend we have a repo
     (tmp_path / ".git").mkdir()

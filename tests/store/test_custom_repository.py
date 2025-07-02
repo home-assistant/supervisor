@@ -64,9 +64,7 @@ async def test_add_invalid_repository(coresys: CoreSys, store_manager: StoreMana
             current + ["http://example.com"], add_with_errors=True
         )
 
-        assert not await coresys.run_in_executor(
-            store_manager.get_from_url("http://example.com").validate
-        )
+        assert not await store_manager.get_from_url("http://example.com").validate()
 
     assert "http://example.com" in coresys.store.repository_urls
     assert coresys.resolution.suggestions[-1].type == SuggestionType.EXECUTE_REMOVE
@@ -114,7 +112,7 @@ async def test_add_invalid_repository_file(
             current + ["http://example.com"], add_with_errors=True
         )
 
-        assert not store_manager.get_from_url("http://example.com").validate()
+        assert not await store_manager.get_from_url("http://example.com").validate()
 
     assert "http://example.com" in coresys.store.repository_urls
     assert coresys.resolution.suggestions[-1].type == SuggestionType.EXECUTE_REMOVE
