@@ -63,6 +63,8 @@ from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
 from .utils import password_to_key
 from .validate import SCHEMA_BACKUP
 
+IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
@@ -257,6 +259,10 @@ class Backup(JobGroup):
     def data(self) -> dict[str, Any]:
         """Returns a copy of the data."""
         return deepcopy(self._data)
+
+    def __hash__(self) -> int:
+        """Return object hash for comparison."""
+        return hash(self.slug)
 
     def __eq__(self, other: Any) -> bool:
         """Return true if backups have same metadata."""
@@ -577,13 +583,21 @@ class Backup(JobGroup):
     @Job(name="backup_addon_save", cleanup=False)
     async def _addon_save(self, addon: Addon) -> asyncio.Task | None:
         """Store an add-on into backup."""
-        self.sys_jobs.current.reference = addon.slug
+        self.sys_jobs.current.reference = slug = addon.slug
         if not self._outer_secure_tarfile:
             raise RuntimeError(
                 "Cannot backup components without initializing backup tar"
             )
 
-        tar_name = f"{addon.slug}.tar{'.gz' if self.compressed else ''}"
+        # Ensure it is still installed and get current data before proceeding
+        if not (curr_addon := self.sys_addons.get_local_only(slug)):
+            _LOGGER.warning(
+                "Skipping backup of add-on %s because it has been uninstalled",
+                slug,
+            )
+            return None
+
+        tar_name = f"{slug}.tar{'.gz' if self.compressed else ''}"
 
         addon_file = self._outer_secure_tarfile.create_inner_tar(
             f"./{tar_name}",
@@ -592,16 +606,16 @@ class Backup(JobGroup):
         )
         # Take backup
         try:
-            start_task = await addon.backup(addon_file)
+            start_task = await curr_addon.backup(addon_file)
         except AddonsError as err:
             raise BackupError(str(err)) from err
 
         # Store to config
         self._data[ATTR_ADDONS].append(
             {
-                ATTR_SLUG: addon.slug,
-                ATTR_NAME: addon.name,
-                ATTR_VERSION: addon.version,
+                ATTR_SLUG: slug,
+                ATTR_NAME: curr_addon.name,
+                ATTR_VERSION: curr_addon.version,
                 # Bug - addon_file.size used to give us this information
                 # It always returns 0 in current securetar. Skipping until fixed
                 ATTR_SIZE: 0,
