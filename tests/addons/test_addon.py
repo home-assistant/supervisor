@@ -820,7 +820,7 @@ async def test_paths_cache(coresys: CoreSys, install_addon_ssh: Addon):
 
     with (
         patch("supervisor.addons.addon.Path.exists", return_value=True),
-        patch("supervisor.store.repository.Repository.update", return_value=True),
+        patch("supervisor.store.repository.RepositoryLocal.update", return_value=True),
     ):
         await coresys.store.reload(coresys.store.get("local"))
 

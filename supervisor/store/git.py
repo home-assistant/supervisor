@@ -1,6 +1,5 @@
 """Init file for Supervisor add-on Git."""
 
-from abc import ABC, abstractmethod
 import asyncio
 import errno
 import functools as ft
@@ -16,16 +15,13 @@ from ..exceptions import StoreGitCloneError, StoreGitError, StoreJobError
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..utils import remove_folder
-from .utils import get_hash_from_repository
-from .validate import RE_REPOSITORY, BuiltinRepository
+from .validate import RE_REPOSITORY
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class GitRepo(CoreSysAttributes, ABC):
+class GitRepo(CoreSysAttributes):
     """Manage Add-on Git repository."""
-
-    builtin: bool
 
     def __init__(self, coresys: CoreSys, path: Path, url: str):
         """Initialize Git base wrapper."""
@@ -239,38 +235,8 @@ class GitRepo(CoreSysAttributes, ABC):
                 )
                 raise StoreGitError() from err
 
-    @abstractmethod
     async def remove(self) -> None:
         """Remove a repository."""
-
-
-class GitRepoBuiltin(GitRepo):
-    """Built-in add-ons repository."""
-
-    builtin: bool = True
-
-    def __init__(self, coresys: CoreSys, repository: BuiltinRepository):
-        """Initialize Git Supervisor add-on repository."""
-        super().__init__(coresys, repository.get_path(coresys), repository.url)
-
-    async def remove(self) -> None:
-        """Raise. Cannot remove built-in repositories."""
-        raise RuntimeError("Cannot remove built-in repositories!")
-
-
-class GitRepoCustom(GitRepo):
-    """Custom add-ons repository."""
-
-    builtin: bool = False
-
-    def __init__(self, coresys, url):
-        """Initialize custom Git Supervisor addo-n repository."""
-        path = Path(coresys.config.path_addons_git, get_hash_from_repository(url))
-
-        super().__init__(coresys, path, url)
-
-    async def remove(self) -> None:
-        """Remove a custom repository."""
         if self.lock.locked():
             _LOGGER.warning(
                 "Cannot remove add-on repository %s, there is already a task in progress",

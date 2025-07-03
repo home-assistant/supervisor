@@ -135,7 +135,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         if url == URL_HASSIO_ADDONS:
             url = StoreType.CORE
 
-        repository = Repository(self.coresys, url)
+        repository = Repository.create(self.coresys, url)
 
         if repository.slug in self.repositories:
             raise StoreError(f"Can't add {url}, already in the store", _LOGGER.error)
@@ -183,7 +183,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
                 raise err
 
         else:
-            if not await self.sys_run_in_executor(repository.validate):
+            if not await repository.validate():
                 if add_with_errors:
                     _LOGGER.error("%s is not a valid add-on repository", url)
                     self.sys_resolution.create_issue(

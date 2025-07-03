@@ -32,7 +32,8 @@ async def test_default_load(coresys: CoreSys):
         refresh_cache_calls.add(obj.slug)
 
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryLocal.load", return_value=None),
         patch.object(type(coresys.config), "addons_repositories", return_value=[]),
         patch("pathlib.Path.exists", return_value=True),
         patch.object(AddonStore, "refresh_path_cache", new=mock_refresh_cache),
@@ -80,9 +81,13 @@ async def test_load_with_custom_repository(coresys: CoreSys):
         store_manager = await StoreManager(coresys).load_config()
 
     with (
-        patch("supervisor.store.repository.Repository.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
+        patch("supervisor.store.repository.RepositoryLocal.load", return_value=None),
         patch.object(type(coresys.config), "addons_repositories", return_value=[]),
-        patch("supervisor.store.repository.Repository.validate", return_value=True),
+        patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
+        patch(
+            "supervisor.store.repository.RepositoryLocal.validate", return_value=True
+        ),
         patch("pathlib.Path.exists", return_value=True),
         patch.object(AddonStore, "refresh_path_cache", new=mock_refresh_cache),
     ):

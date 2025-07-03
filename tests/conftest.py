@@ -409,7 +409,7 @@ async def coresys(
         coresys_obj.init_websession = AsyncMock()
 
     # Don't remove files/folders related to addons and stores
-    with patch("supervisor.store.git.GitRepoCustom.remove"):
+    with patch("supervisor.store.git.GitRepo.remove"):
         yield coresys_obj
 
     await coresys_obj.dbus.unload()
@@ -611,7 +611,7 @@ async def repository(coresys: CoreSys):
     ):
         await coresys.store.load()
 
-        repository_obj = Repository(
+        repository_obj = Repository.create(
             coresys, "https://github.com/awesome-developer/awesome-repo"
         )
 
