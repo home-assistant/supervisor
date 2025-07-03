@@ -260,10 +260,6 @@ class Backup(JobGroup):
         """Returns a copy of the data."""
         return deepcopy(self._data)
 
-    def __hash__(self) -> int:
-        """Return object hash for comparison."""
-        return hash(self.slug)
-
     def __eq__(self, other: Any) -> bool:
         """Return true if backups have same metadata."""
         if not isinstance(other, Backup):
@@ -271,7 +267,7 @@ class Backup(JobGroup):
 
         # Compare all fields except ones about protection. Current encryption status does not affect equality
         keys = self._data.keys() | other._data.keys()
-        for k in keys - {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}:
+        for k in keys - IGNORED_COMPARISON_FIELDS:
             if (
                 k not in self._data
                 or k not in other._data
