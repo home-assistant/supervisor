@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Awaitable
 import logging
 
-from ..const import ATTR_REPOSITORIES, URL_HASSIO_ADDONS
+from ..const import ATTR_REPOSITORIES, REPOSITORY_CORE, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     StoreError,
@@ -18,12 +18,13 @@ from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.common import FileConfiguration
 from .addon import AddonStore
-from .const import FILE_HASSIO_STORE, StoreType
+from .const import FILE_HASSIO_STORE
 from .data import StoreData
-from .repository import Repository
+from .repository import Repository, RepositoryGit
 from .validate import (
     BUILTIN_REPOSITORIES,
     SCHEMA_STORE_FILE,
+    BuiltinRepository,
     ensure_builtin_repositories,
 )
 
@@ -56,7 +57,8 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         return [
             repository.source
             for repository in self.all
-            if repository.type == StoreType.GIT
+            if isinstance(repository, RepositoryGit)
+            and repository.slug != BuiltinRepository.CORE
         ]
 
     def get(self, slug: str) -> Repository:
@@ -133,7 +135,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     ) -> None:
         """Add a repository."""
         if url == URL_HASSIO_ADDONS:
-            url = StoreType.CORE
+            url = REPOSITORY_CORE
 
         repository = Repository.create(self.coresys, url)
 

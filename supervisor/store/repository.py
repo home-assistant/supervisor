@@ -10,11 +10,16 @@ import voluptuous as vol
 
 from supervisor.utils import get_latest_mtime
 
-from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_URL, FILE_SUFFIX_CONFIGURATION
+from ..const import (
+    ATTR_MAINTAINER,
+    ATTR_NAME,
+    ATTR_URL,
+    FILE_SUFFIX_CONFIGURATION,
+    REPOSITORY_LOCAL,
+)
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError, StoreError
 from ..utils.common import read_json_or_yaml_file
-from .const import StoreType
 from .git import GitRepo
 from .utils import get_hash_from_repository
 from .validate import SCHEMA_REPOSITORY_CONFIG, BuiltinRepository
@@ -29,14 +34,13 @@ class Repository(CoreSysAttributes, ABC):
     def __init__(self, coresys: CoreSys, repository: str):
         """Initialize add-on store repository object."""
         self._slug: str
-        self._type: StoreType
         self.coresys: CoreSys = coresys
         self.source: str = repository
 
     @staticmethod
     def create(coresys: CoreSys, repository: str) -> Repository:
         """Create a repository instance."""
-        if repository == StoreType.LOCAL:
+        if repository == REPOSITORY_LOCAL:
             return RepositoryLocal(coresys)
         if repository in BuiltinRepository:
             return RepositoryGitBuiltin(coresys, BuiltinRepository(repository))
@@ -50,11 +54,6 @@ class Repository(CoreSysAttributes, ABC):
     def slug(self) -> str:
         """Return repo slug."""
         return self._slug
-
-    @property
-    def type(self) -> StoreType:
-        """Return type of the store."""
-        return self._type
 
     @property
     def data(self) -> dict:
@@ -108,7 +107,6 @@ class RepositoryBuiltin(Repository, ABC):
         super().__init__(coresys, builtin.value)
         self._builtin = builtin
         self._slug = builtin.id
-        self._type = builtin.type
 
     async def validate(self) -> bool:
         """Assume built-in repositories are always valid."""
@@ -225,7 +223,6 @@ class RepositoryCustom(RepositoryGit):
         """Initialize object."""
         super().__init__(coresys, url)
         self._slug = get_hash_from_repository(url)
-        self._type = StoreType.GIT
         self._git = GitRepo(coresys, coresys.config.path_addons_git / self._slug, url)
 
     async def remove(self) -> None:

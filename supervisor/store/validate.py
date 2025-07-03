@@ -10,11 +10,12 @@ from ..const import (
     ATTR_NAME,
     ATTR_REPOSITORIES,
     ATTR_URL,
+    REPOSITORY_CORE,
+    REPOSITORY_LOCAL,
     URL_HASSIO_ADDONS,
 )
 from ..coresys import CoreSys
 from ..validate import RE_REPOSITORY
-from .const import StoreType
 from .utils import get_hash_from_repository
 
 URL_COMMUNITY_ADDONS = "https://github.com/hassio-addons/repository"
@@ -25,32 +26,29 @@ URL_MUSIC_ASSISTANT = "https://github.com/music-assistant/home-assistant-addon"
 class BuiltinRepository(StrEnum):
     """Built-in add-on repository."""
 
-    CORE = StoreType.CORE.value
-    LOCAL = StoreType.LOCAL.value
+    CORE = "core"
+    LOCAL = "local"
     COMMUNITY_ADDONS = URL_COMMUNITY_ADDONS
     ESPHOME = URL_ESPHOME
     MUSIC_ASSISTANT = URL_MUSIC_ASSISTANT
 
     def __init__(self, value: str) -> None:
         """Initialize repository item."""
-        if value == StoreType.LOCAL:
+        if value == REPOSITORY_LOCAL:
             self.id = value
             self.url = ""
-            self.type = StoreType.LOCAL
-        elif value == StoreType.CORE:
+        elif value == REPOSITORY_CORE:
             self.id = value
             self.url = URL_HASSIO_ADDONS
-            self.type = StoreType.CORE
         else:
             self.id = get_hash_from_repository(value)
             self.url = value
-            self.type = StoreType.GIT
 
     def get_path(self, coresys: CoreSys) -> Path:
         """Get path to git repo for repository."""
-        if self.id == StoreType.LOCAL:
+        if self.id == REPOSITORY_LOCAL:
             return coresys.config.path_addons_local
-        if self.id == StoreType.CORE:
+        if self.id == REPOSITORY_CORE:
             return coresys.config.path_addons_core
         return Path(coresys.config.path_addons_git, self.id)
 
@@ -80,7 +78,7 @@ def ensure_builtin_repositories(addon_repositories: list[str]) -> list[str]:
 
 def validate_repository(repository: str) -> str:
     """Validate a valid repository."""
-    if repository in [StoreType.CORE, StoreType.LOCAL]:
+    if repository in [REPOSITORY_CORE, REPOSITORY_LOCAL]:
         return repository
 
     data = RE_REPOSITORY.match(repository)
