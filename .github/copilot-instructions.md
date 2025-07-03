@@ -259,11 +259,13 @@ ruff check supervisor/
 ruff format supervisor/
 
 # Type checking
-mypy supervisor/
+mypy --ignore-missing-imports supervisor/
 
 # Pre-commit hooks
 pre-commit run --all-files
 ```
+
+Always run the pre-commit hooks at the end of code editing.
 
 ### Common Patterns to Follow
 
