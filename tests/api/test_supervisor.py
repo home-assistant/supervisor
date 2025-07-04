@@ -55,19 +55,19 @@ async def test_api_supervisor_options_add_repository(
 
 
 async def test_api_supervisor_options_remove_repository(
-    api_client: TestClient, coresys: CoreSys, repository: Repository
+    api_client: TestClient, coresys: CoreSys, test_repository: Repository
 ):
     """Test remove a repository via POST /supervisor/options REST API."""
-    assert repository.source in coresys.store.repository_urls
-    assert repository.slug in coresys.store.repositories
+    assert test_repository.source in coresys.store.repository_urls
+    assert test_repository.slug in coresys.store.repositories
 
     response = await api_client.post(
         "/supervisor/options", json={"addons_repositories": []}
     )
 
     assert response.status == 200
-    assert repository.source not in coresys.store.repository_urls
-    assert repository.slug not in coresys.store.repositories
+    assert test_repository.source not in coresys.store.repository_urls
+    assert test_repository.slug not in coresys.store.repositories
 
 
 @pytest.mark.parametrize("git_error", [None, StoreGitError()])

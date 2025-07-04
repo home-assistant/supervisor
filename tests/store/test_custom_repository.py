@@ -197,21 +197,21 @@ async def test_preinstall_valid_repository(
 async def test_remove_repository(
     coresys: CoreSys,
     store_manager: StoreManager,
-    repository: Repository,
+    test_repository: Repository,
     use_update: bool,
 ):
     """Test removing a custom repository."""
-    assert repository.source in coresys.store.repository_urls
-    assert repository.slug in coresys.store.repositories
+    assert test_repository.source in coresys.store.repository_urls
+    assert test_repository.slug in coresys.store.repositories
 
     if use_update:
         await store_manager.update_repositories([])
     else:
-        await store_manager.remove_repository(repository)
+        await store_manager.remove_repository(test_repository)
 
-    assert repository.source not in coresys.store.repository_urls
-    assert repository.slug not in coresys.addons.store
-    assert repository.slug not in coresys.store.repositories
+    assert test_repository.source not in coresys.store.repository_urls
+    assert test_repository.slug not in coresys.addons.store
+    assert test_repository.slug not in coresys.store.repositories
 
 
 @pytest.mark.parametrize("use_update", [True, False])
@@ -268,23 +268,23 @@ async def test_update_partial_error(coresys: CoreSys, store_manager: StoreManage
 
 
 async def test_error_adding_duplicate(
-    coresys: CoreSys, store_manager: StoreManager, repository: Repository
+    coresys: CoreSys, store_manager: StoreManager, test_repository: Repository
 ):
     """Test adding a duplicate repository causes an error."""
-    assert repository.source in coresys.store.repository_urls
+    assert test_repository.source in coresys.store.repository_urls
     with (
         patch("supervisor.store.repository.RepositoryGit.validate", return_value=True),
         patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
         pytest.raises(StoreError),
     ):
-        await store_manager.add_repository(repository.source)
+        await store_manager.add_repository(test_repository.source)
 
 
 async def test_add_with_update_repositories(
-    coresys: CoreSys, store_manager: StoreManager, repository: Repository
+    coresys: CoreSys, store_manager: StoreManager, test_repository: Repository
 ):
     """Test adding repositories to existing ones using update."""
-    assert repository.source in coresys.store.repository_urls
+    assert test_repository.source in coresys.store.repository_urls
     assert "http://example.com" not in coresys.store.repository_urls
 
     with (
@@ -297,7 +297,7 @@ async def test_add_with_update_repositories(
     ):
         await store_manager.update_repositories(["http://example.com"], replace=False)
 
-    assert repository.source in coresys.store.repository_urls
+    assert test_repository.source in coresys.store.repository_urls
     assert "http://example.com" in coresys.store.repository_urls
 
 

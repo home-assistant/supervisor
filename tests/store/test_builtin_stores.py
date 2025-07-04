@@ -3,14 +3,14 @@
 from supervisor.coresys import CoreSys
 
 
-def test_local_store(coresys: CoreSys, repository) -> None:
+def test_local_store(coresys: CoreSys, test_repository) -> None:
     """Test loading from local store."""
     assert coresys.store.get("local")
 
     assert "local_ssh" in coresys.addons.store
 
 
-def test_core_store(coresys: CoreSys, repository) -> None:
+def test_core_store(coresys: CoreSys, test_repository) -> None:
     """Test loading from core store."""
     assert coresys.store.get("core")
 

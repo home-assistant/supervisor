@@ -10,7 +10,7 @@ from supervisor.resolution.fixups.store_execute_remove import FixupStoreExecuteR
 from supervisor.store.repository import Repository
 
 
-async def test_fixup(coresys: CoreSys, repository: Repository):
+async def test_fixup(coresys: CoreSys, test_repository: Repository):
     """Test fixup."""
     store_execute_remove = FixupStoreExecuteRemove(coresys)
 
@@ -18,16 +18,20 @@ async def test_fixup(coresys: CoreSys, repository: Repository):
 
     coresys.resolution.add_suggestion(
         Suggestion(
-            SuggestionType.EXECUTE_REMOVE, ContextType.STORE, reference=repository.slug
+            SuggestionType.EXECUTE_REMOVE,
+            ContextType.STORE,
+            reference=test_repository.slug,
         )
     )
     coresys.resolution.add_issue(
         Issue(
-            IssueType.CORRUPT_REPOSITORY, ContextType.STORE, reference=repository.slug
+            IssueType.CORRUPT_REPOSITORY,
+            ContextType.STORE,
+            reference=test_repository.slug,
         )
     )
 
-    with patch.object(type(repository), "remove") as remove_repo:
+    with patch.object(type(test_repository), "remove") as remove_repo:
         await store_execute_remove()
 
         assert remove_repo.called
@@ -36,4 +40,4 @@ async def test_fixup(coresys: CoreSys, repository: Repository):
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0
 
-    assert repository.slug not in coresys.store.repositories
+    assert test_repository.slug not in coresys.store.repositories
