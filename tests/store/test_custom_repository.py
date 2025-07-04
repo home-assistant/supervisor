@@ -110,7 +110,7 @@ async def test_add_invalid_repository_file(
         patch("pathlib.Path.exists", return_value=False),
     ):
         await store_manager.update_repositories(
-            current + ["http://example.com"], add_with_errors=True
+            current + ["http://example.com"], issue_on_error=True
         )
 
         assert not await store_manager.get_from_url("http://example.com").validate()
@@ -136,7 +136,7 @@ async def test_add_repository_with_git_error(
     current = coresys.store.repository_urls
     with patch("supervisor.store.git.GitRepo.load", side_effect=git_error):
         await store_manager.update_repositories(
-            current + ["http://example.com"], add_with_errors=True
+            current + ["http://example.com"], issue_on_error=True
         )
 
     assert "http://example.com" in coresys.store.repository_urls

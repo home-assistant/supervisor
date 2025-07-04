@@ -107,6 +107,11 @@ class Repository(CoreSysAttributes, ABC):
         """Return url of repository."""
         return self.data.get(ATTR_MAINTAINER, UNKNOWN)
 
+    @property
+    @abstractmethod
+    def is_builtin(self) -> bool:
+        """Return True if this is a built-in repository."""
+
     @abstractmethod
     async def validate(self) -> bool:
         """Check if store is valid."""
@@ -139,6 +144,11 @@ class RepositoryBuiltin(Repository, ABC):
     ) -> None:
         """Initialize object."""
         super().__init__(coresys, repository, local_path, slug)
+
+    @property
+    def is_builtin(self) -> bool:
+        """Return True if this is a built-in repository."""
+        return True
 
     async def validate(self) -> bool:
         """Assume built-in repositories are always valid."""
@@ -257,6 +267,11 @@ class RepositoryCustom(RepositoryGit):
         """Initialize object."""
         super().__init__(coresys, url, local_path, slug)
         self._git = GitRepo(coresys, local_path, url)
+
+    @property
+    def is_builtin(self) -> bool:
+        """Return True if this is a built-in repository."""
+        return False
 
     async def remove(self) -> None:
         """Remove add-on repository."""
