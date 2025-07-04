@@ -108,7 +108,6 @@ async def test_api_store_add_repository(
 
     assert response.status == 200
     assert REPO_URL in coresys.store.repository_urls
-    assert isinstance(coresys.store.get_from_url(REPO_URL), Repository)
 
 
 async def test_api_store_remove_repository(

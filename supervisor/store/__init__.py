@@ -63,14 +63,6 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             raise StoreNotFound()
         return self.repositories[slug]
 
-    def get_from_url(self, url: str) -> Repository:
-        """Return Repository with slug."""
-        for repository in self.all:
-            if repository.source != url:
-                continue
-            return repository
-        raise StoreNotFound()
-
     async def load(self) -> None:
         """Start up add-on management."""
         # Init custom repositories and load add-ons

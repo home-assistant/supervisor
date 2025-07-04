@@ -9,12 +9,7 @@ from blockbuster import BlockingError
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import (
-    HassioError,
-    HostNotSupportedError,
-    StoreGitError,
-    StoreNotFound,
-)
+from supervisor.exceptions import HassioError, HostNotSupportedError, StoreGitError
 from supervisor.store.repository import Repository
 
 from tests.api import common_test_api_advanced_logs
@@ -38,8 +33,6 @@ async def test_api_supervisor_options_add_repository(
 ):
     """Test add a repository via POST /supervisor/options REST API."""
     assert REPO_URL not in coresys.store.repository_urls
-    with pytest.raises(StoreNotFound):
-        coresys.store.get_from_url(REPO_URL)
 
     with (
         patch("supervisor.store.repository.RepositoryGit.load", return_value=None),
@@ -51,7 +44,6 @@ async def test_api_supervisor_options_add_repository(
 
     assert response.status == 200
     assert REPO_URL in coresys.store.repository_urls
-    assert isinstance(coresys.store.get_from_url(REPO_URL), Repository)
 
 
 async def test_api_supervisor_options_remove_repository(
@@ -87,8 +79,6 @@ async def test_api_supervisor_options_repositories_skipped_on_error(
     assert response.status == 400
     assert len(coresys.resolution.suggestions) == 0
     assert REPO_URL not in coresys.store.repository_urls
-    with pytest.raises(StoreNotFound):
-        coresys.store.get_from_url(REPO_URL)
 
 
 async def test_api_supervisor_options_repo_error_with_config_change(

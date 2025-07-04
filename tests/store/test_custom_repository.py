@@ -21,6 +21,14 @@ from supervisor.store.repository import Repository
 from supervisor.store.types import ALL_BUILTIN_REPOSITORIES
 
 
+def get_repository_by_url(store_manager: StoreManager, url: str) -> Repository:
+    """Test helper to get repository by URL."""
+    for repository in store_manager.all:
+        if repository.source == url:
+            return repository
+    raise StoreNotFound()
+
+
 @pytest.fixture(autouse=True)
 def _auto_supervisor_internet(supervisor_internet):
     # Use the supervisor_internet fixture to ensure that all tests has internet access
@@ -46,7 +54,7 @@ async def test_add_valid_repository(
         else:
             await store_manager.add_repository("http://example.com")
 
-        assert store_manager.get_from_url("http://example.com").validate()
+        assert get_repository_by_url(store_manager, "http://example.com").validate()
 
     assert "http://example.com" in coresys.store.repository_urls
 
@@ -62,10 +70,12 @@ async def test_add_invalid_repository(coresys: CoreSys, store_manager: StoreMana
         ),
     ):
         await store_manager.update_repositories(
-            current + ["http://example.com"], add_with_errors=True
+            current + ["http://example.com"], issue_on_error=True
         )
 
-        assert not await store_manager.get_from_url("http://example.com").validate()
+        assert not await get_repository_by_url(
+            store_manager, "http://example.com"
+        ).validate()
 
     assert "http://example.com" in coresys.store.repository_urls
     assert coresys.resolution.suggestions[-1].type == SuggestionType.EXECUTE_REMOVE
@@ -92,8 +102,6 @@ async def test_error_on_invalid_repository(
 
     assert "http://example.com" not in coresys.store.repository_urls
     assert len(coresys.resolution.suggestions) == 0
-    with pytest.raises(StoreNotFound):
-        store_manager.get_from_url("http://example.com")
 
 
 async def test_add_invalid_repository_file(
@@ -113,7 +121,9 @@ async def test_add_invalid_repository_file(
             current + ["http://example.com"], issue_on_error=True
         )
 
-        assert not await store_manager.get_from_url("http://example.com").validate()
+        assert not await get_repository_by_url(
+            store_manager, "http://example.com"
+        ).validate()
 
     assert "http://example.com" in coresys.store.repository_urls
     assert coresys.resolution.suggestions[-1].type == SuggestionType.EXECUTE_REMOVE
@@ -141,7 +151,6 @@ async def test_add_repository_with_git_error(
 
     assert "http://example.com" in coresys.store.repository_urls
     assert coresys.resolution.suggestions[-1].type == suggestion_type
-    assert isinstance(store_manager.get_from_url("http://example.com"), Repository)
 
 
 @pytest.mark.parametrize(
@@ -172,8 +181,6 @@ async def test_error_on_repository_with_git_error(
 
     assert "http://example.com" not in coresys.store.repository_urls
     assert len(coresys.resolution.suggestions) == 0
-    with pytest.raises(StoreNotFound):
-        store_manager.get_from_url("http://example.com")
 
 
 @pytest.mark.asyncio
