@@ -87,10 +87,10 @@ async def test_connectivity_events(coresys: CoreSys, force: bool):
             )
 
 
-async def test_dns_restart_on_connection_change(
-    coresys: CoreSys, network_manager_service: NetworkManagerService
+async def test_dns_restart_on_dns_configuration_change(
+    coresys: CoreSys, dns_manager_service
 ):
-    """Test dns plugin is restarted when primary connection changes."""
+    """Test dns plugin is restarted when DNS configuration changes."""
     await coresys.host.network.load()
     with (
         patch.object(PluginDns, "restart") as restart,
@@ -98,12 +98,21 @@ async def test_dns_restart_on_connection_change(
             PluginDns, "is_running", new_callable=AsyncMock, return_value=True
         ),
     ):
-        network_manager_service.emit_properties_changed({"PrimaryConnection": "/"})
-        await network_manager_service.ping()
+        # Test that non-Configuration changes don't trigger restart
+        dns_manager_service.emit_properties_changed({"Mode": "default"})
+        await dns_manager_service.ping()
         restart.assert_not_called()
 
-        network_manager_service.emit_properties_changed(
-            {"PrimaryConnection": "/org/freedesktop/NetworkManager/ActiveConnection/2"}
-        )
-        await network_manager_service.ping()
+        # Test that Configuration changes trigger restart
+        dns_manager_service.emit_properties_changed({"Configuration": []})
+        await dns_manager_service.ping()
         restart.assert_called_once()
+
+        restart.reset_mock()
+        # Test that DNS plugin is not running (should not restart)
+        with patch.object(
+            PluginDns, "is_running", new_callable=AsyncMock, return_value=False
+        ):
+            dns_manager_service.emit_properties_changed({"Configuration": []})
+            await dns_manager_service.ping()
+            restart.assert_not_called()

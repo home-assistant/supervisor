@@ -8,11 +8,11 @@ from typing import Any
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
+    DBUS_ATTR_CONFIGURATION,
     DBUS_ATTR_CONNECTION_ENABLED,
     DBUS_ATTR_CONNECTIVITY,
-    DBUS_ATTR_PRIMARY_CONNECTION,
+    DBUS_IFACE_DNS,
     DBUS_IFACE_NM,
-    DBUS_OBJECT_BASE,
     DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
     ConnectionStateType,
     ConnectivityState,
@@ -142,6 +142,10 @@ class NetworkManager(CoreSysAttributes):
             "properties_changed", self._check_connectivity_changed
         )
 
+        self.sys_dbus.network.dns.dbus.properties.on(
+            "properties_changed", self._check_dns_changed
+        )
+
     async def _check_connectivity_changed(
         self, interface: str, changed: dict[str, Any], invalidated: list[str]
     ):
@@ -151,16 +155,6 @@ class NetworkManager(CoreSysAttributes):
 
         connectivity_check: bool | None = changed.get(DBUS_ATTR_CONNECTION_ENABLED)
         connectivity: int | None = changed.get(DBUS_ATTR_CONNECTIVITY)
-
-        # This potentially updated the DNS configuration. Make sure the DNS plug-in
-        # picks up the latest settings.
-        if (
-            DBUS_ATTR_PRIMARY_CONNECTION in changed
-            and changed[DBUS_ATTR_PRIMARY_CONNECTION]
-            and changed[DBUS_ATTR_PRIMARY_CONNECTION] != DBUS_OBJECT_BASE
-            and await self.sys_plugins.dns.is_running()
-        ):
-            await self.sys_plugins.dns.restart()
 
         if (
             connectivity_check is True
@@ -174,6 +168,19 @@ class NetworkManager(CoreSysAttributes):
 
         elif connectivity is not None:
             self.connectivity = connectivity == ConnectivityState.CONNECTIVITY_FULL
+
+    async def _check_dns_changed(
+        self, interface: str, changed: dict[str, Any], invalidated: list[str]
+    ):
+        """Check if DNS properties have changed."""
+        if interface != DBUS_IFACE_DNS:
+            return
+
+        if (
+            DBUS_ATTR_CONFIGURATION in changed
+            and await self.sys_plugins.dns.is_running()
+        ):
+            await self.sys_plugins.dns.restart()
 
     async def update(self, *, force_connectivity_check: bool = False):
         """Update properties over dbus."""
