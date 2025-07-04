@@ -2244,3 +2244,33 @@ async def test_get_upload_path_for_mount_location(
     result = await manager.get_upload_path_for_location(mount)
 
     assert result == mount.local_where
+
+
+@pytest.mark.usefixtures(
+    "supervisor_internet", "tmp_supervisor_data", "path_extern", "install_addon_example"
+)
+async def test_backup_addon_skips_uninstalled(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test restore installing new addon."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    assert "local_example" in coresys.addons.local
+    orig_store_addons = Backup.store_addons
+
+    async def mock_store_addons(*args, **kwargs):
+        # Mock an uninstall during the backup process
+        await coresys.addons.uninstall("local_example")
+        await orig_store_addons(*args, **kwargs)
+
+    with patch.object(Backup, "store_addons", new=mock_store_addons):
+        backup: Backup = await coresys.backups.do_backup_partial(
+            addons=["local_example"], folders=["ssl"]
+        )
+
+    assert "local_example" not in coresys.addons.local
+    assert not backup.addons
+    assert (
+        "Skipping backup of add-on local_example because it has been uninstalled"
+        in caplog.text
+    )
