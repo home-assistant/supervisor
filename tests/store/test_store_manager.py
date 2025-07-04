@@ -44,7 +44,7 @@ async def test_default_load(coresys: CoreSys):
     assert isinstance(store_manager.get("core"), Repository)
     assert isinstance(store_manager.get("local"), Repository)
 
-    assert len(store_manager.repository_urls) == 4
+    assert len(store_manager.repository_urls) == 3
     assert (
         "https://github.com/hassio-addons/repository" in store_manager.repository_urls
     )
@@ -97,7 +97,7 @@ async def test_load_with_custom_repository(coresys: CoreSys):
     assert isinstance(store_manager.get("core"), Repository)
     assert isinstance(store_manager.get("local"), Repository)
 
-    assert len(store_manager.repository_urls) == 5
+    assert len(store_manager.repository_urls) == 4
     assert (
         "https://github.com/hassio-addons/repository" in store_manager.repository_urls
     )
