@@ -21,7 +21,6 @@ from .addon import AddonStore
 from .const import FILE_HASSIO_STORE
 from .data import StoreData
 from .repository import Repository
-from .types import BuiltinRepository
 from .validate import SCHEMA_STORE_FILE, ensure_builtin_repositories
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -50,12 +49,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     @property
     def repository_urls(self) -> list[str]:
         """Return source URL for all git repositories."""
-        return [
-            repository.source
-            for repository in self.all
-            if repository.slug
-            not in {BuiltinRepository.LOCAL.value, BuiltinRepository.CORE.value}
-        ]
+        return [repository.source for repository in self.all if repository.is_git_based]
 
     def get(self, slug: str) -> Repository:
         """Return Repository with slug."""

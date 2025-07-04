@@ -112,6 +112,11 @@ class Repository(CoreSysAttributes, ABC):
     def is_builtin(self) -> bool:
         """Return True if this is a built-in repository."""
 
+    @property
+    @abstractmethod
+    def is_git_based(self) -> bool:
+        """Return True if this is a git-based repository."""
+
     @abstractmethod
     async def validate(self) -> bool:
         """Check if store is valid."""
@@ -157,6 +162,11 @@ class RepositoryGit(Repository, ABC):
     """A git based add-on repository."""
 
     _git: GitRepo
+
+    @property
+    def is_git_based(self) -> bool:
+        """Return True if this is a git-based repository."""
+        return True
 
     async def load(self) -> None:
         """Load addon repository."""
@@ -209,6 +219,11 @@ class RepositoryLocal(RepositoryBuiltin):
         """Initialize object."""
         super().__init__(coresys, BuiltinRepository.LOCAL.value, local_path, slug)
         self._latest_mtime: float | None = None
+
+    @property
+    def is_git_based(self) -> bool:
+        """Return True if this is a git-based repository."""
+        return False
 
     async def load(self) -> None:
         """Load addon repository."""
