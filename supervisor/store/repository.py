@@ -21,8 +21,9 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError, StoreError
 from ..utils.common import read_json_or_yaml_file
 from .git import GitRepo
+from .types import BuiltinRepository
 from .utils import get_hash_from_repository
-from .validate import SCHEMA_REPOSITORY_CONFIG, BuiltinRepository
+from .validate import SCHEMA_REPOSITORY_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 UNKNOWN = "unknown"

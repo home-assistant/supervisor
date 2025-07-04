@@ -15,9 +15,10 @@ from supervisor.exceptions import (
     StoreNotFound,
 )
 from supervisor.resolution.const import SuggestionType
-from supervisor.store import BUILTIN_REPOSITORIES, StoreManager
+from supervisor.store import StoreManager
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
+from supervisor.store.types import ALL_BUILTIN_REPOSITORIES
 
 
 @pytest.fixture(autouse=True)
@@ -181,7 +182,7 @@ async def test_preinstall_valid_repository(
 ):
     """Test add core repository valid."""
     with patch("supervisor.store.repository.RepositoryGit.load", return_value=None):
-        await store_manager.update_repositories(BUILTIN_REPOSITORIES)
+        await store_manager.update_repositories(list(ALL_BUILTIN_REPOSITORIES))
 
         def validate():
             assert store_manager.get("core").validate()

@@ -21,12 +21,8 @@ from .addon import AddonStore
 from .const import FILE_HASSIO_STORE
 from .data import StoreData
 from .repository import Repository, RepositoryGit
-from .validate import (
-    BUILTIN_REPOSITORIES,
-    SCHEMA_STORE_FILE,
-    BuiltinRepository,
-    ensure_builtin_repositories,
-)
+from .types import ALL_BUILTIN_REPOSITORIES, BuiltinRepository
+from .validate import SCHEMA_STORE_FILE, ensure_builtin_repositories
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -215,7 +211,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
     async def remove_repository(self, repository: Repository, *, persist: bool = True):
         """Remove a repository."""
-        if repository.source in BUILTIN_REPOSITORIES:
+        if repository.source in ALL_BUILTIN_REPOSITORIES:
             raise StoreInvalidAddonRepo(
                 "Can't remove built-in repositories!", logger=_LOGGER.error
             )
@@ -264,7 +260,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         remove_errors = await asyncio.gather(
             *[
                 self.remove_repository(self.get_from_url(url), persist=False)
-                for url in old_rep - new_rep - BUILTIN_REPOSITORIES
+                for url in old_rep - new_rep - ALL_BUILTIN_REPOSITORIES
             ],
             return_exceptions=True,
         )
