@@ -15,8 +15,8 @@ from ..const import (
     ATTR_NAME,
     ATTR_URL,
     FILE_SUFFIX_CONFIGURATION,
+    REPOSITORY_CORE,
     REPOSITORY_LOCAL,
-    URL_HASSIO_ADDONS,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError, StoreError
@@ -43,23 +43,32 @@ class Repository(CoreSysAttributes, ABC):
     @staticmethod
     def create(coresys: CoreSys, repository: str) -> Repository:
         """Create a repository instance."""
-        if repository == REPOSITORY_LOCAL:
+        if repository in BuiltinRepository:
+            return Repository._create_builtin(coresys, BuiltinRepository(repository))
+        else:
+            return Repository._create_custom(coresys, repository)
+
+    @staticmethod
+    def _create_builtin(coresys: CoreSys, builtin: BuiltinRepository) -> Repository:
+        """Create builtin repository."""
+        if builtin == BuiltinRepository.LOCAL:
             slug = REPOSITORY_LOCAL
             local_path = coresys.config.path_addons_local
             return RepositoryLocal(coresys, local_path, slug)
-        if repository in BuiltinRepository:
-            builtin = BuiltinRepository(repository)
-            if builtin == BuiltinRepository.CORE:
-                slug = "core"
-                local_path = coresys.config.path_addons_core
-                url = URL_HASSIO_ADDONS
-            else:
-                # For other builtin repositories (URL-based)
-                slug = get_hash_from_repository(repository)
-                local_path = coresys.config.path_addons_git / slug
-                url = repository
-            return RepositoryGitBuiltin(coresys, repository, local_path, slug, url)
-        # Custom repositories
+        elif builtin == BuiltinRepository.CORE:
+            slug = REPOSITORY_CORE
+            local_path = coresys.config.path_addons_core
+        else:
+            # For other builtin repositories (URL-based)
+            slug = get_hash_from_repository(builtin.value)
+            local_path = coresys.config.path_addons_git / slug
+        return RepositoryGitBuiltin(
+            coresys, builtin.value, local_path, slug, builtin.git_url
+        )
+
+    @staticmethod
+    def _create_custom(coresys: CoreSys, repository: str) -> RepositoryCustom:
+        """Create custom repository."""
         slug = get_hash_from_repository(repository)
         local_path = coresys.config.path_addons_git / slug
         return RepositoryCustom(coresys, repository, local_path, slug)
