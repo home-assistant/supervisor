@@ -16,6 +16,7 @@ from ..const import (
     ATTR_URL,
     FILE_SUFFIX_CONFIGURATION,
     REPOSITORY_LOCAL,
+    URL_HASSIO_ADDONS,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError, StoreError
@@ -32,9 +33,10 @@ UNKNOWN = "unknown"
 class Repository(CoreSysAttributes, ABC):
     """Add-on store repository in Supervisor."""
 
-    def __init__(self, coresys: CoreSys, repository: str):
+    def __init__(self, coresys: CoreSys, repository: str, local_path: Path, slug: str):
         """Initialize add-on store repository object."""
-        self._slug: str
+        self._slug: str = slug
+        self._local_path: Path = local_path
         self.coresys: CoreSys = coresys
         self.source: str = repository
 
@@ -42,10 +44,25 @@ class Repository(CoreSysAttributes, ABC):
     def create(coresys: CoreSys, repository: str) -> Repository:
         """Create a repository instance."""
         if repository == REPOSITORY_LOCAL:
-            return RepositoryLocal(coresys)
+            slug = REPOSITORY_LOCAL
+            local_path = coresys.config.path_addons_local
+            return RepositoryLocal(coresys, local_path, slug)
         if repository in BuiltinRepository:
-            return RepositoryGitBuiltin(coresys, BuiltinRepository(repository))
-        return RepositoryCustom(coresys, repository)
+            builtin = BuiltinRepository(repository)
+            if builtin == BuiltinRepository.CORE:
+                slug = "core"
+                local_path = coresys.config.path_addons_core
+                url = URL_HASSIO_ADDONS
+            else:
+                # For other builtin repositories (URL-based)
+                slug = get_hash_from_repository(repository)
+                local_path = coresys.config.path_addons_git / slug
+                url = repository
+            return RepositoryGitBuiltin(coresys, repository, local_path, slug, url)
+        # Custom repositories
+        slug = get_hash_from_repository(repository)
+        local_path = coresys.config.path_addons_git / slug
+        return RepositoryCustom(coresys, repository, local_path, slug)
 
     def __repr__(self) -> str:
         """Return internal representation."""
@@ -55,6 +72,11 @@ class Repository(CoreSysAttributes, ABC):
     def slug(self) -> str:
         """Return repo slug."""
         return self._slug
+
+    @property
+    def local_path(self) -> Path:
+        """Return local path to repository."""
+        return self._local_path
 
     @property
     def data(self) -> dict:
@@ -103,11 +125,11 @@ class Repository(CoreSysAttributes, ABC):
 class RepositoryBuiltin(Repository, ABC):
     """A built-in add-on repository."""
 
-    def __init__(self, coresys: CoreSys, builtin: BuiltinRepository) -> None:
+    def __init__(
+        self, coresys: CoreSys, repository: str, local_path: Path, slug: str
+    ) -> None:
         """Initialize object."""
-        super().__init__(coresys, builtin.value)
-        self._builtin = builtin
-        self._slug = builtin.id
+        super().__init__(coresys, repository, local_path, slug)
 
     async def validate(self) -> bool:
         """Assume built-in repositories are always valid."""
@@ -170,15 +192,15 @@ class RepositoryGit(Repository, ABC):
 class RepositoryLocal(RepositoryBuiltin):
     """A local add-on repository."""
 
-    def __init__(self, coresys: CoreSys) -> None:
+    def __init__(self, coresys: CoreSys, local_path: Path, slug: str) -> None:
         """Initialize object."""
-        super().__init__(coresys, BuiltinRepository.LOCAL)
+        super().__init__(coresys, BuiltinRepository.LOCAL.value, local_path, slug)
         self._latest_mtime: float | None = None
 
     async def load(self) -> None:
         """Load addon repository."""
         self._latest_mtime, _ = await self.sys_run_in_executor(
-            get_latest_mtime, self.sys_config.path_addons_local
+            get_latest_mtime, self.local_path
         )
 
     async def update(self) -> bool:
@@ -188,7 +210,7 @@ class RepositoryLocal(RepositoryBuiltin):
         """
         # Check local modifications
         latest_mtime, modified_path = await self.sys_run_in_executor(
-            get_latest_mtime, self.sys_config.path_addons_local
+            get_latest_mtime, self.local_path
         )
         if self._latest_mtime != latest_mtime:
             _LOGGER.debug(
@@ -211,20 +233,21 @@ class RepositoryLocal(RepositoryBuiltin):
 class RepositoryGitBuiltin(RepositoryBuiltin, RepositoryGit):
     """A built-in add-on repository based on git."""
 
-    def __init__(self, coresys: CoreSys, builtin: BuiltinRepository) -> None:
+    def __init__(
+        self, coresys: CoreSys, repository: str, local_path: Path, slug: str, url: str
+    ) -> None:
         """Initialize object."""
-        super().__init__(coresys, builtin)
-        self._git = GitRepo(coresys, builtin.get_path(coresys), builtin.url)
+        super().__init__(coresys, repository, local_path, slug)
+        self._git = GitRepo(coresys, local_path, url)
 
 
 class RepositoryCustom(RepositoryGit):
     """A custom add-on repository."""
 
-    def __init__(self, coresys: CoreSys, url: str) -> None:
+    def __init__(self, coresys: CoreSys, url: str, local_path: Path, slug: str) -> None:
         """Initialize object."""
-        super().__init__(coresys, url)
-        self._slug = get_hash_from_repository(url)
-        self._git = GitRepo(coresys, coresys.config.path_addons_git / self._slug, url)
+        super().__init__(coresys, url, local_path, slug)
+        self._git = GitRepo(coresys, local_path, url)
 
     async def remove(self) -> None:
         """Remove add-on repository."""

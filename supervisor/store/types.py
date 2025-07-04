@@ -1,11 +1,8 @@
 """Repository type definitions for the store."""
 
 from enum import StrEnum
-from pathlib import Path
 
-from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL, URL_HASSIO_ADDONS
-from ..coresys import CoreSys
-from .utils import get_hash_from_repository
+from ..const import REPOSITORY_CORE, REPOSITORY_LOCAL
 
 
 class BuiltinRepository(StrEnum):
@@ -19,26 +16,6 @@ class BuiltinRepository(StrEnum):
     COMMUNITY_ADDONS = "https://github.com/hassio-addons/repository"
     ESPHOME = "https://github.com/esphome/home-assistant-addon"
     MUSIC_ASSISTANT = "https://github.com/music-assistant/home-assistant-addon"
-
-    def __init__(self, value: str) -> None:
-        """Initialize repository item."""
-        if value == REPOSITORY_LOCAL:
-            self.id = value
-            self.url = ""
-        elif value == REPOSITORY_CORE:
-            self.id = value
-            self.url = URL_HASSIO_ADDONS
-        else:
-            self.id = get_hash_from_repository(value)
-            self.url = value
-
-    def get_path(self, coresys: CoreSys) -> Path:
-        """Get path to git repo for repository."""
-        if self.id == REPOSITORY_LOCAL:
-            return coresys.config.path_addons_local
-        if self.id == REPOSITORY_CORE:
-            return coresys.config.path_addons_core
-        return Path(coresys.config.path_addons_git, self.id)
 
 
 # All repositories that are considered "built-in" and protected from removal
