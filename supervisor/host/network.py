@@ -46,6 +46,8 @@ class NetworkManager(CoreSysAttributes):
         """Initialize system center handling."""
         self.coresys: CoreSys = coresys
         self._connectivity: bool | None = None
+        # No event need on initial change (NetworkManager initializes with empty list)
+        self._dns_configuration: list = []
 
     @property
     def connectivity(self) -> bool | None:
@@ -178,9 +180,17 @@ class NetworkManager(CoreSysAttributes):
 
         if (
             DBUS_ATTR_CONFIGURATION in changed
+            and self._dns_configuration != changed[DBUS_ATTR_CONFIGURATION]
             and await self.sys_plugins.dns.is_running()
         ):
+            self._dns_configuration = changed[DBUS_ATTR_CONFIGURATION]
             await self.sys_plugins.dns.restart()
+
+            if not self.sys_supervisor.connectivity:
+                # Delay by 1s to allow CoreDNS to startup.
+                self.sys_call_later(
+                    1, self.sys_create_task, self.sys_supervisor.check_connectivity()
+                )
 
     async def update(self, *, force_connectivity_check: bool = False):
         """Update properties over dbus."""
