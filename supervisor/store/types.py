@@ -22,7 +22,7 @@ class BuiltinRepository(StrEnum):
         """Return the git URL for this repository."""
         if self == BuiltinRepository.LOCAL:
             raise RuntimeError("Local repository does not have a git URL")
-        elif self == BuiltinRepository.CORE:
+        if self == BuiltinRepository.CORE:
             return URL_HASSIO_ADDONS
         else:
             return self.value  # For URL-based repos, value is the URL

@@ -139,12 +139,6 @@ class Repository(CoreSysAttributes, ABC):
 class RepositoryBuiltin(Repository, ABC):
     """A built-in add-on repository."""
 
-    def __init__(
-        self, coresys: CoreSys, repository: str, local_path: Path, slug: str
-    ) -> None:
-        """Initialize object."""
-        super().__init__(coresys, repository, local_path, slug)
-
     @property
     def is_builtin(self) -> bool:
         """Return True if this is a built-in repository."""
