@@ -230,16 +230,16 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         replace: bool = True,
     ):
         """Update repositories by adding new ones and removing stale ones."""
-        # Calculate target repository set
-        if replace:
-            target_repositories = set(ensure_builtin_repositories(list_repositories))
-        else:
-            target_repositories = set(list_repositories + self.repository_urls)
-
         current_repositories = {repository.source for repository in self.all}
 
         # Determine changes needed
-        repositories_to_add: set[str] = target_repositories - current_repositories
+        if replace:
+            target_repositories = set(ensure_builtin_repositories(list_repositories))
+            repositories_to_add = target_repositories - current_repositories
+        else:
+            # When not replacing, just add the new repositories
+            repositories_to_add = set(list_repositories) - current_repositories
+            target_repositories = current_repositories | repositories_to_add
 
         # Add new repositories
         add_errors = await asyncio.gather(
