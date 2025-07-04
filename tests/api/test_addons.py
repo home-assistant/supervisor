@@ -54,7 +54,7 @@ async def test_addons_info(
 
 # DEPRECATED - Remove with legacy routing logic on 1/2023
 async def test_addons_info_not_installed(
-    api_client: TestClient, coresys: CoreSys, repository: Repository
+    api_client: TestClient, coresys: CoreSys, test_repository: Repository
 ):
     """Test getting addon info for not installed addon."""
     resp = await api_client.get(f"/addons/{TEST_ADDON_SLUG}/info")
@@ -441,7 +441,7 @@ async def test_addon_not_found(
         ("get", "/addons/local_ssh/logs/boots/1/follow", False),
     ],
 )
-@pytest.mark.usefixtures("repository")
+@pytest.mark.usefixtures("test_repository")
 async def test_addon_not_installed(
     api_client: TestClient, method: str, url: str, json_expected: bool
 ):

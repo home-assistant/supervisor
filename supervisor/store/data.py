@@ -25,7 +25,6 @@ from ..exceptions import ConfigurationFileError
 from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..utils.common import find_one_filetype, read_json_or_yaml_file
 from ..utils.json import read_json_file
-from .const import StoreType
 from .utils import extract_hash_from_path
 from .validate import SCHEMA_REPOSITORY_CONFIG
 
@@ -169,7 +168,7 @@ class StoreData(CoreSysAttributes):
                 self.sys_resolution.add_unhealthy_reason(
                     UnhealthyReason.OSERROR_BAD_MESSAGE
                 )
-            elif path.stem != StoreType.LOCAL:
+            elif repository != REPOSITORY_LOCAL:
                 suggestion = [SuggestionType.EXECUTE_RESET]
             self.sys_resolution.create_issue(
                 IssueType.CORRUPT_REPOSITORY,

@@ -931,5 +931,5 @@ class Backup(JobGroup):
         Return a coroutine.
         """
         return self.sys_store.update_repositories(
-            self.repositories, add_with_errors=True, replace=replace
+            self.repositories, issue_on_error=True, replace=replace
         )
