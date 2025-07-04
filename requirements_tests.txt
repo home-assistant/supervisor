@@ -1,5 +1,5 @@
 astroid==3.3.10
-coverage==7.9.1
+coverage==7.9.2
 mypy==1.16.1
 pre-commit==4.2.0
 pylint==3.3.7
