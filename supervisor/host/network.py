@@ -181,16 +181,9 @@ class NetworkManager(CoreSysAttributes):
         if (
             DBUS_ATTR_CONFIGURATION in changed
             and self._dns_configuration != changed[DBUS_ATTR_CONFIGURATION]
-            and await self.sys_plugins.dns.is_running()
         ):
             self._dns_configuration = changed[DBUS_ATTR_CONFIGURATION]
-            await self.sys_plugins.dns.restart()
-
-            if not self.sys_supervisor.connectivity:
-                # Delay by 1s to allow CoreDNS to startup.
-                self.sys_call_later(
-                    1, self.sys_create_task, self.sys_supervisor.check_connectivity()
-                )
+            self.sys_create_task(self.sys_plugins.dns.notify_locals_changed())
 
     async def update(self, *, force_connectivity_check: bool = False):
         """Update properties over dbus."""

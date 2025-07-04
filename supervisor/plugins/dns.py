@@ -77,6 +77,7 @@ class PluginDns(PluginBase):
 
         self._hosts: list[HostEntry] = []
         self._loop: bool = False
+        self._cached_locals: list[str] | None = None
 
     @property
     def hosts(self) -> Path:
@@ -91,6 +92,12 @@ class PluginDns(PluginBase):
     @property
     def locals(self) -> list[str]:
         """Return list of local system DNS servers."""
+        if self._cached_locals is None:
+            self._cached_locals = self._compute_locals()
+        return self._cached_locals
+
+    def _compute_locals(self) -> list[str]:
+        """Compute list of local system DNS servers."""
         servers: list[str] = []
         for server in [
             f"dns://{server!s}" for server in self.sys_host.network.dns_servers
@@ -99,6 +106,28 @@ class PluginDns(PluginBase):
                 servers.append(dns_url(server))
 
         return servers
+
+    @Job(
+        name="plugin_dns_notify_locals_changed",
+        limit=JobExecutionLimit.SINGLE_WAIT,
+    )
+    async def notify_locals_changed(self) -> None:
+        """Notify that locals might have changed and restart DNS if necessary."""
+        old_locals = self._cached_locals
+        new_locals = self._compute_locals()
+        if old_locals == new_locals:
+            return
+
+        _LOGGER.debug("DNS locals changed from %s to %s", old_locals, new_locals)
+        self._cached_locals = new_locals
+        if not await self.instance.is_running():
+            return
+
+        await self.restart()
+
+        # Delay by 5s to allow CoreDNS to startup.
+        await asyncio.sleep(5)
+        await self.sys_supervisor.check_connectivity()
 
     @property
     def servers(self) -> list[str]:
