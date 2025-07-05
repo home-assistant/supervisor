@@ -124,7 +124,10 @@ class CoreSys:
 
         resolver: aiohttp.abc.AbstractResolver
         try:
-            resolver = aiohttp.AsyncResolver(loop=self.loop)
+            # Use "unused" kwargs to force dedicated resolver instance. Otherwise
+            # aiodns won't reload /etc/resolv.conf which we need to make our connection
+            # check work in all cases.
+            resolver = aiohttp.AsyncResolver(loop=self.loop, timeout=None)
             # pylint: disable=protected-access
             _LOGGER.debug(
                 "Initializing ClientSession with AsyncResolver. Using nameservers %s",
