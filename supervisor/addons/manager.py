@@ -266,7 +266,7 @@ class AddonManager(CoreSysAttributes):
         ],
         on_condition=AddonsJobError,
     )
-    async def rebuild(self, slug: str) -> asyncio.Task | None:
+    async def rebuild(self, slug: str, *, force: bool = False) -> asyncio.Task | None:
         """Perform a rebuild of local build add-on.
 
         Returns a Task that completes when addon has state 'started' (see addon.start)
@@ -289,7 +289,7 @@ class AddonManager(CoreSysAttributes):
             raise AddonsError(
                 "Version changed, use Update instead Rebuild", _LOGGER.error
             )
-        if not addon.need_build:
+        if not force and not addon.need_build:
             raise AddonsNotSupportedError(
                 "Can't rebuild a image based add-on", _LOGGER.error
             )

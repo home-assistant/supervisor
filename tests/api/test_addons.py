@@ -261,6 +261,98 @@ async def test_api_addon_rebuild_healthcheck(
     assert resp.status == 200
 
 
+async def test_api_addon_rebuild_force(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+):
+    """Test rebuilding an image-based addon with force parameter."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    container.status = "running"
+    install_addon_ssh.path_data.mkdir()
+    container.attrs["Config"] = {"Healthcheck": "exists"}
+    await install_addon_ssh.load()
+    await asyncio.sleep(0)
+    assert install_addon_ssh.state == AddonState.STARTUP
+
+    state_changes: list[AddonState] = []
+    _container_events_task: asyncio.Task | None = None
+
+    async def container_events():
+        nonlocal state_changes
+
+        await install_addon_ssh.container_state_changed(
+            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
+        )
+        state_changes.append(install_addon_ssh.state)
+
+        await install_addon_ssh.container_state_changed(
+            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+        )
+        state_changes.append(install_addon_ssh.state)
+        await asyncio.sleep(0)
+
+        await install_addon_ssh.container_state_changed(
+            _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
+        )
+
+    async def container_events_task(*args, **kwargs):
+        nonlocal _container_events_task
+        _container_events_task = asyncio.create_task(container_events())
+
+    # Test 1: Without force, image-based addon should fail
+    with (
+        patch.object(AddonBuild, "is_valid", return_value=True),
+        patch.object(DockerAddon, "is_running", return_value=False),
+        patch.object(
+            Addon, "need_build", new=PropertyMock(return_value=False)
+        ),  # Image-based
+        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+    ):
+        resp = await api_client.post("/addons/local_ssh/rebuild")
+
+    assert resp.status == 400
+    result = await resp.json()
+    assert "Can't rebuild a image based add-on" in result["message"]
+
+    # Reset state for next test
+    state_changes.clear()
+
+    # Test 2: With force=True, image-based addon should succeed
+    with (
+        patch.object(AddonBuild, "is_valid", return_value=True),
+        patch.object(DockerAddon, "is_running", return_value=False),
+        patch.object(
+            Addon, "need_build", new=PropertyMock(return_value=False)
+        ),  # Image-based
+        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(DockerAddon, "run", new=container_events_task),
+        patch.object(
+            coresys.docker,
+            "run_command",
+            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
+        ),
+        patch.object(
+            DockerAddon, "healthcheck", new=PropertyMock(return_value={"exists": True})
+        ),
+        patch.object(
+            type(coresys.config),
+            "local_to_extern_path",
+            return_value="/addon/path/on/host",
+        ),
+    ):
+        resp = await api_client.post("/addons/local_ssh/rebuild", json={"force": True})
+
+    assert state_changes == [AddonState.STOPPED, AddonState.STARTUP]
+    assert install_addon_ssh.state == AddonState.STARTED
+    assert resp.status == 200
+
+    await _container_events_task
+
+
 async def test_api_addon_uninstall(
     api_client: TestClient,
     coresys: CoreSys,
