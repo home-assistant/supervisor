@@ -4,6 +4,7 @@
 import asyncio
 from unittest.mock import AsyncMock, PropertyMock, patch
 
+from dbus_fast import Variant
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -99,20 +100,38 @@ async def test_dns_restart_on_dns_configuration_change(
         ),
     ):
         # Test that non-Configuration changes don't trigger restart
-        dns_manager_service.emit_properties_changed({"Mode": "default"})
-        await dns_manager_service.ping()
+        await coresys.host.network._check_dns_changed(
+            "org.freedesktop.NetworkManager.DnsManager", {"Mode": "default"}, []
+        )
         restart.assert_not_called()
 
         # Test that Configuration changes trigger restart
-        dns_manager_service.emit_properties_changed({"Configuration": []})
-        await dns_manager_service.ping()
-        restart.assert_called_once()
+        configuration = [
+            {
+                "nameservers": Variant("as", ["192.168.2.2"]),
+                "domains": Variant("as", ["lan"]),
+                "interface": Variant("s", "eth0"),
+                "priority": Variant("i", 100),
+                "vpn": Variant("b", False),
+            }
+        ]
+
+        with patch.object(PluginDns, "notify_locals_changed") as notify_locals_changed:
+            await coresys.host.network._check_dns_changed(
+                "org.freedesktop.NetworkManager.DnsManager",
+                {"Configuration": configuration},
+                [],
+            )
+            notify_locals_changed.assert_called_once()
 
         restart.reset_mock()
         # Test that DNS plugin is not running (should not restart)
         with patch.object(
             PluginDns, "is_running", new_callable=AsyncMock, return_value=False
         ):
-            dns_manager_service.emit_properties_changed({"Configuration": []})
-            await dns_manager_service.ping()
+            await coresys.host.network._check_dns_changed(
+                "org.freedesktop.NetworkManager.DnsManager",
+                {"Configuration": configuration},
+                [],
+            )
             restart.assert_not_called()
