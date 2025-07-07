@@ -309,9 +309,9 @@ class APIIngress(CoreSysAttributes):
 
 def _init_header(
     request: web.Request, addon: Addon, session_data: IngressSessionData | None
-) -> CIMultiDict | dict[str, str]:
+) -> CIMultiDict[str]:
     """Create initial header."""
-    headers = {}
+    headers = CIMultiDict[str]()
 
     if session_data is not None:
         headers[HEADER_REMOTE_USER_ID] = session_data.user.id
@@ -337,7 +337,7 @@ def _init_header(
             istr(HEADER_REMOTE_USER_DISPLAY_NAME),
         ):
             continue
-        headers[name] = value
+        headers.add(name, value)
 
     # Update X-Forwarded-For
     if request.transport:
@@ -348,9 +348,9 @@ def _init_header(
     return headers
 
 
-def _response_header(response: aiohttp.ClientResponse) -> dict[str, str]:
+def _response_header(response: aiohttp.ClientResponse) -> CIMultiDict[str]:
     """Create response header."""
-    headers = {}
+    headers = CIMultiDict[str]()
 
     for name, value in response.headers.items():
         if name in (
@@ -360,7 +360,7 @@ def _response_header(response: aiohttp.ClientResponse) -> dict[str, str]:
             hdrs.CONTENT_ENCODING,
         ):
             continue
-        headers[name] = value
+        headers.add(name, value)
 
     return headers
 
