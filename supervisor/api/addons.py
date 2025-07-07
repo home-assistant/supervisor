@@ -36,6 +36,7 @@ from ..const import (
     ATTR_DNS,
     ATTR_DOCKER_API,
     ATTR_DOCUMENTATION,
+    ATTR_FORCE,
     ATTR_FULL_ACCESS,
     ATTR_GPIO,
     ATTR_HASSIO_API,
@@ -139,6 +140,8 @@ SCHEMA_SECURITY = vol.Schema({vol.Optional(ATTR_PROTECTED): vol.Boolean()})
 SCHEMA_UNINSTALL = vol.Schema(
     {vol.Optional(ATTR_REMOVE_CONFIG, default=False): vol.Boolean()}
 )
+
+SCHEMA_REBUILD = vol.Schema({vol.Optional(ATTR_FORCE, default=False): vol.Boolean()})
 # pylint: enable=no-value-for-parameter
 
 
@@ -461,7 +464,11 @@ class APIAddons(CoreSysAttributes):
     async def rebuild(self, request: web.Request) -> None:
         """Rebuild local build add-on."""
         addon = self.get_addon_for_request(request)
-        if start_task := await asyncio.shield(self.sys_addons.rebuild(addon.slug)):
+        body: dict[str, Any] = await api_validate(SCHEMA_REBUILD, request)
+
+        if start_task := await asyncio.shield(
+            self.sys_addons.rebuild(addon.slug, force=body[ATTR_FORCE])
+        ):
             await start_task
 
     @api_process
