@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access
 import asyncio
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 from dbus_fast import Variant
 import pytest
@@ -91,21 +91,17 @@ async def test_connectivity_events(coresys: CoreSys, force: bool):
 async def test_dns_restart_on_dns_configuration_change(
     coresys: CoreSys, dns_manager_service
 ):
-    """Test dns plugin is restarted when DNS configuration changes."""
+    """Test that DNS configuration changes trigger notify_locals_changed."""
     await coresys.host.network.load()
-    with (
-        patch.object(PluginDns, "restart") as restart,
-        patch.object(
-            PluginDns, "is_running", new_callable=AsyncMock, return_value=True
-        ),
-    ):
-        # Test that non-Configuration changes don't trigger restart
+
+    with patch.object(PluginDns, "notify_locals_changed") as notify_locals_changed:
+        # Test that non-Configuration changes don't trigger notify_locals_changed
         await coresys.host.network._check_dns_changed(
             "org.freedesktop.NetworkManager.DnsManager", {"Mode": "default"}, []
         )
-        restart.assert_not_called()
+        notify_locals_changed.assert_not_called()
 
-        # Test that Configuration changes trigger restart
+        # Test that Configuration changes trigger notify_locals_changed
         configuration = [
             {
                 "nameservers": Variant("as", ["192.168.2.2"]),
@@ -116,22 +112,28 @@ async def test_dns_restart_on_dns_configuration_change(
             }
         ]
 
-        with patch.object(PluginDns, "notify_locals_changed") as notify_locals_changed:
-            await coresys.host.network._check_dns_changed(
-                "org.freedesktop.NetworkManager.DnsManager",
-                {"Configuration": configuration},
-                [],
-            )
-            notify_locals_changed.assert_called_once()
+        await coresys.host.network._check_dns_changed(
+            "org.freedesktop.NetworkManager.DnsManager",
+            {"Configuration": configuration},
+            [],
+        )
+        notify_locals_changed.assert_called_once()
 
-        restart.reset_mock()
-        # Test that DNS plugin is not running (should not restart)
-        with patch.object(
-            PluginDns, "is_running", new_callable=AsyncMock, return_value=False
-        ):
-            await coresys.host.network._check_dns_changed(
-                "org.freedesktop.NetworkManager.DnsManager",
-                {"Configuration": configuration},
-                [],
-            )
-            restart.assert_not_called()
+        notify_locals_changed.reset_mock()
+        # Test that subsequent Configuration changes also trigger notify_locals_changed
+        different_configuration = [
+            {
+                "nameservers": Variant("as", ["8.8.8.8"]),
+                "domains": Variant("as", ["example.com"]),
+                "interface": Variant("s", "wlan0"),
+                "priority": Variant("i", 200),
+                "vpn": Variant("b", True),
+            }
+        ]
+
+        await coresys.host.network._check_dns_changed(
+            "org.freedesktop.NetworkManager.DnsManager",
+            {"Configuration": different_configuration},
+            [],
+        )
+        notify_locals_changed.assert_called_once()
