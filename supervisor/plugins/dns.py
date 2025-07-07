@@ -127,7 +127,7 @@ class PluginDns(PluginBase):
 
         # Delay by 5s to allow CoreDNS to startup.
         await asyncio.sleep(5)
-        await self.sys_supervisor.check_connectivity()
+        await self.sys_supervisor.check_connectivity_unthrottled()
 
     @property
     def servers(self) -> list[str]:

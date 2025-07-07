@@ -138,7 +138,7 @@ class Core(CoreSysAttributes):
         await self.coresys.init_websession()
 
         # Check internet on startup
-        await self.sys_supervisor.check_connectivity()
+        await self.sys_supervisor.check_connectivity_unthrottled()
 
         # Order can be important!
         setup_loads: list[Awaitable[None]] = [
@@ -422,7 +422,7 @@ class Core(CoreSysAttributes):
 
         _LOGGER.warning("System time/date shift over more than 3 days found!")
         await self.sys_host.control.set_datetime(data.dt_utc)
-        await self.sys_supervisor.check_connectivity()
+        await self.sys_supervisor.check_connectivity_unthrottled()
 
     async def repair(self) -> None:
         """Repair system integrity."""
