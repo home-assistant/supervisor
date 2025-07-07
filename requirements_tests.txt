@@ -10,7 +10,7 @@ pytest-timeout==2.4.0
 pytest==8.4.1
 ruff==0.12.2
 time-machine==2.16.0
-types-docker==7.1.0.20250523
+types-docker==7.1.0.20250705
 types-pyyaml==6.0.12.20250516
 types-requests==2.32.4.20250611
 urllib3==2.5.0
