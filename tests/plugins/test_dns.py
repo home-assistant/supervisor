@@ -98,6 +98,7 @@ async def test_reset(coresys: CoreSys):
         unlink.assert_called_once()
         write_hosts.assert_called_once()
 
+        # Verify the hosts data structure is properly initialized
         # pylint: disable=protected-access
         assert coresys.plugins.dns._hosts == [
             HostEntry(
@@ -242,22 +243,25 @@ async def test_load_error_writing_resolv(
 
 
 async def test_notify_locals_changed_no_change(coresys: CoreSys):
-    """Test notify_locals_changed when DNS locals haven't changed."""
+    """Test notify_locals_changed always schedules a timer (comparison happens later)."""
     dns_plugin = coresys.plugins.dns
 
-    # Set initial cached locals
+    # Set initial cached locals and mock to return the same value
     dns_plugin._cached_locals = ["dns://192.168.1.1"]
-
+    mock_handle = Mock()
     with (
         patch.object(dns_plugin, "_compute_locals", return_value=["dns://192.168.1.1"]),
-        patch.object(dns_plugin, "_restart_dns_after_locals_change") as mock_restart,
-        patch.object(dns_plugin, "sys_call_later") as mock_call_later,
+        patch.object(
+            dns_plugin, "sys_call_later", return_value=mock_handle
+        ) as mock_call_later,
     ):
         dns_plugin.notify_locals_changed()
 
-        # Should not schedule restart when locals haven't changed
-        mock_call_later.assert_not_called()
-        mock_restart.assert_not_called()
+        # Should always schedule restart timer - comparison happens in _restart_dns_after_locals_change
+        mock_call_later.assert_called_once_with(
+            1.0, dns_plugin._trigger_restart_dns_after_locals_change
+        )
+        assert dns_plugin._locals_changed_handle == mock_handle
 
 
 async def test_notify_locals_changed_with_changes_plugin_running(coresys: CoreSys):
@@ -277,11 +281,9 @@ async def test_notify_locals_changed_with_changes_plugin_running(coresys: CoreSy
         dns_plugin.notify_locals_changed()
 
         # Should schedule restart with 1 second delay
-        mock_call_later.assert_called_once()
-        call_args = mock_call_later.call_args
-        assert call_args[0][0] == 1.0  # delay
-        assert call_args[0][1] == dns_plugin.sys_create_task  # function to call
-        # The third argument is the coroutine task to create
+        mock_call_later.assert_called_once_with(
+            1.0, dns_plugin._trigger_restart_dns_after_locals_change
+        )
         assert dns_plugin._locals_changed_handle == mock_handle
 
 
@@ -315,7 +317,6 @@ async def test_notify_locals_changed_debouncing(coresys: CoreSys):
     dns_plugin._cached_locals = ["dns://192.168.1.1"]
 
     mock_handle1 = Mock()
-    mock_handle1.cancelled.return_value = False
     mock_handle2 = Mock()
 
     with (
@@ -324,12 +325,12 @@ async def test_notify_locals_changed_debouncing(coresys: CoreSys):
             dns_plugin, "sys_call_later", side_effect=[mock_handle1, mock_handle2]
         ) as mock_call_later,
     ):
-        # First call
+        # First call sets up timer
         dns_plugin.notify_locals_changed()
         assert dns_plugin._locals_changed_handle == mock_handle1
-        mock_call_later.assert_called_once()
+        assert mock_call_later.call_count == 1
 
-        # Second call should cancel first timer
+        # Second call should cancel first timer and create new one
         dns_plugin.notify_locals_changed()
         mock_handle1.cancel.assert_called_once()
         assert dns_plugin._locals_changed_handle == mock_handle2
