@@ -5,6 +5,7 @@ from typing import Any
 
 import attr
 
+from ..bus import EventListener
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ResolutionError, ResolutionNotFound
 from ..homeassistant.const import WSEvent
@@ -45,6 +46,9 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._issues: list[Issue] = []
         self._unsupported: list[UnsupportedReason] = []
         self._unhealthy: list[UnhealthyReason] = []
+
+        # Map suggestion UUID to event listeners (list)
+        self._suggestion_listeners: dict[str, list[EventListener]] = {}
 
     async def load_modules(self):
         """Load resolution evaluation, check and fixup modules."""
@@ -104,6 +108,19 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             suggestion.reference,
         )
         self._suggestions.append(suggestion)
+
+        # Register event listeners if fixups have a bus_event
+        listeners: list[EventListener] = []
+        for fixup in self.fixup.fixes_for_suggestion(suggestion):
+            if fixup.auto and fixup.bus_event:
+
+                def event_callback(reference, fixup=fixup):
+                    return fixup(suggestion)
+
+                listener = self.sys_bus.register_event(fixup.bus_event, event_callback)
+                listeners.append(listener)
+        if listeners:
+            self._suggestion_listeners[suggestion.uuid] = listeners
 
         # Event on suggestion added to issue
         for issue in self.issues_for_suggestion(suggestion):
@@ -232,6 +249,11 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
                 f"The UUID {suggestion.uuid} is not valid suggestion", _LOGGER.warning
             )
         self._suggestions.remove(suggestion)
+
+        # Remove event listeners if present
+        listeners = self._suggestion_listeners.pop(suggestion.uuid, [])
+        for listener in listeners:
+            self.coresys.bus.remove_listener(listener)
 
         # Event on suggestion removed from issues
         for issue in self.issues_for_suggestion(suggestion):
