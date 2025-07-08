@@ -15,7 +15,8 @@ from awesomeversion import AwesomeVersion
 import jinja2
 import voluptuous as vol
 
-from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
+from ..bus import EventListener
+from ..const import ATTR_SERVERS, DNS_SUFFIX, BusEvent, LogLevel
 from ..coresys import CoreSys
 from ..dbus.const import MulticastProtocolEnabled
 from ..docker.const import ContainerState
@@ -79,6 +80,10 @@ class PluginDns(PluginBase):
         self._loop: bool = False
         self._cached_locals: list[str] | None = None
 
+        # Debouncing system for rapid local changes
+        self._locals_changed_handle: asyncio.TimerHandle | None = None
+        self._connectivity_check_listener: EventListener | None = None
+
     @property
     def hosts(self) -> Path:
         """Return Path to corefile."""
@@ -107,12 +112,14 @@ class PluginDns(PluginBase):
 
         return servers
 
-    @Job(
-        name="plugin_dns_notify_locals_changed",
-        limit=JobExecutionLimit.SINGLE_WAIT,
-    )
-    async def notify_locals_changed(self) -> None:
-        """Notify that locals might have changed and restart DNS if necessary."""
+    async def _on_dns_container_running(self, event: DockerContainerStateEvent) -> None:
+        """Handle DNS container state change to running and trigger connectivity check."""
+        if event.name == self.instance.name and event.state == ContainerState.RUNNING:
+            _LOGGER.debug("DNS container is now running, checking connectivity")
+            await self.sys_supervisor.check_connectivity_unthrottled()
+
+    async def _restart_dns_after_locals_change(self) -> None:
+        """Restart DNS after a debounced delay for local changes."""
         old_locals = self._cached_locals
         new_locals = self._compute_locals()
         if old_locals == new_locals:
@@ -124,10 +131,18 @@ class PluginDns(PluginBase):
             return
 
         await self.restart()
+        # Connectivity check will be triggered automatically by Docker event
 
-        # Delay by 5s to allow CoreDNS to startup.
-        await asyncio.sleep(5)
-        await self.sys_supervisor.check_connectivity_unthrottled()
+    def notify_locals_changed(self) -> None:
+        """Schedule a debounced DNS restart for local changes."""
+        # Cancel existing timer if any
+        if self._locals_changed_handle and not self._locals_changed_handle.cancelled():
+            self._locals_changed_handle.cancel()
+
+        # Schedule new timer with 1 second delay
+        self._locals_changed_handle = self.sys_call_later(
+            1.0, self.sys_create_task, self._restart_dns_after_locals_change()
+        )
 
     @property
     def servers(self) -> list[str]:
@@ -219,6 +234,12 @@ class PluginDns(PluginBase):
         await self._init_hosts()
         await super().load()
 
+        # Register Docker event listener for connectivity checks
+        if not self._connectivity_check_listener:
+            self._connectivity_check_listener = self.sys_bus.register_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self._on_dns_container_running
+            )
+
         # Update supervisor
         # Resolv template should always be set but just in case don't fail load
         if self._resolv_template:
@@ -272,6 +293,16 @@ class PluginDns(PluginBase):
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
+        # Cancel any pending locals change timer
+        if self._locals_changed_handle and not self._locals_changed_handle.cancelled():
+            self._locals_changed_handle.cancel()
+            self._locals_changed_handle = None
+
+        # Unregister Docker event listener
+        if self._connectivity_check_listener:
+            self.sys_bus.remove_listener(self._connectivity_check_listener)
+            self._connectivity_check_listener = None
+
         _LOGGER.info("Stopping CoreDNS plugin")
         try:
             await self.instance.stop()

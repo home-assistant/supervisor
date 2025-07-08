@@ -183,7 +183,7 @@ class NetworkManager(CoreSysAttributes):
             and self._dns_configuration != changed[DBUS_ATTR_CONFIGURATION]
         ):
             self._dns_configuration = changed[DBUS_ATTR_CONFIGURATION]
-            self.sys_create_task(self.sys_plugins.dns.notify_locals_changed())
+            self.sys_plugins.dns.notify_locals_changed()
 
     async def update(self, *, force_connectivity_check: bool = False):
         """Update properties over dbus."""
