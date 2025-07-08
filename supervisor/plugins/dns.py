@@ -114,7 +114,7 @@ class PluginDns(PluginBase):
         """Handle DNS container state change to running and trigger connectivity check."""
         if event.name == self.instance.name and event.state == ContainerState.RUNNING:
             _LOGGER.debug("DNS container is now running, checking connectivity")
-            await self.sys_supervisor.check_connectivity_unthrottled()
+            await self.sys_supervisor.check_connectivity()
 
     async def _restart_dns_after_locals_change(self) -> None:
         """Restart DNS after a debounced delay for local changes."""

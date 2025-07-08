@@ -286,7 +286,12 @@ class Supervisor(CoreSysAttributes):
         except DockerError:
             _LOGGER.error("Repair of Supervisor failed")
 
-    async def check_connectivity_unthrottled(self) -> None:
+    @Job(
+        name="supervisor_check_connectivity",
+        limit=JobExecutionLimit.THROTTLE,
+        throttle_period=_check_connectivity_throttle_period,
+    )
+    async def check_connectivity(self) -> None:
         """Check the Internet connectivity from Supervisor's point of view."""
         timeout = aiohttp.ClientTimeout(total=10)
         try:
@@ -299,12 +304,3 @@ class Supervisor(CoreSysAttributes):
         else:
             _LOGGER.debug("Supervisor Connectivity check succeeded")
             self.connectivity = True
-
-    @Job(
-        name="supervisor_check_connectivity",
-        limit=JobExecutionLimit.THROTTLE,
-        throttle_period=_check_connectivity_throttle_period,
-    )
-    async def check_connectivity(self) -> None:
-        """Check the connection."""
-        await self.check_connectivity_unthrottled()

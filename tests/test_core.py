@@ -86,9 +86,7 @@ async def test_adjust_system_datetime_if_time_behind(
         patch.object(
             InfoCenter, "dt_synchronized", new=PropertyMock(return_value=False)
         ),
-        patch.object(
-            Supervisor, "check_connectivity_unthrottled"
-        ) as mock_check_connectivity,
+        patch.object(Supervisor, "check_connectivity") as mock_check_connectivity,
     ):
         await coresys.core._adjust_system_datetime()
         mock_retrieve_whoami.assert_called_once()
