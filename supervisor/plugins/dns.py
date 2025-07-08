@@ -15,8 +15,7 @@ from awesomeversion import AwesomeVersion
 import jinja2
 import voluptuous as vol
 
-from ..bus import EventListener
-from ..const import ATTR_SERVERS, DNS_SUFFIX, BusEvent, LogLevel
+from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
 from ..coresys import CoreSys
 from ..dbus.const import MulticastProtocolEnabled
 from ..docker.const import ContainerState
@@ -82,7 +81,6 @@ class PluginDns(PluginBase):
 
         # Debouncing system for rapid local changes
         self._locals_changed_handle: asyncio.TimerHandle | None = None
-        self._connectivity_check_listener: EventListener | None = None
 
     @property
     def hosts(self) -> Path:
@@ -131,7 +129,6 @@ class PluginDns(PluginBase):
             return
 
         await self.restart()
-        # Connectivity check will be triggered automatically by Docker event
 
     def notify_locals_changed(self) -> None:
         """Schedule a debounced DNS restart for local changes."""
@@ -234,12 +231,6 @@ class PluginDns(PluginBase):
         await self._init_hosts()
         await super().load()
 
-        # Register Docker event listener for connectivity checks
-        if not self._connectivity_check_listener:
-            self._connectivity_check_listener = self.sys_bus.register_event(
-                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self._on_dns_container_running
-            )
-
         # Update supervisor
         # Resolv template should always be set but just in case don't fail load
         if self._resolv_template:
@@ -297,11 +288,6 @@ class PluginDns(PluginBase):
         if self._locals_changed_handle and not self._locals_changed_handle.cancelled():
             self._locals_changed_handle.cancel()
             self._locals_changed_handle = None
-
-        # Unregister Docker event listener
-        if self._connectivity_check_listener:
-            self.sys_bus.remove_listener(self._connectivity_check_listener)
-            self._connectivity_check_listener = None
 
         _LOGGER.info("Stopping CoreDNS plugin")
         try:
