@@ -35,6 +35,17 @@ async def fixture_write_json() -> Mock:
         yield write_json_file
 
 
+@pytest.fixture(name="mock_call_later")
+def fixture_mock_call_later(coresys: CoreSys):
+    """Mock sys_call_later with zero delay for testing."""
+
+    def mock_call_later(_delay, *args, **kwargs) -> asyncio.TimerHandle:
+        """Mock to remove delay."""
+        return coresys.call_later(0, *args, **kwargs)
+
+    return mock_call_later
+
+
 async def test_config_write(
     coresys: CoreSys,
     docker_interface: tuple[AsyncMock, AsyncMock],
@@ -242,99 +253,10 @@ async def test_load_error_writing_resolv(
         assert coresys.core.healthy is False
 
 
-async def test_notify_locals_changed_always_schedules_debounce_timer(coresys: CoreSys):
-    """Test notify_locals_changed always schedules a debounce timer regardless of changes."""
-    dns_plugin = coresys.plugins.dns
-
-    # Set initial cached locals to match current network state
-    dns_plugin._cached_locals = dns_plugin._compute_locals()
-
-    mock_handle = Mock()
-    with patch.object(
-        dns_plugin, "sys_call_later", return_value=mock_handle
-    ) as mock_call_later:
-        dns_plugin.notify_locals_changed()
-
-        # Should always schedule restart timer - comparison happens in _restart_dns_after_locals_change
-        mock_call_later.assert_called_once_with(
-            1.0, dns_plugin._trigger_restart_dns_after_locals_change
-        )
-        assert dns_plugin._locals_changed_handle == mock_handle
-
-
-async def test_notify_locals_changed_schedules_restart_timer(coresys: CoreSys):
-    """Test notify_locals_changed schedules restart timer with correct parameters."""
-    dns_plugin = coresys.plugins.dns
-
-    # Set initial cached locals to something different from current state
-    dns_plugin._cached_locals = ["dns://192.168.1.1"]
-
-    mock_handle = Mock()
-    with patch.object(
-        dns_plugin, "sys_call_later", return_value=mock_handle
-    ) as mock_call_later:
-        dns_plugin.notify_locals_changed()
-
-        # Should schedule restart with 1 second delay
-        mock_call_later.assert_called_once_with(
-            1.0, dns_plugin._trigger_restart_dns_after_locals_change
-        )
-        assert dns_plugin._locals_changed_handle == mock_handle
-
-
-async def test_notify_locals_changed_schedules_timer_regardless_of_plugin_state(
-    coresys: CoreSys,
+async def test_notify_locals_changed_end_to_end_with_changes_and_running(
+    coresys: CoreSys, mock_call_later
 ):
-    """Test notify_locals_changed schedules timer even if plugin is not running."""
-    dns_plugin = coresys.plugins.dns
-
-    # Set initial cached locals
-    dns_plugin._cached_locals = ["dns://192.168.1.1"]
-
-    mock_handle = Mock()
-    with (
-        patch.object(dns_plugin, "_compute_locals", return_value=["dns://192.168.1.2"]),
-        patch.object(
-            dns_plugin, "sys_call_later", return_value=mock_handle
-        ) as mock_call_later,
-    ):
-        dns_plugin.notify_locals_changed()
-
-        # Should still schedule restart timer even if not running
-        # (the _restart_dns_after_locals_change method will check if running)
-        mock_call_later.assert_called_once()
-        assert dns_plugin._locals_changed_handle == mock_handle
-
-
-async def test_notify_locals_changed_debouncing_cancels_previous_timer(
-    coresys: CoreSys,
-):
-    """Test notify_locals_changed debouncing cancels previous timer before creating new one."""
-    dns_plugin = coresys.plugins.dns
-
-    # Set initial cached locals to trigger change detection
-    dns_plugin._cached_locals = ["dns://192.168.1.1"]
-
-    mock_handle1 = Mock()
-    mock_handle2 = Mock()
-
-    with patch.object(
-        dns_plugin, "sys_call_later", side_effect=[mock_handle1, mock_handle2]
-    ) as mock_call_later:
-        # First call sets up timer
-        dns_plugin.notify_locals_changed()
-        assert dns_plugin._locals_changed_handle == mock_handle1
-        assert mock_call_later.call_count == 1
-
-        # Second call should cancel first timer and create new one
-        dns_plugin.notify_locals_changed()
-        mock_handle1.cancel.assert_called_once()
-        assert dns_plugin._locals_changed_handle == mock_handle2
-        assert mock_call_later.call_count == 2
-
-
-async def test_restart_dns_after_locals_change_restarts_when_running(coresys: CoreSys):
-    """Test _restart_dns_after_locals_change restarts DNS when plugin is running and locals changed."""
+    """Test notify_locals_changed end-to-end: local DNS changes detected and plugin restarted."""
     dns_plugin = coresys.plugins.dns
 
     # Set cached locals to something different from current network state
@@ -348,19 +270,23 @@ async def test_restart_dns_after_locals_change_restarts_when_running(coresys: Co
     with (
         patch.object(dns_plugin, "restart") as mock_restart,
         patch.object(dns_plugin.instance, "is_running", return_value=True),
+        patch.object(dns_plugin, "sys_call_later", new=mock_call_later),
     ):
-        await dns_plugin._restart_dns_after_locals_change()
+        # Call notify_locals_changed
+        dns_plugin.notify_locals_changed()
 
-        # Should restart when locals changed and plugin is running
+        # Wait for the async task to complete
+        await asyncio.sleep(0.1)
+
+        # Verify restart was called and cached locals were updated
         mock_restart.assert_called_once()
-        # Cached locals should be updated to current network state
         assert dns_plugin._cached_locals == current_locals
 
 
-async def test_restart_dns_after_locals_change_skips_restart_when_not_running(
-    coresys: CoreSys,
+async def test_notify_locals_changed_end_to_end_with_changes_but_not_running(
+    coresys: CoreSys, mock_call_later
 ):
-    """Test _restart_dns_after_locals_change skips restart when plugin is not running."""
+    """Test notify_locals_changed end-to-end: local DNS changes detected but plugin not running."""
     dns_plugin = coresys.plugins.dns
 
     # Set cached locals to something different from current network state
@@ -374,29 +300,92 @@ async def test_restart_dns_after_locals_change_skips_restart_when_not_running(
     with (
         patch.object(dns_plugin, "restart") as mock_restart,
         patch.object(dns_plugin.instance, "is_running", return_value=False),
+        patch.object(dns_plugin, "sys_call_later", new=mock_call_later),
     ):
-        await dns_plugin._restart_dns_after_locals_change()
+        # Call notify_locals_changed
+        dns_plugin.notify_locals_changed()
 
-        # Should not restart when plugin is not running
+        # Wait for the async task to complete
+        await asyncio.sleep(0.1)
+
+        # Verify restart was NOT called but cached locals were still updated
         mock_restart.assert_not_called()
-        # Cached locals should still be updated to current network state
         assert dns_plugin._cached_locals == current_locals
 
 
-async def test_restart_dns_after_locals_change_noop_when_no_change(coresys: CoreSys):
-    """Test _restart_dns_after_locals_change is noop when locals haven't actually changed."""
+async def test_notify_locals_changed_end_to_end_no_changes(
+    coresys: CoreSys, mock_call_later
+):
+    """Test notify_locals_changed end-to-end: no local DNS changes detected."""
     dns_plugin = coresys.plugins.dns
 
     # Set cached locals to match current network state
     current_locals = dns_plugin._compute_locals()
     dns_plugin._cached_locals = current_locals
 
-    with patch.object(dns_plugin, "restart") as mock_restart:
-        await dns_plugin._restart_dns_after_locals_change()
+    with (
+        patch.object(dns_plugin, "restart") as mock_restart,
+        patch.object(dns_plugin, "sys_call_later", new=mock_call_later),
+    ):
+        # Call notify_locals_changed
+        dns_plugin.notify_locals_changed()
 
-        # Should not restart when no change
+        # Wait for the async task to complete
+        await asyncio.sleep(0.1)
+
+        # Verify restart was NOT called since no changes
         mock_restart.assert_not_called()
-        # Cached locals should remain the same
+        assert dns_plugin._cached_locals == current_locals
+
+
+async def test_notify_locals_changed_debouncing_cancels_previous_timer(
+    coresys: CoreSys,
+):
+    """Test notify_locals_changed debouncing cancels previous timer before creating new one."""
+    dns_plugin = coresys.plugins.dns
+
+    # Set cached locals to trigger change detection
+    current_locals = dns_plugin._compute_locals()
+    dns_plugin._cached_locals = (
+        ["dns://192.168.1.1"]
+        if current_locals != ["dns://192.168.1.1"]
+        else ["dns://192.168.1.2"]
+    )
+
+    call_count = 0
+    handles = []
+
+    def mock_call_later_with_tracking(_delay, *args, **kwargs) -> asyncio.TimerHandle:
+        """Mock to remove delay and track calls."""
+        nonlocal call_count
+        call_count += 1
+        handle = coresys.call_later(0, *args, **kwargs)
+        handles.append(handle)
+        return handle
+
+    with (
+        patch.object(dns_plugin, "restart") as mock_restart,
+        patch.object(dns_plugin.instance, "is_running", return_value=True),
+        patch.object(dns_plugin, "sys_call_later", new=mock_call_later_with_tracking),
+    ):
+        # First call sets up timer
+        dns_plugin.notify_locals_changed()
+        assert call_count == 1
+        first_handle = dns_plugin._locals_changed_handle
+        assert first_handle is not None
+
+        # Second call should cancel first timer and create new one
+        dns_plugin.notify_locals_changed()
+        assert call_count == 2
+        second_handle = dns_plugin._locals_changed_handle
+        assert second_handle is not None
+        assert first_handle != second_handle
+
+        # Wait for the async task to complete
+        await asyncio.sleep(0.1)
+
+        # Verify restart was called once for the final timer
+        mock_restart.assert_called_once()
         assert dns_plugin._cached_locals == current_locals
 
 
