@@ -88,7 +88,7 @@ async def test_connectivity_events(coresys: CoreSys, force: bool):
             )
 
 
-async def test_dns_restart_on_dns_configuration_change(
+async def test_dns_configuration_change_triggers_notify_locals_changed(
     coresys: CoreSys, dns_manager_service
 ):
     """Test that DNS configuration changes trigger notify_locals_changed."""
@@ -96,9 +96,8 @@ async def test_dns_restart_on_dns_configuration_change(
 
     with patch.object(PluginDns, "notify_locals_changed") as notify_locals_changed:
         # Test that non-Configuration changes don't trigger notify_locals_changed
-        await coresys.host.network._check_dns_changed(
-            "org.freedesktop.NetworkManager.DnsManager", {"Mode": "default"}, []
-        )
+        dns_manager_service.emit_properties_changed({"Mode": "default"})
+        await dns_manager_service.ping()
         notify_locals_changed.assert_not_called()
 
         # Test that Configuration changes trigger notify_locals_changed
@@ -112,11 +111,8 @@ async def test_dns_restart_on_dns_configuration_change(
             }
         ]
 
-        await coresys.host.network._check_dns_changed(
-            "org.freedesktop.NetworkManager.DnsManager",
-            {"Configuration": configuration},
-            [],
-        )
+        dns_manager_service.emit_properties_changed({"Configuration": configuration})
+        await dns_manager_service.ping()
         notify_locals_changed.assert_called_once()
 
         notify_locals_changed.reset_mock()
@@ -131,9 +127,8 @@ async def test_dns_restart_on_dns_configuration_change(
             }
         ]
 
-        await coresys.host.network._check_dns_changed(
-            "org.freedesktop.NetworkManager.DnsManager",
-            {"Configuration": different_configuration},
-            [],
+        dns_manager_service.emit_properties_changed(
+            {"Configuration": different_configuration}
         )
+        await dns_manager_service.ping()
         notify_locals_changed.assert_called_once()
