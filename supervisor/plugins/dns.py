@@ -81,6 +81,7 @@ class PluginDns(PluginBase):
 
         # Debouncing system for rapid local changes
         self._locals_changed_handle: asyncio.TimerHandle | None = None
+        self._restart_after_locals_change_handle: asyncio.Task | None = None
 
     @property
     def hosts(self) -> Path:
@@ -129,16 +130,28 @@ class PluginDns(PluginBase):
             return
 
         await self.restart()
+        self._restart_after_locals_change_handle = None
+
+    def _trigger_restart_dns_after_locals_change(self) -> None:
+        """Trigger a restart of DNS after local changes."""
+        # Cancel existing restart task if any
+        if self._restart_after_locals_change_handle:
+            self._restart_after_locals_change_handle.cancel()
+
+        self._restart_after_locals_change_handle = self.sys_create_task(
+            self._restart_dns_after_locals_change()
+        )
+        self._locals_changed_handle = None
 
     def notify_locals_changed(self) -> None:
         """Schedule a debounced DNS restart for local changes."""
         # Cancel existing timer if any
-        if self._locals_changed_handle and not self._locals_changed_handle.cancelled():
+        if self._locals_changed_handle:
             self._locals_changed_handle.cancel()
 
         # Schedule new timer with 1 second delay
         self._locals_changed_handle = self.sys_call_later(
-            1.0, lambda: self.sys_create_task(self._restart_dns_after_locals_change())
+            1.0, self._trigger_restart_dns_after_locals_change
         )
 
     @property
@@ -285,9 +298,14 @@ class PluginDns(PluginBase):
     async def stop(self) -> None:
         """Stop CoreDNS."""
         # Cancel any pending locals change timer
-        if self._locals_changed_handle and not self._locals_changed_handle.cancelled():
+        if self._locals_changed_handle:
             self._locals_changed_handle.cancel()
             self._locals_changed_handle = None
+
+        # Wait for any pending restart before stopping
+        if self._restart_after_locals_change_handle:
+            self._restart_after_locals_change_handle.cancel()
+            self._restart_after_locals_change_handle = None
 
         _LOGGER.info("Stopping CoreDNS plugin")
         try:
