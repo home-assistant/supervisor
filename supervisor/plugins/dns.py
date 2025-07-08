@@ -138,7 +138,7 @@ class PluginDns(PluginBase):
 
         # Schedule new timer with 1 second delay
         self._locals_changed_handle = self.sys_call_later(
-            1.0, self.sys_create_task, self._restart_dns_after_locals_change()
+            1.0, lambda: self.sys_create_task(self._restart_dns_after_locals_change())
         )
 
     @property
