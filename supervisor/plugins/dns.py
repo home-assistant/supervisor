@@ -15,7 +15,8 @@ from awesomeversion import AwesomeVersion
 import jinja2
 import voluptuous as vol
 
-from ..const import ATTR_SERVERS, DNS_SUFFIX, LogLevel
+from ..bus import EventListener
+from ..const import ATTR_SERVERS, DNS_SUFFIX, BusEvent, LogLevel
 from ..coresys import CoreSys
 from ..dbus.const import MulticastProtocolEnabled
 from ..docker.const import ContainerState
@@ -82,6 +83,7 @@ class PluginDns(PluginBase):
         # Debouncing system for rapid local changes
         self._locals_changed_handle: asyncio.TimerHandle | None = None
         self._restart_after_locals_change_handle: asyncio.Task | None = None
+        self._connectivity_check_listener: EventListener | None = None
 
     @property
     def hosts(self) -> Path:
@@ -110,6 +112,15 @@ class PluginDns(PluginBase):
                 servers.append(dns_url(server))
 
         return servers
+
+    async def _on_dns_container_running(self, event: DockerContainerStateEvent) -> None:
+        """Handle DNS container state change to running and trigger connectivity check."""
+        if event.name == self.instance.name and event.state == ContainerState.RUNNING:
+            # Wait before CoreDNS actually becomes available
+            await asyncio.sleep(5)
+
+            _LOGGER.debug("CoreDNS started, checking connectivity")
+            await self.sys_supervisor.check_connectivity()
 
     async def _restart_dns_after_locals_change(self) -> None:
         """Restart DNS after a debounced delay for local changes."""
@@ -236,6 +247,13 @@ class PluginDns(PluginBase):
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         await self._init_hosts()
+
+        # Register Docker event listener for connectivity checks
+        if not self._connectivity_check_listener:
+            self._connectivity_check_listener = self.sys_bus.register_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self._on_dns_container_running
+            )
+
         await super().load()
 
         # Update supervisor
