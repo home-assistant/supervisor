@@ -253,7 +253,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         # Remove event listeners if present
         listeners = self._suggestion_listeners.pop(suggestion.uuid, [])
         for listener in listeners:
-            self.coresys.bus.remove_listener(listener)
+            self.sys_bus.remove_listener(listener)
 
         # Event on suggestion removed from issues
         for issue in self.issues_for_suggestion(suggestion):
