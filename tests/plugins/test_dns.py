@@ -406,3 +406,78 @@ async def test_stop_cancels_pending_timers_and_tasks(coresys: CoreSys):
     mock_task_handle.cancel.assert_called_once()
     assert dns_plugin._locals_changed_handle is None
     assert dns_plugin._restart_after_locals_change_handle is None
+
+
+async def test_dns_restart_triggers_connectivity_check(coresys: CoreSys):
+    """Test end-to-end that DNS container restart triggers connectivity check."""
+    dns_plugin = coresys.plugins.dns
+
+    # Load the plugin to register the event listener
+    with (
+        patch.object(type(dns_plugin.instance), "attach"),
+        patch.object(type(dns_plugin.instance), "is_running", return_value=True),
+    ):
+        await dns_plugin.load()
+
+    # Verify listener was registered (connectivity check listener should be stored)
+    assert dns_plugin._connectivity_check_listener is not None
+
+    # Create event to signal when connectivity check is called
+    connectivity_check_event = asyncio.Event()
+
+    # Mock connectivity check to set the event when called
+    async def mock_check_connectivity():
+        connectivity_check_event.set()
+
+    with (
+        patch.object(
+            coresys.supervisor,
+            "check_connectivity",
+            side_effect=mock_check_connectivity,
+        ),
+        patch("supervisor.plugins.dns.asyncio.sleep") as mock_sleep,
+    ):
+        # Fire the DNS container state change event through bus system
+        coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name="hassio_dns",
+                state=ContainerState.RUNNING,
+                id="test_id",
+                time=1234567890,
+            ),
+        )
+
+        # Wait for connectivity check to be called
+        await asyncio.wait_for(connectivity_check_event.wait(), timeout=1.0)
+
+        # Verify sleep was called with correct delay
+        mock_sleep.assert_called_once_with(5)
+
+        # Reset and test that other containers don't trigger check
+        connectivity_check_event.clear()
+        mock_sleep.reset_mock()
+
+        # Fire event for different container
+        coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name="hassio_homeassistant",
+                state=ContainerState.RUNNING,
+                id="test_id",
+                time=1234567890,
+            ),
+        )
+
+        # Wait a bit and verify connectivity check was NOT triggered
+        try:
+            await asyncio.wait_for(connectivity_check_event.wait(), timeout=0.1)
+            assert False, (
+                "Connectivity check should not have been called for other containers"
+            )
+        except TimeoutError:
+            # This is expected - connectivity check should not be called
+            pass
+
+        # Verify sleep was not called for other containers
+        mock_sleep.assert_not_called()
