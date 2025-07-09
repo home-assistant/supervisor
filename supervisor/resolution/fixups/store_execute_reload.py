@@ -2,6 +2,7 @@
 
 import logging
 
+from ...const import BusEvent
 from ...coresys import CoreSys
 from ...exceptions import (
     ResolutionFixupError,
@@ -68,3 +69,8 @@ class FixupStoreExecuteReload(FixupBase):
     def auto(self) -> bool:
         """Return if a fixup can be apply as auto fix."""
         return True
+
+    @property
+    def bus_event(self) -> BusEvent | None:
+        """Return the BusEvent that triggers this fixup, or None if not event-based."""
+        return BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE
