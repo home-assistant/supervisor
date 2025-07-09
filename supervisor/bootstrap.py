@@ -46,6 +46,7 @@ from .services import ServiceManager
 from .store import StoreManager
 from .supervisor import Supervisor
 from .updater import Updater
+from .utils.logging import HAOSLogHandler
 from .utils.sentry import capture_exception, init_sentry
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -246,20 +247,31 @@ def initialize_logging() -> None:
     # suppress overly verbose logs from libraries that aren't helpful
     logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
 
-    logging.getLogger().handlers[0].setFormatter(
-        ColoredFormatter(
-            colorfmt,
-            datefmt=datefmt,
-            reset=True,
-            log_colors={
-                "DEBUG": "cyan",
-                "INFO": "green",
-                "WARNING": "yellow",
-                "ERROR": "red",
-                "CRITICAL": "red",
-            },
+    default_handler = logging.getLogger().handlers[0]
+
+    if HAOSLogHandler.is_available():
+        # replace the default logging handler with JournaldLogHandler
+        logging.getLogger().removeHandler(default_handler)
+        supervisor_name = os.environ[ENV_SUPERVISOR_NAME]
+        journald_handler = HAOSLogHandler(identifier=supervisor_name)
+        journald_handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+        logging.getLogger().addHandler(journald_handler)
+    else:
+        default_handler.setFormatter(
+            ColoredFormatter(
+                colorfmt,
+                datefmt=datefmt,
+                reset=True,
+                log_colors={
+                    "DEBUG": "cyan",
+                    "INFO": "green",
+                    "WARNING": "yellow",
+                    "ERROR": "red",
+                    "CRITICAL": "red",
+                },
+            )
         )
-    )
+
     warnings.showwarning = warning_handler
 
 

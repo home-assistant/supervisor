@@ -5,11 +5,25 @@ from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from functools import wraps
 import json
+import logging
+from types import MappingProxyType
 
 from aiohttp import ClientResponse
+from colorlog.escape_codes import escape_codes, parse_colors
 
 from supervisor.exceptions import MalformedBinaryEntryError
 from supervisor.host.const import LogFormatter
+from supervisor.utils.logging import HAOSLogHandler
+
+_LOG_COLORS = MappingProxyType(
+    {
+        HAOSLogHandler.LEVELS[logging.DEBUG]: "cyan",
+        HAOSLogHandler.LEVELS[logging.INFO]: "green",
+        HAOSLogHandler.LEVELS[logging.WARNING]: "yellow",
+        HAOSLogHandler.LEVELS[logging.ERROR]: "red",
+        HAOSLogHandler.LEVELS[logging.CRITICAL]: "red",
+    }
+)
 
 
 def formatter(required_fields: list[str]):
@@ -24,15 +38,34 @@ def formatter(required_fields: list[str]):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        wrapper.required_fields = ["__CURSOR"] + required_fields
+        implicit_fields = ["__CURSOR", "SYSLOG_FACILITY", "PRIORITY"]
+        wrapper.required_fields = implicit_fields + required_fields
         return wrapper
 
     return decorator
 
 
+def _entry_is_haos_log(entry: dict[str, str]) -> bool:
+    """Check if the entry is a Home Assistant Operating System log entry."""
+    return entry.get("SYSLOG_FACILITY") == str(HAOSLogHandler.SYSLOG_FACILITY)
+
+
+def colorize_message(message: str, priority: str | None = None) -> str:
+    """Colorize a log message using ANSI escape codes based on its priority."""
+    if priority and priority.isdigit():
+        color = _LOG_COLORS.get(int(priority))
+        if color is not None:
+            escape_code = parse_colors(color)
+            return f"{escape_code}{message}{escape_codes['reset']}"
+    return message
+
+
 @formatter(["MESSAGE"])
 def journal_plain_formatter(entries: dict[str, str]) -> str:
     """Format parsed journal entries as a plain message."""
+    if _entry_is_haos_log(entries):
+        return colorize_message(entries["MESSAGE"], entries.get("PRIORITY"))
+
     return entries["MESSAGE"]
 
 
@@ -58,7 +91,11 @@ def journal_verbose_formatter(entries: dict[str, str]) -> str:
         else entries.get("SYSLOG_IDENTIFIER", "_UNKNOWN_")
     )
 
-    return f"{ts} {entries.get('_HOSTNAME', '')} {identifier}: {entries.get('MESSAGE', '')}"
+    message = entries.get("MESSAGE", "")
+    if message and _entry_is_haos_log(entries):
+        message = colorize_message(message, entries.get("PRIORITY"))
+
+    return f"{ts} {entries.get('_HOSTNAME', '')} {identifier}: {message}"
 
 
 async def journal_logs_reader(
