@@ -291,14 +291,16 @@ class Supervisor(CoreSysAttributes):
         limit=JobExecutionLimit.THROTTLE,
         throttle_period=_check_connectivity_throttle_period,
     )
-    async def check_connectivity(self):
-        """Check the connection."""
+    async def check_connectivity(self) -> None:
+        """Check the Internet connectivity from Supervisor's point of view."""
         timeout = aiohttp.ClientTimeout(total=10)
         try:
             await self.sys_websession.head(
                 "https://checkonline.home-assistant.io/online.txt", timeout=timeout
             )
-        except (ClientError, TimeoutError):
+        except (ClientError, TimeoutError) as err:
+            _LOGGER.debug("Supervisor Connectivity check failed: %s", err)
             self.connectivity = False
         else:
+            _LOGGER.debug("Supervisor Connectivity check succeeded")
             self.connectivity = True

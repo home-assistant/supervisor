@@ -77,6 +77,11 @@ class PluginDns(PluginBase):
 
         self._hosts: list[HostEntry] = []
         self._loop: bool = False
+        self._cached_locals: list[str] | None = None
+
+        # Debouncing system for rapid local changes
+        self._locals_changed_handle: asyncio.TimerHandle | None = None
+        self._restart_after_locals_change_handle: asyncio.Task | None = None
 
     @property
     def hosts(self) -> Path:
@@ -91,6 +96,12 @@ class PluginDns(PluginBase):
     @property
     def locals(self) -> list[str]:
         """Return list of local system DNS servers."""
+        if self._cached_locals is None:
+            self._cached_locals = self._compute_locals()
+        return self._cached_locals
+
+    def _compute_locals(self) -> list[str]:
+        """Compute list of local system DNS servers."""
         servers: list[str] = []
         for server in [
             f"dns://{server!s}" for server in self.sys_host.network.dns_servers
@@ -99,6 +110,43 @@ class PluginDns(PluginBase):
                 servers.append(dns_url(server))
 
         return servers
+
+    async def _restart_dns_after_locals_change(self) -> None:
+        """Restart DNS after a debounced delay for local changes."""
+        old_locals = self._cached_locals
+        new_locals = self._compute_locals()
+        if old_locals == new_locals:
+            return
+
+        _LOGGER.debug("DNS locals changed from %s to %s", old_locals, new_locals)
+        self._cached_locals = new_locals
+        if not await self.instance.is_running():
+            return
+
+        await self.restart()
+        self._restart_after_locals_change_handle = None
+
+    def _trigger_restart_dns_after_locals_change(self) -> None:
+        """Trigger a restart of DNS after local changes."""
+        # Cancel existing restart task if any
+        if self._restart_after_locals_change_handle:
+            self._restart_after_locals_change_handle.cancel()
+
+        self._restart_after_locals_change_handle = self.sys_create_task(
+            self._restart_dns_after_locals_change()
+        )
+        self._locals_changed_handle = None
+
+    def notify_locals_changed(self) -> None:
+        """Schedule a debounced DNS restart for local changes."""
+        # Cancel existing timer if any
+        if self._locals_changed_handle:
+            self._locals_changed_handle.cancel()
+
+        # Schedule new timer with 1 second delay
+        self._locals_changed_handle = self.sys_call_later(
+            1.0, self._trigger_restart_dns_after_locals_change
+        )
 
     @property
     def servers(self) -> list[str]:
@@ -243,6 +291,16 @@ class PluginDns(PluginBase):
 
     async def stop(self) -> None:
         """Stop CoreDNS."""
+        # Cancel any pending locals change timer
+        if self._locals_changed_handle:
+            self._locals_changed_handle.cancel()
+            self._locals_changed_handle = None
+
+        # Wait for any pending restart before stopping
+        if self._restart_after_locals_change_handle:
+            self._restart_after_locals_change_handle.cancel()
+            self._restart_after_locals_change_handle = None
+
         _LOGGER.info("Stopping CoreDNS plugin")
         try:
             await self.instance.stop()
