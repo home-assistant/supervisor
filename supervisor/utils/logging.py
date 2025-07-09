@@ -79,11 +79,11 @@ class HAOSLogHandler(JournaldLogHandler):
         # mounted in the container or passed it there using other means.
         # Not obtaining it will only result in the logs not being available
         # through `docker logs` command, so it is not a critical issue.
-        with open("/proc/self/mountinfo") as f:
+        with open("/proc/self/mountinfo", mode="rb") as f:
             for line in f:
-                if "/docker/containers/" in line:
-                    container_id = line.split("/docker/containers/")[-1]
-                    return container_id.split("/")[0]
+                if b"/docker/containers/" in line:
+                    container_id = line.split(b"/docker/containers/")[-1]
+                    return str(container_id.split(b"/")[0])
         return None
 
     @classmethod
@@ -103,7 +103,7 @@ class HAOSLogHandler(JournaldLogHandler):
                 # only container ID is needed for interpretation through `docker logs`
                 formatted.append(("CONTAINER_ID", self._container_id))
             self.transport.send(formatted)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             self._fallback(record)
 
 
