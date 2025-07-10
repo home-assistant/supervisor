@@ -34,8 +34,26 @@ class JobCondition(StrEnum):
     SUPERVISOR_UPDATED = "supervisor_updated"
 
 
+class JobConcurrency(StrEnum):
+    """Job concurrency control."""
+
+    REJECT = "reject"  # Fail if already running (was ONCE)
+    QUEUE = "queue"  # Wait if already running (was SINGLE_WAIT)
+    GROUP_REJECT = "group_reject"  # Was GROUP_ONCE
+    GROUP_QUEUE = "group_queue"  # Was GROUP_WAIT
+
+
+class JobThrottle(StrEnum):
+    """Job throttling control."""
+
+    THROTTLE = "throttle"  # Skip if called too frequently
+    RATE_LIMIT = "rate_limit"  # Rate limiting with max calls per period
+    GROUP_THROTTLE = "group_throttle"  # Group version of THROTTLE
+    GROUP_RATE_LIMIT = "group_rate_limit"  # Group version of THROTTLE_RATE_LIMIT
+
+
 class JobExecutionLimit(StrEnum):
-    """Job Execution limits."""
+    """Job Execution limits - DEPRECATED: Use JobConcurrency and JobThrottle instead."""
 
     ONCE = "once"
     SINGLE_WAIT = "single_wait"
