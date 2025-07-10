@@ -50,8 +50,8 @@ async def test_connectivity_check(
     [
         (None, timedelta(minutes=5), True),
         (None, timedelta(minutes=15), False),
-        (ClientError(), timedelta(seconds=20), True),
-        (ClientError(), timedelta(seconds=40), False),
+        (ClientError(), timedelta(seconds=3), True),
+        (ClientError(), timedelta(seconds=10), False),
     ],
 )
 async def test_connectivity_check_throttling(
