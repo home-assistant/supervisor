@@ -522,18 +522,8 @@ class Job(CoreSysAttributes):
             time_since_last_call = datetime.now() - self.last_call(group_name)
             throttle_period = self.throttle_period(group_name)
             if time_since_last_call < throttle_period:
-                # If we have queue concurrency (WAIT behavior), sleep until throttle period passes
-                if self.concurrency in (
-                    JobConcurrency.QUEUE,
-                    JobConcurrency.GROUP_QUEUE,
-                ):
-                    sleep_time = (
-                        throttle_period - time_since_last_call
-                    ).total_seconds()
-                    await asyncio.sleep(sleep_time)
-                else:
-                    # For non-queue concurrency (REJECT behavior), just return False
-                    return False
+                # Always return False when throttled (skip execution)
+                return False
         elif self.throttle in (JobThrottle.RATE_LIMIT, JobThrottle.GROUP_RATE_LIMIT):
             # Only reprocess array when necessary (at limit)
             if len(self.rate_limited_calls(group_name)) >= self.throttle_max_calls:
