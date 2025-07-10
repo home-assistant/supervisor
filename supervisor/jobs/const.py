@@ -35,7 +35,24 @@ class JobCondition(StrEnum):
 
 
 class JobConcurrency(StrEnum):
-    """Job concurrency control."""
+    """Job concurrency control.
+
+    Controls how many instances of a job can run simultaneously.
+
+    Individual Concurrency (applies to each method separately):
+    - REJECT: Fail immediately if another instance is already running
+    - QUEUE: Wait for the current instance to finish, then run
+
+    Group Concurrency (applies across all methods on a JobGroup):
+    - GROUP_REJECT: Fail if ANY job is running on the JobGroup
+    - GROUP_QUEUE: Wait for ANY running job on the JobGroup to finish
+
+    JobGroup Behavior:
+    - All methods on the same JobGroup instance share a single lock
+    - Methods can call other methods on the same group without deadlock
+    - Uses the JobGroup.group_name for coordination
+    - Requires the class to inherit from JobGroup
+    """
 
     REJECT = "reject"  # Fail if already running (was ONCE)
     QUEUE = "queue"  # Wait if already running (was SINGLE_WAIT)
@@ -44,7 +61,24 @@ class JobConcurrency(StrEnum):
 
 
 class JobThrottle(StrEnum):
-    """Job throttling control."""
+    """Job throttling control.
+
+    Controls how frequently jobs can be executed.
+
+    Individual Throttling (each method has its own throttle state):
+    - THROTTLE: Skip execution if called within throttle_period
+    - RATE_LIMIT: Allow up to throttle_max_calls within throttle_period, then fail
+
+    Group Throttling (all methods on a JobGroup share throttle state):
+    - GROUP_THROTTLE: Skip if ANY method was called within throttle_period
+    - GROUP_RATE_LIMIT: Allow up to throttle_max_calls total across ALL methods
+
+    JobGroup Behavior:
+    - All methods on the same JobGroup instance share throttle counters/timers
+    - Uses the JobGroup.group_name as the key for tracking state
+    - If one method is throttled, other methods may also be throttled
+    - Requires the class to inherit from JobGroup
+    """
 
     THROTTLE = "throttle"  # Skip if called too frequently
     RATE_LIMIT = "rate_limit"  # Rate limiting with max calls per period
