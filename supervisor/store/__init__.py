@@ -253,22 +253,24 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             return_exceptions=True,
         )
 
-        # Determine repositories to remove
-        repositories_to_remove: list[Repository] = [
-            repository
-            for repository in self.all
-            if repository.source not in target_repositories
-            and not repository.is_builtin
-        ]
+        remove_errors: list[BaseException | None] = []
+        if replace:
+            # Determine repositories to remove
+            repositories_to_remove: list[Repository] = [
+                repository
+                for repository in self.all
+                if repository.source not in target_repositories
+                and not repository.is_builtin
+            ]
 
-        # Remove repositories
-        remove_errors = await asyncio.gather(
-            *[
-                self.remove_repository(repository, persist=False)
-                for repository in repositories_to_remove
-            ],
-            return_exceptions=True,
-        )
+            # Remove repositories
+            remove_errors = await asyncio.gather(
+                *[
+                    self.remove_repository(repository, persist=False)
+                    for repository in repositories_to_remove
+                ],
+                return_exceptions=True,
+            )
 
         # Always update data, even if there are errors, some changes may have succeeded
         await self.data.update()
