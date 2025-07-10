@@ -17,7 +17,7 @@ from supervisor.exceptions import (
 from supervisor.resolution.const import SuggestionType
 from supervisor.store import StoreManager
 from supervisor.store.addon import AddonStore
-from supervisor.store.const import ALL_BUILTIN_REPOSITORIES
+from supervisor.store.const import BuiltinRepository
 from supervisor.store.repository import Repository
 
 
@@ -50,7 +50,9 @@ async def test_add_valid_repository(
         patch("pathlib.Path.exists", return_value=True),
     ):
         if use_update:
-            await store_manager.update_repositories(current + ["http://example.com"])
+            await store_manager.update_repositories(
+                set(current) | {"http://example.com"}
+            )
         else:
             await store_manager.add_repository("http://example.com")
 
@@ -70,7 +72,7 @@ async def test_add_invalid_repository(coresys: CoreSys, store_manager: StoreMana
         ),
     ):
         await store_manager.update_repositories(
-            current + ["http://example.com"], issue_on_error=True
+            set(current) | {"http://example.com"}, issue_on_error=True
         )
 
         assert not await get_repository_by_url(
@@ -96,7 +98,9 @@ async def test_error_on_invalid_repository(
         pytest.raises(StoreError),
     ):
         if use_update:
-            await store_manager.update_repositories(current + ["http://example.com"])
+            await store_manager.update_repositories(
+                set(current) | {"http://example.com"}
+            )
         else:
             await store_manager.add_repository("http://example.com")
 
@@ -118,7 +122,7 @@ async def test_add_invalid_repository_file(
         patch("pathlib.Path.exists", return_value=False),
     ):
         await store_manager.update_repositories(
-            current + ["http://example.com"], issue_on_error=True
+            set(current) | {"http://example.com"}, issue_on_error=True
         )
 
         assert not await get_repository_by_url(
@@ -146,7 +150,7 @@ async def test_add_repository_with_git_error(
     current = coresys.store.repository_urls
     with patch("supervisor.store.git.GitRepo.load", side_effect=git_error):
         await store_manager.update_repositories(
-            current + ["http://example.com"], issue_on_error=True
+            set(current) | {"http://example.com"}, issue_on_error=True
         )
 
     assert "http://example.com" in coresys.store.repository_urls
@@ -175,7 +179,9 @@ async def test_error_on_repository_with_git_error(
         pytest.raises(StoreError),
     ):
         if use_update:
-            await store_manager.update_repositories(current + ["http://example.com"])
+            await store_manager.update_repositories(
+                set(current) | {"http://example.com"}
+            )
         else:
             await store_manager.add_repository("http://example.com")
 
@@ -189,7 +195,9 @@ async def test_preinstall_valid_repository(
 ):
     """Test add core repository valid."""
     with patch("supervisor.store.git.GitRepo.load", return_value=None):
-        await store_manager.update_repositories(list(ALL_BUILTIN_REPOSITORIES))
+        await store_manager.update_repositories(
+            {repo.value for repo in BuiltinRepository}
+        )
 
         def validate():
             assert store_manager.get("core").validate()
@@ -213,7 +221,7 @@ async def test_remove_repository(
     assert test_repository.slug in coresys.store.repositories
 
     if use_update:
-        await store_manager.update_repositories([])
+        await store_manager.update_repositories(set())
     else:
         await store_manager.remove_repository(test_repository)
 
@@ -241,7 +249,7 @@ async def test_remove_used_repository(
         match="Can't remove 'https://github.com/awesome-developer/awesome-repo'. It's used by installed add-ons",
     ):
         if use_update:
-            await store_manager.update_repositories([])
+            await store_manager.update_repositories(set())
         else:
             await store_manager.remove_repository(
                 coresys.store.repositories[store_addon.repository]
@@ -252,7 +260,7 @@ async def test_update_partial_error(coresys: CoreSys, store_manager: StoreManage
     """Test partial error on update does partial save and errors."""
     with patch("supervisor.store.repository.RepositoryGit.validate", return_value=True):
         with patch("supervisor.store.git.GitRepo.load", return_value=None):
-            await store_manager.update_repositories([])
+            await store_manager.update_repositories(set())
 
         store_manager.data.update.assert_called_once()
         store_manager.data.update.reset_mock()
@@ -268,7 +276,7 @@ async def test_update_partial_error(coresys: CoreSys, store_manager: StoreManage
             pytest.raises(StoreError),
         ):
             await store_manager.update_repositories(
-                current + ["http://example.com", "http://example2.com"]
+                set(current) | {"http://example.com", "http://example2.com"}
             )
 
     assert len(coresys.store.repository_urls) == initial + 1
@@ -303,7 +311,7 @@ async def test_add_with_update_repositories(
         ),
         patch("pathlib.Path.exists", return_value=True),
     ):
-        await store_manager.update_repositories(["http://example.com"], replace=False)
+        await store_manager.update_repositories({"http://example.com"}, replace=False)
 
     assert test_repository.source in coresys.store.repository_urls
     assert "http://example.com" in coresys.store.repository_urls
@@ -322,7 +330,7 @@ async def test_add_repository_fails_if_out_of_date(
     ):
         if use_update:
             await store_manager.update_repositories(
-                coresys.store.repository_urls + ["http://example.com"],
+                set(coresys.store.repository_urls) | {"http://example.com"}
             )
         else:
             await store_manager.add_repository("http://example.com")

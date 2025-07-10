@@ -35,7 +35,3 @@ class BuiltinRepository(StrEnum):
             return URL_HASSIO_ADDONS
         else:
             return self.value  # For URL-based repos, value is the URL
-
-
-# All repositories that are considered "built-in" and protected from removal
-ALL_BUILTIN_REPOSITORIES = {repo.value for repo in BuiltinRepository}
