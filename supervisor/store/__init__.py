@@ -18,10 +18,9 @@ from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.common import FileConfiguration
 from .addon import AddonStore
-from .const import FILE_HASSIO_STORE
+from .const import FILE_HASSIO_STORE, BuiltinRepository
 from .data import StoreData
 from .repository import Repository
-from .types import BuiltinRepository
 from .validate import SCHEMA_STORE_FILE, ensure_builtin_repositories
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

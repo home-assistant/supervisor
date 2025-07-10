@@ -4,7 +4,7 @@ import voluptuous as vol
 
 from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_REPOSITORIES, ATTR_URL
 from ..validate import RE_REPOSITORY
-from .types import ALL_BUILTIN_REPOSITORIES, BuiltinRepository
+from .const import ALL_BUILTIN_REPOSITORIES, BuiltinRepository
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_REPOSITORY_CONFIG = vol.Schema(
