@@ -17,8 +17,8 @@ from supervisor.exceptions import (
 from supervisor.resolution.const import SuggestionType
 from supervisor.store import StoreManager
 from supervisor.store.addon import AddonStore
+from supervisor.store.const import ALL_BUILTIN_REPOSITORIES
 from supervisor.store.repository import Repository
-from supervisor.store.types import ALL_BUILTIN_REPOSITORIES
 
 
 def get_repository_by_url(store_manager: StoreManager, url: str) -> Repository:
