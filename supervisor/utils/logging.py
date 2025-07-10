@@ -7,6 +7,8 @@ import logging.handlers
 import queue
 from typing import Any
 
+from logging_journald import Facility, JournaldLogHandler
+
 
 class AddonLoggerAdapter(logging.LoggerAdapter):
     """Logging Adapter which prepends log entries with add-on name."""
@@ -57,6 +59,52 @@ class SupervisorQueueHandler(logging.handlers.QueueHandler):
             return
         self.listener.stop()
         self.listener = None
+
+
+class HAOSLogHandler(JournaldLogHandler):
+    """Log handler for writing logs to the Home Assistant OS Systemd Journal."""
+
+    SYSLOG_FACILITY = Facility.LOCAL7
+
+    def __init__(self, identifier: str | None = None) -> None:
+        """Initialize the HAOS log handler."""
+        super().__init__(identifier=identifier, facility=HAOSLogHandler.SYSLOG_FACILITY)
+        self._container_id = self._get_container_id()
+
+    @staticmethod
+    def _get_container_id() -> str | None:
+        """Get the container ID if running inside a Docker container."""
+        # Currently we only have this hacky way of getting the container ID,
+        # we (probably) cannot get it without having some cgroup namespaces
+        # mounted in the container or passed it there using other means.
+        # Not obtaining it will only result in the logs not being available
+        # through `docker logs` command, so it is not a critical issue.
+        with open("/proc/self/mountinfo", mode="rb") as f:
+            for line in f:
+                if b"/docker/containers/" in line:
+                    container_id = line.split(b"/docker/containers/")[-1]
+                    return str(container_id.split(b"/")[0])
+        return None
+
+    @classmethod
+    def is_available(cls) -> bool:
+        """Check if the HAOS log handler can be used."""
+        return cls.SOCKET_PATH.exists()
+
+    def emit(self, record: logging.LogRecord) -> None:
+        """Emit formatted log record to the Systemd Journal.
+
+        If CONTAINER_ID is known, add it to the fields to make the log record
+        available through `docker logs` command.
+        """
+        try:
+            formatted = self._format_record(record)
+            if self._container_id:
+                # only container ID is needed for interpretation through `docker logs`
+                formatted.append(("CONTAINER_ID", self._container_id))
+            self.transport.send(formatted)
+        except Exception:  # pylint: disable=broad-except
+            self._fallback(record)
 
 
 def activate_log_queue_handler() -> None:
