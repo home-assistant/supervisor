@@ -67,7 +67,7 @@ async def fixture_remove_wait_boot(coresys: CoreSys) -> AsyncGenerator[None]:
 
 @pytest.fixture(name="install_addon_example_image")
 async def fixture_install_addon_example_image(
-    coresys: CoreSys, repository
+    coresys: CoreSys, test_repository
 ) -> Generator[Addon]:
     """Install local_example add-on with image."""
     store = coresys.addons.store["local_example_image"]

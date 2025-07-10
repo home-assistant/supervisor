@@ -591,7 +591,7 @@ def run_supervisor_state(request: pytest.FixtureRequest) -> Generator[MagicMock]
 
 
 @pytest.fixture
-def store_addon(coresys: CoreSys, tmp_path, repository):
+def store_addon(coresys: CoreSys, tmp_path, test_repository):
     """Store add-on fixture."""
     addon_obj = AddonStore(coresys, "test_store_addon")
 
@@ -604,18 +604,11 @@ def store_addon(coresys: CoreSys, tmp_path, repository):
 
 
 @pytest.fixture
-async def repository(coresys: CoreSys):
-    """Repository fixture."""
-    coresys.store._data[ATTR_REPOSITORIES].remove(
-        "https://github.com/hassio-addons/repository"
-    )
-    coresys.store._data[ATTR_REPOSITORIES].remove(
-        "https://github.com/esphome/home-assistant-addon"
-    )
+async def test_repository(coresys: CoreSys):
+    """Test add-on store repository fixture."""
     coresys.config._data[ATTR_ADDONS_CUSTOM_LIST] = []
 
     with (
-        patch("supervisor.store.validate.BUILTIN_REPOSITORIES", {"local", "core"}),
         patch("supervisor.store.git.GitRepo.load", return_value=None),
     ):
         await coresys.store.load()
@@ -633,7 +626,7 @@ async def repository(coresys: CoreSys):
 
 
 @pytest.fixture
-async def install_addon_ssh(coresys: CoreSys, repository):
+async def install_addon_ssh(coresys: CoreSys, test_repository):
     """Install local_ssh add-on."""
     store = coresys.addons.store[TEST_ADDON_SLUG]
     await coresys.addons.data.install(store)
@@ -645,7 +638,7 @@ async def install_addon_ssh(coresys: CoreSys, repository):
 
 
 @pytest.fixture
-async def install_addon_example(coresys: CoreSys, repository):
+async def install_addon_example(coresys: CoreSys, test_repository):
     """Install local_example add-on."""
     store = coresys.addons.store["local_example"]
     await coresys.addons.data.install(store)

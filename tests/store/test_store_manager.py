@@ -203,7 +203,7 @@ async def test_update_unavailable_addon(
 )
 async def test_install_unavailable_addon(
     coresys: CoreSys,
-    repository: Repository,
+    test_repository: Repository,
     caplog: pytest.LogCaptureFixture,
     config: dict[str, Any],
     log: str,

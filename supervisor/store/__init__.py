@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Awaitable
 import logging
 
-from ..const import ATTR_REPOSITORIES, URL_HASSIO_ADDONS
+from ..const import ATTR_REPOSITORIES, REPOSITORY_CORE, URL_HASSIO_ADDONS
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     StoreError,
@@ -18,14 +18,10 @@ from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.common import FileConfiguration
 from .addon import AddonStore
-from .const import FILE_HASSIO_STORE, StoreType
+from .const import FILE_HASSIO_STORE, BuiltinRepository
 from .data import StoreData
 from .repository import Repository
-from .validate import (
-    BUILTIN_REPOSITORIES,
-    SCHEMA_STORE_FILE,
-    ensure_builtin_repositories,
-)
+from .validate import SCHEMA_STORE_FILE, ensure_builtin_repositories
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -56,7 +52,8 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         return [
             repository.source
             for repository in self.all
-            if repository.type == StoreType.GIT
+            if repository.slug
+            not in {BuiltinRepository.LOCAL.value, BuiltinRepository.CORE.value}
         ]
 
     def get(self, slug: str) -> Repository:
@@ -65,19 +62,11 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             raise StoreNotFound()
         return self.repositories[slug]
 
-    def get_from_url(self, url: str) -> Repository:
-        """Return Repository with slug."""
-        for repository in self.all:
-            if repository.source != url:
-                continue
-            return repository
-        raise StoreNotFound()
-
     async def load(self) -> None:
         """Start up add-on management."""
         # Init custom repositories and load add-ons
         await self.update_repositories(
-            self._data[ATTR_REPOSITORIES], add_with_errors=True
+            self._data[ATTR_REPOSITORIES], issue_on_error=True
         )
 
     @Job(
@@ -126,14 +115,14 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     )
     async def add_repository(self, url: str, *, persist: bool = True) -> None:
         """Add a repository."""
-        await self._add_repository(url, persist=persist, add_with_errors=False)
+        await self._add_repository(url, persist=persist, issue_on_error=False)
 
     async def _add_repository(
-        self, url: str, *, persist: bool = True, add_with_errors: bool = False
+        self, url: str, *, persist: bool = True, issue_on_error: bool = False
     ) -> None:
         """Add a repository."""
         if url == URL_HASSIO_ADDONS:
-            url = StoreType.CORE
+            url = REPOSITORY_CORE
 
         repository = Repository.create(self.coresys, url)
 
@@ -145,7 +134,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             await repository.load()
         except StoreGitCloneError as err:
             _LOGGER.error("Can't retrieve data from %s due to %s", url, err)
-            if add_with_errors:
+            if issue_on_error:
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
@@ -158,7 +147,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
         except StoreGitError as err:
             _LOGGER.error("Can't load data from repository %s due to %s", url, err)
-            if add_with_errors:
+            if issue_on_error:
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
@@ -171,7 +160,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
         except StoreJobError as err:
             _LOGGER.error("Can't add repository %s due to %s", url, err)
-            if add_with_errors:
+            if issue_on_error:
                 self.sys_resolution.create_issue(
                     IssueType.FATAL_ERROR,
                     ContextType.STORE,
@@ -184,7 +173,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
         else:
             if not await repository.validate():
-                if add_with_errors:
+                if issue_on_error:
                     _LOGGER.error("%s is not a valid add-on repository", url)
                     self.sys_resolution.create_issue(
                         IssueType.CORRUPT_REPOSITORY,
@@ -213,7 +202,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
     async def remove_repository(self, repository: Repository, *, persist: bool = True):
         """Remove a repository."""
-        if repository.source in BUILTIN_REPOSITORIES:
+        if repository.is_builtin:
             raise StoreInvalidAddonRepo(
                 "Can't remove built-in repositories!", logger=_LOGGER.error
             )
@@ -236,38 +225,54 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         self,
         list_repositories: list[str],
         *,
-        add_with_errors: bool = False,
+        issue_on_error: bool = False,
         replace: bool = True,
     ):
-        """Add a new custom repository."""
-        new_rep = set(
-            ensure_builtin_repositories(list_repositories)
-            if replace
-            else list_repositories + self.repository_urls
-        )
-        old_rep = {repository.source for repository in self.all}
+        """Update repositories by adding new ones and removing stale ones."""
+        current_repositories = {repository.source for repository in self.all}
+
+        # Determine changes needed
+        if replace:
+            target_repositories = set(ensure_builtin_repositories(list_repositories))
+            repositories_to_add = target_repositories - current_repositories
+        else:
+            # When not replacing, just add the new repositories
+            repositories_to_add = set(list_repositories) - current_repositories
+            target_repositories = current_repositories | repositories_to_add
 
         # Add new repositories
         add_errors = await asyncio.gather(
             *[
-                self._add_repository(url, persist=False, add_with_errors=True)
-                if add_with_errors
+                # Use _add_repository to avoid JobCondition.SUPERVISOR_UPDATED
+                # to prevent proper loading of repositories on startup.
+                self._add_repository(url, persist=False, issue_on_error=True)
+                if issue_on_error
                 else self.add_repository(url, persist=False)
-                for url in new_rep - old_rep
+                for url in repositories_to_add
             ],
             return_exceptions=True,
         )
 
-        # Delete stale repositories
-        remove_errors = await asyncio.gather(
-            *[
-                self.remove_repository(self.get_from_url(url), persist=False)
-                for url in old_rep - new_rep - BUILTIN_REPOSITORIES
-            ],
-            return_exceptions=True,
-        )
+        remove_errors: list[BaseException | None] = []
+        if replace:
+            # Determine repositories to remove
+            repositories_to_remove: list[Repository] = [
+                repository
+                for repository in self.all
+                if repository.source not in target_repositories
+                and not repository.is_builtin
+            ]
 
-        # Always update data, even there are errors, some changes may have succeeded
+            # Remove repositories
+            remove_errors = await asyncio.gather(
+                *[
+                    self.remove_repository(repository, persist=False)
+                    for repository in repositories_to_remove
+                ],
+                return_exceptions=True,
+            )
+
+        # Always update data, even if there are errors, some changes may have succeeded
         await self.data.update()
         await self._read_addons()
 
