@@ -251,8 +251,8 @@ async def backup_full(self, request: web.Request) -> dict[str, Any]:
 ### Development Commands
 
 ```bash
-# Run tests with coverage
-pytest tests/ --cov=supervisor --cov-report=term-missing
+# Run tests, adjust paths as necessary
+pytest -qsx tests/
 
 # Linting and formatting
 ruff check supervisor/
@@ -275,6 +275,7 @@ Always run the pre-commit hooks at the end of code editing.
 - Use `self.sys_run_in_executor()` for blocking operations
 - Access Docker via `self.sys_docker` not direct Docker API
 - Use constants from `const.py` instead of hardcoding
+- Store types in (per-module) `const.py` (e.g. supervisor/store/const.py)
 
 **❌ Avoid These Patterns**:
 - Direct Docker API usage - use Supervisor's Docker manager
