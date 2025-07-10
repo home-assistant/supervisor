@@ -244,7 +244,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         add_errors = await asyncio.gather(
             *[
                 # Use _add_repository to avoid JobCondition.SUPERVISOR_UPDATED
-                # to preven proper loading of repositories on startup.
+                # to prevent proper loading of repositories on startup.
                 self._add_repository(url, persist=False, issue_on_error=True)
                 if issue_on_error
                 else self.add_repository(url, persist=False)
