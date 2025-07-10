@@ -239,16 +239,23 @@ class Job(CoreSysAttributes):
                 job_group = cast(JobGroup, obj)
 
         # Check for group-based parameters
-        group_based_params = [
-            self.concurrency
-            in (JobConcurrency.GROUP_REJECT, JobConcurrency.GROUP_QUEUE),
-            self.throttle in (JobThrottle.GROUP_THROTTLE, JobThrottle.GROUP_RATE_LIMIT),
-        ]
-
-        if not job_group and any(group_based_params):
-            raise RuntimeError(
-                f"Job on {self.name} need to be a JobGroup to use group based limits!"
-            ) from None
+        if not job_group:
+            if self.concurrency in (
+                JobConcurrency.GROUP_REJECT,
+                JobConcurrency.GROUP_QUEUE,
+            ):
+                raise RuntimeError(
+                    f"Job {self.name} uses group concurrency ({self.concurrency}) but is not on a JobGroup! "
+                    f"The class must inherit from JobGroup to use GROUP_REJECT or GROUP_QUEUE."
+                ) from None
+            if self.throttle in (
+                JobThrottle.GROUP_THROTTLE,
+                JobThrottle.GROUP_RATE_LIMIT,
+            ):
+                raise RuntimeError(
+                    f"Job {self.name} uses group throttling ({self.throttle}) but is not on a JobGroup! "
+                    f"The class must inherit from JobGroup to use GROUP_THROTTLE or GROUP_RATE_LIMIT."
+                ) from None
 
         return job_group
 
