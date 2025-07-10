@@ -63,11 +63,14 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         return self.repositories[slug]
 
     async def load(self) -> None:
-        """Start up add-on management."""
-        # Init custom repositories and load add-ons
-        await self.update_repositories(
-            self._data[ATTR_REPOSITORIES], issue_on_error=True
-        )
+        """Start up add-on store management."""
+        # Make sure the built-in repositories are all present
+        # This is especially important when adding new built-in repositories
+        # to make sure existing installations have them.
+        all_repositories: set[str] = set(self._data.get(ATTR_REPOSITORIES, [])) | {
+            repo.value for repo in BuiltinRepository
+        }
+        await self.update_repositories(all_repositories, issue_on_error=True)
 
     @Job(
         name="store_manager_reload",
@@ -223,7 +226,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     @Job(name="store_manager_update_repositories")
     async def update_repositories(
         self,
-        list_repositories: list[str],
+        list_repositories: set[str],
         *,
         issue_on_error: bool = False,
         replace: bool = True,
@@ -232,7 +235,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         current_repositories = {repository.source for repository in self.all}
 
         # Determine repositories to add
-        repositories_to_add = set(list_repositories) - current_repositories
+        repositories_to_add = list_repositories - current_repositories
 
         # Add new repositories
         add_errors = await asyncio.gather(
