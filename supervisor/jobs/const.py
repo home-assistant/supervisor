@@ -83,7 +83,7 @@ class JobThrottle(StrEnum):
     THROTTLE = "throttle"  # Skip if called too frequently
     RATE_LIMIT = "rate_limit"  # Rate limiting with max calls per period
     GROUP_THROTTLE = "group_throttle"  # Group version of THROTTLE
-    GROUP_RATE_LIMIT = "group_rate_limit"  # Group version of THROTTLE_RATE_LIMIT
+    GROUP_RATE_LIMIT = "group_rate_limit"  # Group version of RATE_LIMIT
 
 
 class JobExecutionLimit(StrEnum):
