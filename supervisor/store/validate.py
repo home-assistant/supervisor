@@ -4,7 +4,7 @@ import voluptuous as vol
 
 from ..const import ATTR_MAINTAINER, ATTR_NAME, ATTR_REPOSITORIES, ATTR_URL
 from ..validate import RE_REPOSITORY
-from .const import ALL_BUILTIN_REPOSITORIES, BuiltinRepository
+from .const import BuiltinRepository
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_REPOSITORY_CONFIG = vol.Schema(
@@ -15,15 +15,6 @@ SCHEMA_REPOSITORY_CONFIG = vol.Schema(
     },
     extra=vol.REMOVE_EXTRA,
 )
-
-
-def ensure_builtin_repositories(addon_repositories: list[str]) -> list[str]:
-    """Ensure builtin repositories are in list.
-
-    Note: This should not be used in validation as the resulting list is not
-    stable. This can have side effects when comparing data later on.
-    """
-    return list(set(addon_repositories) | ALL_BUILTIN_REPOSITORIES)
 
 
 def validate_repository(repository: str) -> str:
@@ -44,10 +35,12 @@ def validate_repository(repository: str) -> str:
 
 repositories = vol.All([validate_repository], vol.Unique())
 
+DEFAULT_REPOSITORIES = {repo.value for repo in BuiltinRepository}
+
 SCHEMA_STORE_FILE = vol.Schema(
     {
         vol.Optional(
-            ATTR_REPOSITORIES, default=list(ALL_BUILTIN_REPOSITORIES)
+            ATTR_REPOSITORIES, default=lambda: list(DEFAULT_REPOSITORIES)
         ): repositories,
     },
     extra=vol.REMOVE_EXTRA,

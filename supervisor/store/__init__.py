@@ -21,7 +21,7 @@ from .addon import AddonStore
 from .const import FILE_HASSIO_STORE, BuiltinRepository
 from .data import StoreData
 from .repository import Repository
-from .validate import SCHEMA_STORE_FILE, ensure_builtin_repositories
+from .validate import DEFAULT_REPOSITORIES, SCHEMA_STORE_FILE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -63,11 +63,14 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         return self.repositories[slug]
 
     async def load(self) -> None:
-        """Start up add-on management."""
-        # Init custom repositories and load add-ons
-        await self.update_repositories(
-            self._data[ATTR_REPOSITORIES], issue_on_error=True
+        """Start up add-on store management."""
+        # Make sure the built-in repositories are all present
+        # This is especially important when adding new built-in repositories
+        # to make sure existing installations have them.
+        all_repositories: set[str] = (
+            set(self._data.get(ATTR_REPOSITORIES, [])) | DEFAULT_REPOSITORIES
         )
+        await self.update_repositories(all_repositories, issue_on_error=True)
 
     @Job(
         name="store_manager_reload",
@@ -223,7 +226,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
     @Job(name="store_manager_update_repositories")
     async def update_repositories(
         self,
-        list_repositories: list[str],
+        list_repositories: set[str],
         *,
         issue_on_error: bool = False,
         replace: bool = True,
@@ -231,14 +234,8 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         """Update repositories by adding new ones and removing stale ones."""
         current_repositories = {repository.source for repository in self.all}
 
-        # Determine changes needed
-        if replace:
-            target_repositories = set(ensure_builtin_repositories(list_repositories))
-            repositories_to_add = target_repositories - current_repositories
-        else:
-            # When not replacing, just add the new repositories
-            repositories_to_add = set(list_repositories) - current_repositories
-            target_repositories = current_repositories | repositories_to_add
+        # Determine repositories to add
+        repositories_to_add = list_repositories - current_repositories
 
         # Add new repositories
         add_errors = await asyncio.gather(
@@ -259,7 +256,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             repositories_to_remove: list[Repository] = [
                 repository
                 for repository in self.all
-                if repository.source not in target_repositories
+                if repository.source not in list_repositories
                 and not repository.is_builtin
             ]
 
