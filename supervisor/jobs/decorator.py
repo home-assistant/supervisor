@@ -148,17 +148,14 @@ class Job(CoreSysAttributes):
                 )
             self._rate_limited_calls = {}
 
-        if self.throttle in (
-            JobThrottle.GROUP_THROTTLE,
-            JobThrottle.GROUP_RATE_LIMIT,
-        ) and self.concurrency in (
+        if self.throttle is not None and self.concurrency in (
             JobConcurrency.GROUP_REJECT,
             JobConcurrency.GROUP_QUEUE,
         ):
             # We cannot release group locks when Job is not running (e.g. throttled)
             # which makes these combinations impossible to use currently.
             raise RuntimeError(
-                f"Job {self.name} is using group throttling ({self.throttle}) with group concurrency ({self.concurrency}), which is not allowed!"
+                f"Job {self.name} is using throttling ({self.throttle}) with group concurrency ({self.concurrency}), which is not allowed!"
             )
 
     @property
