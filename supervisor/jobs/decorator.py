@@ -111,7 +111,13 @@ class Job(CoreSysAttributes):
             JobExecutionLimit.GROUP_WAIT: (JobConcurrency.GROUP_QUEUE, None),
             JobExecutionLimit.GROUP_THROTTLE: (None, JobThrottle.GROUP_THROTTLE),
             JobExecutionLimit.GROUP_THROTTLE_WAIT: (
-                JobConcurrency.QUEUE,  # Seems a bit counter intuitive, but GROUP_QUEUE deadlocks tests/jobs/test_job_decorator.py::test_execution_limit_group_throttle_wait
+                # Seems a bit counter intuitive, but GROUP_QUEUE deadlocks
+                # tests/jobs/test_job_decorator.py::test_execution_limit_group_throttle_wait
+                # The reason this deadlocks is because when using GROUP_QUEUE and the
+                # throttle limit is hit, the group lock is trying to be unlocked outside
+                # of the job context. The current implementation doesn't allow to unlock
+                # the group lock when the job is not running.
+                JobConcurrency.QUEUE,
                 JobThrottle.GROUP_THROTTLE,
             ),
             JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT: (
