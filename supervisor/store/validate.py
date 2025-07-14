@@ -35,11 +35,13 @@ def validate_repository(repository: str) -> str:
 
 repositories = vol.All([validate_repository], vol.Unique())
 
-DEFAULT_REPOSITORIES = [repo.value for repo in BuiltinRepository]
+DEFAULT_REPOSITORIES = {repo.value for repo in BuiltinRepository}
 
 SCHEMA_STORE_FILE = vol.Schema(
     {
-        vol.Optional(ATTR_REPOSITORIES, default=DEFAULT_REPOSITORIES): repositories,
+        vol.Optional(
+            ATTR_REPOSITORIES, default=lambda: list(DEFAULT_REPOSITORIES)
+        ): repositories,
     },
     extra=vol.REMOVE_EXTRA,
 )

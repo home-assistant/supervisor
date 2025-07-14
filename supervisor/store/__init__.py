@@ -21,7 +21,7 @@ from .addon import AddonStore
 from .const import FILE_HASSIO_STORE, BuiltinRepository
 from .data import StoreData
 from .repository import Repository
-from .validate import SCHEMA_STORE_FILE
+from .validate import DEFAULT_REPOSITORIES, SCHEMA_STORE_FILE
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -67,9 +67,9 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         # Make sure the built-in repositories are all present
         # This is especially important when adding new built-in repositories
         # to make sure existing installations have them.
-        all_repositories: set[str] = set(self._data.get(ATTR_REPOSITORIES, [])) | {
-            repo.value for repo in BuiltinRepository
-        }
+        all_repositories: set[str] = (
+            set(self._data.get(ATTR_REPOSITORIES, [])) | DEFAULT_REPOSITORIES
+        )
         await self.update_repositories(all_repositories, issue_on_error=True)
 
     @Job(
