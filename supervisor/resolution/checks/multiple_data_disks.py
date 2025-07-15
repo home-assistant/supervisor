@@ -21,6 +21,9 @@ class CheckMultipleDataDisks(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
+        if not self.sys_os.available:
+            return
+
         for block_device in self.sys_dbus.udisks2.block_devices:
             if self._block_device_has_name_issue(block_device):
                 self.sys_resolution.create_issue(
