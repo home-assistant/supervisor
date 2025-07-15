@@ -12,11 +12,11 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # Partition labels to check for duplicates
 HAOS_PARTITIONS = [
+    "hassos-boot",
     "hassos-kernel0",
     "hassos-kernel1",
     "hassos-system0",
     "hassos-system1",
-    "hassos-boot",
 ]
 
 
@@ -41,11 +41,12 @@ class CheckDuplicateOSInstallation(CheckBase):
                         partition_label,
                         len(resolved),
                     )
-                    self.sys_resolution.add_unhealthy_reason(UnhealthyReason.SETUP)
+                    self.sys_resolution.add_unhealthy_reason(
+                        UnhealthyReason.DUPLICATE_OS_INSTALLATION
+                    )
                     self.sys_resolution.create_issue(
                         IssueType.DUPLICATE_OS_INSTALLATION,
                         ContextType.SYSTEM,
-                        reference=partition_label,
                     )
                     return
             except Exception as err:
@@ -57,21 +58,21 @@ class CheckDuplicateOSInstallation(CheckBase):
 
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
-        if not reference:
-            return False
-
-        try:
-            resolved = await self.sys_dbus.udisks2.resolve_device(
-                DeviceSpecification(label=reference)
-            )
-            return resolved and len(resolved) > 1
-        except Exception as err:
-            _LOGGER.debug(
-                "Failed to resolve device for partition %s: %s",
-                reference,
-                err,
-            )
-            return False
+        # Check all partitions for duplicates since issue is created without reference
+        for partition_label in HAOS_PARTITIONS:
+            try:
+                resolved = await self.sys_dbus.udisks2.resolve_device(
+                    DeviceSpecification(label=partition_label)
+                )
+                if resolved and len(resolved) > 1:
+                    return True
+            except Exception as err:
+                _LOGGER.debug(
+                    "Failed to resolve device for partition %s: %s",
+                    partition_label,
+                    err,
+                )
+        return False
 
     @property
     def issue(self) -> IssueType:

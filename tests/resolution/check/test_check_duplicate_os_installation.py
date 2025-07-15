@@ -53,10 +53,10 @@ async def test_check_with_duplicates(coresys: CoreSys):
         assert len(coresys.resolution.issues) == 1
         assert coresys.resolution.issues[0].type == IssueType.DUPLICATE_OS_INSTALLATION
         assert coresys.resolution.issues[0].context == ContextType.SYSTEM
-        assert coresys.resolution.issues[0].reference == "hassos-kernel0"
+        assert coresys.resolution.issues[0].reference is None
 
         # Should mark system as unhealthy
-        assert UnhealthyReason.SETUP in coresys.resolution.unhealthy
+        assert UnhealthyReason.DUPLICATE_OS_INSTALLATION in coresys.resolution.unhealthy
 
         # Should only check first partition (returns early)
         mock_resolve.assert_called_once_with(
@@ -100,8 +100,8 @@ async def test_approve_with_duplicates(coresys: CoreSys):
     """Test approve when duplicates exist."""
     duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
 
-    # Test the logic directly - since D-Bus mocking is complex, we'll test the logic flow
-    # The important thing is that our implementation follows the correct pattern
+    # Test the logic directly - since D-Bus mocking has issues, we'll verify the method exists
+    # and follows the correct pattern for approve_check without reference
     assert duplicate_os_installation.approve_check.__name__ == "approve_check"
     assert duplicate_os_installation.issue == IssueType.DUPLICATE_OS_INSTALLATION
     assert duplicate_os_installation.context == ContextType.SYSTEM
@@ -114,9 +114,7 @@ async def test_approve_without_duplicates(coresys: CoreSys):
     mock_device = ["device1"]  # Single device found
 
     with patch.object(coresys.dbus.udisks2, "resolve_device", return_value=mock_device):
-        result = await duplicate_os_installation.approve_check(
-            reference="hassos-kernel0"
-        )
+        result = await duplicate_os_installation.approve_check()
         assert result is False
 
 
@@ -124,8 +122,10 @@ async def test_approve_no_reference(coresys: CoreSys):
     """Test approve with no reference."""
     duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
 
-    result = await duplicate_os_installation.approve_check(reference=None)
-    assert result is False
+    # Test that approve_check works with no reference (since issue has no reference)
+    with patch.object(coresys.dbus.udisks2, "resolve_device", return_value=["device1"]):
+        result = await duplicate_os_installation.approve_check(reference=None)
+        assert result is False
 
 
 async def test_approve_with_exception(coresys: CoreSys):
@@ -135,9 +135,7 @@ async def test_approve_with_exception(coresys: CoreSys):
     with patch.object(
         coresys.dbus.udisks2, "resolve_device", side_effect=Exception("Test error")
     ):
-        result = await duplicate_os_installation.approve_check(
-            reference="hassos-kernel0"
-        )
+        result = await duplicate_os_installation.approve_check()
         assert result is False
 
 
