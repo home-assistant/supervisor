@@ -339,7 +339,7 @@ class SoundControl(CoreSysAttributes):
                                     profile.name == card.profile_active.name,
                                 )
                                 for profile in card.profile_list
-                                if profile.available
+                                if profile.is_available
                             ],
                         )
                         for card in pulse.card_list()
