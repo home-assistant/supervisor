@@ -42,7 +42,7 @@ async def test_check_with_duplicates(coresys: CoreSys):
 
     # Mock resolve_device to return duplicates for first partition, empty for others
     async def mock_resolve_device(spec):
-        if spec.label == "hassos-boot":  # First partition in the list
+        if spec.partlabel == "hassos-boot":  # First partition in the list
             return mock_devices
         return []
 
@@ -61,7 +61,9 @@ async def test_check_with_duplicates(coresys: CoreSys):
         assert UnhealthyReason.DUPLICATE_OS_INSTALLATION in coresys.resolution.unhealthy
 
         # Should only check first partition (returns early)
-        mock_resolve.assert_called_once_with(DeviceSpecification(label="hassos-boot"))
+        mock_resolve.assert_called_once_with(
+            DeviceSpecification(partlabel="hassos-boot")
+        )
 
 
 async def test_check_with_mbr_duplicates(coresys: CoreSys):

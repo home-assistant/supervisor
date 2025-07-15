@@ -43,7 +43,7 @@ class CheckDuplicateOSInstallation(CheckBase):
         for partition_label in HAOS_PARTITIONS:
             try:
                 resolved = await self.sys_dbus.udisks2.resolve_device(
-                    DeviceSpecification(label=partition_label)
+                    DeviceSpecification(partlabel=partition_label)
                 )
                 if resolved and len(resolved) > 1:
                     _LOGGER.warning(
@@ -101,7 +101,7 @@ class CheckDuplicateOSInstallation(CheckBase):
         for partition_label in HAOS_PARTITIONS:
             try:
                 resolved = await self.sys_dbus.udisks2.resolve_device(
-                    DeviceSpecification(label=partition_label)
+                    DeviceSpecification(partlabel=partition_label)
                 )
                 if resolved and len(resolved) > 1:
                     return True
