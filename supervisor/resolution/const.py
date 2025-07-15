@@ -83,6 +83,7 @@ class IssueType(StrEnum):
     DEVICE_ACCESS_MISSING = "device_access_missing"
     DISABLED_DATA_DISK = "disabled_data_disk"
     DNS_LOOP = "dns_loop"
+    DUPLICATE_OS_INSTALLATION = "duplicate_os_installation"
     DNS_SERVER_FAILED = "dns_server_failed"
     DNS_SERVER_IPV6_ERROR = "dns_server_ipv6_error"
     DOCKER_CONFIG = "docker_config"
