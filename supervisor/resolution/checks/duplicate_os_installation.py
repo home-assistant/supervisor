@@ -72,7 +72,7 @@ class CheckDuplicateOSInstallation(CheckBase):
                     identifier,
                     spec_type,
                     len(resolved),
-                    ", ".join(resolved),
+                    ", ".join(str(device.device) for device in resolved),
                 )
                 self.sys_resolution.add_unhealthy_reason(
                     UnhealthyReason.DUPLICATE_OS_INSTALLATION
