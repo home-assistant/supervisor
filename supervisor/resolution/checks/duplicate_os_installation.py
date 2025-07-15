@@ -59,46 +59,31 @@ class CheckDuplicateOSInstallation(CheckBase):
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for device_spec, spec_type, identifier in _get_device_specifications():
-            try:
-                resolved = await self.sys_dbus.udisks2.resolve_device(device_spec)
-                if resolved and len(resolved) > 1:
-                    _LOGGER.warning(
-                        "Found duplicate OS installation: %s %s exists on %d devices",
-                        identifier,
-                        spec_type,
-                        len(resolved),
-                    )
-                    self.sys_resolution.add_unhealthy_reason(
-                        UnhealthyReason.DUPLICATE_OS_INSTALLATION
-                    )
-                    self.sys_resolution.create_issue(
-                        IssueType.DUPLICATE_OS_INSTALLATION,
-                        ContextType.SYSTEM,
-                    )
-                    return
-            except Exception as err:
-                _LOGGER.debug(
-                    "Failed to resolve device for %s %s: %s",
-                    spec_type,
+            resolved = await self.sys_dbus.udisks2.resolve_device(device_spec)
+            if resolved and len(resolved) > 1:
+                _LOGGER.warning(
+                    "Found duplicate OS installation: %s %s exists on %d devices (%s)",
                     identifier,
-                    err,
+                    spec_type,
+                    len(resolved),
+                    ", ".join(resolved),
                 )
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.DUPLICATE_OS_INSTALLATION
+                )
+                self.sys_resolution.create_issue(
+                    IssueType.DUPLICATE_OS_INSTALLATION,
+                    ContextType.SYSTEM,
+                )
+                return
 
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
         # Check all partitions for duplicates since issue is created without reference
-        for device_spec, spec_type, identifier in _get_device_specifications():
-            try:
-                resolved = await self.sys_dbus.udisks2.resolve_device(device_spec)
-                if resolved and len(resolved) > 1:
-                    return True
-            except Exception as err:
-                _LOGGER.debug(
-                    "Failed to resolve device for %s %s: %s",
-                    spec_type,
-                    identifier,
-                    err,
-                )
+        for device_spec, _, _ in _get_device_specifications():
+            resolved = await self.sys_dbus.udisks2.resolve_device(device_spec)
+            if resolved and len(resolved) > 1:
+                return True
         return False
 
     @property
