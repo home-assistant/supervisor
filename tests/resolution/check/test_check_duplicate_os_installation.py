@@ -28,7 +28,9 @@ async def test_check_no_duplicates(coresys: CoreSys):
     ) as mock_resolve:
         await duplicate_os_installation.run_check()
         assert len(coresys.resolution.issues) == 0
-        assert mock_resolve.call_count == 5  # 5 partition labels checked
+        assert (
+            mock_resolve.call_count == 10
+        )  # 5 partition labels + 5 partition UUIDs checked
 
 
 async def test_check_with_duplicates(coresys: CoreSys):
@@ -40,7 +42,7 @@ async def test_check_with_duplicates(coresys: CoreSys):
 
     # Mock resolve_device to return duplicates for first partition, empty for others
     async def mock_resolve_device(spec):
-        if spec.label == "hassos-kernel0":
+        if spec.label == "hassos-boot":  # First partition in the list
             return mock_devices
         return []
 
@@ -59,9 +61,38 @@ async def test_check_with_duplicates(coresys: CoreSys):
         assert UnhealthyReason.DUPLICATE_OS_INSTALLATION in coresys.resolution.unhealthy
 
         # Should only check first partition (returns early)
-        mock_resolve.assert_called_once_with(
-            DeviceSpecification(label="hassos-kernel0")
-        )
+        mock_resolve.assert_called_once_with(DeviceSpecification(label="hassos-boot"))
+
+
+async def test_check_with_mbr_duplicates(coresys: CoreSys):
+    """Test check when duplicate MBR OS installations exist."""
+    duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
+    await coresys.core.set_state(CoreState.SETUP)
+
+    mock_devices = ["device1", "device2"]  # Two devices found
+
+    # Mock resolve_device to return duplicates for first MBR partition UUID, empty for others
+    async def mock_resolve_device(spec):
+        if spec.partuuid == "48617373-01":  # hassos-boot MBR UUID
+            return mock_devices
+        return []
+
+    with patch.object(
+        coresys.dbus.udisks2, "resolve_device", side_effect=mock_resolve_device
+    ) as mock_resolve:
+        await duplicate_os_installation.run_check()
+
+        # Should find issue for first MBR partition with duplicates
+        assert len(coresys.resolution.issues) == 1
+        assert coresys.resolution.issues[0].type == IssueType.DUPLICATE_OS_INSTALLATION
+        assert coresys.resolution.issues[0].context == ContextType.SYSTEM
+        assert coresys.resolution.issues[0].reference is None
+
+        # Should mark system as unhealthy
+        assert UnhealthyReason.DUPLICATE_OS_INSTALLATION in coresys.resolution.unhealthy
+
+        # Should check all partition labels first (5 calls), then MBR UUIDs until duplicate found (1 call)
+        assert mock_resolve.call_count == 6
 
 
 async def test_check_with_single_device(coresys: CoreSys):
@@ -78,7 +109,9 @@ async def test_check_with_single_device(coresys: CoreSys):
 
         # Should not create any issues
         assert len(coresys.resolution.issues) == 0
-        assert mock_resolve.call_count == 5  # All 5 partitions checked
+        assert (
+            mock_resolve.call_count == 10
+        )  # All 5 partition labels + 5 partition UUIDs checked
 
 
 async def test_check_with_exception(coresys: CoreSys):
@@ -93,7 +126,9 @@ async def test_check_with_exception(coresys: CoreSys):
 
         # Should not create any issues when exception occurs
         assert len(coresys.resolution.issues) == 0
-        assert mock_resolve.call_count == 5  # All 5 partitions attempted
+        assert (
+            mock_resolve.call_count == 10
+        )  # All 5 partition labels + 5 partition UUIDs attempted
 
 
 async def test_approve_with_duplicates(coresys: CoreSys):
