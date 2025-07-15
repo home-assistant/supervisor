@@ -58,6 +58,12 @@ class CheckDuplicateOSInstallation(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
+        if not self.sys_os.available:
+            _LOGGER.debug(
+                "Skipping duplicate OS installation check, OS is not available"
+            )
+            return
+
         for device_spec, spec_type, identifier in _get_device_specifications():
             resolved = await self.sys_dbus.udisks2.resolve_device(device_spec)
             if resolved and len(resolved) > 1:
