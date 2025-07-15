@@ -29,6 +29,25 @@ HAOS_PARTITION_UUIDS = [
 ]
 
 
+def _get_device_specifications():
+    """Generate DeviceSpecification objects for both GPT and MBR partitions."""
+    # GPT-based installations (partition labels)
+    for partition_label in HAOS_PARTITIONS:
+        yield (
+            DeviceSpecification(partlabel=partition_label),
+            "partition",
+            partition_label,
+        )
+
+    # MBR-based installations (partition UUIDs)
+    for partition_uuid in HAOS_PARTITION_UUIDS:
+        yield (
+            DeviceSpecification(partuuid=partition_uuid),
+            "partition UUID",
+            partition_uuid,
+        )
+
+
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
     return CheckDuplicateOSInstallation(coresys)
@@ -39,16 +58,14 @@ class CheckDuplicateOSInstallation(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
-        # Check GPT-based installations (partition labels)
-        for partition_label in HAOS_PARTITIONS:
+        for device_spec, spec_type, identifier in _get_device_specifications():
             try:
-                resolved = await self.sys_dbus.udisks2.resolve_device(
-                    DeviceSpecification(partlabel=partition_label)
-                )
+                resolved = await self.sys_dbus.udisks2.resolve_device(device_spec)
                 if resolved and len(resolved) > 1:
                     _LOGGER.warning(
-                        "Found duplicate OS installation: %s partition exists on %d devices",
-                        partition_label,
+                        "Found duplicate OS installation: %s %s exists on %d devices",
+                        identifier,
+                        spec_type,
                         len(resolved),
                     )
                     self.sys_resolution.add_unhealthy_reason(
@@ -61,72 +78,27 @@ class CheckDuplicateOSInstallation(CheckBase):
                     return
             except Exception as err:
                 _LOGGER.debug(
-                    "Failed to resolve device for partition %s: %s",
-                    partition_label,
-                    err,
-                )
-
-        # Check MBR-based installations (partition UUIDs)
-        for partition_uuid in HAOS_PARTITION_UUIDS:
-            try:
-                resolved = await self.sys_dbus.udisks2.resolve_device(
-                    DeviceSpecification(partuuid=partition_uuid)
-                )
-                if resolved and len(resolved) > 1:
-                    _LOGGER.warning(
-                        "Found duplicate OS installation: %s partition UUID exists on %d devices",
-                        partition_uuid,
-                        len(resolved),
-                    )
-                    self.sys_resolution.add_unhealthy_reason(
-                        UnhealthyReason.DUPLICATE_OS_INSTALLATION
-                    )
-                    self.sys_resolution.create_issue(
-                        IssueType.DUPLICATE_OS_INSTALLATION,
-                        ContextType.SYSTEM,
-                    )
-                    return
-            except Exception as err:
-                _LOGGER.debug(
-                    "Failed to resolve device for partition UUID %s: %s",
-                    partition_uuid,
+                    "Failed to resolve device for %s %s: %s",
+                    spec_type,
+                    identifier,
                     err,
                 )
 
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
         # Check all partitions for duplicates since issue is created without reference
-
-        # Check GPT-based installations (partition labels)
-        for partition_label in HAOS_PARTITIONS:
+        for device_spec, spec_type, identifier in _get_device_specifications():
             try:
-                resolved = await self.sys_dbus.udisks2.resolve_device(
-                    DeviceSpecification(partlabel=partition_label)
-                )
+                resolved = await self.sys_dbus.udisks2.resolve_device(device_spec)
                 if resolved and len(resolved) > 1:
                     return True
             except Exception as err:
                 _LOGGER.debug(
-                    "Failed to resolve device for partition %s: %s",
-                    partition_label,
+                    "Failed to resolve device for %s %s: %s",
+                    spec_type,
+                    identifier,
                     err,
                 )
-
-        # Check MBR-based installations (partition UUIDs)
-        for partition_uuid in HAOS_PARTITION_UUIDS:
-            try:
-                resolved = await self.sys_dbus.udisks2.resolve_device(
-                    DeviceSpecification(partuuid=partition_uuid)
-                )
-                if resolved and len(resolved) > 1:
-                    return True
-            except Exception as err:
-                _LOGGER.debug(
-                    "Failed to resolve device for partition UUID %s: %s",
-                    partition_uuid,
-                    err,
-                )
-
         return False
 
     @property
