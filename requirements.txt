@@ -3,7 +3,7 @@ aiohttp==3.12.14
 atomicwrites-homeassistant==1.4.1
 attrs==25.3.0
 awesomeversion==25.5.0
-blockbuster==1.5.24
+blockbuster==1.5.25
 brotli==1.1.0
 ciso8601==2.3.2
 colorlog==6.9.0
