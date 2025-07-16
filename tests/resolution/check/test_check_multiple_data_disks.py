@@ -33,6 +33,7 @@ async def test_base(coresys: CoreSys):
     assert multiple_data_disks.enabled
 
 
+@pytest.mark.usefixtures("os_available")
 async def test_check(coresys: CoreSys, sda1_block_service: BlockService):
     """Test check."""
     multiple_data_disks = CheckMultipleDataDisks(coresys)
