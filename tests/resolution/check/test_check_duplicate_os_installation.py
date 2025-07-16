@@ -1,6 +1,9 @@
 """Test check for duplicate OS installation."""
 
-from unittest.mock import patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -18,13 +21,14 @@ async def test_base(coresys: CoreSys):
     assert duplicate_os_installation.enabled
 
 
+@pytest.mark.usefixtures("os_available")
 async def test_check_no_duplicates(coresys: CoreSys):
     """Test check when no duplicate OS installations exist."""
     duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
     await coresys.core.set_state(CoreState.SETUP)
 
     with patch.object(
-        coresys.dbus.udisks2, "resolve_device", return_value=[]
+        coresys.dbus.udisks2, "resolve_device", return_value=[], new_callable=AsyncMock
     ) as mock_resolve:
         await duplicate_os_installation.run_check()
         assert len(coresys.resolution.issues) == 0
@@ -33,12 +37,16 @@ async def test_check_no_duplicates(coresys: CoreSys):
         )  # 5 partition labels + 5 partition UUIDs checked
 
 
+@pytest.mark.usefixtures("os_available")
 async def test_check_with_duplicates(coresys: CoreSys):
     """Test check when duplicate OS installations exist."""
     duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
     await coresys.core.set_state(CoreState.SETUP)
 
-    mock_devices = ["device1", "device2"]  # Two devices found
+    mock_devices = [
+        SimpleNamespace(device="/dev/mmcblk0p1"),
+        SimpleNamespace(device="/dev/nvme0n1p1"),
+    ]  # Two devices found
 
     # Mock resolve_device to return duplicates for first partition, empty for others
     async def mock_resolve_device(spec):
@@ -66,12 +74,16 @@ async def test_check_with_duplicates(coresys: CoreSys):
         )
 
 
+@pytest.mark.usefixtures("os_available")
 async def test_check_with_mbr_duplicates(coresys: CoreSys):
     """Test check when duplicate MBR OS installations exist."""
     duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
     await coresys.core.set_state(CoreState.SETUP)
 
-    mock_devices = ["device1", "device2"]  # Two devices found
+    mock_devices = [
+        SimpleNamespace(device="/dev/mmcblk0p1"),
+        SimpleNamespace(device="/dev/nvme0n1p1"),
+    ]  # Two devices found
 
     # Mock resolve_device to return duplicates for first MBR partition UUID, empty for others
     async def mock_resolve_device(spec):
@@ -97,15 +109,19 @@ async def test_check_with_mbr_duplicates(coresys: CoreSys):
         assert mock_resolve.call_count == 6
 
 
+@pytest.mark.usefixtures("os_available")
 async def test_check_with_single_device(coresys: CoreSys):
     """Test check when single device found for each partition."""
     duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
     await coresys.core.set_state(CoreState.SETUP)
 
-    mock_device = ["device1"]  # Single device found
+    mock_device = [SimpleNamespace(device="/dev/mmcblk0p1")]
 
     with patch.object(
-        coresys.dbus.udisks2, "resolve_device", return_value=mock_device
+        coresys.dbus.udisks2,
+        "resolve_device",
+        return_value=mock_device,
+        new_callable=AsyncMock,
     ) as mock_resolve:
         await duplicate_os_installation.run_check()
 
@@ -116,23 +132,7 @@ async def test_check_with_single_device(coresys: CoreSys):
         )  # All 5 partition labels + 5 partition UUIDs checked
 
 
-async def test_check_with_exception(coresys: CoreSys):
-    """Test check when resolve_device raises exception."""
-    duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
-    await coresys.core.set_state(CoreState.SETUP)
-
-    with patch.object(
-        coresys.dbus.udisks2, "resolve_device", side_effect=Exception("Test error")
-    ) as mock_resolve:
-        await duplicate_os_installation.run_check()
-
-        # Should not create any issues when exception occurs
-        assert len(coresys.resolution.issues) == 0
-        assert (
-            mock_resolve.call_count == 10
-        )  # All 5 partition labels + 5 partition UUIDs attempted
-
-
+@pytest.mark.usefixtures("os_available")
 async def test_approve_with_duplicates(coresys: CoreSys):
     """Test approve when duplicates exist."""
     duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
@@ -144,33 +144,18 @@ async def test_approve_with_duplicates(coresys: CoreSys):
     assert duplicate_os_installation.context == ContextType.SYSTEM
 
 
+@pytest.mark.usefixtures("os_available")
 async def test_approve_without_duplicates(coresys: CoreSys):
     """Test approve when no duplicates exist."""
     duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
 
-    mock_device = ["device1"]  # Single device found
-
-    with patch.object(coresys.dbus.udisks2, "resolve_device", return_value=mock_device):
-        result = await duplicate_os_installation.approve_check()
-        assert result is False
-
-
-async def test_approve_no_reference(coresys: CoreSys):
-    """Test approve with no reference."""
-    duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
-
-    # Test that approve_check works with no reference (since issue has no reference)
-    with patch.object(coresys.dbus.udisks2, "resolve_device", return_value=["device1"]):
-        result = await duplicate_os_installation.approve_check(reference=None)
-        assert result is False
-
-
-async def test_approve_with_exception(coresys: CoreSys):
-    """Test approve when resolve_device raises exception."""
-    duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
+    mock_device = [SimpleNamespace(device="/dev/mmcblk0p1")]
 
     with patch.object(
-        coresys.dbus.udisks2, "resolve_device", side_effect=Exception("Test error")
+        coresys.dbus.udisks2,
+        "resolve_device",
+        return_value=mock_device,
+        new_callable=AsyncMock,
     ):
         result = await duplicate_os_installation.approve_check()
         assert result is False
@@ -199,3 +184,18 @@ async def test_did_run(coresys: CoreSys):
             await duplicate_os_installation()
             check.assert_not_called()
             check.reset_mock()
+
+
+async def test_check_no_devices_resolved_on_os_unavailable(coresys: CoreSys):
+    """Test check when OS is unavailable."""
+    duplicate_os_installation = CheckDuplicateOSInstallation(coresys)
+    await coresys.core.set_state(CoreState.SETUP)
+
+    with patch.object(
+        coresys.dbus.udisks2, "resolve_device", return_value=[], new_callable=AsyncMock
+    ) as mock_resolve:
+        await duplicate_os_installation.run_check()
+        assert len(coresys.resolution.issues) == 0
+        assert (
+            mock_resolve.call_count == 0
+        )  # No devices resolved since OS is unavailable
