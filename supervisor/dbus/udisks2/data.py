@@ -28,6 +28,8 @@ class DeviceSpecificationDataType(TypedDict, total=False):
     path: str
     label: str
     uuid: str
+    partuuid: str
+    partlabel: str
 
 
 @dataclass(slots=True)
@@ -40,6 +42,8 @@ class DeviceSpecification:
     path: Path | None = None
     label: str | None = None
     uuid: str | None = None
+    partuuid: str | None = None
+    partlabel: str | None = None
 
     @staticmethod
     def from_dict(data: DeviceSpecificationDataType) -> "DeviceSpecification":
@@ -48,6 +52,8 @@ class DeviceSpecification:
             path=Path(data["path"]) if "path" in data else None,
             label=data.get("label"),
             uuid=data.get("uuid"),
+            partuuid=data.get("partuuid"),
+            partlabel=data.get("partlabel"),
         )
 
     def to_dict(self) -> dict[str, Variant]:
@@ -56,6 +62,8 @@ class DeviceSpecification:
             "path": Variant("s", self.path.as_posix()) if self.path else None,
             "label": _optional_variant("s", self.label),
             "uuid": _optional_variant("s", self.uuid),
+            "partuuid": _optional_variant("s", self.partuuid),
+            "partlabel": _optional_variant("s", self.partlabel),
         }
         return {k: v for k, v in data.items() if v}
 
