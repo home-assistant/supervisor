@@ -3,15 +3,12 @@
 # pylint: disable=protected-access
 from unittest.mock import patch
 
-import pytest
-
 from supervisor.coresys import CoreSys
 
 from tests.common import load_binary_fixture
 
 
-@pytest.mark.usefixtures("dbus_is_connected")
-def test_supported_features(coresys: CoreSys):
+def test_supported_features(coresys: CoreSys, dbus_is_connected):
     """Test host features."""
     assert "network" in coresys.host.features
 
