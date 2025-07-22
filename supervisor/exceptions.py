@@ -307,6 +307,10 @@ class HostLogError(HostError):
     """Internal error with host log."""
 
 
+class HostNvmeError(HostError):
+    """Error accessing nvme device info."""
+
+
 # API
 
 

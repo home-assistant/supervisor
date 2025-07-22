@@ -1,0 +1,39 @@
+{
+    "Devices": [
+        {
+            "HostNQN": "nqn.2014-08.org.nvmexpress:uuid:00000000-0000-0000-0000-000000000000",
+            "HostID": "00000000-0000-0000-0000-000000000000",
+            "Subsystems": [
+                {
+                    "Subsystem": "nvme-subsys0",
+                    "SubsystemNQN": "nqn.2014.08.org.nvmexpress:144d144dSERIAL     Samsung SSD 970 EVO Plus 2TB",
+                    "Controllers": [
+                        {
+                            "Controller": "nvme0",
+                            "Cntlid": "4",
+                            "SerialNumber": "SERIAL",
+                            "ModelNumber": "Samsung SSD 970 EVO Plus 2TB",
+                            "Firmware": "2B2QEXM7",
+                            "Transport": "pcie",
+                            "Address": "0001:01:00.0",
+                            "Slot": "",
+                            "Namespaces": [
+                                {
+                                    "NameSpace": "nvme0n1",
+                                    "Generic": "ng0n1",
+                                    "NSID": 1,
+                                    "UsedBytes": 38262640640,
+                                    "MaximumLBA": 3907029168,
+                                    "PhysicalSize": 2000398934016,
+                                    "SectorSize": 512
+                                }
+                            ],
+                            "Paths": []
+                        }
+                    ],
+                    "Namespaces": []
+                }
+            ]
+        }
+    ]
+}

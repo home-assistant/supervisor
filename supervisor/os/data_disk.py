@@ -132,7 +132,7 @@ class DataDisk(CoreSysAttributes):
             serial="",
             id=self.sys_dbus.agent.datadisk.current_device.as_posix(),
             size=0,
-            device_path=self.sys_dbus.agent.datadisk.current_device.as_posix(),
+            device_path=self.sys_dbus.agent.datadisk.current_device,
             object_path="",
             device_object_path="",
         )

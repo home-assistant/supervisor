@@ -3,6 +3,7 @@
 import asyncio
 from contextlib import suppress
 import logging
+from pathlib import Path
 from typing import Any
 
 from aiohttp import ClientConnectionResetError, ClientPayloadError, web
@@ -21,15 +22,17 @@ from ..const import (
     ATTR_DISK_USED,
     ATTR_FEATURES,
     ATTR_HOSTNAME,
+    ATTR_ID,
     ATTR_KERNEL,
     ATTR_NAME,
     ATTR_OPERATING_SYSTEM,
+    ATTR_PATH,
     ATTR_SERVICES,
     ATTR_STATE,
     ATTR_TIMEZONE,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIDBMigrationInProgress, APIError, HostLogError
+from ..exceptions import APIDBMigrationInProgress, APIError, APINotFound, HostLogError
 from ..host.const import (
     PARAM_BOOT_ID,
     PARAM_FOLLOW,
@@ -38,22 +41,40 @@ from ..host.const import (
     LogFormatter,
 )
 from ..host.logs import SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX
+from ..host.nvme.manager import NvmeDevice
 from ..utils.systemd_journal import journal_logs_reader
 from .const import (
     ATTR_AGENT_VERSION,
     ATTR_APPARMOR_VERSION,
+    ATTR_AVAILABLE_SPARE,
     ATTR_BOOT_TIMESTAMP,
     ATTR_BOOTS,
     ATTR_BROADCAST_LLMNR,
     ATTR_BROADCAST_MDNS,
+    ATTR_CONTROLLER_BUSY_MINUTES,
+    ATTR_CRITICAL_COMPOSITE_TEMP_MINUTES,
+    ATTR_CRITICAL_WARNING,
+    ATTR_DATA_UNITS_READ,
+    ATTR_DATA_UNITS_WRITTEN,
     ATTR_DT_SYNCHRONIZED,
     ATTR_DT_UTC,
     ATTR_FORCE,
+    ATTR_HOST_READ_COMMANDS,
+    ATTR_HOST_WRITE_COMMANDS,
     ATTR_IDENTIFIERS,
     ATTR_LLMNR_HOSTNAME,
+    ATTR_MEDIA_ERRORS,
+    ATTR_NUMBER_ERROR_LOG_ENTRIES,
+    ATTR_NVME_DEVICES,
+    ATTR_PERCENT_USED,
+    ATTR_POWER_CYCLES,
+    ATTR_POWER_ON_HOURS,
     ATTR_STARTUP_TIME,
+    ATTR_TEMPERATURE_KELVIN,
+    ATTR_UNSAFE_SHUTDOWNS,
     ATTR_USE_NTP,
     ATTR_VIRTUALIZATION,
+    ATTR_WARNING_TEMP_MINUTES,
     CONTENT_TYPE_TEXT,
     CONTENT_TYPE_X_LOG,
 )
@@ -117,6 +138,13 @@ class APIHost(CoreSysAttributes):
             ATTR_BOOT_TIMESTAMP: self.sys_host.info.boot_timestamp,
             ATTR_BROADCAST_LLMNR: self.sys_host.info.broadcast_llmnr,
             ATTR_BROADCAST_MDNS: self.sys_host.info.broadcast_mdns,
+            ATTR_NVME_DEVICES: [
+                {
+                    ATTR_ID: dev.id,
+                    ATTR_PATH: dev.path.as_posix(),
+                }
+                for dev in self.sys_host.nvme.devices.values()
+            ],
         }
 
     @api_process
@@ -289,3 +317,57 @@ class APIHost(CoreSysAttributes):
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
         return await self.advanced_logs_handler(request, identifier, follow)
+
+    def get_nvme_device_for_request(self, request: web.Request) -> NvmeDevice:
+        """Return NVME device, raise an exception if it doesn't exist."""
+        if "device" in request.match_info:
+            device: str = request.match_info["device"]
+            if device in self.sys_host.nvme.devices:
+                return self.sys_host.nvme.devices[device]
+            if device.startswith("/dev") and (
+                nvme_device := self.sys_host.nvme.get_by_path(Path(device))
+            ):
+                return nvme_device
+            raise APINotFound(f"NVME device {device} does not exist")
+
+        if self.sys_os.available:
+            if self.sys_os.datadisk.disk_used and (
+                nvme_device := self.sys_host.nvme.get_by_path(
+                    self.sys_os.datadisk.disk_used.device_path
+                )
+            ):
+                return nvme_device
+            raise APIError(
+                "Data Disk is not an NVME device, an ID for the NVME device is required"
+            )
+
+        raise APIError(
+            "Not using Home Assistant Operating System, an ID for the NVME device is required"
+        )
+
+    @api_process
+    async def nvme_device_status(self, request: web.Request):
+        """Return status on NVME device from smart log.
+
+        User can provide a path to identify device. Identifier can be omitted if using HAOS and data disk is an NVME device.
+        """
+        nvme_device = self.get_nvme_device_for_request(request)
+        smart_log = await nvme_device.get_smart_log()
+        return {
+            ATTR_AVAILABLE_SPARE: smart_log.avail_spare,
+            ATTR_CRITICAL_WARNING: smart_log.critical_warning,
+            ATTR_DATA_UNITS_READ: smart_log.data_units_read,
+            ATTR_DATA_UNITS_WRITTEN: smart_log.data_units_written,
+            ATTR_PERCENT_USED: smart_log.percent_used,
+            ATTR_TEMPERATURE_KELVIN: smart_log.temperature,
+            ATTR_HOST_READ_COMMANDS: smart_log.host_read_commands,
+            ATTR_HOST_WRITE_COMMANDS: smart_log.host_write_commands,
+            ATTR_CONTROLLER_BUSY_MINUTES: smart_log.controller_busy_time,
+            ATTR_POWER_CYCLES: smart_log.power_cycles,
+            ATTR_POWER_ON_HOURS: smart_log.power_on_hours,
+            ATTR_UNSAFE_SHUTDOWNS: smart_log.unsafe_shutdowns,
+            ATTR_MEDIA_ERRORS: smart_log.media_errors,
+            ATTR_NUMBER_ERROR_LOG_ENTRIES: smart_log.num_err_log_entries,
+            ATTR_WARNING_TEMP_MINUTES: smart_log.warning_temp_time,
+            ATTR_CRITICAL_COMPOSITE_TEMP_MINUTES: smart_log.critical_comp_time,
+        }

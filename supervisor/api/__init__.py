@@ -198,6 +198,8 @@ class RestAPI(CoreSysAttributes):
                 web.post("/host/reload", api_host.reload),
                 web.post("/host/options", api_host.options),
                 web.get("/host/services", api_host.services),
+                web.get("/host/nvme/{device}/status", api_host.nvme_device_status),
+                web.get("/host/nvme/status", api_host.nvme_device_status),
             ]
         )
 

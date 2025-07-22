@@ -20,11 +20,12 @@ class DataDisk(DBusServiceMock):
 
     object_path = "/io/hass/os/DataDisk"
     interface = "io.hass.os.DataDisk"
+    current_device = "/dev/mmcblk1"
 
     @dbus_property(access=PropertyAccess.READ)
     def CurrentDevice(self) -> "s":
         """Get Current Device."""
-        return "/dev/mmcblk1"
+        return self.current_device
 
     @dbus_method()
     def ChangeDevice(self, arg_0: "s") -> "b":
