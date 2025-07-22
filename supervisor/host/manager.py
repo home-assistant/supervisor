@@ -125,6 +125,9 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.udisks2.is_connected:
             features.append(HostFeature.DISK)
 
+        if self.nvme.devices:
+            features.append(HostFeature.NVME)
+
         # Support added in OS10. Propagation mode changed on mount in 10.2 to support this
         if (
             self.sys_dbus.systemd.is_connected
