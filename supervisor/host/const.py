@@ -67,6 +67,7 @@ class HostFeature(StrEnum):
     JOURNAL = "journal"
     MOUNT = "mount"
     NETWORK = "network"
+    NVME = "nvme"
     OS_AGENT = "os_agent"
     REBOOT = "reboot"
     RESOLVED = "resolved"

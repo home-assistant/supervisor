@@ -1,7 +1,9 @@
 """Test Host API."""
 
 from collections.abc import AsyncGenerator
+from typing import cast
 from unittest.mock import ANY, MagicMock, patch
+from urllib.parse import quote
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -12,6 +14,8 @@ from supervisor.homeassistant.api import APIState
 from supervisor.host.const import LogFormat, LogFormatter
 from supervisor.host.control import SystemControl
 
+from tests.common import load_binary_fixture
+from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
@@ -413,3 +417,136 @@ async def test_force_shutdown_during_migration(
     with patch.object(SystemControl, "shutdown") as shutdown:
         await api_client.post("/host/shutdown", json={"force": True})
         shutdown.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("device_id", "smart_log_fixture"),
+    [
+        ("00000000-0000-0000-0000-000000000000", "nvme-smart-log"),
+        ("00000000-0000-0000-0000-000000000000", "nvme-smart-log-warning-detail"),
+        (quote("/dev/nvme0n1", safe=""), "nvme-smart-log"),
+        (quote("/dev/nvme0n1", safe=""), "nvme-smart-log-warning-detail"),
+    ],
+)
+async def test_nvme_device_status(
+    api_client: TestClient, coresys: CoreSys, device_id: str, smart_log_fixture: str
+):
+    """Test getting smart log information on nvme device."""
+    with patch(
+        "supervisor.host.nvme.manager.asyncio.create_subprocess_shell"
+    ) as shell_mock:
+        shell_mock.return_value.returncode = 0
+        shell_mock.return_value.communicate.side_effect = [
+            (load_binary_fixture("nvme-list.json"), b""),
+            (load_binary_fixture(f"{smart_log_fixture}.json"), b""),
+        ]
+        await coresys.host.nvme.load()
+
+        resp = await api_client.get(f"/host/nvme/{device_id}/status")
+        assert resp.status == 200
+        body = await resp.json()
+        assert body["data"]["critical_warning"] == 0
+        assert body["data"]["available_spare"] == 100
+        assert body["data"]["data_units_read"] == 44707691
+        assert body["data"]["data_units_written"] == 54117388
+        assert body["data"]["percent_used"] == 1
+        assert body["data"]["temperature_kelvin"] == 312
+        assert body["data"]["host_read_commands"] == 428871098
+        assert body["data"]["host_write_commands"] == 900245782
+        assert body["data"]["controller_busy_minutes"] == 2678
+        assert body["data"]["power_cycles"] == 652
+        assert body["data"]["power_on_hours"] == 3192
+        assert body["data"]["unsafe_shutdowns"] == 107
+        assert body["data"]["media_errors"] == 0
+        assert body["data"]["number_error_log_entries"] == 1069
+        assert body["data"]["warning_temp_minutes"] == 0
+        assert body["data"]["critical_composite_temp_minutes"] == 0
+
+
+@pytest.mark.usefixtures("os_available")
+async def test_nvme_datadisk_status(
+    api_client: TestClient,
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+):
+    """Test getting smart log information when datadisk is an nvme device."""
+    cast(
+        DataDiskService, all_dbus_services["agent_datadisk"]
+    ).current_device = "/dev/nvme0n1"
+    await coresys.dbus.agent.datadisk.update()
+    await coresys.os.datadisk.load()
+    with patch(
+        "supervisor.host.nvme.manager.asyncio.create_subprocess_shell"
+    ) as shell_mock:
+        shell_mock.return_value.returncode = 0
+        shell_mock.return_value.communicate.side_effect = [
+            (load_binary_fixture("nvme-list.json"), b""),
+            (load_binary_fixture("nvme-smart-log.json"), b""),
+        ]
+        await coresys.host.nvme.load()
+
+        resp = await api_client.get("/host/nvme/status")
+        assert resp.status == 200
+        body = await resp.json()
+        assert body["data"]["critical_warning"] == 0
+
+
+async def test_nvme_datadisk_no_os(api_client: TestClient, coresys: CoreSys):
+    """Test failure getting smart log information for datadisk when not using OS."""
+    with patch(
+        "supervisor.host.nvme.manager.asyncio.create_subprocess_shell"
+    ) as shell_mock:
+        shell_mock.return_value.returncode = 0
+        shell_mock.return_value.communicate.side_effect = [
+            (load_binary_fixture("nvme-list.json"), b""),
+            (load_binary_fixture("nvme-smart-log.json"), b""),
+        ]
+        await coresys.host.nvme.load()
+
+        resp = await api_client.get("/host/nvme/status")
+        assert resp.status == 400
+        body = await resp.json()
+        assert (
+            body["message"]
+            == "Not using Home Assistant Operating System, an ID for the NVME device is required"
+        )
+
+
+@pytest.mark.usefixtures("os_available")
+async def test_nvme_datadisk_not_nvme(api_client: TestClient, coresys: CoreSys):
+    """Test failure getting smart log information for datadisk when it is not nvme."""
+    with patch(
+        "supervisor.host.nvme.manager.asyncio.create_subprocess_shell"
+    ) as shell_mock:
+        shell_mock.return_value.returncode = 0
+        shell_mock.return_value.communicate.side_effect = [
+            (load_binary_fixture("nvme-list.json"), b""),
+            (load_binary_fixture("nvme-smart-log.json"), b""),
+        ]
+        await coresys.host.nvme.load()
+
+        resp = await api_client.get("/host/nvme/status")
+        assert resp.status == 400
+        body = await resp.json()
+        assert (
+            body["message"]
+            == "Data Disk is not an NVME device, an ID for the NVME device is required"
+        )
+
+
+async def test_nvme_device_status_404(api_client: TestClient, coresys: CoreSys):
+    """Test failure getting smart log information for non-existent nvme device."""
+    with patch(
+        "supervisor.host.nvme.manager.asyncio.create_subprocess_shell"
+    ) as shell_mock:
+        shell_mock.return_value.returncode = 0
+        shell_mock.return_value.communicate.side_effect = [
+            (load_binary_fixture("nvme-list.json"), b""),
+            (load_binary_fixture("nvme-smart-log.json"), b""),
+        ]
+        await coresys.host.nvme.load()
+
+        resp = await api_client.get("/host/nvme/does-not-exist/status")
+        assert resp.status == 404
+        body = await resp.json()
+        assert body["message"] == "NVME device does-not-exist does not exist"

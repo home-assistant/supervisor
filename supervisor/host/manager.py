@@ -9,7 +9,7 @@ from awesomeversion import AwesomeVersion
 
 from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, HostLogError, PulseAudioError
+from ..exceptions import HassioError, HostLogError, HostNvmeError, PulseAudioError
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from .apparmor import AppArmorControl
@@ -18,6 +18,7 @@ from .control import SystemControl
 from .info import InfoCenter
 from .logs import LogsControl
 from .network import NetworkManager
+from .nvme.manager import NvmeManager
 from .services import ServiceManager
 from .sound import SoundControl
 
@@ -38,6 +39,7 @@ class HostManager(CoreSysAttributes):
         self._network: NetworkManager = NetworkManager(coresys)
         self._sound: SoundControl = SoundControl(coresys)
         self._logs: LogsControl = LogsControl(coresys)
+        self._nvme: NvmeManager = NvmeManager()
 
     async def post_init(self) -> Self:
         """Post init actions that must occur in event loop."""
@@ -80,6 +82,11 @@ class HostManager(CoreSysAttributes):
         return self._logs
 
     @property
+    def nvme(self) -> NvmeManager:
+        """Return NVME device manager."""
+        return self._nvme
+
+    @property
     def features(self) -> list[HostFeature]:
         """Return a list of host features."""
         return self.supported_features()
@@ -118,6 +125,9 @@ class HostManager(CoreSysAttributes):
         if self.sys_dbus.udisks2.is_connected:
             features.append(HostFeature.DISK)
 
+        if self.nvme.devices:
+            features.append(HostFeature.NVME)
+
         # Support added in OS10. Propagation mode changed on mount in 10.2 to support this
         if (
             self.sys_dbus.systemd.is_connected
@@ -151,6 +161,9 @@ class HostManager(CoreSysAttributes):
         with suppress(PulseAudioError):
             await self.sound.update()
 
+        with suppress(HostNvmeError):
+            await self.nvme.update()
+
         _LOGGER.info("Host information reload completed")
         self.supported_features.cache_clear()  # pylint: disable=no-member
 
@@ -167,6 +180,7 @@ class HostManager(CoreSysAttributes):
                 await self.logs.load()
 
             await self.network.load()
+            await self.nvme.load()
 
         # Register for events
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
