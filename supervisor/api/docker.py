@@ -32,7 +32,7 @@ SCHEMA_DOCKER_REGISTRY = vol.Schema(
 )
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLE_IPV6): vol.Boolean()})
+SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLE_IPV6): vol.Maybe(vol.Boolean())})
 
 
 class APIDocker(CoreSysAttributes):
@@ -60,6 +60,7 @@ class APIDocker(CoreSysAttributes):
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         if ATTR_ENABLE_IPV6 in body:
+            _LOGGER.info("System restart required to apply new IPv6 configuration")
             self.sys_docker.config.enable_ipv6 = body[ATTR_ENABLE_IPV6]
 
         await self.sys_docker.config.save_data()

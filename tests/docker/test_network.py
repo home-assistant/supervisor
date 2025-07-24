@@ -111,3 +111,39 @@ async def test_network_recreation(
             network_params[ATTR_ENABLE_IPV6] = new_enable_ipv6
 
             mock_create.assert_called_with(**network_params)
+
+
+async def test_network_default_ipv6_for_new_installations():
+    """Test that IPv6 is enabled by default when no user setting is provided (None)."""
+    with (
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+            create=True,
+        ),
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+            create=True,
+        ),
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks.get",
+            side_effect=docker.errors.NotFound("Network not found"),
+        ),
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks.create",
+            return_value=MockNetwork(False, None, True),
+        ) as mock_create,
+    ):
+        # Pass None as enable_ipv6 to simulate no user setting
+        network = (await DockerNetwork(MagicMock()).post_init(None)).network
+
+        assert network is not None
+        assert network.attrs.get(DOCKER_ENABLEIPV6) is True
+
+        # Verify that create was called with IPv6 enabled by default
+        expected_params = DOCKER_NETWORK_PARAMS.copy()
+        expected_params[ATTR_ENABLE_IPV6] = True
+        mock_create.assert_called_with(**expected_params)
