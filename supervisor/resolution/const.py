@@ -58,6 +58,7 @@ class UnsupportedReason(StrEnum):
     SYSTEMD_JOURNAL = "systemd_journal"
     SYSTEMD_RESOLVED = "systemd_resolved"
     VIRTUALIZATION_IMAGE = "virtualization_image"
+    OS_VERSION = "os_version"
 
 
 class UnhealthyReason(StrEnum):
