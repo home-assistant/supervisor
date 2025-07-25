@@ -8,7 +8,7 @@ pytest-asyncio==0.25.2
 pytest-cov==6.2.1
 pytest-timeout==2.4.0
 pytest==8.4.1
-ruff==0.12.4
+ruff==0.12.5
 time-machine==2.16.0
 types-docker==7.1.0.20250705
 types-pyyaml==6.0.12.20250516
