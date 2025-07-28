@@ -12,6 +12,7 @@ from sentry_sdk.integrations.dedupe import DedupeIntegration
 from sentry_sdk.integrations.excepthook import ExcepthookIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.threading import ThreadingIntegration
+from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
 
 from ..const import SUPERVISOR_VERSION
 from ..coresys import CoreSys
@@ -26,6 +27,7 @@ def init_sentry(coresys: CoreSys) -> None:
     """Initialize sentry client."""
     if not sentry_sdk.is_initialized():
         _LOGGER.info("Initializing Supervisor Sentry")
+        denylist = DEFAULT_DENYLIST + ["psk", "ssid"]
         # Don't use AsyncioIntegration(). We commonly handle task exceptions
         # outside of tasks. This would cause exception we gracefully handle to
         # be captured by sentry.
@@ -34,6 +36,7 @@ def init_sentry(coresys: CoreSys) -> None:
             before_send=partial(filter_data, coresys),
             auto_enabling_integrations=False,
             default_integrations=False,
+            event_scrubber=EventScrubber(denylist=denylist),
             integrations=[
                 AioHttpIntegration(
                     failed_request_status_codes=frozenset(range(500, 600))
