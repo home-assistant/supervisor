@@ -6,6 +6,8 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+
 from ..const import (
     ATTR_ENABLE_IPV6,
     ATTR_HOSTNAME,
@@ -59,9 +61,17 @@ class APIDocker(CoreSysAttributes):
         """Set docker options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
-        if ATTR_ENABLE_IPV6 in body:
-            _LOGGER.info("System restart required to apply new IPv6 configuration")
+        if (
+            ATTR_ENABLE_IPV6 in body
+            and self.sys_docker.config.enable_ipv6 != body[ATTR_ENABLE_IPV6]
+        ):
+            _LOGGER.info("Host system reboot required to apply new IPv6 configuration")
             self.sys_docker.config.enable_ipv6 = body[ATTR_ENABLE_IPV6]
+            self.sys_resolution.create_issue(
+                IssueType.REBOOT_REQUIRED,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.EXECUTE_REBOOT],
+            )
 
         await self.sys_docker.config.save_data()
 
