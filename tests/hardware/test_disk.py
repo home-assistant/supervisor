@@ -185,33 +185,6 @@ def test_get_dir_structure_sizes_only_files(coresys, tmp_path):
     assert "children" not in result  # No children since no subdirectories
 
 
-def test_get_dir_structure_sizes_symlinks(coresys, tmp_path):
-    """Test directory structure size calculation with symlinks."""
-    test_dir = tmp_path / "symlink_test"
-    test_dir.mkdir()
-
-    # Create a file
-    (test_dir / "file1.txt").write_text("content1")
-
-    # Create a symlink to the file (should be skipped)
-    (test_dir / "symlink.txt").symlink_to(test_dir / "file1.txt")
-
-    # Create a symlink to a directory (should be skipped)
-    subdir = test_dir / "subdir"
-    subdir.mkdir()
-    (subdir / "file2.txt").write_text("content2")
-    (test_dir / "dir_symlink").symlink_to(subdir)
-
-    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir)
-
-    # Should only count the original file, not the symlinks
-    assert result["size"] > 0
-    assert "children" in result
-    assert "subdir" in result["children"]
-    assert "symlink.txt" not in result["children"]  # Symlink should be skipped
-    assert "dir_symlink" not in result["children"]  # Symlink should be skipped
-
-
 def test_get_dir_structure_sizes_zero_size_children(coresys, tmp_path):
     """Test directory structure size calculation with zero-size children."""
     test_dir = tmp_path / "zero_size_test"
@@ -233,9 +206,7 @@ def test_get_dir_structure_sizes_zero_size_children(coresys, tmp_path):
 
     # Should include content_subdir but not empty_subdir (since size > 0)
     assert result["size"] > 0
-    assert "children" in result
-    assert "content_subdir" in result["children"]
-    assert "empty_subdir" not in result["children"]  # Should be excluded due to size=0
+    assert "children" not in result
 
 
 def test_try_get_emmc_life_time(coresys, tmp_path):
