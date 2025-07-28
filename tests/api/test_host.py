@@ -404,7 +404,7 @@ async def test_disk_usage_api(api_client: TestClient, coresys: CoreSys):
         ]
 
         # Test default max_depth=1
-        resp = await api_client.get("/host/disk/usage")
+        resp = await api_client.get("/host/disk_usage")
         assert resp.status == 200
         result = await resp.json()
 
@@ -467,7 +467,7 @@ async def test_disk_usage_api_with_custom_depth(
         ] * 6  # Same structure for all directories
 
         # Test with custom max_depth=2
-        resp = await api_client.get("/host/disk/usage?max_depth=2")
+        resp = await api_client.get("/host/disk_usage?max_depth=2")
         assert resp.status == 200
         result = await resp.json()
         assert result["data"]["size"] == 500000000
@@ -491,7 +491,7 @@ async def test_disk_usage_api_invalid_depth(api_client: TestClient, coresys: Cor
         mock_dir_sizes.return_value = {"size": 100000000}
 
         # Test with invalid max_depth (non-integer)
-        resp = await api_client.get("/host/disk/usage?max_depth=invalid")
+        resp = await api_client.get("/host/disk_usage?max_depth=invalid")
         assert resp.status == 200
         result = await resp.json()
         assert result["data"]["size"] == 500000000
@@ -518,7 +518,7 @@ async def test_disk_usage_api_empty_directories(
         # Mock empty directory structures (no children)
         mock_dir_sizes.return_value = {"size": 0}
 
-        resp = await api_client.get("/host/disk/usage")
+        resp = await api_client.get("/host/disk_usage")
         assert resp.status == 200
         result = await resp.json()
 
