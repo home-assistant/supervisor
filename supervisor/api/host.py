@@ -51,6 +51,7 @@ from .const import (
     ATTR_FORCE,
     ATTR_IDENTIFIERS,
     ATTR_LLMNR_HOSTNAME,
+    ATTR_MAX_DEPTH,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
     ATTR_VIRTUALIZATION,
@@ -289,3 +290,36 @@ class APIHost(CoreSysAttributes):
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
         return await self.advanced_logs_handler(request, identifier, follow)
+
+    @api_process
+    async def disk_usage(self, request: web.Request) -> dict:
+        """Return a breakdown of storage usage for the system."""
+
+        max_depth = request.query.get(ATTR_MAX_DEPTH, 1)
+        try:
+            max_depth = int(max_depth)
+        except ValueError:
+            max_depth = 1
+
+        disk = self.sys_hardware.disk
+
+        _, used, _ = await self.sys_run_in_executor(
+            disk.disk_usage, self.sys_config.path_supervisor
+        )
+
+        async def dir_info(path):
+            return await self.sys_run_in_executor(
+                disk.get_dir_structure_sizes, path, max_depth
+            )
+
+        return {
+            "size": used,
+            "children": {
+                "addons": await dir_info(self.sys_config.path_addons_data),
+                "media": await dir_info(self.sys_config.path_media),
+                "share": await dir_info(self.sys_config.path_share),
+                "backup": await dir_info(self.sys_config.path_backup),
+                "tmp": await dir_info(self.sys_config.path_tmp),
+                "config": await dir_info(self.sys_config.path_homeassistant),
+            },
+        }

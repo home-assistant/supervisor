@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 import shutil
+from typing import Any
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
@@ -53,7 +54,7 @@ class HwDisk(CoreSysAttributes):
 
         Must be run in executor.
         """
-        total, _, _ = shutil.disk_usage(path)
+        total, _, _ = self.disk_usage(path)
         return round(total / (1024.0**3), 1)
 
     def get_disk_used_space(self, path: str | Path) -> float:
@@ -61,8 +62,56 @@ class HwDisk(CoreSysAttributes):
 
         Must be run in executor.
         """
-        _, used, _ = shutil.disk_usage(path)
+        _, used, _ = self.disk_usage(path)
         return round(used / (1024.0**3), 1)
+
+    def disk_usage(self, path: str | Path) -> tuple[int, int, int]:
+        """Return (total, used, free) in bytes for path.
+
+        Must be run in executor.
+        """
+        return shutil.disk_usage(path)
+
+    def get_dir_structure_sizes(self, path: Path, max_depth: int = 1) -> dict[str, Any]:
+        """Return a recursive dict of subdirectories and their sizes, only if size > 0.
+
+        Excludes external mounts and symlinks to avoid counting files on other filesystems
+        or following symlinks that could lead to infinite loops or incorrect sizes.
+        """
+
+        size = 0
+        if not path.exists():
+            return {"size": size}
+
+        children: dict[str, Any] = {}
+        root_device = path.stat().st_dev
+
+        for child in path.iterdir():
+            if not child.is_dir():
+                size += child.stat(follow_symlinks=False).st_size
+                continue
+
+            # Skip symlinks to avoid infinite loops
+            if child.is_symlink():
+                continue
+
+            try:
+                # Skip if not on same device (external mount)
+                if child.stat().st_dev != root_device:
+                    continue
+            except (OSError, FileNotFoundError):
+                continue
+
+            child_result = self.get_dir_structure_sizes(child, max_depth - 1)
+            if child_result["size"] > 0:
+                size += child_result["size"]
+                if max_depth > 1:
+                    children[child.name] = child_result
+
+        if children:
+            return {"size": size, "children": children}
+
+        return {"size": size}
 
     def get_disk_free_space(self, path: str | Path) -> float:
         """Return free space (GiB) on disk for path.
