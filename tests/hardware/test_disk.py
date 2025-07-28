@@ -88,6 +88,156 @@ def test_get_mount_source(coresys):
     assert mount_source == "proc"
 
 
+def test_get_dir_structure_sizes(coresys, tmp_path):
+    """Test directory structure size calculation."""
+    # Create a test directory structure
+    test_dir = tmp_path / "test_dir"
+    test_dir.mkdir()
+
+    # Create some files
+    (test_dir / "file1.txt").write_text("content1")
+    (test_dir / "file2.txt").write_text("content2" * 100)  # Larger file
+
+    # Create subdirectories
+    subdir1 = test_dir / "subdir1"
+    subdir1.mkdir()
+    (subdir1 / "file3.txt").write_text("content3")
+
+    subdir2 = test_dir / "subdir2"
+    subdir2.mkdir()
+    (subdir2 / "file4.txt").write_text("content4")
+
+    # Create nested subdirectory
+    nested_dir = subdir1 / "nested"
+    nested_dir.mkdir()
+    (nested_dir / "file5.txt").write_text("content5")
+
+    # Create a symlink (should be skipped)
+    (test_dir / "symlink.txt").symlink_to(test_dir / "file1.txt")
+
+    # Test with max_depth=1 (default)
+    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=1)
+
+    # Verify the structure
+    assert result["size"] > 0
+    assert "children" in result
+    children = result["children"]
+
+    # Should have subdir1 and subdir2, but not nested (due to max_depth=1)
+    assert "subdir1" in children
+    assert "subdir2" in children
+    assert "nested" not in children
+
+    # Verify sizes are calculated correctly
+    assert children["subdir1"]["size"] > 0
+    assert children["subdir2"]["size"] > 0
+    assert "children" not in children["subdir1"]  # No children due to max_depth=1
+    assert "children" not in children["subdir2"]
+
+    # Test with max_depth=2
+    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=2)
+
+    # Should now include nested directory
+    assert "subdir1" in result["children"]
+    assert "subdir2" in result["children"]
+    assert "nested" in result["children"]["subdir1"]["children"]
+    assert result["children"]["subdir1"]["children"]["nested"]["size"] > 0
+
+    # Test with max_depth=0 (should only count files in root, no children)
+    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=0)
+    assert result["size"] > 0
+    assert "children" not in result  # No children due to max_depth=0
+
+
+def test_get_dir_structure_sizes_empty_dir(coresys, tmp_path):
+    """Test directory structure size calculation with empty directory."""
+    empty_dir = tmp_path / "empty_dir"
+    empty_dir.mkdir()
+
+    result = coresys.hardware.disk.get_dir_structure_sizes(empty_dir)
+
+    assert result["size"] == 0
+    assert "children" not in result
+
+
+def test_get_dir_structure_sizes_nonexistent_dir(coresys, tmp_path):
+    """Test directory structure size calculation with nonexistent directory."""
+    nonexistent_dir = tmp_path / "nonexistent"
+
+    result = coresys.hardware.disk.get_dir_structure_sizes(nonexistent_dir)
+
+    assert result["size"] == 0
+    assert "children" not in result
+
+
+def test_get_dir_structure_sizes_only_files(coresys, tmp_path):
+    """Test directory structure size calculation with only files (no subdirectories)."""
+    files_dir = tmp_path / "files_dir"
+    files_dir.mkdir()
+
+    # Create some files
+    (files_dir / "file1.txt").write_text("content1")
+    (files_dir / "file2.txt").write_text("content2" * 50)
+
+    result = coresys.hardware.disk.get_dir_structure_sizes(files_dir)
+
+    assert result["size"] > 0
+    assert "children" not in result  # No children since no subdirectories
+
+
+def test_get_dir_structure_sizes_symlinks(coresys, tmp_path):
+    """Test directory structure size calculation with symlinks."""
+    test_dir = tmp_path / "symlink_test"
+    test_dir.mkdir()
+
+    # Create a file
+    (test_dir / "file1.txt").write_text("content1")
+
+    # Create a symlink to the file (should be skipped)
+    (test_dir / "symlink.txt").symlink_to(test_dir / "file1.txt")
+
+    # Create a symlink to a directory (should be skipped)
+    subdir = test_dir / "subdir"
+    subdir.mkdir()
+    (subdir / "file2.txt").write_text("content2")
+    (test_dir / "dir_symlink").symlink_to(subdir)
+
+    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir)
+
+    # Should only count the original file, not the symlinks
+    assert result["size"] > 0
+    assert "children" in result
+    assert "subdir" in result["children"]
+    assert "symlink.txt" not in result["children"]  # Symlink should be skipped
+    assert "dir_symlink" not in result["children"]  # Symlink should be skipped
+
+
+def test_get_dir_structure_sizes_zero_size_children(coresys, tmp_path):
+    """Test directory structure size calculation with zero-size children."""
+    test_dir = tmp_path / "zero_size_test"
+    test_dir.mkdir()
+
+    # Create a file in root
+    (test_dir / "file1.txt").write_text("content1")
+
+    # Create an empty subdirectory
+    empty_subdir = test_dir / "empty_subdir"
+    empty_subdir.mkdir()
+
+    # Create a subdirectory with content
+    content_subdir = test_dir / "content_subdir"
+    content_subdir.mkdir()
+    (content_subdir / "file2.txt").write_text("content2")
+
+    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir)
+
+    # Should include content_subdir but not empty_subdir (since size > 0)
+    assert result["size"] > 0
+    assert "children" in result
+    assert "content_subdir" in result["children"]
+    assert "empty_subdir" not in result["children"]  # Should be excluded due to size=0
+
+
 def test_try_get_emmc_life_time(coresys, tmp_path):
     """Test eMMC life time helper."""
     fake_life_time = tmp_path / "fake-mmcblk0-lifetime"
