@@ -120,6 +120,12 @@ def test_get_dir_structure_sizes(coresys, tmp_path):
 
     # Verify the structure
     assert result["size"] > 0
+    assert "children" not in result
+
+    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=2)
+
+    # Verify the structure
+    assert result["size"] > 0
     assert "children" in result
     children = result["children"]
 
@@ -135,7 +141,7 @@ def test_get_dir_structure_sizes(coresys, tmp_path):
     assert "children" not in children["subdir2"]
 
     # Test with max_depth=2
-    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=2)
+    result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=3)
 
     # Should now include nested directory
     assert "subdir1" in result["children"]
