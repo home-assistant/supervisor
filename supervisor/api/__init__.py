@@ -37,6 +37,7 @@ from .resolution import APIResoulution
 from .root import APIRoot
 from .security import APISecurity
 from .services import APIServices
+from .storage import APIStorage
 from .store import APIStore
 from .supervisor import APISupervisor
 from .utils import api_process, api_process_raw
@@ -115,6 +116,7 @@ class RestAPI(CoreSysAttributes):
         self._register_services()
         self._register_store()
         self._register_supervisor()
+        self._register_storage()
 
         if static_resource_configs:
 
@@ -793,6 +795,16 @@ class RestAPI(CoreSysAttributes):
                 web.get("/docker/registries", api_docker.registries),
                 web.post("/docker/registries", api_docker.create_registry),
                 web.delete("/docker/registries/{hostname}", api_docker.remove_registry),
+            ]
+        )
+
+    def _register_storage(self) -> None:
+        """Register storage usage endpoint."""
+        api_storage = APIStorage()
+        api_storage.coresys = self.coresys
+        self.webapp.add_routes(
+            [
+                web.get("/storage/usage", api_storage.usage),
             ]
         )
 
