@@ -377,6 +377,160 @@ async def test_advanced_logs_errors(coresys: CoreSys, api_client: TestClient):
     )
 
 
+async def test_disk_usage_api(api_client: TestClient, coresys: CoreSys):
+    """Test disk usage API endpoint."""
+    # Mock the disk usage methods
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_dir_sizes,
+    ):
+        # Mock the main disk usage call
+        mock_disk_usage.return_value = (
+            1000000000,
+            500000000,
+            500000000,
+        )  # 1GB total, 500MB used, 500MB free
+
+        # Mock the directory structure sizes for each path
+        mock_dir_sizes.side_effect = [
+            {"size": 100000000, "children": {"addon1": {"size": 50000000}}},  # addons
+            {"size": 200000000, "children": {"media1": {"size": 100000000}}},  # media
+            {"size": 50000000, "children": {"share1": {"size": 25000000}}},  # share
+            {"size": 300000000, "children": {"backup1": {"size": 150000000}}},  # backup
+            {"size": 10000000, "children": {"tmp1": {"size": 5000000}}},  # tmp
+            {"size": 40000000, "children": {"config1": {"size": 20000000}}},  # config
+        ]
+
+        # Test default max_depth=1
+        resp = await api_client.get("/host/disk/usage")
+        assert resp.status == 200
+        result = await resp.json()
+
+        assert result["data"]["size"] == 500000000
+        assert "children" in result["data"]
+        children = result["data"]["children"]
+
+        # Verify all expected directories are present
+        assert "addons" in children
+        assert "media" in children
+        assert "share" in children
+        assert "backup" in children
+        assert "tmp" in children
+        assert "config" in children
+
+        # Verify the sizes are correct
+        assert children["addons"]["size"] == 100000000
+        assert children["media"]["size"] == 200000000
+        assert children["share"]["size"] == 50000000
+        assert children["backup"]["size"] == 300000000
+        assert children["tmp"]["size"] == 10000000
+        assert children["config"]["size"] == 40000000
+
+        # Verify disk_usage was called with supervisor path
+        mock_disk_usage.assert_called_once_with(coresys.config.path_supervisor)
+
+        # Verify get_dir_structure_sizes was called for each directory
+        assert mock_dir_sizes.call_count == 6
+        mock_dir_sizes.assert_any_call(coresys.config.path_addons_data, 1)
+        mock_dir_sizes.assert_any_call(coresys.config.path_media, 1)
+        mock_dir_sizes.assert_any_call(coresys.config.path_share, 1)
+        mock_dir_sizes.assert_any_call(coresys.config.path_backup, 1)
+        mock_dir_sizes.assert_any_call(coresys.config.path_tmp, 1)
+        mock_dir_sizes.assert_any_call(coresys.config.path_homeassistant, 1)
+
+
+async def test_disk_usage_api_with_custom_depth(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test disk usage API endpoint with custom max_depth parameter."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+
+        # Mock deeper directory structure
+        mock_dir_sizes.side_effect = [
+            {
+                "size": 100000000,
+                "children": {
+                    "addon1": {
+                        "size": 50000000,
+                        "children": {"subdir1": {"size": 25000000}},
+                    }
+                },
+            }
+        ] * 6  # Same structure for all directories
+
+        # Test with custom max_depth=2
+        resp = await api_client.get("/host/disk/usage?max_depth=2")
+        assert resp.status == 200
+        result = await resp.json()
+        assert result["data"]["size"] == 500000000
+        assert result["data"]["children"]
+
+        # Verify max_depth=2 was passed to get_dir_structure_sizes
+        assert mock_dir_sizes.call_count == 6
+        for call in mock_dir_sizes.call_args_list:
+            assert call[0][1] == 2  # max_depth parameter
+
+
+async def test_disk_usage_api_invalid_depth(api_client: TestClient, coresys: CoreSys):
+    """Test disk usage API endpoint with invalid max_depth parameter."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+        mock_dir_sizes.return_value = {"size": 100000000}
+
+        # Test with invalid max_depth (non-integer)
+        resp = await api_client.get("/host/disk/usage?max_depth=invalid")
+        assert resp.status == 200
+        result = await resp.json()
+        assert result["data"]["size"] == 500000000
+        assert result["data"]["children"]
+
+        # Should default to max_depth=1 when invalid value is provided
+        assert mock_dir_sizes.call_count == 6
+        for call in mock_dir_sizes.call_args_list:
+            assert call[0][1] == 1  # Should default to 1
+
+
+async def test_disk_usage_api_empty_directories(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test disk usage API endpoint with empty directories."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(
+            coresys.hardware.disk, "get_dir_structure_sizes"
+        ) as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+
+        # Mock empty directory structures (no children)
+        mock_dir_sizes.return_value = {"size": 0}
+
+        resp = await api_client.get("/host/disk/usage")
+        assert resp.status == 200
+        result = await resp.json()
+
+        assert result["data"]["size"] == 500000000
+        children = result["data"]["children"]
+
+        # All directories should have size 0
+        for directory in children.values():
+            assert directory["size"] == 0
+            assert "children" not in directory  # No children when size is 0
+
+
 @pytest.mark.parametrize("action", ["reboot", "shutdown"])
 async def test_migration_blocks_shutdown(
     api_client: TestClient,
