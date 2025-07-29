@@ -399,8 +399,11 @@ async def test_disk_usage_api(api_client: TestClient, coresys: CoreSys):
             {"size": 200000000, "children": {"media1": {"size": 100000000}}},  # media
             {"size": 50000000, "children": {"share1": {"size": 25000000}}},  # share
             {"size": 300000000, "children": {"backup1": {"size": 150000000}}},  # backup
-            {"size": 10000000, "children": {"tmp1": {"size": 5000000}}},  # tmp
-            {"size": 40000000, "children": {"config1": {"size": 20000000}}},  # config
+            {"size": 10000000, "children": {"ssl1": {"size": 5000000}}},  # ssl
+            {
+                "size": 40000000,
+                "children": {"homeassistant1": {"size": 20000000}},
+            },  # homeassistant
         ]
 
         # Test default max_depth=1
@@ -417,16 +420,16 @@ async def test_disk_usage_api(api_client: TestClient, coresys: CoreSys):
         assert "media" in children
         assert "share" in children
         assert "backup" in children
-        assert "tmp" in children
-        assert "config" in children
+        assert "ssl" in children
+        assert "homeassistant" in children
 
         # Verify the sizes are correct
         assert children["addons"]["size"] == 100000000
         assert children["media"]["size"] == 200000000
         assert children["share"]["size"] == 50000000
         assert children["backup"]["size"] == 300000000
-        assert children["tmp"]["size"] == 10000000
-        assert children["config"]["size"] == 40000000
+        assert children["ssl"]["size"] == 10000000
+        assert children["homeassistant"]["size"] == 40000000
 
         # Verify disk_usage was called with supervisor path
         mock_disk_usage.assert_called_once_with(coresys.config.path_supervisor)
@@ -437,7 +440,7 @@ async def test_disk_usage_api(api_client: TestClient, coresys: CoreSys):
         mock_dir_sizes.assert_any_call(coresys.config.path_media, 1)
         mock_dir_sizes.assert_any_call(coresys.config.path_share, 1)
         mock_dir_sizes.assert_any_call(coresys.config.path_backup, 1)
-        mock_dir_sizes.assert_any_call(coresys.config.path_tmp, 1)
+        mock_dir_sizes.assert_any_call(coresys.config.path_ssl, 1)
         mock_dir_sizes.assert_any_call(coresys.config.path_homeassistant, 1)
 
 
