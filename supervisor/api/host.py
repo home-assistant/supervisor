@@ -307,19 +307,18 @@ class APIHost(CoreSysAttributes):
             disk.disk_usage, self.sys_config.path_supervisor
         )
 
-        async def dir_info(path):
-            return await self.sys_run_in_executor(
-                disk.get_dir_structure_sizes, path, max_depth
-            )
-
         return {
             "size": used,
-            "children": {
-                "addons": await dir_info(self.sys_config.path_addons_data),
-                "media": await dir_info(self.sys_config.path_media),
-                "share": await dir_info(self.sys_config.path_share),
-                "backup": await dir_info(self.sys_config.path_backup),
-                "tmp": await dir_info(self.sys_config.path_tmp),
-                "config": await dir_info(self.sys_config.path_homeassistant),
-            },
+            "children": await self.sys_run_in_executor(
+                disk.get_dir_sizes,
+                {
+                    "addons": self.sys_config.path_addons_data,
+                    "media": self.sys_config.path_media,
+                    "share": self.sys_config.path_share,
+                    "backup": self.sys_config.path_backup,
+                    "ssl": self.sys_config.path_ssl,
+                    "homeassistant": self.sys_config.path_homeassistant,
+                },
+                max_depth,
+            ),
         }

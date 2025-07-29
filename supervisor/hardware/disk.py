@@ -1,9 +1,12 @@
 """Read disk hardware info from system."""
 
+import errno
 import logging
 from pathlib import Path
 import shutil
 from typing import Any
+
+from supervisor.resolution.const import UnhealthyReason
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HardwareNotFound
@@ -65,6 +68,14 @@ class HwDisk(CoreSysAttributes):
         _, used, _ = self.disk_usage(path)
         return round(used / (1024.0**3), 1)
 
+    def get_disk_free_space(self, path: str | Path) -> float:
+        """Return free space (GiB) on disk for path.
+
+        Must be run in executor.
+        """
+        _, _, free = self.disk_usage(path)
+        return round(free / (1024.0**3), 1)
+
     def disk_usage(self, path: str | Path) -> tuple[int, int, int]:
         """Return (total, used, free) in bytes for path.
 
@@ -99,7 +110,12 @@ class HwDisk(CoreSysAttributes):
                 # Skip if not on same device (external mount)
                 if child.stat().st_dev != root_device:
                     continue
-            except (OSError, FileNotFoundError):
+            except OSError as err:
+                if err.errno == errno.EBADMSG:
+                    self.sys_resolution.add_unhealthy_reason(
+                        UnhealthyReason.OSERROR_BAD_MESSAGE
+                    )
+                    break
                 continue
 
             child_result = self.get_dir_structure_sizes(child, max_depth - 1)
@@ -113,13 +129,17 @@ class HwDisk(CoreSysAttributes):
 
         return {"size": size}
 
-    def get_disk_free_space(self, path: str | Path) -> float:
-        """Return free space (GiB) on disk for path.
+    def get_dir_sizes(
+        self, request: dict[str, Path], max_depth: int = 1
+    ) -> dict[str, Any]:
+        """Accept a dictionary of `name: Path` and return a dictionary with `name: <size>`.
 
         Must be run in executor.
         """
-        _, _, free = shutil.disk_usage(path)
-        return round(free / (1024.0**3), 1)
+        return {
+            name: self.get_dir_structure_sizes(path, max_depth)
+            for name, path in request.items()
+        }
 
     def _get_mountinfo(self, path: str) -> list[str] | None:
         mountinfo = _MOUNTINFO.read_text(encoding="utf-8")
