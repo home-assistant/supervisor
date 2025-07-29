@@ -182,7 +182,7 @@ SCHEMA_DOCKER_CONFIG = vol.Schema(
                 }
             }
         ),
-        vol.Optional(ATTR_ENABLE_IPV6): vol.Boolean(),
+        vol.Optional(ATTR_ENABLE_IPV6, default=None): vol.Maybe(vol.Boolean()),
     }
 )
 

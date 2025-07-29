@@ -95,12 +95,12 @@ class DockerConfig(FileConfiguration):
         super().__init__(FILE_HASSIO_DOCKER, SCHEMA_DOCKER_CONFIG)
 
     @property
-    def enable_ipv6(self) -> bool:
+    def enable_ipv6(self) -> bool | None:
         """Return IPv6 configuration for docker network."""
-        return self._data.get(ATTR_ENABLE_IPV6, False)
+        return self._data.get(ATTR_ENABLE_IPV6, None)
 
     @enable_ipv6.setter
-    def enable_ipv6(self, value: bool) -> None:
+    def enable_ipv6(self, value: bool | None) -> None:
         """Set IPv6 configuration for docker network."""
         self._data[ATTR_ENABLE_IPV6] = value
 
