@@ -65,8 +65,8 @@ class APIDocker(CoreSysAttributes):
             ATTR_ENABLE_IPV6 in body
             and self.sys_docker.config.enable_ipv6 != body[ATTR_ENABLE_IPV6]
         ):
-            _LOGGER.info("Host system reboot required to apply new IPv6 configuration")
             self.sys_docker.config.enable_ipv6 = body[ATTR_ENABLE_IPV6]
+            _LOGGER.info("Host system reboot required to apply new IPv6 configuration")
             self.sys_resolution.create_issue(
                 IssueType.REBOOT_REQUIRED,
                 ContextType.SYSTEM,
