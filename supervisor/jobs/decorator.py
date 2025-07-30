@@ -326,9 +326,13 @@ class Job(CoreSysAttributes):
 
                 # Handle execution limits
                 await self._handle_concurrency_control(job_group, job)
-                if not await self._handle_throttling(group_name):
+                try:
+                    if not await self._handle_throttling(group_name):
+                        self._release_concurrency_control(job_group)
+                        return  # Job was throttled, exit early
+                except Exception:
                     self._release_concurrency_control(job_group)
-                    return  # Job was throttled, exit early
+                    raise
 
                 # Execute Job
                 with job.start():
