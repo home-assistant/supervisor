@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from pathlib import Path
 from typing import Any
 
 from awesomeversion import AwesomeVersion
@@ -132,7 +133,10 @@ class UDisks2Manager(DBusInterfaceProxy):
                 for drive in drives
             }
 
-            # Update existing drives
+            # For existing drives, need to check their type and call update
+            await asyncio.gather(
+                *[self._drives[path].check_type() for path in unchanged_drives]
+            )
             await asyncio.gather(
                 *[self._drives[path].update() for path in unchanged_drives]
             )
@@ -160,20 +164,33 @@ class UDisks2Manager(DBusInterfaceProxy):
         return list(self._drives.values())
 
     @dbus_connected
-    def get_drive(self, drive_path: str) -> UDisks2Drive:
+    def get_drive(self, object_path: str) -> UDisks2Drive:
         """Get additional info on drive from object path."""
-        if drive_path not in self._drives:
-            raise DBusObjectError(f"Drive {drive_path} not found")
+        if object_path not in self._drives:
+            raise DBusObjectError(f"Drive {object_path} not found")
 
-        return self._drives[drive_path]
+        return self._drives[object_path]
 
     @dbus_connected
-    def get_block_device(self, device_path: str) -> UDisks2Block:
+    def get_block_device(self, object_path: str) -> UDisks2Block:
         """Get additional info on block device from object path."""
-        if device_path not in self._block_devices:
-            raise DBusObjectError(f"Block device {device_path} not found")
+        if object_path not in self._block_devices:
+            raise DBusObjectError(f"Block device {object_path} not found")
 
-        return self._block_devices[device_path]
+        return self._block_devices[object_path]
+
+    @dbus_connected
+    def get_block_device_by_path(self, device_path: Path) -> UDisks2Block:
+        """Get additional info on block device from device path.
+
+        Uses cache only. Use `resolve_device` to force a call for fresh data.
+        """
+        for device in self._block_devices.values():
+            if device.device == device_path:
+                return device
+        raise DBusObjectError(
+            f"Block device not found with device path {device_path.as_posix()}"
+        )
 
     @dbus_connected
     async def resolve_device(self, devspec: DeviceSpecification) -> list[UDisks2Block]:

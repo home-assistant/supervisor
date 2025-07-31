@@ -23,7 +23,11 @@ DEFAULT_RANGE_FOLLOW = "entries=:-99:18446744073709551615"
 @pytest.fixture(name="coresys_disk_info")
 async def fixture_coresys_disk_info(coresys: CoreSys) -> AsyncGenerator[CoreSys]:
     """Mock basic disk information for host APIs."""
-    coresys.hardware.disk.get_disk_life_time = lambda _: 0
+
+    async def mock_disk_lifetime(_):
+        return 0
+
+    coresys.hardware.disk.get_disk_life_time = mock_disk_lifetime
     coresys.hardware.disk.get_disk_free_space = lambda _: 5000
     coresys.hardware.disk.get_disk_total_space = lambda _: 50000
     coresys.hardware.disk.get_disk_used_space = lambda _: 45000
