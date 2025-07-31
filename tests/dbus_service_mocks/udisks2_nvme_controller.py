@@ -126,7 +126,7 @@ class NVMeController(DBusServiceMock):
         return self.smart_get_attributes_response
 
     @dbus_method()
-    def SmartSelftestStart(self, type: "s", options: "a{sv}") -> None:
+    def SmartSelftestStart(self, type_: "s", options: "a{sv}") -> None:
         """Do SmartSelftestStart."""
 
     @dbus_method()
