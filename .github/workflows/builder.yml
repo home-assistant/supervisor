@@ -106,7 +106,7 @@ jobs:
 
       - name: Build wheels
         if: needs.init.outputs.requirements == 'true'
-        uses: home-assistant/wheels@2025.03.0
+        uses: home-assistant/wheels@2025.07.0
         with:
           abi: cp313
           tag: musllinux_1_2
