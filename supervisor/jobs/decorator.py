@@ -20,7 +20,7 @@ from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 from ..utils.sentry import async_capture_exception
 from . import SupervisorJob
-from .const import JobConcurrency, JobCondition, JobExecutionLimit, JobThrottle
+from .const import JobConcurrency, JobCondition, JobThrottle
 from .job_group import JobGroup
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -43,8 +43,6 @@ class Job(CoreSysAttributes):
         | None = None,
         throttle_max_calls: int | None = None,
         internal: bool = False,
-        # Backward compatibility - DEPRECATED
-        limit: JobExecutionLimit | None = None,
     ):  # pylint: disable=too-many-positional-arguments
         """Initialize the Job decorator.
 
@@ -58,7 +56,6 @@ class Job(CoreSysAttributes):
             throttle_period (timedelta | Callable | None): Throttle period as a timedelta or a callable returning a timedelta (for throttled jobs).
             throttle_max_calls (int | None): Maximum number of calls allowed within the throttle period (for rate-limited jobs).
             internal (bool): Whether the job is internal (not exposed through the Supervisor API). Defaults to False.
-            limit (JobExecutionLimit | None): DEPRECATED - Use concurrency and throttle instead.
 
         Raises:
             RuntimeError: If job name is not unique, or required throttle parameters are missing for the selected throttle policy.
@@ -79,53 +76,11 @@ class Job(CoreSysAttributes):
         self._rate_limited_calls: dict[str | None, list[datetime]] | None = None
         self._internal = internal
 
-        # Handle backward compatibility with limit parameter
-        if limit is not None:
-            if concurrency is not None or throttle is not None:
-                raise RuntimeError(
-                    f"Job {name} cannot specify both 'limit' (deprecated) and 'concurrency'/'throttle' parameters!"
-                )
-            # Map old limit values to new parameters
-            concurrency, throttle = self._map_limit_to_new_params(limit)
-
         self.concurrency = concurrency
         self.throttle = throttle
 
         # Validate Options
         self._validate_parameters()
-
-    def _map_limit_to_new_params(
-        self, limit: JobExecutionLimit
-    ) -> tuple[JobConcurrency | None, JobThrottle | None]:
-        """Map old limit parameter to new concurrency and throttle parameters."""
-        mapping = {
-            JobExecutionLimit.ONCE: (JobConcurrency.REJECT, None),
-            JobExecutionLimit.SINGLE_WAIT: (JobConcurrency.QUEUE, None),
-            JobExecutionLimit.THROTTLE: (None, JobThrottle.THROTTLE),
-            JobExecutionLimit.THROTTLE_WAIT: (
-                JobConcurrency.QUEUE,
-                JobThrottle.THROTTLE,
-            ),
-            JobExecutionLimit.THROTTLE_RATE_LIMIT: (None, JobThrottle.RATE_LIMIT),
-            JobExecutionLimit.GROUP_ONCE: (JobConcurrency.GROUP_REJECT, None),
-            JobExecutionLimit.GROUP_WAIT: (JobConcurrency.GROUP_QUEUE, None),
-            JobExecutionLimit.GROUP_THROTTLE: (None, JobThrottle.GROUP_THROTTLE),
-            JobExecutionLimit.GROUP_THROTTLE_WAIT: (
-                # Seems a bit counter intuitive, but GROUP_QUEUE deadlocks
-                # tests/jobs/test_job_decorator.py::test_execution_limit_group_throttle_wait
-                # The reason this deadlocks is because when using GROUP_QUEUE and the
-                # throttle limit is hit, the group lock is trying to be unlocked outside
-                # of the job context. The current implementation doesn't allow to unlock
-                # the group lock when the job is not running.
-                JobConcurrency.QUEUE,
-                JobThrottle.GROUP_THROTTLE,
-            ),
-            JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT: (
-                None,
-                JobThrottle.GROUP_RATE_LIMIT,
-            ),
-        }
-        return mapping.get(limit, (None, None))
 
     def _validate_parameters(self) -> None:
         """Validate job parameters."""

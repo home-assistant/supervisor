@@ -12,7 +12,7 @@ from ..const import LABEL_MACHINE
 from ..exceptions import DockerJobError
 from ..hardware.const import PolicyGroup
 from ..homeassistant.const import LANDINGPAGE
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import (
     ENV_TIME,
@@ -161,8 +161,8 @@ class DockerHomeAssistant(DockerInterface):
 
     @Job(
         name="docker_home_assistant_run",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def run(self, *, restore_job_id: str | None = None) -> None:
         """Run Docker image."""
@@ -200,8 +200,8 @@ class DockerHomeAssistant(DockerInterface):
 
     @Job(
         name="docker_home_assistant_execute_command",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command."""

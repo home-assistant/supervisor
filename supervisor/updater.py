@@ -8,6 +8,8 @@ import logging
 import aiohttp
 from awesomeversion import AwesomeVersion
 
+from supervisor.jobs.const import JobConcurrency, JobThrottle
+
 from .bus import EventListener
 from .const import (
     ATTR_AUDIO,
@@ -34,7 +36,7 @@ from .exceptions import (
     UpdaterError,
     UpdaterJobError,
 )
-from .jobs.decorator import Job, JobCondition, JobExecutionLimit
+from .jobs.decorator import Job, JobCondition
 from .utils.codenotary import calc_checksum
 from .utils.common import FileConfiguration
 from .validate import SCHEMA_UPDATER_CONFIG
@@ -198,8 +200,9 @@ class Updater(FileConfiguration, CoreSysAttributes):
         name="updater_fetch_data",
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=UpdaterJobError,
-        limit=JobExecutionLimit.THROTTLE_WAIT,
         throttle_period=timedelta(seconds=30),
+        concurrency=JobConcurrency.QUEUE,
+        throttle=JobThrottle.THROTTLE,
     )
     async def fetch_data(self):
         """Fetch current versions from Github.

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import YamlFileError
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
 from ..utils.yaml import read_yaml_file
 
@@ -43,9 +43,10 @@ class HomeAssistantSecrets(CoreSysAttributes):
 
     @Job(
         name="home_assistant_secrets_read",
-        limit=JobExecutionLimit.THROTTLE_WAIT,
         throttle_period=timedelta(seconds=60),
         internal=True,
+        concurrency=JobConcurrency.QUEUE,
+        throttle=JobThrottle.THROTTLE,
     )
     async def _read_secrets(self):
         """Read secrets.yaml into memory."""

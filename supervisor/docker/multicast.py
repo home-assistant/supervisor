@@ -4,7 +4,7 @@ import logging
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerJobError
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import ENV_TIME, Capabilities
 from .interface import DockerInterface
@@ -34,8 +34,8 @@ class DockerMulticast(DockerInterface, CoreSysAttributes):
 
     @Job(
         name="docker_multicast_run",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def run(self) -> None:
         """Run Docker image."""
