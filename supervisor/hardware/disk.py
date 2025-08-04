@@ -178,8 +178,8 @@ class HwDisk(CoreSysAttributes):
             )
             return 100.0
 
-        # Return the pessimistic estimate (0x02 -> 10%-20%, return 20%)
-        return life_time_value * 10.0
+        # Return the optimistic estimate (0x02 -> 10%-20%, return 10%)
+        return (life_time_value - 1) * 10.0
 
     async def get_disk_life_time(self, path: str | Path) -> float | None:
         """Return life time estimate of the underlying SSD drive."""

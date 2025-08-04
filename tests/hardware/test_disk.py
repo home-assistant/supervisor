@@ -160,7 +160,7 @@ def test_try_get_emmc_life_time(coresys, tmp_path):
         str(tmp_path / "fake-{}-lifetime"),
     ):
         value = coresys.hardware.disk._try_get_emmc_life_time("mmcblk0")
-    assert value == 20.0
+    assert value == 10.0
 
 
 async def test_try_get_nvme_life_time(
