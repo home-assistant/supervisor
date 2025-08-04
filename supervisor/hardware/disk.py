@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HardwareNotFound
+from ..exceptions import DBusError, DBusObjectError, HardwareNotFound
 from .const import UdevSubsystem
 from .data import Device
 
@@ -14,6 +14,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 _MOUNTINFO: Path = Path("/proc/self/mountinfo")
 _BLOCK_DEVICE_CLASS = "/sys/class/block/{}"
 _BLOCK_DEVICE_EMMC_LIFE_TIME = "/sys/block/{}/device/life_time"
+_DEVICE_PATH = "/dev/{}"
 
 
 class HwDisk(CoreSysAttributes):
@@ -92,8 +93,67 @@ class HwDisk(CoreSysAttributes):
             optionsep += 1
         return mountinfoarr[optionsep + 2]
 
+    def _get_mount_source_device_name(self, path: str | Path) -> str | None:
+        """Get mount source device name.
+
+        Must be run in executor.
+        """
+        mount_source = self._get_mount_source(str(path))
+        if not mount_source or mount_source == "overlay":
+            return None
+
+        mount_source_path = Path(mount_source)
+        if not mount_source_path.is_block_device():
+            return None
+
+        # This looks a bit funky but it is more or less what lsblk is doing to get
+        # the parent dev reliably
+
+        # Get class device...
+        mount_source_device_part = Path(
+            _BLOCK_DEVICE_CLASS.format(mount_source_path.name)
+        )
+
+        # ... resolve symlink and get parent device from that path.
+        return mount_source_device_part.resolve().parts[-2]
+
+    async def _try_get_nvme_lifetime(self, device_name: str) -> float | None:
+        """Get NVMe device lifetime."""
+        device_path = Path(_DEVICE_PATH.format(device_name))
+        try:
+            block_device = self.sys_dbus.udisks2.get_block_device_by_path(device_path)
+            drive = self.sys_dbus.udisks2.get_drive(block_device.drive)
+        except DBusObjectError:
+            _LOGGER.warning(
+                "Unable to find UDisks2 drive for device at %s", device_path.as_posix()
+            )
+            return None
+
+        # Exit if this isn't an NVMe device
+        if not drive.nvme_controller:
+            return None
+
+        try:
+            smart_log = await drive.nvme_controller.smart_get_attributes()
+        except DBusError as err:
+            _LOGGER.warning(
+                "Unable to get smart log for drive %s due to %s", drive.id, err
+            )
+            return None
+
+        # UDisks2 documentation specifies that value can exceed 100
+        if smart_log.percent_used >= 100:
+            _LOGGER.warning(
+                "NVMe controller reports that its estimated life-time has been exceeded!"
+            )
+            return 100.0
+        return smart_log.percent_used
+
     def _try_get_emmc_life_time(self, device_name: str) -> float | None:
-        # Get eMMC life_time
+        """Get eMMC life_time.
+
+        Must be run in executor.
+        """
         life_time_path = Path(_BLOCK_DEVICE_EMMC_LIFE_TIME.format(device_name))
 
         if not life_time_path.exists():
@@ -121,29 +181,20 @@ class HwDisk(CoreSysAttributes):
         # Return the pessimistic estimate (0x02 -> 10%-20%, return 20%)
         return life_time_value * 10.0
 
-    def get_disk_life_time(self, path: str | Path) -> float | None:
-        """Return life time estimate of the underlying SSD drive.
-
-        Must be run in executor.
-        """
-        mount_source = self._get_mount_source(str(path))
-        if not mount_source or mount_source == "overlay":
-            return None
-
-        mount_source_path = Path(mount_source)
-        if not mount_source_path.is_block_device():
-            return None
-
-        # This looks a bit funky but it is more or less what lsblk is doing to get
-        # the parent dev reliably
-
-        # Get class device...
-        mount_source_device_part = Path(
-            _BLOCK_DEVICE_CLASS.format(mount_source_path.name)
+    async def get_disk_life_time(self, path: str | Path) -> float | None:
+        """Return life time estimate of the underlying SSD drive."""
+        mount_source_device_name = await self.sys_run_in_executor(
+            self._get_mount_source_device_name, path
         )
+        if mount_source_device_name is None:
+            return None
 
-        # ... resolve symlink and get parent device from that path.
-        mount_source_device_name = mount_source_device_part.resolve().parts[-2]
+        # First check if its an NVMe device and get lifetime information that way
+        nvme_lifetime = await self._try_get_nvme_lifetime(mount_source_device_name)
+        if nvme_lifetime is not None:
+            return nvme_lifetime
 
-        # Currently only eMMC block devices supported
-        return self._try_get_emmc_life_time(mount_source_device_name)
+        # Else try to get lifetime information for eMMC devices. Other types of devices will return None
+        return await self.sys_run_in_executor(
+            self._try_get_emmc_life_time, mount_source_device_name
+        )

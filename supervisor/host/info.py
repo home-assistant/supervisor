@@ -135,9 +135,8 @@ class InfoCenter(CoreSysAttributes):
 
     async def disk_life_time(self) -> float | None:
         """Return the estimated life-time usage (in %) of the SSD storing the data directory."""
-        return await self.sys_run_in_executor(
-            self.sys_hardware.disk.get_disk_life_time,
-            self.coresys.config.path_supervisor,
+        return await self.sys_hardware.disk.get_disk_life_time(
+            self.coresys.config.path_supervisor
         )
 
     async def get_dmesg(self) -> bytes:
