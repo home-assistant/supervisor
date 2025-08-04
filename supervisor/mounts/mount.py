@@ -164,9 +164,13 @@ class Mount(CoreSysAttributes, ABC):
         """Return true if successfully mounted and available."""
         return self.state == UnitActiveState.ACTIVE
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         """Return true if mounts are the same."""
         return isinstance(other, Mount) and self.name == other.name
+
+    def __hash__(self) -> int:
+        """Return hash of mount."""
+        return hash(self.name)
 
     async def load(self) -> None:
         """Initialize object."""

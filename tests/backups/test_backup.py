@@ -185,6 +185,33 @@ async def test_consolidate(
     }
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_consolidate_failure(coresys: CoreSys, tmp_path: Path):
+    """Test consolidate with two backups that are not the same."""
+    (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
+    tar1 = Path(copy(get_fixture_path("test_consolidate_unc.tar"), tmp_path))
+    backup1 = Backup(coresys, tar1, "test", None)
+    await backup1.load()
+
+    tar2 = Path(copy(get_fixture_path("backup_example.tar"), mount_dir))
+    backup2 = Backup(coresys, tar2, "test", "backup_test")
+    await backup2.load()
+
+    with pytest.raises(
+        ValueError,
+        match=f"Backup {backup1.slug} and {backup2.slug} are not the same backup",
+    ):
+        backup1.consolidate(backup2)
+
+    # Force slugs to be the same to run the fields check
+    backup1._data["slug"] = backup2.slug  # pylint: disable=protected-access
+    with pytest.raises(
+        BackupInvalidError,
+        match=f"Cannot consolidate backups in {backup2.location} and {backup1.location} with slug {backup1.slug}",
+    ):
+        backup1.consolidate(backup2)
+
+
 @pytest.mark.parametrize(
     (
         "tarfile_side_effect",
