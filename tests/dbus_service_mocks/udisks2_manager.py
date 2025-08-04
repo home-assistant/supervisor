@@ -22,7 +22,7 @@ class UDisks2Manager(DBusServiceMock):
     object_path = "/org/freedesktop/UDisks2/Manager"
 
     def __init__(self):
-        """Inititialize object."""
+        """Initialize object."""
         super().__init__()
         self.block_devices = [
             "/org/freedesktop/UDisks2/block_devices/loop0",
