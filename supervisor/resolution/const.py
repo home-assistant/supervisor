@@ -49,6 +49,7 @@ class UnsupportedReason(StrEnum):
     NETWORK_MANAGER = "network_manager"
     OS = "os"
     OS_AGENT = "os_agent"
+    OS_VERSION = "os_version"
     PRIVILEGED = "privileged"
     RESTART_POLICY = "restart_policy"
     SOFTWARE = "software"
