@@ -111,6 +111,11 @@ class OSManager(CoreSysAttributes):
         return self.sys_updater.version_hassos
 
     @property
+    def latest_version_unrestricted(self) -> AwesomeVersion | None:
+        """Return current latest version of HassOS for board ignoring upgrade restrictions."""
+        return self.sys_updater.version_hassos_unrestricted
+
+    @property
     def need_update(self) -> bool:
         """Return true if a HassOS update is available."""
         try:

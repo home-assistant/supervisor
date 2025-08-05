@@ -49,7 +49,7 @@ async def test_os_version_evaluation(
         ),
         patch.object(
             OSManager,
-            "latest_version",
+            "latest_version_unrestricted",
             new=PropertyMock(return_value=latest and AwesomeVersion(latest)),
         ),
     ):
