@@ -18,6 +18,7 @@ from .const import (
     ATTR_CLI,
     ATTR_DNS,
     ATTR_HASSOS,
+    ATTR_HASSOS_UNRESTRICTED,
     ATTR_HOMEASSISTANT,
     ATTR_IMAGE,
     ATTR_MULTICAST,
@@ -83,6 +84,11 @@ class Updater(FileConfiguration, CoreSysAttributes):
     def version_hassos(self) -> AwesomeVersion | None:
         """Return latest version of HassOS."""
         return self._data.get(ATTR_HASSOS)
+
+    @property
+    def version_hassos_unrestricted(self) -> AwesomeVersion | None:
+        """Return latest version of HassOS ignoring upgrade restrictions."""
+        return self._data.get(ATTR_HASSOS_UNRESTRICTED)
 
     @property
     def version_cli(self) -> AwesomeVersion | None:
@@ -275,6 +281,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
             if self.sys_os.board:
                 self._data[ATTR_OTA] = data["ota"]
                 if version := data["hassos"].get(self.sys_os.board):
+                    self._data[ATTR_HASSOS_UNRESTRICTED] = version
                     events.append("os")
                     upgrade_map = data.get("hassos-upgrade", {})
                     if last_in_major := upgrade_map.get(str(self.sys_os.version.major)):

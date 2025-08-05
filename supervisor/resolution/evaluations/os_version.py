@@ -38,7 +38,7 @@ class EvaluateOSVersion(EvaluateBase):
         if (
             not self.sys_os.available
             or not (current := self.sys_os.version)
-            or not (latest := self.sys_os.latest_version)
+            or not (latest := self.sys_os.latest_version_unrestricted)
             or not latest.major
         ):
             return False
