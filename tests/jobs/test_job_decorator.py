@@ -20,7 +20,7 @@ from supervisor.exceptions import (
 from supervisor.host.const import HostFeature
 from supervisor.host.manager import HostManager
 from supervisor.jobs import JobSchedulerOptions, SupervisorJob
-from supervisor.jobs.const import JobConcurrency, JobExecutionLimit, JobThrottle
+from supervisor.jobs.const import JobConcurrency, JobThrottle
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.jobs.job_group import JobGroup
 from supervisor.os.manager import OSManager
@@ -280,8 +280,8 @@ async def test_exception_conditions(coresys: CoreSys):
         await test.execute()
 
 
-async def test_execution_limit_single_wait(coresys: CoreSys):
-    """Test the single wait job execution limit."""
+async def test_concurrency_queue(coresys: CoreSys):
+    """Test the queue job concurrency."""
 
     class TestClass:
         """Test class."""
@@ -292,8 +292,8 @@ async def test_execution_limit_single_wait(coresys: CoreSys):
             self.run = asyncio.Lock()
 
         @Job(
-            name="test_execution_limit_single_wait_execute",
-            limit=JobExecutionLimit.SINGLE_WAIT,
+            name="test_concurrency_queue_execute",
+            concurrency=JobConcurrency.QUEUE,
         )
         async def execute(self, sleep: float):
             """Execute the class method."""
@@ -306,8 +306,8 @@ async def test_execution_limit_single_wait(coresys: CoreSys):
     await asyncio.gather(*[test.execute(0.1), test.execute(0.1), test.execute(0.1)])
 
 
-async def test_execution_limit_throttle_wait(coresys: CoreSys):
-    """Test the throttle wait job execution limit."""
+async def test_concurrency_queue_with_throttle(coresys: CoreSys):
+    """Test the queue concurrency with throttle."""
 
     class TestClass:
         """Test class."""
@@ -319,8 +319,9 @@ async def test_execution_limit_throttle_wait(coresys: CoreSys):
             self.call = 0
 
         @Job(
-            name="test_execution_limit_throttle_wait_execute",
-            limit=JobExecutionLimit.THROTTLE_WAIT,
+            name="test_concurrency_queue_with_throttle_execute",
+            concurrency=JobConcurrency.QUEUE,
+            throttle=JobThrottle.THROTTLE,
             throttle_period=timedelta(hours=1),
         )
         async def execute(self, sleep: float):
@@ -340,10 +341,8 @@ async def test_execution_limit_throttle_wait(coresys: CoreSys):
 
 
 @pytest.mark.parametrize("error", [None, PluginJobError])
-async def test_execution_limit_throttle_rate_limit(
-    coresys: CoreSys, error: JobException | None
-):
-    """Test the throttle wait job execution limit."""
+async def test_throttle_rate_limit(coresys: CoreSys, error: JobException | None):
+    """Test the throttle rate limit."""
 
     class TestClass:
         """Test class."""
@@ -355,8 +354,8 @@ async def test_execution_limit_throttle_rate_limit(
             self.call = 0
 
         @Job(
-            name=f"test_execution_limit_throttle_rate_limit_execute_{uuid4().hex}",
-            limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
+            name=f"test_throttle_rate_limit_execute_{uuid4().hex}",
+            throttle=JobThrottle.RATE_LIMIT,
             throttle_period=timedelta(hours=1),
             throttle_max_calls=2,
             on_condition=error,
@@ -381,8 +380,8 @@ async def test_execution_limit_throttle_rate_limit(
     assert test.call == 3
 
 
-async def test_execution_limit_throttle(coresys: CoreSys):
-    """Test the ignore conditions decorator."""
+async def test_throttle_basic(coresys: CoreSys):
+    """Test the basic throttle functionality."""
 
     class TestClass:
         """Test class."""
@@ -394,8 +393,8 @@ async def test_execution_limit_throttle(coresys: CoreSys):
             self.call = 0
 
         @Job(
-            name="test_execution_limit_throttle_execute",
-            limit=JobExecutionLimit.THROTTLE,
+            name="test_throttle_basic_execute",
+            throttle=JobThrottle.THROTTLE,
             throttle_period=timedelta(hours=1),
         )
         async def execute(self, sleep: float):
@@ -414,8 +413,8 @@ async def test_execution_limit_throttle(coresys: CoreSys):
     assert test.call == 1
 
 
-async def test_execution_limit_once(coresys: CoreSys):
-    """Test the ignore conditions decorator."""
+async def test_concurrency_reject(coresys: CoreSys):
+    """Test the reject concurrency."""
 
     class TestClass:
         """Test class."""
@@ -426,8 +425,8 @@ async def test_execution_limit_once(coresys: CoreSys):
             self.run = asyncio.Lock()
 
         @Job(
-            name="test_execution_limit_once_execute",
-            limit=JobExecutionLimit.ONCE,
+            name="test_concurrency_reject_execute",
+            concurrency=JobConcurrency.REJECT,
             on_condition=JobException,
         )
         async def execute(self, sleep: float):
@@ -603,8 +602,8 @@ async def test_host_network(coresys: CoreSys):
     assert await test.execute()
 
 
-async def test_job_group_once(coresys: CoreSys):
-    """Test job group once execution limitation."""
+async def test_job_group_reject(coresys: CoreSys):
+    """Test job group reject concurrency limitation."""
 
     class TestClass(JobGroup):
         """Test class."""
@@ -615,8 +614,8 @@ async def test_job_group_once(coresys: CoreSys):
             self.event = asyncio.Event()
 
         @Job(
-            name="test_job_group_once_inner_execute",
-            limit=JobExecutionLimit.GROUP_ONCE,
+            name="test_job_group_reject_inner_execute",
+            concurrency=JobConcurrency.GROUP_REJECT,
             on_condition=JobException,
         )
         async def inner_execute(self) -> bool:
@@ -625,8 +624,8 @@ async def test_job_group_once(coresys: CoreSys):
             return True
 
         @Job(
-            name="test_job_group_once_execute",
-            limit=JobExecutionLimit.GROUP_ONCE,
+            name="test_job_group_reject_execute",
+            concurrency=JobConcurrency.GROUP_REJECT,
             on_condition=JobException,
         )
         async def execute(self) -> bool:
@@ -634,8 +633,8 @@ async def test_job_group_once(coresys: CoreSys):
             return await self.inner_execute()
 
         @Job(
-            name="test_job_group_once_separate_execute",
-            limit=JobExecutionLimit.GROUP_ONCE,
+            name="test_job_group_reject_separate_execute",
+            concurrency=JobConcurrency.GROUP_REJECT,
             on_condition=JobException,
         )
         async def separate_execute(self) -> bool:
@@ -643,8 +642,8 @@ async def test_job_group_once(coresys: CoreSys):
             return True
 
         @Job(
-            name="test_job_group_once_unrelated",
-            limit=JobExecutionLimit.ONCE,
+            name="test_job_group_reject_unrelated",
+            concurrency=JobConcurrency.REJECT,
             on_condition=JobException,
         )
         async def unrelated_method(self) -> bool:
@@ -672,8 +671,8 @@ async def test_job_group_once(coresys: CoreSys):
     assert await run_task
 
 
-async def test_job_group_wait(coresys: CoreSys):
-    """Test job group wait execution limitation."""
+async def test_job_group_queue(coresys: CoreSys):
+    """Test job group queue concurrency limitation."""
 
     class TestClass(JobGroup):
         """Test class."""
@@ -686,8 +685,8 @@ async def test_job_group_wait(coresys: CoreSys):
             self.event = asyncio.Event()
 
         @Job(
-            name="test_job_group_wait_inner_execute",
-            limit=JobExecutionLimit.GROUP_WAIT,
+            name="test_job_group_queue_inner_execute",
+            concurrency=JobConcurrency.GROUP_QUEUE,
             on_condition=JobException,
         )
         async def inner_execute(self) -> None:
@@ -696,8 +695,8 @@ async def test_job_group_wait(coresys: CoreSys):
             await self.event.wait()
 
         @Job(
-            name="test_job_group_wait_execute",
-            limit=JobExecutionLimit.GROUP_WAIT,
+            name="test_job_group_queue_execute",
+            concurrency=JobConcurrency.GROUP_QUEUE,
             on_condition=JobException,
         )
         async def execute(self) -> None:
@@ -705,8 +704,8 @@ async def test_job_group_wait(coresys: CoreSys):
             await self.inner_execute()
 
         @Job(
-            name="test_job_group_wait_separate_execute",
-            limit=JobExecutionLimit.GROUP_WAIT,
+            name="test_job_group_queue_separate_execute",
+            concurrency=JobConcurrency.GROUP_QUEUE,
             on_condition=JobException,
         )
         async def separate_execute(self) -> None:
@@ -746,7 +745,7 @@ async def test_job_cleanup(coresys: CoreSys):
             self.event = asyncio.Event()
             self.job: SupervisorJob | None = None
 
-        @Job(name="test_job_cleanup_execute", limit=JobExecutionLimit.ONCE)
+        @Job(name="test_job_cleanup_execute", concurrency=JobConcurrency.REJECT)
         async def execute(self):
             """Execute the class method."""
             self.job = coresys.jobs.current
@@ -781,7 +780,7 @@ async def test_job_skip_cleanup(coresys: CoreSys):
 
         @Job(
             name="test_job_skip_cleanup_execute",
-            limit=JobExecutionLimit.ONCE,
+            concurrency=JobConcurrency.REJECT,
             cleanup=False,
         )
         async def execute(self):
@@ -804,8 +803,8 @@ async def test_job_skip_cleanup(coresys: CoreSys):
     assert test.job.done
 
 
-async def test_execution_limit_group_throttle(coresys: CoreSys):
-    """Test the group throttle execution limit."""
+async def test_group_throttle(coresys: CoreSys):
+    """Test the group throttle."""
 
     class TestClass(JobGroup):
         """Test class."""
@@ -817,8 +816,8 @@ async def test_execution_limit_group_throttle(coresys: CoreSys):
             self.call = 0
 
         @Job(
-            name="test_execution_limit_group_throttle_execute",
-            limit=JobExecutionLimit.GROUP_THROTTLE,
+            name="test_group_throttle_execute",
+            throttle=JobThrottle.GROUP_THROTTLE,
             throttle_period=timedelta(milliseconds=95),
         )
         async def execute(self, sleep: float):
@@ -851,8 +850,8 @@ async def test_execution_limit_group_throttle(coresys: CoreSys):
     assert test2.call == 2
 
 
-async def test_execution_limit_group_throttle_wait(coresys: CoreSys):
-    """Test the group throttle wait job execution limit."""
+async def test_group_throttle_with_queue(coresys: CoreSys):
+    """Test the group throttle with queue concurrency."""
 
     class TestClass(JobGroup):
         """Test class."""
@@ -864,8 +863,9 @@ async def test_execution_limit_group_throttle_wait(coresys: CoreSys):
             self.call = 0
 
         @Job(
-            name="test_execution_limit_group_throttle_wait_execute",
-            limit=JobExecutionLimit.GROUP_THROTTLE_WAIT,
+            name="test_group_throttle_with_queue_execute",
+            concurrency=JobConcurrency.QUEUE,
+            throttle=JobThrottle.GROUP_THROTTLE,
             throttle_period=timedelta(milliseconds=95),
         )
         async def execute(self, sleep: float):
@@ -901,10 +901,8 @@ async def test_execution_limit_group_throttle_wait(coresys: CoreSys):
 
 
 @pytest.mark.parametrize("error", [None, PluginJobError])
-async def test_execution_limit_group_throttle_rate_limit(
-    coresys: CoreSys, error: JobException | None
-):
-    """Test the group throttle rate limit job execution limit."""
+async def test_group_throttle_rate_limit(coresys: CoreSys, error: JobException | None):
+    """Test the group throttle rate limit."""
 
     class TestClass(JobGroup):
         """Test class."""
@@ -916,8 +914,8 @@ async def test_execution_limit_group_throttle_rate_limit(
             self.call = 0
 
         @Job(
-            name=f"test_execution_limit_group_throttle_rate_limit_execute_{uuid4().hex}",
-            limit=JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
+            name=f"test_group_throttle_rate_limit_execute_{uuid4().hex}",
+            throttle=JobThrottle.GROUP_RATE_LIMIT,
             throttle_period=timedelta(hours=1),
             throttle_max_calls=2,
             on_condition=error,
@@ -1013,7 +1011,7 @@ async def test_job_starting_separate_task(coresys: CoreSys):
 
         @Job(
             name="test_job_starting_separate_task_job_task",
-            limit=JobExecutionLimit.GROUP_ONCE,
+            concurrency=JobConcurrency.GROUP_REJECT,
         )
         async def job_task(self):
             """Create a separate long running job task."""
@@ -1035,7 +1033,7 @@ async def test_job_starting_separate_task(coresys: CoreSys):
 
         @Job(
             name="test_job_starting_separate_task_job_await",
-            limit=JobExecutionLimit.GROUP_ONCE,
+            concurrency=JobConcurrency.GROUP_REJECT,
         )
         async def job_await(self):
             """Await a simple job in same group to confirm lock released."""
@@ -1080,7 +1078,7 @@ async def test_job_always_removed_on_check_failure(coresys: CoreSys):
 
         @Job(
             name="test_job_always_removed_on_check_failure_limit",
-            limit=JobExecutionLimit.ONCE,
+            concurrency=JobConcurrency.REJECT,
             cleanup=False,
         )
         async def limit_check(self):

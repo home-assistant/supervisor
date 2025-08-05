@@ -39,7 +39,7 @@ from ..exceptions import (
 )
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
-from ..jobs.const import JobCondition, JobExecutionLimit
+from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
 from ..resolution.const import CGROUP_V2_VERSION, ContextType, IssueType, SuggestionType
 from ..utils.sentry import async_capture_exception
@@ -553,8 +553,8 @@ class DockerAddon(DockerInterface):
 
     @Job(
         name="docker_addon_run",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def run(self) -> None:
         """Run Docker image."""
@@ -619,8 +619,8 @@ class DockerAddon(DockerInterface):
 
     @Job(
         name="docker_addon_update",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def update(
         self,
@@ -647,8 +647,8 @@ class DockerAddon(DockerInterface):
 
     @Job(
         name="docker_addon_install",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def install(
         self,
@@ -735,8 +735,8 @@ class DockerAddon(DockerInterface):
 
     @Job(
         name="docker_addon_import_image",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def import_image(self, tar_file: Path) -> None:
         """Import a tar file as image."""
@@ -750,7 +750,7 @@ class DockerAddon(DockerInterface):
             with suppress(DockerError):
                 await self.cleanup()
 
-    @Job(name="docker_addon_cleanup", limit=JobExecutionLimit.GROUP_WAIT)
+    @Job(name="docker_addon_cleanup", concurrency=JobConcurrency.GROUP_QUEUE)
     async def cleanup(
         self,
         old_image: str | None = None,
@@ -774,8 +774,8 @@ class DockerAddon(DockerInterface):
 
     @Job(
         name="docker_addon_write_stdin",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def write_stdin(self, data: bytes) -> None:
         """Write to add-on stdin."""
@@ -808,8 +808,8 @@ class DockerAddon(DockerInterface):
 
     @Job(
         name="docker_addon_stop",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
@@ -848,8 +848,8 @@ class DockerAddon(DockerInterface):
     @Job(
         name="docker_addon_hardware_events",
         conditions=[JobCondition.OS_AGENT],
-        limit=JobExecutionLimit.SINGLE_WAIT,
         internal=True,
+        concurrency=JobConcurrency.QUEUE,
     )
     async def _hardware_events(self, device: Device) -> None:
         """Process Hardware events for adjust device access."""

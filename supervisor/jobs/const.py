@@ -84,18 +84,3 @@ class JobThrottle(StrEnum):
     RATE_LIMIT = "rate_limit"  # Rate limiting with max calls per period
     GROUP_THROTTLE = "group_throttle"  # Group version of THROTTLE
     GROUP_RATE_LIMIT = "group_rate_limit"  # Group version of RATE_LIMIT
-
-
-class JobExecutionLimit(StrEnum):
-    """Job Execution limits - DEPRECATED: Use JobConcurrency and JobThrottle instead."""
-
-    ONCE = "once"
-    SINGLE_WAIT = "single_wait"
-    THROTTLE = "throttle"
-    THROTTLE_WAIT = "throttle_wait"
-    THROTTLE_RATE_LIMIT = "throttle_rate_limit"
-    GROUP_ONCE = "group_once"
-    GROUP_WAIT = "group_wait"
-    GROUP_THROTTLE = "group_throttle"
-    GROUP_THROTTLE_WAIT = "group_throttle_wait"
-    GROUP_THROTTLE_RATE_LIMIT = "group_throttle_rate_limit"

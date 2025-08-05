@@ -6,7 +6,7 @@ from docker.types import Mount
 
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerJobError
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import ENV_TIME, MOUNT_DBUS, MountType
 from .interface import DockerInterface
@@ -31,8 +31,8 @@ class DockerDNS(DockerInterface, CoreSysAttributes):
 
     @Job(
         name="docker_dns_run",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def run(self) -> None:
         """Run Docker image."""

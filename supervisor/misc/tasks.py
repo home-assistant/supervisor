@@ -15,7 +15,8 @@ from ..exceptions import (
     ObserverError,
 )
 from ..homeassistant.const import LANDINGPAGE, WSType
-from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
+from ..jobs.const import JobConcurrency
+from ..jobs.decorator import Job, JobCondition
 from ..plugins.const import PLUGIN_UPDATE_CONDITIONS
 from ..utils.dt import utcnow
 from ..utils.sentry import async_capture_exception
@@ -160,7 +161,7 @@ class Tasks(CoreSysAttributes):
             JobCondition.INTERNET_HOST,
             JobCondition.RUNNING,
         ],
-        limit=JobExecutionLimit.ONCE,
+        concurrency=JobConcurrency.REJECT,
     )
     async def _update_supervisor(self):
         """Check and run update of Supervisor Supervisor."""

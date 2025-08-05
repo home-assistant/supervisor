@@ -15,7 +15,7 @@ from multidict import MultiMapping
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from ..utils import check_port, version_is_new_enough
 from .const import LANDINGPAGE
@@ -46,8 +46,8 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     @Job(
         name="home_assistant_api_ensure_access_token",
-        limit=JobExecutionLimit.SINGLE_WAIT,
         internal=True,
+        concurrency=JobConcurrency.QUEUE,
     )
     async def ensure_access_token(self) -> None:
         """Ensure there is an access token."""

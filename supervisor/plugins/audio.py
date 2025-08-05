@@ -24,7 +24,7 @@ from ..exceptions import (
     DockerError,
     PluginError,
 )
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobThrottle
 from ..jobs.decorator import Job
 from ..resolution.const import UnhealthyReason
 from ..utils.json import write_json_file
@@ -205,10 +205,10 @@ class PluginAudio(PluginBase):
 
     @Job(
         name="plugin_audio_restart_after_problem",
-        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
         on_condition=AudioJobError,
+        throttle=JobThrottle.RATE_LIMIT,
     )
     async def _restart_after_problem(self, state: ContainerState):
         """Restart unhealthy or failed plugin."""

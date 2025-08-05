@@ -39,7 +39,7 @@ from ..exceptions import (
     DockerRequestError,
     DockerTrustError,
 )
-from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobExecutionLimit
+from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
@@ -219,8 +219,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_install",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def install(
         self,
@@ -338,7 +338,7 @@ class DockerInterface(JobGroup, ABC):
 
         return _container_state_from_model(docker_container)
 
-    @Job(name="docker_interface_attach", limit=JobExecutionLimit.GROUP_WAIT)
+    @Job(name="docker_interface_attach", concurrency=JobConcurrency.GROUP_QUEUE)
     async def attach(
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
@@ -376,8 +376,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_run",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def run(self) -> None:
         """Run Docker image."""
@@ -406,8 +406,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_stop",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
@@ -421,8 +421,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_start",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     def start(self) -> Awaitable[None]:
         """Start Docker container."""
@@ -430,8 +430,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_remove",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def remove(self, *, remove_image: bool = True) -> None:
         """Remove Docker images."""
@@ -448,8 +448,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_check_image",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def check_image(
         self,
@@ -497,8 +497,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_update",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def update(
         self, version: AwesomeVersion, image: str | None = None, latest: bool = False
@@ -526,7 +526,7 @@ class DockerInterface(JobGroup, ABC):
 
         return b""
 
-    @Job(name="docker_interface_cleanup", limit=JobExecutionLimit.GROUP_WAIT)
+    @Job(name="docker_interface_cleanup", concurrency=JobConcurrency.GROUP_QUEUE)
     async def cleanup(
         self,
         old_image: str | None = None,
@@ -543,8 +543,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_restart",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     def restart(self) -> Awaitable[None]:
         """Restart docker container."""
@@ -554,8 +554,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_execute_command",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def execute_command(self, command: str) -> CommandReturn:
         """Create a temporary container and run command."""
@@ -619,8 +619,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_run_inside",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     def run_inside(self, command: str) -> Awaitable[CommandReturn]:
         """Execute a command inside Docker container."""
@@ -635,8 +635,8 @@ class DockerInterface(JobGroup, ABC):
 
     @Job(
         name="docker_interface_check_trust",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def check_trust(self) -> None:
         """Check trust of exists Docker image."""
