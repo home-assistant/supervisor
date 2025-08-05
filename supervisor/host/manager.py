@@ -157,6 +157,8 @@ class HostManager(CoreSysAttributes):
     async def load(self):
         """Load host information."""
         with suppress(HassioError):
+            await self.info.update()
+
             if self.sys_dbus.systemd.is_connected:
                 await self.services.update()
 

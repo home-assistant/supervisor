@@ -10,7 +10,9 @@ import pytest
 from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
+from supervisor.exceptions import JobConditionException
 from supervisor.jobs import SupervisorJob
+from supervisor.resolution.const import UnsupportedReason
 
 from tests.common import MockResponse, load_binary_fixture
 from tests.dbus_service_mocks.network_manager import (
@@ -138,3 +140,25 @@ async def test_delayed_fetch_for_connectivity(
         coresys.websession.get.call_args[0][0]
         == "https://version.home-assistant.io/stable.json"
     )
+
+
+async def test_fetch_data_no_update_when_os_unsupported(coresys: CoreSys) -> None:
+    """Test that fetch_data doesn't update data when OS is unsupported."""
+    # Store initial versions to compare later
+    initial_supervisor_version = coresys.updater.version_supervisor
+    initial_homeassistant_version = coresys.updater.version_homeassistant
+    initial_hassos_version = coresys.updater.version_hassos
+
+    # Mark OS as unsupported by adding UnsupportedReason.OS_VERSION
+    coresys.resolution.unsupported.add(UnsupportedReason.OS_VERSION)
+
+    # Attempt to fetch data should fail due to OS_SUPPORTED condition
+    with pytest.raises(
+        JobConditionException, match="blocked from execution, unsupported OS version"
+    ):
+        await coresys.updater.fetch_data()
+
+    # Verify that versions were not updated
+    assert coresys.updater.version_supervisor == initial_supervisor_version
+    assert coresys.updater.version_homeassistant == initial_homeassistant_version
+    assert coresys.updater.version_hassos == initial_hassos_version

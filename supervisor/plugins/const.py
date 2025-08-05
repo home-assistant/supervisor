@@ -22,5 +22,6 @@ PLUGIN_UPDATE_CONDITIONS = [
     JobCondition.FREE_SPACE,
     JobCondition.HEALTHY,
     JobCondition.INTERNET_HOST,
+    JobCondition.OS_SUPPORTED,
     JobCondition.SUPERVISOR_UPDATED,
 ]
