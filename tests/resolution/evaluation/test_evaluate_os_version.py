@@ -30,7 +30,7 @@ from supervisor.resolution.evaluations.os_version import EvaluateOSVersion
         (
             "9ccda431973acf17e4221850b08f3280b723df8d",
             "15.0",
-            False,
+            True,
         ),  # Dev setup running on a commit hash, check skipped
     ],
 )
