@@ -48,4 +48,4 @@ class EvaluateOSVersion(EvaluateBase):
         try:
             return current < last_supported_version
         except AwesomeVersionException:
-            return False
+            return True
