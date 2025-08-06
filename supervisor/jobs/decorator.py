@@ -118,13 +118,6 @@ class Job(CoreSysAttributes):
                 )
             self._rate_limited_calls = {}
 
-        if self.throttle is not None and self._is_group_concurrency():
-            # We cannot release group locks when Job is not running (e.g. throttled)
-            # which makes these combinations impossible to use currently.
-            raise RuntimeError(
-                f"Job {self.name} is using throttling ({self.throttle}) with group concurrency ({self.concurrency}), which is not allowed!"
-            )
-
     @property
     def throttle_max_calls(self) -> int:
         """Return max calls for throttle."""

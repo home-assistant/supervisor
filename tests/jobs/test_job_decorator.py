@@ -1300,3 +1300,59 @@ async def test_concurency_reject_and_rate_limit(
         await test.execute()
 
     assert test.call == 2
+
+
+async def test_group_concurrency_with_group_throttling(coresys: CoreSys):
+    """Test that group concurrency works with group throttling."""
+
+    class TestClass(JobGroup):
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            super().__init__(coresys, "TestGroupConcurrencyThrottle")
+            self.call_count = 0
+            self.nested_call_count = 0
+
+        @Job(
+            name="test_group_concurrency_throttle_main",
+            concurrency=JobConcurrency.GROUP_QUEUE,
+            throttle=JobThrottle.GROUP_THROTTLE,
+            throttle_period=timedelta(milliseconds=50),
+            on_condition=JobException,
+        )
+        async def main_method(self) -> None:
+            """Make nested call with group concurrency and throttling."""
+            self.call_count += 1
+            # Test nested call to ensure lock handling works
+            await self.nested_method()
+
+        @Job(
+            name="test_group_concurrency_throttle_nested",
+            concurrency=JobConcurrency.GROUP_QUEUE,
+            throttle=JobThrottle.GROUP_THROTTLE,
+            throttle_period=timedelta(milliseconds=50),
+            on_condition=JobException,
+        )
+        async def nested_method(self) -> None:
+            """Nested method with group concurrency and throttling."""
+            self.nested_call_count += 1
+
+    test = TestClass(coresys)
+
+    # First call should work
+    await test.main_method()
+    assert test.call_count == 1
+    assert test.nested_call_count == 1
+
+    # Second call should be throttled (not execute due to throttle period)
+    await test.main_method()
+    assert test.call_count == 1  # Still 1, throttled
+    assert test.nested_call_count == 1  # Still 1, throttled
+
+    # Wait for throttle period to pass and try again
+    with time_machine.travel(utcnow() + timedelta(milliseconds=60)):
+        await test.main_method()
+
+    assert test.call_count == 2  # Should execute now
+    assert test.nested_call_count == 2  # Nested call should also execute
