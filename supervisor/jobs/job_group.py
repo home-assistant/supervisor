@@ -59,10 +59,6 @@ class JobGroup(CoreSysAttributes):
         """Check if this specific job owns the lock."""
         return self._lock_owner == job
 
-    def can_acquire(self, job: SupervisorJob) -> bool:
-        """Check if the job can acquire the lock without waiting."""
-        return not self._lock_owner or self.is_locked_by(job)
-
     async def acquire(self, job: SupervisorJob, wait: bool = False) -> None:
         """Acquire the lock for the group for the specified job."""
         # If we already own the lock (nested call or same job chain), just update parent stack
