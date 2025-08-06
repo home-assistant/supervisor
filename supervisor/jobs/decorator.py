@@ -71,7 +71,7 @@ class Job(CoreSysAttributes):
         self.on_condition = on_condition
         self._throttle_period = throttle_period
         self._throttle_max_calls = throttle_max_calls
-        self._lock: asyncio.Semaphore | None = None
+        self._lock: asyncio.Lock | None = None
         self._last_call: dict[str | None, datetime] = {}
         self._rate_limited_calls: dict[str | None, list[datetime]] | None = None
         self._internal = internal
@@ -126,9 +126,9 @@ class Job(CoreSysAttributes):
         return self._throttle_max_calls
 
     @property
-    def lock(self) -> asyncio.Semaphore:
+    def lock(self) -> asyncio.Lock:
         """Return lock for limits."""
-        # asyncio.Semaphore objects must be created in event loop
+        # asyncio.Lock objects must be created in event loop
         # Since this is sync code it is not safe to create if missing here
         if not self._lock:
             raise RuntimeError("Lock has not been created yet!")
@@ -200,7 +200,7 @@ class Job(CoreSysAttributes):
 
         # Setup lock for limits
         if self._lock is None:
-            self._lock = asyncio.Semaphore()
+            self._lock = asyncio.Lock()
 
         # Job groups
         job_group: JobGroup | None = None
