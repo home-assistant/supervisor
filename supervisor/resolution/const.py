@@ -84,6 +84,7 @@ class IssueType(StrEnum):
     DETACHED_ADDON_REMOVED = "detached_addon_removed"
     DEVICE_ACCESS_MISSING = "device_access_missing"
     DISABLED_DATA_DISK = "disabled_data_disk"
+    DISK_LIFETIME = "disk_lifetime"
     DNS_LOOP = "dns_loop"
     DUPLICATE_OS_INSTALLATION = "duplicate_os_installation"
     DNS_SERVER_FAILED = "dns_server_failed"
