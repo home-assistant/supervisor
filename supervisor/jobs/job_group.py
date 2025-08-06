@@ -1,8 +1,6 @@
 """Job group object."""
 
 from asyncio import Lock
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import JobException, JobGroupExecutionLimitExceeded
@@ -55,10 +53,27 @@ class JobGroup(CoreSysAttributes):
         if not self._lock_owner:
             return False
 
-        if self.sys_jobs.is_job:
-            current_job = self.sys_jobs.current
-            return current_job.uuid == self._lock_owner
+        if not self.sys_jobs.is_job:
+            return False
 
+        current_job = self.sys_jobs.current
+        # Check if current job owns lock directly, or if it's a child of the lock owner
+        return self._lock_owner in (
+            current_job.uuid,
+            current_job.parent_id,
+        ) or self._is_job_in_owner_chain(current_job)
+
+    def _is_job_in_owner_chain(self, job: SupervisorJob) -> bool:
+        """Check if job is in the ownership chain of the lock owner."""
+        current = job
+        while current and current.parent_id:
+            try:
+                parent = self.sys_jobs.get_job(current.parent_id)
+                if parent.uuid == self._lock_owner:
+                    return True
+                current = parent
+            except Exception:
+                break
         return False
 
     @property
@@ -76,8 +91,8 @@ class JobGroup(CoreSysAttributes):
 
     async def acquire(self, job: SupervisorJob, wait: bool = False) -> None:
         """Acquire the lock for the group for the specified job."""
-        # If we already own the lock (nested call), just update parent stack
-        if self.is_locked_by(job):
+        # If we already own the lock (nested call or same job chain), just update parent stack
+        if self.has_lock:
             if self._lock_owner:
                 self._parent_jobs.append(self._lock_owner)
             self._lock_owner = job.uuid
@@ -109,21 +124,3 @@ class JobGroup(CoreSysAttributes):
         else:
             self._lock_owner = None
             self._lock.release()
-
-    def force_release(self) -> None:
-        """Force release the lock (for cleanup/error scenarios)."""
-        if self._lock.locked():
-            self._lock_owner = None
-            self._parent_jobs.clear()
-            self._lock.release()
-
-    @asynccontextmanager
-    async def acquire_context(
-        self, job: SupervisorJob, wait: bool = False
-    ) -> AsyncIterator[None]:
-        """Context manager for acquiring and automatically releasing the lock."""
-        await self.acquire(job, wait=wait)
-        try:
-            yield
-        finally:
-            self.release(job)
