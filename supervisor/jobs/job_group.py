@@ -28,11 +28,6 @@ class JobGroup(CoreSysAttributes):
         self._job_reference: str | None = job_reference
 
     @property
-    def active_job_id(self) -> str | None:
-        """Get active job UUID."""
-        return self._lock_owner.uuid if self._lock_owner else None
-
-    @property
     def active_job(self) -> SupervisorJob | None:
         """Get active job ID."""
         return self._lock_owner
