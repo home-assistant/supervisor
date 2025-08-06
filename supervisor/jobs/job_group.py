@@ -23,24 +23,19 @@ class JobGroup(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._group_name: str = group_name
         self._lock: Lock = Lock()
-        self._lock_owner: str | None = None
-        self._parent_jobs: list[str] = []
+        self._lock_owner: SupervisorJob | None = None
+        self._parent_jobs: list[SupervisorJob] = []
         self._job_reference: str | None = job_reference
 
     @property
     def active_job_id(self) -> str | None:
         """Get active job UUID."""
-        return self._lock_owner
+        return self._lock_owner.uuid if self._lock_owner else None
 
     @property
     def active_job(self) -> SupervisorJob | None:
         """Get active job ID."""
-        if self._lock_owner:
-            try:
-                return self.sys_jobs.get_job(self._lock_owner)
-            except Exception:
-                return None
-        return None
+        return self._lock_owner
 
     @property
     def group_name(self) -> str:
@@ -58,7 +53,7 @@ class JobGroup(CoreSysAttributes):
 
         current_job = self.sys_jobs.current
         # Check if current job owns lock directly
-        return current_job.uuid == self._lock_owner
+        return current_job == self._lock_owner
 
     @property
     def job_reference(self) -> str | None:
@@ -67,7 +62,7 @@ class JobGroup(CoreSysAttributes):
 
     def is_locked_by(self, job: SupervisorJob) -> bool:
         """Check if this specific job owns the lock."""
-        return self._lock_owner == job.uuid
+        return self._lock_owner == job
 
     def can_acquire(self, job: SupervisorJob) -> bool:
         """Check if the job can acquire the lock without waiting."""
@@ -79,7 +74,7 @@ class JobGroup(CoreSysAttributes):
         if self.has_lock:
             if self._lock_owner:
                 self._parent_jobs.append(self._lock_owner)
-            self._lock_owner = job.uuid
+            self._lock_owner = job
             return
 
         # If there's another job running and we're not waiting, raise
@@ -92,7 +87,7 @@ class JobGroup(CoreSysAttributes):
         await self._lock.acquire()
 
         # Set ownership
-        self._lock_owner = job.uuid
+        self._lock_owner = job
 
     def release(self, job: SupervisorJob) -> None:
         """Release the lock for the group or return it to parent."""
