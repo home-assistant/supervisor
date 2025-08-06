@@ -388,7 +388,7 @@ jobs:
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: coverage-${{ matrix.python-version }}
+          name: coverage
           path: .coverage
           include-hidden-files: true
 
@@ -418,6 +418,9 @@ jobs:
           exit 1
       - name: Download all coverage artifacts
         uses: actions/download-artifact@v5.0.0
+        with:
+          name: coverage
+          path: coverage/
       - name: Combine coverage results
         run: |
           . venv/bin/activate
