@@ -177,3 +177,16 @@ async def test_try_get_nvme_life_time(
         coresys.config.path_supervisor
     )
     assert lifetime == 50
+
+
+async def test_try_get_nvme_life_time_missing_percent_used(
+    coresys: CoreSys, nvme_data_disk: NVMeControllerService
+):
+    """Test getting lifetime info from an NVMe when percent_used is missing."""
+    # Simulate a drive that doesn't provide percent_used
+    nvme_data_disk.set_missing_attributes(["percent_used"])
+
+    lifetime = await coresys.hardware.disk.get_disk_life_time(
+        coresys.config.path_supervisor
+    )
+    assert lifetime is None

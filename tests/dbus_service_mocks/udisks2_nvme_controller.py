@@ -46,6 +46,11 @@ class NVMeController(DBusServiceMock):
             "critical_temp_time": Variant("i", 0),
         }
 
+    def set_missing_attributes(self, missing_keys: list[str]):
+        """Remove specified attributes to simulate drives that don't provide them."""
+        for key in missing_keys:
+            self.smart_get_attributes_response.pop(key, None)
+
     @dbus_property(access=PropertyAccess.READ)
     def State(self) -> "s":
         """Get State."""

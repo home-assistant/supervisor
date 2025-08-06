@@ -70,3 +70,33 @@ async def test_nvme_controller_smart_get_attributes(dbus_session_bus: MessageBus
     assert smart_log.total_data_written == 27723431936000
     assert smart_log.controller_busy_minutes == 2682
     assert smart_log.temperature_sensors == [310, 305, 0, 0, 0, 0, 0, 0]
+
+
+async def test_nvme_controller_smart_get_attributes_missing(
+    nvme_controller_service: NVMeControllerService, dbus_session_bus: MessageBus
+):
+    """Test NVMe Controller smart get attributes with missing vendor-specific attributes."""
+    # Simulate a drive that doesn't provide some optional attributes
+    nvme_controller_service.set_missing_attributes(
+        ["wctemp", "cctemp", "warning_temp_time", "critical_temp_time", "temp_sensors"]
+    )
+
+    controller = UDisks2NVMeController(
+        "/org/freedesktop/UDisks2/drives/Samsung_SSD_970_EVO_Plus_2TB_S40123456789ABC"
+    )
+    await controller.connect(dbus_session_bus)
+
+    smart_log = await controller.smart_get_attributes()
+    # Core attributes should still be present
+    assert smart_log.available_spare == 100
+    assert smart_log.percent_used == 1
+    assert smart_log.total_data_read == 22890461184000
+    assert smart_log.total_data_written == 27723431936000
+    assert smart_log.controller_busy_minutes == 2682
+
+    # Optional attributes should be None
+    assert smart_log.warning_composite_temperature is None
+    assert smart_log.critical_composite_temperature is None
+    assert smart_log.warning_temperature_minutes is None
+    assert smart_log.critical_temperature_minutes is None
+    assert smart_log.temperature_sensors is None
