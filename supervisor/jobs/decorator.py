@@ -477,16 +477,14 @@ class Job(CoreSysAttributes):
             await self.lock.acquire()
         elif self.concurrency == JobConcurrency.QUEUE:
             await self.lock.acquire()
-        elif self.concurrency == JobConcurrency.GROUP_REJECT:
+        elif self.concurrency in (
+            JobConcurrency.GROUP_REJECT,
+            JobConcurrency.GROUP_QUEUE,
+        ):
             try:
-                await cast(JobGroup, job_group).acquire(job, wait=False)
-            except JobGroupExecutionLimitExceeded as err:
-                if self.on_condition:
-                    raise self.on_condition(str(err)) from err
-                raise err
-        elif self.concurrency == JobConcurrency.GROUP_QUEUE:
-            try:
-                await cast(JobGroup, job_group).acquire(job, wait=True)
+                await cast(JobGroup, job_group).acquire(
+                    job, wait=self.concurrency == JobConcurrency.GROUP_QUEUE
+                )
             except JobGroupExecutionLimitExceeded as err:
                 if self.on_condition:
                     raise self.on_condition(str(err)) from err
