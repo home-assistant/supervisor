@@ -82,37 +82,43 @@ class Job(CoreSysAttributes):
         # Validate Options
         self._validate_parameters()
 
+    def _is_group_concurrency(self) -> bool:
+        """Check if this job uses group-level concurrency."""
+        return self.concurrency in (
+            JobConcurrency.GROUP_REJECT,
+            JobConcurrency.GROUP_QUEUE,
+        )
+
+    def _is_group_throttle(self) -> bool:
+        """Check if this job uses group-level throttling."""
+        return self.throttle in (
+            JobThrottle.GROUP_THROTTLE,
+            JobThrottle.GROUP_RATE_LIMIT,
+        )
+
+    def _is_rate_limit_throttle(self) -> bool:
+        """Check if this job uses rate limiting (job or group level)."""
+        return self.throttle in (
+            JobThrottle.RATE_LIMIT,
+            JobThrottle.GROUP_RATE_LIMIT,
+        )
+
     def _validate_parameters(self) -> None:
         """Validate job parameters."""
         # Validate throttle parameters
-        if (
-            self.throttle
-            in (
-                JobThrottle.THROTTLE,
-                JobThrottle.GROUP_THROTTLE,
-                JobThrottle.RATE_LIMIT,
-                JobThrottle.GROUP_RATE_LIMIT,
-            )
-            and self._throttle_period is None
-        ):
+        if self.throttle is not None and self._throttle_period is None:
             raise RuntimeError(
                 f"Job {self.name} is using throttle {self.throttle} without a throttle period!"
             )
 
-        if self.throttle in (
-            JobThrottle.RATE_LIMIT,
-            JobThrottle.GROUP_RATE_LIMIT,
-        ):
+        if self._is_rate_limit_throttle():
             if self._throttle_max_calls is None:
                 raise RuntimeError(
                     f"Job {self.name} is using throttle {self.throttle} without throttle max calls!"
                 )
             self._rate_limited_calls = {}
 
-        if self.throttle is not None and self.concurrency in (
-            JobConcurrency.GROUP_REJECT,
-            JobConcurrency.GROUP_QUEUE,
-        ):
+        if self.throttle is not None and self._is_group_concurrency():
             # We cannot release group locks when Job is not running (e.g. throttled)
             # which makes these combinations impossible to use currently.
             raise RuntimeError(
@@ -211,18 +217,12 @@ class Job(CoreSysAttributes):
 
         # Check for group-based parameters
         if not job_group:
-            if self.concurrency in (
-                JobConcurrency.GROUP_REJECT,
-                JobConcurrency.GROUP_QUEUE,
-            ):
+            if self._is_group_concurrency():
                 raise RuntimeError(
                     f"Job {self.name} uses group concurrency ({self.concurrency}) but is not on a JobGroup! "
                     f"The class must inherit from JobGroup to use GROUP_REJECT or GROUP_QUEUE."
                 ) from None
-            if self.throttle in (
-                JobThrottle.GROUP_THROTTLE,
-                JobThrottle.GROUP_RATE_LIMIT,
-            ):
+            if self._is_group_throttle():
                 raise RuntimeError(
                     f"Job {self.name} uses group throttling ({self.throttle}) but is not on a JobGroup! "
                     f"The class must inherit from JobGroup to use GROUP_THROTTLE or GROUP_RATE_LIMIT."
@@ -452,23 +452,32 @@ class Job(CoreSysAttributes):
         self, job_group: JobGroup | None, job: SupervisorJob
     ) -> None:
         """Release concurrency control locks."""
-        if self.concurrency == JobConcurrency.REJECT:
+        if self._is_group_concurrency():
+            # Group-level concurrency: delegate to job group
+            assert job_group is not None  # Should be validated during _post_init
+            job_group.release(job)
+        elif self.concurrency in (JobConcurrency.REJECT, JobConcurrency.QUEUE):
+            # Job-level concurrency: use semaphore
             if self.lock.locked():
                 self.lock.release()
-        elif self.concurrency == JobConcurrency.QUEUE:
-            if self.lock.locked():
-                self.lock.release()
-        elif self.concurrency in (
-            JobConcurrency.GROUP_REJECT,
-            JobConcurrency.GROUP_QUEUE,
-        ):
-            cast(JobGroup, job_group).release(job)
 
     async def _handle_concurrency_control(
         self, job_group: JobGroup | None, job: SupervisorJob
     ) -> None:
         """Handle concurrency control limits."""
-        if self.concurrency == JobConcurrency.REJECT:
+        if self._is_group_concurrency():
+            # Group-level concurrency: delegate to job group
+            assert job_group is not None  # Validated during _post_init
+            try:
+                await job_group.acquire(
+                    job, wait=self.concurrency == JobConcurrency.GROUP_QUEUE
+                )
+            except JobGroupExecutionLimitExceeded as err:
+                if self.on_condition:
+                    raise self.on_condition(str(err)) from err
+                raise err
+        elif self.concurrency == JobConcurrency.REJECT:
+            # Job-level reject: fail if lock is taken
             if self.lock.locked():
                 on_condition = (
                     JobException if self.on_condition is None else self.on_condition
@@ -476,19 +485,8 @@ class Job(CoreSysAttributes):
                 raise on_condition("Another job is running")
             await self.lock.acquire()
         elif self.concurrency == JobConcurrency.QUEUE:
+            # Job-level queue: wait for lock
             await self.lock.acquire()
-        elif self.concurrency in (
-            JobConcurrency.GROUP_REJECT,
-            JobConcurrency.GROUP_QUEUE,
-        ):
-            try:
-                await cast(JobGroup, job_group).acquire(
-                    job, wait=self.concurrency == JobConcurrency.GROUP_QUEUE
-                )
-            except JobGroupExecutionLimitExceeded as err:
-                if self.on_condition:
-                    raise self.on_condition(str(err)) from err
-                raise err
 
     @asynccontextmanager
     async def _concurrency_control(
@@ -509,7 +507,7 @@ class Job(CoreSysAttributes):
             if time_since_last_call < throttle_period:
                 # Always return False when throttled (skip execution)
                 return False
-        elif self.throttle in (JobThrottle.RATE_LIMIT, JobThrottle.GROUP_RATE_LIMIT):
+        elif self._is_rate_limit_throttle():
             # Only reprocess array when necessary (at limit)
             if len(self.rate_limited_calls(group_name)) >= self.throttle_max_calls:
                 self.set_rate_limited_calls(
