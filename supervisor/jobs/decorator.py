@@ -448,7 +448,9 @@ class Job(CoreSysAttributes):
                 f"'{method_name}' blocked from execution, mounting not supported on system"
             )
 
-    def _release_concurrency_control(self, job_group: JobGroup | None) -> None:
+    def _release_concurrency_control(
+        self, job_group: JobGroup | None, job: SupervisorJob
+    ) -> None:
         """Release concurrency control locks."""
         if self.concurrency == JobConcurrency.REJECT:
             if self.lock.locked():
@@ -460,8 +462,7 @@ class Job(CoreSysAttributes):
             JobConcurrency.GROUP_REJECT,
             JobConcurrency.GROUP_QUEUE,
         ):
-            if job_group:
-                job_group.release()
+            cast(JobGroup, job_group).release(job)
 
     async def _handle_concurrency_control(
         self, job_group: JobGroup | None, job: SupervisorJob
@@ -500,7 +501,7 @@ class Job(CoreSysAttributes):
         try:
             yield
         finally:
-            self._release_concurrency_control(job_group)
+            self._release_concurrency_control(job_group, job)
 
     async def _handle_throttling(self, group_name: str | None) -> bool:
         """Handle throttling limits. Returns True if job should continue, False if throttled."""
