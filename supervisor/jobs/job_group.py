@@ -57,24 +57,8 @@ class JobGroup(CoreSysAttributes):
             return False
 
         current_job = self.sys_jobs.current
-        # Check if current job owns lock directly, or if it's a child of the lock owner
-        return self._lock_owner in (
-            current_job.uuid,
-            current_job.parent_id,
-        ) or self._is_job_in_owner_chain(current_job)
-
-    def _is_job_in_owner_chain(self, job: SupervisorJob) -> bool:
-        """Check if job is in the ownership chain of the lock owner."""
-        current = job
-        while current and current.parent_id:
-            try:
-                parent = self.sys_jobs.get_job(current.parent_id)
-                if parent.uuid == self._lock_owner:
-                    return True
-                current = parent
-            except Exception:
-                break
-        return False
+        # Check if current job owns lock directly
+        return current_job.uuid == self._lock_owner
 
     @property
     def job_reference(self) -> str | None:
@@ -110,13 +94,10 @@ class JobGroup(CoreSysAttributes):
         # Set ownership
         self._lock_owner = job.uuid
 
-    def release(self, job: SupervisorJob | None = None) -> None:
+    def release(self, job: SupervisorJob) -> None:
         """Release the lock for the group or return it to parent."""
-        # Allow release by specific job UUID or current job
-        if job and not self.is_locked_by(job):
+        if not self.is_locked_by(job):
             raise JobException(f"Job {job.uuid} does not own the lock")
-        elif not job and not self.has_lock:
-            raise JobException("Current context does not own the lock")
 
         # Return to parent job if exists
         if self._parent_jobs:
