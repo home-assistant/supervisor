@@ -447,8 +447,7 @@ class Job(CoreSysAttributes):
         """Release concurrency control locks."""
         if self._is_group_concurrency():
             # Group-level concurrency: delegate to job group
-            assert job_group is not None  # Should be validated during _post_init
-            job_group.release(job)
+            cast(JobGroup, job_group).release(job)
         elif self.concurrency in (JobConcurrency.REJECT, JobConcurrency.QUEUE):
             # Job-level concurrency: use semaphore
             if self.lock.locked():
@@ -460,9 +459,8 @@ class Job(CoreSysAttributes):
         """Handle concurrency control limits."""
         if self._is_group_concurrency():
             # Group-level concurrency: delegate to job group
-            assert job_group is not None  # Validated during _post_init
             try:
-                await job_group.acquire(
+                await cast(JobGroup, job_group).acquire(
                     job, wait=self.concurrency == JobConcurrency.GROUP_QUEUE
                 )
             except JobGroupExecutionLimitExceeded as err:
