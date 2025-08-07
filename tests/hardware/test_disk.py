@@ -1,11 +1,14 @@
 """Test hardware utils."""
 
 # pylint: disable=protected-access
+import errno
+import os
 from pathlib import Path
 from unittest.mock import patch
 
 from supervisor.coresys import CoreSys
 from supervisor.hardware.data import Device
+from supervisor.resolution.const import UnhealthyReason
 
 
 def test_system_partition_disk(coresys: CoreSys):
@@ -226,3 +229,50 @@ def test_try_get_emmc_life_time(coresys, tmp_path):
     ):
         value = coresys.hardware.disk._try_get_emmc_life_time("mmcblk0")
     assert value == 20.0
+
+
+def test_get_dir_structure_sizes_ebadmsg_error(coresys, tmp_path):
+    """Test directory structure size calculation with EBADMSG error."""
+    # Create a test directory structure
+    test_dir = tmp_path / "test_dir"
+    test_dir.mkdir()
+
+    # Create some files
+    (test_dir / "file1.txt").write_text("content1")
+
+    # Create a subdirectory
+    subdir = test_dir / "subdir"
+    subdir.mkdir()
+    (subdir / "file2.txt").write_text("content2")
+
+    # Mock is_dir, is_symlink, and stat methods to handle the EBADMSG error correctly
+
+    def mock_is_dir(self):
+        # Use the real is_dir for all paths
+        return os.path.isdir(self)
+
+    def mock_is_symlink(self):
+        # Use the real is_symlink for all paths
+        return os.path.islink(self)
+
+    def mock_stat_ebadmsg(self, follow_symlinks=True):
+        if self == subdir:
+            raise OSError(errno.EBADMSG, "Bad message")
+        # For other paths, use the real os.stat
+        return os.stat(self, follow_symlinks=follow_symlinks)
+
+    with (
+        patch.object(Path, "is_dir", mock_is_dir),
+        patch.object(Path, "is_symlink", mock_is_symlink),
+        patch.object(Path, "stat", mock_stat_ebadmsg),
+    ):
+        result = coresys.hardware.disk.get_dir_structure_sizes(test_dir)
+
+    # The EBADMSG error should cause the loop to break, so we get 0 used space
+    # because the error happens before processing the file in the root directory
+    assert result["used_space"] == 0
+    assert "children" not in result
+
+    # Verify that the unhealthy reason was added
+    assert coresys.resolution.unhealthy
+    assert UnhealthyReason.OSERROR_BAD_MESSAGE in coresys.resolution.unhealthy
