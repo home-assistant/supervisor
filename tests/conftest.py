@@ -347,8 +347,9 @@ def addon_repo_fixtures() -> dict[str, Path]:
 
     # Ensure each repo folder has a dummy .git
     (core_repo_fixture / ".git").mkdir(exist_ok=True)
-    for repo in os.listdir(git_repo_fixtures):
-        Path(repo, ".git").mkdir(exist_ok=True)
+    for f in os.listdir(git_repo_fixtures):
+        if (repo := git_repo_fixtures / f).is_dir():
+            (repo / ".git").mkdir(exist_ok=True)
 
     return {
         "core": core_repo_fixture,
