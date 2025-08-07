@@ -100,3 +100,6 @@ ENV/
 # mypy
 /.mypy_cache/*
 /.dmypy.json
+
+# Mac
+.DS_Store
