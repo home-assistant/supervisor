@@ -45,7 +45,7 @@ async def test_api_network_mtu(coresys: CoreSys, api_client: TestClient):
     assert resp.status == 200
     body = await resp.json()
     assert body["data"]["mtu"] == 1450
-    
+
     # Test setting MTU to None
     resp = await api_client.post("/docker/options", json={"mtu": None})
     assert resp.status == 200
