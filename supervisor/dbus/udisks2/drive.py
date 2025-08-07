@@ -1,6 +1,7 @@
 """Interface to UDisks2 Drive over D-Bus."""
 
 from datetime import UTC, datetime
+from typing import Any
 
 from dbus_fast.aio import MessageBus
 
@@ -18,11 +19,13 @@ from ..const import (
     DBUS_ATTR_VENDOR,
     DBUS_ATTR_WWN,
     DBUS_IFACE_DRIVE,
+    DBUS_IFACE_NVME_CONTROLLER,
     DBUS_NAME_UDISKS2,
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .const import UDISKS2_DEFAULT_OPTIONS
+from .nvme_controller import UDisks2NVMeController
 
 
 class UDisks2Drive(DBusInterfaceProxy):
@@ -35,10 +38,17 @@ class UDisks2Drive(DBusInterfaceProxy):
     bus_name: str = DBUS_NAME_UDISKS2
     properties_interface: str = DBUS_IFACE_DRIVE
 
+    _nvme_controller: UDisks2NVMeController | None = None
+
     def __init__(self, object_path: str) -> None:
         """Initialize object."""
         self._object_path = object_path
         super().__init__()
+
+    async def connect(self, bus: MessageBus) -> None:
+        """Connect to bus."""
+        await super().connect(bus)
+        await self._reload_interfaces()
 
     @staticmethod
     async def new(object_path: str, bus: MessageBus) -> "UDisks2Drive":
@@ -51,6 +61,11 @@ class UDisks2Drive(DBusInterfaceProxy):
     def object_path(self) -> str:
         """Object path for dbus object."""
         return self._object_path
+
+    @property
+    def nvme_controller(self) -> UDisks2NVMeController | None:
+        """NVMe controller interface if drive is one."""
+        return self._nvme_controller
 
     @property
     @dbus_property
@@ -130,3 +145,40 @@ class UDisks2Drive(DBusInterfaceProxy):
     async def eject(self) -> None:
         """Eject media from drive."""
         await self.connected_dbus.Drive.call("eject", UDISKS2_DEFAULT_OPTIONS)
+
+    @dbus_connected
+    async def update(self, changed: dict[str, Any] | None = None) -> None:
+        """Update properties via D-Bus."""
+        await super().update(changed)
+
+        if not changed and self.nvme_controller:
+            await self.nvme_controller.update()
+
+    @dbus_connected
+    async def check_type(self) -> None:
+        """Check if type of drive has changed and adjust interfaces if so."""
+        introspection = await self.connected_dbus.introspect()
+        interfaces = {intr.name for intr in introspection.interfaces}
+
+        # If interfaces changed, update the proxy from introspection and reload interfaces
+        if interfaces != set(self.connected_dbus.proxies.keys()):
+            await self.connected_dbus.init_proxy(introspection=introspection)
+            await self._reload_interfaces()
+
+    @dbus_connected
+    async def _reload_interfaces(self) -> None:
+        """Reload interfaces from introspection as necessary."""
+        # Check if drive is an nvme controller
+        if (
+            not self.nvme_controller
+            and DBUS_IFACE_NVME_CONTROLLER in self.connected_dbus.proxies
+        ):
+            self._nvme_controller = UDisks2NVMeController(self.object_path)
+            await self._nvme_controller.initialize(self.connected_dbus)
+
+        elif (
+            self.nvme_controller
+            and DBUS_IFACE_NVME_CONTROLLER not in self.connected_dbus.proxies
+        ):
+            self.nvme_controller.stop_sync_property_changes()
+            self._nvme_controller = None

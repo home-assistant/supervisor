@@ -17,7 +17,8 @@ from ..exceptions import (
     PwnedError,
     SecurityJobError,
 )
-from ..jobs.decorator import Job, JobCondition, JobExecutionLimit
+from ..jobs.const import JobConcurrency
+from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.codenotary import cas_validate
 from ..utils.common import FileConfiguration
@@ -107,7 +108,7 @@ class Security(FileConfiguration, CoreSysAttributes):
         name="security_manager_integrity_check",
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=SecurityJobError,
-        limit=JobExecutionLimit.ONCE,
+        concurrency=JobConcurrency.REJECT,
     )
     async def integrity_check(self) -> IntegrityResult:
         """Run a full system integrity check of the platform.

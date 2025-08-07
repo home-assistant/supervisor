@@ -9,6 +9,8 @@ from typing import Self, Union
 
 from attr import evolve
 
+from supervisor.jobs.const import JobConcurrency
+
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -180,6 +182,7 @@ class AddonManager(CoreSysAttributes):
         name="addon_manager_install",
         conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.QUEUE,
     )
     async def install(self, slug: str) -> None:
         """Install an add-on."""

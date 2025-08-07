@@ -22,7 +22,7 @@ from ..exceptions import (
     HassOSJobError,
     HostError,
 )
-from ..jobs.const import JobCondition, JobExecutionLimit
+from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.base import CheckBase
 from ..resolution.checks.disabled_data_disk import CheckDisabledDataDisk
@@ -205,8 +205,8 @@ class DataDisk(CoreSysAttributes):
     @Job(
         name="data_disk_migrate",
         conditions=[JobCondition.HAOS, JobCondition.OS_AGENT, JobCondition.HEALTHY],
-        limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,
+        concurrency=JobConcurrency.REJECT,
     )
     async def migrate_disk(self, new_disk: str) -> None:
         """Move data partition to a new disk."""
@@ -305,8 +305,8 @@ class DataDisk(CoreSysAttributes):
     @Job(
         name="data_disk_wipe",
         conditions=[JobCondition.HAOS, JobCondition.OS_AGENT, JobCondition.HEALTHY],
-        limit=JobExecutionLimit.ONCE,
         on_condition=HassOSJobError,
+        concurrency=JobConcurrency.REJECT,
     )
     async def wipe_disk(self) -> None:
         """Wipe the current data disk."""

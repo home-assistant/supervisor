@@ -32,7 +32,7 @@ from .exceptions import (
     SupervisorJobError,
     SupervisorUpdateError,
 )
-from .jobs.const import JobCondition, JobExecutionLimit
+from .jobs.const import JobCondition, JobThrottle
 from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType, UnhealthyReason
 from .utils.codenotary import calc_checksum
@@ -288,8 +288,8 @@ class Supervisor(CoreSysAttributes):
 
     @Job(
         name="supervisor_check_connectivity",
-        limit=JobExecutionLimit.THROTTLE,
         throttle_period=_check_connectivity_throttle_period,
+        throttle=JobThrottle.THROTTLE,
     )
     async def check_connectivity(self) -> None:
         """Check the Internet connectivity from Supervisor's point of view."""

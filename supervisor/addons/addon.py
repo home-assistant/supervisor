@@ -77,7 +77,7 @@ from ..exceptions import (
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, UnhealthyReason
 from ..resolution.data import Issue
@@ -733,8 +733,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_unload",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def unload(self) -> None:
         """Unload add-on and remove data."""
@@ -766,8 +766,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_install",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def install(self) -> None:
         """Install and setup this addon."""
@@ -807,8 +807,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_uninstall",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def uninstall(
         self, *, remove_config: bool, remove_image: bool = True
@@ -873,8 +873,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_update",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def update(self) -> asyncio.Task | None:
         """Update this addon to latest version.
@@ -923,8 +923,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_rebuild",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def rebuild(self) -> asyncio.Task | None:
         """Rebuild this addons container and image.
@@ -1068,8 +1068,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_start",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def start(self) -> asyncio.Task:
         """Set options and start add-on.
@@ -1117,8 +1117,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_stop",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def stop(self) -> None:
         """Stop add-on."""
@@ -1131,8 +1131,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_restart",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def restart(self) -> asyncio.Task:
         """Restart add-on.
@@ -1166,8 +1166,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_write_stdin",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def write_stdin(self, data) -> None:
         """Write data to add-on stdin."""
@@ -1200,8 +1200,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_begin_backup",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def begin_backup(self) -> bool:
         """Execute pre commands or stop addon if necessary.
@@ -1222,8 +1222,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_end_backup",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def end_backup(self) -> asyncio.Task | None:
         """Execute post commands or restart addon if necessary.
@@ -1260,8 +1260,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_backup",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def backup(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
         """Backup state of an add-on.
@@ -1368,8 +1368,8 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_restore",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=AddonsJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def restore(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
         """Restore state of an add-on.
@@ -1521,10 +1521,10 @@ class Addon(AddonModel):
 
     @Job(
         name="addon_restart_after_problem",
-        limit=JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
         on_condition=AddonsJobError,
+        throttle=JobThrottle.GROUP_RATE_LIMIT,
     )
     async def _restart_after_problem(self, state: ContainerState):
         """Restart unhealthy or failed addon."""

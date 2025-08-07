@@ -150,6 +150,8 @@ class Core(CoreSysAttributes):
             self.sys_dbus.load(),
             # Load Host
             self.sys_host.load(),
+            # Load HassOS
+            self.sys_os.load(),
             # Adjust timezone / time settings
             self._adjust_system_datetime(),
             # Load mounts
@@ -164,8 +166,6 @@ class Core(CoreSysAttributes):
             self.sys_homeassistant.load(),
             # Load CPU/Arch
             self.sys_arch.load(),
-            # Load HassOS
-            self.sys_os.load(),
             # Load Stores
             self.sys_store.load(),
             # Load Add-ons

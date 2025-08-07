@@ -47,6 +47,8 @@ DOCKER_NETWORK_PARAMS = {
     "options": {"com.docker.network.bridge.name": DOCKER_NETWORK},
 }
 
+DOCKER_ENABLE_IPV6_DEFAULT = True
+
 
 class DockerNetwork:
     """Internal Supervisor Network.
@@ -59,7 +61,7 @@ class DockerNetwork:
         self.docker: docker.DockerClient = docker_client
         self._network: docker.models.networks.Network
 
-    async def post_init(self, enable_ipv6: bool = False) -> Self:
+    async def post_init(self, enable_ipv6: bool | None = None) -> Self:
         """Post init actions that must be done in event loop."""
         self._network = await asyncio.get_running_loop().run_in_executor(
             None, self._get_network, enable_ipv6
@@ -111,16 +113,24 @@ class DockerNetwork:
         """Return observer of the network."""
         return DOCKER_IPV4_NETWORK_MASK[6]
 
-    def _get_network(self, enable_ipv6: bool = False) -> docker.models.networks.Network:
+    def _get_network(
+        self, enable_ipv6: bool | None = None
+    ) -> docker.models.networks.Network:
         """Get supervisor network."""
         try:
             if network := self.docker.networks.get(DOCKER_NETWORK):
-                if network.attrs.get(DOCKER_ENABLEIPV6) == enable_ipv6:
+                current_ipv6 = network.attrs.get(DOCKER_ENABLEIPV6, False)
+                # If the network exists and we don't have an explicit setting,
+                # simply stick with what we have.
+                if enable_ipv6 is None or current_ipv6 == enable_ipv6:
                     return network
+
+                # We have an explicit setting which differs from the current state.
                 _LOGGER.info(
                     "Migrating Supervisor network to %s",
                     "IPv4/IPv6 Dual-Stack" if enable_ipv6 else "IPv4-Only",
                 )
+
                 if (containers := network.containers) and (
                     containers_all := all(
                         container.name in (OBSERVER_DOCKER_NAME, SUPERVISOR_DOCKER_NAME)
@@ -134,6 +144,7 @@ class DockerNetwork:
                             requests.RequestException,
                         ):
                             network.disconnect(container, force=True)
+
                 if not containers or containers_all:
                     try:
                         network.remove()
@@ -151,7 +162,9 @@ class DockerNetwork:
             _LOGGER.info("Can't find Supervisor network, creating a new network")
 
         network_params = DOCKER_NETWORK_PARAMS.copy()
-        network_params[ATTR_ENABLE_IPV6] = enable_ipv6
+        network_params[ATTR_ENABLE_IPV6] = (
+            DOCKER_ENABLE_IPV6_DEFAULT if enable_ipv6 is None else enable_ipv6
+        )
 
         try:
             self._network = self.docker.networks.create(**network_params)  # type: ignore

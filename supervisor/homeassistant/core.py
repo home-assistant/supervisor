@@ -28,7 +28,7 @@ from ..exceptions import (
     HomeAssistantUpdateError,
     JobException,
 )
-from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobExecutionLimit
+from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobConcurrency, JobThrottle
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType
@@ -123,8 +123,8 @@ class HomeAssistantCore(JobGroup):
 
     @Job(
         name="home_assistant_core_install_landing_page",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def install_landingpage(self) -> None:
         """Install a landing page."""
@@ -171,8 +171,8 @@ class HomeAssistantCore(JobGroup):
 
     @Job(
         name="home_assistant_core_install",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def install(self) -> None:
         """Install a landing page."""
@@ -222,8 +222,8 @@ class HomeAssistantCore(JobGroup):
             JobCondition.PLUGINS_UPDATED,
             JobCondition.SUPERVISOR_UPDATED,
         ],
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def update(
         self,
@@ -324,8 +324,8 @@ class HomeAssistantCore(JobGroup):
 
     @Job(
         name="home_assistant_core_start",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def start(self) -> None:
         """Run Home Assistant docker."""
@@ -359,8 +359,8 @@ class HomeAssistantCore(JobGroup):
 
     @Job(
         name="home_assistant_core_stop",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def stop(self, *, remove_container: bool = False) -> None:
         """Stop Home Assistant Docker."""
@@ -371,8 +371,8 @@ class HomeAssistantCore(JobGroup):
 
     @Job(
         name="home_assistant_core_restart",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def restart(self, *, safe_mode: bool = False) -> None:
         """Restart Home Assistant Docker."""
@@ -392,8 +392,8 @@ class HomeAssistantCore(JobGroup):
 
     @Job(
         name="home_assistant_core_rebuild",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=HomeAssistantJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def rebuild(self, *, safe_mode: bool = False) -> None:
         """Rebuild Home Assistant Docker container."""
@@ -546,9 +546,9 @@ class HomeAssistantCore(JobGroup):
 
     @Job(
         name="home_assistant_core_restart_after_problem",
-        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
+        throttle=JobThrottle.RATE_LIMIT,
     )
     async def _restart_after_problem(self, state: ContainerState):
         """Restart unhealthy or failed Home Assistant."""

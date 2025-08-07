@@ -5,7 +5,7 @@ import logging
 from ..const import DOCKER_IPV4_NETWORK_MASK, OBSERVER_DOCKER_NAME
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerJobError
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import ENV_TIME, ENV_TOKEN, MOUNT_DOCKER, RestartPolicy
 from .interface import DockerInterface
@@ -30,8 +30,8 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
 
     @Job(
         name="docker_observer_run",
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=DockerJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def run(self) -> None:
         """Run Docker image."""

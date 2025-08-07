@@ -27,7 +27,7 @@ from ..exceptions import (
     BackupJobError,
     BackupMountDownError,
 )
-from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobCondition, JobExecutionLimit
+from ..jobs.const import JOB_GROUP_BACKUP_MANAGER, JobConcurrency, JobCondition
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..mounts.mount import Mount
@@ -583,9 +583,9 @@ class BackupManager(FileConfiguration, JobGroup):
     @Job(
         name="backup_manager_full_backup",
         conditions=[JobCondition.RUNNING],
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
         cleanup=False,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def do_backup_full(
         self,
@@ -630,9 +630,9 @@ class BackupManager(FileConfiguration, JobGroup):
     @Job(
         name="backup_manager_partial_backup",
         conditions=[JobCondition.RUNNING],
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
         cleanup=False,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def do_backup_partial(
         self,
@@ -810,9 +810,9 @@ class BackupManager(FileConfiguration, JobGroup):
             JobCondition.INTERNET_SYSTEM,
             JobCondition.RUNNING,
         ],
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
         cleanup=False,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def do_restore_full(
         self,
@@ -869,9 +869,9 @@ class BackupManager(FileConfiguration, JobGroup):
             JobCondition.INTERNET_SYSTEM,
             JobCondition.RUNNING,
         ],
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
         cleanup=False,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def do_restore_partial(
         self,
@@ -930,8 +930,8 @@ class BackupManager(FileConfiguration, JobGroup):
     @Job(
         name="backup_manager_freeze_all",
         conditions=[JobCondition.RUNNING],
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def freeze_all(self, timeout: float = DEFAULT_FREEZE_TIMEOUT) -> None:
         """Freeze system to prepare for an external backup such as an image snapshot."""
@@ -999,9 +999,9 @@ class BackupManager(FileConfiguration, JobGroup):
     @Job(
         name="backup_manager_signal_thaw",
         conditions=[JobCondition.FROZEN],
-        limit=JobExecutionLimit.GROUP_ONCE,
         on_condition=BackupJobError,
         internal=True,
+        concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def thaw_all(self) -> None:
         """Signal thaw task to begin unfreezing the system."""

@@ -262,41 +262,35 @@ class Backup(JobGroup):
 
     def __eq__(self, other: Any) -> bool:
         """Return true if backups have same metadata."""
-        if not isinstance(other, Backup):
-            return False
+        return isinstance(other, Backup) and self.slug == other.slug
 
-        # Compare all fields except ones about protection. Current encryption status does not affect equality
-        keys = self._data.keys() | other._data.keys()
-        for k in keys - IGNORED_COMPARISON_FIELDS:
-            if (
-                k not in self._data
-                or k not in other._data
-                or self._data[k] != other._data[k]
-            ):
-                _LOGGER.info(
-                    "Backup %s and %s not equal because %s field has different value: %s and %s",
-                    self.slug,
-                    other.slug,
-                    k,
-                    self._data.get(k),
-                    other._data.get(k),
-                )
-                return False
-        return True
+    def __hash__(self) -> int:
+        """Return hash of backup."""
+        return hash(self.slug)
 
     def consolidate(self, backup: Self) -> None:
         """Consolidate two backups with same slug in different locations."""
-        if self.slug != backup.slug:
+        if self != backup:
             raise ValueError(
                 f"Backup {self.slug} and {backup.slug} are not the same backup"
             )
-        if self != backup:
-            raise BackupInvalidError(
-                f"Backup in {backup.location} and {self.location} both have slug {self.slug} but are not the same!"
-            )
+
+        # Compare all fields except ones about protection. Current encryption status does not affect equality
+        other_data = backup._data  # pylint: disable=protected-access
+        keys = self._data.keys() | other_data.keys()
+        for k in keys - IGNORED_COMPARISON_FIELDS:
+            if (
+                k not in self._data
+                or k not in other_data
+                or self._data[k] != other_data[k]
+            ):
+                raise BackupInvalidError(
+                    f"Cannot consolidate backups in {backup.location} and {self.location} with slug {self.slug} "
+                    f"because field {k} has different values: {self._data.get(k)} and {other_data.get(k)}!",
+                    _LOGGER.error,
+                )
 
         # In case of conflict we always ignore the ones from the first one. But log them to let the user know
-
         if conflict := {
             loc: val.path
             for loc, val in self.all_locations.items()

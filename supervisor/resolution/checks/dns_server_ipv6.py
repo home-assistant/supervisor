@@ -7,7 +7,7 @@ from aiodns.error import DNSError
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ...jobs.const import JobCondition, JobExecutionLimit
+from ...jobs.const import JobCondition, JobThrottle
 from ...jobs.decorator import Job
 from ...utils.sentry import async_capture_exception
 from ..const import DNS_ERROR_NO_DATA, ContextType, IssueType
@@ -26,8 +26,8 @@ class CheckDNSServerIPv6(CheckBase):
     @Job(
         name="check_dns_server_ipv6_run",
         conditions=[JobCondition.INTERNET_SYSTEM],
-        limit=JobExecutionLimit.THROTTLE,
         throttle_period=timedelta(hours=24),
+        throttle=JobThrottle.THROTTLE,
     )
     async def run_check(self) -> None:
         """Run check if not affected by issue."""

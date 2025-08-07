@@ -5,7 +5,7 @@ import logging
 
 from ...coresys import CoreSys
 from ...exceptions import ResolutionFixupError, ResolutionFixupJobError
-from ...jobs.const import JobCondition, JobExecutionLimit
+from ...jobs.const import JobCondition, JobThrottle
 from ...jobs.decorator import Job
 from ...security.const import ContentTrustResult
 from ..const import ContextType, IssueType, SuggestionType
@@ -26,8 +26,8 @@ class FixupSystemExecuteIntegrity(FixupBase):
         name="fixup_system_execute_integrity_process",
         conditions=[JobCondition.INTERNET_SYSTEM],
         on_condition=ResolutionFixupJobError,
-        limit=JobExecutionLimit.THROTTLE,
         throttle_period=timedelta(hours=8),
+        throttle=JobThrottle.THROTTLE,
     )
     async def process_fixup(self, reference: str | None = None) -> None:
         """Initialize the fixup class."""

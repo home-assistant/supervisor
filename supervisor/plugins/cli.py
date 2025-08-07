@@ -15,7 +15,7 @@ from ..docker.cli import DockerCli
 from ..docker.const import ContainerState
 from ..docker.stats import DockerStats
 from ..exceptions import CliError, CliJobError, CliUpdateError, DockerError, PluginError
-from ..jobs.const import JobExecutionLimit
+from ..jobs.const import JobThrottle
 from ..jobs.decorator import Job
 from ..utils.sentry import async_capture_exception
 from .base import PluginBase
@@ -118,10 +118,10 @@ class PluginCli(PluginBase):
 
     @Job(
         name="plugin_cli_restart_after_problem",
-        limit=JobExecutionLimit.THROTTLE_RATE_LIMIT,
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
         throttle_max_calls=WATCHDOG_THROTTLE_MAX_CALLS,
         on_condition=CliJobError,
+        throttle=JobThrottle.RATE_LIMIT,
     )
     async def _restart_after_problem(self, state: ContainerState):
         """Restart unhealthy or failed plugin."""

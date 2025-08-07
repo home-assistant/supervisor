@@ -46,7 +46,8 @@ from ..exceptions import (
 )
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
-from ..jobs.decorator import Job, JobExecutionLimit
+from ..jobs.const import JobConcurrency, JobThrottle
+from ..jobs.decorator import Job
 from ..resolution.const import UnhealthyReason
 from ..utils import remove_folder, remove_folder_with_excludes
 from ..utils.common import FileConfiguration
@@ -551,9 +552,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     @Job(
         name="home_assistant_get_users",
-        limit=JobExecutionLimit.THROTTLE_WAIT,
         throttle_period=timedelta(minutes=5),
         internal=True,
+        concurrency=JobConcurrency.QUEUE,
+        throttle=JobThrottle.THROTTLE,
     )
     async def get_users(self) -> list[IngressSessionDataUser]:
         """Get list of all configured users."""

@@ -20,21 +20,25 @@ class UDisks2Manager(DBusServiceMock):
 
     interface = "org.freedesktop.UDisks2.Manager"
     object_path = "/org/freedesktop/UDisks2/Manager"
-    block_devices = [
-        "/org/freedesktop/UDisks2/block_devices/loop0",
-        "/org/freedesktop/UDisks2/block_devices/mmcblk1",
-        "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
-        "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
-        "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
-        "/org/freedesktop/UDisks2/block_devices/sda",
-        "/org/freedesktop/UDisks2/block_devices/sda1",
-        "/org/freedesktop/UDisks2/block_devices/sdb",
-        "/org/freedesktop/UDisks2/block_devices/sdb1",
-        "/org/freedesktop/UDisks2/block_devices/zram1",
-    ]
-    resolved_devices: list[list[str]] | list[str] = [
-        "/org/freedesktop/UDisks2/block_devices/sda1"
-    ]
+
+    def __init__(self):
+        """Initialize object."""
+        super().__init__()
+        self.block_devices = [
+            "/org/freedesktop/UDisks2/block_devices/loop0",
+            "/org/freedesktop/UDisks2/block_devices/mmcblk1",
+            "/org/freedesktop/UDisks2/block_devices/mmcblk1p1",
+            "/org/freedesktop/UDisks2/block_devices/mmcblk1p2",
+            "/org/freedesktop/UDisks2/block_devices/mmcblk1p3",
+            "/org/freedesktop/UDisks2/block_devices/sda",
+            "/org/freedesktop/UDisks2/block_devices/sda1",
+            "/org/freedesktop/UDisks2/block_devices/sdb",
+            "/org/freedesktop/UDisks2/block_devices/sdb1",
+            "/org/freedesktop/UDisks2/block_devices/zram1",
+        ]
+        self.resolved_devices: list[list[str]] | list[str] = [
+            "/org/freedesktop/UDisks2/block_devices/sda1"
+        ]
 
     @dbus_property(access=PropertyAccess.READ)
     def Version(self) -> "s":

@@ -6,7 +6,7 @@ import logging
 from ...const import AddonState, CoreState
 from ...coresys import CoreSys
 from ...exceptions import PwnedConnectivityError, PwnedError, PwnedSecret
-from ...jobs.const import JobCondition, JobExecutionLimit
+from ...jobs.const import JobCondition, JobThrottle
 from ...jobs.decorator import Job
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
@@ -25,8 +25,8 @@ class CheckAddonPwned(CheckBase):
     @Job(
         name="check_addon_pwned_run",
         conditions=[JobCondition.INTERNET_SYSTEM],
-        limit=JobExecutionLimit.THROTTLE,
         throttle_period=timedelta(hours=24),
+        throttle=JobThrottle.THROTTLE,
     )
     async def run_check(self) -> None:
         """Run check if not affected by issue."""

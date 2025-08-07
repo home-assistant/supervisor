@@ -1,8 +1,8 @@
 """Job decorator."""
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from contextlib import suppress
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager, suppress
 from datetime import datetime, timedelta
 from functools import wraps
 import logging
@@ -20,7 +20,7 @@ from ..host.const import HostFeature
 from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 from ..utils.sentry import async_capture_exception
 from . import SupervisorJob
-from .const import JobCondition, JobExecutionLimit
+from .const import JobConcurrency, JobCondition, JobThrottle
 from .job_group import JobGroup
 
 _LOGGER: logging.Logger = logging.getLogger(__package__)
@@ -36,13 +36,14 @@ class Job(CoreSysAttributes):
         conditions: list[JobCondition] | None = None,
         cleanup: bool = True,
         on_condition: type[JobException] | None = None,
-        limit: JobExecutionLimit | None = None,
+        concurrency: JobConcurrency | None = None,
+        throttle: JobThrottle | None = None,
         throttle_period: timedelta
         | Callable[[CoreSys, datetime, list[datetime] | None], timedelta]
         | None = None,
         throttle_max_calls: int | None = None,
         internal: bool = False,
-    ):
+    ):  # pylint: disable=too-many-positional-arguments
         """Initialize the Job decorator.
 
         Args:
@@ -50,13 +51,14 @@ class Job(CoreSysAttributes):
             conditions (list[JobCondition] | None): List of conditions that must be met before the job runs.
             cleanup (bool): Whether to clean up the job after execution. Defaults to True. If set to False, the job will remain accessible through the Supervisor API until the next restart.
             on_condition (type[JobException] | None): Exception type to raise if a job condition fails. If None, logs the failure.
-            limit (JobExecutionLimit | None): Execution limit policy for the job (e.g., throttle, once, group-based).
-            throttle_period (timedelta | Callable | None): Throttle period as a timedelta or a callable returning a timedelta (for rate-limited jobs).
+            concurrency (JobConcurrency | None): Concurrency control policy (e.g., reject, queue, group-based).
+            throttle (JobThrottle | None): Throttling policy (e.g., throttle, rate_limit, group-based).
+            throttle_period (timedelta | Callable | None): Throttle period as a timedelta or a callable returning a timedelta (for throttled jobs).
             throttle_max_calls (int | None): Maximum number of calls allowed within the throttle period (for rate-limited jobs).
             internal (bool): Whether the job is internal (not exposed through the Supervisor API). Defaults to False.
 
         Raises:
-            RuntimeError: If job name is not unique, or required throttle parameters are missing for the selected limit.
+            RuntimeError: If job name is not unique, or required throttle parameters are missing for the selected throttle policy.
 
         """
         if name in _JOB_NAMES:
@@ -67,40 +69,53 @@ class Job(CoreSysAttributes):
         self.conditions = conditions
         self.cleanup = cleanup
         self.on_condition = on_condition
-        self.limit = limit
         self._throttle_period = throttle_period
         self._throttle_max_calls = throttle_max_calls
-        self._lock: asyncio.Semaphore | None = None
+        self._lock: asyncio.Lock | None = None
         self._last_call: dict[str | None, datetime] = {}
         self._rate_limited_calls: dict[str | None, list[datetime]] | None = None
         self._internal = internal
 
+        self.concurrency = concurrency
+        self.throttle = throttle
+
         # Validate Options
-        if (
-            self.limit
-            in (
-                JobExecutionLimit.THROTTLE,
-                JobExecutionLimit.THROTTLE_WAIT,
-                JobExecutionLimit.THROTTLE_RATE_LIMIT,
-                JobExecutionLimit.GROUP_THROTTLE,
-                JobExecutionLimit.GROUP_THROTTLE_WAIT,
-                JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
-            )
-            and self._throttle_period is None
-        ):
+        self._validate_parameters()
+
+    def _is_group_concurrency(self) -> bool:
+        """Check if this job uses group-level concurrency."""
+        return self.concurrency in (
+            JobConcurrency.GROUP_REJECT,
+            JobConcurrency.GROUP_QUEUE,
+        )
+
+    def _is_group_throttle(self) -> bool:
+        """Check if this job uses group-level throttling."""
+        return self.throttle in (
+            JobThrottle.GROUP_THROTTLE,
+            JobThrottle.GROUP_RATE_LIMIT,
+        )
+
+    def _is_rate_limit_throttle(self) -> bool:
+        """Check if this job uses rate limiting (job or group level)."""
+        return self.throttle in (
+            JobThrottle.RATE_LIMIT,
+            JobThrottle.GROUP_RATE_LIMIT,
+        )
+
+    def _validate_parameters(self) -> None:
+        """Validate job parameters."""
+        # Validate throttle parameters
+        if self.throttle is not None and self._throttle_period is None:
             raise RuntimeError(
-                f"Job {name} is using execution limit {limit} without a throttle period!"
+                f"Job {self.name} is using throttle {self.throttle} without a throttle period!"
             )
 
-        if self.limit in (
-            JobExecutionLimit.THROTTLE_RATE_LIMIT,
-            JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
-        ):
+        if self._is_rate_limit_throttle():
             if self._throttle_max_calls is None:
                 raise RuntimeError(
-                    f"Job {name} is using execution limit {limit} without throttle max calls!"
+                    f"Job {self.name} is using throttle {self.throttle} without throttle max calls!"
                 )
-
             self._rate_limited_calls = {}
 
     @property
@@ -111,9 +126,9 @@ class Job(CoreSysAttributes):
         return self._throttle_max_calls
 
     @property
-    def lock(self) -> asyncio.Semaphore:
+    def lock(self) -> asyncio.Lock:
         """Return lock for limits."""
-        # asyncio.Semaphore objects must be created in event loop
+        # asyncio.Lock objects must be created in event loop
         # Since this is sync code it is not safe to create if missing here
         if not self._lock:
             raise RuntimeError("Lock has not been created yet!")
@@ -131,7 +146,7 @@ class Job(CoreSysAttributes):
         """Return rate limited calls if used."""
         if self._rate_limited_calls is None:
             raise RuntimeError(
-                f"Rate limited calls not available for limit type {self.limit}"
+                "Rate limited calls not available for this throttle type"
             )
 
         return self._rate_limited_calls.get(group_name, [])
@@ -142,7 +157,7 @@ class Job(CoreSysAttributes):
         """Add a rate limited call to list if used."""
         if self._rate_limited_calls is None:
             raise RuntimeError(
-                f"Rate limited calls not available for limit type {self.limit}"
+                "Rate limited calls not available for this throttle type"
             )
 
         if group_name in self._rate_limited_calls:
@@ -156,7 +171,7 @@ class Job(CoreSysAttributes):
         """Set rate limited calls if used."""
         if self._rate_limited_calls is None:
             raise RuntimeError(
-                f"Rate limited calls not available for limit type {self.limit}"
+                "Rate limited calls not available for this throttle type"
             )
 
         self._rate_limited_calls[group_name] = value
@@ -185,7 +200,7 @@ class Job(CoreSysAttributes):
 
         # Setup lock for limits
         if self._lock is None:
-            self._lock = asyncio.Semaphore()
+            self._lock = asyncio.Lock()
 
         # Job groups
         job_group: JobGroup | None = None
@@ -193,16 +208,18 @@ class Job(CoreSysAttributes):
             if obj.acquire and obj.release:  # type: ignore
                 job_group = cast(JobGroup, obj)
 
-        if not job_group and self.limit in (
-            JobExecutionLimit.GROUP_ONCE,
-            JobExecutionLimit.GROUP_WAIT,
-            JobExecutionLimit.GROUP_THROTTLE,
-            JobExecutionLimit.GROUP_THROTTLE_WAIT,
-            JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
-        ):
-            raise RuntimeError(
-                f"Job on {self.name} need to be a JobGroup to use group based limits!"
-            ) from None
+        # Check for group-based parameters
+        if not job_group:
+            if self._is_group_concurrency():
+                raise RuntimeError(
+                    f"Job {self.name} uses group concurrency ({self.concurrency}) but is not on a JobGroup! "
+                    f"The class must inherit from JobGroup to use GROUP_REJECT or GROUP_QUEUE."
+                ) from None
+            if self._is_group_throttle():
+                raise RuntimeError(
+                    f"Job {self.name} uses group throttling ({self.throttle}) but is not on a JobGroup! "
+                    f"The class must inherit from JobGroup to use GROUP_THROTTLE or GROUP_RATE_LIMIT."
+                ) from None
 
         return job_group
 
@@ -255,102 +272,34 @@ class Job(CoreSysAttributes):
                     except JobConditionException as err:
                         return self._handle_job_condition_exception(err)
 
-                # Handle exection limits
-                if self.limit in (
-                    JobExecutionLimit.SINGLE_WAIT,
-                    JobExecutionLimit.ONCE,
-                ):
-                    await self._acquire_exection_limit()
-                elif self.limit in (
-                    JobExecutionLimit.GROUP_ONCE,
-                    JobExecutionLimit.GROUP_WAIT,
-                ):
-                    try:
-                        await cast(JobGroup, job_group).acquire(
-                            job, self.limit == JobExecutionLimit.GROUP_WAIT
-                        )
-                    except JobGroupExecutionLimitExceeded as err:
-                        if self.on_condition:
-                            raise self.on_condition(str(err)) from err
-                        raise err
-                elif self.limit in (
-                    JobExecutionLimit.THROTTLE,
-                    JobExecutionLimit.GROUP_THROTTLE,
-                ):
-                    time_since_last_call = datetime.now() - self.last_call(group_name)
-                    if time_since_last_call < self.throttle_period(group_name):
-                        return
-                elif self.limit in (
-                    JobExecutionLimit.THROTTLE_WAIT,
-                    JobExecutionLimit.GROUP_THROTTLE_WAIT,
-                ):
-                    await self._acquire_exection_limit()
-                    time_since_last_call = datetime.now() - self.last_call(group_name)
-                    if time_since_last_call < self.throttle_period(group_name):
-                        self._release_exception_limits()
-                        return
-                elif self.limit in (
-                    JobExecutionLimit.THROTTLE_RATE_LIMIT,
-                    JobExecutionLimit.GROUP_THROTTLE_RATE_LIMIT,
-                ):
-                    # Only reprocess array when necessary (at limit)
-                    if (
-                        len(self.rate_limited_calls(group_name))
-                        >= self.throttle_max_calls
-                    ):
-                        self.set_rate_limited_calls(
-                            [
-                                call
-                                for call in self.rate_limited_calls(group_name)
-                                if call
-                                > datetime.now() - self.throttle_period(group_name)
-                            ],
-                            group_name,
-                        )
+                # Handle execution limits using context manager
+                async with self._concurrency_control(job_group, job):
+                    if not await self._handle_throttling(group_name):
+                        return  # Job was throttled, exit early
 
-                    if (
-                        len(self.rate_limited_calls(group_name))
-                        >= self.throttle_max_calls
-                    ):
-                        on_condition = (
-                            JobException
-                            if self.on_condition is None
-                            else self.on_condition
-                        )
-                        raise on_condition(
-                            f"Rate limit exceeded, more than {self.throttle_max_calls} calls in {self.throttle_period(group_name)}",
-                        )
+                    # Execute Job
+                    with job.start():
+                        try:
+                            self.set_last_call(datetime.now(), group_name)
+                            if self._rate_limited_calls is not None:
+                                self.add_rate_limited_call(
+                                    self.last_call(group_name), group_name
+                                )
 
-                # Execute Job
-                with job.start():
-                    try:
-                        self.set_last_call(datetime.now(), group_name)
-                        if self._rate_limited_calls is not None:
-                            self.add_rate_limited_call(
-                                self.last_call(group_name), group_name
-                            )
+                            return await method(obj, *args, **kwargs)
 
-                        return await method(obj, *args, **kwargs)
-
-                    # If a method has a conditional JobCondition, they must check it in the method
-                    # These should be handled like normal JobConditions as much as possible
-                    except JobConditionException as err:
-                        return self._handle_job_condition_exception(err)
-                    except HassioError as err:
-                        job.capture_error(err)
-                        raise err
-                    except Exception as err:
-                        _LOGGER.exception("Unhandled exception: %s", err)
-                        job.capture_error()
-                        await async_capture_exception(err)
-                        raise JobException() from err
-                    finally:
-                        self._release_exception_limits()
-                        if job_group and self.limit in (
-                            JobExecutionLimit.GROUP_ONCE,
-                            JobExecutionLimit.GROUP_WAIT,
-                        ):
-                            job_group.release()
+                        # If a method has a conditional JobCondition, they must check it in the method
+                        # These should be handled like normal JobConditions as much as possible
+                        except JobConditionException as err:
+                            return self._handle_job_condition_exception(err)
+                        except HassioError as err:
+                            job.capture_error(err)
+                            raise err
+                        except Exception as err:
+                            _LOGGER.exception("Unhandled exception: %s", err)
+                            job.capture_error()
+                            await async_capture_exception(err)
+                            raise JobException() from err
 
             # Jobs that weren't started are always cleaned up. Also clean up done jobs if required
             finally:
@@ -492,31 +441,81 @@ class Job(CoreSysAttributes):
                 f"'{method_name}' blocked from execution, mounting not supported on system"
             )
 
-    async def _acquire_exection_limit(self) -> None:
-        """Process exection limits."""
-        if self.limit not in (
-            JobExecutionLimit.SINGLE_WAIT,
-            JobExecutionLimit.ONCE,
-            JobExecutionLimit.THROTTLE_WAIT,
-            JobExecutionLimit.GROUP_THROTTLE_WAIT,
-        ):
-            return
+    def _release_concurrency_control(
+        self, job_group: JobGroup | None, job: SupervisorJob
+    ) -> None:
+        """Release concurrency control locks."""
+        if self._is_group_concurrency():
+            # Group-level concurrency: delegate to job group
+            cast(JobGroup, job_group).release(job)
+        elif self.concurrency in (JobConcurrency.REJECT, JobConcurrency.QUEUE):
+            # Job-level concurrency: use semaphore
+            if self.lock.locked():
+                self.lock.release()
 
-        if self.limit == JobExecutionLimit.ONCE and self.lock.locked():
-            on_condition = (
-                JobException if self.on_condition is None else self.on_condition
-            )
-            raise on_condition("Another job is running")
+    async def _handle_concurrency_control(
+        self, job_group: JobGroup | None, job: SupervisorJob
+    ) -> None:
+        """Handle concurrency control limits."""
+        if self._is_group_concurrency():
+            # Group-level concurrency: delegate to job group
+            try:
+                await cast(JobGroup, job_group).acquire(
+                    job, wait=self.concurrency == JobConcurrency.GROUP_QUEUE
+                )
+            except JobGroupExecutionLimitExceeded as err:
+                if self.on_condition:
+                    raise self.on_condition(str(err)) from err
+                raise err
+        elif self.concurrency == JobConcurrency.REJECT:
+            # Job-level reject: fail if lock is taken
+            if self.lock.locked():
+                on_condition = (
+                    JobException if self.on_condition is None else self.on_condition
+                )
+                raise on_condition("Another job is running")
+            await self.lock.acquire()
+        elif self.concurrency == JobConcurrency.QUEUE:
+            # Job-level queue: wait for lock
+            await self.lock.acquire()
 
-        await self.lock.acquire()
+    @asynccontextmanager
+    async def _concurrency_control(
+        self, job_group: JobGroup | None, job: SupervisorJob
+    ) -> AsyncIterator[None]:
+        """Context manager for concurrency control that ensures locks are always released."""
+        await self._handle_concurrency_control(job_group, job)
+        try:
+            yield
+        finally:
+            self._release_concurrency_control(job_group, job)
 
-    def _release_exception_limits(self) -> None:
-        """Release possible exception limits."""
-        if self.limit not in (
-            JobExecutionLimit.SINGLE_WAIT,
-            JobExecutionLimit.ONCE,
-            JobExecutionLimit.THROTTLE_WAIT,
-            JobExecutionLimit.GROUP_THROTTLE_WAIT,
-        ):
-            return
-        self.lock.release()
+    async def _handle_throttling(self, group_name: str | None) -> bool:
+        """Handle throttling limits. Returns True if job should continue, False if throttled."""
+        if self.throttle in (JobThrottle.THROTTLE, JobThrottle.GROUP_THROTTLE):
+            time_since_last_call = datetime.now() - self.last_call(group_name)
+            throttle_period = self.throttle_period(group_name)
+            if time_since_last_call < throttle_period:
+                # Always return False when throttled (skip execution)
+                return False
+        elif self._is_rate_limit_throttle():
+            # Only reprocess array when necessary (at limit)
+            if len(self.rate_limited_calls(group_name)) >= self.throttle_max_calls:
+                self.set_rate_limited_calls(
+                    [
+                        call
+                        for call in self.rate_limited_calls(group_name)
+                        if call > datetime.now() - self.throttle_period(group_name)
+                    ],
+                    group_name,
+                )
+
+            if len(self.rate_limited_calls(group_name)) >= self.throttle_max_calls:
+                on_condition = (
+                    JobException if self.on_condition is None else self.on_condition
+                )
+                raise on_condition(
+                    f"Rate limit exceeded, more than {self.throttle_max_calls} calls in {self.throttle_period(group_name)}",
+                )
+
+        return True
