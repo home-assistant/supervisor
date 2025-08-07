@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitCloneError, StoreGitError
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.data import Issue, Suggestion
 from supervisor.store.git import GitRepo
 
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
@@ -91,6 +93,70 @@ async def test_git_load(coresys: CoreSys, tmp_path: Path):
         await repo.load()
         assert repo.clone.call_count == 0
         assert mock_repo.call_count == 1
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "supervisor_internet")
+async def test_git_load_corrupt(coresys: CoreSys, tmp_path: Path):
+    """Test git load with corrupt repo."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    repo_dir = tmp_path / "repo"
+    repo = GitRepo(coresys, repo_dir, REPO_URL)
+
+    # Pretend we have a something but not .git to force a reset
+    repo_dir.mkdir()
+    marker = repo_dir / "test.txt"
+    marker.touch()
+
+    def mock_clone_from(url, path, *args, **kwargs):
+        """Mock to just make a .git and return."""
+        Path(path, ".git").mkdir()
+        return MagicMock()
+
+    with patch("git.Repo") as mock_repo:
+        mock_repo.clone_from = mock_clone_from
+        await repo.load()
+        assert mock_repo.call_count == 1
+        assert not marker.exists()
+        assert (repo_dir / ".git").is_dir()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "supervisor_internet")
+async def test_git_pull_correct(coresys: CoreSys, tmp_path: Path):
+    """Test git pull with corrupt repo."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    repo_dir = tmp_path / "repo"
+    repo = GitRepo(coresys, repo_dir, REPO_URL)
+
+    # Set up a our fake repo
+    repo_dir.mkdir()
+    git_dir = repo_dir / ".git"
+    git_dir.mkdir()
+    (repo_dir / "test.txt").touch()
+
+    with patch("git.Repo"):
+        await repo.load()
+
+        # Make it corrupt
+        git_dir.rmdir()
+
+        # Check that we get an issue on pull
+        with pytest.raises(
+            StoreGitError,
+            match=f"Can't update {REPO_URL} repo because git information is missing",
+        ):
+            await repo.pull()
+        assert (
+            Issue(
+                IssueType.CORRUPT_REPOSITORY, ContextType.STORE, reference=repo_dir.stem
+            )
+            in coresys.resolution.issues
+        )
+        assert (
+            Suggestion(
+                SuggestionType.EXECUTE_RESET, ContextType.STORE, reference=repo_dir.stem
+            )
+            in coresys.resolution.suggestions
+        )
 
 
 @pytest.mark.parametrize(

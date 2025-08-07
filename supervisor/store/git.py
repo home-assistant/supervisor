@@ -1,9 +1,11 @@
 """Init file for Supervisor add-on Git."""
 
 import asyncio
+from enum import StrEnum
 import errno
 import functools as ft
 import logging
+from os import listdir
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -18,6 +20,32 @@ from ..utils import remove_folder
 from .validate import RE_REPOSITORY
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+class _RepoDirectoryStatus(StrEnum):
+    """Basic directory status for repo."""
+
+    GOOD = "good"
+    EMPTY = "empty"
+    MISSING_GIT = "missing_git"
+
+
+def _check_repo_directory(path: Path) -> _RepoDirectoryStatus:
+    """Check repository directory.
+
+    Must be run in executor.
+    """
+    if not path.is_dir():
+        return _RepoDirectoryStatus.EMPTY
+
+    if (path / ".git").is_dir():
+        return _RepoDirectoryStatus.GOOD
+
+    return (
+        _RepoDirectoryStatus.MISSING_GIT
+        if listdir(path)
+        else _RepoDirectoryStatus.EMPTY
+    )
 
 
 class GitRepo(CoreSysAttributes):
@@ -50,9 +78,14 @@ class GitRepo(CoreSysAttributes):
 
     async def load(self) -> None:
         """Init Git add-on repository."""
-        if not await self.sys_run_in_executor((self.path / ".git").is_dir):
-            await self.clone()
-            return
+        match await self.sys_run_in_executor(_check_repo_directory, self.path):
+            # Nothing cached. Set up as fresh clone
+            case _RepoDirectoryStatus.EMPTY:
+                await self.clone()
+                return
+            # Repository is corrupt. Try to reset it before loading
+            case _RepoDirectoryStatus.MISSING_GIT:
+                await self.reset()
 
         # Load repository
         async with self.lock:
@@ -174,6 +207,22 @@ class GitRepo(CoreSysAttributes):
 
         async with self.lock:
             _LOGGER.info("Update add-on %s repository from %s", self.path, self.url)
+
+            # .git is missing, repository is corrupted. Can't continue, raise issue
+            if (
+                await self.sys_run_in_executor(_check_repo_directory, self.path)
+                != _RepoDirectoryStatus.GOOD
+            ):
+                self.sys_resolution.create_issue(
+                    IssueType.CORRUPT_REPOSITORY,
+                    ContextType.STORE,
+                    reference=self.path.stem,
+                    suggestions=[SuggestionType.EXECUTE_RESET],
+                )
+                raise StoreGitError(
+                    f"Can't update {self.url} repo because git information is missing",
+                    _LOGGER.error,
+                )
 
             try:
                 git_cmd = git.Git()

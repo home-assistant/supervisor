@@ -338,9 +338,30 @@ async def fixture_all_dbus_services(
 
 
 @pytest.fixture
+def addon_repo_fixtures() -> dict[str, Path]:
+    """Make addon repo fixtures into valid repositories and return."""
+    addon_repo_fixtures = Path(__file__).parent.joinpath("fixtures") / "addons"
+    core_repo_fixture = addon_repo_fixtures / "core"
+    local_repo_fixture = addon_repo_fixtures / "local"
+    git_repo_fixtures = addon_repo_fixtures / "git"
+
+    # Ensure each repo folder has a dummy .git
+    (core_repo_fixture / ".git").mkdir(exist_ok=True)
+    for repo in os.listdir(git_repo_fixtures):
+        Path(repo, ".git").mkdir(exist_ok=True)
+
+    return {
+        "core": core_repo_fixture,
+        "local": local_repo_fixture,
+        "git": git_repo_fixtures,
+    }
+
+
+@pytest.fixture
 async def coresys(
     docker,
     dbus_session_bus,
+    addon_repo_fixtures: dict[str, Path],
     all_dbus_services,
     aiohttp_client,
     run_supervisor_state,
@@ -393,15 +414,9 @@ async def coresys(
     coresys_obj.host.network._connectivity = True
 
     # Fix Paths
-    su_config.ADDONS_CORE = Path(
-        Path(__file__).parent.joinpath("fixtures"), "addons/core"
-    )
-    su_config.ADDONS_LOCAL = Path(
-        Path(__file__).parent.joinpath("fixtures"), "addons/local"
-    )
-    su_config.ADDONS_GIT = Path(
-        Path(__file__).parent.joinpath("fixtures"), "addons/git"
-    )
+    su_config.ADDONS_CORE = addon_repo_fixtures["core"]
+    su_config.ADDONS_LOCAL = addon_repo_fixtures["local"]
+    su_config.ADDONS_GIT = addon_repo_fixtures["git"]
     su_config.APPARMOR_DATA = Path(
         Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )
