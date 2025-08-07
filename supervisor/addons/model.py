@@ -645,7 +645,7 @@ class AddonModel(JobGroup, ABC):
                 return None
 
             # Return data
-            return readme.read_text(encoding="utf-8")
+            return readme.read_text(encoding="utf-8", errors="replace")
 
         return await self.sys_run_in_executor(read_readme)
 
