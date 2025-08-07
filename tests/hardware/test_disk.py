@@ -119,13 +119,13 @@ def test_get_dir_structure_sizes(coresys, tmp_path):
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=1)
 
     # Verify the structure
-    assert result["size"] > 0
+    assert result["used_space"] > 0
     assert "children" not in result
 
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=2)
 
     # Verify the structure
-    assert result["size"] > 0
+    assert result["used_space"] > 0
     assert "children" in result
     children = result["children"]
 
@@ -135,8 +135,8 @@ def test_get_dir_structure_sizes(coresys, tmp_path):
     assert "nested" not in children
 
     # Verify sizes are calculated correctly
-    assert children["subdir1"]["size"] > 0
-    assert children["subdir2"]["size"] > 0
+    assert children["subdir1"]["used_space"] > 0
+    assert children["subdir2"]["used_space"] > 0
     assert "children" not in children["subdir1"]  # No children due to max_depth=1
     assert "children" not in children["subdir2"]
 
@@ -147,11 +147,11 @@ def test_get_dir_structure_sizes(coresys, tmp_path):
     assert "subdir1" in result["children"]
     assert "subdir2" in result["children"]
     assert "nested" in result["children"]["subdir1"]["children"]
-    assert result["children"]["subdir1"]["children"]["nested"]["size"] > 0
+    assert result["children"]["subdir1"]["children"]["nested"]["used_space"] > 0
 
     # Test with max_depth=0 (should only count files in root, no children)
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=0)
-    assert result["size"] > 0
+    assert result["used_space"] > 0
     assert "children" not in result  # No children due to max_depth=0
 
 
@@ -162,7 +162,7 @@ def test_get_dir_structure_sizes_empty_dir(coresys, tmp_path):
 
     result = coresys.hardware.disk.get_dir_structure_sizes(empty_dir)
 
-    assert result["size"] == 0
+    assert result["used_space"] == 0
     assert "children" not in result
 
 
@@ -172,7 +172,7 @@ def test_get_dir_structure_sizes_nonexistent_dir(coresys, tmp_path):
 
     result = coresys.hardware.disk.get_dir_structure_sizes(nonexistent_dir)
 
-    assert result["size"] == 0
+    assert result["used_space"] == 0
     assert "children" not in result
 
 
@@ -187,7 +187,7 @@ def test_get_dir_structure_sizes_only_files(coresys, tmp_path):
 
     result = coresys.hardware.disk.get_dir_structure_sizes(files_dir)
 
-    assert result["size"] > 0
+    assert result["used_space"] > 0
     assert "children" not in result  # No children since no subdirectories
 
 
@@ -211,7 +211,7 @@ def test_get_dir_structure_sizes_zero_size_children(coresys, tmp_path):
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir)
 
     # Should include content_subdir but not empty_subdir (since size > 0)
-    assert result["size"] > 0
+    assert result["used_space"] > 0
     assert "children" not in result
 
 
