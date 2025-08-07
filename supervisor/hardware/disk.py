@@ -92,7 +92,7 @@ class HwDisk(CoreSysAttributes):
 
         size = 0
         if not path.exists():
-            return {"size": size}
+            return {"used_space": size}
 
         children: dict[str, Any] = {}
         root_device = path.stat().st_dev
@@ -119,15 +119,15 @@ class HwDisk(CoreSysAttributes):
                 continue
 
             child_result = self.get_dir_structure_sizes(child, max_depth - 1)
-            if child_result["size"] > 0:
-                size += child_result["size"]
+            if child_result["used_space"] > 0:
+                size += child_result["used_space"]
                 if max_depth > 1:
                     children[child.name] = child_result
 
         if children:
-            return {"size": size, "children": children}
+            return {"used_space": size, "children": children}
 
-        return {"size": size}
+        return {"used_space": size}
 
     def get_dir_sizes(
         self, request: dict[str, Path], max_depth: int = 1

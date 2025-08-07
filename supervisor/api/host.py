@@ -303,22 +303,31 @@ class APIHost(CoreSysAttributes):
 
         disk = self.sys_hardware.disk
 
-        _, used, _ = await self.sys_run_in_executor(
+        total, used, _ = await self.sys_run_in_executor(
             disk.disk_usage, self.sys_config.path_supervisor
         )
 
+        known_paths = await self.sys_run_in_executor(
+            disk.get_dir_sizes,
+            {
+                "addons_data": self.sys_config.path_addons_data,
+                "addons_config": self.sys_config.path_addon_configs,
+                "media": self.sys_config.path_media,
+                "share": self.sys_config.path_share,
+                "backup": self.sys_config.path_backup,
+                "ssl": self.sys_config.path_ssl,
+                "homeassistant": self.sys_config.path_homeassistant,
+            },
+            max_depth,
+        )
         return {
-            "size": used,
-            "children": await self.sys_run_in_executor(
-                disk.get_dir_sizes,
-                {
-                    "addons": self.sys_config.path_addons_data,
-                    "media": self.sys_config.path_media,
-                    "share": self.sys_config.path_share,
-                    "backup": self.sys_config.path_backup,
-                    "ssl": self.sys_config.path_ssl,
-                    "homeassistant": self.sys_config.path_homeassistant,
+            "total_space": total,
+            "used_space": used,
+            "children": {
+                **known_paths,
+                "system": {
+                    "used_space": used
+                    - sum(path["used_space"] for path in known_paths.values())
                 },
-                max_depth,
-            ),
+            },
         }
