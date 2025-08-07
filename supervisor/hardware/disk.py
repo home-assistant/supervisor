@@ -141,6 +141,13 @@ class HwDisk(CoreSysAttributes):
             )
             return None
 
+        # Check if percent_used is available (vendor/drive dependent)
+        if smart_log.percent_used is None:
+            _LOGGER.debug(
+                "NVMe controller %s does not provide percent_used attribute", drive.id
+            )
+            return None
+
         # UDisks2 documentation specifies that value can exceed 100
         if smart_log.percent_used >= 100:
             _LOGGER.warning(

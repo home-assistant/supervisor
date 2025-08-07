@@ -34,43 +34,49 @@ class SmartStatus:
     """Smart status information for NVMe devices.
 
     https://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.NVMe.Controller.html#gdbus-method-org-freedesktop-UDisks2-NVMe-Controller.SmartGetAttributes
+
+    All attributes are optional as their presence depends on the specific NVMe drive,
+    firmware version, and vendor implementation.
     """
 
-    available_spare: int
-    spare_threshold: int
-    percent_used: int
-    total_data_read: int
-    total_data_written: int
-    controller_busy_minutes: int
-    power_cycles: int
-    unsafe_shutdowns: int
-    media_errors: int
-    number_error_log_entries: int
-    temperature_sensors: list[int]
-    warning_composite_temperature: int
-    critical_composite_temperature: int
-    warning_temperature_minutes: int
-    critical_temperature_minutes: int
+    available_spare: int | None
+    spare_threshold: int | None
+    percent_used: int | None
+    total_data_read: int | None
+    total_data_written: int | None
+    controller_busy_minutes: int | None
+    power_cycles: int | None
+    unsafe_shutdowns: int | None
+    media_errors: int | None
+    number_error_log_entries: int | None
+    temperature_sensors: list[int] | None
+    warning_composite_temperature: int | None
+    critical_composite_temperature: int | None
+    warning_temperature_minutes: int | None
+    critical_temperature_minutes: int | None
 
     @classmethod
     def from_smart_get_attributes_resp(cls, resp: dict[str, Any]):
-        """Convert SmartGetAttributes response dictionary to instance."""
+        """Convert SmartGetAttributes response dictionary to instance.
+
+        Safely handles missing attributes as they are vendor/drive dependent.
+        """
         return cls(
-            available_spare=resp["avail_spare"],
-            spare_threshold=resp["spare_thresh"],
-            percent_used=resp["percent_used"],
-            total_data_read=resp["total_data_read"],
-            total_data_written=resp["total_data_written"],
-            controller_busy_minutes=resp["ctrl_busy_time"],
-            power_cycles=resp["power_cycles"],
-            unsafe_shutdowns=resp["unsafe_shutdowns"],
-            media_errors=resp["media_errors"],
-            number_error_log_entries=resp["num_err_log_entries"],
-            temperature_sensors=resp["temp_sensors"],
-            warning_composite_temperature=resp["wctemp"],
-            critical_composite_temperature=resp["cctemp"],
-            warning_temperature_minutes=resp["warning_temp_time"],
-            critical_temperature_minutes=resp["critical_temp_time"],
+            available_spare=resp.get("avail_spare"),
+            spare_threshold=resp.get("spare_thresh"),
+            percent_used=resp.get("percent_used"),
+            total_data_read=resp.get("total_data_read"),
+            total_data_written=resp.get("total_data_written"),
+            controller_busy_minutes=resp.get("ctrl_busy_time"),
+            power_cycles=resp.get("power_cycles"),
+            unsafe_shutdowns=resp.get("unsafe_shutdowns"),
+            media_errors=resp.get("media_errors"),
+            number_error_log_entries=resp.get("num_err_log_entries"),
+            temperature_sensors=resp.get("temp_sensors"),
+            warning_composite_temperature=resp.get("wctemp"),
+            critical_composite_temperature=resp.get("cctemp"),
+            warning_temperature_minutes=resp.get("warning_temp_time"),
+            critical_temperature_minutes=resp.get("critical_temp_time"),
         )
 
 
