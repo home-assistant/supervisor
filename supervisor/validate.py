@@ -29,6 +29,7 @@ from .const import (
     ATTR_IMAGE,
     ATTR_LAST_BOOT,
     ATTR_LOGGING,
+    ATTR_MTU,
     ATTR_MULTICAST,
     ATTR_OBSERVER,
     ATTR_OTA,
@@ -185,6 +186,9 @@ SCHEMA_DOCKER_CONFIG = vol.Schema(
             }
         ),
         vol.Optional(ATTR_ENABLE_IPV6, default=None): vol.Maybe(vol.Boolean()),
+        vol.Optional(ATTR_MTU, default=None): vol.Maybe(
+            vol.All(int, vol.Range(min=68, max=65535))
+        ),
     }
 )
 

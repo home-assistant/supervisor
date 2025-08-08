@@ -30,12 +30,19 @@ class MockNetwork:
     """Mock implementation of internal network."""
 
     def __init__(
-        self, raise_error: bool, containers: list[str], enableIPv6: bool
+        self,
+        raise_error: bool,
+        containers: list[str],
+        enableIPv6: bool,
+        mtu: int | None = None,
     ) -> None:
         """Initialize a mock network."""
         self.raise_error = raise_error
         self.containers = [MockContainer(container) for container in containers or []]
-        self.attrs = {DOCKER_ENABLEIPV6: enableIPv6}
+        self.attrs = {
+            DOCKER_ENABLEIPV6: enableIPv6,
+            "Options": {"com.docker.network.driver.mtu": str(mtu)} if mtu else {},
+        }
 
     def remove(self) -> None:
         """Simulate a network removal."""
@@ -86,11 +93,11 @@ async def test_network_recreation(
         ),
         patch(
             "supervisor.docker.network.DockerNetwork.docker.networks.get",
-            return_value=MockNetwork(raise_error, containers, old_enable_ipv6),
+            return_value=MockNetwork(raise_error, containers, old_enable_ipv6, None),
         ) as mock_get,
         patch(
             "supervisor.docker.network.DockerNetwork.docker.networks.create",
-            return_value=MockNetwork(raise_error, containers, new_enable_ipv6),
+            return_value=MockNetwork(raise_error, containers, new_enable_ipv6, None),
         ) as mock_create,
     ):
         network = (await DockerNetwork(MagicMock()).post_init(new_enable_ipv6)).network
@@ -134,7 +141,7 @@ async def test_network_default_ipv6_for_new_installations():
         ),
         patch(
             "supervisor.docker.network.DockerNetwork.docker.networks.create",
-            return_value=MockNetwork(False, None, True),
+            return_value=MockNetwork(False, None, True, None),
         ) as mock_create,
     ):
         # Pass None as enable_ipv6 to simulate no user setting
@@ -147,3 +154,76 @@ async def test_network_default_ipv6_for_new_installations():
         expected_params = DOCKER_NETWORK_PARAMS.copy()
         expected_params[ATTR_ENABLE_IPV6] = True
         mock_create.assert_called_with(**expected_params)
+
+
+async def test_network_mtu_recreation():
+    """Test network recreation with different MTU settings."""
+    with (
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+            create=True,
+        ),
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+            create=True,
+        ),
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks.get",
+            return_value=MockNetwork(False, None, True, 1500),  # Old MTU 1500
+        ) as mock_get,
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks.create",
+            return_value=MockNetwork(False, None, True, 1450),  # New MTU 1450
+        ) as mock_create,
+    ):
+        # Set new MTU to 1450
+        network = (await DockerNetwork(MagicMock()).post_init(True, 1450)).network
+
+        mock_get.assert_called_with(DOCKER_NETWORK)
+
+        assert network is not None
+
+        # Verify network was recreated with new MTU
+        expected_params = DOCKER_NETWORK_PARAMS.copy()
+        expected_params[ATTR_ENABLE_IPV6] = True
+        expected_params["options"] = expected_params["options"].copy()
+        expected_params["options"]["com.docker.network.driver.mtu"] = "1450"
+        mock_create.assert_called_with(**expected_params)
+
+
+async def test_network_mtu_no_change():
+    """Test that network is not recreated when MTU hasn't changed."""
+    with (
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+            create=True,
+        ),
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+            create=True,
+        ),
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks.get",
+            return_value=MockNetwork(False, None, True, 1450),  # Existing MTU 1450
+        ) as mock_get,
+        patch(
+            "supervisor.docker.network.DockerNetwork.docker.networks.create",
+        ) as mock_create,
+    ):
+        # Set same MTU (1450)
+        network = (await DockerNetwork(MagicMock()).post_init(True, 1450)).network
+
+        mock_get.assert_called_with(DOCKER_NETWORK)
+
+        # Verify network was NOT recreated since MTU is the same
+        mock_create.assert_not_called()
+
+        assert network is not None

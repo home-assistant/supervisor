@@ -23,6 +23,7 @@ import requests
 
 from ..const import (
     ATTR_ENABLE_IPV6,
+    ATTR_MTU,
     ATTR_REGISTRIES,
     DNS_SUFFIX,
     DOCKER_NETWORK,
@@ -105,6 +106,16 @@ class DockerConfig(FileConfiguration):
         self._data[ATTR_ENABLE_IPV6] = value
 
     @property
+    def mtu(self) -> int | None:
+        """Return MTU configuration for docker network."""
+        return self._data.get(ATTR_MTU, None)
+
+    @mtu.setter
+    def mtu(self, value: int | None) -> None:
+        """Set MTU configuration for docker network."""
+        self._data[ATTR_MTU] = value
+
+    @property
     def registries(self) -> dict[str, Any]:
         """Return credentials for docker registries."""
         return self._data.get(ATTR_REGISTRIES, {})
@@ -138,7 +149,7 @@ class DockerAPI:
         self._info = DockerInfo.new(self.docker.info())
         await self.config.read_data()
         self._network = await DockerNetwork(self.docker).post_init(
-            self.config.enable_ipv6
+            self.config.enable_ipv6, self.config.mtu
         )
         return self
 
