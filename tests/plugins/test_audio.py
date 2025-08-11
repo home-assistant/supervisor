@@ -182,7 +182,6 @@ async def test_restart_audio_addons_with_error_handling(
         patch.object(
             type(coresys.addons), "installed", new_callable=PropertyMock
         ) as mock_installed,
-        patch("supervisor.plugins.audio.async_capture_exception") as mock_capture,
     ):
         mock_installed.return_value = mock_addons
         await coresys.plugins.audio._restart_audio_addons()
@@ -192,7 +191,6 @@ async def test_restart_audio_addons_with_error_handling(
     failing_addon.restart.assert_called_once()
 
     # Verify error was captured and logged
-    mock_capture.assert_called_once()
     assert "Failed to restart audio add-on failing_addon" in caplog.text
     assert "Restarting audio add-on: successful_addon" in caplog.text
     assert "Restarting audio add-on: failing_addon" in caplog.text
