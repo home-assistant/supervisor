@@ -11,7 +11,7 @@ import shutil
 from awesomeversion import AwesomeVersion
 import jinja2
 
-from ..const import LogLevel
+from ..const import AddonState, LogLevel
 from ..coresys import CoreSys
 from ..docker.audio import DockerAudio
 from ..docker.const import ContainerState
@@ -131,6 +131,9 @@ class PluginAudio(PluginBase):
         except (DockerError, PluginError) as err:
             raise AudioUpdateError("Audio update failed", _LOGGER.error) from err
 
+        # Restart add-ons with audio support after plugin update
+        await self._restart_audio_addons()
+
     async def restart(self) -> None:
         """Restart Audio plugin."""
         _LOGGER.info("Restarting Audio plugin")
@@ -139,6 +142,9 @@ class PluginAudio(PluginBase):
             await self.instance.restart()
         except DockerError as err:
             raise AudioError("Can't start Audio plugin", _LOGGER.error) from err
+
+        # Restart add-ons with audio support after plugin restart
+        await self._restart_audio_addons()
 
     async def start(self) -> None:
         """Run Audio plugin."""
@@ -202,6 +208,36 @@ class PluginAudio(PluginBase):
             raise AudioError(
                 f"Can't update pulse audio config: {err}", _LOGGER.error
             ) from err
+
+    async def _restart_audio_addons(self) -> None:
+        """Restart all installed add-ons that have audio support."""
+        audio_addons = [
+            addon
+            for addon in self.sys_addons.installed
+            if addon.with_audio and addon.state == AddonState.STARTED
+        ]
+
+        if not audio_addons:
+            _LOGGER.debug("No running audio add-ons to restart")
+            return
+
+        _LOGGER.info(
+            "Restarting %d audio add-ons after audio plugin restart: %s",
+            len(audio_addons),
+            [addon.slug for addon in audio_addons],
+        )
+
+        for addon in audio_addons:
+            try:
+                _LOGGER.info("Restarting audio add-on: %s", addon.slug)
+                await addon.restart()
+            except Exception as err:
+                _LOGGER.warning(
+                    "Failed to restart audio add-on %s after audio plugin restart: %s",
+                    addon.slug,
+                    err,
+                )
+                await async_capture_exception(err)
 
     @Job(
         name="plugin_audio_restart_after_problem",
