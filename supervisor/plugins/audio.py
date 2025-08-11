@@ -231,13 +231,12 @@ class PluginAudio(PluginBase):
             try:
                 _LOGGER.info("Restarting audio add-on: %s", addon.slug)
                 await addon.restart()
-            except Exception as err:
+            except DockerError as err:
                 _LOGGER.warning(
                     "Failed to restart audio add-on %s after audio plugin restart: %s",
                     addon.slug,
                     err,
                 )
-                await async_capture_exception(err)
 
     @Job(
         name="plugin_audio_restart_after_problem",
