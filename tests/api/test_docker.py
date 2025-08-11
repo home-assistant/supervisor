@@ -63,7 +63,9 @@ async def test_api_network_combined_options(coresys: CoreSys, api_client: TestCl
     assert coresys.docker.config.enable_ipv6 is None
     assert coresys.docker.config.mtu is None
 
-    resp = await api_client.post("/docker/options", json={"enable_ipv6": True, "mtu": 1400})
+    resp = await api_client.post(
+        "/docker/options", json={"enable_ipv6": True, "mtu": 1400}
+    )
     assert resp.status == 200
 
     assert coresys.docker.config.enable_ipv6 is True
