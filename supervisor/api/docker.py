@@ -68,21 +68,21 @@ class APIDocker(CoreSysAttributes):
         """Set docker options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
+        reboot_required = False
+
         if (
             ATTR_ENABLE_IPV6 in body
             and self.sys_docker.config.enable_ipv6 != body[ATTR_ENABLE_IPV6]
         ):
             self.sys_docker.config.enable_ipv6 = body[ATTR_ENABLE_IPV6]
-            _LOGGER.info("Host system reboot required to apply new IPv6 configuration")
-            self.sys_resolution.create_issue(
-                IssueType.REBOOT_REQUIRED,
-                ContextType.SYSTEM,
-                suggestions=[SuggestionType.EXECUTE_REBOOT],
-            )
+            reboot_required = True
 
         if ATTR_MTU in body and self.sys_docker.config.mtu != body[ATTR_MTU]:
             self.sys_docker.config.mtu = body[ATTR_MTU]
-            _LOGGER.info("Host system reboot required to apply new MTU configuration")
+            reboot_required = True
+
+        if reboot_required:
+            _LOGGER.info("Host system reboot required to apply Docker configuration changes")
             self.sys_resolution.create_issue(
                 IssueType.REBOOT_REQUIRED,
                 ContextType.SYSTEM,

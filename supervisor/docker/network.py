@@ -4,7 +4,7 @@ import asyncio
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
-from typing import Self
+from typing import Self, cast
 
 import docker
 import requests
@@ -185,8 +185,9 @@ class DockerNetwork:
 
         # Copy options and add MTU if specified
         if mtu is not None:
-            network_params["options"] = network_params["options"].copy()
-            network_params["options"]["com.docker.network.driver.mtu"] = str(mtu)
+            options = cast(dict[str, str], network_params["options"]).copy()
+            options["com.docker.network.driver.mtu"] = str(mtu)
+            network_params["options"] = options
 
         try:
             self._network = self.docker.networks.create(**network_params)  # type: ignore
