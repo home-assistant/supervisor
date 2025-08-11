@@ -17,6 +17,7 @@ from ..docker.audio import DockerAudio
 from ..docker.const import ContainerState
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    AddonsError,
     AudioError,
     AudioJobError,
     AudioUpdateError,
@@ -231,7 +232,7 @@ class PluginAudio(PluginBase):
             try:
                 _LOGGER.info("Restarting audio add-on: %s", addon.slug)
                 await addon.restart()
-            except DockerError as err:
+            except AddonsError as err:
                 _LOGGER.warning(
                     "Failed to restart audio add-on %s after audio plugin restart: %s",
                     addon.slug,
