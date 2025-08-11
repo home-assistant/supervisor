@@ -82,7 +82,9 @@ class APIDocker(CoreSysAttributes):
             reboot_required = True
 
         if reboot_required:
-            _LOGGER.info("Host system reboot required to apply Docker configuration changes")
+            _LOGGER.info(
+                "Host system reboot required to apply Docker configuration changes"
+            )
             self.sys_resolution.create_issue(
                 IssueType.REBOOT_REQUIRED,
                 ContextType.SYSTEM,
