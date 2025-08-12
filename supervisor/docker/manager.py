@@ -108,7 +108,7 @@ class DockerConfig(FileConfiguration):
     @property
     def mtu(self) -> int | None:
         """Return MTU configuration for docker network."""
-        return self._data.get(ATTR_MTU, None)
+        return self._data.get(ATTR_MTU)
 
     @mtu.setter
     def mtu(self, value: int | None) -> None:
