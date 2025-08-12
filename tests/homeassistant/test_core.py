@@ -69,7 +69,7 @@ async def test_install_landingpage_docker_error(
         ),
         patch("supervisor.homeassistant.core.asyncio.sleep") as sleep,
     ):
-        coresys.docker.images.pull.side_effect = [APIError("fail"), MagicMock()]
+        coresys.docker.images.get.side_effect = [APIError("fail"), MagicMock()]
         await coresys.homeassistant.core.install_landingpage()
         sleep.assert_awaited_once_with(30)
 
@@ -81,7 +81,7 @@ async def test_install_landingpage_other_error(
     coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
 ):
     """Test install landing page fails due to other error."""
-    coresys.docker.images.pull.side_effect = [(err := OSError()), MagicMock()]
+    coresys.docker.images.get.side_effect = [(err := OSError()), MagicMock()]
 
     with (
         patch.object(DockerHomeAssistant, "attach", side_effect=DockerError),
@@ -123,7 +123,7 @@ async def test_install_docker_error(
         ),
         patch("supervisor.homeassistant.core.asyncio.sleep") as sleep,
     ):
-        coresys.docker.images.pull.side_effect = [APIError("fail"), MagicMock()]
+        coresys.docker.images.get.side_effect = [APIError("fail"), MagicMock()]
         await coresys.homeassistant.core.install()
         sleep.assert_awaited_once_with(30)
 
@@ -135,7 +135,7 @@ async def test_install_other_error(
     coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
 ):
     """Test install fails due to other error."""
-    coresys.docker.images.pull.side_effect = [(err := OSError()), MagicMock()]
+    coresys.docker.images.get.side_effect = [(err := OSError()), MagicMock()]
 
     with (
         patch.object(HomeAssistantCore, "start"),
@@ -407,9 +407,15 @@ async def test_core_loads_wrong_image_for_machine(
         "image": "ghcr.io/home-assistant/odroid-n2-homeassistant:2024.4.0",
         "force": True,
     }
-    coresys.docker.images.pull.assert_called_once_with(
-        "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0",
+    coresys.docker.docker.api.pull.assert_called_once_with(
+        "ghcr.io/home-assistant/qemux86-64-homeassistant",
+        tag="2024.4.0",
         platform="linux/amd64",
+        stream=True,
+        decode=True,
+    )
+    coresys.docker.images.get.assert_called_once_with(
+        "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0"
     )
     assert (
         coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
@@ -427,7 +433,7 @@ async def test_core_load_allows_image_override(coresys: CoreSys, container: Magi
 
     container.remove.assert_not_called()
     coresys.docker.images.remove.assert_not_called()
-    coresys.docker.images.pull.assert_not_called()
+    coresys.docker.images.get.assert_not_called()
     assert (
         coresys.homeassistant.image == "ghcr.io/home-assistant/odroid-n2-homeassistant"
     )
@@ -454,9 +460,15 @@ async def test_core_loads_wrong_image_for_architecture(
         "image": "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0",
         "force": True,
     }
-    coresys.docker.images.pull.assert_called_once_with(
-        "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0",
+    coresys.docker.docker.api.pull.assert_called_once_with(
+        "ghcr.io/home-assistant/qemux86-64-homeassistant",
+        tag="2024.4.0",
         platform="linux/amd64",
+        stream=True,
+        decode=True,
+    )
+    coresys.docker.images.get.assert_called_once_with(
+        "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0"
     )
     assert (
         coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"

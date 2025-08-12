@@ -116,7 +116,10 @@ async def docker() -> DockerAPI:
         patch(
             "supervisor.docker.manager.DockerAPI.containers", return_value=MagicMock()
         ),
-        patch("supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()),
+        patch(
+            "supervisor.docker.manager.DockerAPI.api",
+            return_value=(api_mock := MagicMock()),
+        ),
         patch("supervisor.docker.manager.DockerAPI.images.get", return_value=image),
         patch("supervisor.docker.manager.DockerAPI.images.list", return_value=images),
         patch(
@@ -133,6 +136,9 @@ async def docker() -> DockerAPI:
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
         docker_obj.info.version = AwesomeVersion("1.0.0")
+
+        # Need an iterable for logs
+        api_mock.pull.return_value = []
 
         yield docker_obj
 
@@ -386,6 +392,7 @@ async def coresys(
 
     # Mock docker
     coresys_obj._docker = docker
+    coresys_obj.docker.coresys = coresys_obj
     coresys_obj.docker._monitor = DockerMonitor(coresys_obj)
 
     # Set internet state
@@ -804,7 +811,7 @@ async def container(docker: DockerAPI) -> MagicMock:
     """Mock attrs and status for container on attach."""
     docker.containers.get.return_value = addon = MagicMock()
     docker.containers.create.return_value = addon
-    docker.images.pull.return_value = addon
+    docker.images.get.return_value = addon
     docker.images.build.return_value = (addon, "")
     addon.status = "stopped"
     addon.attrs = {"State": {"ExitCode": 0}}

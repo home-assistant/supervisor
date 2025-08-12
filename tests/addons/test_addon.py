@@ -954,7 +954,7 @@ async def test_addon_load_succeeds_with_docker_errors(
     # Image pull failure
     install_addon_ssh.data["image"] = "test/amd64-addon-ssh"
     coresys.docker.images.build.reset_mock(side_effect=True)
-    coresys.docker.images.pull.side_effect = DockerException()
+    coresys.docker.images.get.side_effect = DockerException()
     caplog.clear()
     await install_addon_ssh.load()
     assert "Unknown error with test/amd64-addon-ssh:9.2.1" in caplog.text

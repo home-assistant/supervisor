@@ -372,10 +372,10 @@ async def test_load_with_incorrect_image(
         "image": f"{old_image}:2024.4.0",
         "force": True,
     }
-    coresys.docker.images.pull.assert_called_once_with(
-        f"{correct_image}:2024.4.0",
-        platform="linux/amd64",
+    coresys.docker.docker.api.pull.assert_called_once_with(
+        correct_image, tag="2024.4.0", platform="linux/amd64", stream=True, decode=True
     )
+    coresys.docker.images.get.assert_called_once_with(f"{correct_image}:2024.4.0")
     assert plugin.image == correct_image
 
 
