@@ -12,6 +12,7 @@ from ..const import (
     ATTR_ENABLE_IPV6,
     ATTR_HOSTNAME,
     ATTR_LOGGING,
+    ATTR_MTU,
     ATTR_PASSWORD,
     ATTR_REGISTRIES,
     ATTR_STORAGE,
@@ -34,7 +35,12 @@ SCHEMA_DOCKER_REGISTRY = vol.Schema(
 )
 
 # pylint: disable=no-value-for-parameter
-SCHEMA_OPTIONS = vol.Schema({vol.Optional(ATTR_ENABLE_IPV6): vol.Maybe(vol.Boolean())})
+SCHEMA_OPTIONS = vol.Schema(
+    {
+        vol.Optional(ATTR_ENABLE_IPV6): vol.Maybe(vol.Boolean()),
+        vol.Optional(ATTR_MTU): vol.Maybe(vol.All(int, vol.Range(min=68, max=65535))),
+    }
+)
 
 
 class APIDocker(CoreSysAttributes):
@@ -51,6 +57,7 @@ class APIDocker(CoreSysAttributes):
         return {
             ATTR_VERSION: self.sys_docker.info.version,
             ATTR_ENABLE_IPV6: self.sys_docker.config.enable_ipv6,
+            ATTR_MTU: self.sys_docker.config.mtu,
             ATTR_STORAGE: self.sys_docker.info.storage,
             ATTR_LOGGING: self.sys_docker.info.logging,
             ATTR_REGISTRIES: data_registries,
@@ -61,12 +68,23 @@ class APIDocker(CoreSysAttributes):
         """Set docker options."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
+        reboot_required = False
+
         if (
             ATTR_ENABLE_IPV6 in body
             and self.sys_docker.config.enable_ipv6 != body[ATTR_ENABLE_IPV6]
         ):
             self.sys_docker.config.enable_ipv6 = body[ATTR_ENABLE_IPV6]
-            _LOGGER.info("Host system reboot required to apply new IPv6 configuration")
+            reboot_required = True
+
+        if ATTR_MTU in body and self.sys_docker.config.mtu != body[ATTR_MTU]:
+            self.sys_docker.config.mtu = body[ATTR_MTU]
+            reboot_required = True
+
+        if reboot_required:
+            _LOGGER.info(
+                "Host system reboot required to apply Docker configuration changes"
+            )
             self.sys_resolution.create_issue(
                 IssueType.REBOOT_REQUIRED,
                 ContextType.SYSTEM,
