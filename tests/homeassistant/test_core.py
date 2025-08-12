@@ -407,15 +407,10 @@ async def test_core_loads_wrong_image_for_machine(
         "image": "ghcr.io/home-assistant/odroid-n2-homeassistant:2024.4.0",
         "force": True,
     }
-    coresys.docker.docker.api.pull.assert_called_once_with(
+    coresys.docker.pull_image.assert_called_once_with(
         "ghcr.io/home-assistant/qemux86-64-homeassistant",
-        tag="2024.4.0",
+        "2024.4.0",
         platform="linux/amd64",
-        stream=True,
-        decode=True,
-    )
-    coresys.docker.images.get.assert_called_once_with(
-        "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0"
     )
     assert (
         coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"
@@ -460,15 +455,10 @@ async def test_core_loads_wrong_image_for_architecture(
         "image": "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0",
         "force": True,
     }
-    coresys.docker.docker.api.pull.assert_called_once_with(
+    coresys.docker.pull_image.assert_called_once_with(
         "ghcr.io/home-assistant/qemux86-64-homeassistant",
-        tag="2024.4.0",
+        "2024.4.0",
         platform="linux/amd64",
-        stream=True,
-        decode=True,
-    )
-    coresys.docker.images.get.assert_called_once_with(
-        "ghcr.io/home-assistant/qemux86-64-homeassistant:2024.4.0"
     )
     assert (
         coresys.homeassistant.image == "ghcr.io/home-assistant/qemux86-64-homeassistant"

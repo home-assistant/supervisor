@@ -561,11 +561,12 @@ async def test_shared_image_kept_on_update(
     docker.images.get.side_effect = [image_new, image_old]
     docker.images.list.return_value = [image_new, image_old]
 
-    await coresys.addons.update("local_example2")
-    docker.images.remove.assert_not_called()
-    assert example_2.version == "1.3.0"
+    with patch.object(DockerAPI, "pull_image", return_value=image_new):
+        await coresys.addons.update("local_example2")
+        docker.images.remove.assert_not_called()
+        assert example_2.version == "1.3.0"
 
-    docker.images.get.side_effect = [image_new]
-    await coresys.addons.update("local_example_image")
-    docker.images.remove.assert_called_once_with("image_old", force=True)
-    assert install_addon_example_image.version == "1.3.0"
+        docker.images.get.side_effect = [image_new]
+        await coresys.addons.update("local_example_image")
+        docker.images.remove.assert_called_once_with("image_old", force=True)
+        assert install_addon_example_image.version == "1.3.0"

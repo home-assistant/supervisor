@@ -811,11 +811,11 @@ async def container(docker: DockerAPI) -> MagicMock:
     """Mock attrs and status for container on attach."""
     docker.containers.get.return_value = addon = MagicMock()
     docker.containers.create.return_value = addon
-    docker.images.get.return_value = addon
     docker.images.build.return_value = (addon, "")
     addon.status = "stopped"
     addon.attrs = {"State": {"ExitCode": 0}}
-    yield addon
+    with patch.object(DockerAPI, "pull_image", return_value=addon):
+        yield addon
 
 
 @pytest.fixture
