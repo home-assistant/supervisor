@@ -34,7 +34,7 @@ from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
 from .configuration import AccessPoint, Interface
-from .const import InterfaceMethod, WifiMode
+from .const import InterfaceMethod, InterfaceType, WifiMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -293,6 +293,15 @@ class NetworkManager(CoreSysAttributes):
 
         # Create new interface (like vlan)
         elif not inet:
+            # For VLAN interfaces, check if one already exists with same ID on same parent
+            if interface.type == InterfaceType.VLAN and interface.vlan:
+                vlan_interface_name = f"{interface.vlan.interface}.{interface.vlan.id}"
+                if vlan_interface_name in self.sys_dbus.network:
+                    raise HostNetworkError(
+                        f"VLAN {interface.vlan.id} already exists on interface {interface.vlan.interface}",
+                        _LOGGER.error,
+                    )
+
             settings = get_connection_from_interface(interface, self.sys_dbus.network)
 
             try:
