@@ -84,14 +84,24 @@ class NetworkManager(CoreSysAttributes):
     @property
     def dns_servers(self) -> list[str]:
         """Return a list of local DNS servers."""
-        # Read all local dns servers
-        servers: list[str] = []
+        # Read all local dns servers with priority for stable ordering
+        servers_with_priority: list[tuple[int, str]] = []
         for config in self.sys_dbus.network.dns.configuration:
             if config.vpn or not config.nameservers:
                 continue
-            servers.extend([str(ns) for ns in config.nameservers])
+            for ns in config.nameservers:
+                servers_with_priority.append((config.priority, str(ns)))
 
-        return list(dict.fromkeys(servers))
+        # Sort by priority (ascending) then by server address for stable ordering
+        # Remove duplicates while preserving the highest priority (lowest number)
+        seen_servers: set[str] = set()
+        unique_servers: list[str] = []
+        for _, server in sorted(servers_with_priority):
+            if server not in seen_servers:
+                seen_servers.add(server)
+                unique_servers.append(server)
+
+        return unique_servers
 
     async def check_connectivity(self, *, force: bool = False):
         """Check the internet connection."""
