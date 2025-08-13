@@ -97,6 +97,7 @@ class SystemControl(CoreSysAttributes):
             await self.sys_dbus.timedate.set_timezone(timezone)
             await self.sys_dbus.timedate.update()
         else:
+            # pylint: disable=fixme
             # TODO: we can change this to a warning once 16.2 is out
             _LOGGER.info(
                 "Skipping persistent timezone setting, OS %s < 16.2",
