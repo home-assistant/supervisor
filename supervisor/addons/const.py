@@ -42,6 +42,7 @@ ADDON_UPDATE_CONDITIONS = [
     JobCondition.FREE_SPACE,
     JobCondition.HEALTHY,
     JobCondition.INTERNET_HOST,
+    JobCondition.OS_SUPPORTED,
     JobCondition.PLUGINS_UPDATED,
     JobCondition.SUPERVISOR_UPDATED,
 ]
