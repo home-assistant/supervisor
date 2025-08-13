@@ -16,10 +16,12 @@ from supervisor.const import BusEvent, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.manager import PullLogEntry, PullProgressDetail
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     DockerAPIError,
     DockerError,
+    DockerNoSpaceOnDevice,
     DockerNotFound,
     DockerRequestError,
 )
@@ -52,13 +54,15 @@ async def test_docker_image_platform(
 ):
     """Test platform set correctly from arch."""
     with patch.object(
-        coresys.docker.images, "pull", return_value=Mock(id="test:1.2.3")
-    ) as pull:
+        coresys.docker.images, "get", return_value=Mock(id="test:1.2.3")
+    ) as get:
         await test_docker_interface.install(
             AwesomeVersion("1.2.3"), "test", arch=cpu_arch
         )
-        assert pull.call_count == 1
-        assert pull.call_args == call("test:1.2.3", platform=platform)
+        coresys.docker.docker.api.pull.assert_called_once_with(
+            "test", tag="1.2.3", platform=platform, stream=True, decode=True
+        )
+        get.assert_called_once_with("test:1.2.3")
 
 
 async def test_docker_image_default_platform(
@@ -70,12 +74,14 @@ async def test_docker_image_default_platform(
             type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
         ),
         patch.object(
-            coresys.docker.images, "pull", return_value=Mock(id="test:1.2.3")
-        ) as pull,
+            coresys.docker.images, "get", return_value=Mock(id="test:1.2.3")
+        ) as get,
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
-        assert pull.call_count == 1
-        assert pull.call_args == call("test:1.2.3", platform="linux/386")
+        coresys.docker.docker.api.pull.assert_called_once_with(
+            "test", tag="1.2.3", platform="linux/386", stream=True, decode=True
+        )
+        get.assert_called_once_with("test:1.2.3")
 
 
 @pytest.mark.parametrize(
@@ -256,7 +262,7 @@ async def test_image_pull_fail(
     coresys: CoreSys, capture_exception: Mock, err: Exception
 ):
     """Test failure to pull image."""
-    coresys.docker.images.pull.side_effect = err
+    coresys.docker.images.get.side_effect = err
     with pytest.raises(DockerError):
         await coresys.homeassistant.core.instance.install(
             AwesomeVersion("2022.7.3"), arch=CpuArch.AMD64
@@ -281,3 +287,158 @@ async def test_run_missing_image(
         await install_addon_ssh.instance.run()
 
     capture_exception.assert_called_once()
+
+
+async def test_install_fires_progress_events(
+    coresys: CoreSys, test_docker_interface: DockerInterface
+):
+    """Test progress events are fired during an install for listeners."""
+    # This is from a sample pull. Filtered log to just one per unique status for test
+    coresys.docker.docker.api.pull.return_value = [
+        {
+            "status": "Pulling from home-assistant/odroid-n2-homeassistant",
+            "id": "2025.7.2",
+        },
+        {"status": "Already exists", "progressDetail": {}, "id": "6e771e15690e"},
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "1578b14a573c"},
+        {"status": "Waiting", "progressDetail": {}, "id": "2488d0e401e1"},
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 1378, "total": 1486},
+            "progress": "[==============================================>    ]  1.378kB/1.486kB",
+            "id": "1578b14a573c",
+        },
+        {"status": "Download complete", "progressDetail": {}, "id": "1578b14a573c"},
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 1486, "total": 1486},
+            "progress": "[==================================================>]  1.486kB/1.486kB",
+            "id": "1578b14a573c",
+        },
+        {"status": "Pull complete", "progressDetail": {}, "id": "1578b14a573c"},
+        {"status": "Verifying Checksum", "progressDetail": {}, "id": "6a1e931d8f88"},
+        {
+            "status": "Digest: sha256:490080d7da0f385928022927990e04f604615f7b8c622ef3e58253d0f089881d"
+        },
+        {
+            "status": "Status: Downloaded newer image for ghcr.io/home-assistant/odroid-n2-homeassistant:2025.7.2"
+        },
+    ]
+
+    events: list[PullLogEntry] = []
+
+    async def capture_log_entry(event: PullLogEntry) -> None:
+        events.append(event)
+
+    coresys.bus.register_event(BusEvent.DOCKER_IMAGE_PULL_UPDATE, capture_log_entry)
+
+    with (
+        patch.object(
+            type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
+        ),
+    ):
+        await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
+        coresys.docker.docker.api.pull.assert_called_once_with(
+            "test", tag="1.2.3", platform="linux/386", stream=True, decode=True
+        )
+        coresys.docker.images.get.assert_called_once_with("test:1.2.3")
+
+    await asyncio.sleep(1)
+    assert events == [
+        PullLogEntry(
+            status="Pulling from home-assistant/odroid-n2-homeassistant",
+            id="2025.7.2",
+        ),
+        PullLogEntry(
+            status="Already exists",
+            progress_detail=PullProgressDetail(),
+            id="6e771e15690e",
+        ),
+        PullLogEntry(
+            status="Pulling fs layer",
+            progress_detail=PullProgressDetail(),
+            id="1578b14a573c",
+        ),
+        PullLogEntry(
+            status="Waiting", progress_detail=PullProgressDetail(), id="2488d0e401e1"
+        ),
+        PullLogEntry(
+            status="Downloading",
+            progress_detail=PullProgressDetail(current=1378, total=1486),
+            progress="[==============================================>    ]  1.378kB/1.486kB",
+            id="1578b14a573c",
+        ),
+        PullLogEntry(
+            status="Download complete",
+            progress_detail=PullProgressDetail(),
+            id="1578b14a573c",
+        ),
+        PullLogEntry(
+            status="Extracting",
+            progress_detail=PullProgressDetail(current=1486, total=1486),
+            progress="[==================================================>]  1.486kB/1.486kB",
+            id="1578b14a573c",
+        ),
+        PullLogEntry(
+            status="Pull complete",
+            progress_detail=PullProgressDetail(),
+            id="1578b14a573c",
+        ),
+        PullLogEntry(
+            status="Verifying Checksum",
+            progress_detail=PullProgressDetail(),
+            id="6a1e931d8f88",
+        ),
+        PullLogEntry(
+            status="Digest: sha256:490080d7da0f385928022927990e04f604615f7b8c622ef3e58253d0f089881d"
+        ),
+        PullLogEntry(
+            status="Status: Downloaded newer image for ghcr.io/home-assistant/odroid-n2-homeassistant:2025.7.2"
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("error_log", "exc_type", "exc_msg"),
+    [
+        (
+            {
+                "errorDetail": {
+                    "message": "write /mnt/data/docker/tmp/GetImageBlob2228293192: no space left on device"
+                },
+                "error": "write /mnt/data/docker/tmp/GetImageBlob2228293192: no space left on device",
+            },
+            DockerNoSpaceOnDevice,
+            "No space left on disk",
+        ),
+        (
+            {"errorDetail": {"message": "failure"}, "error": "failure"},
+            DockerError,
+            "failure",
+        ),
+    ],
+)
+async def test_install_raises_on_pull_error(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    error_log: dict[str, Any],
+    exc_type: type[DockerError],
+    exc_msg: str,
+):
+    """Test exceptions raised from errors in pull log."""
+    coresys.docker.docker.api.pull.return_value = [
+        {
+            "status": "Pulling from home-assistant/odroid-n2-homeassistant",
+            "id": "2025.7.2",
+        },
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 1378, "total": 1486},
+            "progress": "[==============================================>    ]  1.378kB/1.486kB",
+            "id": "1578b14a573c",
+        },
+        error_log,
+    ]
+
+    with pytest.raises(exc_type, match=exc_msg):
+        await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")

@@ -232,9 +232,12 @@ async def test_listener_attached_on_install(
     ):
         await coresys.addons.install(TEST_ADDON_SLUG)
 
+    # Normally this would be defaulted to False on start of the addon but test skips that
+    coresys.addons.get_local_only(TEST_ADDON_SLUG).watchdog = False
+
     _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     await asyncio.sleep(0)
-    assert coresys.addons.get(TEST_ADDON_SLUG).state == AddonState.STARTUP
+    assert coresys.addons.get(TEST_ADDON_SLUG).state == AddonState.STARTED
 
 
 @pytest.mark.parametrize(
@@ -954,7 +957,7 @@ async def test_addon_load_succeeds_with_docker_errors(
     # Image pull failure
     install_addon_ssh.data["image"] = "test/amd64-addon-ssh"
     coresys.docker.images.build.reset_mock(side_effect=True)
-    coresys.docker.images.pull.side_effect = DockerException()
+    coresys.docker.pull_image.side_effect = DockerException()
     caplog.clear()
     await install_addon_ssh.load()
     assert "Unknown error with test/amd64-addon-ssh:9.2.1" in caplog.text

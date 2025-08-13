@@ -502,6 +502,7 @@ class BusEvent(StrEnum):
     """Bus event type."""
 
     DOCKER_CONTAINER_STATE_CHANGE = "docker_container_state_change"
+    DOCKER_IMAGE_PULL_UPDATE = "docker_image_pull_update"
     HARDWARE_NEW_DEVICE = "hardware_new_device"
     HARDWARE_REMOVE_DEVICE = "hardware_remove_device"
     SUPERVISOR_CONNECTIVITY_CHANGE = "supervisor_connectivity_change"

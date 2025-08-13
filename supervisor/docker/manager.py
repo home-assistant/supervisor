@@ -1,7 +1,10 @@
 """Manager for Supervisor Docker."""
 
+from __future__ import annotations
+
 import asyncio
 from contextlib import suppress
+from dataclasses import dataclass
 from functools import partial
 from ipaddress import IPv4Address
 import logging
@@ -30,9 +33,16 @@ from ..const import (
     ENV_SUPERVISOR_CPU_RT,
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
+    BusEvent,
 )
-from ..coresys import CoreSys
-from ..exceptions import DockerAPIError, DockerError, DockerNotFound, DockerRequestError
+from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import (
+    DockerAPIError,
+    DockerError,
+    DockerNoSpaceOnDevice,
+    DockerNotFound,
+    DockerRequestError,
+)
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
 from .const import LABEL_MANAGED
@@ -88,6 +98,68 @@ class DockerInfo:
         return bool(os.environ.get(ENV_SUPERVISOR_CPU_RT) == "1")
 
 
+@dataclass(frozen=True, slots=True)
+class PullProgressDetail:
+    """Progress detail information for pull.
+
+    Documentation lacking but both of these seem to be in bytes when populated.
+    """
+
+    current: int | None = None
+    total: int | None = None
+
+    @classmethod
+    def from_pull_log_dict(cls, value: dict[str, int]) -> PullProgressDetail:
+        """Convert pull progress log dictionary into instance."""
+        return cls(current=value.get("current"), total=value.get("total"))
+
+
+@dataclass(frozen=True, slots=True)
+class PullLogEntry:
+    """Details for a entry in pull log.
+
+    Not seeing documentation on this structure. Notes from exploration:
+    1. All entries have status except errors
+    2. Nearly all (but not all) entries have an id
+    3. Most entries have progress but it may be empty string and dictionary
+    4. Status is not an enum. It includes dynamic data like the image name
+    5. Progress is what you see in the CLI. It's for humans, progressDetail is for machines
+
+    Omitted field - errorDetail. It seems to be a dictionary with one field "message" that
+    exactly matches "error". As that is redundant, skipping for now.
+    """
+
+    id: str | None = None
+    status: str | None = None
+    progress: str | None = None
+    progress_detail: PullProgressDetail | None = None
+    error: str | None = None
+
+    @classmethod
+    def from_pull_log_dict(cls, value: dict[str, Any]) -> PullLogEntry:
+        """Convert pull progress log dictionary into instance."""
+        return cls(
+            id=value.get("id"),
+            status=value.get("status"),
+            progress=value.get("progress"),
+            progress_detail=PullProgressDetail.from_pull_log_dict(
+                value["progressDetail"]
+            )
+            if "progressDetail" in value
+            else None,
+            error=value.get("error"),
+        )
+
+    @property
+    def exception(self) -> DockerError:
+        """Converts error message into a raisable exception. Raises RuntimeError if there is no error."""
+        if not self.error:
+            raise RuntimeError("No error to convert to exception!")
+        if self.error.endswith("no space left on device"):
+            return DockerNoSpaceOnDevice(_LOGGER.error)
+        return DockerError(self.error, _LOGGER.error)
+
+
 class DockerConfig(FileConfiguration):
     """Home Assistant core object for Docker configuration."""
 
@@ -121,7 +193,7 @@ class DockerConfig(FileConfiguration):
         return self._data.get(ATTR_REGISTRIES, {})
 
 
-class DockerAPI:
+class DockerAPI(CoreSysAttributes):
     """Docker Supervisor wrapper.
 
     This class is not AsyncIO safe!
@@ -129,6 +201,7 @@ class DockerAPI:
 
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
+        self.coresys = coresys
         self._docker: DockerClient | None = None
         self._network: DockerNetwork | None = None
         self._info: DockerInfo | None = None
@@ -301,6 +374,32 @@ class DockerAPI:
             container.reload()
 
         return container
+
+    def pull_image(
+        self, repository: str, tag: str = "latest", platform: str | None = None
+    ) -> Image:
+        """Pull the specified image and return it.
+
+        This mimics the high level API of images.pull but provides better error handling by raising
+        based on a docker error on pull. Whereas the high level API ignores all errors on pull and
+        raises only if the get fails afterwards. Additionally it fires progress reports for the pull
+        on the bus so listeners can use that to update status for users.
+
+        Must be run in executor.
+        """
+        pull_log = self.docker.api.pull(
+            repository, tag=tag, platform=platform, stream=True, decode=True
+        )
+        for e in pull_log:
+            entry = PullLogEntry.from_pull_log_dict(e)
+            if entry.error:
+                raise entry.exception
+            self.sys_loop.call_soon_threadsafe(
+                self.sys_bus.fire_event, BusEvent.DOCKER_IMAGE_PULL_UPDATE, entry
+            )
+
+        sep = "@" if tag.startswith("sha256:") else ":"
+        return self.images.get(f"{repository}{sep}{tag}")
 
     def run_command(
         self,

@@ -244,8 +244,9 @@ class DockerInterface(JobGroup, ABC):
 
             # Pull new image
             docker_image = await self.sys_run_in_executor(
-                self.sys_docker.images.pull,
-                f"{image}:{version!s}",
+                self.sys_docker.pull_image,
+                image,
+                str(version),
                 platform=MAP_ARCH[image_arch],
             )
 
