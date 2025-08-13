@@ -112,3 +112,8 @@ class TimeDate(DBusInterfaceProxy):
     async def set_ntp(self, use_ntp: bool) -> None:
         """Turn NTP on or off."""
         await self.connected_dbus.call("set_ntp", use_ntp, False)
+
+    @dbus_connected
+    async def set_timezone(self, timezone: str) -> None:
+        """Set timezone on host."""
+        await self.connected_dbus.call("set_timezone", timezone, False)

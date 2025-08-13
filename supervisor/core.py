@@ -392,6 +392,19 @@ class Core(CoreSysAttributes):
 
     async def _adjust_system_datetime(self) -> None:
         """Adjust system time/date on startup."""
+        # Ensure host system timezone matches supervisor timezone configuration
+        if (
+            self.sys_config.timezone
+            and self.sys_host.info.timezone != self.sys_config.timezone
+            and self.sys_dbus.timedate.is_connected
+        ):
+            _LOGGER.info(
+                "Timezone in Supervisor config '%s' differs from host '%s'",
+                self.sys_config.timezone,
+                self.sys_host.info.timezone,
+            )
+            await self.sys_host.control.set_timezone(self.sys_config.timezone)
+
         # If no timezone is detect or set
         # If we are not connected or time sync
         if (
