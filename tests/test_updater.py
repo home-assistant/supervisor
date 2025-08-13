@@ -10,7 +10,7 @@ import pytest
 from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
-from supervisor.exceptions import JobConditionException
+from supervisor.exceptions import UpdaterJobError
 from supervisor.jobs import SupervisorJob
 from supervisor.resolution.const import UnsupportedReason
 
@@ -142,19 +142,23 @@ async def test_delayed_fetch_for_connectivity(
     )
 
 
-async def test_fetch_data_no_update_when_os_unsupported(coresys: CoreSys) -> None:
+async def test_fetch_data_no_update_when_os_unsupported(
+    coresys: CoreSys, websession: MagicMock
+) -> None:
     """Test that fetch_data doesn't update data when OS is unsupported."""
     # Store initial versions to compare later
     initial_supervisor_version = coresys.updater.version_supervisor
     initial_homeassistant_version = coresys.updater.version_homeassistant
     initial_hassos_version = coresys.updater.version_hassos
 
+    coresys.websession.head = AsyncMock()
+
     # Mark OS as unsupported by adding UnsupportedReason.OS_VERSION
-    coresys.resolution.unsupported.add(UnsupportedReason.OS_VERSION)
+    coresys.resolution.unsupported.append(UnsupportedReason.OS_VERSION)
 
     # Attempt to fetch data should fail due to OS_SUPPORTED condition
     with pytest.raises(
-        JobConditionException, match="blocked from execution, unsupported OS version"
+        UpdaterJobError, match="blocked from execution, unsupported OS version"
     ):
         await coresys.updater.fetch_data()
 
