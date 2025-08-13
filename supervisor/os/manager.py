@@ -251,6 +251,10 @@ class OSManager(CoreSysAttributes):
         self._version = AwesomeVersion(cpe.get_version()[0])
         self._board = cpe.get_target_hardware()[0]
         self._os_name = cpe.get_product()[0]
+
+        # Evaluate OS version early to make OS_SUPPORTED Job condition work
+        await self.sys_resolution.evaluate.get("os_version")()
+
         await self.reload()
 
         await self.datadisk.load()

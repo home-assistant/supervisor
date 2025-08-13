@@ -158,8 +158,6 @@ class Core(CoreSysAttributes):
             self.sys_mounts.load(),
             # Load Docker manager
             self.sys_docker.load(),
-            # Evaluate the system to check if update system is meant to run
-            self.sys_resolution.evaluate.evaluate_system(),
             # load last available data
             self.sys_updater.load(),
             # Load Plugins container
