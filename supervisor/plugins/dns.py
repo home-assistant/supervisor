@@ -103,7 +103,10 @@ class PluginDns(PluginBase):
         return self._cached_locals
 
     def _compute_locals(self) -> list[str]:
-        """Compute list of local system DNS servers."""
+        """Compute list of local system DNS servers.
+
+        Returns servers in stable priority order from NetworkManager.
+        """
         servers: list[str] = []
         for server in [
             f"dns://{server!s}" for server in self.sys_host.network.dns_servers
