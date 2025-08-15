@@ -93,9 +93,9 @@ class HwDisk(CoreSysAttributes):
 
         size = 0
         if not path.exists():
-            return {"used_space": size}
+            return {"used_bytes": size}
 
-        children: dict[str, Any] = {}
+        children: list[dict[str, Any]] = []
         root_device = path.stat().st_dev
 
         for child in path.iterdir():
@@ -120,27 +120,37 @@ class HwDisk(CoreSysAttributes):
                 continue
 
             child_result = self.get_dir_structure_sizes(child, max_depth - 1)
-            if child_result["used_space"] > 0:
-                size += child_result["used_space"]
+            if child_result["used_bytes"] > 0:
+                size += child_result["used_bytes"]
                 if max_depth > 1:
-                    children[child.name] = child_result
+                    children.append(
+                        {
+                            "id": child.name,
+                            "label": child.name,
+                            **child_result,
+                        }
+                    )
 
         if children:
-            return {"used_space": size, "children": children}
+            return {"used_bytes": size, "children": children}
 
-        return {"used_space": size}
+        return {"used_bytes": size}
 
     def get_dir_sizes(
         self, request: dict[str, Path], max_depth: int = 1
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         """Accept a dictionary of `name: Path` and return a dictionary with `name: <size>`.
 
         Must be run in executor.
         """
-        return {
-            name: self.get_dir_structure_sizes(path, max_depth)
+        return [
+            {
+                "id": name,
+                "label": name,
+                **self.get_dir_structure_sizes(path, max_depth),
+            }
             for name, path in request.items()
-        }
+        ]
 
     def _get_mountinfo(self, path: str) -> list[str] | None:
         mountinfo = _MOUNTINFO.read_text(encoding="utf-8")

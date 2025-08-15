@@ -321,13 +321,18 @@ class APIHost(CoreSysAttributes):
             max_depth,
         )
         return {
-            "total_space": total,
-            "used_space": used,
-            "children": {
-                **known_paths,
-                "system": {
-                    "used_space": used
-                    - sum(path["used_space"] for path in known_paths.values())
+            # this can be the disk/partition ID in the future
+            "id": "root",
+            "label": "Root",
+            "total_bytes": total,
+            "used_bytes": used,
+            "children": [
+                {
+                    "id": "system",
+                    "label": "System",
+                    "used_bytes": used
+                    - sum(path["used_bytes"] for path in known_paths),
                 },
-            },
+                *known_paths,
+            ],
         }
