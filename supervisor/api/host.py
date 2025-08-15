@@ -51,6 +51,7 @@ from .const import (
     ATTR_FORCE,
     ATTR_IDENTIFIERS,
     ATTR_LLMNR_HOSTNAME,
+    ATTR_MAX_DEPTH,
     ATTR_STARTUP_TIME,
     ATTR_USE_NTP,
     ATTR_VIRTUALIZATION,
@@ -289,3 +290,49 @@ class APIHost(CoreSysAttributes):
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
         return await self.advanced_logs_handler(request, identifier, follow)
+
+    @api_process
+    async def disk_usage(self, request: web.Request) -> dict:
+        """Return a breakdown of storage usage for the system."""
+
+        max_depth = request.query.get(ATTR_MAX_DEPTH, 1)
+        try:
+            max_depth = int(max_depth)
+        except ValueError:
+            max_depth = 1
+
+        disk = self.sys_hardware.disk
+
+        total, used, _ = await self.sys_run_in_executor(
+            disk.disk_usage, self.sys_config.path_supervisor
+        )
+
+        known_paths = await self.sys_run_in_executor(
+            disk.get_dir_sizes,
+            {
+                "addons_data": self.sys_config.path_addons_data,
+                "addons_config": self.sys_config.path_addon_configs,
+                "media": self.sys_config.path_media,
+                "share": self.sys_config.path_share,
+                "backup": self.sys_config.path_backup,
+                "ssl": self.sys_config.path_ssl,
+                "homeassistant": self.sys_config.path_homeassistant,
+            },
+            max_depth,
+        )
+        return {
+            # this can be the disk/partition ID in the future
+            "id": "root",
+            "label": "Root",
+            "total_bytes": total,
+            "used_bytes": used,
+            "children": [
+                {
+                    "id": "system",
+                    "label": "System",
+                    "used_bytes": used
+                    - sum(path["used_bytes"] for path in known_paths),
+                },
+                *known_paths,
+            ],
+        }

@@ -198,6 +198,7 @@ class RestAPI(CoreSysAttributes):
                 web.post("/host/reload", api_host.reload),
                 web.post("/host/options", api_host.options),
                 web.get("/host/services", api_host.services),
+                web.get("/host/disks/default/usage", api_host.disk_usage),
             ]
         )
 

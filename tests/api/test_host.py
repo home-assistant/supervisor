@@ -381,6 +381,433 @@ async def test_advanced_logs_errors(coresys: CoreSys, api_client: TestClient):
     )
 
 
+async def test_disk_usage_api(api_client: TestClient, coresys: CoreSys):
+    """Test disk usage API endpoint."""
+    # Mock the disk usage methods
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(coresys.hardware.disk, "get_dir_sizes") as mock_dir_sizes,
+    ):
+        # Mock the main disk usage call
+        mock_disk_usage.return_value = (
+            1000000000,
+            500000000,
+            500000000,
+        )  # 1GB total, 500MB used, 500MB free
+
+        # Mock the directory structure sizes for each path
+        mock_dir_sizes.return_value = [
+            {
+                "id": "addons_data",
+                "label": "Addons Data",
+                "used_bytes": 100000000,
+                "children": [
+                    {"id": "addon1", "label": "addon1", "used_bytes": 50000000}
+                ],
+            },
+            {
+                "id": "addons_config",
+                "label": "Addons Config",
+                "used_bytes": 200000000,
+                "children": [
+                    {"id": "media1", "label": "media1", "used_bytes": 100000000}
+                ],
+            },
+            {
+                "id": "media",
+                "label": "Media",
+                "used_bytes": 50000000,
+                "children": [
+                    {"id": "share1", "label": "share1", "used_bytes": 25000000}
+                ],
+            },
+            {
+                "id": "share",
+                "label": "Share",
+                "used_bytes": 300000000,
+                "children": [
+                    {"id": "backup1", "label": "backup1", "used_bytes": 150000000}
+                ],
+            },
+            {
+                "id": "backup",
+                "label": "Backup",
+                "used_bytes": 10000000,
+                "children": [{"id": "ssl1", "label": "ssl1", "used_bytes": 5000000}],
+            },
+            {
+                "id": "ssl",
+                "label": "SSL",
+                "used_bytes": 40000000,
+                "children": [
+                    {
+                        "id": "homeassistant1",
+                        "label": "homeassistant1",
+                        "used_bytes": 20000000,
+                    }
+                ],
+            },
+            {
+                "id": "homeassistant",
+                "label": "Home Assistant",
+                "used_bytes": 40000000,
+                "children": [
+                    {
+                        "id": "homeassistant1",
+                        "label": "homeassistant1",
+                        "used_bytes": 20000000,
+                    }
+                ],
+            },
+        ]
+
+        # Test default max_depth=1
+        resp = await api_client.get("/host/disks/default/usage")
+        assert resp.status == 200
+        result = await resp.json()
+
+        assert result["data"]["id"] == "root"
+        assert result["data"]["label"] == "Root"
+        assert result["data"]["total_bytes"] == 1000000000
+        assert result["data"]["used_bytes"] == 500000000
+        assert "children" in result["data"]
+        children = result["data"]["children"]
+
+        # First child should be system
+        assert children[0]["id"] == "system"
+        assert children[0]["label"] == "System"
+
+        # Verify all expected directories are present in the remaining children
+        assert children[1]["id"] == "addons_data"
+        assert children[2]["id"] == "addons_config"
+        assert children[3]["id"] == "media"
+        assert children[4]["id"] == "share"
+        assert children[5]["id"] == "backup"
+        assert children[6]["id"] == "ssl"
+        assert children[7]["id"] == "homeassistant"
+
+        # Verify the sizes are correct
+        assert children[1]["used_bytes"] == 100000000
+        assert children[2]["used_bytes"] == 200000000
+        assert children[3]["used_bytes"] == 50000000
+        assert children[4]["used_bytes"] == 300000000
+        assert children[5]["used_bytes"] == 10000000
+        assert children[6]["used_bytes"] == 40000000
+        assert children[7]["used_bytes"] == 40000000
+
+        # Verify system space calculation (total used - sum of known paths)
+        total_known_space = (
+            100000000
+            + 200000000
+            + 50000000
+            + 300000000
+            + 10000000
+            + 40000000
+            + 40000000
+        )
+        expected_system_space = 500000000 - total_known_space
+        assert children[0]["used_bytes"] == expected_system_space
+
+        # Verify disk_usage was called with supervisor path
+        mock_disk_usage.assert_called_once_with(coresys.config.path_supervisor)
+
+        # Verify get_dir_sizes was called once with all paths
+        assert mock_dir_sizes.call_count == 1
+        call_args = mock_dir_sizes.call_args
+        assert call_args[0][1] == 1  # max_depth parameter
+        paths_dict = call_args[0][0]  # paths dictionary
+        assert paths_dict["addons_data"] == coresys.config.path_addons_data
+        assert paths_dict["addons_config"] == coresys.config.path_addon_configs
+        assert paths_dict["media"] == coresys.config.path_media
+        assert paths_dict["share"] == coresys.config.path_share
+        assert paths_dict["backup"] == coresys.config.path_backup
+        assert paths_dict["ssl"] == coresys.config.path_ssl
+        assert paths_dict["homeassistant"] == coresys.config.path_homeassistant
+
+
+async def test_disk_usage_api_with_custom_depth(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test disk usage API endpoint with custom max_depth parameter."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(coresys.hardware.disk, "get_dir_sizes") as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+
+        # Mock deeper directory structure
+        mock_dir_sizes.return_value = [
+            {
+                "id": "addons_data",
+                "label": "Addons Data",
+                "used_bytes": 100000000,
+                "children": [
+                    {
+                        "id": "addon1",
+                        "label": "addon1",
+                        "used_bytes": 50000000,
+                        "children": [
+                            {
+                                "id": "subdir1",
+                                "label": "subdir1",
+                                "used_bytes": 25000000,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "id": "addons_config",
+                "label": "Addons Config",
+                "used_bytes": 100000000,
+                "children": [
+                    {
+                        "id": "addon1",
+                        "label": "addon1",
+                        "used_bytes": 50000000,
+                        "children": [
+                            {
+                                "id": "subdir1",
+                                "label": "subdir1",
+                                "used_bytes": 25000000,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "id": "media",
+                "label": "Media",
+                "used_bytes": 100000000,
+                "children": [
+                    {
+                        "id": "addon1",
+                        "label": "addon1",
+                        "used_bytes": 50000000,
+                        "children": [
+                            {
+                                "id": "subdir1",
+                                "label": "subdir1",
+                                "used_bytes": 25000000,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "id": "share",
+                "label": "Share",
+                "used_bytes": 100000000,
+                "children": [
+                    {
+                        "id": "addon1",
+                        "label": "addon1",
+                        "used_bytes": 50000000,
+                        "children": [
+                            {
+                                "id": "subdir1",
+                                "label": "subdir1",
+                                "used_bytes": 25000000,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "id": "backup",
+                "label": "Backup",
+                "used_bytes": 100000000,
+                "children": [
+                    {
+                        "id": "addon1",
+                        "label": "addon1",
+                        "used_bytes": 50000000,
+                        "children": [
+                            {
+                                "id": "subdir1",
+                                "label": "subdir1",
+                                "used_bytes": 25000000,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "id": "ssl",
+                "label": "SSL",
+                "used_bytes": 100000000,
+                "children": [
+                    {
+                        "id": "addon1",
+                        "label": "addon1",
+                        "used_bytes": 50000000,
+                        "children": [
+                            {
+                                "id": "subdir1",
+                                "label": "subdir1",
+                                "used_bytes": 25000000,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                "id": "homeassistant",
+                "label": "Home Assistant",
+                "used_bytes": 100000000,
+                "children": [
+                    {
+                        "id": "addon1",
+                        "label": "addon1",
+                        "used_bytes": 50000000,
+                        "children": [
+                            {
+                                "id": "subdir1",
+                                "label": "subdir1",
+                                "used_bytes": 25000000,
+                            },
+                        ],
+                    },
+                ],
+            },
+        ]
+
+        # Test with custom max_depth=2
+        resp = await api_client.get("/host/disks/default/usage?max_depth=2")
+        assert resp.status == 200
+        result = await resp.json()
+        assert result["data"]["used_bytes"] == 500000000
+        assert result["data"]["children"]
+
+        # Verify max_depth=2 was passed to get_dir_sizes
+        assert mock_dir_sizes.call_count == 1
+        call_args = mock_dir_sizes.call_args
+        assert call_args[0][1] == 2  # max_depth parameter
+
+
+async def test_disk_usage_api_invalid_depth(api_client: TestClient, coresys: CoreSys):
+    """Test disk usage API endpoint with invalid max_depth parameter."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(coresys.hardware.disk, "get_dir_sizes") as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+        mock_dir_sizes.return_value = [
+            {
+                "id": "addons_data",
+                "label": "Addons Data",
+                "used_bytes": 100000000,
+            },
+            {
+                "id": "addons_config",
+                "label": "Addons Config",
+                "used_bytes": 100000000,
+            },
+            {
+                "id": "media",
+                "label": "Media",
+                "used_bytes": 100000000,
+            },
+            {
+                "id": "share",
+                "label": "Share",
+                "used_bytes": 100000000,
+            },
+            {
+                "id": "backup",
+                "label": "Backup",
+                "used_bytes": 100000000,
+            },
+            {
+                "id": "ssl",
+                "label": "SSL",
+                "used_bytes": 100000000,
+            },
+            {
+                "id": "homeassistant",
+                "label": "Home Assistant",
+                "used_bytes": 100000000,
+            },
+        ]
+
+        # Test with invalid max_depth (non-integer)
+        resp = await api_client.get("/host/disks/default/usage?max_depth=invalid")
+        assert resp.status == 200
+        result = await resp.json()
+        assert result["data"]["used_bytes"] == 500000000
+        assert result["data"]["children"]
+
+        # Should default to max_depth=1 when invalid value is provided
+        assert mock_dir_sizes.call_count == 1
+        call_args = mock_dir_sizes.call_args
+        assert call_args[0][1] == 1  # Should default to 1
+
+
+async def test_disk_usage_api_empty_directories(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test disk usage API endpoint with empty directories."""
+    with (
+        patch.object(coresys.hardware.disk, "disk_usage") as mock_disk_usage,
+        patch.object(coresys.hardware.disk, "get_dir_sizes") as mock_dir_sizes,
+    ):
+        mock_disk_usage.return_value = (1000000000, 500000000, 500000000)
+
+        # Mock empty directory structures (no children)
+        mock_dir_sizes.return_value = [
+            {
+                "id": "addons_data",
+                "label": "Addons Data",
+                "used_bytes": 0,
+            },
+            {
+                "id": "addons_config",
+                "label": "Addons Config",
+                "used_bytes": 0,
+            },
+            {
+                "id": "media",
+                "label": "Media",
+                "used_bytes": 0,
+            },
+            {
+                "id": "share",
+                "label": "Share",
+                "used_bytes": 0,
+            },
+            {
+                "id": "backup",
+                "label": "Backup",
+                "used_bytes": 0,
+            },
+            {
+                "id": "ssl",
+                "label": "SSL",
+                "used_bytes": 0,
+            },
+            {
+                "id": "homeassistant",
+                "label": "Home Assistant",
+                "used_bytes": 0,
+            },
+        ]
+
+        resp = await api_client.get("/host/disks/default/usage")
+        assert resp.status == 200
+        result = await resp.json()
+
+        assert result["data"]["used_bytes"] == 500000000
+        children = result["data"]["children"]
+
+        # First child should be system with all the space
+        assert children[0]["id"] == "system"
+        assert children[0]["used_bytes"] == 500000000
+
+        # All other directories should have size 0
+        for i in range(1, len(children)):
+            assert children[i]["used_bytes"] == 0
+
+
 @pytest.mark.parametrize("action", ["reboot", "shutdown"])
 async def test_migration_blocks_shutdown(
     api_client: TestClient,
