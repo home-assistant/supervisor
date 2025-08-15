@@ -142,6 +142,7 @@ class APISupervisor(CoreSysAttributes):
         ):
             await self.sys_run_in_executor(validate_timezone, timezone)
             await self.sys_config.set_timezone(timezone)
+            await self.sys_host.control.set_timezone(timezone)
 
         if ATTR_CHANNEL in body:
             self.sys_updater.channel = body[ATTR_CHANNEL]

@@ -3,6 +3,8 @@
 from datetime import datetime
 import logging
 
+from awesomeversion import AwesomeVersion
+
 from ..const import HostFeature
 from ..coresys import CoreSysAttributes
 from ..exceptions import HostNotSupportedError
@@ -80,3 +82,24 @@ class SystemControl(CoreSysAttributes):
         _LOGGER.info("Setting new host datetime: %s", new_time.isoformat())
         await self.sys_dbus.timedate.set_time(new_time)
         await self.sys_dbus.timedate.update()
+
+    async def set_timezone(self, timezone: str) -> None:
+        """Set timezone on host."""
+        self._check_dbus(HostFeature.TIMEDATE)
+
+        # /etc/localtime is not writable on OS older than 16.2
+        if (
+            self.coresys.os.available
+            and self.coresys.os.version is not None
+            and self.sys_os.version >= AwesomeVersion("16.2.dev0")
+        ):
+            _LOGGER.info("Setting host timezone: %s", timezone)
+            await self.sys_dbus.timedate.set_timezone(timezone)
+            await self.sys_dbus.timedate.update()
+        else:
+            # pylint: disable=fixme
+            # TODO: we can change this to a warning once 16.2 is out
+            _LOGGER.info(
+                "Skipping persistent timezone setting, OS %s < 16.2",
+                self.sys_os.version,
+            )

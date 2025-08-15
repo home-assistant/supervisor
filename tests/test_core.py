@@ -83,6 +83,7 @@ async def test_adjust_system_datetime_if_time_behind(
             side_effect=[WhoamiData("Europe/Zurich", utc_ts)],
         ) as mock_retrieve_whoami,
         patch.object(SystemControl, "set_datetime") as mock_set_datetime,
+        patch.object(SystemControl, "set_timezone") as mock_set_timezone,
         patch.object(
             InfoCenter, "dt_synchronized", new=PropertyMock(return_value=False)
         ),
@@ -92,6 +93,21 @@ async def test_adjust_system_datetime_if_time_behind(
         mock_retrieve_whoami.assert_called_once()
         mock_set_datetime.assert_called_once()
         mock_check_connectivity.assert_called_once()
+        mock_set_timezone.assert_called_once_with("Europe/Zurich")
+
+
+async def test_adjust_system_datetime_sync_timezone_to_host(
+    coresys: CoreSys, websession: MagicMock
+):
+    """Test _adjust_system_datetime method syncs timezone to host when different."""
+    await coresys.core.sys_config.set_timezone("Europe/Prague")
+
+    with (
+        patch.object(SystemControl, "set_timezone") as mock_set_timezone,
+        patch.object(InfoCenter, "timezone", new=PropertyMock(return_value="Etc/UTC")),
+    ):
+        await coresys.core._adjust_system_datetime()
+        mock_set_timezone.assert_called_once_with("Europe/Prague")
 
 
 async def test_write_state_failure(

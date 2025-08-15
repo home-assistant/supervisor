@@ -82,6 +82,24 @@ async def test_dbus_setntp(
     assert timedate.ntp is False
 
 
+async def test_dbus_set_timezone(
+    timedate_service: TimeDateService, dbus_session_bus: MessageBus
+):
+    """Test setting of host timezone."""
+    timedate_service.SetTimezone.calls.clear()
+    timedate = TimeDate()
+
+    with pytest.raises(DBusNotConnectedError):
+        await timedate.set_timezone("Europe/Prague")
+
+    await timedate.connect(dbus_session_bus)
+
+    assert await timedate.set_timezone("Europe/Prague") is None
+    assert timedate_service.SetTimezone.calls == [("Europe/Prague", False)]
+    await timedate_service.ping()
+    assert timedate.timezone == "Europe/Prague"
+
+
 async def test_dbus_timedate_connect_error(
     dbus_session_bus: MessageBus, caplog: pytest.LogCaptureFixture
 ):
