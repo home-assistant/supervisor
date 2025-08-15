@@ -273,8 +273,8 @@ class NetworkSetting(DBusInterface):
         if CONF_ATTR_VLAN in data:
             if CONF_ATTR_VLAN_ID in data[CONF_ATTR_VLAN]:
                 self._vlan = VlanProperties(
-                    data[CONF_ATTR_VLAN][CONF_ATTR_VLAN_ID],
-                    data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_PARENT),
+                    id=data[CONF_ATTR_VLAN][CONF_ATTR_VLAN_ID],
+                    parent=data[CONF_ATTR_VLAN].get(CONF_ATTR_VLAN_PARENT),
                 )
             else:
                 self._vlan = None

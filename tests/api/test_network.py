@@ -389,7 +389,7 @@ async def test_api_network_vlan(
     connection = settings_service.AddConnection.calls[0][0]
     assert "uuid" in connection["connection"]
     assert connection["connection"] == {
-        "id": Variant("s", "Supervisor .1"),
+        "id": Variant("s", "Supervisor eth0.1"),
         "type": Variant("s", "vlan"),
         "llmnr": Variant("i", 2),
         "mdns": Variant("i", 2),
