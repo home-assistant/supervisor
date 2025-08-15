@@ -184,39 +184,47 @@ def test_get_dir_structure_sizes(coresys, tmp_path):
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=1)
 
     # Verify the structure
-    assert result["used_space"] > 0
+    assert result["used_bytes"] > 0
     assert "children" not in result
 
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=2)
 
     # Verify the structure
-    assert result["used_space"] > 0
+    assert result["used_bytes"] > 0
     assert "children" in result
     children = result["children"]
 
     # Should have subdir1 and subdir2, but not nested (due to max_depth=1)
-    assert "subdir1" in children
-    assert "subdir2" in children
-    assert "nested" not in children
+    child_names = [child["id"] for child in children]
+    assert "subdir1" in child_names
+    assert "subdir2" in child_names
+    assert "nested" not in child_names
 
     # Verify sizes are calculated correctly
-    assert children["subdir1"]["used_space"] > 0
-    assert children["subdir2"]["used_space"] > 0
-    assert "children" not in children["subdir1"]  # No children due to max_depth=1
-    assert "children" not in children["subdir2"]
+    subdir1 = next(child for child in children if child["id"] == "subdir1")
+    subdir2 = next(child for child in children if child["id"] == "subdir2")
+    assert subdir1["used_bytes"] > 0
+    assert subdir2["used_bytes"] > 0
+    assert "children" not in subdir1  # No children due to max_depth=1
+    assert "children" not in subdir2
 
     # Test with max_depth=2
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=3)
 
     # Should now include nested directory
-    assert "subdir1" in result["children"]
-    assert "subdir2" in result["children"]
-    assert "nested" in result["children"]["subdir1"]["children"]
-    assert result["children"]["subdir1"]["children"]["nested"]["used_space"] > 0
+    child_names = [child["id"] for child in result["children"]]
+    assert "subdir1" in child_names
+    assert "subdir2" in child_names
+
+    subdir1 = next(child for child in result["children"] if child["id"] == "subdir1")
+    nested_children = [child["id"] for child in subdir1["children"]]
+    assert "nested" in nested_children
+    nested = next(child for child in subdir1["children"] if child["id"] == "nested")
+    assert nested["used_bytes"] > 0
 
     # Test with max_depth=0 (should only count files in root, no children)
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir, max_depth=0)
-    assert result["used_space"] > 0
+    assert result["used_bytes"] > 0
     assert "children" not in result  # No children due to max_depth=0
 
 
@@ -227,7 +235,7 @@ def test_get_dir_structure_sizes_empty_dir(coresys, tmp_path):
 
     result = coresys.hardware.disk.get_dir_structure_sizes(empty_dir)
 
-    assert result["used_space"] == 0
+    assert result["used_bytes"] == 0
     assert "children" not in result
 
 
@@ -237,7 +245,7 @@ def test_get_dir_structure_sizes_nonexistent_dir(coresys, tmp_path):
 
     result = coresys.hardware.disk.get_dir_structure_sizes(nonexistent_dir)
 
-    assert result["used_space"] == 0
+    assert result["used_bytes"] == 0
     assert "children" not in result
 
 
@@ -252,7 +260,7 @@ def test_get_dir_structure_sizes_only_files(coresys, tmp_path):
 
     result = coresys.hardware.disk.get_dir_structure_sizes(files_dir)
 
-    assert result["used_space"] > 0
+    assert result["used_bytes"] > 0
     assert "children" not in result  # No children since no subdirectories
 
 
@@ -276,7 +284,7 @@ def test_get_dir_structure_sizes_zero_size_children(coresys, tmp_path):
     result = coresys.hardware.disk.get_dir_structure_sizes(test_dir)
 
     # Should include content_subdir but not empty_subdir (since size > 0)
-    assert result["used_space"] > 0
+    assert result["used_bytes"] > 0
     assert "children" not in result
 
 
@@ -332,7 +340,7 @@ def test_get_dir_structure_sizes_ebadmsg_error(coresys, tmp_path):
 
     # The EBADMSG error should cause the loop to break, so we get 0 used space
     # because the error happens before processing the file in the root directory
-    assert result["used_space"] == 0
+    assert result["used_bytes"] == 0
     assert "children" not in result
 
     # Verify that the unhealthy reason was added
