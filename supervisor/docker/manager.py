@@ -129,6 +129,7 @@ class PullLogEntry:
     exactly matches "error". As that is redundant, skipping for now.
     """
 
+    job_id: str  # Not part of the docker object. Used to link  log entries to supervisor jobs
     id: str | None = None
     status: str | None = None
     progress: str | None = None
@@ -136,9 +137,10 @@ class PullLogEntry:
     error: str | None = None
 
     @classmethod
-    def from_pull_log_dict(cls, value: dict[str, Any]) -> PullLogEntry:
+    def from_pull_log_dict(cls, job_id: str, value: dict[str, Any]) -> PullLogEntry:
         """Convert pull progress log dictionary into instance."""
         return cls(
+            job_id=job_id,
             id=value.get("id"),
             status=value.get("status"),
             progress=value.get("progress"),
@@ -376,7 +378,11 @@ class DockerAPI(CoreSysAttributes):
         return container
 
     def pull_image(
-        self, repository: str, tag: str = "latest", platform: str | None = None
+        self,
+        job_id: str,
+        repository: str,
+        tag: str = "latest",
+        platform: str | None = None,
     ) -> Image:
         """Pull the specified image and return it.
 
@@ -391,7 +397,7 @@ class DockerAPI(CoreSysAttributes):
             repository, tag=tag, platform=platform, stream=True, decode=True
         )
         for e in pull_log:
-            entry = PullLogEntry.from_pull_log_dict(e)
+            entry = PullLogEntry.from_pull_log_dict(job_id, e)
             if entry.error:
                 raise entry.exception
             self.sys_loop.call_soon_threadsafe(
