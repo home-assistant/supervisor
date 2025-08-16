@@ -1,0 +1,351 @@
+[
+    {
+        "status": "Pulling from home-assistant/odroid-n2-homeassistant",
+        "id": "2025.7.1"
+    },
+    {
+        "status": "Already exists",
+        "progressDetail": {},
+        "id": "6e771e15690e"
+    },
+    {
+        "status": "Already exists",
+        "progressDetail": {},
+        "id": "58da640818f4"
+    },
+    {
+        "status": "Pulling fs layer",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Pulling fs layer",
+        "progressDetail": {},
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Waiting",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Waiting",
+        "progressDetail": {},
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 539462,
+            "total": 436480882
+        },
+        "progress": "[>                                                  ]  539.5kB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 262144,
+            "total": 26132657
+        },
+        "progress": "[>                                                  ]  262.1kB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 4864838,
+            "total": 436480882
+        },
+        "progress": "[>                                                  ]  4.865MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 6580032,
+            "total": 26132657
+        },
+        "progress": "[============>                                      ]   6.58MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 7552896,
+            "total": 436480882
+        },
+        "progress": "[>                                                  ]  7.553MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 18688896,
+            "total": 26132657
+        },
+        "progress": "[===================================>               ]  18.69MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 10252544,
+            "total": 436480882
+        },
+        "progress": "[=>                                                 ]  10.25MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 25815872,
+            "total": 26132657
+        },
+        "progress": "[=================================================> ]  25.82MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Verifying Checksum",
+        "progressDetail": {},
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Download complete",
+        "progressDetail": {},
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 25369792,
+            "total": 436480882
+        },
+        "progress": "[==>                                                ]  25.37MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 103619904,
+            "total": 436480882
+        },
+        "progress": "[===========>                                       ]  103.6MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 227726144,
+            "total": 436480882
+        },
+        "progress": "[==========================>                        ]  227.7MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 433170048,
+            "total": 436480882
+        },
+        "progress": "[=================================================> ]  433.2MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Verifying Checksum",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Download complete",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 557056,
+            "total": 436480882
+        },
+        "progress": "[>                                                  ]  557.1kB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 89686016,
+            "total": 436480882
+        },
+        "progress": "[==========>                                        ]  89.69MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 174358528,
+            "total": 436480882
+        },
+        "progress": "[===================>                               ]  174.4MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 261816320,
+            "total": 436480882
+        },
+        "progress": "[=============================>                     ]  261.8MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 334790656,
+            "total": 436480882
+        },
+        "progress": "[======================================>            ]  334.8MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 383811584,
+            "total": 436480882
+        },
+        "progress": "[===========================================>       ]  383.8MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 435617792,
+            "total": 436480882
+        },
+        "progress": "[=================================================> ]  435.6MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 436480882,
+            "total": 436480882
+        },
+        "progress": "[==================================================>]  436.5MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Pull complete",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 262144,
+            "total": 26132657
+        },
+        "progress": "[>                                                  ]  262.1kB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 2621440,
+            "total": 26132657
+        },
+        "progress": "[=====>                                             ]  2.621MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 6029312,
+            "total": 26132657
+        },
+        "progress": "[===========>                                       ]  6.029MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 8650752,
+            "total": 26132657
+        },
+        "progress": "[================>                                  ]  8.651MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 11010048,
+            "total": 26132657
+        },
+        "progress": "[=====================>                             ]  11.01MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 13369344,
+            "total": 26132657
+        },
+        "progress": "[=========================>                         ]  13.37MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 15990784,
+            "total": 26132657
+        },
+        "progress": "[==============================>                    ]  15.99MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 18350080,
+            "total": 26132657
+        },
+        "progress": "[===================================>               ]  18.35MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 20709376,
+            "total": 26132657
+        },
+        "progress": "[=======================================>           ]  20.71MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 23068672,
+            "total": 26132657
+        },
+        "progress": "[============================================>      ]  23.07MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 26132657,
+            "total": 26132657
+        },
+        "progress": "[==================================================>]  26.13MB/26.13MB",
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Pull complete",
+        "progressDetail": {},
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Digest: sha256:7d97da645f232f82a768d0a537e452536719d56d484d419836e53dbe3e4ec736"
+    },
+    {
+        "status": "Status: Downloaded newer image for ghcr.io/home-assistant/odroid-n2-homeassistant:2025.7.1"
+    }
+]

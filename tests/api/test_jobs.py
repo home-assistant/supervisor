@@ -112,6 +112,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "done": False,
             "child_jobs": [],
             "errors": [],
+            "extra": None,
         },
         {
             "created": ANY,
@@ -122,6 +123,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "stage": None,
             "done": False,
             "errors": [],
+            "extra": None,
             "child_jobs": [
                 {
                     "created": ANY,
@@ -133,6 +135,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
                     "done": False,
                     "child_jobs": [],
                     "errors": [],
+                    "extra": None,
                 },
             ],
         },
@@ -154,6 +157,7 @@ async def test_jobs_tree_representation(api_client: TestClient, coresys: CoreSys
             "done": True,
             "child_jobs": [],
             "errors": [],
+            "extra": None,
         },
     ]
     await outer_task
@@ -196,6 +200,7 @@ async def test_job_manual_cleanup(api_client: TestClient, coresys: CoreSys):
         "done": False,
         "child_jobs": [],
         "errors": [],
+        "extra": None,
     }
 
     # Only done jobs can be deleted via API
@@ -282,6 +287,7 @@ async def test_jobs_sorted(api_client: TestClient, coresys: CoreSys):
             "done": True,
             "errors": [],
             "child_jobs": [],
+            "extra": None,
         },
         {
             "created": ANY,
@@ -292,6 +298,7 @@ async def test_jobs_sorted(api_client: TestClient, coresys: CoreSys):
             "stage": None,
             "done": True,
             "errors": [],
+            "extra": None,
             "child_jobs": [
                 {
                     "created": ANY,
@@ -303,6 +310,7 @@ async def test_jobs_sorted(api_client: TestClient, coresys: CoreSys):
                     "done": True,
                     "errors": [],
                     "child_jobs": [],
+                    "extra": None,
                 },
                 {
                     "created": ANY,
@@ -314,6 +322,7 @@ async def test_jobs_sorted(api_client: TestClient, coresys: CoreSys):
                     "done": True,
                     "errors": [],
                     "child_jobs": [],
+                    "extra": None,
                 },
             ],
         },
@@ -359,6 +368,7 @@ async def test_job_with_error(
             "progress": 0,
             "stage": "test",
             "done": True,
+            "extra": None,
             "errors": [
                 {
                     "type": "SupervisorError",
@@ -375,6 +385,7 @@ async def test_job_with_error(
                     "progress": 0,
                     "stage": None,
                     "done": True,
+                    "extra": None,
                     "errors": [
                         {
                             "type": "SupervisorError",

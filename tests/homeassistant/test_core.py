@@ -1,7 +1,7 @@
 """Test Home Assistant core."""
 
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 from docker.errors import APIError, DockerException, ImageNotFound, NotFound
@@ -408,6 +408,7 @@ async def test_core_loads_wrong_image_for_machine(
         "force": True,
     }
     coresys.docker.pull_image.assert_called_once_with(
+        ANY,
         "ghcr.io/home-assistant/qemux86-64-homeassistant",
         "2024.4.0",
         platform="linux/amd64",
@@ -456,6 +457,7 @@ async def test_core_loads_wrong_image_for_architecture(
         "force": True,
     }
     coresys.docker.pull_image.assert_called_once_with(
+        ANY,
         "ghcr.io/home-assistant/qemux86-64-homeassistant",
         "2024.4.0",
         platform="linux/amd64",
