@@ -159,6 +159,7 @@ class Tasks(CoreSysAttributes):
             JobCondition.FREE_SPACE,
             JobCondition.HEALTHY,
             JobCondition.INTERNET_HOST,
+            JobCondition.OS_SUPPORTED,
             JobCondition.RUNNING,
         ],
         concurrency=JobConcurrency.REJECT,

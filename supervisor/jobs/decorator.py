@@ -17,7 +17,12 @@ from ..exceptions import (
     JobGroupExecutionLimitExceeded,
 )
 from ..host.const import HostFeature
-from ..resolution.const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
+from ..resolution.const import (
+    MINIMUM_FREE_SPACE_THRESHOLD,
+    ContextType,
+    IssueType,
+    UnsupportedReason,
+)
 from ..utils.sentry import async_capture_exception
 from . import SupervisorJob
 from .const import JobConcurrency, JobCondition, JobThrottle
@@ -389,6 +394,14 @@ class Job(CoreSysAttributes):
         ):
             raise JobConditionException(
                 f"'{method_name}' blocked from execution, no Home Assistant OS-Agent available"
+            )
+
+        if (
+            JobCondition.OS_SUPPORTED in used_conditions
+            and UnsupportedReason.OS_VERSION in coresys.sys_resolution.unsupported
+        ):
+            raise JobConditionException(
+                f"'{method_name}' blocked from execution, unsupported OS version"
             )
 
         if (

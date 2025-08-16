@@ -74,7 +74,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
     @Job(
         name="store_manager_reload",
-        conditions=[JobCondition.SUPERVISOR_UPDATED],
+        conditions=[JobCondition.SUPERVISOR_UPDATED, JobCondition.OS_SUPPORTED],
         on_condition=StoreJobError,
     )
     async def reload(self, repository: Repository | None = None) -> None:
@@ -113,7 +113,11 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
 
     @Job(
         name="store_manager_add_repository",
-        conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.SUPERVISOR_UPDATED],
+        conditions=[
+            JobCondition.INTERNET_SYSTEM,
+            JobCondition.SUPERVISOR_UPDATED,
+            JobCondition.OS_SUPPORTED,
+        ],
         on_condition=StoreJobError,
     )
     async def add_repository(self, url: str, *, persist: bool = True) -> None:

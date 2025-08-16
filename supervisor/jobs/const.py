@@ -29,6 +29,7 @@ class JobCondition(StrEnum):
     INTERNET_SYSTEM = "internet_system"
     MOUNT_AVAILABLE = "mount_available"
     OS_AGENT = "os_agent"
+    OS_SUPPORTED = "os_supported"
     PLUGINS_UPDATED = "plugins_updated"
     RUNNING = "running"
     SUPERVISOR_UPDATED = "supervisor_updated"
