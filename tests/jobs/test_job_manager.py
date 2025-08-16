@@ -105,6 +105,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                     "parent_id": None,
                     "errors": [],
                     "created": ANY,
+                    "extra": None,
                 },
             },
         }
@@ -127,6 +128,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                     "parent_id": None,
                     "errors": [],
                     "created": ANY,
+                    "extra": None,
                 },
             },
         }
@@ -149,6 +151,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                     "parent_id": None,
                     "errors": [],
                     "created": ANY,
+                    "extra": None,
                 },
             },
         }
@@ -171,6 +174,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                         "parent_id": None,
                         "errors": [],
                         "created": ANY,
+                        "extra": None,
                     },
                 },
             }
@@ -199,6 +203,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                             }
                         ],
                         "created": ANY,
+                        "extra": None,
                     },
                 },
             }
@@ -226,6 +231,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                         }
                     ],
                     "created": ANY,
+                    "extra": None,
                 },
             },
         }

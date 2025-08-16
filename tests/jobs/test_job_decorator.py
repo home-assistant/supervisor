@@ -993,6 +993,7 @@ async def test_internal_jobs_no_notify(coresys: CoreSys, ha_ws_client: AsyncMock
                     "parent_id": None,
                     "errors": [],
                     "created": ANY,
+                    "extra": None,
                 },
             },
         }
