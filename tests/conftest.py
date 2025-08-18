@@ -197,7 +197,9 @@ async def fixture_network_manager_services(
             "network_device": [
                 "/org/freedesktop/NetworkManager/Devices/1",
                 "/org/freedesktop/NetworkManager/Devices/3",
+                "/org/freedesktop/NetworkManager/Devices/38",
             ],
+            "network_device_vlan": None,
             "network_dns_manager": None,
             "network_ip4config": None,
             "network_ip6config": None,

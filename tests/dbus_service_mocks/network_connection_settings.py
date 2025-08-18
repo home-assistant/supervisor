@@ -142,10 +142,28 @@ SETTINGS_2_FIXTURE = settings_update(
 
 SETTINGS_3_FIXTURE = deepcopy(MINIMAL_WIRELESS_SETTINGS_FIXTURE)
 
+# VLAN settings fixture for eth0.10 (VLAN ID 10 on eth0)
+SETTINGS_31_FIXTURE = settings_update(
+    MINIMAL_SETTINGS_FIXTURE,
+    {
+        "connection": {
+            "id": "Supervisor eth0.10",
+            "type": "vlan",
+            "uuid": "31ac31ac-31ac-31ac-31ac-31ac31ac31ac",
+            "interface-name": "eth0.10",
+        },
+        "vlan": {
+            "id": 10,
+            "parent": "0c23631e-2118-355c-bbb0-8943229cb0d6",  # eth0's UUID
+        },
+    },
+)
+
 SETINGS_FIXTURES: dict[str, dict[str, dict[str, Variant]]] = {
     "/org/freedesktop/NetworkManager/Settings/1": SETTINGS_1_FIXTURE,
     "/org/freedesktop/NetworkManager/Settings/2": SETTINGS_2_FIXTURE,
     "/org/freedesktop/NetworkManager/Settings/3": SETTINGS_3_FIXTURE,
+    "/org/freedesktop/NetworkManager/Settings/31": SETTINGS_31_FIXTURE,
 }
 
 

@@ -27,6 +27,7 @@ class NetworkManager(DBusServiceMock):
     devices = [
         "/org/freedesktop/NetworkManager/Devices/1",
         "/org/freedesktop/NetworkManager/Devices/3",
+        "/org/freedesktop/NetworkManager/Devices/38",
     ]
 
     @dbus_property(access=PropertyAccess.READ)

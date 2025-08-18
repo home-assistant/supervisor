@@ -403,6 +403,16 @@ async def test_api_network_vlan(
         "parent": Variant("s", "0c23631e-2118-355c-bbb0-8943229cb0d6"),
     }
 
+    # Check if trying to recreate an existing VLAN raises an exception
+    result = await resp.json()
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_ETH_NAME}/vlan/10",
+        json={"ipv4": {"method": "auto"}},
+    )
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert len(settings_service.AddConnection.calls) == 1
+
 
 @pytest.mark.parametrize(
     ("method", "url"),
