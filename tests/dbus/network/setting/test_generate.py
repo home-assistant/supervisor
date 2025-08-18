@@ -48,7 +48,7 @@ async def test_get_connection_no_path(network_manager: NetworkManager):
 async def test_generate_from_vlan(network_manager: NetworkManager):
     """Test generate from a vlan interface."""
     vlan_interface = Interface(
-        name="",
+        name="eth0.1",
         mac="",
         path="",
         enabled=True,
