@@ -176,13 +176,7 @@ def get_connection_from_interface(
 
     # Generate/Update ID/name
     if not name or not name.startswith("Supervisor"):
-        if interface.type == InterfaceType.VLAN:
-            # For VLANs, interface.name appears empty. Use the parent interface name
-            # since that is how we specify VLAN parent interface on creation
-            vlan_config = cast(VlanConfig, interface.vlan)
-            name = f"Supervisor {vlan_config.interface}.{vlan_config.id}"
-        else:
-            name = f"Supervisor {interface.name}"
+        name = f"Supervisor {interface.name}"
 
     if interface.type == InterfaceType.ETHERNET:
         iftype = "802-3-ethernet"

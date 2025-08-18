@@ -325,7 +325,7 @@ class APINetwork(CoreSysAttributes):
             )
 
         vlan_interface = Interface(
-            "",
+            f"{interface.name}.{vlan}",
             "",
             "",
             True,
