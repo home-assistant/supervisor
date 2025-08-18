@@ -82,6 +82,11 @@ class VlanConfig:
     """Represent a vlan configuration."""
 
     id: int
+    # Note: On VLAN creation, parent is the interface name, but in the NetworkManager
+    # config the parent is set to the connection UUID in get_connection_from_interface().
+    # On network update (which we call in apply_changes() on VLAN creation), the
+    # parent is then set to that connection UUID in _map_nm_vlan(), hence we always
+    # operate with a connection UUID as interface!
     interface: str | None
 
 
@@ -106,6 +111,20 @@ class Interface:
     def equals_dbus_interface(self, inet: NetworkInterface) -> bool:
         """Return true if this represents the dbus interface."""
         if not inet.settings:
+            return False
+
+        # Special handling for VLAN interfaces
+        if (
+            self.type == InterfaceType.VLAN
+            and self.vlan
+            and inet.type == DeviceType.VLAN
+        ):
+            if inet.settings.vlan:
+                # For VLANs, compare by VLAN id and parent interface
+                return (
+                    inet.settings.vlan.id == self.vlan.id
+                    and inet.settings.vlan.parent == self.vlan.interface
+                )
             return False
 
         if inet.settings.match and inet.settings.match.path:

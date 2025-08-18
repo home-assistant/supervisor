@@ -218,7 +218,7 @@ def get_connection_from_interface(
         conn[CONF_ATTR_802_ETHERNET] = {
             CONF_ATTR_802_ETHERNET_ASSIGNED_MAC: Variant("s", "preserve")
         }
-    elif interface.type == "vlan":
+    elif interface.type == InterfaceType.VLAN:
         parent = cast(VlanConfig, interface.vlan).interface
         if (
             parent
