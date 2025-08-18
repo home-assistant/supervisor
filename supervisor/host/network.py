@@ -222,7 +222,6 @@ class NetworkManager(CoreSysAttributes):
             _LOGGER.debug(
                 "VLAN interface %s does not exist, creating it", interface.name
             )
-            pass
         else:
             raise HostNetworkError(
                 f"VLAN {interface.vlan.id} already exists on interface {interface.vlan.interface}",
