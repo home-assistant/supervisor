@@ -80,6 +80,7 @@ class IssueType(StrEnum):
     CORRUPT_DOCKER = "corrupt_docker"
     CORRUPT_REPOSITORY = "corrupt_repository"
     CORRUPT_FILESYSTEM = "corrupt_filesystem"
+    DEPRECATED_ADDON = "deprecated_addon"
     DETACHED_ADDON_MISSING = "detached_addon_missing"
     DETACHED_ADDON_REMOVED = "detached_addon_removed"
     DEVICE_ACCESS_MISSING = "device_access_missing"
