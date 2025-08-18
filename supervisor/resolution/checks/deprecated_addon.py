@@ -2,7 +2,7 @@
 
 from ...const import AddonStage, CoreState
 from ...coresys import CoreSys
-from ..const import ContextType, IssueType
+from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
 
 
@@ -22,6 +22,7 @@ class CheckDeprecatedAddon(CheckBase):
                     IssueType.DEPRECATED_ADDON,
                     ContextType.ADDON,
                     reference=addon.slug,
+                    suggestions=[SuggestionType.EXECUTE_REMOVE],
                 )
 
     async def approve_check(self, reference: str | None = None) -> bool:
