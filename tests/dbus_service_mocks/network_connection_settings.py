@@ -143,7 +143,7 @@ SETTINGS_2_FIXTURE = settings_update(
 SETTINGS_3_FIXTURE = deepcopy(MINIMAL_WIRELESS_SETTINGS_FIXTURE)
 
 # VLAN settings fixture for eth0.10 (VLAN ID 10 on eth0)
-SETTINGS_31_FIXTURE = settings_update(
+SETTINGS_38_FIXTURE = settings_update(
     MINIMAL_SETTINGS_FIXTURE,
     {
         "connection": {
@@ -163,7 +163,7 @@ SETINGS_FIXTURES: dict[str, dict[str, dict[str, Variant]]] = {
     "/org/freedesktop/NetworkManager/Settings/1": SETTINGS_1_FIXTURE,
     "/org/freedesktop/NetworkManager/Settings/2": SETTINGS_2_FIXTURE,
     "/org/freedesktop/NetworkManager/Settings/3": SETTINGS_3_FIXTURE,
-    "/org/freedesktop/NetworkManager/Settings/31": SETTINGS_31_FIXTURE,
+    "/org/freedesktop/NetworkManager/Settings/38": SETTINGS_38_FIXTURE,
 }
 
 
