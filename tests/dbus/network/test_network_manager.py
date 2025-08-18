@@ -196,6 +196,7 @@ async def test_ignore_veth_only_changes(
     assert network_manager.properties["Devices"] == [
         "/org/freedesktop/NetworkManager/Devices/1",
         "/org/freedesktop/NetworkManager/Devices/3",
+        "/org/freedesktop/NetworkManager/Devices/38",
     ]
     with patch.object(NetworkInterface, "connect") as connect:
         network_manager_service.emit_properties_changed(
@@ -204,6 +205,7 @@ async def test_ignore_veth_only_changes(
                     "/org/freedesktop/NetworkManager/Devices/1",
                     "/org/freedesktop/NetworkManager/Devices/3",
                     "/org/freedesktop/NetworkManager/Devices/35",
+                    "/org/freedesktop/NetworkManager/Devices/38",
                 ]
             }
         )
