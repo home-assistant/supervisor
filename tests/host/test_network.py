@@ -62,7 +62,7 @@ async def test_load(
     assert len(coresys.host.network.dns_servers) == 1
     assert str(coresys.host.network.dns_servers[0]) == "192.168.30.1"
 
-    assert len(coresys.host.network.interfaces) == 2
+    assert len(coresys.host.network.interfaces) == 3
     name_dict = {intr.name: intr for intr in coresys.host.network.interfaces}
     assert "eth0" in name_dict
     assert name_dict["eth0"].mac == "AA:BB:CC:DD:EE:FF"
@@ -100,6 +100,8 @@ async def test_load(
     assert connection_settings_service.settings["ipv6"]["dns"] == Variant(
         "aay", [bytearray(b" \x01H`H`\x00\x00\x00\x00\x00\x00\x00\x00\x88\x88")]
     )
+    assert "eth0.10" in name_dict
+    assert name_dict["eth0.10"].enabled is False
 
     assert network_manager_service.ActivateConnection.calls == [
         (
@@ -146,7 +148,7 @@ async def test_load_with_network_connection_issues(
     await coresys.host.network.load()
 
     assert network_manager_service.ActivateConnection.calls == []
-    assert len(coresys.host.network.interfaces) == 2
+    assert len(coresys.host.network.interfaces) == 3
     name_dict = {intr.name: intr for intr in coresys.host.network.interfaces}
     assert "eth0" in name_dict
     assert name_dict["eth0"].enabled is True
