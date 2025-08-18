@@ -61,9 +61,7 @@ async def test_did_run(coresys: CoreSys):
     assert should_run == [CoreState.SETUP]
     assert len(should_not_run) != 0
 
-    with patch.object(
-        CheckDeprecatedAddon, "run_check", return_value=None
-    ) as check:
+    with patch.object(CheckDeprecatedAddon, "run_check", return_value=None) as check:
         for state in should_run:
             await coresys.core.set_state(state)
             await deprecated_addon()
