@@ -191,8 +191,14 @@ async def fixture_network_manager_services(
                 "/org/freedesktop/NetworkManager/AccessPoint/43099",
                 "/org/freedesktop/NetworkManager/AccessPoint/43100",
             ],
-            "network_active_connection": None,
-            "network_connection_settings": None,
+            "network_active_connection": [
+                "/org/freedesktop/NetworkManager/ActiveConnection/1",
+                "/org/freedesktop/NetworkManager/ActiveConnection/38",
+            ],
+            "network_connection_settings": [
+                "/org/freedesktop/NetworkManager/Settings/1",
+                "/org/freedesktop/NetworkManager/Settings/38",
+            ],
             "network_device_wireless": None,
             "network_device": [
                 "/org/freedesktop/NetworkManager/Devices/1",

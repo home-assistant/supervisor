@@ -147,19 +147,21 @@ SETTINGS_38_FIXTURE = settings_update(
     MINIMAL_SETTINGS_FIXTURE,
     {
         "connection": {
-            "id": "Supervisor eth0.10",
-            "type": "vlan",
-            "uuid": "31ac31ac-31ac-31ac-31ac-31ac31ac31ac",
-            "interface-name": "eth0.10",
+            "id": Variant("s", "Supervisor eth0.10"),
+            "type": Variant("s", "vlan"),
+            "uuid": Variant("s", "31ac31ac-31ac-31ac-31ac-31ac31ac31ac"),
+            "interface-name": Variant("s", "eth0.10"),
         },
         "vlan": {
-            "id": 10,
-            "parent": "0c23631e-2118-355c-bbb0-8943229cb0d6",  # eth0's UUID
+            "id": Variant("u", 10),
+            "parent": Variant(
+                "s", "0c23631e-2118-355c-bbb0-8943229cb0d6"
+            ),  # eth0's UUID
         },
     },
 )
 
-SETINGS_FIXTURES: dict[str, dict[str, dict[str, Variant]]] = {
+SETTINGS_FIXTURES: dict[str, dict[str, dict[str, Variant]]] = {
     "/org/freedesktop/NetworkManager/Settings/1": SETTINGS_1_FIXTURE,
     "/org/freedesktop/NetworkManager/Settings/2": SETTINGS_2_FIXTURE,
     "/org/freedesktop/NetworkManager/Settings/3": SETTINGS_3_FIXTURE,
@@ -184,7 +186,7 @@ class ConnectionSettings(DBusServiceMock):
         """Initialize object."""
         super().__init__()
         self.object_path = object_path
-        self.settings = deepcopy(SETINGS_FIXTURES[object_path])
+        self.settings = deepcopy(SETTINGS_FIXTURES[object_path])
 
     @dbus_property(access=PropertyAccess.READ)
     def Unsaved(self) -> "b":
