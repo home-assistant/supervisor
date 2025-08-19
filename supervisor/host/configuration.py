@@ -113,11 +113,8 @@ class Interface:
         if not inet.settings:
             return False
 
-        if self.type != inet.type:
-            return False
-
         # Special handling for VLAN interfaces
-        if self.type == InterfaceType.VLAN:
+        if self.type == InterfaceType.VLAN and inet.type == DeviceType.VLAN:
             if not self.vlan:
                 raise RuntimeError("VLAN information missing")
 
@@ -127,6 +124,12 @@ class Interface:
                     inet.settings.vlan.id == self.vlan.id
                     and inet.settings.vlan.parent == self.vlan.interface
                 )
+            return False
+
+        if (self.type, inet.type) not in [
+            (InterfaceType.ETHERNET, DeviceType.ETHERNET),
+            (InterfaceType.WIRELESS, DeviceType.WIRELESS),
+        ]:
             return False
 
         if inet.settings.match and inet.settings.match.path:
