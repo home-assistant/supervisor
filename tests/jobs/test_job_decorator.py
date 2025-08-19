@@ -1184,28 +1184,29 @@ async def test_job_scheduled_at(coresys: CoreSys):
             self.coresys.jobs.current.stage = "work"
 
     test = TestClass(coresys)
-
-    with time_machine.travel(dt):
-        job, _ = await test.job_scheduler()
-
-    started = False
-    ended = False
+    job_started = asyncio.Event()
+    job_ended = asyncio.Event()
 
     async def start_listener(evt_job: SupervisorJob):
-        nonlocal started
-        started = started or evt_job.uuid == job.uuid
+        if evt_job.uuid == job.uuid:
+            job_started.set()
 
     async def end_listener(evt_job: SupervisorJob):
-        nonlocal ended
-        ended = ended or evt_job.uuid == job.uuid
+        if evt_job.uuid == job.uuid:
+            job_ended.set()
 
-    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_START, start_listener)
-    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, end_listener)
+    async with time_machine.travel(dt):
+        job, _ = await test.job_scheduler()
 
-    await asyncio.sleep(0.2)
+        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_START, start_listener)
+        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, end_listener)
 
-    assert started
-    assert ended
+    # Advance time to exactly when job should start and wait for completion
+    async with time_machine.travel(dt + timedelta(seconds=0.1)):
+        await asyncio.wait_for(
+            asyncio.gather(job_started.wait(), job_ended.wait()), timeout=1.0
+        )
+
     assert job.done
     assert job.name == "test_job_scheduled_at_job_task"
     assert job.stage == "work"
