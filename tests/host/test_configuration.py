@@ -127,16 +127,11 @@ async def test_equals_dbus_interface_path_match(
         mac="AA:BB:CC:DD:EE:FF",
     )
 
-    # Get the settings service for device 1 (eth0)
-    settings_service = connection_settings_service[
-        "/org/freedesktop/NetworkManager/Settings/1"
-    ]
-
     # Add match settings with path and remove interface name to force path matching
-    settings_service.settings["match"] = {
+    connection_settings_service.settings["match"] = {
         "path": Variant("as", ["platform-ff3f0000.ethernet"])
     }
-    settings_service.settings["connection"].pop("interface-name", None)
+    connection_settings_service.settings["connection"].pop("interface-name", None)
 
     network_interface = coresys.dbus.network.get("eth0")
 

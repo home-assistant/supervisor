@@ -15,7 +15,6 @@ from supervisor.host.configuration import Ip6Setting
 from supervisor.host.const import InterfaceMethod
 from supervisor.host.network import Interface
 
-from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_connection_settings import (
     ConnectionSettings as ConnectionSettingsService,
 )
@@ -24,13 +23,7 @@ from tests.dbus_service_mocks.network_device import (
     WIRELESS_DEVICE_OBJECT_PATH,
 )
 
-
-@pytest.fixture(name="connection_settings_service", autouse=True)
-async def fixture_connection_settings_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-) -> ConnectionSettingsService:
-    """Mock Connection Settings service."""
-    yield network_manager_services["network_connection_settings"]
+pytestmark = pytest.mark.usefixtures("connection_settings_service")
 
 
 @pytest.fixture(name="dbus_interface")

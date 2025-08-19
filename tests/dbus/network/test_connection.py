@@ -10,6 +10,7 @@ from supervisor.dbus.network.connection import NetworkConnection
 from tests.const import TEST_INTERFACE_ETH_NAME
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_active_connection import (
+    DEFAULT_OBJECT_PATH as DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH,
     ActiveConnection as ActiveConnectionService,
 )
 
@@ -19,7 +20,9 @@ async def fixture_active_connection_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ActiveConnectionService:
     """Mock Active Connection service."""
-    yield network_manager_services["network_active_connection"]
+    yield network_manager_services["network_active_connection"][
+        DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH
+    ]
 
 
 async def test_active_connection(

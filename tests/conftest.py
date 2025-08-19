@@ -64,6 +64,7 @@ from .common import (
 from .const import TEST_ADDON_SLUG
 from .dbus_service_mocks.base import DBusServiceMock
 from .dbus_service_mocks.network_connection_settings import (
+    DEFAULT_OBJECT_PATH as DEFAULT_CONNECTION_SETTINGS_OBJECT_PATH,
     ConnectionSettings as ConnectionSettingsService,
 )
 from .dbus_service_mocks.network_dns_manager import DnsManager as DnsManagerService
@@ -248,7 +249,9 @@ async def fixture_connection_settings_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ConnectionSettingsService:
     """Return mock connection settings service."""
-    yield network_manager_services["network_connection_settings"]
+    yield network_manager_services["network_connection_settings"][
+        DEFAULT_CONNECTION_SETTINGS_OBJECT_PATH
+    ]
 
 
 @pytest.fixture(name="udisks2_services")
