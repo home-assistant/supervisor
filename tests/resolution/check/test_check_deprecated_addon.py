@@ -33,7 +33,7 @@ async def test_check(coresys: CoreSys, install_addon_ssh: Addon):
     assert coresys.resolution.issues[0].type is IssueType.DEPRECATED_ADDON
     assert coresys.resolution.issues[0].context is ContextType.ADDON
     assert coresys.resolution.issues[0].reference == install_addon_ssh.slug
-    assert len(coresys.resolution.suggestions) == 0
+    assert len(coresys.resolution.suggestions) == 1
 
 
 async def test_approve(coresys: CoreSys, install_addon_ssh: Addon):
