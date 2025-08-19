@@ -14,7 +14,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import StoreGitCloneError, StoreGitError, StoreJobError
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
-from ..utils import remove_folder
+from ..utils import directory_missing_or_empty, remove_folder
 from .validate import RE_REPOSITORY
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class GitRepo(CoreSysAttributes):
 
     async def load(self) -> None:
         """Init Git add-on repository."""
-        if not await self.sys_run_in_executor((self.path / ".git").is_dir):
+        if await self.sys_run_in_executor(directory_missing_or_empty, self.path):
             await self.clone()
             return
 
