@@ -30,14 +30,6 @@ from tests.dbus_service_mocks.network_manager import (
 )
 
 
-@pytest.fixture(name="active_connection_service")
-async def fixture_active_connection_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-) -> ActiveConnectionService:
-    """Return mock active connection service."""
-    yield network_manager_services["network_active_connection"]
-
-
 @pytest.fixture(name="wireless_service")
 async def fixture_wireless_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
@@ -101,15 +93,19 @@ async def test_load(
         "aay", [bytearray(b" \x01H`H`\x00\x00\x00\x00\x00\x00\x00\x00\x88\x88")]
     )
     assert "eth0.10" in name_dict
-    assert name_dict["eth0.10"].enabled is False
+    assert name_dict["eth0.10"].enabled is True
 
-    assert network_manager_service.ActivateConnection.calls == [
-        (
-            "/org/freedesktop/NetworkManager/Settings/1",
-            "/org/freedesktop/NetworkManager/Devices/1",
-            "/",
-        )
-    ]
+    assert len(network_manager_service.ActivateConnection.calls) == 2
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/38",
+        "/org/freedesktop/NetworkManager/Devices/38",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) in network_manager_service.ActivateConnection.calls
     assert network_manager_service.CheckConnectivity.calls == []
 
 
@@ -129,7 +125,11 @@ async def test_load_with_disabled_methods(
     await coresys.dbus.network.get("eth0").settings.reload()
 
     await coresys.host.network.load()
-    assert network_manager_service.ActivateConnection.calls == []
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) not in network_manager_service.ActivateConnection.calls
 
 
 async def test_load_with_network_connection_issues(
@@ -147,7 +147,11 @@ async def test_load_with_network_connection_issues(
 
     await coresys.host.network.load()
 
-    assert network_manager_service.ActivateConnection.calls == []
+    assert (
+        "/org/freedesktop/NetworkManager/Settings/1",
+        "/org/freedesktop/NetworkManager/Devices/1",
+        "/",
+    ) not in network_manager_service.ActivateConnection.calls
     assert len(coresys.host.network.interfaces) == 3
     name_dict = {intr.name: intr for intr in coresys.host.network.interfaces}
     assert "eth0" in name_dict

@@ -70,6 +70,11 @@ from .dbus_service_mocks.network_connection_settings import (
 from .dbus_service_mocks.network_dns_manager import DnsManager as DnsManagerService
 from .dbus_service_mocks.network_manager import NetworkManager as NetworkManagerService
 
+from tests.dbus_service_mocks.network_active_connection import (
+    DEFAULT_OBJECT_PATH as DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH,
+    ActiveConnection as ActiveConnectionService,
+)
+
 # pylint: disable=redefined-outer-name, protected-access
 
 
@@ -242,6 +247,16 @@ async def dns_manager_service(
 ) -> AsyncGenerator[DnsManagerService]:
     """Return DNS Manager service mock."""
     yield network_manager_services["network_dns_manager"]
+
+
+@pytest.fixture(name="active_connection_service")
+async def fixture_active_connection_service(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> ActiveConnectionService:
+    """Return mock active connection service."""
+    yield network_manager_services["network_active_connection"][
+        DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH
+    ]
 
 
 @pytest.fixture(name="connection_settings_service")
