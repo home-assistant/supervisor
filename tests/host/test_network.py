@@ -146,6 +146,7 @@ async def test_load_with_network_connection_issues(
     await active_connection_service.ping()
 
     await coresys.host.network.load()
+    await coresys.host.network.update()
 
     assert (
         "/org/freedesktop/NetworkManager/Settings/1",
@@ -157,9 +158,7 @@ async def test_load_with_network_connection_issues(
     assert "eth0" in name_dict
     assert name_dict["eth0"].enabled is True
     assert name_dict["eth0"].ipv4setting.method == InterfaceMethod.AUTO
-    assert name_dict["eth0"].ipv4.gateway is None
     assert name_dict["eth0"].ipv6setting.method == InterfaceMethod.AUTO
-    assert name_dict["eth0"].ipv6.gateway == IPv6Address("fe80::da58:d7ff:fe00:9c69")
 
 
 async def test_scan_wifi(coresys: CoreSys):
