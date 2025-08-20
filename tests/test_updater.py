@@ -167,8 +167,9 @@ async def test_load_skips_reload_when_os_board_with_version(
     coresys.os._board = "rpi4"  # pylint: disable=protected-access
     coresys.security.force = True
 
-    # Pre-populate version_hassos_unrestricted
-    coresys.updater._data[ATTR_HASSOS_UNRESTRICTED] = AwesomeVersion("13.1")
+    # Pre-populate version_hassos_unrestricted by setting it directly on the data dict
+    # Use the same approach as other tests that modify internal state
+    coresys.updater._data[ATTR_HASSOS_UNRESTRICTED] = AwesomeVersion("13.1")  # pylint: disable=protected-access
 
     # Mock reload to verify it doesn't get called
     with patch.object(coresys.updater, "reload", new_callable=AsyncMock) as mock_reload:
