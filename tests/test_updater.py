@@ -124,6 +124,7 @@ async def test_delayed_fetch_for_connectivity(
     await coresys.host.network.check_connectivity()
 
     await coresys.updater.load()
+    await coresys.updater.reload()
     coresys.websession.get.assert_not_called()
 
     # Now signal host has connectivity and wait for fetch data to complete to assert
