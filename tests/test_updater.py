@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import BusEvent
+from supervisor.const import ATTR_HASSOS_UNRESTRICTED, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
 from supervisor.exceptions import UpdaterJobError
@@ -141,6 +141,53 @@ async def test_delayed_fetch_for_connectivity(
         coresys.websession.get.call_args[0][0]
         == "https://version.home-assistant.io/stable.json"
     )
+
+
+@pytest.mark.usefixtures("no_job_throttle")
+async def test_load_calls_reload_when_os_board_without_version(
+    coresys: CoreSys, mock_update_data: MockResponse, supervisor_internet: AsyncMock
+) -> None:
+    """Test load calls reload when OS board exists but no version_hassos_unrestricted."""
+    # Set up OS board but no version data
+    coresys.os._board = "rpi4"  # pylint: disable=protected-access
+    coresys.security.force = True
+
+    # Mock reload to verify it gets called
+    with patch.object(coresys.updater, "reload", new_callable=AsyncMock) as mock_reload:
+        await coresys.updater.load()
+        mock_reload.assert_called_once()
+
+
+@pytest.mark.usefixtures("no_job_throttle")
+async def test_load_skips_reload_when_os_board_with_version(
+    coresys: CoreSys, mock_update_data: MockResponse, supervisor_internet: AsyncMock
+) -> None:
+    """Test load skips reload when OS board exists and version_hassos_unrestricted is set."""
+    # Set up OS board and version data
+    coresys.os._board = "rpi4"  # pylint: disable=protected-access
+    coresys.security.force = True
+
+    # Pre-populate version_hassos_unrestricted
+    coresys.updater._data[ATTR_HASSOS_UNRESTRICTED] = AwesomeVersion("13.1")
+
+    # Mock reload to verify it doesn't get called
+    with patch.object(coresys.updater, "reload", new_callable=AsyncMock) as mock_reload:
+        await coresys.updater.load()
+        mock_reload.assert_not_called()
+
+
+@pytest.mark.usefixtures("no_job_throttle")
+async def test_load_skips_reload_when_no_os_board(
+    coresys: CoreSys, mock_update_data: MockResponse, supervisor_internet: AsyncMock
+) -> None:
+    """Test load skips reload when no OS board is set."""
+    # Ensure no OS board is set
+    coresys.os._board = None  # pylint: disable=protected-access
+
+    # Mock reload to verify it doesn't get called
+    with patch.object(coresys.updater, "reload", new_callable=AsyncMock) as mock_reload:
+        await coresys.updater.load()
+        mock_reload.assert_not_called()
 
 
 async def test_fetch_data_no_update_when_os_unsupported(
