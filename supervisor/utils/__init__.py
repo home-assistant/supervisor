@@ -179,8 +179,4 @@ def directory_missing_or_empty(path: Path) -> bool:
         return True
 
     # Efficiently check if directory is empty
-    try:
-        next(os.scandir(path))
-        return False  # Found at least one entry
-    except StopIteration:
-        return True  # Directory is empty
+    return next(os.scandir(path), None) is None
