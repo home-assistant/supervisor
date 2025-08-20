@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 
-from supervisor.utils import get_latest_mtime  # Adjust the import as needed
+from supervisor.utils import directory_missing_or_empty, get_latest_mtime
 
 
 def test_get_latest_mtime_with_files():
@@ -83,3 +83,32 @@ def test_get_latest_mtime_empty_directory():
         latest_mtime, latest_path = get_latest_mtime(tmpdir)
         assert latest_path == tmpdir
         assert latest_mtime > 0
+
+
+def test_directory_missing_or_empty():
+    """Test directory_missing_or_empty function."""
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        tmpdir = Path(tmpdirname)
+
+        # Test empty directory
+        assert directory_missing_or_empty(tmpdir) is True
+
+        # Test directory with file
+        test_file = tmpdir / "test.txt"
+        test_file.write_text("test content")
+        assert directory_missing_or_empty(tmpdir) is False
+
+        # Test directory with subdirectory
+        test_file.unlink()
+        subdir = tmpdir / "subdir"
+        subdir.mkdir()
+        assert directory_missing_or_empty(tmpdir) is False
+
+        # Test non-existent path
+        non_existent = tmpdir / "does_not_exist"
+        assert directory_missing_or_empty(non_existent) is True
+
+        # Test file (not directory)
+        subdir.rmdir()
+        test_file.write_text("test content")
+        assert directory_missing_or_empty(test_file) is True
