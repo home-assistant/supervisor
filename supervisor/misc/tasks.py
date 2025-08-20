@@ -356,7 +356,10 @@ class Tasks(CoreSysAttributes):
             finally:
                 self._cache[addon.slug] = 0
 
-    @Job(name="tasks_reload_store", conditions=[JobCondition.SUPERVISOR_UPDATED])
+    @Job(
+        name="tasks_reload_store",
+        conditions=[JobCondition.SUPERVISOR_UPDATED, JobCondition.OS_SUPPORTED],
+    )
     async def _reload_store(self) -> None:
         """Reload store and check for addon updates."""
         await self.sys_store.reload()

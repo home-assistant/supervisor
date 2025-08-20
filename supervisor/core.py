@@ -231,6 +231,9 @@ class Core(CoreSysAttributes):
         # Mark booted partition as healthy
         await self.sys_os.mark_healthy()
 
+        # Refresh update information
+        await self.sys_updater.reload()
+
         # On release channel, try update itself if auto update enabled
         if self.sys_supervisor.need_update and self.sys_updater.auto_update:
             if not self.healthy:
@@ -301,7 +304,6 @@ class Core(CoreSysAttributes):
 
             # Upate Host/Deivce information
             self.sys_create_task(self.sys_host.reload())
-            self.sys_create_task(self.sys_updater.reload())
             self.sys_create_task(self.sys_resolution.healthcheck())
 
             await self.set_state(CoreState.RUNNING)
