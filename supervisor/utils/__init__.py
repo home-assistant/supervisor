@@ -175,4 +175,12 @@ def directory_missing_or_empty(path: Path) -> bool:
 
     Must be run in executor.
     """
-    return not path.is_dir() or len(os.listdir(path)) == 0
+    if not path.is_dir():
+        return True
+
+    # Efficiently check if directory is empty
+    try:
+        next(os.scandir(path))
+        return False  # Found at least one entry
+    except StopIteration:
+        return True  # Directory is empty
