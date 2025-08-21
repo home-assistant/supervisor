@@ -246,6 +246,60 @@ async def test_addon_configured_mount_still_flagged(
     )
 
 
+@pytest.mark.parametrize("folder", ["media", "share"])
+async def test_addon_custom_target_path_flagged(
+    docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon, folder: str
+):
+    """Test that add-on with custom target path for media/share is properly checked."""
+    # Configure add-on with custom target path
+    custom_path = f"/custom/{folder}"
+    mapping_type = "media" if folder == "media" else "share"
+    install_addon_ssh.data["map"] = [
+        {"type": mapping_type, "read_only": False, "path": custom_path},
+    ]
+
+    def mock_container_get(name: str) -> MagicMock:
+        """Mock container get with custom target path mount."""
+        out = MagicMock()
+        out.status = "running"
+        out.attrs = {"State": {}, "Mounts": []}
+
+        # Add mount with custom target path and wrong propagation
+        mount = {
+            "Source": f"/mnt/data/supervisor/{folder}",
+            "Destination": custom_path,  # Custom target path
+            "Propagation": "rprivate",  # Wrong propagation
+        }
+
+        if name == "addon_local_ssh":
+            out.attrs["Mounts"].append(mount)
+        return out
+
+    docker.containers.get = mock_container_get
+
+    await coresys.core.set_state(CoreState.SETUP)
+    with patch.object(DockerInterface, "is_running", return_value=True):
+        await coresys.plugins.load()
+        await coresys.homeassistant.load()
+        await coresys.addons.load()
+
+    docker_config = CheckDockerConfig(coresys)
+    assert not coresys.resolution.issues
+
+    # Run check - should create issue for add-on with custom target path
+    await docker_config.run_check()
+
+    # Should have addon issue since the mount with custom path was configured
+    addon_issues = [
+        issue
+        for issue in coresys.resolution.issues
+        if issue.context == ContextType.ADDON and issue.reference == "local_ssh"
+    ]
+    assert len(addon_issues) == 1, (
+        "Add-on should be flagged for configured mounts with custom paths and wrong propagation"
+    )
+
+
 async def test_did_run(coresys: CoreSys):
     """Test that the check ran as expected."""
     docker_config = CheckDockerConfig(coresys)

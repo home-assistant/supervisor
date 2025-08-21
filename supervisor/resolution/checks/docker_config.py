@@ -3,7 +3,7 @@
 from ...addons.const import MappingType
 from ...const import CoreState
 from ...coresys import CoreSys
-from ...docker.const import PropagationMode
+from ...docker.const import PATH_MEDIA, PATH_SHARE, PropagationMode
 from ...docker.interface import DockerInterface
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Issue
@@ -16,31 +16,39 @@ def _check_container(container: DockerInterface, addon=None) -> bool:
     For add-ons, only validates mounts explicitly configured (not Docker VOLUMEs).
     For Core/plugins, validates all /media and /share mounts.
     """
-    # Check all mounts to /media and /share for propagation issues
-    problematic_mounts = [
-        mount
-        for mount in container.meta_mounts
-        if mount.get("Destination") in ["/media", "/share"]
-        and mount.get("Propagation") != PropagationMode.RSLAVE
-    ]
-
-    if not problematic_mounts:
-        return False
-
-    # For add-ons, only flag as issue if mount was requested in configuration
+    # For add-ons, check mounts against their actual configured targets
     if addon is not None:
-        requested_mappings = addon.map_volumes.keys()
+        addon_mapping = addon.map_volumes
+        configured_targets = set()
 
-        for mount in problematic_mounts:
-            match mount.get("Destination"):
-                case "/media" if MappingType.MEDIA in requested_mappings:
-                    return True
-                case "/share" if MappingType.SHARE in requested_mappings:
-                    return True
+        # Get actual target paths from add-on configuration
+        if MappingType.MEDIA in addon_mapping:
+            target = addon_mapping[MappingType.MEDIA].path or PATH_MEDIA.as_posix()
+            configured_targets.add(target)
+
+        if MappingType.SHARE in addon_mapping:
+            target = addon_mapping[MappingType.SHARE].path or PATH_SHARE.as_posix()
+            configured_targets.add(target)
+
+        if not configured_targets:
+            return False
+
+        # Check if any configured targets have propagation issues
+        for mount in container.meta_mounts:
+            if (
+                mount.get("Destination") in configured_targets
+                and mount.get("Propagation") != PropagationMode.RSLAVE
+            ):
+                return True
 
         return False
 
-    return True
+    # For Home Assistant Core and plugins, check default /media and /share paths
+    return any(
+        mount.get("Propagation") != PropagationMode.RSLAVE
+        for mount in container.meta_mounts
+        if mount.get("Destination") in [PATH_MEDIA.as_posix(), PATH_SHARE.as_posix()]
+    )
 
 
 def setup(coresys: CoreSys) -> CheckBase:
