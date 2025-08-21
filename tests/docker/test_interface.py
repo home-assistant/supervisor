@@ -478,9 +478,9 @@ async def test_install_sends_progress_to_home_assistant(
 
     layer_1_log = make_sub_log("1e214cd6d7d0")
     layer_2_log = make_sub_log("1a38e1d5e18d")
-    assert len(layer_1_log) == 21
-    assert len(layer_2_log) == 20
-    assert len(events) == 44
+    assert len(layer_1_log) == 20
+    assert len(layer_2_log) == 19
+    assert len(events) == 42
     assert layer_1_log == [
         {"stage": "Pulling fs layer", "progress": 0, "done": False, "extra": None},
         {
@@ -587,12 +587,6 @@ async def test_install_sends_progress_to_home_assistant(
         },
         {
             "stage": "Extracting",
-            "progress": 100.0,
-            "done": False,
-            "extra": {"current": 436480882, "total": 436480882},
-        },
-        {
-            "stage": "Pull complete",
             "progress": 100.0,
             "done": False,
             "extra": {"current": 436480882, "total": 436480882},

@@ -36,6 +36,7 @@ from ..exceptions import (
     DockerAPIError,
     DockerError,
     DockerJobError,
+    DockerLogOutOfOrder,
     DockerNotFound,
     DockerRequestError,
     DockerTrustError,
@@ -249,32 +250,24 @@ class DockerInterface(JobGroup, ABC):
 
         # This likely only occurs if the logs came in out of sync and we got progress before the Pulling FS Layer one
         if not job:
-            _LOGGER.debug(
-                "Received pull image log with status %s for image id %s and parent job %s but could not find a matching job, skipping",
-                reference.status,
-                reference.id,
-                job_id,
+            raise DockerLogOutOfOrder(
+                f"Received pull image log with status {reference.status} for image id {reference.id} and parent job {job_id} but could not find a matching job, skipping",
+                _LOGGER.debug,
             )
-            return
 
         # Hopefully these come in order but if they sometimes get out of sync, avoid accidentally going backwards
         # If it happens a lot though we may need to reconsider the value of this feature
         if job.done:
-            _LOGGER.debug(
-                "Received pull image log with status %s for job %s but job was done, skipping",
-                reference.status,
-                job.uuid,
+            raise DockerLogOutOfOrder(
+                f"Received pull image log with status {reference.status} for job {job.uuid} but job was done, skipping",
+                _LOGGER.debug,
             )
-            return
 
         if job.stage and stage < PullImageLayerStage.from_status(job.stage):
-            _LOGGER.debug(
-                "Received pull image log with status %s for job %s but job was already on stage %s, skipping",
-                reference.status,
-                job.uuid,
-                job.stage,
+            raise DockerLogOutOfOrder(
+                f"Received pull image log with status {reference.status} for job {job.uuid} but job was already on stage {job.stage}, skipping",
+                _LOGGER.debug,
             )
-            return
 
         # For progress calcuation we assume downloading and extracting are each 50% of the time and others stages negligible
         progress = job.progress
@@ -300,14 +293,10 @@ class DockerInterface(JobGroup, ABC):
                 progress = 100
 
         if progress < job.progress:
-            _LOGGER.debug(
-                "Received pull image log with status %s for job %s that implied progress was %s but current progress is %s, skipping",
-                reference.status,
-                job.uuid,
-                progress,
-                job.progress,
+            raise DockerLogOutOfOrder(
+                f"Received pull image log with status {reference.status} for job {job.uuid} that implied progress was {progress} but current progress is {job.progress}, skipping",
+                _LOGGER.debug,
             )
-            return
 
         # Our filters have all passed. Time to update the job
         # Only downloading and extracting have progress details. Use that to set extra
@@ -325,10 +314,11 @@ class DockerInterface(JobGroup, ABC):
                 },
             )
         else:
-            job.update(progress=progress, stage=stage.status)
-
-        if stage == PullImageLayerStage.PULL_COMPLETE:
-            job.done = True
+            job.update(
+                progress=progress,
+                stage=stage.status,
+                done=stage == PullImageLayerStage.PULL_COMPLETE,
+            )
 
     @Job(
         name="docker_interface_install",
@@ -359,7 +349,12 @@ class DockerInterface(JobGroup, ABC):
             job_id = self.sys_jobs.current.uuid
 
             async def process_pull_image_log(reference: PullLogEntry) -> None:
-                self._process_pull_image_log(job_id, reference)
+                try:
+                    self._process_pull_image_log(job_id, reference)
+                except DockerLogOutOfOrder as err:
+                    # Send all these to sentry. Missing a few progress updates
+                    # shouldn't matter to users but matters to us
+                    await async_capture_exception(err)
 
             listener = self.sys_bus.register_event(
                 BusEvent.DOCKER_IMAGE_PULL_UPDATE, process_pull_image_log

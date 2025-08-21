@@ -163,6 +163,7 @@ class SupervisorJob:
         progress: float | None = None,
         stage: str | None = None,
         extra: dict[str, Any] | None = DEFAULT,  # type: ignore
+        done: bool | None = None,
     ) -> None:
         """Update multiple fields with one on change event."""
         on_change = self.on_change
@@ -174,6 +175,8 @@ class SupervisorJob:
             self.stage = stage
         if extra != DEFAULT:
             self.extra = extra
+        if done is not None:
+            self.done = done
 
         self.on_change = on_change
         # Just triggers the normal on change
