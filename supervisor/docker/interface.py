@@ -234,7 +234,7 @@ class DockerInterface(JobGroup, ABC):
         job: SupervisorJob | None = None
         if stage == PullImageLayerStage.PULLING_FS_LAYER:
             job = self.sys_jobs.new_job(
-                name="Pulling image layer",
+                name="Pulling container image layer",
                 initial_stage=stage.status,
                 reference=reference.id,
                 parent_id=job_id,

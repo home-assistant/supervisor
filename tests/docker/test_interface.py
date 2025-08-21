@@ -471,7 +471,7 @@ async def test_install_sends_progress_to_home_assistant(
                 "extra": evt["extra"],
             }
             for evt in events
-            if evt["name"] == "Pulling image layer"
+            if evt["name"] == "Pulling container image layer"
             and evt["reference"] == layer_id
             and evt["parent_id"] == job.uuid
         ]
