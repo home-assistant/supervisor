@@ -1,5 +1,6 @@
 """Helper to check if docker config for container needs an update."""
 
+from ...addons.const import MappingType
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...docker.const import PropagationMode
@@ -9,13 +10,37 @@ from ..data import Issue
 from .base import CheckBase
 
 
-def _check_container(container: DockerInterface) -> bool:
-    """Return true if container has a config issue."""
-    return any(
-        mount.get("Propagation") != PropagationMode.RSLAVE
+def _check_container(container: DockerInterface, addon=None) -> bool:
+    """Check if container has mount propagation issues requiring recreate.
+
+    For add-ons, only validates mounts explicitly configured (not Docker VOLUMEs).
+    For Core/plugins, validates all /media and /share mounts.
+    """
+    # Check all mounts to /media and /share for propagation issues
+    problematic_mounts = [
+        mount
         for mount in container.meta_mounts
         if mount.get("Destination") in ["/media", "/share"]
-    )
+        and mount.get("Propagation") != PropagationMode.RSLAVE
+    ]
+
+    if not problematic_mounts:
+        return False
+
+    # For add-ons, only flag as issue if mount was requested in configuration
+    if addon is not None:
+        requested_mappings = addon.map_volumes.keys()
+
+        for mount in problematic_mounts:
+            match mount.get("Destination"):
+                case "/media" if MappingType.MEDIA in requested_mappings:
+                    return True
+                case "/share" if MappingType.SHARE in requested_mappings:
+                    return True
+
+        return False
+
+    return True
 
 
 def setup(coresys: CoreSys) -> CheckBase:
@@ -50,7 +75,7 @@ class CheckDockerConfig(CheckBase):
             new_issues.add(Issue(IssueType.DOCKER_CONFIG, ContextType.CORE))
 
         for addon in self.sys_addons.installed:
-            if _check_container(addon.instance):
+            if _check_container(addon.instance, addon):
                 new_issues.add(
                     Issue(
                         IssueType.DOCKER_CONFIG, ContextType.ADDON, reference=addon.slug
