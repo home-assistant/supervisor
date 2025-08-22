@@ -1,20 +1,53 @@
 """Helper to check if docker config for container needs an update."""
 
+from ...addons.const import MappingType
 from ...const import CoreState
 from ...coresys import CoreSys
-from ...docker.const import PropagationMode
+from ...docker.const import PATH_MEDIA, PATH_SHARE, PropagationMode
 from ...docker.interface import DockerInterface
 from ..const import ContextType, IssueType, SuggestionType
 from ..data import Issue
 from .base import CheckBase
 
 
-def _check_container(container: DockerInterface) -> bool:
-    """Return true if container has a config issue."""
+def _check_container(container: DockerInterface, addon=None) -> bool:
+    """Check if container has mount propagation issues requiring recreate.
+
+    For add-ons, only validates mounts explicitly configured (not Docker VOLUMEs).
+    For Core/plugins, validates all /media and /share mounts.
+    """
+    # For add-ons, check mounts against their actual configured targets
+    if addon is not None:
+        addon_mapping = addon.map_volumes
+        configured_targets = set()
+
+        # Get actual target paths from add-on configuration
+        if MappingType.MEDIA in addon_mapping:
+            target = addon_mapping[MappingType.MEDIA].path or PATH_MEDIA.as_posix()
+            configured_targets.add(target)
+
+        if MappingType.SHARE in addon_mapping:
+            target = addon_mapping[MappingType.SHARE].path or PATH_SHARE.as_posix()
+            configured_targets.add(target)
+
+        if not configured_targets:
+            return False
+
+        # Check if any configured targets have propagation issues
+        for mount in container.meta_mounts:
+            if (
+                mount.get("Destination") in configured_targets
+                and mount.get("Propagation") != PropagationMode.RSLAVE
+            ):
+                return True
+
+        return False
+
+    # For Home Assistant Core and plugins, check default /media and /share paths
     return any(
         mount.get("Propagation") != PropagationMode.RSLAVE
         for mount in container.meta_mounts
-        if mount.get("Destination") in ["/media", "/share"]
+        if mount.get("Destination") in [PATH_MEDIA.as_posix(), PATH_SHARE.as_posix()]
     )
 
 
@@ -50,7 +83,7 @@ class CheckDockerConfig(CheckBase):
             new_issues.add(Issue(IssueType.DOCKER_CONFIG, ContextType.CORE))
 
         for addon in self.sys_addons.installed:
-            if _check_container(addon.instance):
+            if _check_container(addon.instance, addon):
                 new_issues.add(
                     Issue(
                         IssueType.DOCKER_CONFIG, ContextType.ADDON, reference=addon.slug
