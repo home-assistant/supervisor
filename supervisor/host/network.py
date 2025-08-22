@@ -22,7 +22,6 @@ from ..dbus.const import (
     WirelessMethodType,
 )
 from ..dbus.network.connection import NetworkConnection
-from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
