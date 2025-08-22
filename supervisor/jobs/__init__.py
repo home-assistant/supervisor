@@ -20,6 +20,7 @@ from ..exceptions import HassioError, JobNotFound, JobStartException
 from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from ..utils.dt import utcnow
+from ..utils.sentinel import DEFAULT
 from .const import ATTR_IGNORE_CONDITIONS, FILE_CONFIG_JOBS, JobCondition
 from .validate import SCHEMA_JOBS_CONFIG
 
@@ -103,14 +104,13 @@ class SupervisorJob:
     )
     parent_id: str | None = field(factory=_CURRENT_JOB.get, on_setattr=frozen)
     done: bool | None = field(init=False, default=None, on_setattr=_on_change)
-    on_change: Callable[["SupervisorJob", Attribute, Any], None] | None = field(
-        default=None, on_setattr=frozen
-    )
+    on_change: Callable[["SupervisorJob", Attribute, Any], None] | None = None
     internal: bool = field(default=False)
     errors: list[SupervisorJobError] = field(
         init=False, factory=list, on_setattr=_on_change
     )
     release_event: asyncio.Event | None = None
+    extra: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Return dictionary representation."""
@@ -124,6 +124,7 @@ class SupervisorJob:
             "parent_id": self.parent_id,
             "errors": [err.as_dict() for err in self.errors],
             "created": self.created.isoformat(),
+            "extra": self.extra,
         }
 
     def capture_error(self, err: HassioError | None = None) -> None:
@@ -156,6 +157,30 @@ class SupervisorJob:
             self.done = True
             if token:
                 _CURRENT_JOB.reset(token)
+
+    def update(
+        self,
+        progress: float | None = None,
+        stage: str | None = None,
+        extra: dict[str, Any] | None = DEFAULT,  # type: ignore
+        done: bool | None = None,
+    ) -> None:
+        """Update multiple fields with one on change event."""
+        on_change = self.on_change
+        self.on_change = None
+
+        if progress is not None:
+            self.progress = progress
+        if stage is not None:
+            self.stage = stage
+        if extra != DEFAULT:
+            self.extra = extra
+        if done is not None:
+            self.done = done
+
+        self.on_change = on_change
+        # Just triggers the normal on change
+        self.reference = self.reference
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
@@ -224,7 +249,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         reference: str | None = None,
         initial_stage: str | None = None,
         internal: bool = False,
-        no_parent: bool = False,
+        parent_id: str | None = DEFAULT,  # type: ignore
     ) -> SupervisorJob:
         """Create a new job."""
         job = SupervisorJob(
@@ -233,7 +258,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
             stage=initial_stage,
             on_change=None if internal else self._notify_on_job_change,
             internal=internal,
-            **({"parent_id": None} if no_parent else {}),
+            **({} if parent_id == DEFAULT else {"parent_id": parent_id}),  # type: ignore
         )
         self._jobs[job.uuid] = job
         return job
@@ -267,7 +292,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         **kwargs,
     ) -> tuple[SupervisorJob, asyncio.Task | asyncio.TimerHandle]:
         """Schedule a job to run later and return job and task or timer handle."""
-        job = self.new_job(no_parent=True)
+        job = self.new_job(parent_id=None)
 
         def _wrap_task() -> asyncio.Task:
             return self.sys_create_task(

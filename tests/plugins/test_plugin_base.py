@@ -1,7 +1,7 @@
 """Test base plugin functionality."""
 
 import asyncio
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -373,7 +373,7 @@ async def test_load_with_incorrect_image(
         "force": True,
     }
     coresys.docker.pull_image.assert_called_once_with(
-        correct_image, "2024.4.0", platform="linux/amd64"
+        ANY, correct_image, "2024.4.0", platform="linux/amd64"
     )
     assert plugin.image == correct_image
 
