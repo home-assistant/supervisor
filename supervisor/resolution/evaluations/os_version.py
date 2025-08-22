@@ -31,7 +31,7 @@ class EvaluateOSVersion(EvaluateBase):
         """Return a list of valid states when this evaluation can run."""
         # Technically there's no reason to run this after STARTUP as update requires
         # a reboot. But if network is down we won't have latest version info then.
-        return [CoreState.RUNNING, CoreState.STARTUP]
+        return [CoreState.RUNNING, CoreState.SETUP]
 
     async def evaluate(self) -> bool:
         """Run evaluation."""

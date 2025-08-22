@@ -45,6 +45,7 @@ async def test_load(
     """Test plugin manager load."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await coresys.updater.load()
+    await coresys.updater.reload()
 
     need_update = PropertyMock(return_value=True)
     with (

@@ -56,17 +56,27 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
     async def load(self) -> None:
         """Update internal data."""
-        # If there's no connectivity, delay initial version fetch
-        if not self.sys_supervisor.connectivity:
-            self._connectivity_listener = self.sys_bus.register_event(
-                BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
+        # Delay loading data by default so JobCondition.OS_SUPPORTED works.
+        # Use HAOS unrestricted as indicator as this is what we need to evaluate
+        # if the operating system version is supported.
+        if self.sys_os.board and self.version_hassos_unrestricted is None:
+            _LOGGER.info(
+                "No OS update information found, force refreshing updater information"
             )
-            return
-
-        await self.reload()
+            await self.reload()
 
     async def reload(self) -> None:
         """Update internal data."""
+        # If there's no connectivity, delay initial version fetch
+        if not self.sys_supervisor.connectivity:
+            _LOGGER.debug("No Supervisor connectivity, delaying version fetch")
+            if not self._connectivity_listener:
+                self._connectivity_listener = self.sys_bus.register_event(
+                    BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
+                )
+            _LOGGER.info("No Supervisor connectivity, delaying version fetch")
+            return
+
         with suppress(UpdaterError):
             await self.fetch_data()
 
@@ -204,7 +214,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
     @Job(
         name="updater_fetch_data",
-        conditions=[JobCondition.INTERNET_SYSTEM],
+        conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.OS_SUPPORTED],
         on_condition=UpdaterJobError,
         throttle_period=timedelta(seconds=30),
         concurrency=JobConcurrency.QUEUE,

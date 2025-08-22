@@ -251,6 +251,7 @@ class OSManager(CoreSysAttributes):
         self._version = AwesomeVersion(cpe.get_version()[0])
         self._board = cpe.get_target_hardware()[0]
         self._os_name = cpe.get_product()[0]
+
         await self.reload()
 
         await self.datadisk.load()

@@ -7,10 +7,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.const import BusEvent
+from supervisor.const import ATTR_HASSOS_UNRESTRICTED, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import ConnectivityState
+from supervisor.exceptions import UpdaterJobError
 from supervisor.jobs import SupervisorJob
+from supervisor.resolution.const import UnsupportedReason
 
 from tests.common import MockResponse, load_binary_fixture
 from tests.dbus_service_mocks.network_manager import (
@@ -122,6 +124,7 @@ async def test_delayed_fetch_for_connectivity(
     await coresys.host.network.check_connectivity()
 
     await coresys.updater.load()
+    await coresys.updater.reload()
     coresys.websession.get.assert_not_called()
 
     # Now signal host has connectivity and wait for fetch data to complete to assert
@@ -138,3 +141,77 @@ async def test_delayed_fetch_for_connectivity(
         coresys.websession.get.call_args[0][0]
         == "https://version.home-assistant.io/stable.json"
     )
+
+
+@pytest.mark.usefixtures("no_job_throttle")
+async def test_load_calls_reload_when_os_board_without_version(
+    coresys: CoreSys, mock_update_data: MockResponse, supervisor_internet: AsyncMock
+) -> None:
+    """Test load calls reload when OS board exists but no version_hassos_unrestricted."""
+    # Set up OS board but no version data
+    coresys.os._board = "rpi4"  # pylint: disable=protected-access
+    coresys.security.force = True
+
+    # Mock reload to verify it gets called
+    with patch.object(coresys.updater, "reload", new_callable=AsyncMock) as mock_reload:
+        await coresys.updater.load()
+        mock_reload.assert_called_once()
+
+
+@pytest.mark.usefixtures("no_job_throttle")
+async def test_load_skips_reload_when_os_board_with_version(
+    coresys: CoreSys, mock_update_data: MockResponse, supervisor_internet: AsyncMock
+) -> None:
+    """Test load skips reload when OS board exists and version_hassos_unrestricted is set."""
+    # Set up OS board and version data
+    coresys.os._board = "rpi4"  # pylint: disable=protected-access
+    coresys.security.force = True
+
+    # Pre-populate version_hassos_unrestricted by setting it directly on the data dict
+    # Use the same approach as other tests that modify internal state
+    coresys.updater._data[ATTR_HASSOS_UNRESTRICTED] = AwesomeVersion("13.1")  # pylint: disable=protected-access
+
+    # Mock reload to verify it doesn't get called
+    with patch.object(coresys.updater, "reload", new_callable=AsyncMock) as mock_reload:
+        await coresys.updater.load()
+        mock_reload.assert_not_called()
+
+
+@pytest.mark.usefixtures("no_job_throttle")
+async def test_load_skips_reload_when_no_os_board(
+    coresys: CoreSys, mock_update_data: MockResponse, supervisor_internet: AsyncMock
+) -> None:
+    """Test load skips reload when no OS board is set."""
+    # Ensure no OS board is set
+    coresys.os._board = None  # pylint: disable=protected-access
+
+    # Mock reload to verify it doesn't get called
+    with patch.object(coresys.updater, "reload", new_callable=AsyncMock) as mock_reload:
+        await coresys.updater.load()
+        mock_reload.assert_not_called()
+
+
+async def test_fetch_data_no_update_when_os_unsupported(
+    coresys: CoreSys, websession: MagicMock
+) -> None:
+    """Test that fetch_data doesn't update data when OS is unsupported."""
+    # Store initial versions to compare later
+    initial_supervisor_version = coresys.updater.version_supervisor
+    initial_homeassistant_version = coresys.updater.version_homeassistant
+    initial_hassos_version = coresys.updater.version_hassos
+
+    coresys.websession.head = AsyncMock()
+
+    # Mark OS as unsupported by adding UnsupportedReason.OS_VERSION
+    coresys.resolution.unsupported.append(UnsupportedReason.OS_VERSION)
+
+    # Attempt to fetch data should fail due to OS_SUPPORTED condition
+    with pytest.raises(
+        UpdaterJobError, match="blocked from execution, unsupported OS version"
+    ):
+        await coresys.updater.fetch_data()
+
+    # Verify that versions were not updated
+    assert coresys.updater.version_supervisor == initial_supervisor_version
+    assert coresys.updater.version_homeassistant == initial_homeassistant_version
+    assert coresys.updater.version_hassos == initial_hassos_version
