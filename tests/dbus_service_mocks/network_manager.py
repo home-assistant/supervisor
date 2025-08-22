@@ -27,6 +27,7 @@ class NetworkManager(DBusServiceMock):
     devices = [
         "/org/freedesktop/NetworkManager/Devices/1",
         "/org/freedesktop/NetworkManager/Devices/3",
+        "/org/freedesktop/NetworkManager/Devices/38",
     ]
 
     @dbus_property(access=PropertyAccess.READ)
@@ -41,6 +42,7 @@ class NetworkManager(DBusServiceMock):
             "/org/freedesktop/NetworkManager/Devices/1",
             "/org/freedesktop/NetworkManager/Devices/2",
             "/org/freedesktop/NetworkManager/Devices/3",
+            "/org/freedesktop/NetworkManager/Devices/38",
         ]
 
     @dbus_property(access=PropertyAccess.READ)
@@ -101,7 +103,10 @@ class NetworkManager(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def ActiveConnections(self) -> "ao":
         """Get ActiveConnections."""
-        return ["/org/freedesktop/NetworkManager/ActiveConnection/1"]
+        return [
+            "/org/freedesktop/NetworkManager/ActiveConnection/1",
+            "/org/freedesktop/NetworkManager/ActiveConnection/38",
+        ]
 
     @dbus_property(access=PropertyAccess.READ)
     def PrimaryConnection(self) -> "o":

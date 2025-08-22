@@ -55,6 +55,9 @@ class DeviceFixture:
     InterfaceFlags: c_uint32
     HwAddress: str
     Ports: list[str]
+    # VLAN specific properties
+    VlanId: c_uint32 | None = None
+    Parent: str | None = None
 
 
 FIXTURES: dict[str, DeviceFixture] = {
@@ -227,6 +230,42 @@ FIXTURES: dict[str, DeviceFixture] = {
         InterfaceFlags=65539,
         HwAddress="9A:4B:E3:9A:F8:D3",
         Ports=[],
+    ),
+    "/org/freedesktop/NetworkManager/Devices/38": DeviceFixture(
+        Udi="/sys/devices/virtual/net/eth0.10",
+        Path="",
+        Interface="eth0.10",
+        IpInterface="eth0.10",
+        Driver="vlan",
+        DriverVersion="1.8",
+        FirmwareVersion="N/A",
+        Capabilities=7,
+        Ip4Address=0,
+        State=100,
+        StateReason=[100, 0],
+        ActiveConnection="/org/freedesktop/NetworkManager/ActiveConnection/38",
+        Ip4Config="/org/freedesktop/NetworkManager/IP4Config/1",
+        Dhcp4Config="/org/freedesktop/NetworkManager/DHCP4Config/1",
+        Ip6Config="/org/freedesktop/NetworkManager/IP6Config/1",
+        Dhcp6Config="/",
+        Managed=True,
+        Autoconnect=True,
+        FirmwareMissing=False,
+        NmPluginMissing=False,
+        DeviceType=11,
+        AvailableConnections=["/org/freedesktop/NetworkManager/Settings/38"],
+        PhysicalPortId="",
+        Mtu=1500,
+        Metered=4,
+        LldpNeighbors=[],
+        Real=True,
+        Ip4Connectivity=1,
+        Ip6Connectivity=3,
+        InterfaceFlags=65539,
+        HwAddress="52:54:00:2B:36:80",
+        Ports=[],
+        VlanId=10,
+        Parent="/org/freedesktop/NetworkManager/Devices/1",
     ),
 }
 

@@ -8,18 +8,11 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.connection import NetworkConnection
 
 from tests.const import TEST_INTERFACE_ETH_NAME
-from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.network_active_connection import (
     ActiveConnection as ActiveConnectionService,
 )
 
-
-@pytest.fixture(name="active_connection_service", autouse=True)
-async def fixture_active_connection_service(
-    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
-) -> ActiveConnectionService:
-    """Mock Active Connection service."""
-    yield network_manager_services["network_active_connection"]
+pytestmark = pytest.mark.usefixtures("active_connection_service")
 
 
 async def test_active_connection(

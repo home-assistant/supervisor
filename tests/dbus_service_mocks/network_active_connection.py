@@ -54,6 +54,12 @@ FIXTURES: dict[str, ActiveConnectionFixture] = {
             "/org/freedesktop/NetworkManager/Devices/3",
         ],
     ),
+    "/org/freedesktop/NetworkManager/ActiveConnection/38": ActiveConnectionFixture(
+        connection="/org/freedesktop/NetworkManager/Settings/38",
+        devices=[
+            "/org/freedesktop/NetworkManager/Devices/38",
+        ],
+    ),
 }
 
 

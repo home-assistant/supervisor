@@ -48,7 +48,7 @@ async def test_get_connection_no_path(network_manager: NetworkManager):
 async def test_generate_from_vlan(network_manager: NetworkManager):
     """Test generate from a vlan interface."""
     vlan_interface = Interface(
-        name="",
+        name="eth0.1",
         mac="",
         path="",
         enabled=True,
@@ -64,7 +64,7 @@ async def test_generate_from_vlan(network_manager: NetworkManager):
     )
 
     connection_payload = get_connection_from_interface(vlan_interface, network_manager)
-    assert connection_payload["connection"]["id"].value == "Supervisor .1"
+    assert connection_payload["connection"]["id"].value == "Supervisor eth0.1"
     assert connection_payload["connection"]["type"].value == "vlan"
     assert "uuid" in connection_payload["connection"]
     assert "match" not in connection_payload["connection"]

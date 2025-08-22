@@ -177,8 +177,6 @@ def get_connection_from_interface(
     # Generate/Update ID/name
     if not name or not name.startswith("Supervisor"):
         name = f"Supervisor {interface.name}"
-        if interface.type == InterfaceType.VLAN:
-            name = f"{name}.{cast(VlanConfig, interface.vlan).id}"
 
     if interface.type == InterfaceType.ETHERNET:
         iftype = "802-3-ethernet"
@@ -220,7 +218,7 @@ def get_connection_from_interface(
         conn[CONF_ATTR_802_ETHERNET] = {
             CONF_ATTR_802_ETHERNET_ASSIGNED_MAC: Variant("s", "preserve")
         }
-    elif interface.type == "vlan":
+    elif interface.type == InterfaceType.VLAN:
         parent = cast(VlanConfig, interface.vlan).interface
         if (
             parent

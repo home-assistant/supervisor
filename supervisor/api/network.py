@@ -325,7 +325,7 @@ class APINetwork(CoreSysAttributes):
             )
 
         vlan_interface = Interface(
-            "",
+            f"{interface.name}.{vlan}",
             "",
             "",
             True,
@@ -339,4 +339,4 @@ class APINetwork(CoreSysAttributes):
             None,
             vlan_config,
         )
-        await asyncio.shield(self.sys_host.network.apply_changes(vlan_interface))
+        await asyncio.shield(self.sys_host.network.create_vlan(vlan_interface))

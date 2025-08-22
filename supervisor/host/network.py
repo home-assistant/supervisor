@@ -5,6 +5,8 @@ from contextlib import suppress
 import logging
 from typing import Any
 
+from supervisor.utils.sentry import async_capture_exception
+
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
@@ -20,7 +22,6 @@ from ..dbus.const import (
     WirelessMethodType,
 )
 from ..dbus.network.connection import NetworkConnection
-from ..dbus.network.interface import NetworkInterface
 from ..dbus.network.setting.generate import get_connection_from_interface
 from ..exceptions import (
     DBusError,
@@ -209,20 +210,53 @@ class NetworkManager(CoreSysAttributes):
 
         await self.check_connectivity(force=force_connectivity_check)
 
+    async def create_vlan(self, interface: Interface) -> None:
+        """Create a VLAN interface."""
+        if interface.vlan is None:
+            raise RuntimeError("VLAN information is missing")
+        # For VLAN interfaces, check if one already exists with same ID on same parent
+        try:
+            self.sys_dbus.network.get(interface.name)
+        except NetworkInterfaceNotFound:
+            _LOGGER.debug(
+                "VLAN interface %s does not exist, creating it", interface.name
+            )
+        else:
+            raise HostNetworkError(
+                f"VLAN {interface.vlan.id} already exists on interface {interface.vlan.interface}",
+                _LOGGER.error,
+            )
+
+        settings = get_connection_from_interface(interface, self.sys_dbus.network)
+
+        try:
+            await self.sys_dbus.network.settings.add_connection(settings)
+        except DBusError as err:
+            raise HostNetworkError(
+                f"Can't create new interface: {err}", _LOGGER.error
+            ) from err
+
+        await self.update(force_connectivity_check=True)
+
     async def apply_changes(
         self, interface: Interface, *, update_only: bool = False
     ) -> None:
         """Apply Interface changes to host."""
-        inet: NetworkInterface | None = None
-        with suppress(NetworkInterfaceNotFound):
+        try:
             inet = self.sys_dbus.network.get(interface.name)
+        except NetworkInterfaceNotFound as err:
+            # The API layer (or anybody else) should not pass any updates for
+            # non-existing interfaces.
+            await async_capture_exception(err)
+            raise HostNetworkError(
+                "Requested Network interface update is not possible", _LOGGER.warning
+            ) from err
 
         con: NetworkConnection | None = None
 
         # Update exist configuration
         if (
-            inet
-            and inet.settings
+            inet.settings
             and inet.settings.connection
             and interface.equals_dbus_interface(inet)
             and interface.enabled
@@ -257,7 +291,7 @@ class NetworkManager(CoreSysAttributes):
             )
 
         # Create new configuration and activate interface
-        elif inet and interface.enabled:
+        elif interface.enabled:
             _LOGGER.debug("Create new configuration for %s", interface.name)
             settings = get_connection_from_interface(interface, self.sys_dbus.network)
 
@@ -280,7 +314,7 @@ class NetworkManager(CoreSysAttributes):
                 ) from err
 
         # Remove config from interface
-        elif inet and not interface.enabled:
+        elif not interface.enabled:
             if not inet.settings:
                 _LOGGER.debug("Interface %s is already disabled.", interface.name)
                 return
@@ -291,16 +325,6 @@ class NetworkManager(CoreSysAttributes):
                     f"Can't disable interface {interface.name}: {err}", _LOGGER.error
                 ) from err
 
-        # Create new interface (like vlan)
-        elif not inet:
-            settings = get_connection_from_interface(interface, self.sys_dbus.network)
-
-            try:
-                await self.sys_dbus.network.settings.add_connection(settings)
-            except DBusError as err:
-                raise HostNetworkError(
-                    f"Can't create new interface: {err}", _LOGGER.error
-                ) from err
         else:
             raise HostNetworkError(
                 "Requested Network interface update is not possible", _LOGGER.warning

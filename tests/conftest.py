@@ -64,10 +64,16 @@ from .common import (
 from .const import TEST_ADDON_SLUG
 from .dbus_service_mocks.base import DBusServiceMock
 from .dbus_service_mocks.network_connection_settings import (
+    DEFAULT_OBJECT_PATH as DEFAULT_CONNECTION_SETTINGS_OBJECT_PATH,
     ConnectionSettings as ConnectionSettingsService,
 )
 from .dbus_service_mocks.network_dns_manager import DnsManager as DnsManagerService
 from .dbus_service_mocks.network_manager import NetworkManager as NetworkManagerService
+
+from tests.dbus_service_mocks.network_active_connection import (
+    DEFAULT_OBJECT_PATH as DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH,
+    ActiveConnection as ActiveConnectionService,
+)
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -191,13 +197,21 @@ async def fixture_network_manager_services(
                 "/org/freedesktop/NetworkManager/AccessPoint/43099",
                 "/org/freedesktop/NetworkManager/AccessPoint/43100",
             ],
-            "network_active_connection": None,
-            "network_connection_settings": None,
+            "network_active_connection": [
+                "/org/freedesktop/NetworkManager/ActiveConnection/1",
+                "/org/freedesktop/NetworkManager/ActiveConnection/38",
+            ],
+            "network_connection_settings": [
+                "/org/freedesktop/NetworkManager/Settings/1",
+                "/org/freedesktop/NetworkManager/Settings/38",
+            ],
             "network_device_wireless": None,
             "network_device": [
                 "/org/freedesktop/NetworkManager/Devices/1",
                 "/org/freedesktop/NetworkManager/Devices/3",
+                "/org/freedesktop/NetworkManager/Devices/38",
             ],
+            "network_device_vlan": None,
             "network_dns_manager": None,
             "network_ip4config": None,
             "network_ip6config": None,
@@ -235,12 +249,24 @@ async def dns_manager_service(
     yield network_manager_services["network_dns_manager"]
 
 
+@pytest.fixture(name="active_connection_service")
+async def fixture_active_connection_service(
+    network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> ActiveConnectionService:
+    """Return mock active connection service."""
+    yield network_manager_services["network_active_connection"][
+        DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH
+    ]
+
+
 @pytest.fixture(name="connection_settings_service")
 async def fixture_connection_settings_service(
     network_manager_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ) -> ConnectionSettingsService:
     """Return mock connection settings service."""
-    yield network_manager_services["network_connection_settings"]
+    yield network_manager_services["network_connection_settings"][
+        DEFAULT_CONNECTION_SETTINGS_OBJECT_PATH
+    ]
 
 
 @pytest.fixture(name="udisks2_services")
