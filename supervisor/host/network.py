@@ -243,7 +243,6 @@ class NetworkManager(CoreSysAttributes):
         self, interface: Interface, *, update_only: bool = False
     ) -> None:
         """Apply Interface changes to host."""
-        inet: NetworkInterface | None = None
         try:
             inet = self.sys_dbus.network.get(interface.name)
         except NetworkInterfaceNotFound as err:
