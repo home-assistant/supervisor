@@ -69,6 +69,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         """Update internal data."""
         # If there's no connectivity, delay initial version fetch
         if not self.sys_supervisor.connectivity:
+            _LOGGER.debug("No Supervisor connectivity, delaying version fetch")
             if not self._connectivity_listener:
                 self._connectivity_listener = self.sys_bus.register_event(
                     BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, self._check_connectivity
