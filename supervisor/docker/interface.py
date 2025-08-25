@@ -291,8 +291,10 @@ class DockerInterface(JobGroup, ABC):
                 progress = 50
             case PullImageLayerStage.PULL_COMPLETE:
                 progress = 100
+            case PullImageLayerStage.RETRYING_DOWNLOAD:
+                progress = 0
 
-        if progress < job.progress:
+        if stage != PullImageLayerStage.RETRYING_DOWNLOAD and progress < job.progress:
             raise DockerLogOutOfOrder(
                 f"Received pull image log with status {reference.status} for job {job.uuid} that implied progress was {progress} but current progress is {job.progress}, skipping",
                 _LOGGER.debug,
@@ -300,7 +302,7 @@ class DockerInterface(JobGroup, ABC):
 
         # Our filters have all passed. Time to update the job
         # Only downloading and extracting have progress details. Use that to set extra
-        # We'll leave it around on other stages as the total bytes may be useful after that stage
+        # We'll leave it around on later stages as the total bytes may be useful after that stage
         if (
             stage in {PullImageLayerStage.DOWNLOADING, PullImageLayerStage.EXTRACTING}
             and reference.progress_detail
@@ -318,6 +320,9 @@ class DockerInterface(JobGroup, ABC):
                 progress=progress,
                 stage=stage.status,
                 done=stage == PullImageLayerStage.PULL_COMPLETE,
+                extra=None
+                if stage == PullImageLayerStage.RETRYING_DOWNLOAD
+                else job.extra,
             )
 
     @Job(
