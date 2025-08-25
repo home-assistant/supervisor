@@ -154,9 +154,15 @@ def test_malformed_map_entries():
     valid_config = vd.SCHEMA_ADDON_CONFIG(config)
     assert valid_config["map"] == []
 
-    # Test case 3: Mix of valid and invalid entries (invalid should be filtered out)
+    # Test case 3: Invalid string format that doesn't match regex
+    config["map"] = ["invalid_format", "not:a:valid:mapping", "share:invalid_mode"]
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    assert valid_config["map"] == []
+
+    # Test case 4: Mix of valid and invalid entries (invalid should be filtered out)
     config["map"] = [
         "share:rw",  # Valid string format
+        "invalid_string",  # Invalid string format
         {},  # Invalid empty dict
         {"type": "config", "read_only": True},  # Valid dict format
         {"read_only": False},  # Invalid - missing type
@@ -167,7 +173,7 @@ def test_malformed_map_entries():
     assert any(entry["type"] == "share" for entry in valid_config["map"])
     assert any(entry["type"] == "config" for entry in valid_config["map"])
 
-    # Test case 4: The specific case from the UplandJacob repo (malformed YAML format)
+    # Test case 5: The specific case from the UplandJacob repo (malformed YAML format)
     # This simulates what YAML "- addon_config: rw" creates
     config["map"] = [{"addon_config": "rw"}]  # Wrong structure, missing 'type' key
     valid_config = vd.SCHEMA_ADDON_CONFIG(config)
