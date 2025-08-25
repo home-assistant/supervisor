@@ -1,0 +1,134 @@
+[
+    {
+        "status": "Pulling from home-assistant/odroid-n2-homeassistant",
+        "id": "2025.7.1"
+    },
+    {
+        "status": "Already exists",
+        "progressDetail": {},
+        "id": "6e771e15690e"
+    },
+    {
+        "status": "Already exists",
+        "progressDetail": {},
+        "id": "58da640818f4"
+    },
+    {
+        "status": "Pulling fs layer",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Already exists",
+        "progressDetail": {},
+        "id": "1a38e1d5e18d"
+    },
+    {
+        "status": "Waiting",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 103619904,
+            "total": 436480882
+        },
+        "progress": "[===========>                                       ]  103.6MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 227726144,
+            "total": 436480882
+        },
+        "progress": "[==========================>                        ]  227.7MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 433170048,
+            "total": 436480882
+        },
+        "progress": "[=================================================> ]  433.2MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Retrying in 2 seconds",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Retrying in 1 seconds",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 103619904,
+            "total": 436480882
+        },
+        "progress": "[===========>                                       ]  103.6MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 227726144,
+            "total": 436480882
+        },
+        "progress": "[==========================>                        ]  227.7MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 433170048,
+            "total": 436480882
+        },
+        "progress": "[=================================================> ]  433.2MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Verifying Checksum",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Download complete",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 261816320,
+            "total": 436480882
+        },
+        "progress": "[=============================>                     ]  261.8MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 436480882,
+            "total": 436480882
+        },
+        "progress": "[==================================================>]  436.5MB/436.5MB",
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Pull complete",
+        "progressDetail": {},
+        "id": "1e214cd6d7d0"
+    },
+    {
+        "status": "Digest: sha256:7d97da645f232f82a768d0a537e452536719d56d484d419836e53dbe3e4ec736"
+    },
+    {
+        "status": "Status: Downloaded newer image for ghcr.io/home-assistant/odroid-n2-homeassistant:2025.7.1"
+    }
+]

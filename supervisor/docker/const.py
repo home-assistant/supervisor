@@ -1,14 +1,19 @@
 """Docker constants."""
 
+from __future__ import annotations
+
 from contextlib import suppress
 from enum import Enum, StrEnum
 from functools import total_ordering
 from pathlib import PurePath
-from typing import Self, cast
+import re
+from typing import cast
 
 from docker.types import Mount
 
 from ..const import MACHINE_ID
+
+RE_RETRYING_DOWNLOAD_STATUS = re.compile(r"Retrying in \d+ seconds?")
 
 
 class Capabilities(StrEnum):
@@ -79,6 +84,7 @@ class PullImageLayerStage(Enum):
     """
 
     PULLING_FS_LAYER = 1, "Pulling fs layer"
+    RETRYING_DOWNLOAD = 2, "Retrying download"
     DOWNLOADING = 2, "Downloading"
     VERIFYING_CHECKSUM = 3, "Verifying Checksum"
     DOWNLOAD_COMPLETE = 4, "Download complete"
@@ -107,11 +113,16 @@ class PullImageLayerStage(Enum):
         return hash(self.status)
 
     @classmethod
-    def from_status(cls, status: str) -> Self | None:
+    def from_status(cls, status: str) -> PullImageLayerStage | None:
         """Return stage instance from pull log status."""
         for i in cls:
             if i.status == status:
                 return i
+
+        # This one includes number of seconds until download so its not constant
+        if RE_RETRYING_DOWNLOAD_STATUS.match(status):
+            return cls.RETRYING_DOWNLOAD
+
         return None
 
 
