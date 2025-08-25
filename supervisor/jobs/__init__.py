@@ -7,6 +7,7 @@ from contextvars import Context, ContextVar, Token
 from dataclasses import dataclass
 from datetime import datetime
 import logging
+import math
 from typing import Any, Self
 from uuid import uuid4
 
@@ -97,7 +98,7 @@ class SupervisorJob:
         default=0,
         validator=[ge(0), le(100), _invalid_if_done],
         on_setattr=_on_change,
-        converter=lambda val: round(val, 1),
+        converter=lambda val: math.floor(val * 10) / 10,
     )
     stage: str | None = field(
         default=None, validator=[_invalid_if_done], on_setattr=_on_change
