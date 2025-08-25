@@ -266,10 +266,23 @@ def _migrate_addon_config(protocol=False):
         volumes = []
         for entry in config.get(ATTR_MAP, []):
             if isinstance(entry, dict):
+                # Validate that dict entries have required 'type' field
+                if ATTR_TYPE not in entry:
+                    _LOGGER.warning(
+                        "Add-on config has invalid map entry missing 'type' field: %s. Skipping invalid entry for %s",
+                        entry,
+                        name,
+                    )
+                    continue
                 volumes.append(entry)
             if isinstance(entry, str):
                 result = RE_VOLUME.match(entry)
                 if not result:
+                    _LOGGER.warning(
+                        "Add-on config has invalid map entry: %s. Skipping invalid entry for %s",
+                        entry,
+                        name,
+                    )
                     continue
                 volumes.append(
                     {
@@ -278,8 +291,8 @@ def _migrate_addon_config(protocol=False):
                     }
                 )
 
-        if volumes:
-            config[ATTR_MAP] = volumes
+        # Always update config to clear potentially malformed ones
+        config[ATTR_MAP] = volumes
 
         # 2023-10 "config" became "homeassistant" so /config can be used for addon's public config
         if any(volume[ATTR_TYPE] == MappingType.CONFIG for volume in volumes):
