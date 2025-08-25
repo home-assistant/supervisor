@@ -21,6 +21,7 @@ from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     DockerAPIError,
     DockerError,
+    DockerLogOutOfOrder,
     DockerNoSpaceOnDevice,
     DockerNotFound,
     DockerRequestError,
@@ -485,25 +486,25 @@ async def test_install_sends_progress_to_home_assistant(
         {"stage": "Pulling fs layer", "progress": 0, "done": False, "extra": None},
         {
             "stage": "Downloading",
-            "progress": 0.1,
+            "progress": 0.0,
             "done": False,
             "extra": {"current": 539462, "total": 436480882},
         },
         {
             "stage": "Downloading",
-            "progress": 0.6,
+            "progress": 0.5,
             "done": False,
             "extra": {"current": 4864838, "total": 436480882},
         },
         {
             "stage": "Downloading",
-            "progress": 0.9,
+            "progress": 0.8,
             "done": False,
             "extra": {"current": 7552896, "total": 436480882},
         },
         {
             "stage": "Downloading",
-            "progress": 1.2,
+            "progress": 1.1,
             "done": False,
             "extra": {"current": 10252544, "total": 436480882},
         },
@@ -515,13 +516,13 @@ async def test_install_sends_progress_to_home_assistant(
         },
         {
             "stage": "Downloading",
-            "progress": 11.9,
+            "progress": 11.8,
             "done": False,
             "extra": {"current": 103619904, "total": 436480882},
         },
         {
             "stage": "Downloading",
-            "progress": 26.1,
+            "progress": 26.0,
             "done": False,
             "extra": {"current": 227726144, "total": 436480882},
         },
@@ -533,49 +534,49 @@ async def test_install_sends_progress_to_home_assistant(
         },
         {
             "stage": "Verifying Checksum",
-            "progress": 50,
+            "progress": 50.0,
             "done": False,
             "extra": {"current": 433170048, "total": 436480882},
         },
         {
             "stage": "Download complete",
-            "progress": 50,
+            "progress": 50.0,
             "done": False,
             "extra": {"current": 433170048, "total": 436480882},
         },
         {
             "stage": "Extracting",
-            "progress": 50.1,
+            "progress": 50.0,
             "done": False,
             "extra": {"current": 557056, "total": 436480882},
         },
         {
             "stage": "Extracting",
-            "progress": 60.3,
+            "progress": 60.2,
             "done": False,
             "extra": {"current": 89686016, "total": 436480882},
         },
         {
             "stage": "Extracting",
-            "progress": 70.0,
+            "progress": 69.9,
             "done": False,
             "extra": {"current": 174358528, "total": 436480882},
         },
         {
             "stage": "Extracting",
-            "progress": 80.0,
+            "progress": 79.9,
             "done": False,
             "extra": {"current": 261816320, "total": 436480882},
         },
         {
             "stage": "Extracting",
-            "progress": 88.4,
+            "progress": 88.3,
             "done": False,
             "extra": {"current": 334790656, "total": 436480882},
         },
         {
             "stage": "Extracting",
-            "progress": 94.0,
+            "progress": 93.9,
             "done": False,
             "extra": {"current": 383811584, "total": 436480882},
         },
@@ -644,3 +645,58 @@ async def test_install_raises_on_pull_error(
 
     with pytest.raises(exc_type, match=exc_msg):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
+
+
+async def test_process_pull_image_log_precision_fix(
+    coresys: CoreSys, test_docker_interface: DockerInterface
+):
+    """Test that precision issues don't cause DockerLogOutOfOrder errors."""
+    job_id = "test_job_123"
+    layer_id = "abc123"
+
+    # First, create the job with a "Pulling fs layer" event
+    fs_layer_entry = PullLogEntry(
+        job_id=job_id,
+        id=layer_id,
+        status="Pulling fs layer",
+    )
+    test_docker_interface._process_pull_image_log(job_id, fs_layer_entry)
+
+    # First extracting event with higher progress
+    entry1 = PullLogEntry(
+        job_id=job_id,
+        id=layer_id,
+        status="Extracting",
+        progress_detail=PullProgressDetail(current=91300, total=100000),
+    )
+
+    # Second extracting event with slightly lower progress that would cause precision issue
+    # This simulates the real-world scenario from the Sentry error
+    entry2 = PullLogEntry(
+        job_id=job_id,
+        id=layer_id,
+        status="Extracting",
+        progress_detail=PullProgressDetail(current=91284, total=100000),
+    )
+
+    # Process first extracting entry
+    test_docker_interface._process_pull_image_log(job_id, entry1)
+
+    # Find the job to verify progress
+    layer_job = None
+    for job in coresys.jobs.jobs:
+        if job.parent_id == job_id and job.reference == layer_id:
+            layer_job = job
+            break
+
+    assert layer_job is not None, "Layer job should have been created"
+    # Progress calculation: 50 + (50 * 91300/100000) = 50 + 45.65 = 95.65 -> floors to 95.6
+    assert layer_job.progress == 95.6
+
+    # Process second entry - this should NOT raise DockerLogOutOfOrder
+    # Previously this would fail because the calculated progress (95.642...) was less than stored (95.7 if rounded up)
+    # With floor rounding, both values are consistent: calculated 95.6 <= stored 95.6
+    try:
+        test_docker_interface._process_pull_image_log(job_id, entry2)
+    except DockerLogOutOfOrder:
+        pytest.fail("DockerLogOutOfOrder should not be raised due to precision fix")
