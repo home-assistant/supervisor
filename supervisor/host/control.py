@@ -91,7 +91,7 @@ class SystemControl(CoreSysAttributes):
         if (
             self.coresys.os.available
             and self.coresys.os.version is not None
-            and self.sys_os.version >= AwesomeVersion("16.2.dev0")
+            and self.sys_os.version >= AwesomeVersion("16.2.dev20250814")
         ):
             _LOGGER.info("Setting host timezone: %s", timezone)
             await self.sys_dbus.timedate.set_timezone(timezone)
