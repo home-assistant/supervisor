@@ -140,6 +140,40 @@ def test_valid_map():
     vd.SCHEMA_ADDON_CONFIG(config)
 
 
+def test_malformed_map_entries():
+    """Test that malformed map entries are handled gracefully (issue #6124)."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    # Test case 1: Empty dict in map (should be skipped with warning)
+    config["map"] = [{}]
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    assert valid_config["map"] == []
+
+    # Test case 2: Dict missing required 'type' field (should be skipped with warning)
+    config["map"] = [{"read_only": False, "path": "/custom"}]
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    assert valid_config["map"] == []
+
+    # Test case 3: Mix of valid and invalid entries (invalid should be filtered out)
+    config["map"] = [
+        "share:rw",  # Valid string format
+        {},  # Invalid empty dict
+        {"type": "config", "read_only": True},  # Valid dict format
+        {"read_only": False},  # Invalid - missing type
+    ]
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    # Should only keep the valid entries
+    assert len(valid_config["map"]) == 2
+    assert any(entry["type"] == "share" for entry in valid_config["map"])
+    assert any(entry["type"] == "config" for entry in valid_config["map"])
+
+    # Test case 4: The specific case from the UplandJacob repo (malformed YAML format)
+    # This simulates what YAML "- addon_config: rw" creates
+    config["map"] = [{"addon_config": "rw"}]  # Wrong structure, missing 'type' key
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    assert valid_config["map"] == []
+
+
 def test_valid_basic_build():
     """Validate basic build config."""
     config = load_json_fixture("basic-build-config.json")
