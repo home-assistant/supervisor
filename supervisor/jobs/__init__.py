@@ -97,7 +97,6 @@ class SupervisorJob:
         default=0,
         validator=[ge(0), le(100), _invalid_if_done],
         on_setattr=_on_change,
-        converter=lambda val: round(val, 1),
     )
     stage: str | None = field(
         default=None, validator=[_invalid_if_done], on_setattr=_on_change
@@ -118,7 +117,7 @@ class SupervisorJob:
             "name": self.name,
             "reference": self.reference,
             "uuid": self.uuid,
-            "progress": self.progress,
+            "progress": round(self.progress, 1),
             "stage": self.stage,
             "done": self.done,
             "parent_id": self.parent_id,
