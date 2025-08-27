@@ -199,21 +199,25 @@ class APIIngress(CoreSysAttributes):
             url = f"{url}?{request.query_string}"
 
         # Start proxy
-        async with self.sys_websession.ws_connect(
-            url,
-            headers=source_header,
-            protocols=req_protocols,
-            autoclose=False,
-            autoping=False,
-        ) as ws_client:
-            # Proxy requests
-            await asyncio.wait(
-                [
-                    self.sys_create_task(_websocket_forward(ws_server, ws_client)),
-                    self.sys_create_task(_websocket_forward(ws_client, ws_server)),
-                ],
-                return_when=asyncio.FIRST_COMPLETED,
-            )
+        try:
+            _LOGGER.debug("Proxing WebSocket to %s, upstream url: %s", addon.slug, url)
+            async with self.sys_websession.ws_connect(
+                url,
+                headers=source_header,
+                protocols=req_protocols,
+                autoclose=False,
+                autoping=False,
+            ) as ws_client:
+                # Proxy requests
+                await asyncio.wait(
+                    [
+                        self.sys_create_task(_websocket_forward(ws_server, ws_client)),
+                        self.sys_create_task(_websocket_forward(ws_client, ws_server)),
+                    ],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+        except TimeoutError:
+            _LOGGER.warning("WebSocket proxy to %s timed out", addon.slug)
 
         return ws_server
 
