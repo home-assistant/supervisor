@@ -10,6 +10,7 @@ import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.arch import CpuArch
+from supervisor.backups.manager import BackupManager
 from supervisor.config import CoreConfig
 from supervisor.const import AddonState
 from supervisor.coresys import CoreSys
@@ -17,6 +18,7 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.jobs.decorator import _JOB_NAMES, Job
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 
@@ -390,3 +392,108 @@ async def test_api_store_addons_changelog_corrupted(
     assert resp.status == 200
     result = await resp.text()
     assert result == "Text with an invalid UTF-8 char: �"
+
+
+@pytest.mark.usefixtures("test_repository", "tmp_supervisor_data")
+async def test_addon_install_in_background(api_client: TestClient, coresys: CoreSys):
+    """Test installing an addon in the background."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    _JOB_NAMES.remove("addon_install")
+    event = asyncio.Event()
+
+    @Job(name="addon_install")
+    async def mock_addon_install(*args, **kwargs):
+        await event.wait()
+
+    with patch.object(Addon, "install", new=mock_addon_install):
+        resp = await api_client.post(
+            "/store/addons/local_ssh/install", json={"background": True}
+        )
+
+    assert resp.status == 200
+    body = await resp.json()
+    assert (job := coresys.jobs.get_job(body["data"]["job_id"]))
+    assert job.name == "addon_manager_install"
+    event.set()
+
+
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_background_addon_install_fails_fast(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test background addon install returns error not job if validation fails."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    resp = await api_client.post(
+        "/store/addons/local_ssh/install", json={"background": True}
+    )
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "Add-on local_ssh is already installed"
+
+
+@pytest.mark.parametrize(
+    ("make_backup", "backup_called", "update_called"),
+    [(True, True, False), (False, False, True)],
+)
+@pytest.mark.usefixtures("test_repository", "tmp_supervisor_data")
+async def test_addon_update_in_background(
+    api_client: TestClient,
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    make_backup: bool,
+    backup_called: bool,
+    update_called: bool,
+):
+    """Test updating an addon in the background."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.data_store["version"] = "10.0.0"
+    _JOB_NAMES.remove("addon_update")
+    _JOB_NAMES.remove("backup_manager_partial_backup")
+    event = asyncio.Event()
+    mock_update_called = mock_backup_called = False
+
+    @Job(name="addon_update")
+    async def mock_addon_update(*args, **kwargs):
+        nonlocal mock_update_called
+        mock_update_called = True
+        await event.wait()
+
+    @Job(name="backup_manager_partial_backup")
+    async def mock_partial_backup(*args, **kwargs):
+        nonlocal mock_backup_called
+        mock_backup_called = True
+        await event.wait()
+
+    with (
+        patch.object(Addon, "update", new=mock_addon_update),
+        patch.object(BackupManager, "do_backup_partial", new=mock_partial_backup),
+    ):
+        resp = await api_client.post(
+            "/store/addons/local_ssh/update",
+            json={"background": True, "backup": make_backup},
+        )
+
+    assert mock_backup_called is backup_called
+    assert mock_update_called is update_called
+
+    assert resp.status == 200
+    body = await resp.json()
+    assert (job := coresys.jobs.get_job(body["data"]["job_id"]))
+    assert job.name == "addon_manager_update"
+    event.set()
+
+
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_background_addon_update_fails_fast(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test background addon update returns error not job if validation doesn't succeed."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    resp = await api_client.post(
+        "/store/addons/local_ssh/update", json={"background": True}
+    )
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "No update available for add-on local_ssh"
