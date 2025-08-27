@@ -181,7 +181,7 @@ class APIHomeAssistant(CoreSysAttributes):
         update_task, job_id = await background_task(
             self,
             self.sys_homeassistant.core.update,
-            {"docker_interface_update", "backup_manager_partial_backup"},
+            job_names={"docker_interface_update", "backup_manager_partial_backup"},
             version=body.get(ATTR_VERSION, self.sys_homeassistant.latest_version),
             backup=body.get(ATTR_BACKUP),
         )

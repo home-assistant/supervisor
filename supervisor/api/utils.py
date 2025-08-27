@@ -207,8 +207,10 @@ async def api_validate(
 async def background_task(
     coresys_obj: CoreSysAttributes,
     task_method: Callable,
-    job_names: set[str],
     *args,
+    bus_event: BusEvent = BusEvent.SUPERVISOR_JOB_START,
+    event_filter: Callable[[Any], bool] | None = None,
+    job_names: set[str] | None = None,
     **kwargs,
 ) -> tuple[asyncio.Task, str]:
     """Start task in background and return task and job ID.
@@ -216,7 +218,9 @@ async def background_task(
     Args:
         coresys_obj: Instance that accesses coresys data using CoreSysAttributes
         task_method: The method to execute in the background
-        job_names: Set of child job names to wait for
+        bus_event: Event type to listen for which any initial validation has passed
+        event_filter: Function to determine if the event is the one specific to the job by the data
+        job_names: Alternative bus_event and event_filter. Validation considered passed when a named child job of primary one starts
         *args: Arguments to pass to task_method
         **kwargs: Keyword arguments to pass to task_method
 
@@ -232,15 +236,22 @@ async def background_task(
         ),
     )
 
-    async def release_on_job_start(job_event: SupervisorJob):
-        if job_event.name in job_names and job_event.parent_id == job.uuid:
+    if job_names:
+
+        def child_job_filter(job_event: SupervisorJob) -> bool:
+            """Return true if job is a child of main job and name is in set."""
+            return job_event.parent_id == job.uuid and job_event.name in job_names
+
+        event_filter = child_job_filter
+
+    async def release_on_job_start(event_data: Any):
+        """Release if filter passes or no filter is provided."""
+        if not event_filter or event_filter(event_data):
             event.set()
 
-    # Wait for job to start before returning
-    # If the task fails validation it will raise before getting there
-    listener = coresys_obj.sys_bus.register_event(
-        BusEvent.SUPERVISOR_JOB_START, release_on_job_start
-    )
+    # Wait for provided event before returning
+    # If the task fails validation it should raise before getting there
+    listener = coresys_obj.sys_bus.register_event(bus_event, release_on_job_start)
     try:
         event_task = coresys_obj.sys_create_task(event.wait())
         _, pending = await asyncio.wait(

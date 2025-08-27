@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
 import errno
 from io import IOBase
 import logging
@@ -51,7 +50,6 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound
-from ..jobs import JobSchedulerOptions, SupervisorJob
 from ..mounts.const import MountUsage
 from ..resolution.const import UnhealthyReason
 from .const import (
@@ -61,7 +59,7 @@ from .const import (
     ATTR_LOCATIONS,
     CONTENT_TYPE_TAR,
 )
-from .utils import api_process, api_validate
+from .utils import api_process, api_validate, background_task
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -75,6 +73,8 @@ RE_BACKUP_FILENAME = re.compile(r"^[^\\\/]+\.tar$")
 # Backwards compatible
 # Remove: 2022.08
 _ALL_FOLDERS = ALL_FOLDERS + [FOLDER_HOMEASSISTANT]
+
+_freeze_state_filter = lambda new_state: new_state == CoreState.FREEZE
 
 
 def _ensure_list(item: Any) -> list:
@@ -289,41 +289,6 @@ class APIBackups(CoreSysAttributes):
                 f"Location {LOCATION_CLOUD_BACKUP} is only available for Home Assistant"
             )
 
-    async def _background_backup_task(
-        self, backup_method: Callable, *args, **kwargs
-    ) -> tuple[asyncio.Task, str]:
-        """Start backup task in  background and return task and job ID."""
-        event = asyncio.Event()
-        job, backup_task = cast(
-            tuple[SupervisorJob, asyncio.Task],
-            self.sys_jobs.schedule_job(
-                backup_method, JobSchedulerOptions(), *args, **kwargs
-            ),
-        )
-
-        async def release_on_freeze(new_state: CoreState):
-            if new_state == CoreState.FREEZE:
-                event.set()
-
-        # Wait for system to get into freeze state before returning
-        # If the backup fails validation it will raise before getting there
-        listener = self.sys_bus.register_event(
-            BusEvent.SUPERVISOR_STATE_CHANGE, release_on_freeze
-        )
-        try:
-            event_task = self.sys_create_task(event.wait())
-            _, pending = await asyncio.wait(
-                (backup_task, event_task),
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            # It seems backup returned early (error or something), make sure to cancel
-            # the event task to avoid "Task was destroyed but it is pending!" errors.
-            if event_task in pending:
-                event_task.cancel()
-            return (backup_task, job.uuid)
-        finally:
-            self.sys_bus.remove_listener(listener)
-
     @api_process
     async def backup_full(self, request: web.Request):
         """Create full backup."""
@@ -342,8 +307,12 @@ class APIBackups(CoreSysAttributes):
                 body[ATTR_ADDITIONAL_LOCATIONS] = locations
 
         background = body.pop(ATTR_BACKGROUND)
-        backup_task, job_id = await self._background_backup_task(
-            self.sys_backups.do_backup_full, **body
+        backup_task, job_id = await background_task(
+            self,
+            self.sys_backups.do_backup_full,
+            bus_event=BusEvent.SUPERVISOR_STATE_CHANGE,
+            event_filter=_freeze_state_filter,
+            **body,
         )
 
         if background and not backup_task.done():
@@ -378,8 +347,12 @@ class APIBackups(CoreSysAttributes):
             body[ATTR_ADDONS] = list(self.sys_addons.local)
 
         background = body.pop(ATTR_BACKGROUND)
-        backup_task, job_id = await self._background_backup_task(
-            self.sys_backups.do_backup_partial, **body
+        backup_task, job_id = await background_task(
+            self,
+            self.sys_backups.do_backup_partial,
+            bus_event=BusEvent.SUPERVISOR_STATE_CHANGE,
+            event_filter=_freeze_state_filter,
+            **body,
         )
 
         if background and not backup_task.done():
@@ -402,8 +375,13 @@ class APIBackups(CoreSysAttributes):
             request, body.get(ATTR_LOCATION, backup.location)
         )
         background = body.pop(ATTR_BACKGROUND)
-        restore_task, job_id = await self._background_backup_task(
-            self.sys_backups.do_restore_full, backup, **body
+        restore_task, job_id = await background_task(
+            self,
+            self.sys_backups.do_restore_full,
+            backup,
+            bus_event=BusEvent.SUPERVISOR_STATE_CHANGE,
+            event_filter=_freeze_state_filter,
+            **body,
         )
 
         if background and not restore_task.done() or await restore_task:
@@ -422,8 +400,13 @@ class APIBackups(CoreSysAttributes):
             request, body.get(ATTR_LOCATION, backup.location)
         )
         background = body.pop(ATTR_BACKGROUND)
-        restore_task, job_id = await self._background_backup_task(
-            self.sys_backups.do_restore_partial, backup, **body
+        restore_task, job_id = await background_task(
+            self,
+            self.sys_backups.do_restore_partial,
+            backup,
+            bus_event=BusEvent.SUPERVISOR_STATE_CHANGE,
+            event_filter=_freeze_state_filter,
+            **body,
         )
 
         if background and not restore_task.done() or await restore_task:
