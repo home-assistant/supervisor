@@ -1,7 +1,9 @@
 """Init file for Supervisor util for RESTful API."""
 
+import asyncio
+from collections.abc import Callable
 import json
-from typing import Any
+from typing import Any, cast
 
 from aiohttp import web
 from aiohttp.hdrs import AUTHORIZATION
@@ -20,9 +22,11 @@ from ..const import (
     REQUEST_FROM,
     RESULT_ERROR,
     RESULT_OK,
+    BusEvent,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import APIError, BackupFileNotFoundError, DockerAPIError, HassioError
+from ..jobs import JobSchedulerOptions, SupervisorJob
 from ..utils import check_exception_chain, get_message_from_exception_chain
 from ..utils.json import json_dumps, json_loads as json_loads_util
 from ..utils.log_format import format_message
@@ -198,3 +202,55 @@ async def api_validate(
         data_validated[origin_value] = data[origin_value]
 
     return data_validated
+
+
+async def background_task(
+    coresys_obj: CoreSysAttributes,
+    task_method: Callable,
+    job_names: set[str],
+    *args,
+    **kwargs,
+) -> tuple[asyncio.Task, str]:
+    """Start task in background and return task and job ID.
+
+    Args:
+        coresys_obj: Instance that accesses coresys data using CoreSysAttributes
+        task_method: The method to execute in the background
+        job_names: Set of child job names to wait for
+        *args: Arguments to pass to task_method
+        **kwargs: Keyword arguments to pass to task_method
+
+    Returns:
+        Tuple of (task, job_id)
+
+    """
+    event = asyncio.Event()
+    job, task = cast(
+        tuple[SupervisorJob, asyncio.Task],
+        coresys_obj.sys_jobs.schedule_job(
+            task_method, JobSchedulerOptions(), *args, **kwargs
+        ),
+    )
+
+    async def release_on_job_start(job_event: SupervisorJob):
+        if job_event.name in job_names and job_event.parent_id == job.uuid:
+            event.set()
+
+    # Wait for job to start before returning
+    # If the task fails validation it will raise before getting there
+    listener = coresys_obj.sys_bus.register_event(
+        BusEvent.SUPERVISOR_JOB_START, release_on_job_start
+    )
+    try:
+        event_task = coresys_obj.sys_create_task(event.wait())
+        _, pending = await asyncio.wait(
+            (task, event_task),
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        # It seems task returned early (error or something), make sure to cancel
+        # the event task to avoid "Task was destroyed but it is pending!" errors.
+        if event_task in pending:
+            event_task.cancel()
+        return (task, job.uuid)
+    finally:
+        coresys_obj.sys_bus.remove_listener(listener)
