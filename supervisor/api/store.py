@@ -329,7 +329,7 @@ class APIStore(CoreSysAttributes):
     @api_process
     async def addons_addon_availability(self, request: web.Request) -> None:
         """Check add-on availability for current system."""
-        addon = self._extract_addon(request)
+        addon = cast(AddonStore, self._extract_addon(request))
         addon.validate_availability()
 
     @api_process

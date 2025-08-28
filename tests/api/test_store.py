@@ -505,15 +505,6 @@ async def test_api_store_addons_addon_availability_success(
     assert resp.status == 200
 
 
-@pytest.mark.usefixtures("install_addon_ssh")
-async def test_api_store_addons_addon_availability_installed_addon(
-    api_client: TestClient,
-):
-    """Test /store/addons/{addon}/availability REST API - installed addon."""
-    resp = await api_client.get("/store/addons/local_ssh/availability")
-    assert resp.status == 200
-
-
 async def test_api_store_addons_addon_availability_arch_not_supported(
     api_client: TestClient, coresys: CoreSys
 ):
@@ -603,6 +594,30 @@ async def test_api_store_addons_addon_availability_homeassistant_version_too_old
         new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
     ):
         resp = await api_client.get(f"/store/addons/{addon_obj.slug}/availability")
+        assert resp.status == 400
+        result = await resp.json()
+        assert (
+            "requires Home Assistant version 2023.1.1 or greater" in result["message"]
+        )
+
+
+async def test_api_store_addons_addon_availability_installed_addon(
+    api_client: TestClient, install_addon_ssh: Addon
+):
+    """Test /store/addons/{addon}/availability REST API - installed addon checks against latest version."""
+    resp = await api_client.get("/store/addons/local_ssh/availability")
+    assert resp.status == 200
+
+    install_addon_ssh.data_store["version"] = AwesomeVersion("10.0.0")
+    install_addon_ssh.data_store["homeassistant"] = AwesomeVersion("2023.1.1")
+
+    # Mock the Home Assistant version to be older
+    with patch.object(
+        HomeAssistant,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
+    ):
+        resp = await api_client.get("/store/addons/local_ssh/availability")
         assert resp.status == 400
         result = await resp.json()
         assert (
