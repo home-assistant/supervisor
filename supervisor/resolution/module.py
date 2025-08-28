@@ -215,8 +215,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     async def load(self):
         """Load the resoulution manager."""
-        # Initial healthcheck when the manager is loaded
-        await self.healthcheck()
+        # Initial system check when the manager is loaded
+        await self.check.check_system()
 
         # Schedule the healthcheck
         self.sys_scheduler.register_task(self.healthcheck, SCHEDULED_HEALTHCHECK)
