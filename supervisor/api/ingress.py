@@ -286,6 +286,7 @@ class APIIngress(CoreSysAttributes):
                 aiohttp.ClientError,
                 aiohttp.ClientPayloadError,
                 ConnectionResetError,
+                ConnectionError,
             ) as err:
                 _LOGGER.error("Stream error with %s: %s", url, err)
 
