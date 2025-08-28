@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from aiohttp import ClientResponse
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.addons.addon import Addon
@@ -18,6 +19,7 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.homeassistant.module import HomeAssistant
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 
@@ -306,6 +308,7 @@ async def get_message(resp: ClientResponse, json_expected: bool) -> str:
         ("post", "/store/addons/bad/install/1", True),
         ("post", "/store/addons/bad/update", True),
         ("post", "/store/addons/bad/update/1", True),
+        ("get", "/store/addons/bad/availability", True),
         # Legacy paths
         ("get", "/addons/bad/icon", False),
         ("get", "/addons/bad/logo", False),
@@ -492,3 +495,116 @@ async def test_background_addon_update_fails_fast(
     assert resp.status == 400
     body = await resp.json()
     assert body["message"] == "No update available for add-on local_ssh"
+
+
+async def test_api_store_addons_addon_availability_success(
+    api_client: TestClient, store_addon: AddonStore
+):
+    """Test /store/addons/{addon}/availability REST API - success case."""
+    resp = await api_client.get(f"/store/addons/{store_addon.slug}/availability")
+    assert resp.status == 200
+
+
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_api_store_addons_addon_availability_installed_addon(
+    api_client: TestClient,
+):
+    """Test /store/addons/{addon}/availability REST API - installed addon."""
+    resp = await api_client.get("/store/addons/local_ssh/availability")
+    assert resp.status == 200
+
+
+async def test_api_store_addons_addon_availability_arch_not_supported(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test /store/addons/{addon}/availability REST API - architecture not supported."""
+    # Create an addon with unsupported architecture
+    addon_obj = AddonStore(coresys, "test_arch_addon")
+    coresys.addons.store[addon_obj.slug] = addon_obj
+
+    # Set addon config with unsupported architecture
+    addon_config = {
+        "advanced": False,
+        "arch": ["i386"],  # Not supported on current system
+        "slug": "test_arch",
+        "description": "Test arch add-on",
+        "name": "Test Arch Add-on",
+        "repository": "test",
+        "stage": "stable",
+        "version": "1.0.0",
+    }
+    coresys.store.data.addons[addon_obj.slug] = addon_config
+
+    # Mock the system architecture to be different
+    with patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])):
+        resp = await api_client.get(f"/store/addons/{addon_obj.slug}/availability")
+        assert resp.status == 400
+        result = await resp.json()
+        assert "not supported on this platform" in result["message"]
+
+
+@pytest.mark.parametrize("supported_machines", [["odroid-n2"], ["!qemux86-64"]])
+async def test_api_store_addons_addon_availability_machine_not_supported(
+    api_client: TestClient, coresys: CoreSys, supported_machines: list[str]
+):
+    """Test /store/addons/{addon}/availability REST API - machine not supported."""
+    # Create an addon with unsupported machine type
+    addon_obj = AddonStore(coresys, "test_machine_addon")
+    coresys.addons.store[addon_obj.slug] = addon_obj
+
+    # Set addon config with unsupported machine
+    addon_config = {
+        "advanced": False,
+        "arch": ["amd64"],
+        "machine": supported_machines,
+        "slug": "test_machine",
+        "description": "Test machine add-on",
+        "name": "Test Machine Add-on",
+        "repository": "test",
+        "stage": "stable",
+        "version": "1.0.0",
+    }
+    coresys.store.data.addons[addon_obj.slug] = addon_config
+
+    # Mock the system machine to be different
+    with patch.object(CoreSys, "machine", new=PropertyMock(return_value="qemux86-64")):
+        resp = await api_client.get(f"/store/addons/{addon_obj.slug}/availability")
+        assert resp.status == 400
+        result = await resp.json()
+        assert "not supported on this machine" in result["message"]
+
+
+async def test_api_store_addons_addon_availability_homeassistant_version_too_old(
+    api_client: TestClient, coresys: CoreSys, test_repository: Repository
+):
+    """Test /store/addons/{addon}/availability REST API - Home Assistant version too old."""
+    # Create an addon that requires newer Home Assistant version
+    addon_obj = AddonStore(coresys, "test_version_addon")
+    coresys.addons.store[addon_obj.slug] = addon_obj
+
+    # Set addon config with minimum Home Assistant version requirement
+    addon_config = {
+        "advanced": False,
+        "arch": ["amd64"],
+        "homeassistant": "2023.1.1",  # Requires newer version than current
+        "slug": "test_version",
+        "description": "Test version add-on",
+        "name": "Test Version Add-on",
+        "repository": "test",
+        "stage": "stable",
+        "version": "1.0.0",
+    }
+    coresys.store.data.addons[addon_obj.slug] = addon_config
+
+    # Mock the Home Assistant version to be older
+    with patch.object(
+        HomeAssistant,
+        "version",
+        new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
+    ):
+        resp = await api_client.get(f"/store/addons/{addon_obj.slug}/availability")
+        assert resp.status == 400
+        result = await resp.json()
+        assert (
+            "requires Home Assistant version 2023.1.1 or greater" in result["message"]
+        )

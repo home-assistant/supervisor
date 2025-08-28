@@ -327,6 +327,12 @@ class APIStore(CoreSysAttributes):
         )
 
     @api_process
+    async def addons_addon_availability(self, request: web.Request) -> None:
+        """Check add-on availability for current system."""
+        addon = self._extract_addon(request)
+        addon.validate_availability()
+
+    @api_process
     async def repositories_list(self, request: web.Request) -> list[dict[str, Any]]:
         """Return all repositories."""
         return [
