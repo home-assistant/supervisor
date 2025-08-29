@@ -735,6 +735,10 @@ class RestAPI(CoreSysAttributes):
                     "/store/addons/{addon}/documentation",
                     api_store.addons_addon_documentation,
                 ),
+                web.get(
+                    "/store/addons/{addon}/availability",
+                    api_store.addons_addon_availability,
+                ),
                 web.post(
                     "/store/addons/{addon}/install", api_store.addons_addon_install
                 ),
