@@ -203,8 +203,8 @@ jobs:
         uses: docker/login-action@v3.4.0
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PAT }}
 
       - name: Set build arguments
         if: needs.init.outputs.publish == 'false'
