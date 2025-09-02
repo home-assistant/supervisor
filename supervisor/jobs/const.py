@@ -20,6 +20,7 @@ class JobCondition(StrEnum):
     """Job condition enum."""
 
     AUTO_UPDATE = "auto_update"
+    CORE_SUPPORTED = "core_supported"
     FREE_SPACE = "free_space"
     FROZEN = "frozen"
     HAOS = "haos"

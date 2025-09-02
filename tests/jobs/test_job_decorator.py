@@ -25,7 +25,7 @@ from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.jobs.job_group import JobGroup
 from supervisor.os.manager import OSManager
 from supervisor.plugins.audio import PluginAudio
-from supervisor.resolution.const import UnhealthyReason
+from supervisor.resolution.const import UnhealthyReason, UnsupportedReason
 from supervisor.supervisor import Supervisor
 from supervisor.utils.dt import utcnow
 
@@ -1384,3 +1384,31 @@ async def test_group_concurrency_with_group_throttling(coresys: CoreSys):
 
     assert test.call_count == 2  # Should execute now
     assert test.nested_call_count == 2  # Nested call should also execute
+
+
+async def test_core_supported(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
+    """Test the core_supported decorator."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(
+            name="test_core_supported_execute", conditions=[JobCondition.CORE_SUPPORTED]
+        )
+        async def execute(self):
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    assert await test.execute()
+
+    coresys.resolution.unsupported.append(UnsupportedReason.CORE_VERSION)
+    assert not await test.execute()
+    assert "blocked from execution, unsupported Core version" in caplog.text
+
+    coresys.jobs.ignore_conditions = [JobCondition.CORE_SUPPORTED]
+    assert await test.execute()

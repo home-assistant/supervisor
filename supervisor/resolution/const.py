@@ -40,6 +40,7 @@ class UnsupportedReason(StrEnum):
     CGROUP_VERSION = "cgroup_version"
     CONNECTIVITY_CHECK = "connectivity_check"
     CONTENT_TRUST = "content_trust"
+    CORE_VERSION = "core_version"
     DBUS = "dbus"
     DNS_SERVER = "dns_server"
     DOCKER_CONFIGURATION = "docker_configuration"

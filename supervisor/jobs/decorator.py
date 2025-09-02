@@ -405,6 +405,14 @@ class Job(CoreSysAttributes):
             )
 
         if (
+            JobCondition.CORE_SUPPORTED in used_conditions
+            and UnsupportedReason.CORE_VERSION in coresys.sys_resolution.unsupported
+        ):
+            raise JobConditionException(
+                f"'{method_name}' blocked from execution, unsupported Core version"
+            )
+
+        if (
             JobCondition.HOST_NETWORK in used_conditions
             and not coresys.sys_dbus.network.is_connected
         ):
