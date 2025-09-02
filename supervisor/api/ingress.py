@@ -409,10 +409,10 @@ async def _websocket_forward(ws_from, ws_to):
                 await ws_to.send_bytes(msg.data)
             elif msg.type == aiohttp.WSMsgType.PING:
                 _log_websocket_ping_pong(ws_from, "PING", msg.data)
-                await ws_to.ping()
+                await ws_to.ping(msg.data)
             elif msg.type == aiohttp.WSMsgType.PONG:
                 _log_websocket_ping_pong(ws_from, "PONG", msg.data)
-                await ws_to.pong()
+                await ws_to.pong(msg.data)
             elif ws_to.closed:
                 await ws_to.close(code=ws_to.close_code, message=msg.extra)
     except RuntimeError:
