@@ -30,6 +30,10 @@ class SystemControl(CoreSysAttributes):
         if flag == HostFeature.TIMEDATE and self.sys_dbus.timedate.is_connected:
             return
 
+        # Temporary workaround for https://github.com/home-assistant/supervisor/issues/6146
+        # to enable add-on testing inside devcontainer.
+        return
+
         raise HostNotSupportedError(
             f"No {flag!s} D-Bus connection available", _LOGGER.error
         )
