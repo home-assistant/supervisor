@@ -14,7 +14,6 @@ from supervisor.docker.interface import DockerInterface
 from supervisor.homeassistant.api import APIState
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
-from supervisor.jobs.decorator import _JOB_NAMES, Job
 
 from tests.api import common_test_api_advanced_logs
 from tests.common import load_json_fixture
@@ -207,18 +206,15 @@ async def test_home_assistant_background_update(
 ):
     """Test background update of Home Assistant."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    _JOB_NAMES.remove("docker_interface_update")
-    _JOB_NAMES.remove("backup_manager_partial_backup")
     event = asyncio.Event()
     mock_update_called = mock_backup_called = False
 
-    @Job(name="docker_interface_update")
+    # Mock backup/update as long-running tasks
     async def mock_docker_interface_update(*args, **kwargs):
         nonlocal mock_update_called
         mock_update_called = True
         await event.wait()
 
-    @Job(name="backup_manager_partial_backup")
     async def mock_partial_backup(*args, **kwargs):
         nonlocal mock_backup_called
         mock_backup_called = True

@@ -229,6 +229,7 @@ class HomeAssistantCore(JobGroup):
         self,
         version: AwesomeVersion | None = None,
         backup: bool | None = False,
+        validation_complete: asyncio.Event | None = None,
     ) -> None:
         """Update HomeAssistant version."""
         to_version = version or self.sys_homeassistant.latest_version
@@ -247,6 +248,10 @@ class HomeAssistantCore(JobGroup):
             raise HomeAssistantUpdateError(
                 f"Version {to_version!s} is already installed", _LOGGER.warning
             )
+
+        # If being run in the background, notify caller that validation has completed
+        if validation_complete:
+            validation_complete.set()
 
         if backup:
             await self.sys_backups.do_backup_partial(

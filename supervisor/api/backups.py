@@ -45,8 +45,6 @@ from ..const import (
     ATTR_TYPE,
     ATTR_VERSION,
     REQUEST_FROM,
-    BusEvent,
-    CoreState,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound
@@ -73,8 +71,6 @@ RE_BACKUP_FILENAME = re.compile(r"^[^\\\/]+\.tar$")
 # Backwards compatible
 # Remove: 2022.08
 _ALL_FOLDERS = ALL_FOLDERS + [FOLDER_HOMEASSISTANT]
-
-_freeze_state_filter = lambda new_state: new_state == CoreState.FREEZE
 
 
 def _ensure_list(item: Any) -> list:
@@ -308,11 +304,7 @@ class APIBackups(CoreSysAttributes):
 
         background = body.pop(ATTR_BACKGROUND)
         backup_task, job_id = await background_task(
-            self,
-            self.sys_backups.do_backup_full,
-            bus_event=BusEvent.SUPERVISOR_STATE_CHANGE,
-            event_filter=_freeze_state_filter,
-            **body,
+            self, self.sys_backups.do_backup_full, **body
         )
 
         if background and not backup_task.done():
@@ -348,11 +340,7 @@ class APIBackups(CoreSysAttributes):
 
         background = body.pop(ATTR_BACKGROUND)
         backup_task, job_id = await background_task(
-            self,
-            self.sys_backups.do_backup_partial,
-            bus_event=BusEvent.SUPERVISOR_STATE_CHANGE,
-            event_filter=_freeze_state_filter,
-            **body,
+            self, self.sys_backups.do_backup_partial, **body
         )
 
         if background and not backup_task.done():
@@ -376,12 +364,7 @@ class APIBackups(CoreSysAttributes):
         )
         background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await background_task(
-            self,
-            self.sys_backups.do_restore_full,
-            backup,
-            bus_event=BusEvent.SUPERVISOR_STATE_CHANGE,
-            event_filter=_freeze_state_filter,
-            **body,
+            self, self.sys_backups.do_restore_full, backup, **body
         )
 
         if background and not restore_task.done() or await restore_task:
@@ -401,12 +384,7 @@ class APIBackups(CoreSysAttributes):
         )
         background = body.pop(ATTR_BACKGROUND)
         restore_task, job_id = await background_task(
-            self,
-            self.sys_backups.do_restore_partial,
-            backup,
-            bus_event=BusEvent.SUPERVISOR_STATE_CHANGE,
-            event_filter=_freeze_state_filter,
-            **body,
+            self, self.sys_backups.do_restore_partial, backup, **body
         )
 
         if background and not restore_task.done() or await restore_task:

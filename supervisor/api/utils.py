@@ -22,7 +22,6 @@ from ..const import (
     REQUEST_FROM,
     RESULT_ERROR,
     RESULT_OK,
-    BusEvent,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import APIError, BackupFileNotFoundError, DockerAPIError, HassioError
@@ -208,19 +207,13 @@ async def background_task(
     coresys_obj: CoreSysAttributes,
     task_method: Callable,
     *args,
-    bus_event: BusEvent = BusEvent.SUPERVISOR_JOB_START,
-    event_filter: Callable[[Any], bool] | None = None,
-    job_names: set[str] | None = None,
     **kwargs,
 ) -> tuple[asyncio.Task, str]:
     """Start task in background and return task and job ID.
 
     Args:
         coresys_obj: Instance that accesses coresys data using CoreSysAttributes
-        task_method: The method to execute in the background
-        bus_event: Event type to listen for which any initial validation has passed
-        event_filter: Function to determine if the event is the one specific to the job by the data
-        job_names: Alternative bus_event and event_filter. Validation considered passed when a named child job of primary one starts
+        task_method: The method to execute in the background. Must include a keyword arg 'validation_complete' of type asyncio.Event. Should set it after any initial validation has completed
         *args: Arguments to pass to task_method
         **kwargs: Keyword arguments to pass to task_method
 
@@ -232,36 +225,23 @@ async def background_task(
     job, task = cast(
         tuple[SupervisorJob, asyncio.Task],
         coresys_obj.sys_jobs.schedule_job(
-            task_method, JobSchedulerOptions(), *args, **kwargs
+            task_method,
+            JobSchedulerOptions(),
+            *args,
+            validation_complete=event,
+            **kwargs,
         ),
     )
 
-    if job_names:
-
-        def child_job_filter(job_event: SupervisorJob) -> bool:
-            """Return true if job is a child of main job and name is in set."""
-            return job_event.parent_id == job.uuid and job_event.name in job_names
-
-        event_filter = child_job_filter
-
-    async def release_on_job_start(event_data: Any):
-        """Release if filter passes or no filter is provided."""
-        if not event_filter or event_filter(event_data):
-            event.set()
-
     # Wait for provided event before returning
     # If the task fails validation it should raise before getting there
-    listener = coresys_obj.sys_bus.register_event(bus_event, release_on_job_start)
-    try:
-        event_task = coresys_obj.sys_create_task(event.wait())
-        _, pending = await asyncio.wait(
-            (task, event_task),
-            return_when=asyncio.FIRST_COMPLETED,
-        )
-        # It seems task returned early (error or something), make sure to cancel
-        # the event task to avoid "Task was destroyed but it is pending!" errors.
-        if event_task in pending:
-            event_task.cancel()
-        return (task, job.uuid)
-    finally:
-        coresys_obj.sys_bus.remove_listener(listener)
+    event_task = coresys_obj.sys_create_task(event.wait())
+    _, pending = await asyncio.wait(
+        (task, event_task),
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    # It seems task returned early (error or something), make sure to cancel
+    # the event task to avoid "Task was destroyed but it is pending!" errors.
+    if event_task in pending:
+        event_task.cancel()
+    return (task, job.uuid)

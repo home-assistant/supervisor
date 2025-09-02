@@ -233,7 +233,7 @@ class APIStore(CoreSysAttributes):
         background = body[ATTR_BACKGROUND]
 
         install_task, job_id = await background_task(
-            self, self.sys_addons.install, addon.slug, job_names={"addon_install"}
+            self, self.sys_addons.install, addon.slug
         )
 
         if background and not install_task.done():
@@ -255,7 +255,6 @@ class APIStore(CoreSysAttributes):
             self,
             self.sys_addons.update,
             addon.slug,
-            job_names={"backup_manager_partial_backup", "addon_update"},
             backup=body.get(ATTR_BACKUP),
         )
 

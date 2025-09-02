@@ -18,7 +18,6 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.jobs.decorator import _JOB_NAMES, Job
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 
@@ -398,10 +397,9 @@ async def test_api_store_addons_changelog_corrupted(
 async def test_addon_install_in_background(api_client: TestClient, coresys: CoreSys):
     """Test installing an addon in the background."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    _JOB_NAMES.remove("addon_install")
     event = asyncio.Event()
 
-    @Job(name="addon_install")
+    # Mock a long-running install task
     async def mock_addon_install(*args, **kwargs):
         await event.wait()
 
@@ -448,18 +446,15 @@ async def test_addon_update_in_background(
     """Test updating an addon in the background."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.data_store["version"] = "10.0.0"
-    _JOB_NAMES.remove("addon_update")
-    _JOB_NAMES.remove("backup_manager_partial_backup")
     event = asyncio.Event()
     mock_update_called = mock_backup_called = False
 
-    @Job(name="addon_update")
+    # Mock backup/update as long-running tasks
     async def mock_addon_update(*args, **kwargs):
         nonlocal mock_update_called
         mock_update_called = True
         await event.wait()
 
-    @Job(name="backup_manager_partial_backup")
     async def mock_partial_backup(*args, **kwargs):
         nonlocal mock_backup_called
         mock_backup_called = True
