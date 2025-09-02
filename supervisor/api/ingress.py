@@ -382,6 +382,23 @@ def _is_websocket(request: web.Request) -> bool:
     return False
 
 
+def _log_websocket_ping_pong(ws_from, msg_type: str, msg_data: bytes) -> None:
+    """Log WebSocket PING/PONG messages for debugging."""
+    if _LOGGER.isEnabledFor(logging.DEBUG):
+        if isinstance(ws_from, web.WebSocketResponse):
+            direction = "browser->addon"
+        else:
+            direction = "addon->browser"
+
+        _LOGGER.debug(
+            "Ingress Websocket %s %s (%d bytes): %s",
+            direction,
+            msg_type,
+            len(msg_data),
+            msg_data.hex(),
+        )
+
+
 async def _websocket_forward(ws_from, ws_to):
     """Handle websocket message directly."""
     try:
@@ -391,8 +408,10 @@ async def _websocket_forward(ws_from, ws_to):
             elif msg.type == aiohttp.WSMsgType.BINARY:
                 await ws_to.send_bytes(msg.data)
             elif msg.type == aiohttp.WSMsgType.PING:
+                _log_websocket_ping_pong(ws_from, "PING", msg.data)
                 await ws_to.ping()
             elif msg.type == aiohttp.WSMsgType.PONG:
+                _log_websocket_ping_pong(ws_from, "PONG", msg.data)
                 await ws_to.pong()
             elif ws_to.closed:
                 await ws_to.close(code=ws_to.close_code, message=msg.extra)
