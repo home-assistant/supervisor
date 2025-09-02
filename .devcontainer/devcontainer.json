@@ -7,7 +7,7 @@
   "remoteEnv": {
     "PATH": "${containerEnv:VIRTUAL_ENV}/bin:${containerEnv:PATH}"
   },
-  "appPort": ["9123:8123", "7357:4357"],
+  "appPort": ["9123:8123", "7357:4357", "8000:8000"],
   "postCreateCommand": "bash devcontainer_setup",
   "postStartCommand": "bash devcontainer_bootstrap",
   "runArgs": ["-e", "GIT_EDITOR=code --wait", "--privileged"],
