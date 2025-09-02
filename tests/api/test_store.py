@@ -505,8 +505,9 @@ async def test_api_store_addons_addon_availability_success(
     assert resp.status == 200
 
 
+@pytest.mark.parametrize("supported_architectures", [["i386"], ["i386", "aarch64"]])
 async def test_api_store_addons_addon_availability_arch_not_supported(
-    api_client: TestClient, coresys: CoreSys
+    api_client: TestClient, coresys: CoreSys, supported_architectures: list[str]
 ):
     """Test /store/addons/{addon}/availability REST API - architecture not supported."""
     # Create an addon with unsupported architecture
@@ -516,8 +517,8 @@ async def test_api_store_addons_addon_availability_arch_not_supported(
     # Set addon config with unsupported architecture
     addon_config = {
         "advanced": False,
-        "arch": ["i386"],  # Not supported on current system
-        "slug": "test_arch",
+        "arch": supported_architectures,
+        "slug": "test_arch_addon",
         "description": "Test arch add-on",
         "name": "Test Arch Add-on",
         "repository": "test",
@@ -531,10 +532,23 @@ async def test_api_store_addons_addon_availability_arch_not_supported(
         resp = await api_client.get(f"/store/addons/{addon_obj.slug}/availability")
         assert resp.status == 400
         result = await resp.json()
-        assert "not supported on this platform" in result["message"]
+        assert result["error_key"] == "addon_not_supported_architecture_error"
+        assert (
+            result["message_template"]
+            == "Add-on {slug} not supported on this platform, supported architectures: {architectures}"
+        )
+        assert result["extra_fields"] == {
+            "slug": "test_arch_addon",
+            "architectures": ", ".join(supported_architectures),
+        }
+        assert result["message"] == result["message_template"].format(
+            **result["extra_fields"]
+        )
 
 
-@pytest.mark.parametrize("supported_machines", [["odroid-n2"], ["!qemux86-64"]])
+@pytest.mark.parametrize(
+    "supported_machines", [["odroid-n2"], ["!qemux86-64"], ["a", "b"]]
+)
 async def test_api_store_addons_addon_availability_machine_not_supported(
     api_client: TestClient, coresys: CoreSys, supported_machines: list[str]
 ):
@@ -548,7 +562,7 @@ async def test_api_store_addons_addon_availability_machine_not_supported(
         "advanced": False,
         "arch": ["amd64"],
         "machine": supported_machines,
-        "slug": "test_machine",
+        "slug": "test_machine_addon",
         "description": "Test machine add-on",
         "name": "Test Machine Add-on",
         "repository": "test",
@@ -562,7 +576,18 @@ async def test_api_store_addons_addon_availability_machine_not_supported(
         resp = await api_client.get(f"/store/addons/{addon_obj.slug}/availability")
         assert resp.status == 400
         result = await resp.json()
-        assert "not supported on this machine" in result["message"]
+        assert result["error_key"] == "addon_not_supported_machine_type_error"
+        assert (
+            result["message_template"]
+            == "Add-on {slug} not supported on this machine, supported machine types: {machine_types}"
+        )
+        assert result["extra_fields"] == {
+            "slug": "test_machine_addon",
+            "machine_types": ", ".join(supported_machines),
+        }
+        assert result["message"] == result["message_template"].format(
+            **result["extra_fields"]
+        )
 
 
 async def test_api_store_addons_addon_availability_homeassistant_version_too_old(
@@ -578,7 +603,7 @@ async def test_api_store_addons_addon_availability_homeassistant_version_too_old
         "advanced": False,
         "arch": ["amd64"],
         "homeassistant": "2023.1.1",  # Requires newer version than current
-        "slug": "test_version",
+        "slug": "test_version_addon",
         "description": "Test version add-on",
         "name": "Test Version Add-on",
         "repository": "test",
@@ -596,8 +621,17 @@ async def test_api_store_addons_addon_availability_homeassistant_version_too_old
         resp = await api_client.get(f"/store/addons/{addon_obj.slug}/availability")
         assert resp.status == 400
         result = await resp.json()
+        assert result["error_key"] == "addon_not_supported_home_assistant_version_error"
         assert (
-            "requires Home Assistant version 2023.1.1 or greater" in result["message"]
+            result["message_template"]
+            == "Add-on {slug} not supported on this system, requires Home Assistant version {version} or greater"
+        )
+        assert result["extra_fields"] == {
+            "slug": "test_version_addon",
+            "version": "2023.1.1",
+        }
+        assert result["message"] == result["message_template"].format(
+            **result["extra_fields"]
         )
 
 
