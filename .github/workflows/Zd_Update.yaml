@@ -32,7 +32,7 @@ jobs:
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git remote set-url origin https://${GH_PAT}@github.com/ha-china/supervisor.git
+          git remote set-url origin https://${GH_PAT}@github.com/wuwweizn/supervisor.git
 
       - name: Sync all branches and tags
         run: |
@@ -81,6 +81,6 @@ jobs:
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          git remote set-url origin https://${GH_PAT}@github.com/ha-china/supervisor.git
+          git remote set-url origin https://${GH_PAT}@github.com/wuwweizn/supervisor.git
           git push origin main --force
           git push origin --tags
