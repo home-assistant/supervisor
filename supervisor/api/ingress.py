@@ -206,7 +206,7 @@ class APIIngress(CoreSysAttributes):
                 headers=source_header,
                 protocols=req_protocols,
                 autoclose=False,
-                autoping=True,
+                autoping=False,
             ) as ws_client:
                 # Proxy requests
                 await asyncio.wait(
