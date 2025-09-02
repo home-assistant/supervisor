@@ -1,0 +1,200 @@
+name: Build supervisor - ZG
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "Channel"
+        required: true
+        default: "stable"
+        type: choice
+        options:
+          - stable
+      version:
+        description: "Version"
+        required: true
+      publish:
+        description: "Publish"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - true
+      stable:
+        description: "Stable"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - true
+  release:
+    types: ["published"]
+
+env:
+  DEFAULT_PYTHON: "3.13"
+  BUILD_NAME: supervisor
+  BUILD_TYPE: supervisor
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  init:
+    name: Initialize build
+    runs-on: ubuntu-latest
+    outputs:
+      architectures: ${{ steps.info.outputs.architectures }}
+      version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.version.outputs.channel }}
+      publish: ${{ steps.version.outputs.publish }}
+      requirements: ${{ steps.requirements.outputs.changed }}
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Get information
+        id: info
+        uses: home-assistant/actions/helpers/info@master
+
+      - name: Get version
+        id: version
+        uses: home-assistant/actions/helpers/version@master
+        with:
+          type: ${{ env.BUILD_TYPE }}
+
+      - name: Set channel to stable
+        run: echo "channel=stable" >> $GITHUB_ENV
+
+      - name: Get changed files
+        id: changed_files
+        if: steps.version.outputs.publish == 'false'
+        uses: masesgroup/retrieve-changed-files@v3.0.0
+
+      - name: Check if requirements files changed
+        id: requirements
+        run: |
+          if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements.txt|build.yaml) ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.arch }} supervisor
+    needs: init
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      matrix:
+        arch: ${{ fromJson(needs.init.outputs.architectures) }}
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Optimize network configuration for China region
+        run: |
+            sed -i 's|home-assistant/{arch}-hassio-supervisor|wuwweizn/{arch}-hassio-supervisor|g' build.yaml
+            sed -i "s|\"https://checkonline.home-assistant.io/online.txt\"|\"https://gitee.com/wuwzn/version/raw/master/online.txt\"|g" supervisor/supervisor.py
+
+            sed -i  \
+              -e 's|version.home-assistant.io|gitee.com/wuwzn/version/raw/master|g' \
+              -e 's|github.com/home-assistant/addons|gitee.com/wuwzn/ha-addons-cn|g' supervisor/const.py
+            sed -i 's|ghcr.io|ghcr.nju.edu.cn|g' supervisor/homeassistant/module.py
+            sed -i 's|ghcr.io|ghcr.nju.edu.cn|g' supervisor/plugins/base.py
+            sed -i 's|ghcr.io|ghcr.nju.edu.cn|g' supervisor/addons/build.py
+
+            sed -i  \
+              -e 's|URL_COMMUNITY_ADDONS =|#URL_COMMUNITY_ADDONS =|g' \
+              -e 's|URL_ESPHOME =|#URL_ESPHOME =|g' \
+              -e 's|URL_MUSIC_ASSISTANT =|#URL_MUSIC_ASSISTANT =|g' \
+              -e 's|COMMUNITY_ADDONS =|#COMMUNITY_ADDONS =|g' \
+              -e 's|ESPHOME =|#ESPHOME =|g' \
+              -e 's|MUSIC_ASSISTANT = |#MUSIC_ASSISTANT = |g' supervisor/store/validate.py
+
+            sed -i  \
+              -e 's|COMMUNITY_ADDONS =|#COMMUNITY_ADDONS =|g' \
+              -e 's|ESPHOME =|#ESPHOME =|g' \
+              -e 's|MUSIC_ASSISTANT =|#MUSIC_ASSISTANT =|g' supervisor/store/const.py
+              
+            sed -i 's|version.home-assistant.io|gitee.com/wuwzn/version/raw/master|g' tests/test_updater.py
+            sed -i 's|ghcr.io|ghcr.nju.edu.cn|g' tests/homeassistant/test_core.py
+            sed -i 's|docker.io|docker.m.daocloud.io|g' supervisor/docker/const.py
+
+      - name: Write env-file
+        if: needs.init.outputs.requirements == 'true'
+        run: |
+          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" > .env_file
+
+      - name: Build wheels
+        if: needs.init.outputs.requirements == 'true'
+        uses: home-assistant/wheels@2025.07.0
+        with:
+          abi: cp313
+          tag: musllinux_1_2
+          arch: ${{ matrix.arch }}
+          wheels-key: ${{ secrets.WHEELS_KEY }}
+          apk: "libffi-dev;openssl-dev;yaml-dev"
+          skip-binary: aiohttp
+          env-file: true
+          requirements: "requirements.txt"
+
+      - name: Set version
+        if: needs.init.outputs.publish == 'true'
+        uses: home-assistant/actions/helpers/version@master
+        with:
+          type: ${{ env.BUILD_TYPE }}
+
+      - name: Set up Python ${{ env.DEFAULT_PYTHON }}
+        if: needs.init.outputs.publish == 'true'
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+
+      - name: Install Cosign
+        if: needs.init.outputs.publish == 'true'
+        uses: sigstore/cosign-installer@v3.9.2
+        with:
+          cosign-release: "v2.4.3"
+
+      - name: Install dirhash and calc hash
+        if: needs.init.outputs.publish == 'true'
+        run: |
+          pip3 install setuptools dirhash
+          dir_hash="$(dirhash "${{ github.workspace }}/supervisor" -a sha256 --match "*.py")"
+          echo "${dir_hash}" > rootfs/supervisor.sha256
+
+      - name: Sign supervisor SHA256
+        if: needs.init.outputs.publish == 'true'
+        run: |
+          cosign sign-blob --yes rootfs/supervisor.sha256 --bundle rootfs/supervisor.sha256.sig
+
+      - name: Login to GitHub Container Registry
+        if: needs.init.outputs.publish == 'true'
+        uses: docker/login-action@v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set build arguments
+        if: needs.init.outputs.publish == 'false'
+        run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
+
+      - name: Build supervisor
+        uses: home-assistant/builder@2025.03.0
+        with:
+          args: |
+            $BUILD_ARGS \
+            --${{ matrix.arch }} \
+            --target /data \
+            --cosign \
+            --generic ${{ needs.init.outputs.version }}
+        env:
+          CAS_API_KEY: ${{ secrets.CAS_TOKEN }}
+
+# version 和 run_supervisor 部分可以保持不变
