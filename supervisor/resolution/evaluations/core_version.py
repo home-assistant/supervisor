@@ -2,10 +2,15 @@
 
 from datetime import datetime, timedelta
 
-from awesomeversion import AwesomeVersion, AwesomeVersionException
+from awesomeversion import (
+    AwesomeVersion,
+    AwesomeVersionException,
+    AwesomeVersionStrategy,
+)
 
 from ...const import CoreState
 from ...coresys import CoreSys
+from ...homeassistant.const import LANDINGPAGE
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 
@@ -40,6 +45,10 @@ class EvaluateCoreVersion(EvaluateBase):
         ):
             return False
 
+        # Skip evaluation for landingpage version
+        if current == LANDINGPAGE:
+            return False
+
         try:
             # Calculate if the current version was released more than 2 years ago
             # Home Assistant releases happen monthly, so approximately 24 versions per 2 years
@@ -55,7 +64,10 @@ class EvaluateCoreVersion(EvaluateBase):
             cutoff_month = two_years_ago.month
 
             # Create a cutoff version based on the date 2 years ago
-            cutoff_version = AwesomeVersion(f"{cutoff_year}.{cutoff_month}")
+            cutoff_version = AwesomeVersion(
+                f"{cutoff_year}.{cutoff_month}",
+                ensure_strategy=AwesomeVersionStrategy.CALVER,
+            )
 
             # Compare current version with the cutoff
             return current < cutoff_version
