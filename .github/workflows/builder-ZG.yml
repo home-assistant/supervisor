@@ -99,36 +99,31 @@ jobs:
       - name: Optimize network configuration for China region
         run: |
             sed -i 's|home-assistant/{arch}-hassio-supervisor|wuwweizn/{arch}-hassio-supervisor|g' build.yaml
-            sed -i "s|\"https://checkonline.home-assistant.io/online.txt\"|\"https://gitee.com/wuwzn/version/raw/master/online.txt\"|g" supervisor/supervisor.py
-
-            sed -i  \
+            sed -i "s|https://checkonline.home-assistant.io/online.txt|https://gitee.com/wuwzn/version/raw/master/online.txt|g" supervisor/supervisor.py
+            sed -i \
               -e 's|version.home-assistant.io|gitee.com/wuwzn/version/raw/master|g' \
               -e 's|github.com/home-assistant/addons|gitee.com/wuwzn/ha-addons-cn|g' supervisor/const.py
             sed -i 's|ghcr.io|ghcr.nju.edu.cn|g' supervisor/homeassistant/module.py
             sed -i 's|ghcr.io|ghcr.nju.edu.cn|g' supervisor/plugins/base.py
             sed -i 's|ghcr.io|ghcr.nju.edu.cn|g' supervisor/addons/build.py
-
-            sed -i  \
+            sed -i \
               -e 's|URL_COMMUNITY_ADDONS =|#URL_COMMUNITY_ADDONS =|g' \
               -e 's|URL_ESPHOME =|#URL_ESPHOME =|g' \
               -e 's|URL_MUSIC_ASSISTANT =|#URL_MUSIC_ASSISTANT =|g' \
               -e 's|COMMUNITY_ADDONS =|#COMMUNITY_ADDONS =|g' \
               -e 's|ESPHOME =|#ESPHOME =|g' \
               -e 's|MUSIC_ASSISTANT = |#MUSIC_ASSISTANT = |g' supervisor/store/validate.py
-
-            sed -i  \
+            sed -i \
               -e 's|COMMUNITY_ADDONS =|#COMMUNITY_ADDONS =|g' \
               -e 's|ESPHOME =|#ESPHOME =|g' \
               -e 's|MUSIC_ASSISTANT =|#MUSIC_ASSISTANT =|g' supervisor/store/const.py
-              
             sed -i 's|version.home-assistant.io|gitee.com/wuwzn/version/raw/master|g' tests/test_updater.py
             sed -i 's|ghcr.io|ghcr.nju.edu.cn|g' tests/homeassistant/test_core.py
             sed -i 's|docker.io|docker.m.daocloud.io|g' supervisor/docker/const.py
 
       - name: Write env-file
         if: needs.init.outputs.requirements == 'true'
-        run: |
-          echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" > .env_file
+        run: echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" > .env_file
 
       - name: Build wheels
         if: needs.init.outputs.requirements == 'true'
@@ -170,8 +165,7 @@ jobs:
 
       - name: Sign supervisor SHA256
         if: needs.init.outputs.publish == 'true'
-        run: |
-          cosign sign-blob --yes rootfs/supervisor.sha256 --bundle rootfs/supervisor.sha256.sig
+        run: cosign sign-blob --yes rootfs/supervisor.sha256 --bundle rootfs/supervisor.sha256.sig
 
       - name: Login to GitHub Container Registry
         if: needs.init.outputs.publish == 'true'
@@ -197,4 +191,51 @@ jobs:
         env:
           CAS_API_KEY: ${{ secrets.CAS_TOKEN }}
 
-# version 和 run_supervisor 部分可以保持不变
+  version:
+    name: Update version
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Initialize git
+        uses: home-assistant/actions/helpers/git-init@master
+        with:
+          name: ${{ secrets.GIT_NAME }}
+          email: ${{ secrets.GIT_EMAIL }}
+          token: ${{ secrets.GIT_TOKEN }}
+
+  run_supervisor:
+    name: Run the Supervisor
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Pull Supervisor
+        run: |
+          docker pull ghcr.nju.edu.cn/wuwweizn/amd64-hassio-supervisor:${{ needs.init.outputs.version }}
+          docker tag ghcr.nju.edu.cn/wuwweizn/amd64-hassio-supervisor:${{ needs.init.outputs.version }} ghcr.nju.edu.cn/wuwweizn/amd64-hassio-supervisor:runner
+
+      - name: Create Supervisor container
+        run: |
+          mkdir -p /tmp/supervisor/data
+          docker create --name hassio_supervisor \
+            --privileged \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            -v /run/docker.sock:/run/docker.sock \
+            -v /run/dbus:/run/dbus \
+            -v /tmp/supervisor/data:/data \
+            -v /etc/machine-id:/etc/machine-id:ro \
+            -e SUPERVISOR_SHARE="/tmp/supervisor/data" \
+            -e SUPERVISOR_NAME=hassio_supervisor \
+            -e SUPERVISOR_DEV=1 \
+            -e SUPERVISOR_MACHINE="qemux86-64" \
+          ghcr.nju.edu.cn/wuwweizn/amd64-hassio-supervisor:runner
+
+      - name: Start Supervisor
+        run: docker start hassio_supervisor
