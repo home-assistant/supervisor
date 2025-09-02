@@ -8,6 +8,7 @@ import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.homeassistant.const import LANDINGPAGE
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.resolution.evaluations.core_version import EvaluateCoreVersion
 
@@ -22,6 +23,7 @@ from supervisor.resolution.evaluations.core_version import EvaluateCoreVersion
         (f"{datetime.now().year - 2}.1", True),  # 2 years old, unsupported
         (f"{datetime.now().year - 3}.1", True),  # 3 years old, unsupported
         ("2021.6.0", True),  # Very old version, unsupported
+        ("landingpage", False),  # Landingpage version, should be supported
         (None, False),  # No current version info, check skipped
     ],
 )
@@ -93,6 +95,29 @@ async def test_core_version_invalid_format(coresys: CoreSys):
         assert evaluation.reason not in coresys.resolution.unsupported
         await evaluation()
         # Should handle gracefully and not mark as unsupported
+        assert evaluation.reason not in coresys.resolution.unsupported
+
+
+async def test_core_version_landingpage(coresys: CoreSys):
+    """Test evaluation with landingpage version."""
+    evaluation = EvaluateCoreVersion(coresys)
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with (
+        patch.object(
+            HomeAssistant,
+            "version",
+            new=PropertyMock(return_value=LANDINGPAGE),
+        ),
+        patch.object(
+            HomeAssistant,
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2024.12.0")),
+        ),
+    ):
+        assert evaluation.reason not in coresys.resolution.unsupported
+        await evaluation()
+        # Landingpage should never be marked as unsupported
         assert evaluation.reason not in coresys.resolution.unsupported
 
 
