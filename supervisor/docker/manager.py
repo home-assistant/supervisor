@@ -321,11 +321,29 @@ class DockerAPI(CoreSysAttributes):
         if not network_mode:
             kwargs["network"] = None
 
+        # Setup cidfile and bind mount it
+        cidfile_path = None
+        if name:
+            cidfile_path = self.coresys.config.path_cidfiles / f"{name}.cid"
+
+            # Remove the file if it exists e.g. as a leftover from unclean shutdown
+            if cidfile_path.is_file():
+                with suppress(OSError):
+                    cidfile_path.unlink(missing_ok=True)
+
+            # Bind mount to /run/cid in container
+            if "volumes" not in kwargs:
+                kwargs["volumes"] = {}
+            kwargs["volumes"]["/run/cid"] = {"bind": str(cidfile_path), "mode": "ro"}
+
         # Create container
         try:
             container = self.containers.create(
                 f"{image}:{tag}", use_config_proxy=False, **kwargs
             )
+            if cidfile_path:
+                with cidfile_path.open("w", encoding="ascii") as cidfile:
+                    cidfile.write(str(container.id))
         except docker_errors.NotFound as err:
             raise DockerNotFound(
                 f"Image {image}:{tag} does not exist for {name}", _LOGGER.error
@@ -562,6 +580,10 @@ class DockerAPI(CoreSysAttributes):
             with suppress(DockerException, requests.RequestException):
                 _LOGGER.info("Cleaning %s application", name)
                 docker_container.remove(force=True, v=True)
+
+            cidfile_path = self.coresys.config.path_cidfiles / f"{name}.cid"
+            with suppress(OSError):
+                cidfile_path.unlink(missing_ok=True)
 
     def start_container(self, name: str) -> None:
         """Start Docker container."""

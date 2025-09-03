@@ -226,6 +226,10 @@ def initialize_system(coresys: CoreSys) -> None:
         )
         config.path_addon_configs.mkdir()
 
+    if not config.path_cidfiles.is_dir():
+        _LOGGER.debug("Creating Docker cidfiles folder at '%s'", config.path_cidfiles)
+        config.path_cidfiles.mkdir()
+
 
 def warning_handler(message, category, filename, lineno, file=None, line=None):
     """Warning handler which logs warnings using the logging module."""
