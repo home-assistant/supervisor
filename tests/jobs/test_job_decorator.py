@@ -366,15 +366,21 @@ async def test_throttle_rate_limit(coresys: CoreSys, error: JobException | None)
 
     test = TestClass(coresys)
 
-    await asyncio.gather(*[test.execute(), test.execute()])
+    start = utcnow()
+
+    with time_machine.travel(start):
+        await asyncio.gather(*[test.execute(), test.execute()])
     assert test.call == 2
 
-    with pytest.raises(JobException if error is None else error):
+    with (
+        time_machine.travel(start + timedelta(milliseconds=1)),
+        pytest.raises(JobException if error is None else error),
+    ):
         await test.execute()
 
     assert test.call == 2
 
-    with time_machine.travel(utcnow() + timedelta(hours=1)):
+    with time_machine.travel(start + timedelta(hours=1, milliseconds=1)):
         await test.execute()
 
     assert test.call == 3
@@ -830,15 +836,18 @@ async def test_group_throttle(coresys: CoreSys):
     test1 = TestClass(coresys, "test1")
     test2 = TestClass(coresys, "test2")
 
+    start = utcnow()
+
     # One call of each should work. The subsequent calls will be silently throttled due to period
-    await asyncio.gather(
-        test1.execute(0), test1.execute(0), test2.execute(0), test2.execute(0)
-    )
+    with time_machine.travel(start):
+        await asyncio.gather(
+            test1.execute(0), test1.execute(0), test2.execute(0), test2.execute(0)
+        )
     assert test1.call == 1
     assert test2.call == 1
 
     # First call to each will work again since period cleared. Second throttled once more as they don't wait
-    with time_machine.travel(utcnow() + timedelta(milliseconds=100)):
+    with time_machine.travel(start + timedelta(milliseconds=100)):
         await asyncio.gather(
             test1.execute(0.1),
             test1.execute(0.1),
@@ -878,15 +887,18 @@ async def test_group_throttle_with_queue(coresys: CoreSys):
     test1 = TestClass(coresys, "test1")
     test2 = TestClass(coresys, "test2")
 
+    start = utcnow()
+
     # One call of each should work. The subsequent calls will be silently throttled after waiting due to period
-    await asyncio.gather(
-        *[test1.execute(0), test1.execute(0), test2.execute(0), test2.execute(0)]
-    )
+    with time_machine.travel(start):
+        await asyncio.gather(
+            *[test1.execute(0), test1.execute(0), test2.execute(0), test2.execute(0)]
+        )
     assert test1.call == 1
     assert test2.call == 1
 
     # All calls should work as we cleared the period. And tasks take longer then period and are queued
-    with time_machine.travel(utcnow() + timedelta(milliseconds=100)):
+    with time_machine.travel(start + timedelta(milliseconds=100)):
         await asyncio.gather(
             *[
                 test1.execute(0.1),
@@ -927,21 +939,25 @@ async def test_group_throttle_rate_limit(coresys: CoreSys, error: JobException |
     test1 = TestClass(coresys, "test1")
     test2 = TestClass(coresys, "test2")
 
-    await asyncio.gather(
-        *[test1.execute(), test1.execute(), test2.execute(), test2.execute()]
-    )
+    start = utcnow()
+
+    with time_machine.travel(start):
+        await asyncio.gather(
+            *[test1.execute(), test1.execute(), test2.execute(), test2.execute()]
+        )
     assert test1.call == 2
     assert test2.call == 2
 
-    with pytest.raises(JobException if error is None else error):
-        await test1.execute()
-    with pytest.raises(JobException if error is None else error):
-        await test2.execute()
+    with time_machine.travel(start + timedelta(milliseconds=1)):
+        with pytest.raises(JobException if error is None else error):
+            await test1.execute()
+        with pytest.raises(JobException if error is None else error):
+            await test2.execute()
 
     assert test1.call == 2
     assert test2.call == 2
 
-    with time_machine.travel(utcnow() + timedelta(hours=1)):
+    with time_machine.travel(start + timedelta(hours=1, milliseconds=1)):
         await test1.execute()
         await test2.execute()
 
@@ -1285,20 +1301,26 @@ async def test_concurency_reject_and_rate_limit(
 
     test = TestClass(coresys)
 
-    results = await asyncio.gather(
-        *[test.execute(0.1), test.execute(), test.execute()], return_exceptions=True
-    )
+    start = utcnow()
+
+    with time_machine.travel(start):
+        results = await asyncio.gather(
+            *[test.execute(0.1), test.execute(), test.execute()], return_exceptions=True
+        )
     assert results[0] is None
     assert isinstance(results[1], JobException)
     assert isinstance(results[2], JobException)
     assert test.call == 1
 
-    with pytest.raises(JobException if error is None else error):
+    with (
+        time_machine.travel(start + timedelta(milliseconds=1)),
+        pytest.raises(JobException if error is None else error),
+    ):
         await test.execute()
 
     assert test.call == 1
 
-    with time_machine.travel(utcnow() + timedelta(hours=1)):
+    with time_machine.travel(start + timedelta(hours=1, milliseconds=1)):
         await test.execute()
 
     assert test.call == 2
@@ -1342,18 +1364,22 @@ async def test_group_concurrency_with_group_throttling(coresys: CoreSys):
 
     test = TestClass(coresys)
 
+    start = utcnow()
+
     # First call should work
-    await test.main_method()
+    with time_machine.travel(start):
+        await test.main_method()
     assert test.call_count == 1
     assert test.nested_call_count == 1
 
     # Second call should be throttled (not execute due to throttle period)
-    await test.main_method()
+    with time_machine.travel(start + timedelta(milliseconds=1)):
+        await test.main_method()
     assert test.call_count == 1  # Still 1, throttled
     assert test.nested_call_count == 1  # Still 1, throttled
 
     # Wait for throttle period to pass and try again
-    with time_machine.travel(utcnow() + timedelta(milliseconds=60)):
+    with time_machine.travel(start + timedelta(milliseconds=60)):
         await test.main_method()
 
     assert test.call_count == 2  # Should execute now
