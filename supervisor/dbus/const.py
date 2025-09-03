@@ -266,7 +266,7 @@ class ConnectionStateType(IntEnum):
 class ConnectionStateFlags(IntEnum):
     """Connection state flags.
 
-    https://developer-old.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActivationStateFlags
+    https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMActivationStateFlags
     """
 
     NONE = 0
