@@ -1,7 +1,6 @@
 """Init file for Supervisor Home Assistant RESTful API."""
 
 import asyncio
-from collections.abc import Awaitable
 from pathlib import Path
 from typing import Any, cast
 
@@ -36,6 +35,7 @@ from ..const import (
     ATTR_ICON,
     ATTR_INGRESS,
     ATTR_INSTALLED,
+    ATTR_JOB_ID,
     ATTR_LOGO,
     ATTR_LONG_DESCRIPTION,
     ATTR_MAINTAINER,
@@ -57,16 +57,24 @@ from ..exceptions import APIError, APIForbidden, APINotFound
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
-from .const import CONTENT_TYPE_PNG, CONTENT_TYPE_TEXT
+from .const import ATTR_BACKGROUND, CONTENT_TYPE_PNG, CONTENT_TYPE_TEXT
+from .utils import background_task
 
 SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_BACKUP): bool,
+        vol.Optional(ATTR_BACKGROUND, default=False): bool,
     }
 )
 
 SCHEMA_ADD_REPOSITORY = vol.Schema(
     {vol.Required(ATTR_REPOSITORY): vol.All(str, validate_repository)}
+)
+
+SCHEMA_INSTALL = vol.Schema(
+    {
+        vol.Optional(ATTR_BACKGROUND, default=False): bool,
+    }
 )
 
 
@@ -217,24 +225,45 @@ class APIStore(CoreSysAttributes):
         }
 
     @api_process
-    def addons_addon_install(self, request: web.Request) -> Awaitable[None]:
+    async def addons_addon_install(self, request: web.Request) -> dict[str, str] | None:
         """Install add-on."""
         addon = self._extract_addon(request)
-        return asyncio.shield(self.sys_addons.install(addon.slug))
+        body = await api_validate(SCHEMA_INSTALL, request)
+
+        background = body[ATTR_BACKGROUND]
+
+        install_task, job_id = await background_task(
+            self, self.sys_addons.install, addon.slug
+        )
+
+        if background and not install_task.done():
+            return {ATTR_JOB_ID: job_id}
+
+        return await install_task
 
     @api_process
-    async def addons_addon_update(self, request: web.Request) -> None:
+    async def addons_addon_update(self, request: web.Request) -> dict[str, str] | None:
         """Update add-on."""
         addon = self._extract_addon(request, installed=True)
         if addon == request.get(REQUEST_FROM):
             raise APIForbidden(f"Add-on {addon.slug} can't update itself!")
 
         body = await api_validate(SCHEMA_UPDATE, request)
+        background = body[ATTR_BACKGROUND]
 
-        if start_task := await asyncio.shield(
-            self.sys_addons.update(addon.slug, backup=body.get(ATTR_BACKUP))
-        ):
+        update_task, job_id = await background_task(
+            self,
+            self.sys_addons.update,
+            addon.slug,
+            backup=body.get(ATTR_BACKUP),
+        )
+
+        if background and not update_task.done():
+            return {ATTR_JOB_ID: job_id}
+
+        if start_task := await update_task:
             await start_task
+        return None
 
     @api_process
     async def addons_addon_info(self, request: web.Request) -> dict[str, Any]:

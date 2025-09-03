@@ -1,13 +1,16 @@
 """Test homeassistant api."""
 
+import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.backups.manager import BackupManager
 from supervisor.coresys import CoreSys
+from supervisor.docker.interface import DockerInterface
 from supervisor.homeassistant.api import APIState
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
@@ -188,3 +191,77 @@ async def test_force_stop_during_migration(api_client: TestClient, coresys: Core
     with patch.object(HomeAssistantCore, "stop") as stop:
         await api_client.post("/homeassistant/stop", json={"force": True})
         stop.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("make_backup", "backup_called", "update_called"),
+    [(True, True, False), (False, False, True)],
+)
+async def test_home_assistant_background_update(
+    api_client: TestClient,
+    coresys: CoreSys,
+    make_backup: bool,
+    backup_called: bool,
+    update_called: bool,
+):
+    """Test background update of Home Assistant."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    event = asyncio.Event()
+    mock_update_called = mock_backup_called = False
+
+    # Mock backup/update as long-running tasks
+    async def mock_docker_interface_update(*args, **kwargs):
+        nonlocal mock_update_called
+        mock_update_called = True
+        await event.wait()
+
+    async def mock_partial_backup(*args, **kwargs):
+        nonlocal mock_backup_called
+        mock_backup_called = True
+        await event.wait()
+
+    with (
+        patch.object(DockerInterface, "update", new=mock_docker_interface_update),
+        patch.object(BackupManager, "do_backup_partial", new=mock_partial_backup),
+        patch.object(
+            DockerInterface,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+    ):
+        resp = await api_client.post(
+            "/core/update",
+            json={"background": True, "backup": make_backup, "version": "2025.8.3"},
+        )
+
+    assert mock_backup_called is backup_called
+    assert mock_update_called is update_called
+
+    assert resp.status == 200
+    body = await resp.json()
+    assert (job := coresys.jobs.get_job(body["data"]["job_id"]))
+    assert job.name == "home_assistant_core_update"
+    event.set()
+
+
+async def test_background_home_assistant_update_fails_fast(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test background Home Assistant update returns error not job if validation doesn't succeed."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with (
+        patch.object(
+            DockerInterface,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.3")),
+        ),
+    ):
+        resp = await api_client.post(
+            "/core/update",
+            json={"background": True, "version": "2025.8.3"},
+        )
+
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "Version 2025.8.3 is already installed"
