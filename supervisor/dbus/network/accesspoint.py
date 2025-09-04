@@ -15,7 +15,7 @@ from ..interface import DBusInterfaceProxy, dbus_property
 class NetworkWirelessAP(DBusInterfaceProxy):
     """NetworkWireless AP object for Network Manager.
 
-    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.AccessPoint.html
+    https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.AccessPoint.html
     """
 
     bus_name: str = DBUS_NAME_NM

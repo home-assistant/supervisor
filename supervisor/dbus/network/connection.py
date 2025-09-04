@@ -27,7 +27,7 @@ from .ip_configuration import IpConfiguration
 class NetworkConnection(DBusInterfaceProxy):
     """Active network connection object for Network Manager.
 
-    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Connection.Active.html
+    https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.Connection.Active.html
     """
 
     bus_name: str = DBUS_NAME_NM
