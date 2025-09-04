@@ -112,10 +112,9 @@ class Updater(FileConfiguration, CoreSysAttributes):
             if self.sys_os.version != last_in_major:
                 return last_in_major
             # If we are at the last version in our major, check for next major
-            if self.sys_os.version.major is not None:
-                next_major = str(int(self.sys_os.version.major) + 1)
-                if next_major in upgrade_map:
-                    return AwesomeVersion(upgrade_map[next_major])
+            next_major = str(int(self.sys_os.version.major) + 1)
+            if next_major in upgrade_map:
+                return AwesomeVersion(upgrade_map[next_major])
 
         # Fall back to unrestricted version
         return unrestricted
