@@ -1,11 +1,15 @@
 """Evaluation class for OS version."""
 
+import logging
+
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def setup(coresys: CoreSys) -> EvaluateBase:
@@ -47,5 +51,13 @@ class EvaluateOSVersion(EvaluateBase):
         last_supported_version = AwesomeVersion(f"{int(latest.major) - 4}.0")
         try:
             return current < last_supported_version
-        except AwesomeVersionException:
+        except AwesomeVersionException as err:
+            # This is run regularly, avoid log spam by logging at debug level
+            _LOGGER.debug(
+                "Can't parse OS version '%s' or latest version '%s': %s",
+                current,
+                latest,
+                err,
+            )
+            # Consider non-parseable versions as unsupported
             return True

@@ -1,6 +1,7 @@
 """Evaluation class for Core version."""
 
 from datetime import datetime, timedelta
+import logging
 
 from awesomeversion import (
     AwesomeVersion,
@@ -13,6 +14,8 @@ from ...coresys import CoreSys
 from ...homeassistant.const import LANDINGPAGE
 from ..const import UnsupportedReason
 from .base import EvaluateBase
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def setup(coresys: CoreSys) -> EvaluateBase:
@@ -40,9 +43,7 @@ class EvaluateCoreVersion(EvaluateBase):
 
     async def evaluate(self) -> bool:
         """Run evaluation."""
-        if not (current := self.sys_homeassistant.version) or not (
-            latest := self.sys_homeassistant.latest_version
-        ):
+        if not (current := self.sys_homeassistant.version):
             return False
 
         # Skip evaluation for landingpage version
@@ -53,10 +54,7 @@ class EvaluateCoreVersion(EvaluateBase):
             # Calculate if the current version was released more than 2 years ago
             # Home Assistant releases happen monthly, so approximately 24 versions per 2 years
             # However, we'll be more precise and check based on actual version numbers
-            # Home Assistant follows a versioning scheme like 2024.1, 2024.2, etc.
-
-            # Extract year from current version
-            current_year = int(str(current).split(".")[0])
+            # Home Assistant uses CalVer versioning scheme like 2024.1, 2024.2, etc.
 
             # Calculate 2 years ago from now
             two_years_ago = datetime.now() - timedelta(days=730)  # 2 years = 730 days
@@ -72,13 +70,13 @@ class EvaluateCoreVersion(EvaluateBase):
             # Compare current version with the cutoff
             return current < cutoff_version
 
-        except (AwesomeVersionException, ValueError, IndexError):
-            # If we can't parse the version format, fall back to conservative approach
-            # Consider unsupported if current is significantly behind latest
-            try:
-                # If latest version is from current year and current is from 2+ years ago
-                latest_year = int(str(latest).split(".")[0])
-                current_year = int(str(current).split(".")[0])
-                return (latest_year - current_year) >= 2
-            except (ValueError, IndexError):
-                return False
+        except AwesomeVersionException as err:
+            # This is run regularly, avoid log spam by logging at debug level
+            _LOGGER.debug(
+                "Failed to parse Home Assistant version '%s' or cutoff version '%s': %s",
+                current,
+                cutoff_version,
+                err,
+            )
+            # Consider non-parseable versions as unsupported
+            return True
