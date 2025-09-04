@@ -14,9 +14,9 @@ from supervisor.jobs.const import JobConcurrency
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
+    AddonNotSupportedError,
     AddonsError,
     AddonsJobError,
-    AddonsNotSupportedError,
     CoreDNSError,
     DockerError,
     HassioError,
@@ -307,7 +307,7 @@ class AddonManager(CoreSysAttributes):
                 "Version changed, use Update instead Rebuild", _LOGGER.error
             )
         if not force and not addon.need_build:
-            raise AddonsNotSupportedError(
+            raise AddonNotSupportedError(
                 "Can't rebuild a image based add-on", _LOGGER.error
             )
 

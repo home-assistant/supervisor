@@ -89,7 +89,12 @@ from ..const import (
 )
 from ..coresys import CoreSys
 from ..docker.const import Capabilities
-from ..exceptions import AddonsNotSupportedError
+from ..exceptions import (
+    AddonNotSupportedArchitectureError,
+    AddonNotSupportedError,
+    AddonNotSupportedHomeAssistantVersionError,
+    AddonNotSupportedMachineTypeError,
+)
 from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
@@ -680,9 +685,8 @@ class AddonModel(JobGroup, ABC):
         """Validate if addon is available for current system."""
         # Architecture
         if not self.sys_arch.is_supported(config[ATTR_ARCH]):
-            raise AddonsNotSupportedError(
-                f"Add-on {self.slug} not supported on this platform, supported architectures: {', '.join(config[ATTR_ARCH])}",
-                logger,
+            raise AddonNotSupportedArchitectureError(
+                logger, slug=self.slug, architectures=config[ATTR_ARCH]
             )
 
         # Machine / Hardware
@@ -690,9 +694,8 @@ class AddonModel(JobGroup, ABC):
         if machine and (
             f"!{self.sys_machine}" in machine or self.sys_machine not in machine
         ):
-            raise AddonsNotSupportedError(
-                f"Add-on {self.slug} not supported on this machine, supported machine types: {', '.join(machine)}",
-                logger,
+            raise AddonNotSupportedMachineTypeError(
+                logger, slug=self.slug, machine_types=machine
             )
 
         # Home Assistant
@@ -701,16 +704,15 @@ class AddonModel(JobGroup, ABC):
             if version and not version_is_new_enough(
                 self.sys_homeassistant.version, version
             ):
-                raise AddonsNotSupportedError(
-                    f"Add-on {self.slug} not supported on this system, requires Home Assistant version {version} or greater",
-                    logger,
+                raise AddonNotSupportedHomeAssistantVersionError(
+                    logger, slug=self.slug, version=str(version)
                 )
 
     def _available(self, config) -> bool:
         """Return True if this add-on is available on this platform."""
         try:
             self._validate_availability(config)
-        except AddonsNotSupportedError:
+        except AddonNotSupportedError:
             return False
 
         return True
