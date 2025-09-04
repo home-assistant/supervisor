@@ -48,7 +48,7 @@ async def test_api_available_updates(
         "version_latest": "9.2.1",
     }
 
-    coresys.updater._data["hassos"] = "321"
+    coresys.updater._data["hassos_unrestricted"] = "321"
     coresys.os._version = "123"
     updates = await available_updates()
     assert len(updates) == 2
