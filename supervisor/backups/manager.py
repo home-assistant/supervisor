@@ -598,6 +598,7 @@ class BackupManager(FileConfiguration, JobGroup):
         homeassistant_exclude_database: bool | None = None,
         extra: dict | None = None,
         additional_locations: list[LOCATION_TYPE] | None = None,
+        validation_complete: asyncio.Event | None = None,
     ) -> Backup | None:
         """Create a full backup."""
         await self._check_location(location)
@@ -613,6 +614,10 @@ class BackupManager(FileConfiguration, JobGroup):
         new_backup = self._create_backup(
             name, filename, BackupType.FULL, password, compressed, location, extra
         )
+
+        # If being run in the background, notify caller that validation has completed
+        if validation_complete:
+            validation_complete.set()
 
         _LOGGER.info("Creating new full backup with slug %s", new_backup.slug)
         backup = await self._do_backup(
@@ -648,6 +653,7 @@ class BackupManager(FileConfiguration, JobGroup):
         homeassistant_exclude_database: bool | None = None,
         extra: dict | None = None,
         additional_locations: list[LOCATION_TYPE] | None = None,
+        validation_complete: asyncio.Event | None = None,
     ) -> Backup | None:
         """Create a partial backup."""
         await self._check_location(location)
@@ -683,6 +689,10 @@ class BackupManager(FileConfiguration, JobGroup):
                 addon_list.append(cast(Addon, addon))
                 continue
             _LOGGER.warning("Add-on %s not found/installed", addon_slug)
+
+        # If being run in the background, notify caller that validation has completed
+        if validation_complete:
+            validation_complete.set()
 
         backup = await self._do_backup(
             new_backup,
@@ -817,8 +827,10 @@ class BackupManager(FileConfiguration, JobGroup):
     async def do_restore_full(
         self,
         backup: Backup,
+        *,
         password: str | None = None,
         location: str | None | type[DEFAULT] = DEFAULT,
+        validation_complete: asyncio.Event | None = None,
     ) -> bool:
         """Restore a backup."""
         # Add backup ID to job
@@ -837,6 +849,10 @@ class BackupManager(FileConfiguration, JobGroup):
                 f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
                 _LOGGER.error,
             )
+
+        # If being run in the background, notify caller that validation has completed
+        if validation_complete:
+            validation_complete.set()
 
         _LOGGER.info("Full-Restore %s start", backup.slug)
         await self.sys_core.set_state(CoreState.FREEZE)
@@ -876,11 +892,13 @@ class BackupManager(FileConfiguration, JobGroup):
     async def do_restore_partial(
         self,
         backup: Backup,
+        *,
         homeassistant: bool = False,
         addons: list[str] | None = None,
         folders: list[str] | None = None,
         password: str | None = None,
         location: str | None | type[DEFAULT] = DEFAULT,
+        validation_complete: asyncio.Event | None = None,
     ) -> bool:
         """Restore a backup."""
         # Add backup ID to job
@@ -907,6 +925,10 @@ class BackupManager(FileConfiguration, JobGroup):
                 f"can't restore on {self.sys_supervisor.version}. Must update supervisor first.",
                 _LOGGER.error,
             )
+
+        # If being run in the background, notify caller that validation has completed
+        if validation_complete:
+            validation_complete.set()
 
         _LOGGER.info("Partial-Restore %s start", backup.slug)
         await self.sys_core.set_state(CoreState.FREEZE)

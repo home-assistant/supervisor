@@ -20,6 +20,7 @@ from ..const import (
     ATTR_CPU_PERCENT,
     ATTR_IMAGE,
     ATTR_IP_ADDRESS,
+    ATTR_JOB_ID,
     ATTR_MACHINE,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
@@ -37,8 +38,8 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIDBMigrationInProgress, APIError
 from ..validate import docker_image, network_port, version_tag
-from .const import ATTR_FORCE, ATTR_SAFE_MODE
-from .utils import api_process, api_validate
+from .const import ATTR_BACKGROUND, ATTR_FORCE, ATTR_SAFE_MODE
+from .utils import api_process, api_validate, background_task
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ SCHEMA_UPDATE = vol.Schema(
     {
         vol.Optional(ATTR_VERSION): version_tag,
         vol.Optional(ATTR_BACKUP): bool,
+        vol.Optional(ATTR_BACKGROUND, default=False): bool,
     }
 )
 
@@ -170,17 +172,23 @@ class APIHomeAssistant(CoreSysAttributes):
         }
 
     @api_process
-    async def update(self, request: web.Request) -> None:
+    async def update(self, request: web.Request) -> dict[str, str] | None:
         """Update Home Assistant."""
         body = await api_validate(SCHEMA_UPDATE, request)
         await self._check_offline_migration()
 
-        await asyncio.shield(
-            self.sys_homeassistant.core.update(
-                version=body.get(ATTR_VERSION, self.sys_homeassistant.latest_version),
-                backup=body.get(ATTR_BACKUP),
-            )
+        background = body[ATTR_BACKGROUND]
+        update_task, job_id = await background_task(
+            self,
+            self.sys_homeassistant.core.update,
+            version=body.get(ATTR_VERSION, self.sys_homeassistant.latest_version),
+            backup=body.get(ATTR_BACKUP),
         )
+
+        if background and not update_task.done():
+            return {ATTR_JOB_ID: job_id}
+
+        return await update_task
 
     @api_process
     async def stop(self, request: web.Request) -> Awaitable[None]:
