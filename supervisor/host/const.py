@@ -89,3 +89,12 @@ class LogFormatter(StrEnum):
 
     PLAIN = "plain"
     VERBOSE = "verbose"
+
+
+class MulticastDnsMode(StrEnum):
+    """Multicast DNS (MDNS/LLMNR) mode."""
+
+    DEFAULT = "default"
+    OFF = "off"
+    RESOLVE = "resolve"
+    ANNOUNCE = "announce"

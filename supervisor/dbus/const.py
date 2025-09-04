@@ -333,6 +333,15 @@ class MulticastProtocolEnabled(StrEnum):
     RESOLVE = "resolve"
 
 
+class MulticastDnsValue(IntEnum):
+    """Connection MulticastDNS (mdns/llmnr) values."""
+
+    DEFAULT = -1
+    OFF = 0
+    RESOLVE = 1
+    ANNOUNCE = 2
+
+
 class DNSOverTLSEnabled(StrEnum):
     """DNS over TLS enabled."""
 
