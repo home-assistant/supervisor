@@ -101,7 +101,11 @@ class Updater(FileConfiguration, CoreSysAttributes):
             return unrestricted
 
         # If we have no unrestricted version or no current OS version, return unrestricted
-        if not unrestricted or not self.sys_os.version:
+        if (
+            not unrestricted
+            or not self.sys_os.version
+            or self.sys_os.version.major is None
+        ):
             return unrestricted
 
         current_major = str(self.sys_os.version.major)
