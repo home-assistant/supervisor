@@ -44,7 +44,7 @@ MINIMAL_VERSION = AwesomeVersion("1.14.6")
 class NetworkManager(DBusInterfaceProxy):
     """Handle D-Bus interface for Network Manager.
 
-    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.html
+    https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.html
     """
 
     name: str = DBUS_NAME_NM

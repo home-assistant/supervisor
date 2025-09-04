@@ -225,7 +225,7 @@ class NetworkSetting(DBusInterface):
         data = await self.get_settings()
 
         # Get configuration settings we care about
-        # See: https://developer-old.gnome.org/NetworkManager/stable/ch01.html
+        # See: https://networkmanager.dev/docs/api/latest/nm-settings-dbus.html
         if CONF_ATTR_CONNECTION in data:
             self._connection = ConnectionProperties(
                 id=data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_ID),

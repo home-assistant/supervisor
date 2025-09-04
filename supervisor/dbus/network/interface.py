@@ -27,7 +27,7 @@ from .wireless import NetworkWireless
 class NetworkInterface(DBusInterfaceProxy):
     """NetworkInterface object represents Network Manager Device objects.
 
-    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Device.html
+    https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.Device.html
     """
 
     bus_name: str = DBUS_NAME_NM
