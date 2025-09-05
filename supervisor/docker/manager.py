@@ -324,17 +324,24 @@ class DockerAPI(CoreSysAttributes):
         # Setup cidfile and bind mount it
         cidfile_path = None
         if name:
-            cidfile_path = self.coresys.config.path_cidfiles / f"{name}.cid"
+            cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
 
             # Remove the file if it exists e.g. as a leftover from unclean shutdown
             if cidfile_path.is_file():
                 with suppress(OSError):
                     cidfile_path.unlink(missing_ok=True)
 
+            extern_cidfile_path = (
+                self.coresys.config.path_extern_cid_files / f"{name}.cid"
+            )
+
             # Bind mount to /run/cid in container
             if "volumes" not in kwargs:
                 kwargs["volumes"] = {}
-            kwargs["volumes"]["/run/cid"] = {"bind": str(cidfile_path), "mode": "ro"}
+            kwargs["volumes"][str(extern_cidfile_path)] = {
+                "bind": "/run/cid",
+                "mode": "ro",
+            }
 
         # Create container
         try:
@@ -581,7 +588,7 @@ class DockerAPI(CoreSysAttributes):
                 _LOGGER.info("Cleaning %s application", name)
                 docker_container.remove(force=True, v=True)
 
-            cidfile_path = self.coresys.config.path_cidfiles / f"{name}.cid"
+            cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
             with suppress(OSError):
                 cidfile_path.unlink(missing_ok=True)
 

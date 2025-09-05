@@ -7,7 +7,7 @@ from docker.errors import DockerException
 import pytest
 from requests import RequestException
 
-from supervisor.config import CIDFILES
+from supervisor.coresys import CoreSys
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.exceptions import DockerError
 
@@ -138,14 +138,17 @@ async def test_run_command_custom_stdout_stderr(docker: DockerAPI):
     assert result.output == b"output"
 
 
-async def test_run_container_with_cidfile(docker: DockerAPI, tmp_supervisor_data):
+async def test_run_container_with_cidfile(
+    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
+):
     """Test container creation with cidfile and bind mount."""
     # Mock container
     mock_container = MagicMock()
     mock_container.id = "test_container_id_12345"
 
     container_name = "test_container"
-    cidfile_path = tmp_supervisor_data / CIDFILES / f"{container_name}.cid"
+    cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
+    extern_cidfile_path = coresys.config.path_extern_cid_files / f"{container_name}.cid"
 
     docker.docker.containers.run.return_value = mock_container
 
@@ -166,9 +169,9 @@ async def test_run_container_with_cidfile(docker: DockerAPI, tmp_supervisor_data
         kwargs = create_mock.call_args[1]
 
         assert "volumes" in kwargs
-        assert "/run/cid" in kwargs["volumes"]
-        assert kwargs["volumes"]["/run/cid"]["bind"] == str(cidfile_path)
-        assert kwargs["volumes"]["/run/cid"]["mode"] == "ro"
+        assert str(extern_cidfile_path) in kwargs["volumes"]
+        assert kwargs["volumes"][str(extern_cidfile_path)]["bind"] == "/run/cid"
+        assert kwargs["volumes"][str(extern_cidfile_path)]["mode"] == "ro"
 
         # Verify container start was called
         mock_container.start.assert_called_once()
@@ -181,7 +184,7 @@ async def test_run_container_with_cidfile(docker: DockerAPI, tmp_supervisor_data
 
 
 async def test_run_container_with_leftover_cidfile(
-    docker: DockerAPI, tmp_supervisor_data
+    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
 ):
     """Test container creation removes leftover cidfile before creating new one."""
     # Mock container
@@ -189,7 +192,7 @@ async def test_run_container_with_leftover_cidfile(
     mock_container.id = "test_container_id_new"
 
     container_name = "test_container"
-    cidfile_path = tmp_supervisor_data / "cidfiles" / f"{container_name}.cid"
+    cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
 
     # Create a leftover cidfile
     cidfile_path.touch()
@@ -217,7 +220,7 @@ async def test_run_container_with_leftover_cidfile(
 
 
 async def test_stop_container_with_cidfile_cleanup(
-    docker: DockerAPI, tmp_supervisor_data
+    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
 ):
     """Test container stop with cidfile cleanup."""
     # Mock container
@@ -225,7 +228,7 @@ async def test_stop_container_with_cidfile_cleanup(
     mock_container.status = "running"
 
     container_name = "test_container"
-    cidfile_path = tmp_supervisor_data / "cidfiles" / f"{container_name}.cid"
+    cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
 
     # Create a cidfile
     cidfile_path.touch()
@@ -273,14 +276,16 @@ async def test_stop_container_without_removal_no_cidfile_cleanup(docker: DockerA
         mock_unlink.assert_not_called()
 
 
-async def test_cidfile_cleanup_handles_oserror(docker: DockerAPI, tmp_supervisor_data):
+async def test_cidfile_cleanup_handles_oserror(
+    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
+):
     """Test that cidfile cleanup handles OSError gracefully."""
     # Mock container
     mock_container = MagicMock()
     mock_container.status = "running"
 
     container_name = "test_container"
-    cidfile_path = tmp_supervisor_data / "cidfiles" / f"{container_name}.cid"
+    cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
 
     # Create a cidfile
     cidfile_path.touch()
