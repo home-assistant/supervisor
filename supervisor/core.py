@@ -196,29 +196,19 @@ class Core(CoreSysAttributes):
                 self.sys_resolution.add_unhealthy_reason(UnhealthyReason.SETUP)
                 await async_capture_exception(err)
 
-        # Set OS Agent diagnostics if needed
-        if (
-            self.sys_config.diagnostics is not None
-            and self.sys_dbus.agent.diagnostics != self.sys_config.diagnostics
-            and not self.sys_dev
-            and self.supported
-        ):
-            try:
-                await self.sys_dbus.agent.set_diagnostics(self.sys_config.diagnostics)
-            except Exception as err:  # pylint: disable=broad-except
-                _LOGGER.warning(
-                    "Could not set diagnostics to %s due to %s",
-                    self.sys_config.diagnostics,
-                    err,
-                )
-                await async_capture_exception(err)
-
-        # Evaluate the system
-        await self.sys_resolution.evaluate.evaluate_system()
-
     async def start(self) -> None:
         """Start Supervisor orchestration."""
         await self.set_state(CoreState.STARTUP)
+
+        # Set OS Agent diagnostics if needed
+        if (
+            self.sys_dbus.agent.is_connected
+            and self.sys_config.diagnostics is not None
+            and self.sys_dbus.agent.diagnostics != self.sys_config.diagnostics
+            and self.supported
+        ):
+            _LOGGER.debug("Set OS Agent diagnostics to %s", self.sys_config.diagnostics)
+            await self.sys_dbus.agent.set_diagnostics(self.sys_config.diagnostics)
 
         # Check if system is healthy
         if not self.supported:
