@@ -243,6 +243,10 @@ async def test_advanced_logs(
         accept=LogFormat.JOURNAL,
     )
 
+    # Host logs don't have a /latest endpoint
+    resp = await api_client.get("/host/logs/latest")
+    assert resp.status == 404
+
 
 async def test_advaced_logs_query_parameters(
     api_client: TestClient,
@@ -844,3 +848,49 @@ async def test_force_shutdown_during_migration(
     with patch.object(SystemControl, "shutdown") as shutdown:
         await api_client.post("/host/shutdown", json={"force": True})
         shutdown.assert_called_once()
+
+
+async def test_advanced_logs_latest_container_not_found_error(
+    api_client: TestClient, coresys: CoreSys
+):
+    """Test advanced logs API with latest parameter when container start time cannot be determined."""
+    container_mock = MagicMock()
+    container_mock.attrs = {"State": {}}
+
+    with patch.object(coresys.docker.containers, "get", return_value=container_mock):
+        # Test with a service endpoint that does exist
+        resp = await api_client.get("/core/logs/latest")
+        assert resp.status == 400
+        result = await resp.text()
+        assert "Cannot determine start time of homeassistant" in result
+
+
+async def test_advanced_logs_latest_invalid_start_time(
+    api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test advanced logs API with latest parameter when container start time is invalid."""
+    # Mock container with invalid StartedAt attribute
+    container_mock = MagicMock()
+    container_mock.attrs = {"State": {"StartedAt": "1. 1. 2025"}}
+
+    with patch.object(coresys.docker.containers, "get", return_value=container_mock):
+        # Test with a service endpoint that does exist
+        resp = await api_client.get("/core/logs/latest")
+        assert resp.status == 400
+        result = await resp.text()
+        assert "Cannot determine start time of homeassistant" in result
+
+
+async def test_advanced_logs_latest_invalid_container(
+    api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test advanced logs API with latest parameter when container can't be found."""
+    container_mock = MagicMock()
+    container_mock.attrs = {}
+
+    with patch.object(coresys.docker.containers, "get", return_value=None):
+        # Test with a service endpoint that does exist
+        resp = await api_client.get("/core/logs/latest")
+        assert resp.status == 400
+        result = await resp.text()
+        assert "Cannot determine start time of homeassistant" in result

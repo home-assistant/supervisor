@@ -2,11 +2,13 @@
 
 import asyncio
 from contextlib import suppress
+import datetime
 import logging
 from typing import Any
 
 from aiohttp import ClientConnectionResetError, ClientPayloadError, web
 from aiohttp.hdrs import ACCEPT, RANGE
+from docker.models.containers import Container
 import voluptuous as vol
 from voluptuous.error import CoerceInvalid
 
@@ -194,7 +196,11 @@ class APIHost(CoreSysAttributes):
         return possible_offset
 
     async def advanced_logs_handler(
-        self, request: web.Request, identifier: str | None = None, follow: bool = False
+        self,
+        request: web.Request,
+        identifier: str | None = None,
+        follow: bool = False,
+        latest: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
         log_formatter = LogFormatter.PLAIN
@@ -212,6 +218,17 @@ class APIHost(CoreSysAttributes):
             params[PARAM_BOOT_ID] = await self._get_boot_id(request.match_info[BOOTID])
         if follow:
             params[PARAM_FOLLOW] = ""
+
+        since: datetime.datetime | None = None
+        if latest:
+            if not identifier:
+                raise APIError(
+                    "Latest logs can only be fetched for a specific identifier."
+                )
+            if not (since := await self._get_container_start_time(identifier)):
+                raise APIError(
+                    f"Cannot determine start time of {identifier}, is it a Docker container name?"
+                )
 
         if ACCEPT in request.headers and request.headers[ACCEPT] not in [
             CONTENT_TYPE_TEXT,
@@ -239,8 +256,14 @@ class APIHost(CoreSysAttributes):
                 # instead. Since this is really an edge case that doesn't matter much, we'll just
                 # return 2 lines at minimum.
                 lines = max(2, lines)
-            # entries=cursor[[:num_skip]:num_entries]
-            range_header = f"entries=:-{lines - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else lines}"
+            if since:
+                # realtime=[since]:[until][[:num_skip]:num_entries]
+                range_header = f"realtime={int(since.timestamp())}::0:{lines}"
+            else:
+                # entries=cursor[[:num_skip]:num_entries]
+                range_header = f"entries=:-{lines - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else lines}"
+        elif since:
+            range_header = f"realtime={int(since.timestamp())}::0:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
         elif RANGE in request.headers:
             range_header = request.headers[RANGE]
         else:
@@ -286,10 +309,14 @@ class APIHost(CoreSysAttributes):
 
     @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
     async def advanced_logs(
-        self, request: web.Request, identifier: str | None = None, follow: bool = False
+        self,
+        request: web.Request,
+        identifier: str | None = None,
+        follow: bool = False,
+        latest: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
-        return await self.advanced_logs_handler(request, identifier, follow)
+        return await self.advanced_logs_handler(request, identifier, follow, latest)
 
     @api_process
     async def disk_usage(self, request: web.Request) -> dict:
@@ -336,3 +363,24 @@ class APIHost(CoreSysAttributes):
                 *known_paths,
             ],
         }
+
+    async def _get_container_start_time(
+        self, identifier: str
+    ) -> datetime.datetime | None:
+        """Get container start time for the given syslog identifier."""
+        container: Container = self.sys_docker.containers.get(identifier)
+        if not container:
+            return None
+
+        if not (started_at := container.attrs.get("State", {}).get("StartedAt")):
+            return None
+
+        try:
+            return datetime.datetime.fromisoformat(started_at)
+        except ValueError:
+            _LOGGER.warning(
+                "Failed to parse StartedAt time of %s container, got: %s",
+                identifier,
+                started_at,
+            )
+            return None

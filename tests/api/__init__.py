@@ -1,9 +1,10 @@
 """Test for API calls."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 
+from supervisor.coresys import CoreSys
 from supervisor.host.const import LogFormat
 
 DEFAULT_LOG_RANGE = "entries=:-99:100"
@@ -15,6 +16,7 @@ async def common_test_api_advanced_logs(
     syslog_identifier: str,
     api_client: TestClient,
     journald_logs: MagicMock,
+    coresys: CoreSys,
 ):
     """Template for tests of endpoints using advanced logs."""
     resp = await api_client.get(f"{path_prefix}/logs")
@@ -38,6 +40,20 @@ async def common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE_FOLLOW,
         accept=LogFormat.JOURNAL,
     )
+
+    journald_logs.reset_mock()
+
+    container_mock = MagicMock()
+    container_mock.attrs = {"State": {"StartedAt": "2023-01-01T12:00:00.000000Z"}}
+    with patch.object(coresys.docker.containers, "get", return_value=container_mock):
+        resp = await api_client.get(f"{path_prefix}/logs/latest")
+        assert resp.status == 200
+        journald_logs.assert_called_once_with(
+            params={"SYSLOG_IDENTIFIER": syslog_identifier},
+            range_header="realtime=1672574400::0:18446744073709551615",  # Unix timestamp for 2023-01-01 12:00:00
+            accept=LogFormat.JOURNAL,
+        )
+        coresys.docker.containers.get.assert_called_once_with(syslog_identifier)
 
     journald_logs.reset_mock()
 
