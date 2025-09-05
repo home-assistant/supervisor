@@ -36,6 +36,8 @@ async def test_equals_dbus_interface_no_settings(coresys: CoreSys):
         vlan=None,
         path="platform-ff3f0000.ethernet",
         mac="AA:BB:CC:DD:EE:FF",
+        mdns=None,
+        llmnr=None,
     )
 
     # Get network interface and remove its connection to simulate no settings
@@ -64,6 +66,8 @@ async def test_equals_dbus_interface_connection_name_match(coresys: CoreSys):
         vlan=None,
         path="platform-ff3f0000.ethernet",
         mac="AA:BB:CC:DD:EE:FF",
+        mdns=None,
+        llmnr=None,
     )
 
     # Get the network interface - this should have connection settings with interface-name = "eth0"
@@ -90,6 +94,8 @@ def test_equals_dbus_interface_connection_name_no_match():
         vlan=None,
         path="platform-ff3f0000.ethernet",
         mac="AA:BB:CC:DD:EE:FF",
+        mdns=None,
+        llmnr=None,
     )
 
     # Mock network interface with different connection name
@@ -125,6 +131,8 @@ async def test_equals_dbus_interface_path_match(
         vlan=None,
         path="platform-ff3f0000.ethernet",
         mac="AA:BB:CC:DD:EE:FF",
+        mdns=None,
+        llmnr=None,
     )
 
     # Add match settings with path and remove interface name to force path matching
@@ -156,6 +164,8 @@ def test_equals_dbus_interface_vlan_type_mismatch():
         vlan=VlanConfig(id=10, interface="0c23631e-2118-355c-bbb0-8943229cb0d6"),
         path="",
         mac="52:54:00:2B:36:80",
+        mdns=None,
+        llmnr=None,
     )
 
     # Mock non-VLAN NetworkInterface - should return False immediately
@@ -185,6 +195,8 @@ def test_equals_dbus_interface_vlan_missing_info():
         vlan=None,  # Missing VLAN config!
         path="",
         mac="52:54:00:2B:36:80",
+        mdns=None,
+        llmnr=None,
     )
 
     # Mock VLAN NetworkInterface
@@ -218,6 +230,8 @@ def test_equals_dbus_interface_vlan_no_vlan_settings():
         vlan=VlanConfig(id=10, interface="0c23631e-2118-355c-bbb0-8943229cb0d6"),
         path="",
         mac="52:54:00:2B:36:80",
+        mdns=None,
+        llmnr=None,
     )
 
     # Mock VLAN NetworkInterface without VLAN settings
@@ -271,6 +285,8 @@ async def test_equals_dbus_interface_eth0_10_real(
         ),
         path="",
         mac="52:54:00:2B:36:80",
+        mdns=None,
+        llmnr=None,
     )
 
     # Test should pass with matching VLAN config

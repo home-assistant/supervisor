@@ -67,9 +67,9 @@ from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
     AddonConfigurationError,
+    AddonNotSupportedError,
     AddonsError,
     AddonsJobError,
-    AddonsNotSupportedError,
     ConfigurationFileError,
     DockerError,
     HomeAssistantAPIError,
@@ -1172,7 +1172,7 @@ class Addon(AddonModel):
     async def write_stdin(self, data) -> None:
         """Write data to add-on stdin."""
         if not self.with_stdin:
-            raise AddonsNotSupportedError(
+            raise AddonNotSupportedError(
                 f"Add-on {self.slug} does not support writing to stdin!", _LOGGER.error
             )
 
@@ -1419,7 +1419,7 @@ class Addon(AddonModel):
 
             # If available
             if not self._available(data[ATTR_SYSTEM]):
-                raise AddonsNotSupportedError(
+                raise AddonNotSupportedError(
                     f"Add-on {self.slug} is not available for this platform",
                     _LOGGER.error,
                 )

@@ -17,7 +17,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class NetworkManagerSettings(DBusInterface):
     """Handle D-Bus interface for Network Manager Connection Settings Profile Manager.
 
-    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Settings.html
+    https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.Settings.html
     """
 
     bus_name: str = DBUS_NAME_NM

@@ -24,6 +24,8 @@ class ConnectionProperties:
     uuid: str | None
     type: str | None
     interface_name: str | None
+    mdns: int | None
+    llmnr: int | None
 
 
 @dataclass(slots=True)

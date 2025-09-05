@@ -16,8 +16,11 @@ from ..const import (
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
     JSON_DATA,
+    JSON_ERROR_KEY,
+    JSON_EXTRA_FIELDS,
     JSON_JOB_ID,
     JSON_MESSAGE,
+    JSON_MESSAGE_TEMPLATE,
     JSON_RESULT,
     REQUEST_FROM,
     RESULT_ERROR,
@@ -136,10 +139,11 @@ def api_process_raw(content, *, error_type=None):
 
 
 def api_return_error(
-    error: Exception | None = None,
+    error: HassioError | None = None,
     message: str | None = None,
     error_type: str | None = None,
     status: int = 400,
+    *,
     job_id: str | None = None,
 ) -> web.Response:
     """Return an API error message."""
@@ -158,12 +162,18 @@ def api_return_error(
                 body=message.encode(), content_type=error_type, status=status
             )
         case _:
-            result = {
+            result: dict[str, Any] = {
                 JSON_RESULT: RESULT_ERROR,
                 JSON_MESSAGE: message,
             }
             if job_id:
                 result[JSON_JOB_ID] = job_id
+            if error and error.error_key:
+                result[JSON_ERROR_KEY] = error.error_key
+            if error and error.message_template:
+                result[JSON_MESSAGE_TEMPLATE] = error.message_template
+            if error and error.extra_fields:
+                result[JSON_EXTRA_FIELDS] = error.extra_fields
 
     return web.json_response(
         result,

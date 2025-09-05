@@ -12,7 +12,7 @@ from supervisor.addons.addon import Addon
 from supervisor.arch import CpuArch
 from supervisor.backups.manager import BackupManager
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import AddonsNotSupportedError, StoreJobError
+from supervisor.exceptions import AddonNotSupportedError, StoreJobError
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.store import StoreManager
 from supervisor.store.addon import AddonStore
@@ -172,7 +172,7 @@ async def test_update_unavailable_addon(
         ),
         patch("shutil.disk_usage", return_value=(42, 42, (1024.0**3))),
     ):
-        with pytest.raises(AddonsNotSupportedError):
+        with pytest.raises(AddonNotSupportedError):
             await coresys.addons.update("local_ssh", backup=True)
 
         backup.assert_not_called()
@@ -227,7 +227,7 @@ async def test_install_unavailable_addon(
             new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
         ),
         patch("shutil.disk_usage", return_value=(42, 42, (1024.0**3))),
-        pytest.raises(AddonsNotSupportedError),
+        pytest.raises(AddonNotSupportedError),
     ):
         await coresys.addons.install("local_ssh")
 

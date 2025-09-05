@@ -24,6 +24,7 @@ from .const import (
     ATTR_FORCE_SECURITY,
     ATTR_HASSOS,
     ATTR_HASSOS_UNRESTRICTED,
+    ATTR_HASSOS_UPGRADE,
     ATTR_HOMEASSISTANT,
     ATTR_ID,
     ATTR_IMAGE,
@@ -129,6 +130,9 @@ SCHEMA_UPDATER_CONFIG = vol.Schema(
         vol.Optional(ATTR_SUPERVISOR): version_tag,
         vol.Optional(ATTR_HASSOS): version_tag,
         vol.Optional(ATTR_HASSOS_UNRESTRICTED): version_tag,
+        vol.Optional(ATTR_HASSOS_UPGRADE): vol.Schema(
+            {vol.Extra: version_tag}, extra=vol.ALLOW_EXTRA
+        ),
         vol.Optional(ATTR_CLI): version_tag,
         vol.Optional(ATTR_DNS): version_tag,
         vol.Optional(ATTR_AUDIO): version_tag,

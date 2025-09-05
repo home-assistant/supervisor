@@ -21,7 +21,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class NetworkWireless(DBusInterfaceProxy):
     """Wireless object for Network Manager.
 
-    https://developer.gnome.org/NetworkManager/stable/gdbus-org.freedesktop.NetworkManager.Device.Wireless.html
+    https://networkmanager.dev/docs/api/latest/gdbus-org.freedesktop.NetworkManager.Device.Wireless.html
     """
 
     bus_name: str = DBUS_NAME_NM

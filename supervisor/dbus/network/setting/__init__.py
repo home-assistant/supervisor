@@ -6,7 +6,7 @@ from typing import Any
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
 
-from ...const import DBUS_NAME_NM
+from ...const import DBUS_NAME_NM, MulticastDnsValue
 from ...interface import DBusInterface
 from ...utils import dbus_connected
 from ..configuration import (
@@ -225,7 +225,7 @@ class NetworkSetting(DBusInterface):
         data = await self.get_settings()
 
         # Get configuration settings we care about
-        # See: https://developer-old.gnome.org/NetworkManager/stable/ch01.html
+        # See: https://networkmanager.dev/docs/api/latest/nm-settings-dbus.html
         if CONF_ATTR_CONNECTION in data:
             self._connection = ConnectionProperties(
                 id=data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_ID),
@@ -233,6 +233,12 @@ class NetworkSetting(DBusInterface):
                 type=data[CONF_ATTR_CONNECTION].get(CONF_ATTR_CONNECTION_TYPE),
                 interface_name=data[CONF_ATTR_CONNECTION].get(
                     CONF_ATTR_CONNECTION_INTERFACE_NAME
+                ),
+                mdns=data[CONF_ATTR_CONNECTION].get(
+                    CONF_ATTR_CONNECTION_MDNS, MulticastDnsValue.DEFAULT.value
+                ),
+                llmnr=data[CONF_ATTR_CONNECTION].get(
+                    CONF_ATTR_CONNECTION_LLMNR, MulticastDnsValue.DEFAULT.value
                 ),
             )
 

@@ -253,7 +253,7 @@ class ConnectionType(StrEnum):
 class ConnectionStateType(IntEnum):
     """Connection states.
 
-    https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActiveConnectionState
+    https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMActiveConnectionState
     """
 
     UNKNOWN = 0
@@ -266,7 +266,7 @@ class ConnectionStateType(IntEnum):
 class ConnectionStateFlags(IntEnum):
     """Connection state flags.
 
-    https://developer-old.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMActivationStateFlags
+    https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMActivationStateFlags
     """
 
     NONE = 0
@@ -283,7 +283,7 @@ class ConnectionStateFlags(IntEnum):
 class ConnectivityState(IntEnum):
     """Network connectvity.
 
-    https://developer.gnome.org/NetworkManager/unstable/nm-dbus-types.html#NMConnectivityState
+    https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMConnectivityState
     """
 
     CONNECTIVITY_UNKNOWN = 0
@@ -296,7 +296,7 @@ class ConnectivityState(IntEnum):
 class DeviceType(IntEnum):
     """Device types.
 
-    https://developer.gnome.org/NetworkManager/stable/nm-dbus-types.html#NMDeviceType
+    https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMDeviceType
     """
 
     UNKNOWN = 0
@@ -331,6 +331,15 @@ class MulticastProtocolEnabled(StrEnum):
     YES = "yes"
     NO = "no"
     RESOLVE = "resolve"
+
+
+class MulticastDnsValue(IntEnum):
+    """Connection MulticastDNS (mdns/llmnr) values."""
+
+    DEFAULT = -1
+    OFF = 0
+    RESOLVE = 1
+    ANNOUNCE = 2
 
 
 class DNSOverTLSEnabled(StrEnum):
