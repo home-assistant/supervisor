@@ -23,7 +23,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout China
+          git checkout ZhongGuo
           cp .github/workflows/Zd_Update.yaml /tmp/
           cp .github/workflows/build-ZG.yaml /tmp/
           cp .github/workflows/builder.yml /tmp/
@@ -45,7 +45,7 @@ jobs:
             cp -f /tmp/build-ZG.yaml .github/workflows/build-ZG.yaml
             cp -f /tmp/builder.yml .github/workflows/builder.yml
             git add .github/workflows/
-            git commit -m "Restore custom workflows from China" || echo "Nothing to commit"
+            git commit -m "Restore custom workflows from ZhongGuo" || echo "Nothing to commit"
             git push origin $branch --force
           done
           for tag in $(git tag); do
@@ -67,7 +67,7 @@ jobs:
           git merge --ff-only upstream/main || echo "Already up to date"
 
 
-      - name: Copy custom workflows from China
+      - name: Copy custom workflows from ZhongGuo
         run: |
           git checkout main
           cp -f /tmp/Zd_Update.yaml .github/workflows/Zd_Update.yaml 
@@ -75,7 +75,7 @@ jobs:
           cp -f /tmp/builder.yml .github/workflows/builder.yml
           #mv .github/workflows/builder.yml .github/workflows/builder.bak 
           git add .github/workflows/build-ZG.yaml .github/workflows/Zd_Update.yaml .github/workflows/builder.yml
-          git commit -m "Restore custom workflows from China" || echo "Nothing to commit"
+          git commit -m "Restore custom workflows from ZhongGuo" || echo "Nothing to commit"
 
       - name: Push updates back with PAT ✅ 强制使用 PAT 推送
         env:
