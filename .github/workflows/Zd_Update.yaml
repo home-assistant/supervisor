@@ -74,7 +74,7 @@ jobs:
           cp -f /tmp/builder-ZG.yaml .github/workflows/builder-ZG.yaml
           cp -f /tmp/builder.yml .github/workflows/builder.yml
           #mv .github/workflows/builder.yml .github/workflows/builder.bak 
-          git add .github/workflows/build-ZG.yaml .github/workflows/Zd_Update.yaml .github/workflows/builder.yaml
+          git add .github/workflows/builder-ZG.yaml .github/workflows/Zd_Update.yaml .github/workflows/builder.yaml
           git commit -m "Restore custom workflows from ZhongGUO" || echo "Nothing to commit"
 
       - name: Push updates back with PAT ✅ 强制使用 PAT 推送
