@@ -165,7 +165,6 @@ PATH_LOCAL_ADDONS = PurePath("/addons")
 PATH_BACKUP = PurePath("/backup")
 PATH_SHARE = PurePath("/share")
 PATH_MEDIA = PurePath("/media")
-PATH_CLOUD_BACKUP = PurePath("/cloud_backup")
 
 # https://hub.docker.com/_/docker
 ADDON_BUILDER_IMAGE = "docker.io/library/docker"
