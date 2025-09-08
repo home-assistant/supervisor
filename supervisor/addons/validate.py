@@ -140,7 +140,13 @@ RE_DOCKER_IMAGE_BUILD = re.compile(
 SCHEMA_ELEMENT = vol.Schema(
     vol.Any(
         vol.Match(RE_SCHEMA_ELEMENT),
-        [vol.Self],
+        [
+            # A list may not directly contain another list
+            vol.Any(
+                vol.Match(RE_SCHEMA_ELEMENT),
+                {str: vol.Self},
+            )
+        ],
         {str: vol.Self},
     )
 )
