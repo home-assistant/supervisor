@@ -274,17 +274,27 @@ class UiOptions(CoreSysAttributes):
 
         # read options
         for key, value in raw_schema.items():
-            if isinstance(value, list):
-                # nested value list
-                self._nested_ui_list(ui_schema, value, key)
-            elif isinstance(value, dict):
-                # nested value dict
-                self._nested_ui_dict(ui_schema, value, key)
-            else:
-                # normal value
-                self._single_ui_option(ui_schema, value, key)
+            self._ui_schema_element(ui_schema, value, key)
 
         return ui_schema
+
+    def _ui_schema_element(
+        self,
+        ui_schema: list[dict[str, Any]],
+        value: str,
+        key: str,
+        multiple: bool = False,
+    ):
+        if isinstance(value, list):
+            # nested value list
+            assert not multiple
+            self._nested_ui_list(ui_schema, value, key)
+        elif isinstance(value, dict):
+            # nested value dict
+            self._nested_ui_dict(ui_schema, value, key, multiple)
+        else:
+            # normal value
+            self._single_ui_option(ui_schema, value, key, multiple)
 
     def _single_ui_option(
         self,
@@ -377,10 +387,7 @@ class UiOptions(CoreSysAttributes):
             _LOGGER.error("Invalid schema %s", key)
             return
 
-        if isinstance(element, dict):
-            self._nested_ui_dict(ui_schema, element, key, multiple=True)
-        else:
-            self._single_ui_option(ui_schema, element, key, multiple=True)
+        self._ui_schema_element(ui_schema, element, key, multiple=True)
 
     def _nested_ui_dict(
         self,
@@ -399,11 +406,7 @@ class UiOptions(CoreSysAttributes):
 
         nested_schema: list[dict[str, Any]] = []
         for c_key, c_value in option_dict.items():
-            # Nested?
-            if isinstance(c_value, list):
-                self._nested_ui_list(nested_schema, c_value, c_key)
-            else:
-                self._single_ui_option(nested_schema, c_value, c_key)
+            self._ui_schema_element(nested_schema, c_value, c_key)
 
         ui_node["schema"] = nested_schema
         ui_schema.append(ui_node)
