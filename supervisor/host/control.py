@@ -85,14 +85,13 @@ class SystemControl(CoreSysAttributes):
 
     async def set_timezone(self, timezone: str) -> None:
         """Set timezone on host."""
-        self._check_dbus(HostFeature.TIMEDATE)
-
         # /etc/localtime is not writable on OS older than 16.2
         if (
             self.coresys.os.available
             and self.coresys.os.version is not None
             and self.sys_os.version >= AwesomeVersion("16.2.dev20250814")
         ):
+            self._check_dbus(HostFeature.TIMEDATE)
             _LOGGER.info("Setting host timezone: %s", timezone)
             await self.sys_dbus.timedate.set_timezone(timezone)
             await self.sys_dbus.timedate.update()
