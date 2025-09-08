@@ -22,6 +22,7 @@ from .const import (
     MOUNT_DEV,
     MOUNT_MACHINE_ID,
     MOUNT_UDEV,
+    MOUNT_PRESSURE,
     PATH_MEDIA,
     PATH_PUBLIC_CONFIG,
     PATH_SHARE,
@@ -97,6 +98,7 @@ class DockerHomeAssistant(DockerInterface):
             MOUNT_DEV,
             MOUNT_DBUS,
             MOUNT_UDEV,
+            MOUNT_PRESSURE,
             # HA config folder
             Mount(
                 type=MountType.BIND.value,

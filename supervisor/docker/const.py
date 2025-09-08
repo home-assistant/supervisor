@@ -154,6 +154,9 @@ MOUNT_MACHINE_ID = Mount(
 MOUNT_UDEV = Mount(
     type=MountType.BIND.value, source="/run/udev", target="/run/udev", read_only=True
 )
+MOUNT_PRESSURE = Mount(
+    type=MountType.BIND.value, source="/proc/pressure", target="/host/proc/pressure", read_only=True
+)
 
 PATH_PRIVATE_DATA = PurePath("/data")
 PATH_HOMEASSISTANT_CONFIG_LEGACY = PurePath("/config")
