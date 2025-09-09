@@ -488,6 +488,7 @@ async def tmp_supervisor_data(coresys: CoreSys, tmp_path: Path) -> Path:
         coresys.config.path_addon_configs.mkdir(parents=True)
         coresys.config.path_ssl.mkdir()
         coresys.config.path_core_backup.mkdir(parents=True)
+        coresys.config.path_cid_files.mkdir()
         yield tmp_path
 
 

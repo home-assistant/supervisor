@@ -54,6 +54,7 @@ MOUNTS_CREDENTIALS = PurePath(".mounts_credentials")
 EMERGENCY_DATA = PurePath("emergency")
 ADDON_CONFIGS = PurePath("addon_configs")
 CORE_BACKUP_DATA = PurePath("core/backup")
+CID_FILES = PurePath("cid_files")
 
 DEFAULT_BOOT_TIME = datetime.fromtimestamp(0, UTC).isoformat()
 
@@ -398,6 +399,16 @@ class CoreConfig(FileConfiguration):
     def path_extern_media(self) -> PurePath:
         """Return root media data folder external for Docker."""
         return PurePath(self.path_extern_supervisor, MEDIA_DATA)
+
+    @property
+    def path_cid_files(self) -> Path:
+        """Return CID files folder."""
+        return self.path_supervisor / CID_FILES
+
+    @property
+    def path_extern_cid_files(self) -> PurePath:
+        """Return CID files folder."""
+        return PurePath(self.path_extern_supervisor, CID_FILES)
 
     @property
     def addons_repositories(self) -> list[str]:

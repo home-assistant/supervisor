@@ -347,6 +347,7 @@ async def test_addon_run_add_host_error(
     addonsdata_system: dict[str, Data],
     capture_exception: Mock,
     path_extern,
+    tmp_supervisor_data: Path,
 ):
     """Test error adding host when addon is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
@@ -433,6 +434,7 @@ async def test_addon_new_device(
     dev_path: str,
     cgroup: str,
     is_os: bool,
+    tmp_supervisor_data: Path,
 ):
     """Test new device that is listed in static devices."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -463,6 +465,7 @@ async def test_addon_new_device_no_haos(
     install_addon_ssh: Addon,
     docker: DockerAPI,
     dev_path: str,
+    tmp_supervisor_data: Path,
 ):
     """Test new device that is listed in static devices on non HAOS system with CGroup V2."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
