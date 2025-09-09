@@ -1,7 +1,7 @@
 """Test Host API."""
 
 from collections.abc import AsyncGenerator
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
@@ -851,7 +851,7 @@ async def test_force_shutdown_during_migration(
 
 
 async def test_advanced_logs_latest_container_not_found_error(
-    api_client: TestClient, coresys: CoreSys
+    api_client: TestClient, coresys: CoreSys, os_available
 ):
     """Test advanced logs API with latest parameter when container start time cannot be determined."""
     container_mock = MagicMock()
@@ -866,7 +866,10 @@ async def test_advanced_logs_latest_container_not_found_error(
 
 
 async def test_advanced_logs_latest_invalid_start_time(
-    api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
+    api_client: TestClient,
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    os_available,
 ):
     """Test advanced logs API with latest parameter when container start time is invalid."""
     # Mock container with invalid StartedAt attribute
@@ -882,7 +885,10 @@ async def test_advanced_logs_latest_invalid_start_time(
 
 
 async def test_advanced_logs_latest_invalid_container(
-    api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
+    api_client: TestClient,
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    os_available,
 ):
     """Test advanced logs API with latest parameter when container can't be found."""
     container_mock = MagicMock()
@@ -894,3 +900,52 @@ async def test_advanced_logs_latest_invalid_container(
         assert resp.status == 400
         result = await resp.text()
         assert "Cannot determine start time of homeassistant" in result
+
+
+@pytest.mark.parametrize("os_available", ["15.2"], indirect=True)
+async def test_advanced_logs_latest_fallback_os_version_below_16(
+    api_client: TestClient, coresys: CoreSys, journald_logs: MagicMock, os_available
+):
+    """Test advanced logs API with latest parameter using fallback for OS version < 16.0."""
+    # Mock journald response for _get_container_last_epoch
+    mock_response = MagicMock()
+    mock_response.text = AsyncMock(
+        return_value='{"CONTAINER_LOG_EPOCH": "12345"}\n{"CONTAINER_LOG_EPOCH": "12345"}\n'
+    )
+    journald_logs.return_value.__aenter__.return_value = mock_response
+
+    resp = await api_client.get("/core/logs/latest")
+    assert resp.status == 200
+
+    assert journald_logs.call_count == 2
+
+    # Check the first call for getting epoch
+    epoch_call = journald_logs.call_args_list[0]
+    assert epoch_call[1]["params"] == {"CONTAINER_NAME": "homeassistant"}
+    assert epoch_call[1]["range_header"] == "entries=:-1:2"
+
+    # Check the second call for getting logs with the epoch
+    logs_call = journald_logs.call_args_list[1]
+    assert logs_call[1]["params"]["SYSLOG_IDENTIFIER"] == "homeassistant"
+    assert logs_call[1]["params"]["CONTAINER_LOG_EPOCH"] == "12345"
+    assert logs_call[1]["range_header"] == "entries=0:18446744073709551615"
+
+
+async def test_advanced_logs_latest_fallback_os_not_available(
+    api_client: TestClient, coresys: CoreSys, journald_logs: MagicMock
+):
+    """Test advanced logs API with latest parameter using fallback when OS not available."""
+
+    mock_response = MagicMock()
+    mock_response.text = AsyncMock(
+        return_value='{"CONTAINER_LOG_EPOCH": "12345"}\n{"CONTAINER_LOG_EPOCH": "12345"}\n'
+    )
+    journald_logs.return_value.__aenter__.return_value = mock_response
+
+    resp = await api_client.get("/core/logs/latest")
+    assert resp.status == 200
+
+    # without os_available fixture, os.version is None, so fallback should be used
+    assert journald_logs.call_count == 2
+    logs_call = journald_logs.call_args_list[1]
+    assert logs_call[1]["params"]["CONTAINER_LOG_EPOCH"] == "12345"

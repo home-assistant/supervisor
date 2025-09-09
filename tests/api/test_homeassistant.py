@@ -24,6 +24,7 @@ async def test_api_core_logs(
     api_client: TestClient,
     journald_logs: MagicMock,
     coresys: CoreSys,
+    os_available,
     legacy_route: bool,
 ):
     """Test core logs."""
@@ -33,6 +34,7 @@ async def test_api_core_logs(
         api_client,
         journald_logs,
         coresys,
+        os_available,
     )
 
 

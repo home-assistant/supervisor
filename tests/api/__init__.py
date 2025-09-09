@@ -17,6 +17,7 @@ async def common_test_api_advanced_logs(
     api_client: TestClient,
     journald_logs: MagicMock,
     coresys: CoreSys,
+    os_available: None,
 ):
     """Template for tests of endpoints using advanced logs."""
     resp = await api_client.get(f"{path_prefix}/logs")

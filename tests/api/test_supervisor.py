@@ -149,11 +149,16 @@ async def test_api_supervisor_options_diagnostics(
 
 
 async def test_api_supervisor_logs(
-    api_client: TestClient, journald_logs: MagicMock, coresys: CoreSys
+    api_client: TestClient, journald_logs: MagicMock, coresys: CoreSys, os_available
 ):
     """Test supervisor logs."""
     await common_test_api_advanced_logs(
-        "/supervisor", "hassio_supervisor", api_client, journald_logs, coresys
+        "/supervisor",
+        "hassio_supervisor",
+        api_client,
+        journald_logs,
+        coresys,
+        os_available,
     )
 
 
