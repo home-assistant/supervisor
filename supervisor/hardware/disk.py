@@ -99,24 +99,29 @@ class HwDisk(CoreSysAttributes):
         root_device = path.stat().st_dev
 
         for child in path.iterdir():
-            if not child.is_dir():
-                size += child.stat(follow_symlinks=False).st_size
-                continue
-
             # Skip symlinks to avoid infinite loops
             if child.is_symlink():
                 continue
 
             try:
-                # Skip if not on same device (external mount)
-                if child.stat().st_dev != root_device:
-                    continue
+                stat = child.stat(follow_symlinks=False)
+            except FileNotFoundError:
+                # File might disappear between listing and stat, ignore
+                _LOGGER.warning("File not found: %s", child.as_posix())
+                continue
             except OSError as err:
                 if err.errno == errno.EBADMSG:
                     self.sys_resolution.add_unhealthy_reason(
                         UnhealthyReason.OSERROR_BAD_MESSAGE
                     )
                     break
+                continue
+
+            if stat.st_dev != root_device:
+                continue
+
+            if not child.is_dir():
+                size += stat.st_size
                 continue
 
             child_result = self.get_dir_structure_sizes(child, max_depth - 1)
