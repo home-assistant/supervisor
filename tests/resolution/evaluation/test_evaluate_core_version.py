@@ -23,6 +23,8 @@ from supervisor.resolution.evaluations.core_version import EvaluateCoreVersion
         (f"{datetime.now().year - 2}.1", True),  # 2 years old, unsupported
         (f"{datetime.now().year - 3}.1", True),  # 3 years old, unsupported
         ("2021.6.0", True),  # Very old version, unsupported
+        ("0.116.4", True),  # Old version scheme, should be unsupported
+        ("0.118.1", True),  # Old version scheme, should be unsupported
         ("landingpage", False),  # Landingpage version, should be supported
         (None, False),  # No current version info, check skipped
     ],
@@ -72,7 +74,8 @@ async def test_core_version_evaluation_no_latest(coresys: CoreSys):
     ):
         assert evaluation.reason not in coresys.resolution.unsupported
         await evaluation()
-        assert evaluation.reason not in coresys.resolution.unsupported
+        # Without latest version info, old versions should be marked as unsupported
+        assert evaluation.reason in coresys.resolution.unsupported
 
 
 async def test_core_version_invalid_format(coresys: CoreSys):
@@ -94,8 +97,8 @@ async def test_core_version_invalid_format(coresys: CoreSys):
     ):
         assert evaluation.reason not in coresys.resolution.unsupported
         await evaluation()
-        # Should handle gracefully and not mark as unsupported
-        assert evaluation.reason not in coresys.resolution.unsupported
+        # Invalid/non-parseable versions should be marked as unsupported
+        assert evaluation.reason in coresys.resolution.unsupported
 
 
 async def test_core_version_landingpage(coresys: CoreSys):
