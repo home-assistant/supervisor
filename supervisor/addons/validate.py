@@ -32,6 +32,7 @@ from ..const import (
     ATTR_DISCOVERY,
     ATTR_DOCKER_API,
     ATTR_ENVIRONMENT,
+    ATTR_FIELDS,
     ATTR_FULL_ACCESS,
     ATTR_GPIO,
     ATTR_HASSIO_API,
@@ -455,6 +456,7 @@ SCHEMA_TRANSLATION_CONFIGURATION = vol.Schema(
     {
         vol.Required(ATTR_NAME): str,
         vol.Optional(ATTR_DESCRIPTON): vol.Maybe(str),
+        vol.Optional(ATTR_FIELDS): {str: vol.Self},
     },
     extra=vol.REMOVE_EXTRA,
 )
