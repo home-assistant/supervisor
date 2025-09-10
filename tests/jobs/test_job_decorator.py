@@ -1408,7 +1408,9 @@ async def test_core_supported(coresys: CoreSys, caplog: pytest.LogCaptureFixture
 
     coresys.resolution.unsupported.append(UnsupportedReason.CORE_VERSION)
     assert not await test.execute()
-    assert "blocked from execution, unsupported Core version" in caplog.text
+    assert (
+        "blocked from execution, unsupported Home Assistant Core version" in caplog.text
+    )
 
     coresys.jobs.ignore_conditions = [JobCondition.CORE_SUPPORTED]
     assert await test.execute()
