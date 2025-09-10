@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
+import docker.errors
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -850,7 +851,7 @@ async def test_force_shutdown_during_migration(
         shutdown.assert_called_once()
 
 
-async def test_advanced_logs_latest_container_not_found_error(
+async def test_advanced_logs_latest_container_no_started_at(
     api_client: TestClient, coresys: CoreSys, os_available
 ):
     """Test advanced logs API with latest parameter when container start time cannot be determined."""
@@ -858,26 +859,6 @@ async def test_advanced_logs_latest_container_not_found_error(
     container_mock.attrs = {"State": {}}
 
     with patch.object(coresys.docker.containers, "get", return_value=container_mock):
-        # Test with a service endpoint that does exist
-        resp = await api_client.get("/core/logs/latest")
-        assert resp.status == 400
-        result = await resp.text()
-        assert "Cannot determine start time of homeassistant" in result
-
-
-async def test_advanced_logs_latest_invalid_start_time(
-    api_client: TestClient,
-    coresys: CoreSys,
-    caplog: pytest.LogCaptureFixture,
-    os_available,
-):
-    """Test advanced logs API with latest parameter when container start time is invalid."""
-    # Mock container with invalid StartedAt attribute
-    container_mock = MagicMock()
-    container_mock.attrs = {"State": {"StartedAt": "1. 1. 2025"}}
-
-    with patch.object(coresys.docker.containers, "get", return_value=container_mock):
-        # Test with a service endpoint that does exist
         resp = await api_client.get("/core/logs/latest")
         assert resp.status == 400
         result = await resp.text()
@@ -894,7 +875,11 @@ async def test_advanced_logs_latest_invalid_container(
     container_mock = MagicMock()
     container_mock.attrs = {}
 
-    with patch.object(coresys.docker.containers, "get", return_value=None):
+    with patch.object(
+        coresys.docker.containers,
+        "get",
+        side_effect=docker.errors.NotFound("Container not found."),
+    ):
         # Test with a service endpoint that does exist
         resp = await api_client.get("/core/logs/latest")
         assert resp.status == 400

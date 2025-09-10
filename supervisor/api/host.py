@@ -15,6 +15,7 @@ from aiohttp import (
     web,
 )
 from aiohttp.hdrs import ACCEPT, RANGE
+import docker.errors
 from docker.models.containers import Container
 import voluptuous as vol
 from voluptuous.error import CoerceInvalid
@@ -233,13 +234,12 @@ class APIHost(CoreSysAttributes):
                     "Latest logs can only be fetched for a specific identifier."
                 )
 
-            # Fallback is needed for older versions which don't support "realtime" Range header (Systemd<256)
-            use_fallback = (
+            if (
                 not self.sys_os.available
                 or not self.sys_os.version
                 or self.sys_os.version < "16.0"
-            )
-            if use_fallback:
+            ):
+                # Fallback is needed for older versions which don't support "realtime" Range header (Systemd<256)
                 try:
                     epoch = await self._get_container_last_epoch(identifier)
                     params["CONTAINER_LOG_EPOCH"] = epoch
@@ -392,22 +392,15 @@ class APIHost(CoreSysAttributes):
         self, identifier: str
     ) -> datetime.datetime | None:
         """Get container start time for the given syslog identifier."""
-        container: Container = self.sys_docker.containers.get(identifier)
-        if not container:
+        try:
+            container: Container = self.sys_docker.containers.get(identifier)
+        except docker.errors.NotFound:
             return None
 
         if not (started_at := container.attrs.get("State", {}).get("StartedAt")):
             return None
 
-        try:
-            return datetime.datetime.fromisoformat(started_at)
-        except ValueError:
-            _LOGGER.warning(
-                "Failed to parse StartedAt time of %s container, got: %s",
-                identifier,
-                started_at,
-            )
-            return None
+        return datetime.datetime.fromisoformat(started_at)
 
     async def _get_container_last_epoch(self, identifier: str) -> str | None:
         """Get Docker's internal log epoch of the latest log entry for the given identifier."""
