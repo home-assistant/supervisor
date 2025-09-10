@@ -409,7 +409,7 @@ class Job(CoreSysAttributes):
             and UnsupportedReason.CORE_VERSION in coresys.sys_resolution.unsupported
         ):
             raise JobConditionException(
-                f"'{method_name}' blocked from execution, unsupported Core version"
+                f"'{method_name}' blocked from execution, unsupported Home Assistant Core version"
             )
 
         if (
