@@ -247,7 +247,11 @@ class Updater(FileConfiguration, CoreSysAttributes):
 
     @Job(
         name="updater_fetch_data",
-        conditions=[JobCondition.INTERNET_SYSTEM, JobCondition.OS_SUPPORTED],
+        conditions=[
+            JobCondition.INTERNET_SYSTEM,
+            JobCondition.OS_SUPPORTED,
+            JobCondition.CORE_SUPPORTED,
+        ],
         on_condition=UpdaterJobError,
         throttle_period=timedelta(seconds=30),
         concurrency=JobConcurrency.QUEUE,
