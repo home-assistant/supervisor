@@ -1,6 +1,5 @@
 """Test Core Version evaluation."""
 
-from datetime import datetime
 from unittest.mock import PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -14,23 +13,29 @@ from supervisor.resolution.evaluations.core_version import EvaluateCoreVersion
 
 
 @pytest.mark.parametrize(
-    "current,expected",
+    "current,latest,expected",
     [
-        ("2022.1.0", True),  # More than 2 years old, should be unsupported
-        ("2023.12.0", False),  # Less than 2 years old, should be supported
-        (f"{datetime.now().year}.1", False),  # Current year, supported
-        (f"{datetime.now().year - 1}.12", False),  # 1 year old, supported
-        (f"{datetime.now().year - 2}.1", True),  # 2 years old, unsupported
-        (f"{datetime.now().year - 3}.1", True),  # 3 years old, unsupported
-        ("2021.6.0", True),  # Very old version, unsupported
-        ("0.116.4", True),  # Old version scheme, should be unsupported
-        ("0.118.1", True),  # Old version scheme, should be unsupported
-        ("landingpage", False),  # Landingpage version, should be supported
-        (None, False),  # No current version info, check skipped
+        ("2022.1.0", "2024.12.0", True),  # More than 24 versions behind, unsupported
+        ("2023.1.0", "2024.12.0", False),  # Less than 24 versions behind, supported
+        ("2024.1.0", "2024.12.0", False),  # Recent version, supported
+        ("2024.12.0", "2024.12.0", False),  # Same as latest, supported
+        ("2024.11.0", "2024.12.0", False),  # 1 month behind, supported
+        (
+            "2022.12.0",
+            "2024.12.0",
+            False,
+        ),  # Exactly 24 months behind, supported (boundary)
+        ("2022.11.0", "2024.12.0", True),  # More than 24 months behind, unsupported
+        ("2021.6.0", "2024.12.0", True),  # Very old version, unsupported
+        ("0.116.4", "2024.12.0", True),  # Old version scheme, should be unsupported
+        ("0.118.1", "2024.12.0", True),  # Old version scheme, should be unsupported
+        ("landingpage", "2024.12.0", False),  # Landingpage version, should be supported
+        (None, "2024.12.0", False),  # No current version info, check skipped
+        ("2024.1.0", None, False),  # No latest version info, check skipped
     ],
 )
 async def test_core_version_evaluation(
-    coresys: CoreSys, current: str | None, expected: bool
+    coresys: CoreSys, current: str | None, latest: str | None, expected: bool
 ):
     """Test evaluation logic on Core versions."""
     evaluation = EvaluateCoreVersion(coresys)
@@ -45,9 +50,7 @@ async def test_core_version_evaluation(
         patch.object(
             HomeAssistant,
             "latest_version",
-            new=PropertyMock(
-                return_value=AwesomeVersion("2024.12.0")
-            ),  # Mock latest version
+            new=PropertyMock(return_value=latest and AwesomeVersion(latest)),
         ),
     ):
         assert evaluation.reason not in coresys.resolution.unsupported
@@ -74,8 +77,8 @@ async def test_core_version_evaluation_no_latest(coresys: CoreSys):
     ):
         assert evaluation.reason not in coresys.resolution.unsupported
         await evaluation()
-        # Without latest version info, old versions should be marked as unsupported
-        assert evaluation.reason in coresys.resolution.unsupported
+        # Without latest version info, evaluation should be skipped (not run)
+        assert evaluation.reason not in coresys.resolution.unsupported
 
 
 async def test_core_version_invalid_format(coresys: CoreSys):
