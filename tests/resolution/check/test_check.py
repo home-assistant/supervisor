@@ -70,7 +70,7 @@ async def test_if_check_cleanup_issue(coresys: CoreSys):
 
     assert free_space in coresys.resolution.issues
 
-    with patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))):
+    with patch("shutil.disk_usage", return_value=(42, 42, 3 * (1024.0**3))):
         await coresys.resolution.check.check_system()
 
     assert free_space not in coresys.resolution.issues

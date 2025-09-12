@@ -1,15 +1,8 @@
 """Helpers to check and fix issues with free space."""
 
-from ...backups.const import BackupType
 from ...const import CoreState
 from ...coresys import CoreSys
-from ..const import (
-    MINIMUM_FREE_SPACE_THRESHOLD,
-    MINIMUM_FULL_BACKUPS,
-    ContextType,
-    IssueType,
-    SuggestionType,
-)
+from ..const import MINIMUM_FREE_SPACE_THRESHOLD, ContextType, IssueType
 from .base import CheckBase
 
 
@@ -23,31 +16,12 @@ class CheckFreeSpace(CheckBase):
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
-        if await self.sys_host.info.free_space() > MINIMUM_FREE_SPACE_THRESHOLD:
-            return
-
-        suggestions: list[SuggestionType] = []
-        if (
-            len(
-                [
-                    backup
-                    for backup in self.sys_backups.list_backups
-                    if backup.sys_type == BackupType.FULL
-                ]
-            )
-            > MINIMUM_FULL_BACKUPS
-        ):
-            suggestions.append(SuggestionType.CLEAR_FULL_BACKUP)
-
-        self.sys_resolution.create_issue(
-            IssueType.FREE_SPACE, ContextType.SYSTEM, suggestions=suggestions
-        )
+        if await self.approve_check():
+            self.sys_resolution.create_issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
 
     async def approve_check(self, reference: str | None = None) -> bool:
         """Approve check if it is affected by issue."""
-        if await self.sys_host.info.free_space() > MINIMUM_FREE_SPACE_THRESHOLD:
-            return False
-        return True
+        return await self.sys_host.info.free_space() <= MINIMUM_FREE_SPACE_THRESHOLD
 
     @property
     def issue(self) -> IssueType:
