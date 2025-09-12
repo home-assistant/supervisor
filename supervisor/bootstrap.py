@@ -2,6 +2,7 @@
 
 # ruff: noqa: T100
 import asyncio
+from collections.abc import Callable
 from importlib import import_module
 import logging
 import os
@@ -289,26 +290,22 @@ def check_environment() -> None:
         _LOGGER.critical("Can't find Docker socket!")
 
 
-def register_signal_handlers(loop: asyncio.AbstractEventLoop, coresys: CoreSys) -> None:
+def register_signal_handlers(
+    loop: asyncio.AbstractEventLoop, shutdown_handler: Callable[[], None]
+) -> None:
     """Register SIGTERM, SIGHUP and SIGKILL to stop the Supervisor."""
     try:
-        loop.add_signal_handler(
-            signal.SIGTERM, lambda: loop.create_task(coresys.core.stop())
-        )
+        loop.add_signal_handler(signal.SIGTERM, shutdown_handler)
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGTERM")
 
     try:
-        loop.add_signal_handler(
-            signal.SIGHUP, lambda: loop.create_task(coresys.core.stop())
-        )
+        loop.add_signal_handler(signal.SIGHUP, shutdown_handler)
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGHUP")
 
     try:
-        loop.add_signal_handler(
-            signal.SIGINT, lambda: loop.create_task(coresys.core.stop())
-        )
+        loop.add_signal_handler(signal.SIGINT, shutdown_handler)
     except (ValueError, RuntimeError):
         _LOGGER.warning("Could not bind to SIGINT")
 

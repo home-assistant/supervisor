@@ -66,10 +66,23 @@ if __name__ == "__main__":
     _LOGGER.info("Setting up Supervisor")
     loop.run_until_complete(coresys.core.setup())
 
-    bootstrap.register_signal_handlers(loop, coresys)
+    # Create startup task that can be cancelled gracefully
+    startup_task = loop.create_task(coresys.core.start())
+
+    def shutdown_handler() -> None:
+        """Handle shutdown signals gracefully during startup."""
+        if not startup_task.done():
+            _LOGGER.warning("Supervisor startup interrupted by shutdown signal")
+            startup_task.cancel()
+
+        coresys.create_task(coresys.core.stop())
+
+    bootstrap.register_signal_handlers(loop, shutdown_handler)
 
     try:
-        loop.run_until_complete(coresys.core.start())
+        loop.run_until_complete(startup_task)
+    except asyncio.CancelledError:
+        _LOGGER.warning("Supervisor startup cancelled")
     except Exception as err:  # pylint: disable=broad-except
         # Supervisor itself is running at this point, just something didn't
         # start as expected. Log with traceback to get more insights for
