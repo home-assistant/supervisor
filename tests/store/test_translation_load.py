@@ -20,7 +20,16 @@ def test_loading_traslations(coresys: CoreSys, tmp_path: Path):
     for file in ("en.json", "es.json"):
         write_json_or_yaml_file(
             tmp_path / "translations" / file,
-            {"configuration": {"test": {"name": "test", "test": "test"}}},
+            {
+                "configuration": {
+                    "test": {
+                        "name": "test",
+                        "description": "test",
+                        "test": "test",
+                        "fields": {"test2": {"name": "test2"}},
+                    }
+                }
+            },
         )
 
     for file in ("no.yaml", "de.yaml"):
@@ -38,6 +47,18 @@ def test_loading_traslations(coresys: CoreSys, tmp_path: Path):
     assert translations["es"]["configuration"]["test"]["name"] == "test"
     assert translations["no"]["configuration"]["test"]["name"] == "test"
     assert translations["de"]["configuration"]["test"]["name"] == "test"
+
+    assert translations["en"]["configuration"]["test"]["description"] == "test"
+    assert translations["es"]["configuration"]["test"]["description"] == "test"
+
+    assert (
+        translations["en"]["configuration"]["test"]["fields"]["test2"]["name"]
+        == "test2"
+    )
+    assert (
+        translations["es"]["configuration"]["test"]["fields"]["test2"]["name"]
+        == "test2"
+    )
 
     assert "test" not in translations["en"]["configuration"]["test"]
 
