@@ -51,7 +51,7 @@ from .network import DockerNetwork
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MIN_SUPPORTED_DOCKER: Final = AwesomeVersion("20.10.1")
+MIN_SUPPORTED_DOCKER: Final = AwesomeVersion("24.0.0")
 DOCKER_NETWORK_HOST: Final = "host"
 
 
