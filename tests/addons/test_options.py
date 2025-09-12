@@ -129,6 +129,64 @@ def test_complex_schema_dict(coresys):
         )({"name": "Pascal", "password": "1234", "extend": "test"})
 
 
+def test_complex_schema_dict_and_list(coresys):
+    """Test with complex dict/list nested schema."""
+    assert AddonOptions(
+        coresys,
+        {
+            "name": "str",
+            "packages": [
+                {
+                    "name": "str",
+                    "options": {"optional": "bool"},
+                    "dependencies": [{"name": "str"}],
+                }
+            ],
+        },
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )(
+        {
+            "name": "Pascal",
+            "packages": [
+                {
+                    "name": "core",
+                    "options": {"optional": False},
+                    "dependencies": [{"name": "supervisor"}, {"name": "audio"}],
+                }
+            ],
+        }
+    )
+
+    with pytest.raises(vol.error.Invalid):
+        assert AddonOptions(
+            coresys,
+            {
+                "name": "str",
+                "packages": [
+                    {
+                        "name": "str",
+                        "options": {"optional": "bool"},
+                        "dependencies": [{"name": "str"}],
+                    }
+                ],
+            },
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )(
+            {
+                "name": "Pascal",
+                "packages": [
+                    {
+                        "name": "core",
+                        "options": {"optional": False},
+                        "dependencies": [{"name": "supervisor"}, "wrong"],
+                    }
+                ],
+            }
+        )
+
+
 def test_simple_device_schema(coresys):
     """Test with simple schema."""
     for device in (

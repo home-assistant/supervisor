@@ -137,7 +137,19 @@ RE_DOCKER_IMAGE_BUILD = re.compile(
     r"^([a-zA-Z\-\.:\d{}]+/)*?([\-\w{}]+)/([\-\w{}]+)(:[\.\-\w{}]+)?$"
 )
 
-SCHEMA_ELEMENT = vol.Match(RE_SCHEMA_ELEMENT)
+SCHEMA_ELEMENT = vol.Schema(
+    vol.Any(
+        vol.Match(RE_SCHEMA_ELEMENT),
+        [
+            # A list may not directly contain another list
+            vol.Any(
+                vol.Match(RE_SCHEMA_ELEMENT),
+                {str: vol.Self},
+            )
+        ],
+        {str: vol.Self},
+    )
+)
 
 RE_MACHINE = re.compile(
     r"^!?(?:"
@@ -406,20 +418,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_CODENOTARY): vol.Email(),
         vol.Optional(ATTR_OPTIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
-            vol.Schema(
-                {
-                    str: vol.Any(
-                        SCHEMA_ELEMENT,
-                        [
-                            vol.Any(
-                                SCHEMA_ELEMENT,
-                                {str: vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])},
-                            )
-                        ],
-                        vol.Schema({str: vol.Any(SCHEMA_ELEMENT, [SCHEMA_ELEMENT])}),
-                    )
-                }
-            ),
+            vol.Schema({str: SCHEMA_ELEMENT}),
             False,
         ),
         vol.Optional(ATTR_IMAGE): docker_image,
