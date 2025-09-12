@@ -21,7 +21,11 @@ from tests.common import load_json_fixture
 
 @pytest.mark.parametrize("legacy_route", [True, False])
 async def test_api_core_logs(
-    api_client: TestClient, journald_logs: MagicMock, legacy_route: bool
+    api_client: TestClient,
+    journald_logs: MagicMock,
+    coresys: CoreSys,
+    os_available,
+    legacy_route: bool,
 ):
     """Test core logs."""
     await common_test_api_advanced_logs(
@@ -29,6 +33,8 @@ async def test_api_core_logs(
         "homeassistant",
         api_client,
         journald_logs,
+        coresys,
+        os_available,
     )
 
 

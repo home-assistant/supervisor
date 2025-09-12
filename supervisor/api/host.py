@@ -2,11 +2,21 @@
 
 import asyncio
 from contextlib import suppress
+import datetime
+import json
 import logging
 from typing import Any
 
-from aiohttp import ClientConnectionResetError, ClientPayloadError, web
+from aiohttp import (
+    ClientConnectionResetError,
+    ClientError,
+    ClientPayloadError,
+    ClientTimeout,
+    web,
+)
 from aiohttp.hdrs import ACCEPT, RANGE
+import docker.errors
+from docker.models.containers import Container
 import voluptuous as vol
 from voluptuous.error import CoerceInvalid
 
@@ -194,7 +204,11 @@ class APIHost(CoreSysAttributes):
         return possible_offset
 
     async def advanced_logs_handler(
-        self, request: web.Request, identifier: str | None = None, follow: bool = False
+        self,
+        request: web.Request,
+        identifier: str | None = None,
+        follow: bool = False,
+        latest: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
         log_formatter = LogFormatter.PLAIN
@@ -212,6 +226,31 @@ class APIHost(CoreSysAttributes):
             params[PARAM_BOOT_ID] = await self._get_boot_id(request.match_info[BOOTID])
         if follow:
             params[PARAM_FOLLOW] = ""
+
+        since: datetime.datetime | None = None
+        if latest:
+            if not identifier:
+                raise APIError(
+                    "Latest logs can only be fetched for a specific identifier."
+                )
+
+            if (
+                not self.sys_os.available
+                or not self.sys_os.version
+                or self.sys_os.version < "16.0"
+            ):
+                # Fallback is needed for older versions which don't support "realtime" Range header (Systemd<256)
+                try:
+                    epoch = await self._get_container_last_epoch(identifier)
+                    params["CONTAINER_LOG_EPOCH"] = epoch
+                except HostLogError as err:
+                    raise APIError(
+                        f"Cannot determine CONTAINER_LOG_EPOCH of {identifier}, is it a Docker container name?"
+                    ) from err
+            elif not (since := await self._get_container_start_time(identifier)):
+                raise APIError(
+                    f"Cannot determine start time of {identifier}, is it a Docker container name?"
+                )
 
         if ACCEPT in request.headers and request.headers[ACCEPT] not in [
             CONTENT_TYPE_TEXT,
@@ -239,8 +278,16 @@ class APIHost(CoreSysAttributes):
                 # instead. Since this is really an edge case that doesn't matter much, we'll just
                 # return 2 lines at minimum.
                 lines = max(2, lines)
-            # entries=cursor[[:num_skip]:num_entries]
-            range_header = f"entries=:-{lines - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else lines}"
+            if since:
+                # realtime=[since]:[until][[:num_skip]:num_entries]
+                range_header = f"realtime={int(since.timestamp())}::0:{lines}"
+            else:
+                # entries=cursor[[:num_skip]:num_entries]
+                range_header = f"entries=:-{lines - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else lines}"
+        elif since:
+            range_header = f"realtime={int(since.timestamp())}::0:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
+        elif latest:
+            range_header = f"entries=0:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
         elif RANGE in request.headers:
             range_header = request.headers[RANGE]
         else:
@@ -286,10 +333,14 @@ class APIHost(CoreSysAttributes):
 
     @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
     async def advanced_logs(
-        self, request: web.Request, identifier: str | None = None, follow: bool = False
+        self,
+        request: web.Request,
+        identifier: str | None = None,
+        follow: bool = False,
+        latest: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
-        return await self.advanced_logs_handler(request, identifier, follow)
+        return await self.advanced_logs_handler(request, identifier, follow, latest)
 
     @api_process
     async def disk_usage(self, request: web.Request) -> dict:
@@ -336,3 +387,41 @@ class APIHost(CoreSysAttributes):
                 *known_paths,
             ],
         }
+
+    async def _get_container_start_time(
+        self, identifier: str
+    ) -> datetime.datetime | None:
+        """Get container start time for the given syslog identifier."""
+        try:
+            container: Container = self.sys_docker.containers.get(identifier)
+        except docker.errors.NotFound:
+            return None
+
+        if not (started_at := container.attrs.get("State", {}).get("StartedAt")):
+            return None
+
+        return datetime.datetime.fromisoformat(started_at)
+
+    async def _get_container_last_epoch(self, identifier: str) -> str | None:
+        """Get Docker's internal log epoch of the latest log entry for the given identifier."""
+        try:
+            async with self.sys_host.logs.journald_logs(
+                params={"CONTAINER_NAME": identifier},
+                range_header="entries=:-1:2",  # -1 = next to the last entry
+                accept=LogFormat.JSON,
+                timeout=ClientTimeout(total=10),
+            ) as resp:
+                text = await resp.text()
+        except (ClientError, TimeoutError) as err:
+            raise HostLogError(
+                "Could not get last container epoch from systemd-journal-gatewayd",
+                _LOGGER.error,
+            ) from err
+
+        try:
+            return json.loads(text.strip().split("\n")[-1])["CONTAINER_LOG_EPOCH"]
+        except (json.JSONDecodeError, KeyError, IndexError) as err:
+            raise HostLogError(
+                f"Failed to parse CONTAINER_LOG_EPOCH of {identifier} container, got: {text}",
+                _LOGGER.error,
+            ) from err

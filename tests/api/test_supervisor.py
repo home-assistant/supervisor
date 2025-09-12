@@ -148,10 +148,17 @@ async def test_api_supervisor_options_diagnostics(
     assert coresys.dbus.agent.diagnostics is False
 
 
-async def test_api_supervisor_logs(api_client: TestClient, journald_logs: MagicMock):
+async def test_api_supervisor_logs(
+    api_client: TestClient, journald_logs: MagicMock, coresys: CoreSys, os_available
+):
     """Test supervisor logs."""
     await common_test_api_advanced_logs(
-        "/supervisor", "hassio_supervisor", api_client, journald_logs
+        "/supervisor",
+        "hassio_supervisor",
+        api_client,
+        journald_logs,
+        coresys,
+        os_available,
     )
 
 
@@ -175,7 +182,7 @@ async def test_api_supervisor_fallback(
         b"\x1b[36m22-10-11 14:04:23 DEBUG (MainThread) [supervisor.utils.dbus] D-Bus call - org.freedesktop.DBus.Properties.call_get_all on /io/hass/os/AppArmor\x1b[0m",
     ]
 
-    # check fallback also works for the follow endpoint (no mock reset needed)
+    # check fallback also works for the /follow endpoint (no mock reset needed)
 
     with patch("supervisor.api._LOGGER.exception") as logger:
         resp = await api_client.get("/supervisor/logs/follow")
@@ -186,7 +193,16 @@ async def test_api_supervisor_fallback(
     assert resp.status == 200
     assert resp.content_type == "text/plain"
 
-    journald_logs.reset_mock()
+    # check the /latest endpoint as well
+
+    with patch("supervisor.api._LOGGER.exception") as logger:
+        resp = await api_client.get("/supervisor/logs/latest")
+        logger.assert_called_once_with(
+            "Failed to get supervisor logs using advanced_logs API"
+        )
+
+    assert resp.status == 200
+    assert resp.content_type == "text/plain"
 
     # also check generic Python error
     journald_logs.side_effect = OSError("Something bad happened!")
