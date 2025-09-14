@@ -14,10 +14,10 @@ jobs:
       latest_version: ${{ steps.latest_frontend_version.outputs.latest_tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Get latest frontend release
         id: latest_frontend_version
-        uses: abatilo/release-info-action@v1.3.3
+        uses: abatilo/release-info-action@32cb932219f1cee3fc4f4a298fd65ead5d35b661 # v1.3.3
         with:
           owner: home-assistant
           repo: frontend
@@ -49,7 +49,7 @@ jobs:
     if: needs.check-version.outputs.skip != 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5.0.0
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Clear www folder
         run: |
           rm -rf supervisor/api/panel/*
@@ -57,7 +57,7 @@ jobs:
         run: |
           echo "${{ needs.check-version.outputs.latest_version }}" > .ha-frontend-version
       - name: Download release assets
-        uses: robinraju/release-downloader@v1
+        uses: robinraju/release-downloader@daf26c55d821e836577a15f77d86ddc078948b05 # v1.12
         with:
           repository: 'home-assistant/frontend'
           tag: ${{ needs.check-version.outputs.latest_version }}
@@ -68,7 +68,7 @@ jobs:
         run: |
           rm -f supervisor/api/panel/home_assistant_frontend_supervisor-*.tar.gz
       - name: Create PR
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
         with:
           commit-message: "Update frontend to version ${{ needs.check-version.outputs.latest_version }}"
           branch: autoupdate-frontend
