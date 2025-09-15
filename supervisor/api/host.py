@@ -15,8 +15,6 @@ from aiohttp import (
     web,
 )
 from aiohttp.hdrs import ACCEPT, RANGE
-import docker.errors
-from docker.models.containers import Container
 import voluptuous as vol
 from voluptuous.error import CoerceInvalid
 
@@ -234,23 +232,13 @@ class APIHost(CoreSysAttributes):
                     "Latest logs can only be fetched for a specific identifier."
                 )
 
-            if (
-                not self.sys_os.available
-                or not self.sys_os.version
-                or self.sys_os.version < "16.0"
-            ):
-                # Fallback is needed for older versions which don't support "realtime" Range header (Systemd<256)
-                try:
-                    epoch = await self._get_container_last_epoch(identifier)
-                    params["CONTAINER_LOG_EPOCH"] = epoch
-                except HostLogError as err:
-                    raise APIError(
-                        f"Cannot determine CONTAINER_LOG_EPOCH of {identifier}, is it a Docker container name?"
-                    ) from err
-            elif not (since := await self._get_container_start_time(identifier)):
+            try:
+                epoch = await self._get_container_last_epoch(identifier)
+                params["CONTAINER_LOG_EPOCH"] = epoch
+            except HostLogError as err:
                 raise APIError(
-                    f"Cannot determine start time of {identifier}, is it a Docker container name?"
-                )
+                    f"Cannot determine CONTAINER_LOG_EPOCH of {identifier}, latest logs not available."
+                ) from err
 
         if ACCEPT in request.headers and request.headers[ACCEPT] not in [
             CONTENT_TYPE_TEXT,
@@ -387,20 +375,6 @@ class APIHost(CoreSysAttributes):
                 *known_paths,
             ],
         }
-
-    async def _get_container_start_time(
-        self, identifier: str
-    ) -> datetime.datetime | None:
-        """Get container start time for the given syslog identifier."""
-        try:
-            container: Container = self.sys_docker.containers.get(identifier)
-        except docker.errors.NotFound:
-            return None
-
-        if not (started_at := container.attrs.get("State", {}).get("StartedAt")):
-            return None
-
-        return datetime.datetime.fromisoformat(started_at)
 
     async def _get_container_last_epoch(self, identifier: str) -> str | None:
         """Get Docker's internal log epoch of the latest log entry for the given identifier."""
