@@ -11,6 +11,6 @@ pytest==8.4.2
 ruff==0.13.0
 time-machine==2.19.0
 types-docker==7.1.0.20250907
-types-pyyaml==6.0.12.20250822
+types-pyyaml==6.0.12.20250915
 types-requests==2.32.4.20250913
 urllib3==2.5.0
