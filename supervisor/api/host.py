@@ -2,7 +2,6 @@
 
 import asyncio
 from contextlib import suppress
-import datetime
 import json
 import logging
 from typing import Any
@@ -225,7 +224,6 @@ class APIHost(CoreSysAttributes):
         if follow:
             params[PARAM_FOLLOW] = ""
 
-        since: datetime.datetime | None = None
         if latest:
             if not identifier:
                 raise APIError(
@@ -266,14 +264,8 @@ class APIHost(CoreSysAttributes):
                 # instead. Since this is really an edge case that doesn't matter much, we'll just
                 # return 2 lines at minimum.
                 lines = max(2, lines)
-            if since:
-                # realtime=[since]:[until][[:num_skip]:num_entries]
-                range_header = f"realtime={int(since.timestamp())}::0:{lines}"
-            else:
-                # entries=cursor[[:num_skip]:num_entries]
-                range_header = f"entries=:-{lines - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else lines}"
-        elif since:
-            range_header = f"realtime={int(since.timestamp())}::0:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
+            # entries=cursor[[:num_skip]:num_entries]
+            range_header = f"entries=:-{lines - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else lines}"
         elif latest:
             range_header = f"entries=0:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
         elif RANGE in request.headers:
