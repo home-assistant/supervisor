@@ -147,6 +147,14 @@ class RestAPI(CoreSysAttributes):
                     ),
                 ),
                 web.get(
+                    f"{path}/logs/latest",
+                    partial(
+                        self._api_host.advanced_logs,
+                        identifier=syslog_identifier,
+                        latest=True,
+                    ),
+                ),
+                web.get(
                     f"{path}/logs/boots/{{bootid}}",
                     partial(self._api_host.advanced_logs, identifier=syslog_identifier),
                 ),
@@ -440,6 +448,7 @@ class RestAPI(CoreSysAttributes):
                     # is known and reported to the user using the resolution center.
                     await async_capture_exception(err)
                 kwargs.pop("follow", None)  # Follow is not supported for Docker logs
+                kwargs.pop("latest", None)  # Latest is not supported for Docker logs
                 return await api_supervisor.logs(*args, **kwargs)
 
         self.webapp.add_routes(
@@ -448,6 +457,10 @@ class RestAPI(CoreSysAttributes):
                 web.get(
                     "/supervisor/logs/follow",
                     partial(get_supervisor_logs, follow=True),
+                ),
+                web.get(
+                    "/supervisor/logs/latest",
+                    partial(get_supervisor_logs, latest=True),
                 ),
                 web.get("/supervisor/logs/boots/{bootid}", get_supervisor_logs),
                 web.get(
@@ -560,6 +573,10 @@ class RestAPI(CoreSysAttributes):
                 web.get(
                     "/addons/{addon}/logs/follow",
                     partial(get_addon_logs, follow=True),
+                ),
+                web.get(
+                    "/addons/{addon}/logs/latest",
+                    partial(get_addon_logs, latest=True),
                 ),
                 web.get("/addons/{addon}/logs/boots/{bootid}", get_addon_logs),
                 web.get(

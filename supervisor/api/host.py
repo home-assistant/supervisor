@@ -2,10 +2,17 @@
 
 import asyncio
 from contextlib import suppress
+import json
 import logging
 from typing import Any
 
-from aiohttp import ClientConnectionResetError, ClientPayloadError, web
+from aiohttp import (
+    ClientConnectionResetError,
+    ClientError,
+    ClientPayloadError,
+    ClientTimeout,
+    web,
+)
 from aiohttp.hdrs import ACCEPT, RANGE
 import voluptuous as vol
 from voluptuous.error import CoerceInvalid
@@ -194,7 +201,11 @@ class APIHost(CoreSysAttributes):
         return possible_offset
 
     async def advanced_logs_handler(
-        self, request: web.Request, identifier: str | None = None, follow: bool = False
+        self,
+        request: web.Request,
+        identifier: str | None = None,
+        follow: bool = False,
+        latest: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
         log_formatter = LogFormatter.PLAIN
@@ -212,6 +223,20 @@ class APIHost(CoreSysAttributes):
             params[PARAM_BOOT_ID] = await self._get_boot_id(request.match_info[BOOTID])
         if follow:
             params[PARAM_FOLLOW] = ""
+
+        if latest:
+            if not identifier:
+                raise APIError(
+                    "Latest logs can only be fetched for a specific identifier."
+                )
+
+            try:
+                epoch = await self._get_container_last_epoch(identifier)
+                params["CONTAINER_LOG_EPOCH"] = epoch
+            except HostLogError as err:
+                raise APIError(
+                    f"Cannot determine CONTAINER_LOG_EPOCH of {identifier}, latest logs not available."
+                ) from err
 
         if ACCEPT in request.headers and request.headers[ACCEPT] not in [
             CONTENT_TYPE_TEXT,
@@ -241,6 +266,8 @@ class APIHost(CoreSysAttributes):
                 lines = max(2, lines)
             # entries=cursor[[:num_skip]:num_entries]
             range_header = f"entries=:-{lines - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else lines}"
+        elif latest:
+            range_header = f"entries=0:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
         elif RANGE in request.headers:
             range_header = request.headers[RANGE]
         else:
@@ -286,10 +313,14 @@ class APIHost(CoreSysAttributes):
 
     @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
     async def advanced_logs(
-        self, request: web.Request, identifier: str | None = None, follow: bool = False
+        self,
+        request: web.Request,
+        identifier: str | None = None,
+        follow: bool = False,
+        latest: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
-        return await self.advanced_logs_handler(request, identifier, follow)
+        return await self.advanced_logs_handler(request, identifier, follow, latest)
 
     @api_process
     async def disk_usage(self, request: web.Request) -> dict:
@@ -336,3 +367,27 @@ class APIHost(CoreSysAttributes):
                 *known_paths,
             ],
         }
+
+    async def _get_container_last_epoch(self, identifier: str) -> str | None:
+        """Get Docker's internal log epoch of the latest log entry for the given identifier."""
+        try:
+            async with self.sys_host.logs.journald_logs(
+                params={"CONTAINER_NAME": identifier},
+                range_header="entries=:-1:2",  # -1 = next to the last entry
+                accept=LogFormat.JSON,
+                timeout=ClientTimeout(total=10),
+            ) as resp:
+                text = await resp.text()
+        except (ClientError, TimeoutError) as err:
+            raise HostLogError(
+                "Could not get last container epoch from systemd-journal-gatewayd",
+                _LOGGER.error,
+            ) from err
+
+        try:
+            return json.loads(text.strip().split("\n")[-1])["CONTAINER_LOG_EPOCH"]
+        except (json.JSONDecodeError, KeyError, IndexError) as err:
+            raise HostLogError(
+                f"Failed to parse CONTAINER_LOG_EPOCH of {identifier} container, got: {text}",
+                _LOGGER.error,
+            ) from err

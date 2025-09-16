@@ -72,11 +72,20 @@ async def test_addons_info_not_installed(
 
 
 async def test_api_addon_logs(
-    api_client: TestClient, journald_logs: MagicMock, install_addon_ssh: Addon
+    api_client: TestClient,
+    journald_logs: MagicMock,
+    coresys: CoreSys,
+    os_available,
+    install_addon_ssh: Addon,
 ):
     """Test addon logs."""
     await common_test_api_advanced_logs(
-        "/addons/local_ssh", "addon_local_ssh", api_client, journald_logs
+        "/addons/local_ssh",
+        "addon_local_ssh",
+        api_client,
+        journald_logs,
+        coresys,
+        os_available,
     )
 
 

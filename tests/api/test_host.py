@@ -243,6 +243,10 @@ async def test_advanced_logs(
         accept=LogFormat.JOURNAL,
     )
 
+    # Host logs don't have a /latest endpoint
+    resp = await api_client.get("/host/logs/latest")
+    assert resp.status == 404
+
 
 async def test_advaced_logs_query_parameters(
     api_client: TestClient,
