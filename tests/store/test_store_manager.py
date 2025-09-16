@@ -170,7 +170,7 @@ async def test_update_unavailable_addon(
             "version",
             new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
         ),
-        patch("shutil.disk_usage", return_value=(42, 42, (1024.0**3))),
+        patch("shutil.disk_usage", return_value=(42, 42, (5120.0**3))),
     ):
         with pytest.raises(AddonNotSupportedError):
             await coresys.addons.update("local_ssh", backup=True)
@@ -226,7 +226,7 @@ async def test_install_unavailable_addon(
             "version",
             new=PropertyMock(return_value=AwesomeVersion("2022.1.1")),
         ),
-        patch("shutil.disk_usage", return_value=(42, 42, (1024.0**3))),
+        patch("shutil.disk_usage", return_value=(42, 42, (5120.0**3))),
         pytest.raises(AddonNotSupportedError),
     ):
         await coresys.addons.install("local_ssh")
