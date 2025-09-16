@@ -60,24 +60,17 @@ class EvaluateCoreVersion(EvaluateBase):
             # last known version makes the system supported again, allowing update refresh.
             #
             # Home Assistant uses CalVer versioning (2024.1, 2024.2, etc.) with monthly releases.
-            # We consider versions more than 24 releases (approximately 2 years) behind as unsupported.
-
-            # Extract year and month from latest version to calculate cutoff
-            latest_parts = str(latest).split(".")
-            if len(latest_parts) < 2:
+            # We consider versions more than 2 years behind as unsupported.
+            if (
+                latest.strategy != AwesomeVersionStrategy.CALVER
+                or latest.year is None
+                or latest.minor is None
+            ):
                 return True  # Invalid latest version format
 
-            latest_year = int(latest_parts[0])
-            latest_month = int(latest_parts[1])
-
             # Calculate 24 months back from latest version
-            cutoff_month = latest_month - 24
-            cutoff_year = latest_year
-
-            # Handle year rollover
-            while cutoff_month <= 0:
-                cutoff_month += 12
-                cutoff_year -= 1
+            cutoff_month = int(latest.minor)
+            cutoff_year = int(latest.year) - 2
 
             # Create cutoff version
             cutoff_version = AwesomeVersion(
