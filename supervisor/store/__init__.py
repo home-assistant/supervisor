@@ -77,7 +77,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
         conditions=[
             JobCondition.SUPERVISOR_UPDATED,
             JobCondition.OS_SUPPORTED,
-            JobCondition.CORE_SUPPORTED,
+            JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
         ],
         on_condition=StoreJobError,
     )
@@ -121,7 +121,7 @@ class StoreManager(CoreSysAttributes, FileConfiguration):
             JobCondition.INTERNET_SYSTEM,
             JobCondition.SUPERVISOR_UPDATED,
             JobCondition.OS_SUPPORTED,
-            JobCondition.CORE_SUPPORTED,
+            JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
         ],
         on_condition=StoreJobError,
     )

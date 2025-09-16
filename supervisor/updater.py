@@ -250,7 +250,7 @@ class Updater(FileConfiguration, CoreSysAttributes):
         conditions=[
             JobCondition.INTERNET_SYSTEM,
             JobCondition.OS_SUPPORTED,
-            JobCondition.CORE_SUPPORTED,
+            JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
         ],
         on_condition=UpdaterJobError,
         throttle_period=timedelta(seconds=30),

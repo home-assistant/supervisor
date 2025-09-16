@@ -1397,7 +1397,8 @@ async def test_core_supported(coresys: CoreSys, caplog: pytest.LogCaptureFixture
             self.coresys = coresys
 
         @Job(
-            name="test_core_supported_execute", conditions=[JobCondition.CORE_SUPPORTED]
+            name="test_core_supported_execute",
+            conditions=[JobCondition.HOME_ASSISTANT_CORE_SUPPORTED],
         )
         async def execute(self):
             """Execute the class method."""
@@ -1406,11 +1407,11 @@ async def test_core_supported(coresys: CoreSys, caplog: pytest.LogCaptureFixture
     test = TestClass(coresys)
     assert await test.execute()
 
-    coresys.resolution.unsupported.append(UnsupportedReason.CORE_VERSION)
+    coresys.resolution.unsupported.append(UnsupportedReason.HOME_ASSISTANT_CORE_VERSION)
     assert not await test.execute()
     assert (
         "blocked from execution, unsupported Home Assistant Core version" in caplog.text
     )
 
-    coresys.jobs.ignore_conditions = [JobCondition.CORE_SUPPORTED]
+    coresys.jobs.ignore_conditions = [JobCondition.HOME_ASSISTANT_CORE_SUPPORTED]
     assert await test.execute()

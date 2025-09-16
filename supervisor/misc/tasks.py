@@ -361,7 +361,7 @@ class Tasks(CoreSysAttributes):
         conditions=[
             JobCondition.SUPERVISOR_UPDATED,
             JobCondition.OS_SUPPORTED,
-            JobCondition.CORE_SUPPORTED,
+            JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
         ],
     )
     async def _reload_store(self) -> None:

@@ -9,7 +9,9 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.homeassistant.const import LANDINGPAGE
 from supervisor.homeassistant.module import HomeAssistant
-from supervisor.resolution.evaluations.core_version import EvaluateCoreVersion
+from supervisor.resolution.evaluations.home_assistant_core_version import (
+    EvaluateHomeAssistantCoreVersion,
+)
 
 
 @pytest.mark.parametrize(
@@ -38,7 +40,7 @@ async def test_core_version_evaluation(
     coresys: CoreSys, current: str | None, latest: str | None, expected: bool
 ):
     """Test evaluation logic on Core versions."""
-    evaluation = EvaluateCoreVersion(coresys)
+    evaluation = EvaluateHomeAssistantCoreVersion(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
     with (
@@ -60,7 +62,7 @@ async def test_core_version_evaluation(
 
 async def test_core_version_evaluation_no_latest(coresys: CoreSys):
     """Test evaluation when no latest version is available."""
-    evaluation = EvaluateCoreVersion(coresys)
+    evaluation = EvaluateHomeAssistantCoreVersion(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
     with (
@@ -83,7 +85,7 @@ async def test_core_version_evaluation_no_latest(coresys: CoreSys):
 
 async def test_core_version_invalid_format(coresys: CoreSys):
     """Test evaluation with invalid version format."""
-    evaluation = EvaluateCoreVersion(coresys)
+    evaluation = EvaluateHomeAssistantCoreVersion(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
     with (
@@ -106,7 +108,7 @@ async def test_core_version_invalid_format(coresys: CoreSys):
 
 async def test_core_version_landingpage(coresys: CoreSys):
     """Test evaluation with landingpage version."""
-    evaluation = EvaluateCoreVersion(coresys)
+    evaluation = EvaluateHomeAssistantCoreVersion(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
     with (
@@ -129,14 +131,14 @@ async def test_core_version_landingpage(coresys: CoreSys):
 
 async def test_did_run(coresys: CoreSys):
     """Test that the evaluation ran as expected."""
-    evaluation = EvaluateCoreVersion(coresys)
+    evaluation = EvaluateHomeAssistantCoreVersion(coresys)
     should_run = evaluation.states
     should_not_run = [state for state in CoreState if state not in should_run]
     assert len(should_run) != 0
     assert len(should_not_run) != 0
 
     with patch(
-        "supervisor.resolution.evaluations.core_version.EvaluateCoreVersion.evaluate",
+        "supervisor.resolution.evaluations.home_assistant_core_version.EvaluateHomeAssistantCoreVersion.evaluate",
         return_value=None,
     ) as evaluate:
         for state in should_run:

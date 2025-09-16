@@ -19,16 +19,16 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 def setup(coresys: CoreSys) -> EvaluateBase:
     """Initialize evaluation-setup function."""
-    return EvaluateCoreVersion(coresys)
+    return EvaluateHomeAssistantCoreVersion(coresys)
 
 
-class EvaluateCoreVersion(EvaluateBase):
+class EvaluateHomeAssistantCoreVersion(EvaluateBase):
     """Evaluate the Home Assistant Core version."""
 
     @property
     def reason(self) -> UnsupportedReason:
         """Return a UnsupportedReason enum."""
-        return UnsupportedReason.CORE_VERSION
+        return UnsupportedReason.HOME_ASSISTANT_CORE_VERSION
 
     @property
     def on_failure(self) -> str:
