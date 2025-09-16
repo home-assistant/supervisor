@@ -20,11 +20,11 @@ class JobCondition(StrEnum):
     """Job condition enum."""
 
     AUTO_UPDATE = "auto_update"
-    HOME_ASSISTANT_CORE_SUPPORTED = "home_assistant_core_supported"
     FREE_SPACE = "free_space"
     FROZEN = "frozen"
     HAOS = "haos"
     HEALTHY = "healthy"
+    HOME_ASSISTANT_CORE_SUPPORTED = "home_assistant_core_supported"
     HOST_NETWORK = "host_network"
     INTERNET_HOST = "internet_host"
     INTERNET_SYSTEM = "internet_system"
