@@ -325,3 +325,97 @@ def test_valid_slug():
     config["slug"] = "complemento telefónico"
     with pytest.raises(vol.Invalid):
         assert vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_valid_schema():
+    """Test valid and invalid addon slugs."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    # Basic types
+    config["schema"] = {
+        "bool_basic": "bool",
+        "mail_basic": "email",
+        "url_basic": "url",
+        "port_basic": "port",
+        "match_basic": "match(.*@.*)",
+        "list_basic": "list(option1|option2|option3)",
+        # device
+        "device_basic": "device",
+        "device_filter": "device(subsystem=tty)",
+        # str
+        "str_basic": "str",
+        "str_basic2": "str(,)",
+        "str_min": "str(5,)",
+        "str_max": "str(,10)",
+        "str_minmax": "str(5,10)",
+        # password
+        "password_basic": "password",
+        "password_basic2": "password(,)",
+        "password_min": "password(5,)",
+        "password_max": "password(,10)",
+        "password_minmax": "password(5,10)",
+        # int
+        "int_basic": "int",
+        "int_basic2": "int(,)",
+        "int_min": "int(5,)",
+        "int_max": "int(,10)",
+        "int_minmax": "int(5,10)",
+        # float
+        "float_basic": "float",
+        "float_basic2": "float(,)",
+        "float_min": "float(5,)",
+        "float_max": "float(,10)",
+        "float_minmax": "float(5,10)",
+    }
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Different valid ways of nesting dicts and lists
+    config["schema"] = {
+        "str_list": ["str"],
+        "dict_in_list": [
+            {
+                "required": "str",
+                "optional": "str?",
+            }
+        ],
+        "dict": {
+            "required": "str",
+            "optional": "str?",
+            "str_list_in_dict": ["str"],
+            "dict_in_list_in_dict": [
+                {
+                    "required": "str",
+                    "optional": "str?",
+                    "str_list_in_dict_in_list_in_dict": ["str"],
+                }
+            ],
+            "dict_in_dict": {
+                "str_list_in_dict_in_dict": ["str"],
+                "dict_in_list_in_dict_in_dict": [
+                    {
+                        "required": "str",
+                        "optional": "str?",
+                    }
+                ],
+                "dict_in_dict_in_dict": {
+                    "required": "str",
+                    "optional": "str",
+                },
+            },
+        },
+    }
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    # List nested within dict within list
+    config["schema"] = {"field": [{"subfield": ["str"]}]}
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    # No lists directly nested within each other
+    config["schema"] = {"field": [["str"]]}
+    with pytest.raises(vol.Invalid):
+        assert vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Field types must be valid
+    config["schema"] = {"field": "invalid"}
+    with pytest.raises(vol.Invalid):
+        assert vd.SCHEMA_ADDON_CONFIG(config)
