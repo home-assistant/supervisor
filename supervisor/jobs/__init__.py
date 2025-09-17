@@ -174,12 +174,15 @@ class SupervisorJob:
             self.stage = stage
         if extra != DEFAULT:
             self.extra = extra
-        if done is not None:
-            self.done = done
 
         self.on_change = on_change
-        # Just triggers the normal on change
-        self.reference = self.reference
+
+        if done is not None:
+            # Done has a special event, use it to trigger on change if included
+            self.done = done
+        else:
+            # Just set someting to trigger the normal on change
+            self.reference = self.reference
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
@@ -229,12 +232,14 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         self, job: SupervisorJob, attribute: Attribute, value: Any
     ) -> None:
         """Notify Home Assistant of a change to a job and bus on job start/end."""
+        # Send out job data as a dictionary to prevent concurrency issue with shared job object
+        # Plus then we can fold in the newly updated value
         if attribute.name == "errors":
             value = [err.as_dict() for err in value]
+        job_data = job.as_dict() | {attribute.name: value}
 
-        self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.JOB, job.as_dict() | {attribute.name: value}
-        )
+        if not job.internal:
+            self.sys_homeassistant.websocket.supervisor_event(WSEvent.JOB, job_data)
 
         if attribute.name == "done":
             if value is False:
@@ -255,7 +260,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
             name,
             reference=reference,
             stage=initial_stage,
-            on_change=None if internal else self._notify_on_job_change,
+            on_change=self._notify_on_job_change,
             internal=internal,
             **({} if parent_id == DEFAULT else {"parent_id": parent_id}),  # type: ignore
         )
