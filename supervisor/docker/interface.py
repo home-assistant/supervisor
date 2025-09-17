@@ -220,10 +220,12 @@ class DockerInterface(JobGroup, ABC):
 
         await self.sys_run_in_executor(self.sys_docker.docker.login, **credentials)
 
-    def _process_pull_image_log(self, job_id: str, reference: PullLogEntry) -> None:
+    def _process_pull_image_log(
+        self, reference_id: str, progress_job_id: str, reference: PullLogEntry
+    ) -> None:
         """Process events fired from a docker while pulling an image, filtered to a given job id."""
         if (
-            reference.job_id != job_id
+            reference.job_id != reference_id
             or not reference.id
             or not reference.status
             or not (stage := PullImageLayerStage.from_status(reference.status))
@@ -237,21 +239,22 @@ class DockerInterface(JobGroup, ABC):
                 name="Pulling container image layer",
                 initial_stage=stage.status,
                 reference=reference.id,
-                parent_id=job_id,
+                parent_id=progress_job_id,
+                internal=True,
             )
             job.done = False
             return
 
         # Find our sub job to update details of
         for j in self.sys_jobs.jobs:
-            if j.parent_id == job_id and j.reference == reference.id:
+            if j.parent_id == progress_job_id and j.reference == reference.id:
                 job = j
                 break
 
         # This likely only occurs if the logs came in out of sync and we got progress before the Pulling FS Layer one
         if not job:
             raise DockerLogOutOfOrder(
-                f"Received pull image log with status {reference.status} for image id {reference.id} and parent job {job_id} but could not find a matching job, skipping",
+                f"Received pull image log with status {reference.status} for image id {reference.id} and parent job {progress_job_id} but could not find a matching job, skipping",
                 _LOGGER.debug,
             )
 
@@ -325,10 +328,56 @@ class DockerInterface(JobGroup, ABC):
                 else job.extra,
             )
 
+        # Once we have received a progress update for every child job, start to set status of the main one
+        install_job = self.sys_jobs.get_job(progress_job_id)
+        layer_jobs = [
+            job
+            for job in self.sys_jobs.jobs
+            if job.parent_id == install_job.uuid
+            and job.name == "Pulling container image layer"
+        ]
+
+        # First set the total bytes to be downloaded/extracted on the main job
+        if not install_job.extra:
+            total = 0
+            for job in layer_jobs:
+                if not job.extra:
+                    return
+                total += job.extra["total"]
+            install_job.extra = {"total": total}
+        else:
+            total = install_job.extra["total"]
+
+        # Then determine total progress based on progress of each sub-job, factoring in size of each compared to total
+        progress = 0.0
+        stage = PullImageLayerStage.PULL_COMPLETE
+        for job in layer_jobs:
+            if not job.extra:
+                return
+            progress += job.progress * (job.extra["total"] / total)
+            job_stage = PullImageLayerStage.from_status(cast(str, job.stage))
+
+            if job_stage < PullImageLayerStage.EXTRACTING:
+                stage = PullImageLayerStage.DOWNLOADING
+            elif (
+                stage == PullImageLayerStage.PULL_COMPLETE
+                and job_stage < PullImageLayerStage.PULL_COMPLETE
+            ):
+                stage = PullImageLayerStage.EXTRACTING
+
+        # Ensure progress is 100 at this point to prevent float drift
+        if stage == PullImageLayerStage.PULL_COMPLETE:
+            progress = 100
+
+        # To reduce noise, limit updates to when result has changed by an entire percent or when stage changed
+        if stage != install_job.stage or progress >= install_job.progress + 1:
+            install_job.update(stage=stage.status, progress=progress)
+
     @Job(
         name="docker_interface_install",
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        internal=True,
     )
     async def install(
         self,
@@ -336,6 +385,8 @@ class DockerInterface(JobGroup, ABC):
         image: str | None = None,
         latest: bool = False,
         arch: CpuArch | None = None,
+        *,
+        progress_job_id: str | None = None,
     ) -> None:
         """Pull docker image."""
         image = image or self.image
@@ -351,11 +402,15 @@ class DockerInterface(JobGroup, ABC):
                 # Try login if we have defined credentials
                 await self._docker_login(image)
 
-            job_id = self.sys_jobs.current.uuid
+            reference_id = self.sys_jobs.current.uuid
+            if not progress_job_id:
+                progress_job_id = reference_id
 
             async def process_pull_image_log(reference: PullLogEntry) -> None:
                 try:
-                    self._process_pull_image_log(job_id, reference)
+                    self._process_pull_image_log(
+                        reference_id, progress_job_id, reference
+                    )
                 except DockerLogOutOfOrder as err:
                     # Send all these to sentry. Missing a few progress updates
                     # shouldn't matter to users but matters to us
@@ -629,7 +684,12 @@ class DockerInterface(JobGroup, ABC):
         concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def update(
-        self, version: AwesomeVersion, image: str | None = None, latest: bool = False
+        self,
+        version: AwesomeVersion,
+        image: str | None = None,
+        latest: bool = False,
+        *,
+        progress_job_id: str | None = None,
     ) -> None:
         """Update a Docker image."""
         image = image or self.image
@@ -639,7 +699,9 @@ class DockerInterface(JobGroup, ABC):
         )
 
         # Update docker image
-        await self.install(version, image=image, latest=latest)
+        await self.install(
+            version, image=image, latest=latest, progress_job_id=progress_job_id
+        )
 
         # Stop container & cleanup
         with suppress(DockerError):

@@ -768,7 +768,7 @@ class Addon(AddonModel):
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def install(self) -> None:
+    async def install(self, *, progress_job_id: str | None = None) -> None:
         """Install and setup this addon."""
         if not self.addon_store:
             raise AddonsError("Missing from store, cannot install!")
@@ -791,7 +791,10 @@ class Addon(AddonModel):
         # Install image
         try:
             await self.instance.install(
-                self.latest_version, self.addon_store.image, arch=self.arch
+                self.latest_version,
+                self.addon_store.image,
+                arch=self.arch,
+                progress_job_id=progress_job_id,
             )
         except DockerError as err:
             await self.sys_addons.data.uninstall(self)
@@ -874,7 +877,9 @@ class Addon(AddonModel):
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def update(self) -> asyncio.Task | None:
+    async def update(
+        self, *, progress_job_id: str | None = None
+    ) -> asyncio.Task | None:
         """Update this addon to latest version.
 
         Returns a Task that completes when addon has state 'started' (see start)
@@ -888,7 +893,12 @@ class Addon(AddonModel):
         store = self.addon_store.clone()
 
         try:
-            await self.instance.update(store.version, store.image, arch=self.arch)
+            await self.instance.update(
+                store.version,
+                store.image,
+                arch=self.arch,
+                progress_job_id=progress_job_id,
+            )
         except DockerError as err:
             raise AddonsError() from err
 

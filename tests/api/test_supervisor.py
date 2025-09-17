@@ -2,17 +2,24 @@
 
 # pylint: disable=protected-access
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
+from awesomeversion import AwesomeVersion
 from blockbuster import BlockingError
 import pytest
 
+from supervisor.const import CoreState
+from supervisor.core import Core
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HassioError, HostNotSupportedError, StoreGitError
+from supervisor.homeassistant.const import WSEvent
 from supervisor.store.repository import Repository
+from supervisor.supervisor import Supervisor
+from supervisor.updater import Updater
 
 from tests.api import common_test_api_advanced_logs
+from tests.common import load_json_fixture
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.os_agent import OSAgent as OSAgentService
 
@@ -316,3 +323,97 @@ async def test_api_supervisor_options_blocking_io(
 
     # This should not raise blocking error anymore
     time.sleep(0)
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_api_progress_updates_supervisor_update(
+    api_client: TestClient, coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test progress updates sent to Home Assistant for updates."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.core.set_state(CoreState.RUNNING)
+    coresys.docker.docker.api.pull.return_value = load_json_fixture(
+        "docker_pull_image_log.json"
+    )
+
+    with (
+        patch.object(
+            Supervisor,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.08.0")),
+        ),
+        patch.object(
+            Updater,
+            "version_supervisor",
+            new=PropertyMock(return_value=AwesomeVersion("2025.08.3")),
+        ),
+        patch.object(
+            Updater, "image_supervisor", new=PropertyMock(return_value="supervisor")
+        ),
+        patch.object(Supervisor, "update_apparmor"),
+        patch.object(Core, "stop"),
+    ):
+        resp = await api_client.post("/supervisor/update")
+
+    assert resp.status == 200
+
+    events = [
+        {
+            "stage": evt.args[0]["data"]["data"]["stage"],
+            "progress": evt.args[0]["data"]["data"]["progress"],
+            "done": evt.args[0]["data"]["data"]["done"],
+        }
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0]
+        and evt.args[0]["data"]["event"] == WSEvent.JOB
+        and evt.args[0]["data"]["data"]["name"] == "supervisor_update"
+    ]
+    assert events[:4] == [
+        {
+            "stage": None,
+            "progress": 0,
+            "done": False,
+        },
+        {
+            "stage": "Downloading",
+            "progress": 0.1,
+            "done": False,
+        },
+        {
+            "stage": "Downloading",
+            "progress": 1.2,
+            "done": False,
+        },
+        {
+            "stage": "Downloading",
+            "progress": 2.8,
+            "done": False,
+        },
+    ]
+    assert events[-5:] == [
+        {
+            "stage": "Extracting",
+            "progress": 97.2,
+            "done": False,
+        },
+        {
+            "stage": "Extracting",
+            "progress": 98.4,
+            "done": False,
+        },
+        {
+            "stage": "Extracting",
+            "progress": 99.4,
+            "done": False,
+        },
+        {
+            "stage": "Pull complete",
+            "progress": 100,
+            "done": False,
+        },
+        {
+            "stage": "Pull complete",
+            "progress": 100,
+            "done": True,
+        },
+    ]

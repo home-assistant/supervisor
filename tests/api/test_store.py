@@ -13,12 +13,13 @@ from supervisor.addons.addon import Addon
 from supervisor.arch import CpuArch
 from supervisor.backups.manager import BackupManager
 from supervisor.config import CoreConfig
-from supervisor.const import AddonState
+from supervisor.const import AddonState, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
@@ -709,3 +710,101 @@ async def test_api_store_addons_addon_availability_installed_addon(
         assert (
             "requires Home Assistant version 2023.1.1 or greater" in result["message"]
         )
+
+
+@pytest.mark.parametrize(
+    ("action", "job_name", "addon_slug"),
+    [
+        ("install", "addon_manager_install", "local_ssh"),
+        ("update", "addon_manager_update", "local_example"),
+    ],
+)
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_api_progress_updates_addon_install_update(
+    api_client: TestClient,
+    coresys: CoreSys,
+    ha_ws_client: AsyncMock,
+    install_addon_example: Addon,
+    action: str,
+    job_name: str,
+    addon_slug: str,
+):
+    """Test progress updates sent to Home Assistant for installs/updates."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.core.set_state(CoreState.RUNNING)
+    coresys.docker.docker.api.pull.return_value = load_json_fixture(
+        "docker_pull_image_log.json"
+    )
+    coresys.arch._supported_arch = ["amd64"]  # pylint: disable=protected-access
+    install_addon_example.data_store["version"] = AwesomeVersion("2.0.0")
+
+    with (
+        patch.object(Addon, "load"),
+        patch.object(Addon, "need_build", new=PropertyMock(return_value=False)),
+        patch.object(Addon, "latest_need_build", new=PropertyMock(return_value=False)),
+    ):
+        resp = await api_client.post(f"/store/addons/{addon_slug}/{action}")
+
+    assert resp.status == 200
+
+    events = [
+        {
+            "stage": evt.args[0]["data"]["data"]["stage"],
+            "progress": evt.args[0]["data"]["data"]["progress"],
+            "done": evt.args[0]["data"]["data"]["done"],
+        }
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0]
+        and evt.args[0]["data"]["event"] == WSEvent.JOB
+        and evt.args[0]["data"]["data"]["name"] == job_name
+        and evt.args[0]["data"]["data"]["reference"] == addon_slug
+    ]
+    assert events[:4] == [
+        {
+            "stage": None,
+            "progress": 0,
+            "done": False,
+        },
+        {
+            "stage": "Downloading",
+            "progress": 0.1,
+            "done": False,
+        },
+        {
+            "stage": "Downloading",
+            "progress": 1.2,
+            "done": False,
+        },
+        {
+            "stage": "Downloading",
+            "progress": 2.8,
+            "done": False,
+        },
+    ]
+    assert events[-5:] == [
+        {
+            "stage": "Extracting",
+            "progress": 97.2,
+            "done": False,
+        },
+        {
+            "stage": "Extracting",
+            "progress": 98.4,
+            "done": False,
+        },
+        {
+            "stage": "Extracting",
+            "progress": 99.4,
+            "done": False,
+        },
+        {
+            "stage": "Pull complete",
+            "progress": 100,
+            "done": False,
+        },
+        {
+            "stage": "Pull complete",
+            "progress": 100,
+            "done": True,
+        },
+    ]
