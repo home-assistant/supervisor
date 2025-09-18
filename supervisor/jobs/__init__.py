@@ -181,7 +181,7 @@ class SupervisorJob:
             # Done has a special event, use it to trigger on change if included
             self.done = done
         else:
-            # Just set someting to trigger the normal on change
+            # Just set something to trigger the normal on change
             self.reference = self.reference
 
 
