@@ -343,9 +343,10 @@ class Mount(CoreSysAttributes, ABC):
             )
             await self.mount()
         except DBusError as err:
-            raise MountError(
-                f"Could not reload mount {self.name} due to: {err!s}", _LOGGER.error
-            ) from err
+            _LOGGER.error(
+                "Could not reload mount %s due to: %s. Trying a restart", self.name, err
+            )
+            await self._restart()
         else:
             if unit := await self._update_unit():
                 await self._update_state_await(
@@ -353,14 +354,39 @@ class Mount(CoreSysAttributes, ABC):
                 )
 
             if not await self.is_mounted():
-                raise MountActivationError(
-                    f"Reloading {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
-                    _LOGGER.error,
+                _LOGGER.info(
+                    "Mount %s not correctly mounted after a reload. Trying a restart",
+                    self.name,
                 )
+                await self._restart()
 
         # If it is mounted now, dismiss corresponding issue if present
         if self.failed_issue in self.sys_resolution.issues:
             self.sys_resolution.dismiss_issue(self.failed_issue)
+
+    async def _restart(self) -> None:
+        """Restart mount unit to re-mount."""
+        try:
+            await self.sys_dbus.systemd.restart_unit(self.unit_name, StartUnitMode.FAIL)
+        except DBusSystemdNoSuchUnit:
+            _LOGGER.info(
+                "Mount %s is not mounted, mounting instead of restarting", self.name
+            )
+            await self.mount()
+            return
+        except DBusError as err:
+            raise MountError(
+                f"Could not restart mount {self.name} due to: {err!s}", _LOGGER.error
+            ) from err
+
+        if unit := await self._update_unit():
+            await self._update_state_await(unit, not_state=UnitActiveState.ACTIVATING)
+
+        if not await self.is_mounted():
+            raise MountActivationError(
+                f"Restarting {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
+                _LOGGER.error,
+            )
 
 
 class NetworkMount(Mount, ABC):
