@@ -9,8 +9,6 @@ from typing import Self, Union
 
 from attr import evolve
 
-from supervisor.jobs.const import JobConcurrency
-
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -22,6 +20,7 @@ from ..exceptions import (
     HassioError,
     HomeAssistantAPIError,
 )
+from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
@@ -203,7 +202,13 @@ class AddonManager(CoreSysAttributes):
         if validation_complete:
             validation_complete.set()
 
-        await Addon(self.coresys, slug).install()
+        await Addon(self.coresys, slug).install(
+            progress_job_id=self.sys_jobs.current.uuid
+        )
+
+        # Make sure our job finishes at 100% so users aren't confused
+        if self.sys_jobs.current.progress != 100:
+            self.sys_jobs.current.progress = 100
 
         _LOGGER.info("Add-on '%s' successfully installed", slug)
 
@@ -272,7 +277,18 @@ class AddonManager(CoreSysAttributes):
                 addons=[addon.slug],
             )
 
-        return await addon.update()
+        # Assume for now the docker image pull is 100% of this task. But from a user
+        # perspective that isn't true. Other steps we could consider allocating a fixed
+        # amount of progress for to improve accuracy include: partial backup, image
+        # cleanup, apparmor update, and addon restart
+        task = await addon.update(progress_job_id=self.sys_jobs.current.uuid)
+
+        # Make sure our job finishes at 100% so users aren't confused
+        if self.sys_jobs.current.progress != 100:
+            self.sys_jobs.current.progress = 100
+
+        _LOGGER.info("Add-on '%s' successfully updated", slug)
+        return task
 
     @Job(
         name="addon_manager_rebuild",
