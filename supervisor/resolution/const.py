@@ -44,6 +44,7 @@ class UnsupportedReason(StrEnum):
     DNS_SERVER = "dns_server"
     DOCKER_CONFIGURATION = "docker_configuration"
     DOCKER_VERSION = "docker_version"
+    HOME_ASSISTANT_CORE_VERSION = "home_assistant_core_version"
     JOB_CONDITIONS = "job_conditions"
     LXC = "lxc"
     NETWORK_MANAGER = "network_manager"

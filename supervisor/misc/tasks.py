@@ -358,7 +358,11 @@ class Tasks(CoreSysAttributes):
 
     @Job(
         name="tasks_reload_store",
-        conditions=[JobCondition.SUPERVISOR_UPDATED, JobCondition.OS_SUPPORTED],
+        conditions=[
+            JobCondition.SUPERVISOR_UPDATED,
+            JobCondition.OS_SUPPORTED,
+            JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
+        ],
     )
     async def _reload_store(self) -> None:
         """Reload store and check for addon updates."""

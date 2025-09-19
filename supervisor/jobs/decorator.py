@@ -405,6 +405,15 @@ class Job(CoreSysAttributes):
             )
 
         if (
+            JobCondition.HOME_ASSISTANT_CORE_SUPPORTED in used_conditions
+            and UnsupportedReason.HOME_ASSISTANT_CORE_VERSION
+            in coresys.sys_resolution.unsupported
+        ):
+            raise JobConditionException(
+                f"'{method_name}' blocked from execution, unsupported Home Assistant Core version"
+            )
+
+        if (
             JobCondition.HOST_NETWORK in used_conditions
             and not coresys.sys_dbus.network.is_connected
         ):
