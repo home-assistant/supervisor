@@ -267,7 +267,7 @@ class APIHost(CoreSysAttributes):
             # entries=cursor[[:num_skip]:num_entries]
             range_header = f"entries=:-{lines - 1}:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX if follow else lines}"
         elif latest:
-            range_header = f"entries=0:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
+            range_header = f"entries=:0:{SYSTEMD_JOURNAL_GATEWAYD_LINES_MAX}"
         elif RANGE in request.headers:
             range_header = request.headers[RANGE]
         else:
