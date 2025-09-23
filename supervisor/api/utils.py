@@ -193,7 +193,6 @@ def api_return_ok(data: dict[str, Any] | list[Any] | None = None) -> web.Respons
 async def api_validate(
     schema: vol.Schema | vol.All,
     request: web.Request,
-    origin: list[str] | None = None,
 ) -> dict[str, Any]:
     """Validate request data with schema."""
     data: dict[str, Any] = await request.json(loads=json_loads)
@@ -201,14 +200,6 @@ async def api_validate(
         data_validated = schema(data)
     except vol.Invalid as ex:
         raise APIError(humanize_error(data, ex)) from None
-
-    if not origin:
-        return data_validated
-
-    for origin_value in origin:
-        if origin_value not in data_validated:
-            continue
-        data_validated[origin_value] = data[origin_value]
 
     return data_validated
 
