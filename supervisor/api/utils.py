@@ -20,7 +20,6 @@ from ..const import (
     JSON_EXTRA_FIELDS,
     JSON_JOB_ID,
     JSON_MESSAGE,
-    JSON_MESSAGE_TEMPLATE,
     JSON_RESULT,
     REQUEST_FROM,
     RESULT_ERROR,
@@ -170,8 +169,6 @@ def api_return_error(
                 result[JSON_JOB_ID] = job_id
             if error and error.error_key:
                 result[JSON_ERROR_KEY] = error.error_key
-            if error and error.message_template:
-                result[JSON_MESSAGE_TEMPLATE] = error.message_template
             if error and error.extra_fields:
                 result[JSON_EXTRA_FIELDS] = error.extra_fields
 

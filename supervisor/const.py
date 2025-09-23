@@ -77,7 +77,6 @@ JSON_MESSAGE = "message"
 JSON_RESULT = "result"
 JSON_JOB_ID = "job_id"
 JSON_ERROR_KEY = "error_key"
-JSON_MESSAGE_TEMPLATE = "message_template"
 JSON_EXTRA_FIELDS = "extra_fields"
 
 RESULT_ERROR = "error"
