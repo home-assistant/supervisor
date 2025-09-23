@@ -554,16 +554,13 @@ async def test_api_store_addons_addon_availability_arch_not_supported(
         assert resp.status == 400
         result = await resp.json()
         assert result["error_key"] == "addon_not_supported_architecture_error"
-        assert (
-            result["message_template"]
-            == "Add-on {slug} not supported on this platform, supported architectures: {architectures}"
-        )
         assert result["extra_fields"] == {
             "slug": "test_arch_addon",
-            "architectures": ", ".join(supported_architectures),
+            "architectures": (architectures := ", ".join(supported_architectures)),
         }
-        assert result["message"] == result["message_template"].format(
-            **result["extra_fields"]
+        assert (
+            result["message"]
+            == f"Add-on test_arch_addon not supported on this platform, supported architectures: {architectures}"
         )
 
 
@@ -620,16 +617,13 @@ async def test_api_store_addons_addon_availability_machine_not_supported(
         assert resp.status == 400
         result = await resp.json()
         assert result["error_key"] == "addon_not_supported_machine_type_error"
-        assert (
-            result["message_template"]
-            == "Add-on {slug} not supported on this machine, supported machine types: {machine_types}"
-        )
         assert result["extra_fields"] == {
             "slug": "test_machine_addon",
-            "machine_types": ", ".join(supported_machines),
+            "machine_types": (machine_types := ", ".join(supported_machines)),
         }
-        assert result["message"] == result["message_template"].format(
-            **result["extra_fields"]
+        assert (
+            result["message"]
+            == f"Add-on test_machine_addon not supported on this machine, supported machine types: {machine_types}"
         )
 
 
@@ -683,16 +677,13 @@ async def test_api_store_addons_addon_availability_homeassistant_version_too_old
         assert resp.status == 400
         result = await resp.json()
         assert result["error_key"] == "addon_not_supported_home_assistant_version_error"
-        assert (
-            result["message_template"]
-            == "Add-on {slug} not supported on this system, requires Home Assistant version {version} or greater"
-        )
         assert result["extra_fields"] == {
             "slug": "test_version_addon",
             "version": "2023.1.1",
         }
-        assert result["message"] == result["message_template"].format(
-            **result["extra_fields"]
+        assert (
+            result["message"]
+            == "Add-on test_version_addon not supported on this system, requires Home Assistant version 2023.1.1 or greater"
         )
 
 
