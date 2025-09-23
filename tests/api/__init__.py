@@ -64,7 +64,7 @@ async def common_test_api_advanced_logs(
     logs_call = journald_logs.call_args_list[1]
     assert logs_call[1]["params"]["SYSLOG_IDENTIFIER"] == syslog_identifier
     assert logs_call[1]["params"]["CONTAINER_LOG_EPOCH"] == "12345"
-    assert logs_call[1]["range_header"] == "entries=0:18446744073709551615"
+    assert logs_call[1]["range_header"] == "entries=:0:18446744073709551615"
 
     journald_logs.reset_mock()
 
