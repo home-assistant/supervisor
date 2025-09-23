@@ -134,7 +134,7 @@ jobs:
         if: needs.init.outputs.publish == 'true'
         uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
         with:
-          cosign-release: "v2.4.3"
+          cosign-release: "v2.5.3"
 
       - name: Install dirhash and calc hash
         if: needs.init.outputs.publish == 'true'
