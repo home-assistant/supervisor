@@ -187,7 +187,7 @@ class AddonOptions(CoreSysAttributes):
 
             # Device valid
             self.devices.add(device)
-            return str(device.path)
+            return str(value)
 
         raise vol.Invalid(
             f"Fatal error for option '{key}' with type '{typ}' in {self._name} ({self._slug})"

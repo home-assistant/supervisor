@@ -306,7 +306,7 @@ class APIAddons(CoreSysAttributes):
         )
 
         # Validate/Process Body
-        body = await api_validate(addon_schema, request, origin=[ATTR_OPTIONS])
+        body = await api_validate(addon_schema, request)
         if ATTR_OPTIONS in body:
             addon.options = body[ATTR_OPTIONS]
         if ATTR_BOOT in body:
