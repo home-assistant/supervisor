@@ -279,6 +279,7 @@ class JobManager(FileConfiguration, CoreSysAttributes):
                 sync.progress_allocation * job_data["progress"]
             )
             # Using max would always trigger on change even if progress was unchanged
+            # pylint: disable-next=R1731
             if parent_job.progress < progress:  # noqa: PLR1730
                 parent_job.progress = progress
 
