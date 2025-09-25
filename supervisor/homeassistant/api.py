@@ -15,8 +15,6 @@ from multidict import MultiMapping
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError, HomeAssistantAuthError
-from ..jobs.const import JobConcurrency
-from ..jobs.decorator import Job
 from ..utils import check_port, version_is_new_enough
 from .const import LANDINGPAGE
 
@@ -43,14 +41,17 @@ class HomeAssistantAPI(CoreSysAttributes):
         # We don't persist access tokens. Instead we fetch new ones when needed
         self.access_token: str | None = None
         self._access_token_expires: datetime | None = None
+        self._token_lock: asyncio.Lock = asyncio.Lock()
 
-    @Job(
-        name="home_assistant_api_ensure_access_token",
-        internal=True,
-        concurrency=JobConcurrency.QUEUE,
-    )
     async def ensure_access_token(self) -> None:
-        """Ensure there is an access token."""
+        """Ensure there is a valid access token.
+
+        Raises:
+            HomeAssistantAuthError: When we cannot get a valid token
+            aiohttp.ClientError: On network or connection errors
+            TimeoutError: On request timeouts
+
+        """
         if (
             self.access_token
             and self._access_token_expires
@@ -58,7 +59,15 @@ class HomeAssistantAPI(CoreSysAttributes):
         ):
             return
 
-        with suppress(asyncio.TimeoutError, aiohttp.ClientError):
+        async with self._token_lock:
+            # Double-check after acquiring lock (avoid race condition)
+            if (
+                self.access_token
+                and self._access_token_expires
+                and self._access_token_expires > datetime.now(tz=UTC)
+            ):
+                return
+
             async with self.sys_websession.post(
                 f"{self.sys_homeassistant.api_url}/auth/token",
                 timeout=aiohttp.ClientTimeout(total=30),
@@ -101,10 +110,9 @@ class HomeAssistantAPI(CoreSysAttributes):
             headers[hdrs.CONTENT_TYPE] = content_type
 
         for _ in (1, 2):
-            await self.ensure_access_token()
-            headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
-
             try:
+                await self.ensure_access_token()
+                headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
                 async with getattr(self.sys_websession, method)(
                     url,
                     data=data,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 import logging
 from typing import Any, TypeVar, cast
 
@@ -202,7 +203,8 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             if self._client is not None and self._client.connected:
                 return self._client
 
-            await self.sys_homeassistant.api.ensure_access_token()
+            with suppress(asyncio.TimeoutError, aiohttp.ClientError):
+                await self.sys_homeassistant.api.ensure_access_token()
             client = await WSClient.connect_with_auth(
                 self.sys_websession,
                 self.sys_loop,
