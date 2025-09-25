@@ -1003,7 +1003,7 @@ async def test_internal_jobs_no_notify(coresys: CoreSys, ha_ws_client: AsyncMock
                     "name": "test_internal_jobs_no_notify_default",
                     "reference": None,
                     "uuid": ANY,
-                    "progress": 0,
+                    "progress": 100,
                     "stage": None,
                     "done": True,
                     "parent_id": None,
@@ -1450,14 +1450,11 @@ async def test_progress_syncing(coresys: CoreSys):
             name="test_progress_syncing_execute",
             child_job_syncs=[
                 ChildJobSyncFilter(
-                    "test_progress_syncing_child_execute",
-                    starting_progress=0,
-                    progress_allocation=0.5,
+                    "test_progress_syncing_child_execute", progress_allocation=0.5
                 ),
                 ChildJobSyncFilter(
                     "test_progress_syncing_group_child",
                     reference="test",
-                    starting_progress=50,
                     progress_allocation=0.5,
                 ),
             ],

@@ -77,7 +77,6 @@ class ChildJobSyncFilter:
 
     name: str
     reference: str | None | type[DEFAULT] = DEFAULT
-    starting_progress: float = field(default=0.0, validator=[ge(0.0), lt(100.0)])
     progress_allocation: float = field(default=1.0, validator=[gt(0.0), le(1.0)])
 
     def matches(self, job: SupervisorJob) -> bool:
@@ -180,8 +179,14 @@ class SupervisorJob:
         try:
             token = _CURRENT_JOB.set(self.uuid)
             yield self
+        # Cannot have an else without an except so we do nothing and re-raise
+        except:  # noqa: TRY203
+            raise
+        else:
+            self.update(progress=100, done=True)
         finally:
-            self.done = True
+            if not self.done:
+                self.done = True
             if token:
                 _CURRENT_JOB.reset(token)
 
@@ -202,12 +207,14 @@ class SupervisorJob:
             self.stage = stage
         if extra != DEFAULT:
             self.extra = extra
+
+        # Done has special event. use that to trigger on change if included
+        # If not then just use any other field to trigger
+        self.on_change = on_change
         if done is not None:
             self.done = done
-
-        self.on_change = on_change
-        # Just triggers the normal on change
-        self.reference = self.reference
+        else:
+            self.reference = self.reference
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
@@ -325,8 +332,8 @@ class JobManager(FileConfiguration, CoreSysAttributes):
                         job.parent_job_syncs.append(
                             ParentJobSync(
                                 curr_parent.uuid,
-                                sync.starting_progress,
-                                sync.progress_allocation,
+                                starting_progress=curr_parent.progress,
+                                progress_allocation=sync.progress_allocation,
                             )
                         )
                         break
