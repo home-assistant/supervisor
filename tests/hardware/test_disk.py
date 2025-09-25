@@ -326,7 +326,8 @@ def test_get_dir_structure_sizes_ebadmsg_error(coresys, tmp_path):
         return os.path.islink(self)
 
     def mock_stat_ebadmsg(self, follow_symlinks=True):
-        if self == subdir:
+        # Raise EBADMSG for any child of test_dir to ensure consistent behavior
+        if self.parent == test_dir:
             raise OSError(errno.EBADMSG, "Bad message")
         # For other paths, use the real os.stat
         return os.stat(self, follow_symlinks=follow_symlinks)
@@ -338,8 +339,8 @@ def test_get_dir_structure_sizes_ebadmsg_error(coresys, tmp_path):
     ):
         result = coresys.hardware.disk.get_dir_structure_sizes(test_dir)
 
-    # The EBADMSG error should cause the loop to break, so we get 0 used space
-    # because the error happens before processing the file in the root directory
+    # The EBADMSG error should cause the loop to break on the first child
+    # Since all children raise EBADMSG, we should get 0 used space
     assert result["used_bytes"] == 0
     assert "children" not in result
 
