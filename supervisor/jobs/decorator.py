@@ -24,7 +24,7 @@ from ..resolution.const import (
     UnsupportedReason,
 )
 from ..utils.sentry import async_capture_exception
-from . import SupervisorJob
+from . import ChildJobSyncFilter, SupervisorJob
 from .const import JobConcurrency, JobCondition, JobThrottle
 from .job_group import JobGroup
 
@@ -48,6 +48,7 @@ class Job(CoreSysAttributes):
         | None = None,
         throttle_max_calls: int | None = None,
         internal: bool = False,
+        child_job_syncs: list[ChildJobSyncFilter] | None = None,
     ):  # pylint: disable=too-many-positional-arguments
         """Initialize the Job decorator.
 
@@ -61,6 +62,7 @@ class Job(CoreSysAttributes):
             throttle_period (timedelta | Callable | None): Throttle period as a timedelta or a callable returning a timedelta (for throttled jobs).
             throttle_max_calls (int | None): Maximum number of calls allowed within the throttle period (for rate-limited jobs).
             internal (bool): Whether the job is internal (not exposed through the Supervisor API). Defaults to False.
+            child_job_syncs (list[ChildJobSyncFilter] | None): Use if jobs progress should be kept in sync with progress of one or more of its child jobs.ye
 
         Raises:
             RuntimeError: If job name is not unique, or required throttle parameters are missing for the selected throttle policy.
@@ -80,6 +82,7 @@ class Job(CoreSysAttributes):
         self._last_call: dict[str | None, datetime] = {}
         self._rate_limited_calls: dict[str | None, list[datetime]] | None = None
         self._internal = internal
+        self._child_job_syncs = child_job_syncs
 
         self.concurrency = concurrency
         self.throttle = throttle
@@ -258,6 +261,7 @@ class Job(CoreSysAttributes):
                 job = _job__use_existing
                 job.name = self.name
                 job.internal = self._internal
+                job.child_job_syncs = self._child_job_syncs
                 if job_group:
                     job.reference = job_group.job_reference
             else:
@@ -265,6 +269,7 @@ class Job(CoreSysAttributes):
                     self.name,
                     job_group.job_reference if job_group else None,
                     internal=self._internal,
+                    child_job_syncs=self._child_job_syncs,
                 )
 
             try:

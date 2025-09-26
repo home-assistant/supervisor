@@ -19,7 +19,7 @@ from supervisor.exceptions import (
 )
 from supervisor.host.const import HostFeature
 from supervisor.host.manager import HostManager
-from supervisor.jobs import JobSchedulerOptions, SupervisorJob
+from supervisor.jobs import ChildJobSyncFilter, JobSchedulerOptions, SupervisorJob
 from supervisor.jobs.const import JobConcurrency, JobThrottle
 from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.jobs.job_group import JobGroup
@@ -1003,7 +1003,7 @@ async def test_internal_jobs_no_notify(coresys: CoreSys, ha_ws_client: AsyncMock
                     "name": "test_internal_jobs_no_notify_default",
                     "reference": None,
                     "uuid": ANY,
-                    "progress": 0,
+                    "progress": 100,
                     "stage": None,
                     "done": True,
                     "parent_id": None,
@@ -1415,3 +1415,87 @@ async def test_core_supported(coresys: CoreSys, caplog: pytest.LogCaptureFixture
 
     coresys.jobs.ignore_conditions = [JobCondition.HOME_ASSISTANT_CORE_SUPPORTED]
     assert await test.execute()
+
+
+async def test_progress_syncing(coresys: CoreSys):
+    """Test progress syncing from child jobs to parent."""
+    group_child_event = asyncio.Event()
+    child_event = asyncio.Event()
+    execute_event = asyncio.Event()
+    main_event = asyncio.Event()
+
+    class TestClassGroup(JobGroup):
+        """Test class group."""
+
+        def __init__(self, coresys: CoreSys) -> None:
+            super().__init__(coresys, "test_class_group", "test")
+
+        @Job(name="test_progress_syncing_group_child", internal=True)
+        async def test_progress_syncing_group_child(self):
+            """Test progress syncing group child."""
+            coresys.jobs.current.progress = 50
+            main_event.set()
+            await group_child_event.wait()
+            coresys.jobs.current.progress = 100
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+            self.test_group = TestClassGroup(coresys)
+
+        @Job(
+            name="test_progress_syncing_execute",
+            child_job_syncs=[
+                ChildJobSyncFilter(
+                    "test_progress_syncing_child_execute", progress_allocation=0.5
+                ),
+                ChildJobSyncFilter(
+                    "test_progress_syncing_group_child",
+                    reference="test",
+                    progress_allocation=0.5,
+                ),
+            ],
+        )
+        async def test_progress_syncing_execute(self):
+            """Test progress syncing execute."""
+            await self.test_progress_syncing_child_execute()
+            await self.test_group.test_progress_syncing_group_child()
+            main_event.set()
+            await execute_event.wait()
+
+        @Job(name="test_progress_syncing_child_execute", internal=True)
+        async def test_progress_syncing_child_execute(self):
+            """Test progress syncing child execute."""
+            coresys.jobs.current.progress = 50
+            main_event.set()
+            await child_event.wait()
+            coresys.jobs.current.progress = 100
+
+    test = TestClass(coresys)
+    job, task = coresys.jobs.schedule_job(
+        test.test_progress_syncing_execute, JobSchedulerOptions()
+    )
+
+    # First child should've set parent job to 25% progress
+    await main_event.wait()
+    assert job.progress == 25
+
+    # Now we run to middle of second job which should put us at 75%
+    main_event.clear()
+    child_event.set()
+    await main_event.wait()
+    assert job.progress == 75
+
+    # Finally let it run to the end and see progress is 100%
+    main_event.clear()
+    group_child_event.set()
+    await main_event.wait()
+    assert job.progress == 100
+
+    # Release and check it is done
+    execute_event.set()
+    await task
+    assert job.done
