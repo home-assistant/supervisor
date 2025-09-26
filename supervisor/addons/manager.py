@@ -20,7 +20,6 @@ from ..exceptions import (
     CoreDNSError,
     DockerError,
     HassioError,
-    HomeAssistantAPIError,
 )
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
@@ -351,8 +350,7 @@ class AddonManager(CoreSysAttributes):
         # Update ingress
         if had_ingress != addon.ingress_panel:
             await self.sys_ingress.reload()
-            with suppress(HomeAssistantAPIError):
-                await self.sys_ingress.update_hass_panel(addon)
+            await self.sys_ingress.update_hass_panel(addon)
 
         return wait_for_start
 

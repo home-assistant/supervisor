@@ -72,7 +72,6 @@ from ..exceptions import (
     AddonsJobError,
     ConfigurationFileError,
     DockerError,
-    HomeAssistantAPIError,
     HostAppArmorError,
 )
 from ..hardware.data import Device
@@ -842,8 +841,7 @@ class Addon(AddonModel):
         # Cleanup Ingress panel from sidebar
         if self.ingress_panel:
             self.ingress_panel = False
-            with suppress(HomeAssistantAPIError):
-                await self.sys_ingress.update_hass_panel(self)
+            await self.sys_ingress.update_hass_panel(self)
 
         # Cleanup Ingress dynamic port assignment
         need_ingress_token_cleanup = False

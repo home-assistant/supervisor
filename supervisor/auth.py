@@ -132,8 +132,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
                 _LOGGER.warning("Unauthorized login for '%s'", username)
                 await self._dismatch_cache(username, password)
                 return False
-        except HomeAssistantAPIError:
-            _LOGGER.error("Can't request auth on Home Assistant!")
+        except HomeAssistantAPIError as err:
+            _LOGGER.error("Can't request auth on Home Assistant: %s", err)
         finally:
             self._running.pop(username, None)
 
@@ -152,8 +152,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
                     return
 
                 _LOGGER.warning("The user '%s' is not registered", username)
-        except HomeAssistantAPIError:
-            _LOGGER.error("Can't request password reset on Home Assistant!")
+        except HomeAssistantAPIError as err:
+            _LOGGER.error("Can't request password reset on Home Assistant: %s", err)
 
         raise AuthPasswordResetError()
 

@@ -52,5 +52,5 @@ class ResolutionNotify(CoreSysAttributes):
                         _LOGGER.debug("Successfully created persistent_notification")
                     else:
                         _LOGGER.error("Can't create persistant notification")
-            except HomeAssistantAPIError:
-                _LOGGER.error("Can't create persistant notification")
+            except HomeAssistantAPIError as err:
+                _LOGGER.error("Can't create persistant notification: %s", err)
