@@ -195,6 +195,7 @@ class Supervisor(CoreSysAttributes):
             if temp_dir:
                 await self.sys_run_in_executor(temp_dir.cleanup)
 
+    @Job(name="supervisor_update")
     async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Supervisor version."""
         version = version or self.latest_version or self.version
@@ -221,8 +222,14 @@ class Supervisor(CoreSysAttributes):
 
         # Update container
         _LOGGER.info("Update Supervisor to version %s", version)
+
+        # Assume for now the docker image pull is 100% of this task. But from a user
+        # perspective that isn't true. Should consider allocating a fixed amount of
+        # progress to the app armor update and restart to improve accuracy
         try:
-            await self.instance.install(version, image=image)
+            await self.instance.install(
+                version, image=image, progress_job_id=self.sys_jobs.current.uuid
+            )
             await self.instance.update_start_tag(image, version)
         except DockerError as err:
             self.sys_resolution.create_issue(
@@ -237,6 +244,8 @@ class Supervisor(CoreSysAttributes):
         self.sys_config.image = image
         await self.sys_config.save_data()
 
+        # Normally we'd set the progress bar to 100% at the end. But once Supervisor stops
+        # we it's gone so for this one we'll just leave it wherever it was after image pull
         self.sys_create_task(self.sys_core.stop())
 
     @Job(
