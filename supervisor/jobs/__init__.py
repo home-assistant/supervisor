@@ -1,5 +1,7 @@
 """Supervisor job manager."""
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Callable, Coroutine, Generator
 from contextlib import contextmanager, suppress
@@ -10,6 +12,7 @@ import logging
 from typing import Any, Self
 from uuid import uuid4
 
+from attr.validators import gt, lt
 from attrs import Attribute, define, field
 from attrs.setters import convert as attr_convert, frozen, validate as attr_validate
 from attrs.validators import ge, le
@@ -47,13 +50,13 @@ def _remove_current_job(context: Context) -> Context:
     return context
 
 
-def _invalid_if_done(instance: "SupervisorJob", *_) -> None:
+def _invalid_if_done(instance: SupervisorJob, *_) -> None:
     """Validate that job is not done."""
     if instance.done:
         raise ValueError("Cannot update a job that is done")
 
 
-def _on_change(instance: "SupervisorJob", attribute: Attribute, value: Any) -> Any:
+def _on_change(instance: SupervisorJob, attribute: Attribute, value: Any) -> Any:
     """Forward a change to a field on to the listener if defined."""
     value = attr_convert(instance, attribute, value)
     value = attr_validate(instance, attribute, value)
@@ -62,10 +65,32 @@ def _on_change(instance: "SupervisorJob", attribute: Attribute, value: Any) -> A
     return value
 
 
-def _invalid_if_started(instance: "SupervisorJob", *_) -> None:
+def _invalid_if_started(instance: SupervisorJob, *_) -> None:
     """Validate that job has not been started."""
     if instance.done is not None:
         raise ValueError("Field cannot be updated once job has started")
+
+
+@define(frozen=True)
+class ChildJobSyncFilter:
+    """Filter to identify a child job to sync progress from."""
+
+    name: str
+    reference: str | None | type[DEFAULT] = DEFAULT
+    progress_allocation: float = field(default=1.0, validator=[gt(0.0), le(1.0)])
+
+    def matches(self, job: SupervisorJob) -> bool:
+        """Return true if job matches filter."""
+        return job.name == self.name and self.reference in (DEFAULT, job.reference)
+
+
+@define(frozen=True)
+class ParentJobSync:
+    """Parent job sync details."""
+
+    uuid: str
+    starting_progress: float = field(validator=[ge(0.0), lt(100.0)])
+    progress_allocation: float = field(validator=[gt(0.0), le(1.0)])
 
 
 @define
@@ -103,13 +128,15 @@ class SupervisorJob:
     )
     parent_id: str | None = field(factory=_CURRENT_JOB.get, on_setattr=frozen)
     done: bool | None = field(init=False, default=None, on_setattr=_on_change)
-    on_change: Callable[["SupervisorJob", Attribute, Any], None] | None = None
+    on_change: Callable[[SupervisorJob, Attribute, Any], None] | None = None
     internal: bool = field(default=False)
     errors: list[SupervisorJobError] = field(
         init=False, factory=list, on_setattr=_on_change
     )
     release_event: asyncio.Event | None = None
     extra: dict[str, Any] | None = None
+    child_job_syncs: list[ChildJobSyncFilter] | None = None
+    parent_job_syncs: list[ParentJobSync] = field(init=False, factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         """Return dictionary representation."""
@@ -152,8 +179,14 @@ class SupervisorJob:
         try:
             token = _CURRENT_JOB.set(self.uuid)
             yield self
+        # Cannot have an else without an except so we do nothing and re-raise
+        except:  # noqa: TRY203
+            raise
+        else:
+            self.update(progress=100, done=True)
         finally:
-            self.done = True
+            if not self.done:
+                self.done = True
             if token:
                 _CURRENT_JOB.reset(token)
 
@@ -174,12 +207,14 @@ class SupervisorJob:
             self.stage = stage
         if extra != DEFAULT:
             self.extra = extra
+
+        # Done has special event. use that to trigger on change if included
+        # If not then just use any other field to trigger
+        self.on_change = on_change
         if done is not None:
             self.done = done
-
-        self.on_change = on_change
-        # Just triggers the normal on change
-        self.reference = self.reference
+        else:
+            self.reference = self.reference
 
 
 class JobManager(FileConfiguration, CoreSysAttributes):
@@ -225,16 +260,35 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         """Return true if there is an active job for the current asyncio task."""
         return _CURRENT_JOB.get() is not None
 
-    def _notify_on_job_change(
+    def _on_job_change(
         self, job: SupervisorJob, attribute: Attribute, value: Any
     ) -> None:
-        """Notify Home Assistant of a change to a job and bus on job start/end."""
+        """Take on change actions such as notify home assistant and sync progress."""
+        # Job object will be before the change. Combine the change with current data
         if attribute.name == "errors":
             value = [err.as_dict() for err in value]
+        job_data = job.as_dict() | {attribute.name: value}
 
-        self.sys_homeassistant.websocket.supervisor_event(
-            WSEvent.JOB, job.as_dict() | {attribute.name: value}
-        )
+        # Notify Home Assistant of change if its not internal
+        if not job.internal:
+            self.sys_homeassistant.websocket.supervisor_event(WSEvent.JOB, job_data)
+
+        # If we have any parent job syncs, sync progress to them
+        for sync in job.parent_job_syncs:
+            try:
+                parent_job = self.get_job(sync.uuid)
+            except JobNotFound:
+                # Shouldn't happen but failure to find a parent for progress
+                # reporting shouldn't raise and break the active job
+                continue
+
+            progress = sync.starting_progress + (
+                sync.progress_allocation * job_data["progress"]
+            )
+            # Using max would always trigger on change even if progress was unchanged
+            # pylint: disable-next=R1731
+            if parent_job.progress < progress:  # noqa: PLR1730
+                parent_job.progress = progress
 
         if attribute.name == "done":
             if value is False:
@@ -249,16 +303,41 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         initial_stage: str | None = None,
         internal: bool = False,
         parent_id: str | None = DEFAULT,  # type: ignore
+        child_job_syncs: list[ChildJobSyncFilter] | None = None,
     ) -> SupervisorJob:
         """Create a new job."""
         job = SupervisorJob(
             name,
             reference=reference,
             stage=initial_stage,
-            on_change=None if internal else self._notify_on_job_change,
+            on_change=self._on_job_change,
             internal=internal,
+            child_job_syncs=child_job_syncs,
             **({} if parent_id == DEFAULT else {"parent_id": parent_id}),  # type: ignore
         )
+
+        # Shouldn't happen but inability to find a parent for progress reporting
+        # shouldn't raise and break the active job
+        with suppress(JobNotFound):
+            curr_parent = job
+            while curr_parent.parent_id:
+                curr_parent = self.get_job(curr_parent.parent_id)
+                if not curr_parent.child_job_syncs:
+                    continue
+
+                # Break after first match at each parent as it doesn't make sense
+                # to match twice. But it could match multiple parents
+                for sync in curr_parent.child_job_syncs:
+                    if sync.matches(job):
+                        job.parent_job_syncs.append(
+                            ParentJobSync(
+                                curr_parent.uuid,
+                                starting_progress=curr_parent.progress,
+                                progress_allocation=sync.progress_allocation,
+                            )
+                        )
+                        break
+
         self._jobs[job.uuid] = job
         return job
 

@@ -1110,6 +1110,7 @@ def _make_backup_message_for_assert(
     reference: str,
     stage: str | None,
     done: bool = False,
+    progress: float = 0.0,
 ):
     """Make a backup message to use for assert test."""
     return {
@@ -1120,7 +1121,7 @@ def _make_backup_message_for_assert(
                 "name": f"backup_manager_{action}",
                 "reference": reference,
                 "uuid": ANY,
-                "progress": 0,
+                "progress": progress,
                 "stage": stage,
                 "done": done,
                 "parent_id": None,
@@ -1132,13 +1133,12 @@ def _make_backup_message_for_assert(
     }
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup_progress(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: MagicMock,
     ha_ws_client: AsyncMock,
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test progress is tracked during backups."""
     container.status = "running"
@@ -1182,7 +1182,10 @@ async def test_backup_progress(
             reference=full_backup.slug, stage="await_addon_restarts"
         ),
         _make_backup_message_for_assert(
-            reference=full_backup.slug, stage="await_addon_restarts", done=True
+            reference=full_backup.slug,
+            stage="await_addon_restarts",
+            done=True,
+            progress=100,
         ),
     ]
 
@@ -1227,18 +1230,17 @@ async def test_backup_progress(
             reference=partial_backup.slug,
             stage="finishing_file",
             done=True,
+            progress=100,
         ),
     ]
 
 
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
 async def test_restore_progress(
     coresys: CoreSys,
-    supervisor_internet,
     install_addon_ssh: Addon,
     container: MagicMock,
     ha_ws_client: AsyncMock,
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test progress is tracked during backups."""
     container.status = "running"
@@ -1320,6 +1322,7 @@ async def test_restore_progress(
             reference=full_backup.slug,
             stage="await_home_assistant_restart",
             done=True,
+            progress=100,
         ),
     ]
 
@@ -1358,6 +1361,7 @@ async def test_restore_progress(
             reference=folders_backup.slug,
             stage="folders",
             done=True,
+            progress=100,
         ),
     ]
 
@@ -1404,17 +1408,17 @@ async def test_restore_progress(
             reference=addon_backup.slug,
             stage="addons",
             done=True,
+            progress=100,
         ),
     ]
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_freeze_thaw(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: MagicMock,
     ha_ws_client: AsyncMock,
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test manual freeze and thaw for external snapshots."""
     container.status = "running"
@@ -1460,7 +1464,11 @@ async def test_freeze_thaw(
                 action="thaw_all", reference=None, stage=None
             ),
             _make_backup_message_for_assert(
-                action="freeze_all", reference=None, stage="addons", done=True
+                action="freeze_all",
+                reference=None,
+                stage="addons",
+                done=True,
+                progress=100,
             ),
         ]
 
@@ -1488,7 +1496,11 @@ async def test_freeze_thaw(
                 action="thaw_all", reference=None, stage="addons"
             ),
             _make_backup_message_for_assert(
-                action="thaw_all", reference=None, stage="addons", done=True
+                action="thaw_all",
+                reference=None,
+                stage="addons",
+                done=True,
+                progress=100,
             ),
         ]
 

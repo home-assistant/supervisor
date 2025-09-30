@@ -219,7 +219,7 @@ async def test_notify_on_change(coresys: CoreSys, ha_ws_client: AsyncMock):
                     "name": TEST_JOB,
                     "reference": "test",
                     "uuid": ANY,
-                    "progress": 50,
+                    "progress": 100,
                     "stage": "test",
                     "done": True,
                     "parent_id": None,
