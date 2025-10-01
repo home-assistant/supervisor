@@ -472,3 +472,18 @@ def test_ulimits_invalid_values():
     config["ulimits"] = {"nofile": {"invalid_key": 1000}}
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Missing hard value in detailed format
+    config["ulimits"] = {"nofile": {"soft": 1000}}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Missing soft value in detailed format
+    config["ulimits"] = {"nofile": {"hard": 1000}}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Empty dict in detailed format
+    config["ulimits"] = {"nofile": {}}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)

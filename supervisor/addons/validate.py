@@ -431,8 +431,8 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
                     vol.Coerce(int),  # Simple format for individual entries
                     vol.Schema(
                         {  # Detailed format for individual entries
-                            vol.Optional("soft"): vol.Coerce(int),
-                            vol.Optional("hard"): vol.Coerce(int),
+                            vol.Required("soft"): vol.Coerce(int),
+                            vol.Required("hard"): vol.Coerce(int),
                         }
                     ),
                 )

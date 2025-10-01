@@ -324,12 +324,10 @@ class DockerAddon(DockerInterface):
                 # Simple format: both soft and hard limits are the same
                 limits.append(docker.types.Ulimit(name=name, soft=config, hard=config))
             elif isinstance(config, dict):
-                # Detailed format: separate soft and hard limits
-                soft = config.get("soft", config.get("hard", 0))
-                hard = config.get("hard", config.get("soft", 0))
-                # Always add the ulimit if it's a valid dict format (even if values are 0)
-                if "soft" in config or "hard" in config:
-                    limits.append(docker.types.Ulimit(name=name, soft=soft, hard=hard))
+                # Detailed format: both soft and hard limits are mandatory
+                soft = config["soft"]
+                hard = config["hard"]
+                limits.append(docker.types.Ulimit(name=name, soft=soft, hard=hard))
 
         # Return None if no ulimits are present
         if limits:
