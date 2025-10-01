@@ -52,6 +52,8 @@ class HomeAssistantAPI(CoreSysAttributes):
             TimeoutError: On request timeouts
 
         """
+        # Fast path check without lock (avoid unnecessary locking
+        # for the majority of calls).
         if (
             self.access_token
             and self._access_token_expires
