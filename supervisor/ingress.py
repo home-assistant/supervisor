@@ -200,7 +200,9 @@ class Ingress(FileConfiguration, CoreSysAttributes):
                     _LOGGER.info("Update Ingress as panel for %s", addon.slug)
                 else:
                     _LOGGER.warning(
-                        "Fails Ingress panel for %s with %i", addon.slug, resp.status
+                        "Failed to update the Ingress panel for %s with %i",
+                        addon.slug,
+                        resp.status,
                     )
         except HomeAssistantAPIError as err:
             _LOGGER.error("Panel update request failed for %s: %s", addon.slug, err)
