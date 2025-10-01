@@ -169,10 +169,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         async with self.make_request("get", path) as resp:
             if resp.status in (200, 201):
                 return await resp.json()
-            else:
-                raise HomeAssistantAPIError(
-                    f"Home Assistant Core API return {resp.status}"
-                )
+            raise HomeAssistantAPIError(f"Home Assistant Core API return {resp.status}")
 
     async def get_config(self) -> dict[str, Any]:
         """Return Home Assistant config."""
