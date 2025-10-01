@@ -318,7 +318,10 @@ def test_not_journald_addon(
 
 
 async def test_addon_run_docker_error(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+    coresys: CoreSys,
+    addonsdata_system: dict[str, Data],
+    path_extern,
+    tmp_supervisor_data: Path,
 ):
     """Test docker error when addon is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
