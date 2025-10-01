@@ -28,6 +28,7 @@ from ..exceptions import (
     HomeAssistantUpdateError,
     JobException,
 )
+from ..jobs import ChildJobSyncFilter
 from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobConcurrency, JobThrottle
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
@@ -224,6 +225,13 @@ class HomeAssistantCore(JobGroup):
         ],
         on_condition=HomeAssistantJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        # We assume for now the docker image pull is 100% of this task. But from
+        # a user perspective that isn't true. Other steps that take time which
+        # is not accounted for in progress include: partial backup, image
+        # cleanup, and Home Assistant restart
+        child_job_syncs=[
+            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+        ],
     )
     async def update(
         self,
@@ -261,18 +269,12 @@ class HomeAssistantCore(JobGroup):
             )
 
         # process an update
-        # Assume for now the docker image pull is 100% of this task. But from a user
-        # perspective that isn't true. Other steps we could consider allocating a fixed
-        # amount of progress for to improve accuracy include: partial backup, image
-        # cleanup, and Home Assistant restart
         async def _update(to_version: AwesomeVersion) -> None:
             """Run Home Assistant update."""
             _LOGGER.info("Updating Home Assistant to version %s", to_version)
             try:
                 await self.instance.update(
-                    to_version,
-                    image=self.sys_updater.image_homeassistant,
-                    progress_job_id=self.sys_jobs.current.uuid,
+                    to_version, image=self.sys_updater.image_homeassistant
                 )
             except DockerError as err:
                 raise HomeAssistantUpdateError(
@@ -290,11 +292,6 @@ class HomeAssistantCore(JobGroup):
             await self.sys_homeassistant.save_data()
             with suppress(DockerError):
                 await self.instance.cleanup(old_image=old_image)
-
-            # If the user never left the update screen they may actually see the progress bar again depending
-            # on how frontend works. Just in case (and as good practice) set job to 100% at successful end
-            if self.sys_jobs.current.progress != 100:
-                self.sys_jobs.current.progress = 100
 
         # Update Home Assistant
         with suppress(HomeAssistantError):

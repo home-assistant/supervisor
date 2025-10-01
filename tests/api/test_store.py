@@ -766,44 +766,44 @@ async def test_api_progress_updates_addon_install_update(
             "done": False,
         },
         {
-            "stage": "Downloading",
+            "stage": None,
             "progress": 0.1,
             "done": False,
         },
         {
-            "stage": "Downloading",
+            "stage": None,
             "progress": 1.2,
             "done": False,
         },
         {
-            "stage": "Downloading",
+            "stage": None,
             "progress": 2.8,
             "done": False,
         },
     ]
     assert events[-5:] == [
         {
-            "stage": "Extracting",
+            "stage": None,
             "progress": 97.2,
             "done": False,
         },
         {
-            "stage": "Extracting",
+            "stage": None,
             "progress": 98.4,
             "done": False,
         },
         {
-            "stage": "Extracting",
+            "stage": None,
             "progress": 99.4,
             "done": False,
         },
         {
-            "stage": "Pull complete",
+            "stage": None,
             "progress": 100,
             "done": False,
         },
         {
-            "stage": "Pull complete",
+            "stage": None,
             "progress": 100,
             "done": True,
         },

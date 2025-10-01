@@ -628,8 +628,6 @@ class DockerAddon(DockerInterface):
         image: str | None = None,
         latest: bool = False,
         arch: CpuArch | None = None,
-        *,
-        progress_job_id: str | None = None,
     ) -> None:
         """Update a docker image."""
         image = image or self.image
@@ -645,7 +643,6 @@ class DockerAddon(DockerInterface):
             latest=latest,
             arch=arch,
             need_build=self.addon.latest_need_build,
-            progress_job_id=progress_job_id,
         )
 
     @Job(
@@ -661,15 +658,12 @@ class DockerAddon(DockerInterface):
         arch: CpuArch | None = None,
         *,
         need_build: bool | None = None,
-        progress_job_id: str | None = None,
     ) -> None:
         """Pull Docker image or build it."""
         if need_build is None and self.addon.need_build or need_build:
             await self._build(version, image)
         else:
-            await super().install(
-                version, image, latest, arch, progress_job_id=progress_job_id
-            )
+            await super().install(version, image, latest, arch)
 
     async def _build(self, version: AwesomeVersion, image: str | None = None) -> None:
         """Build a Docker container."""

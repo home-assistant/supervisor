@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator, Generator
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -102,11 +102,7 @@ async def test_image_added_removed_on_update(
         await coresys.addons.update(TEST_ADDON_SLUG)
         build.assert_not_called()
         install.assert_called_once_with(
-            AwesomeVersion("10.0.0"),
-            "test/amd64-my-ssh-addon",
-            False,
-            "amd64",
-            progress_job_id=ANY,
+            AwesomeVersion("10.0.0"), "test/amd64-my-ssh-addon", False, "amd64"
         )
 
     assert install_addon_ssh.need_update is False

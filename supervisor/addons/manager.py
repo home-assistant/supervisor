@@ -19,6 +19,7 @@ from ..exceptions import (
     DockerError,
     HassioError,
 )
+from ..jobs import ChildJobSyncFilter
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
@@ -181,6 +182,9 @@ class AddonManager(CoreSysAttributes):
         conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.QUEUE,
+        child_job_syncs=[
+            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+        ],
     )
     async def install(
         self, slug: str, *, validation_complete: asyncio.Event | None = None
@@ -201,13 +205,7 @@ class AddonManager(CoreSysAttributes):
         if validation_complete:
             validation_complete.set()
 
-        await Addon(self.coresys, slug).install(
-            progress_job_id=self.sys_jobs.current.uuid
-        )
-
-        # Make sure our job finishes at 100% so users aren't confused
-        if self.sys_jobs.current.progress != 100:
-            self.sys_jobs.current.progress = 100
+        await Addon(self.coresys, slug).install()
 
         _LOGGER.info("Add-on '%s' successfully installed", slug)
 
@@ -234,6 +232,13 @@ class AddonManager(CoreSysAttributes):
         name="addon_manager_update",
         conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
+        # We assume for now the docker image pull is 100% of this task for progress
+        # allocation. But from a user perspective that isn't true. Other steps
+        # that take time which is not accounted for in progress include:
+        # partial backup, image cleanup, apparmor update, and addon restart
+        child_job_syncs=[
+            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+        ],
     )
     async def update(
         self,
@@ -276,15 +281,7 @@ class AddonManager(CoreSysAttributes):
                 addons=[addon.slug],
             )
 
-        # Assume for now the docker image pull is 100% of this task. But from a user
-        # perspective that isn't true. Other steps we could consider allocating a fixed
-        # amount of progress for to improve accuracy include: partial backup, image
-        # cleanup, apparmor update, and addon restart
-        task = await addon.update(progress_job_id=self.sys_jobs.current.uuid)
-
-        # Make sure our job finishes at 100% so users aren't confused
-        if self.sys_jobs.current.progress != 100:
-            self.sys_jobs.current.progress = 100
+        task = await addon.update()
 
         _LOGGER.info("Add-on '%s' successfully updated", slug)
         return task
