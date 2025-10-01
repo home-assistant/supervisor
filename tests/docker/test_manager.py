@@ -293,6 +293,8 @@ async def test_cidfile_cleanup_handles_oserror(
     # Mock the containers.get method and cidfile cleanup to raise OSError
     with (
         patch.object(docker.containers, "get", return_value=mock_container),
+        patch("pathlib.Path.is_dir", return_value=False),
+        patch("pathlib.Path.is_file", return_value=True),
         patch(
             "pathlib.Path.unlink", side_effect=OSError("File not found")
         ) as mock_unlink,
@@ -306,3 +308,46 @@ async def test_cidfile_cleanup_handles_oserror(
 
         # Verify cidfile cleanup was attempted
         mock_unlink.assert_called_once_with(missing_ok=True)
+
+
+async def test_run_container_with_leftover_cidfile_directory(
+    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
+):
+    """Test container creation removes leftover cidfile directory before creating new one.
+
+    This can happen when Docker auto-starts a container with restart policy
+    before Supervisor could write the CID file, causing Docker to create
+    the bind mount source as a directory.
+    """
+    # Mock container
+    mock_container = MagicMock()
+    mock_container.id = "test_container_id_new"
+
+    container_name = "test_container"
+    cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
+
+    # Create a leftover directory (simulating Docker's behavior)
+    cidfile_path.mkdir()
+    assert cidfile_path.is_dir()
+
+    # Mock container creation
+    with patch.object(
+        docker.containers, "create", return_value=mock_container
+    ) as create_mock:
+        # Execute run with a container name
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            lambda kwrgs: docker.run(**kwrgs),
+            {"image": "test_image", "tag": "latest", "name": container_name},
+        )
+
+        # Verify container was created
+        create_mock.assert_called_once()
+
+        # Verify new cidfile was written as a file (not directory)
+        assert cidfile_path.exists()
+        assert cidfile_path.is_file()
+        assert cidfile_path.read_text() == mock_container.id
+
+        assert result == mock_container
