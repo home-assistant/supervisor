@@ -275,3 +275,25 @@ async def test_parsing_boots_none():
         boots.append((index, boot_id))
 
     assert boots == []
+
+
+async def test_parsing_non_utf8_message():
+    """Test that non-UTF-8 bytes in message are replaced with replacement character."""
+    journal_logs, stream = _journal_logs_mock()
+    # Include invalid UTF-8 sequence (0xff is not valid UTF-8)
+    stream.feed_data(b"MESSAGE=Hello, \xff world!\n\n")
+    _, line = await anext(journal_logs_reader(journal_logs))
+    assert line == "Hello, \ufffd world!"
+
+
+async def test_parsing_non_utf8_in_binary_message():
+    """Test that non-UTF-8 bytes in binary format message are replaced."""
+    journal_logs, stream = _journal_logs_mock()
+    # Binary format with invalid UTF-8 sequence
+    stream.feed_data(
+        b"ID=1\n"
+        b"MESSAGE\n\x0f\x00\x00\x00\x00\x00\x00\x00Hello, \xff world!\n"
+        b"AFTER=after\n\n"
+    )
+    _, line = await anext(journal_logs_reader(journal_logs))
+    assert line == "Hello, \ufffd world!"
