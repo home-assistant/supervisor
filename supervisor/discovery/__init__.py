@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from contextlib import suppress
 import logging
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -119,7 +118,7 @@ class Discovery(CoreSysAttributes, FileConfiguration):
         data = attr.asdict(message)
         data.pop(ATTR_CONFIG)
 
-        with suppress(HomeAssistantAPIError):
+        try:
             async with self.sys_homeassistant.api.make_request(
                 command,
                 f"api/hassio_push/discovery/{message.uuid}",
@@ -128,5 +127,5 @@ class Discovery(CoreSysAttributes, FileConfiguration):
             ):
                 _LOGGER.info("Discovery %s message send", message.uuid)
                 return
-
-        _LOGGER.warning("Discovery %s message fail", message.uuid)
+        except HomeAssistantAPIError as err:
+            _LOGGER.error("Discovery %s message failed: %s", message.uuid, err)

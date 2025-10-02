@@ -15,6 +15,7 @@ from .const import (
     IngressSessionDataDict,
 )
 from .coresys import CoreSys, CoreSysAttributes
+from .exceptions import HomeAssistantAPIError
 from .utils import check_port
 from .utils.common import FileConfiguration
 from .utils.dt import utc_from_timestamp, utcnow
@@ -191,12 +192,17 @@ class Ingress(FileConfiguration, CoreSysAttributes):
 
         # Update UI
         method = "post" if addon.ingress_panel else "delete"
-        async with self.sys_homeassistant.api.make_request(
-            method, f"api/hassio_push/panel/{addon.slug}"
-        ) as resp:
-            if resp.status in (200, 201):
-                _LOGGER.info("Update Ingress as panel for %s", addon.slug)
-            else:
-                _LOGGER.warning(
-                    "Fails Ingress panel for %s with %i", addon.slug, resp.status
-                )
+        try:
+            async with self.sys_homeassistant.api.make_request(
+                method, f"api/hassio_push/panel/{addon.slug}"
+            ) as resp:
+                if resp.status in (200, 201):
+                    _LOGGER.info("Update Ingress as panel for %s", addon.slug)
+                else:
+                    _LOGGER.warning(
+                        "Failed to update the Ingress panel for %s with %i",
+                        addon.slug,
+                        resp.status,
+                    )
+        except HomeAssistantAPIError as err:
+            _LOGGER.error("Panel update request failed for %s: %s", addon.slug, err)

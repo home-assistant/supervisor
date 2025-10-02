@@ -77,10 +77,10 @@ class APIProxy(CoreSysAttributes):
                 yield resp
                 return
 
-        except HomeAssistantAuthError:
-            _LOGGER.error("Authenticate error on API for request %s", path)
-        except HomeAssistantAPIError:
-            _LOGGER.error("Error on API for request %s", path)
+        except HomeAssistantAuthError as err:
+            _LOGGER.error("Authenticate error on API for request %s: %s", path, err)
+        except HomeAssistantAPIError as err:
+            _LOGGER.error("Error on API for request %s: %s", path, err)
         except aiohttp.ClientError as err:
             _LOGGER.error("Client error on API %s request %s", path, err)
         except TimeoutError:
