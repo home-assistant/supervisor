@@ -1,6 +1,7 @@
 """Test Docker interface."""
 
 import asyncio
+from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, call, patch
 
@@ -281,6 +282,7 @@ async def test_run_missing_image(
     container: MagicMock,
     capture_exception: Mock,
     path_extern,
+    tmp_supervisor_data: Path,
 ):
     """Test run captures the exception when image is missing."""
     coresys.docker.containers.create.side_effect = [NotFound("missing"), MagicMock()]
