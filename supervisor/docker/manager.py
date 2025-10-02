@@ -326,10 +326,18 @@ class DockerAPI(CoreSysAttributes):
         if name:
             cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
 
-            # Remove the file if it exists e.g. as a leftover from unclean shutdown
-            if cidfile_path.is_file():
-                with suppress(OSError):
+            # Remove the file/directory if it exists e.g. as a leftover from unclean shutdown
+            # Note: Can be a directory if Docker auto-started container with restart policy
+            # before Supervisor could write the CID file
+            with suppress(OSError):
+                if cidfile_path.is_dir():
+                    cidfile_path.rmdir()
+                elif cidfile_path.is_file():
                     cidfile_path.unlink(missing_ok=True)
+
+            # Create empty CID file before adding it to volumes to prevent Docker
+            # from creating it as a directory if container auto-starts
+            cidfile_path.touch()
 
             extern_cidfile_path = (
                 self.coresys.config.path_extern_cid_files / f"{name}.cid"
