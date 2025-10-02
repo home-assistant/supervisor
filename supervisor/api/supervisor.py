@@ -9,6 +9,7 @@ from aiohttp import web
 import voluptuous as vol
 
 from ..const import (
+    ATTR_ADDONS,
     ATTR_ADDONS_REPOSITORIES,
     ATTR_ARCH,
     ATTR_AUTO_UPDATE,
@@ -24,13 +25,18 @@ from ..const import (
     ATTR_DIAGNOSTICS,
     ATTR_FORCE_SECURITY,
     ATTR_HEALTHY,
+    ATTR_ICON,
     ATTR_IP_ADDRESS,
     ATTR_LOGGING,
     ATTR_MEMORY_LIMIT,
     ATTR_MEMORY_PERCENT,
     ATTR_MEMORY_USAGE,
+    ATTR_NAME,
     ATTR_NETWORK_RX,
     ATTR_NETWORK_TX,
+    ATTR_REPOSITORY,
+    ATTR_SLUG,
+    ATTR_STATE,
     ATTR_SUPPORTED,
     ATTR_TIMEZONE,
     ATTR_UPDATE_AVAILABLE,
@@ -102,6 +108,20 @@ class APISupervisor(CoreSysAttributes):
             ATTR_AUTO_UPDATE: self.sys_updater.auto_update,
             ATTR_DETECT_BLOCKING_IO: BlockBusterManager.is_enabled(),
             ATTR_COUNTRY: self.sys_config.country,
+            # Deprecated
+            ATTR_ADDONS: [
+                {
+                    ATTR_NAME: addon.name,
+                    ATTR_SLUG: addon.slug,
+                    ATTR_VERSION: addon.version,
+                    ATTR_VERSION_LATEST: addon.latest_version,
+                    ATTR_UPDATE_AVAILABLE: addon.need_update,
+                    ATTR_STATE: addon.state,
+                    ATTR_REPOSITORY: addon.repository,
+                    ATTR_ICON: addon.with_icon,
+                }
+                for addon in self.sys_addons.local.values()
+            ],
         }
 
     @api_process
