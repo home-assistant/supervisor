@@ -117,7 +117,7 @@ async def journal_logs_reader(
                 continue
 
             # strip \n for simple fields before decoding
-            entries[field_name] = data[:-1].decode("utf-8")
+            entries[field_name] = data[:-1].decode("utf-8", errors="replace")
 
 
 def _parse_boot_json(boot_json_bytes: bytes) -> tuple[int, str]:
