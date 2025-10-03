@@ -72,6 +72,7 @@ from ..const import (
     ATTR_TYPE,
     ATTR_UART,
     ATTR_UDEV,
+    ATTR_ULIMITS,
     ATTR_URL,
     ATTR_USB,
     ATTR_VERSION,
@@ -461,6 +462,11 @@ class AddonModel(JobGroup, ABC):
     def with_udev(self) -> bool:
         """Return True if the add-on have his own udev."""
         return self.data[ATTR_UDEV]
+
+    @property
+    def ulimits(self) -> dict[str, Any]:
+        """Return ulimits configuration."""
+        return self.data[ATTR_ULIMITS]
 
     @property
     def with_kernel_modules(self) -> bool:

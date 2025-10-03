@@ -318,7 +318,18 @@ class DockerAddon(DockerInterface):
             mem = 128 * 1024 * 1024
             limits.append(docker.types.Ulimit(name="memlock", soft=mem, hard=mem))
 
-        # Return None if no capabilities is present
+        # Add configurable ulimits from add-on config
+        for name, config in self.addon.ulimits.items():
+            if isinstance(config, int):
+                # Simple format: both soft and hard limits are the same
+                limits.append(docker.types.Ulimit(name=name, soft=config, hard=config))
+            elif isinstance(config, dict):
+                # Detailed format: both soft and hard limits are mandatory
+                soft = config["soft"]
+                hard = config["hard"]
+                limits.append(docker.types.Ulimit(name=name, soft=soft, hard=hard))
+
+        # Return None if no ulimits are present
         if limits:
             return limits
         return None

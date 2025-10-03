@@ -503,3 +503,93 @@ async def test_addon_new_device_no_haos(
     await install_addon_ssh.stop()
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
+
+
+async def test_ulimits_integration(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+):
+    """Test ulimits integration with Docker addon."""
+    docker_addon = DockerAddon(coresys, install_addon_ssh)
+
+    # Test default case (no ulimits, no realtime)
+    assert docker_addon.ulimits is None
+
+    # Test with realtime enabled (should have built-in ulimits)
+    install_addon_ssh.data["realtime"] = True
+    ulimits = docker_addon.ulimits
+    assert ulimits is not None
+    assert len(ulimits) == 2
+    # Check for rtprio limit
+    rtprio_limit = next((u for u in ulimits if u.name == "rtprio"), None)
+    assert rtprio_limit is not None
+    assert rtprio_limit.soft == 90
+    assert rtprio_limit.hard == 99
+    # Check for memlock limit
+    memlock_limit = next((u for u in ulimits if u.name == "memlock"), None)
+    assert memlock_limit is not None
+    assert memlock_limit.soft == 128 * 1024 * 1024
+    assert memlock_limit.hard == 128 * 1024 * 1024
+
+    # Test with configurable ulimits (simple format)
+    install_addon_ssh.data["realtime"] = False
+    install_addon_ssh.data["ulimits"] = {"nofile": 65535, "nproc": 32768}
+    ulimits = docker_addon.ulimits
+    assert ulimits is not None
+    assert len(ulimits) == 2
+
+    nofile_limit = next((u for u in ulimits if u.name == "nofile"), None)
+    assert nofile_limit is not None
+    assert nofile_limit.soft == 65535
+    assert nofile_limit.hard == 65535
+
+    nproc_limit = next((u for u in ulimits if u.name == "nproc"), None)
+    assert nproc_limit is not None
+    assert nproc_limit.soft == 32768
+    assert nproc_limit.hard == 32768
+
+    # Test with configurable ulimits (detailed format)
+    install_addon_ssh.data["ulimits"] = {
+        "nofile": {"soft": 20000, "hard": 40000},
+        "memlock": {"soft": 67108864, "hard": 134217728},
+    }
+    ulimits = docker_addon.ulimits
+    assert ulimits is not None
+    assert len(ulimits) == 2
+
+    nofile_limit = next((u for u in ulimits if u.name == "nofile"), None)
+    assert nofile_limit is not None
+    assert nofile_limit.soft == 20000
+    assert nofile_limit.hard == 40000
+
+    memlock_limit = next((u for u in ulimits if u.name == "memlock"), None)
+    assert memlock_limit is not None
+    assert memlock_limit.soft == 67108864
+    assert memlock_limit.hard == 134217728
+
+    # Test mixed format and realtime (realtime + custom ulimits)
+    install_addon_ssh.data["realtime"] = True
+    install_addon_ssh.data["ulimits"] = {
+        "nofile": 65535,
+        "core": {"soft": 0, "hard": 0},  # Disable core dumps
+    }
+    ulimits = docker_addon.ulimits
+    assert ulimits is not None
+    assert (
+        len(ulimits) == 4
+    )  # rtprio, memlock (from realtime) + nofile, core (from config)
+
+    # Check realtime limits still present
+    rtprio_limit = next((u for u in ulimits if u.name == "rtprio"), None)
+    assert rtprio_limit is not None
+
+    # Check custom limits added
+    nofile_limit = next((u for u in ulimits if u.name == "nofile"), None)
+    assert nofile_limit is not None
+    assert nofile_limit.soft == 65535
+    assert nofile_limit.hard == 65535
+
+    core_limit = next((u for u in ulimits if u.name == "core"), None)
+    assert core_limit is not None
+    assert core_limit.soft == 0
+    assert core_limit.hard == 0
