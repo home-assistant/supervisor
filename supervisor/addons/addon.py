@@ -205,7 +205,7 @@ class Addon(AddonModel):
         """Return True if a task is in progress."""
         return self.instance.in_progress
 
-    async def load(self) -> None:
+    async def load(self, *, initial_install: bool = False) -> None:
         """Async initialize of object."""
         self._manual_stop = (
             await self.sys_hardware.helper.last_boot() != self.sys_config.last_boot
@@ -226,6 +226,11 @@ class Addon(AddonModel):
         )
 
         await self._check_ingress_port()
+
+        # Image expected not to be here during install and will be installed later
+        if initial_install:
+            return
+
         default_image = self._image(self.data)
         try:
             await self.instance.attach(version=self.version)
@@ -774,7 +779,7 @@ class Addon(AddonModel):
             raise AddonsError("Missing from store, cannot install!")
 
         await self.sys_addons.data.install(self.addon_store)
-        await self.load()
+        await self.load(initial_install=True)
 
         def setup_data():
             if not self.path_data.is_dir():
@@ -796,6 +801,9 @@ class Addon(AddonModel):
         except DockerError as err:
             await self.sys_addons.data.uninstall(self)
             raise AddonsError() from err
+
+        self.persist[ATTR_IMAGE] = self.addon_store.image
+        await self.save_persist()
 
         # Add to addon manager
         self.sys_addons.local[self.slug] = self

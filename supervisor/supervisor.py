@@ -13,6 +13,8 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
+from supervisor.jobs import ChildJobSyncFilter
+
 from .const import (
     ATTR_SUPERVISOR_INTERNET,
     SUPERVISOR_VERSION,
@@ -195,6 +197,15 @@ class Supervisor(CoreSysAttributes):
             if temp_dir:
                 await self.sys_run_in_executor(temp_dir.cleanup)
 
+    @Job(
+        name="supervisor_update",
+        # We assume for now the docker image pull is 100% of this task. But from
+        # a user perspective that isn't true.  Other steps that take time which
+        # is not accounted for in progress include: app armor update and restart
+        child_job_syncs=[
+            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+        ],
+    )
     async def update(self, version: AwesomeVersion | None = None) -> None:
         """Update Supervisor version."""
         version = version or self.latest_version or self.version
@@ -221,6 +232,7 @@ class Supervisor(CoreSysAttributes):
 
         # Update container
         _LOGGER.info("Update Supervisor to version %s", version)
+
         try:
             await self.instance.install(version, image=image)
             await self.instance.update_start_tag(image, version)

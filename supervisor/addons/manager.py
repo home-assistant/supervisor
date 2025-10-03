@@ -9,8 +9,6 @@ from typing import Self, Union
 
 from attr import evolve
 
-from supervisor.jobs.const import JobConcurrency
-
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -21,6 +19,8 @@ from ..exceptions import (
     DockerError,
     HassioError,
 )
+from ..jobs import ChildJobSyncFilter
+from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..store.addon import AddonStore
@@ -182,6 +182,9 @@ class AddonManager(CoreSysAttributes):
         conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.QUEUE,
+        child_job_syncs=[
+            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+        ],
     )
     async def install(
         self, slug: str, *, validation_complete: asyncio.Event | None = None
@@ -229,6 +232,13 @@ class AddonManager(CoreSysAttributes):
         name="addon_manager_update",
         conditions=ADDON_UPDATE_CONDITIONS,
         on_condition=AddonsJobError,
+        # We assume for now the docker image pull is 100% of this task for progress
+        # allocation. But from a user perspective that isn't true. Other steps
+        # that take time which is not accounted for in progress include:
+        # partial backup, image cleanup, apparmor update, and addon restart
+        child_job_syncs=[
+            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+        ],
     )
     async def update(
         self,
@@ -271,7 +281,10 @@ class AddonManager(CoreSysAttributes):
                 addons=[addon.slug],
             )
 
-        return await addon.update()
+        task = await addon.update()
+
+        _LOGGER.info("Add-on '%s' successfully updated", slug)
+        return task
 
     @Job(
         name="addon_manager_rebuild",
