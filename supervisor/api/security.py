@@ -1,18 +1,13 @@
 """Init file for Supervisor Security RESTful API."""
 
-import asyncio
-import logging
 from typing import Any
 
 from aiohttp import web
-import attr
 import voluptuous as vol
 
 from ..const import ATTR_CONTENT_TRUST, ATTR_FORCE_SECURITY, ATTR_PWNED
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate
-
-_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 # pylint: disable=no-value-for-parameter
 SCHEMA_OPTIONS = vol.Schema(
@@ -54,6 +49,9 @@ class APISecurity(CoreSysAttributes):
 
     @api_process
     async def integrity_check(self, request: web.Request) -> dict[str, Any]:
-        """Run backend integrity check."""
-        result = await asyncio.shield(self.sys_security.integrity_check())
-        return attr.asdict(result)
+        """Run backend integrity check.
+
+        CodeNotary integrity checking has been removed. This endpoint now returns
+        an error indicating the feature is currently non-functional.
+        """
+        return {"error": "No integrity checking available"}

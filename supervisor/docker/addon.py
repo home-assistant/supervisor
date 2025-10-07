@@ -846,16 +846,6 @@ class DockerAddon(DockerInterface):
         ):
             self.sys_resolution.dismiss_issue(self.addon.device_access_missing_issue)
 
-    async def _validate_trust(self, image_id: str) -> None:
-        """Validate trust of content."""
-        if not self.addon.signed:
-            return
-
-        checksum = image_id.partition(":")[2]
-        return await self.sys_security.verify_content(
-            cast(str, self.addon.codenotary), checksum
-        )
-
     @Job(
         name="docker_addon_hardware_events",
         conditions=[JobCondition.OS_AGENT],
