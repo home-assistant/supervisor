@@ -5,7 +5,7 @@ from ipaddress import IPv4Address
 import logging
 import re
 
-from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
+from awesomeversion import AwesomeVersion
 from docker.types import Mount
 
 from ..const import LABEL_MACHINE
@@ -244,13 +244,3 @@ class DockerHomeAssistant(DockerInterface):
             self.image,
             self.sys_homeassistant.version,
         )
-
-    async def _validate_trust(self, image_id: str) -> None:
-        """Validate trust of content."""
-        try:
-            if self.version in {None, LANDINGPAGE} or self.version < _VERIFY_TRUST:
-                return
-        except AwesomeVersionCompareException:
-            return
-
-        await super()._validate_trust(image_id)

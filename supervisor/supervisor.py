@@ -23,8 +23,6 @@ from .coresys import CoreSys, CoreSysAttributes
 from .docker.stats import DockerStats
 from .docker.supervisor import DockerSupervisor
 from .exceptions import (
-    CodeNotaryError,
-    CodeNotaryUntrusted,
     DockerError,
     HostAppArmorError,
     SupervisorAppArmorError,
@@ -35,7 +33,6 @@ from .exceptions import (
 from .jobs.const import JobCondition, JobThrottle
 from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType, UnhealthyReason
-from .utils.codenotary import calc_checksum
 from .utils.sentry import async_capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -148,20 +145,6 @@ class Supervisor(CoreSysAttributes):
                 _LOGGER.error,
             ) from err
 
-        # Validate
-        try:
-            await self.sys_security.verify_own_content(calc_checksum(data))
-        except CodeNotaryUntrusted as err:
-            raise SupervisorAppArmorError(
-                "Content-Trust is broken for the AppArmor profile fetch!",
-                _LOGGER.critical,
-            ) from err
-        except CodeNotaryError as err:
-            raise SupervisorAppArmorError(
-                f"CodeNotary error while processing AppArmor fetch: {err!s}",
-                _LOGGER.error,
-            ) from err
-
         # Load
         temp_dir: TemporaryDirectory | None = None
 
@@ -260,13 +243,6 @@ class Supervisor(CoreSysAttributes):
         Return Coroutine.
         """
         return self.instance.logs()
-
-    def check_trust(self) -> Awaitable[None]:
-        """Calculate Supervisor docker content trust.
-
-        Return Coroutine.
-        """
-        return self.instance.check_trust()
 
     async def stats(self) -> DockerStats:
         """Return stats of Supervisor."""
