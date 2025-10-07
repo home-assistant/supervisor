@@ -28,6 +28,7 @@ from ..exceptions import (
     HomeAssistantUpdateError,
     JobException,
 )
+from ..jobs import ChildJobSyncFilter
 from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobConcurrency, JobThrottle
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
@@ -224,6 +225,13 @@ class HomeAssistantCore(JobGroup):
         ],
         on_condition=HomeAssistantJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
+        # We assume for now the docker image pull is 100% of this task. But from
+        # a user perspective that isn't true. Other steps that take time which
+        # is not accounted for in progress include: partial backup, image
+        # cleanup, and Home Assistant restart
+        child_job_syncs=[
+            ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+        ],
     )
     async def update(
         self,

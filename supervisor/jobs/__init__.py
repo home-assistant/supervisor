@@ -282,8 +282,10 @@ class JobManager(FileConfiguration, CoreSysAttributes):
                 # reporting shouldn't raise and break the active job
                 continue
 
-            progress = sync.starting_progress + (
-                sync.progress_allocation * job_data["progress"]
+            progress = min(
+                100,
+                sync.starting_progress
+                + (sync.progress_allocation * job_data["progress"]),
             )
             # Using max would always trigger on change even if progress was unchanged
             # pylint: disable-next=R1731

@@ -226,6 +226,7 @@ class Addon(AddonModel):
         )
 
         await self._check_ingress_port()
+
         default_image = self._image(self.data)
         try:
             await self.instance.attach(version=self.version)
@@ -774,7 +775,6 @@ class Addon(AddonModel):
             raise AddonsError("Missing from store, cannot install!")
 
         await self.sys_addons.data.install(self.addon_store)
-        await self.load()
 
         def setup_data():
             if not self.path_data.is_dir():
@@ -796,6 +796,9 @@ class Addon(AddonModel):
         except DockerError as err:
             await self.sys_addons.data.uninstall(self)
             raise AddonsError() from err
+
+        # Finish initialization and set up listeners
+        await self.load()
 
         # Add to addon manager
         self.sys_addons.local[self.slug] = self
