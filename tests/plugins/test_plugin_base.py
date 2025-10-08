@@ -17,7 +17,6 @@ from supervisor.exceptions import (
     AudioJobError,
     CliError,
     CliJobError,
-    CodeNotaryUntrusted,
     CoreDNSError,
     CoreDNSJobError,
     DockerError,
@@ -337,14 +336,12 @@ async def test_repair_failed(
         patch.object(
             DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
         ),
-        patch(
-            "supervisor.security.module.cas_validate", side_effect=CodeNotaryUntrusted
-        ),
+        patch.object(DockerInterface, "install", side_effect=DockerError),
     ):
         await plugin.repair()
 
     capture_exception.assert_called_once()
-    assert check_exception_chain(capture_exception.call_args[0][0], CodeNotaryUntrusted)
+    assert check_exception_chain(capture_exception.call_args[0][0], DockerError)
 
 
 @pytest.mark.parametrize(

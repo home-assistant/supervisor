@@ -41,11 +41,10 @@ async def test_api_security_options_pwned(api_client, coresys: CoreSys):
 async def test_api_integrity_check(
     api_client, coresys: CoreSys, supervisor_internet: AsyncMock
 ):
-    """Test security integrity check."""
-    coresys.security.content_trust = False
-
+    """Test security integrity check - now deprecated."""
     resp = await api_client.post("/security/integrity")
     result = await resp.json()
 
-    assert result["data"]["core"] == "untested"
-    assert result["data"]["supervisor"] == "untested"
+    # CodeNotary integrity check has been removed
+    assert "error" in result["data"]
+    assert "deprecated" in result["data"]["error"].lower()
