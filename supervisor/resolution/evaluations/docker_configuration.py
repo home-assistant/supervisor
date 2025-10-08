@@ -41,18 +41,18 @@ class EvaluateDockerConfiguration(EvaluateBase):
         storage_driver = self.sys_docker.info.storage
         logging_driver = self.sys_docker.info.logging
 
-        is_supported = True
+        is_unsupported = False
 
         if storage_driver not in EXPECTED_STORAGE:
-            is_supported = False
+            is_unsupported = True
             _LOGGER.warning(
                 "Docker storage driver %s is not supported!", storage_driver
             )
 
         if logging_driver != EXPECTED_LOGGING:
-            is_supported = False
+            is_unsupported = True
             _LOGGER.warning(
                 "Docker logging driver %s is not supported!", logging_driver
             )
 
-        return is_supported
+        return is_unsupported
