@@ -9,7 +9,7 @@ import logging
 from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
-from aiohttp import ClientWebSocketResponse, WSCloseCode
+from aiohttp import ClientWebSocketResponse, WSCloseCode, web
 from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
@@ -228,8 +228,6 @@ async def test_websocket_transport_none(
     caplog: pytest.LogCaptureFixture,
 ):
     """Test WebSocket connection with transport None is handled gracefully."""
-    from aiohttp import web
-
     # Get the API proxy instance from coresys
     api_proxy = APIProxy.__new__(APIProxy)
     api_proxy.coresys = coresys
