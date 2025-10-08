@@ -88,6 +88,7 @@ from ..const import (
     ATTR_TYPE,
     ATTR_UART,
     ATTR_UDEV,
+    ATTR_ULIMITS,
     ATTR_URL,
     ATTR_USB,
     ATTR_USER,
@@ -423,6 +424,20 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
             False,
         ),
         vol.Optional(ATTR_IMAGE): docker_image,
+        vol.Optional(ATTR_ULIMITS, default=dict): vol.Any(
+            {str: vol.Coerce(int)},  # Simple format: {name: limit}
+            {
+                str: vol.Any(
+                    vol.Coerce(int),  # Simple format for individual entries
+                    vol.Schema(
+                        {  # Detailed format for individual entries
+                            vol.Required("soft"): vol.Coerce(int),
+                            vol.Required("hard"): vol.Coerce(int),
+                        }
+                    ),
+                )
+            },
+        ),
         vol.Optional(ATTR_TIMEOUT, default=10): vol.All(
             vol.Coerce(int), vol.Range(min=10, max=300)
         ),
