@@ -16,6 +16,7 @@ jobs:
           days-before-close: 7
           stale-issue-label: "stale"
           exempt-issue-labels: "no-stale,Help%20wanted,help-wanted,pinned,rfc,security"
+          only-issue-types: "bug"
           stale-issue-message: >
             There hasn't been any activity on this issue recently. Due to the
             high number of incoming GitHub notifications, we have to clean some
