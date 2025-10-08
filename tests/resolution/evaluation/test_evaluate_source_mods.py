@@ -1,40 +1,22 @@
 """Test evaluation base."""
 
 # pylint: disable=import-error,protected-access
-import errno
-import os
-from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import CodeNotaryError, CodeNotaryUntrusted
-from supervisor.resolution.const import ContextType, IssueType
-from supervisor.resolution.data import Issue
 from supervisor.resolution.evaluations.source_mods import EvaluateSourceMods
 
 
 async def test_evaluation(coresys: CoreSys):
-    """Test evaluation."""
-    with patch(
-        "supervisor.resolution.evaluations.source_mods._SUPERVISOR_SOURCE",
-        Path(f"{os.getcwd()}/supervisor"),
-    ):
-        sourcemods = EvaluateSourceMods(coresys)
-        await coresys.core.set_state(CoreState.RUNNING)
+    """Test evaluation - CodeNotary removed."""
+    sourcemods = EvaluateSourceMods(coresys)
+    await coresys.core.set_state(CoreState.RUNNING)
 
-        assert sourcemods.reason not in coresys.resolution.unsupported
-        coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryUntrusted)
-        await sourcemods()
-        assert sourcemods.reason in coresys.resolution.unsupported
-
-        coresys.security.verify_own_content = AsyncMock(side_effect=CodeNotaryError)
-        await sourcemods()
-        assert sourcemods.reason not in coresys.resolution.unsupported
-
-        coresys.security.verify_own_content = AsyncMock()
-        await sourcemods()
-        assert sourcemods.reason not in coresys.resolution.unsupported
+    # CodeNotary checking removed, evaluation always returns False now
+    assert sourcemods.reason not in coresys.resolution.unsupported
+    await sourcemods()
+    assert sourcemods.reason not in coresys.resolution.unsupported
 
 
 async def test_did_run(coresys: CoreSys):
@@ -63,27 +45,11 @@ async def test_did_run(coresys: CoreSys):
 
 
 async def test_evaluation_error(coresys: CoreSys):
-    """Test error reading file during evaluation."""
+    """Test error reading file during evaluation - CodeNotary removed."""
     sourcemods = EvaluateSourceMods(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
-    corrupt_fs = Issue(IssueType.CORRUPT_FILESYSTEM, ContextType.SYSTEM)
 
+    # CodeNotary checking removed, evaluation always returns False now
     assert sourcemods.reason not in coresys.resolution.unsupported
-    assert corrupt_fs not in coresys.resolution.issues
-
-    with patch(
-        "supervisor.utils.codenotary.dirhash",
-        side_effect=(err := OSError()),
-    ):
-        err.errno = errno.EBUSY
-        await sourcemods()
-        assert sourcemods.reason not in coresys.resolution.unsupported
-        assert corrupt_fs in coresys.resolution.issues
-        assert coresys.core.healthy is True
-
-        coresys.resolution.dismiss_issue(corrupt_fs)
-        err.errno = errno.EBADMSG
-        await sourcemods()
-        assert sourcemods.reason not in coresys.resolution.unsupported
-        assert corrupt_fs in coresys.resolution.issues
-        assert coresys.core.healthy is False
+    await sourcemods()
+    assert sourcemods.reason not in coresys.resolution.unsupported
