@@ -2,16 +2,19 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.backups.manager import BackupManager
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.interface import DockerInterface
-from supervisor.homeassistant.api import APIState
+from supervisor.homeassistant.api import APIState, HomeAssistantAPI
+from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 
@@ -271,3 +274,96 @@ async def test_background_home_assistant_update_fails_fast(
     assert resp.status == 400
     body = await resp.json()
     assert body["message"] == "Version 2025.8.3 is already installed"
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_api_progress_updates_home_assistant_update(
+    api_client: TestClient, coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test progress updates sent to Home Assistant for updates."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.core.set_state(CoreState.RUNNING)
+    coresys.docker.docker.api.pull.return_value = load_json_fixture(
+        "docker_pull_image_log.json"
+    )
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    with (
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(
+            HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
+        ),
+    ):
+        resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
+
+    assert resp.status == 200
+
+    events = [
+        {
+            "stage": evt.args[0]["data"]["data"]["stage"],
+            "progress": evt.args[0]["data"]["data"]["progress"],
+            "done": evt.args[0]["data"]["data"]["done"],
+        }
+        for evt in ha_ws_client.async_send_command.call_args_list
+        if "data" in evt.args[0]
+        and evt.args[0]["data"]["event"] == WSEvent.JOB
+        and evt.args[0]["data"]["data"]["name"] == "home_assistant_core_update"
+    ]
+    assert events[:5] == [
+        {
+            "stage": None,
+            "progress": 0,
+            "done": None,
+        },
+        {
+            "stage": None,
+            "progress": 0,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 0.1,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 1.2,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 2.8,
+            "done": False,
+        },
+    ]
+    assert events[-5:] == [
+        {
+            "stage": None,
+            "progress": 97.2,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 98.4,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 99.4,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 100,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 100,
+            "done": True,
+        },
+    ]

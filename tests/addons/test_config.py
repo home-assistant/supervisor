@@ -419,3 +419,71 @@ def test_valid_schema():
     config["schema"] = {"field": "invalid"}
     with pytest.raises(vol.Invalid):
         assert vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_ulimits_simple_format():
+    """Test ulimits simple format validation."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config["ulimits"] = {"nofile": 65535, "nproc": 32768, "memlock": 134217728}
+
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    assert valid_config["ulimits"]["nofile"] == 65535
+    assert valid_config["ulimits"]["nproc"] == 32768
+    assert valid_config["ulimits"]["memlock"] == 134217728
+
+
+def test_ulimits_detailed_format():
+    """Test ulimits detailed format validation."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    config["ulimits"] = {
+        "nofile": {"soft": 20000, "hard": 40000},
+        "nproc": 32768,  # Mixed format should work
+        "memlock": {"soft": 67108864, "hard": 134217728},
+    }
+
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    assert valid_config["ulimits"]["nofile"]["soft"] == 20000
+    assert valid_config["ulimits"]["nofile"]["hard"] == 40000
+    assert valid_config["ulimits"]["nproc"] == 32768
+    assert valid_config["ulimits"]["memlock"]["soft"] == 67108864
+    assert valid_config["ulimits"]["memlock"]["hard"] == 134217728
+
+
+def test_ulimits_empty_dict():
+    """Test ulimits with empty dict (default)."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    valid_config = vd.SCHEMA_ADDON_CONFIG(config)
+    assert valid_config["ulimits"] == {}
+
+
+def test_ulimits_invalid_values():
+    """Test ulimits with invalid values."""
+    config = load_json_fixture("basic-addon-config.json")
+
+    # Invalid string values
+    config["ulimits"] = {"nofile": "invalid"}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Invalid detailed format
+    config["ulimits"] = {"nofile": {"invalid_key": 1000}}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Missing hard value in detailed format
+    config["ulimits"] = {"nofile": {"soft": 1000}}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Missing soft value in detailed format
+    config["ulimits"] = {"nofile": {"hard": 1000}}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)
+
+    # Empty dict in detailed format
+    config["ulimits"] = {"nofile": {}}
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(config)
