@@ -8,7 +8,7 @@ from ..const import UnsupportedReason
 from .base import EvaluateBase
 
 EXPECTED_LOGGING = "journald"
-EXPECTED_STORAGE = "overlay2"
+EXPECTED_STORAGE = ("overlay2", "overlayfs")
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -41,14 +41,18 @@ class EvaluateDockerConfiguration(EvaluateBase):
         storage_driver = self.sys_docker.info.storage
         logging_driver = self.sys_docker.info.logging
 
-        if storage_driver != EXPECTED_STORAGE:
+        is_unsupported = False
+
+        if storage_driver not in EXPECTED_STORAGE:
+            is_unsupported = True
             _LOGGER.warning(
                 "Docker storage driver %s is not supported!", storage_driver
             )
 
         if logging_driver != EXPECTED_LOGGING:
+            is_unsupported = True
             _LOGGER.warning(
                 "Docker logging driver %s is not supported!", logging_driver
             )
 
-        return storage_driver != EXPECTED_STORAGE or logging_driver != EXPECTED_LOGGING
+        return is_unsupported

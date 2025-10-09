@@ -25,13 +25,18 @@ async def test_evaluation(coresys: CoreSys):
     assert docker_configuration.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
-    coresys.docker.info.storage = EXPECTED_STORAGE
+    coresys.docker.info.storage = EXPECTED_STORAGE[0]
     coresys.docker.info.logging = "unsupported"
     await docker_configuration()
     assert docker_configuration.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
-    coresys.docker.info.storage = EXPECTED_STORAGE
+    coresys.docker.info.storage = "overlay2"
+    coresys.docker.info.logging = EXPECTED_LOGGING
+    await docker_configuration()
+    assert docker_configuration.reason not in coresys.resolution.unsupported
+
+    coresys.docker.info.storage = "overlayfs"
     coresys.docker.info.logging = EXPECTED_LOGGING
     await docker_configuration()
     assert docker_configuration.reason not in coresys.resolution.unsupported
