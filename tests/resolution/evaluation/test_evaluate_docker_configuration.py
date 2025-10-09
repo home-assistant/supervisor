@@ -25,7 +25,7 @@ async def test_evaluation(coresys: CoreSys):
     assert docker_configuration.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
-    coresys.docker.info.storage = EXPECTED_STORAGE
+    coresys.docker.info.storage = EXPECTED_STORAGE[0]
     coresys.docker.info.logging = "unsupported"
     await docker_configuration()
     assert docker_configuration.reason in coresys.resolution.unsupported
