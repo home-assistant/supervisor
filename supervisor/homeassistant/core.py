@@ -428,13 +428,6 @@ class HomeAssistantCore(JobGroup):
         """
         return self.instance.logs()
 
-    def check_trust(self) -> Awaitable[None]:
-        """Calculate HomeAssistant docker content trust.
-
-        Return Coroutine.
-        """
-        return self.instance.check_trust()
-
     async def stats(self) -> DockerStats:
         """Return stats of Home Assistant."""
         try:
