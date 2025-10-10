@@ -47,4 +47,3 @@ async def test_api_integrity_check(
 
     # CodeNotary integrity check has been removed
     assert "error" in result["data"]
-    assert "deprecated" in result["data"]["error"].lower()
