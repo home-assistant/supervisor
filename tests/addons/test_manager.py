@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import AsyncGenerator, Generator
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, call, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -514,19 +514,13 @@ async def test_shared_image_kept_on_uninstall(
     latest = f"{install_addon_example.image}:latest"
 
     await coresys.addons.uninstall("local_example2")
-    coresys.docker.images.remove.assert_not_called()
+    coresys.docker.images.delete.assert_not_called()
     assert not coresys.addons.get("local_example2", local_only=True)
 
     await coresys.addons.uninstall("local_example")
-    assert coresys.docker.images.remove.call_count == 2
-    assert coresys.docker.images.remove.call_args_list[0].kwargs == {
-        "image": latest,
-        "force": True,
-    }
-    assert coresys.docker.images.remove.call_args_list[1].kwargs == {
-        "image": image,
-        "force": True,
-    }
+    assert coresys.docker.images.delete.call_count == 2
+    assert coresys.docker.images.delete.call_args_list[0] == call(latest, force=True)
+    assert coresys.docker.images.delete.call_args_list[1] == call(image, force=True)
     assert not coresys.addons.get("local_example", local_only=True)
 
 
@@ -554,19 +548,17 @@ async def test_shared_image_kept_on_update(
     assert example_2.version == "1.2.0"
     assert install_addon_example_image.version == "1.2.0"
 
-    image_new = MagicMock()
-    image_new.id = "image_new"
-    image_old = MagicMock()
-    image_old.id = "image_old"
-    docker.images.get.side_effect = [image_new, image_old]
+    image_new = {"Id": "image_new", "RepoTags": ["image_new:latest"]}
+    image_old = {"Id": "image_old", "RepoTags": ["image_old:latest"]}
+    docker.images.inspect.side_effect = [image_new, image_old]
     docker.images.list.return_value = [image_new, image_old]
 
     with patch.object(DockerAPI, "pull_image", return_value=image_new):
         await coresys.addons.update("local_example2")
-        docker.images.remove.assert_not_called()
+        docker.images.delete.assert_not_called()
         assert example_2.version == "1.3.0"
 
-        docker.images.get.side_effect = [image_new]
+        docker.images.inspect.side_effect = [image_new]
         await coresys.addons.update("local_example_image")
-        docker.images.remove.assert_called_once_with("image_old", force=True)
+        docker.images.delete.assert_called_once_with("image_old", force=True)
         assert install_addon_example_image.version == "1.3.0"

@@ -6,17 +6,18 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Awaitable
 from contextlib import suppress
+from http import HTTPStatus
 import logging
 import re
 from time import time
 from typing import Any, cast
 from uuid import uuid4
 
+import aiodocker
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
 import docker
 from docker.models.containers import Container
-from docker.models.images import Image
 import requests
 
 from ..bus import EventListener
@@ -35,6 +36,7 @@ from ..exceptions import (
     CodeNotaryUntrusted,
     DockerAPIError,
     DockerError,
+    DockerHubRateLimitExceeded,
     DockerJobError,
     DockerLogOutOfOrder,
     DockerNotFound,
@@ -218,7 +220,7 @@ class DockerInterface(JobGroup, ABC):
         if not credentials:
             return
 
-        await self.sys_run_in_executor(self.sys_docker.docker.login, **credentials)
+        await self.sys_run_in_executor(self.sys_docker.dockerpy.login, **credentials)
 
     def _process_pull_image_log(
         self, install_job_id: str, reference: PullLogEntry
@@ -417,8 +419,7 @@ class DockerInterface(JobGroup, ABC):
             )
 
             # Pull new image
-            docker_image = await self.sys_run_in_executor(
-                self.sys_docker.pull_image,
+            docker_image = await self.sys_docker.pull_image(
                 self.sys_jobs.current.uuid,
                 image,
                 str(version),
@@ -427,13 +428,11 @@ class DockerInterface(JobGroup, ABC):
 
             # Validate content
             try:
-                await self._validate_trust(cast(str, docker_image.id))
+                await self._validate_trust(cast(str, docker_image["Id"]))
             except CodeNotaryError:
-                with suppress(docker.errors.DockerException):
-                    await self.sys_run_in_executor(
-                        self.sys_docker.images.remove,
-                        image=f"{image}:{version!s}",
-                        force=True,
+                with suppress(aiodocker.DockerError, requests.RequestException):
+                    await self.sys_docker.images.delete(
+                        f"{image}:{version!s}", force=True
                     )
                 raise
 
@@ -442,22 +441,25 @@ class DockerInterface(JobGroup, ABC):
                 _LOGGER.info(
                     "Tagging image %s with version %s as latest", image, version
                 )
-                await self.sys_run_in_executor(docker_image.tag, image, tag="latest")
+                await self.sys_docker.images.tag(
+                    docker_image["Id"], image, tag="latest"
+                )
         except docker.errors.APIError as err:
-            if err.status_code == 429:
+            if err.status_code == HTTPStatus.TOO_MANY_REQUESTS:
                 self.sys_resolution.create_issue(
                     IssueType.DOCKER_RATELIMIT,
                     ContextType.SYSTEM,
                     suggestions=[SuggestionType.REGISTRY_LOGIN],
                 )
-                _LOGGER.info(
-                    "Your IP address has made too many requests to Docker Hub which activated a rate limit. "
-                    "For more details see https://www.home-assistant.io/more-info/dockerhub-rate-limit"
-                )
+                raise DockerHubRateLimitExceeded(_LOGGER.error) from err
             raise DockerError(
                 f"Can't install {image}:{version!s}: {err}", _LOGGER.error
             ) from err
-        except (docker.errors.DockerException, requests.RequestException) as err:
+        except (
+            aiodocker.DockerError,
+            docker.errors.DockerException,
+            requests.RequestException,
+        ) as err:
             await async_capture_exception(err)
             raise DockerError(
                 f"Unknown error with {image}:{version!s} -> {err!s}", _LOGGER.error
@@ -476,14 +478,12 @@ class DockerInterface(JobGroup, ABC):
             if listener:
                 self.sys_bus.remove_listener(listener)
 
-        self._meta = docker_image.attrs
+        self._meta = docker_image
 
     async def exists(self) -> bool:
         """Return True if Docker image exists in local repository."""
-        with suppress(docker.errors.DockerException, requests.RequestException):
-            await self.sys_run_in_executor(
-                self.sys_docker.images.get, f"{self.image}:{self.version!s}"
-            )
+        with suppress(aiodocker.DockerError, requests.RequestException):
+            await self.sys_docker.images.inspect(f"{self.image}:{self.version!s}")
             return True
         return False
 
@@ -542,11 +542,11 @@ class DockerInterface(JobGroup, ABC):
                     ),
                 )
 
-        with suppress(docker.errors.DockerException, requests.RequestException):
+        with suppress(aiodocker.DockerError, requests.RequestException):
             if not self._meta and self.image:
-                self._meta = self.sys_docker.images.get(
+                self._meta = await self.sys_docker.images.inspect(
                     f"{self.image}:{version!s}"
-                ).attrs
+                )
 
         # Successful?
         if not self._meta:
@@ -614,14 +614,17 @@ class DockerInterface(JobGroup, ABC):
     )
     async def remove(self, *, remove_image: bool = True) -> None:
         """Remove Docker images."""
+        if not self.image or not self.version:
+            raise DockerError(
+                "Cannot determine image and/or version from metadata!", _LOGGER.error
+            )
+
         # Cleanup container
         with suppress(DockerError):
             await self.stop()
 
         if remove_image:
-            await self.sys_run_in_executor(
-                self.sys_docker.remove_image, self.image, self.version
-            )
+            await self.sys_docker.remove_image(self.image, self.version)
 
         self._meta = None
 
@@ -643,18 +646,16 @@ class DockerInterface(JobGroup, ABC):
         image_name = f"{expected_image}:{version!s}"
         if self.image == expected_image:
             try:
-                image: Image = await self.sys_run_in_executor(
-                    self.sys_docker.images.get, image_name
-                )
-            except (docker.errors.DockerException, requests.RequestException) as err:
+                image = await self.sys_docker.images.inspect(image_name)
+            except (aiodocker.DockerError, requests.RequestException) as err:
                 raise DockerError(
                     f"Could not get {image_name} for check due to: {err!s}",
                     _LOGGER.error,
                 ) from err
 
-            image_arch = f"{image.attrs['Os']}/{image.attrs['Architecture']}"
-            if "Variant" in image.attrs:
-                image_arch = f"{image_arch}/{image.attrs['Variant']}"
+            image_arch = f"{image['Os']}/{image['Architecture']}"
+            if "Variant" in image:
+                image_arch = f"{image_arch}/{image['Variant']}"
 
             # If we have an image and its the right arch, all set
             # It seems that newer Docker version return a variant for arm64 images.
@@ -716,11 +717,13 @@ class DockerInterface(JobGroup, ABC):
         version: AwesomeVersion | None = None,
     ) -> None:
         """Check if old version exists and cleanup."""
-        await self.sys_run_in_executor(
-            self.sys_docker.cleanup_old_images,
-            image or self.image,
-            version or self.version,
-            {old_image} if old_image else None,
+        if not (use_image := image or self.image):
+            raise DockerError("Cannot determine image from metadata!", _LOGGER.error)
+        if not (use_version := version or self.version):
+            raise DockerError("Cannot determine version from metadata!", _LOGGER.error)
+
+        await self.sys_docker.cleanup_old_images(
+            use_image, use_version, {old_image} if old_image else None
         )
 
     @Job(
@@ -772,10 +775,10 @@ class DockerInterface(JobGroup, ABC):
         """Return latest version of local image."""
         available_version: list[AwesomeVersion] = []
         try:
-            for image in await self.sys_run_in_executor(
-                self.sys_docker.images.list, self.image
+            for image in await self.sys_docker.images.list(
+                filters=f'{{"reference": ["{self.image}"]}}'
             ):
-                for tag in image.tags:
+                for tag in image["RepoTags"]:
                     version = AwesomeVersion(tag.partition(":")[2])
                     if version.strategy == AwesomeVersionStrategy.UNKNOWN:
                         continue
@@ -784,7 +787,7 @@ class DockerInterface(JobGroup, ABC):
             if not available_version:
                 raise ValueError()
 
-        except (docker.errors.DockerException, ValueError) as err:
+        except (aiodocker.DockerError, ValueError) as err:
             raise DockerNotFound(
                 f"No version found for {self.image}", _LOGGER.info
             ) from err
@@ -823,10 +826,10 @@ class DockerInterface(JobGroup, ABC):
     async def check_trust(self) -> None:
         """Check trust of exists Docker image."""
         try:
-            image = await self.sys_run_in_executor(
-                self.sys_docker.images.get, f"{self.image}:{self.version!s}"
+            image = await self.sys_docker.images.inspect(
+                f"{self.image}:{self.version!s}"
             )
-        except (docker.errors.DockerException, requests.RequestException):
+        except (aiodocker.DockerError, requests.RequestException):
             return
 
-        await self._validate_trust(cast(str, image.id))
+        await self._validate_trust(cast(str, image["Id"]))
