@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, call, patch
 
+import aiodocker
 from awesomeversion import AwesomeVersion
 from docker.errors import DockerException, NotFound
 from docker.models.containers import Container
-from docker.models.images import Image
 import pytest
 from requests import RequestException
 
@@ -57,35 +57,30 @@ async def test_docker_image_platform(
     platform: str,
 ):
     """Test platform set correctly from arch."""
-    with patch.object(
-        coresys.docker.images, "get", return_value=Mock(id="test:1.2.3")
-    ) as get:
-        await test_docker_interface.install(
-            AwesomeVersion("1.2.3"), "test", arch=cpu_arch
-        )
-        coresys.docker.docker.api.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform=platform, stream=True, decode=True
-        )
-        get.assert_called_once_with("test:1.2.3")
+    coresys.docker.images.inspect.return_value = {"Id": "test:1.2.3"}
+    await test_docker_interface.install(AwesomeVersion("1.2.3"), "test", arch=cpu_arch)
+    coresys.docker.dockerpy.api.pull.assert_called_once_with(
+        "test", tag="1.2.3", platform=platform, stream=True, decode=True
+    )
+    coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
 
 async def test_docker_image_default_platform(
     coresys: CoreSys, test_docker_interface: DockerInterface
 ):
     """Test platform set using supervisor arch when omitted."""
+    coresys.docker.images.inspect.return_value = {"Id": "test:1.2.3"}
     with (
         patch.object(
             type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
         ),
-        patch.object(
-            coresys.docker.images, "get", return_value=Mock(id="test:1.2.3")
-        ) as get,
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
-        coresys.docker.docker.api.pull.assert_called_once_with(
+        coresys.docker.dockerpy.api.pull.assert_called_once_with(
             "test", tag="1.2.3", platform="linux/386", stream=True, decode=True
         )
-        get.assert_called_once_with("test:1.2.3")
+
+    coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
 
 @pytest.mark.parametrize(
@@ -216,57 +211,40 @@ async def test_attach_existing_container(
 
 async def test_attach_container_failure(coresys: CoreSys):
     """Test attach fails to find container but finds image."""
-    container_collection = MagicMock()
-    container_collection.get.side_effect = DockerException()
-    image_collection = MagicMock()
-    image_config = {"Image": "sha256:abc123"}
-    image_collection.get.return_value = Image({"Config": image_config})
-    with (
-        patch(
-            "supervisor.docker.manager.DockerAPI.containers",
-            new=PropertyMock(return_value=container_collection),
-        ),
-        patch(
-            "supervisor.docker.manager.DockerAPI.images",
-            new=PropertyMock(return_value=image_collection),
-        ),
-        patch.object(type(coresys.bus), "fire_event") as fire_event,
-    ):
+    coresys.docker.containers.get.side_effect = DockerException()
+    coresys.docker.images.inspect.return_value.setdefault("Config", {})["Image"] = (
+        "sha256:abc123"
+    )
+    with patch.object(type(coresys.bus), "fire_event") as fire_event:
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
         assert not [
             event
             for event in fire_event.call_args_list
             if event.args[0] == BusEvent.DOCKER_CONTAINER_STATE_CHANGE
         ]
-        assert coresys.homeassistant.core.instance.meta_config == image_config
+        assert (
+            coresys.homeassistant.core.instance.meta_config["Image"] == "sha256:abc123"
+        )
 
 
 async def test_attach_total_failure(coresys: CoreSys):
     """Test attach fails to find container or image."""
-    container_collection = MagicMock()
-    container_collection.get.side_effect = DockerException()
-    image_collection = MagicMock()
-    image_collection.get.side_effect = DockerException()
-    with (
-        patch(
-            "supervisor.docker.manager.DockerAPI.containers",
-            new=PropertyMock(return_value=container_collection),
-        ),
-        patch(
-            "supervisor.docker.manager.DockerAPI.images",
-            new=PropertyMock(return_value=image_collection),
-        ),
-        pytest.raises(DockerError),
-    ):
+    coresys.docker.containers.get.side_effect = DockerException
+    coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
+        400, {"message": ""}
+    )
+    with pytest.raises(DockerError):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
 
 
-@pytest.mark.parametrize("err", [DockerException(), RequestException()])
+@pytest.mark.parametrize(
+    "err", [aiodocker.DockerError(400, {"message": ""}), RequestException()]
+)
 async def test_image_pull_fail(
     coresys: CoreSys, capture_exception: Mock, err: Exception
 ):
     """Test failure to pull image."""
-    coresys.docker.images.get.side_effect = err
+    coresys.docker.images.inspect.side_effect = err
     with pytest.raises(DockerError):
         await coresys.homeassistant.core.instance.install(
             AwesomeVersion("2022.7.3"), arch=CpuArch.AMD64
@@ -299,7 +277,7 @@ async def test_install_fires_progress_events(
 ):
     """Test progress events are fired during an install for listeners."""
     # This is from a sample pull. Filtered log to just one per unique status for test
-    coresys.docker.docker.api.pull.return_value = [
+    coresys.docker.dockerpy.api.pull.return_value = [
         {
             "status": "Pulling from home-assistant/odroid-n2-homeassistant",
             "id": "2025.7.2",
@@ -343,10 +321,10 @@ async def test_install_fires_progress_events(
         ),
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
-        coresys.docker.docker.api.pull.assert_called_once_with(
+        coresys.docker.dockerpy.api.pull.assert_called_once_with(
             "test", tag="1.2.3", platform="linux/386", stream=True, decode=True
         )
-        coresys.docker.images.get.assert_called_once_with("test:1.2.3")
+        coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
     await asyncio.sleep(1)
     assert events == [
@@ -427,7 +405,7 @@ async def test_install_progress_rounding_does_not_cause_misses(
     # Current numbers chosen to create a rounding issue with original code
     # Where a progress update came in with a value between the actual previous
     # value and what it was rounded to. It should not raise an out of order exception
-    coresys.docker.docker.api.pull.return_value = [
+    coresys.docker.dockerpy.api.pull.return_value = [
         {
             "status": "Pulling from home-assistant/odroid-n2-homeassistant",
             "id": "2025.7.1",
@@ -522,7 +500,7 @@ async def test_install_raises_on_pull_error(
     exc_msg: str,
 ):
     """Test exceptions raised from errors in pull log."""
-    coresys.docker.docker.api.pull.return_value = [
+    coresys.docker.dockerpy.api.pull.return_value = [
         {
             "status": "Pulling from home-assistant/odroid-n2-homeassistant",
             "id": "2025.7.2",
@@ -550,7 +528,7 @@ async def test_install_progress_handles_download_restart(
     coresys.core.set_state(CoreState.RUNNING)
     # Fixture emulates a download restart as it docker logs it
     # A log out of order exception should not be raised
-    coresys.docker.docker.api.pull.return_value = load_json_fixture(
+    coresys.docker.dockerpy.api.pull.return_value = load_json_fixture(
         "docker_pull_image_log_restart.json"
     )
 

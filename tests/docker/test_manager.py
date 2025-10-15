@@ -20,7 +20,7 @@ async def test_run_command_success(docker: DockerAPI):
     mock_container.logs.return_value = b"command output"
 
     # Mock docker containers.run to return our mock container
-    docker.docker.containers.run.return_value = mock_container
+    docker.dockerpy.containers.run.return_value = mock_container
 
     # Execute the command
     result = docker.run_command(
@@ -33,7 +33,7 @@ async def test_run_command_success(docker: DockerAPI):
     assert result.output == b"command output"
 
     # Verify docker.containers.run was called correctly
-    docker.docker.containers.run.assert_called_once_with(
+    docker.dockerpy.containers.run.assert_called_once_with(
         "alpine:3.18",
         command="echo hello",
         detach=True,
@@ -55,7 +55,7 @@ async def test_run_command_with_defaults(docker: DockerAPI):
     mock_container.logs.return_value = b"error output"
 
     # Mock docker containers.run to return our mock container
-    docker.docker.containers.run.return_value = mock_container
+    docker.dockerpy.containers.run.return_value = mock_container
 
     # Execute the command with minimal parameters
     result = docker.run_command(image="ubuntu")
@@ -66,7 +66,7 @@ async def test_run_command_with_defaults(docker: DockerAPI):
     assert result.output == b"error output"
 
     # Verify docker.containers.run was called with defaults
-    docker.docker.containers.run.assert_called_once_with(
+    docker.dockerpy.containers.run.assert_called_once_with(
         "ubuntu:latest",  # default tag
         command=None,  # default command
         detach=True,
@@ -81,7 +81,7 @@ async def test_run_command_with_defaults(docker: DockerAPI):
 async def test_run_command_docker_exception(docker: DockerAPI):
     """Test command execution when Docker raises an exception."""
     # Mock docker containers.run to raise DockerException
-    docker.docker.containers.run.side_effect = DockerException("Docker error")
+    docker.dockerpy.containers.run.side_effect = DockerException("Docker error")
 
     # Execute the command and expect DockerError
     with pytest.raises(DockerError, match="Can't execute command: Docker error"):
@@ -91,7 +91,7 @@ async def test_run_command_docker_exception(docker: DockerAPI):
 async def test_run_command_request_exception(docker: DockerAPI):
     """Test command execution when requests raises an exception."""
     # Mock docker containers.run to raise RequestException
-    docker.docker.containers.run.side_effect = RequestException("Connection error")
+    docker.dockerpy.containers.run.side_effect = RequestException("Connection error")
 
     # Execute the command and expect DockerError
     with pytest.raises(DockerError, match="Can't execute command: Connection error"):
@@ -104,7 +104,7 @@ async def test_run_command_cleanup_on_exception(docker: DockerAPI):
     mock_container = MagicMock()
 
     # Mock docker.containers.run to return container, but container.wait to raise exception
-    docker.docker.containers.run.return_value = mock_container
+    docker.dockerpy.containers.run.return_value = mock_container
     mock_container.wait.side_effect = DockerException("Wait failed")
 
     # Execute the command and expect DockerError
@@ -123,7 +123,7 @@ async def test_run_command_custom_stdout_stderr(docker: DockerAPI):
     mock_container.logs.return_value = b"output"
 
     # Mock docker containers.run to return our mock container
-    docker.docker.containers.run.return_value = mock_container
+    docker.dockerpy.containers.run.return_value = mock_container
 
     # Execute the command with custom stdout/stderr
     result = docker.run_command(
@@ -150,7 +150,7 @@ async def test_run_container_with_cidfile(
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
     extern_cidfile_path = coresys.config.path_extern_cid_files / f"{container_name}.cid"
 
-    docker.docker.containers.run.return_value = mock_container
+    docker.dockerpy.containers.run.return_value = mock_container
 
     # Mock container creation
     with patch.object(
