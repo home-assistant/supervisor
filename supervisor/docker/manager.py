@@ -22,7 +22,6 @@ from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
 from docker.api.client import APIClient
 from docker.client import DockerClient
-from docker.errors import DockerException, NotFound
 from docker.models.containers import Container, ContainerCollection
 from docker.models.networks import Network
 from docker.types.daemon import CancellableStream
@@ -519,7 +518,7 @@ class DockerAPI(CoreSysAttributes):
 
         _LOGGER.info("Prune stale volumes")
         try:
-            output = self.dockerpy.api.prune_builds()
+            output = self.dockerpy.api.prune_volumes()
             _LOGGER.debug("Volumes prune: %s", output)
         except docker_errors.APIError as err:
             _LOGGER.warning("Error for volumes prune: %s", err)
@@ -574,13 +573,13 @@ class DockerAPI(CoreSysAttributes):
         try:
             docker_container = await self.sys_run_in_executor(self.containers.get, name)
             docker_image = await self.images.inspect(f"{image}:{version}")
-        except NotFound:
+        except docker_errors.NotFound:
             return False
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 return False
             raise DockerError() from err
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         # Check the image is correct and state is good
@@ -596,18 +595,18 @@ class DockerAPI(CoreSysAttributes):
         """Stop/remove Docker container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         if docker_container.status == "running":
             _LOGGER.info("Stopping %s application", name)
-            with suppress(DockerException, requests.RequestException):
+            with suppress(docker_errors.DockerException, requests.RequestException):
                 docker_container.stop(timeout=timeout)
 
         if remove_container:
-            with suppress(DockerException, requests.RequestException):
+            with suppress(docker_errors.DockerException, requests.RequestException):
                 _LOGGER.info("Cleaning %s application", name)
                 docker_container.remove(force=True, v=True)
 
@@ -619,11 +618,11 @@ class DockerAPI(CoreSysAttributes):
         """Start Docker container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound(
                 f"{name} not found for starting up", _LOGGER.error
             ) from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Could not get {name} for starting up", _LOGGER.error
             ) from err
@@ -631,36 +630,36 @@ class DockerAPI(CoreSysAttributes):
         _LOGGER.info("Starting %s", name)
         try:
             docker_container.start()
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(f"Can't start {name}: {err}", _LOGGER.error) from err
 
     def restart_container(self, name: str, timeout: int) -> None:
         """Restart docker container."""
         try:
             container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         _LOGGER.info("Restarting %s", name)
         try:
             container.restart(timeout=timeout)
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(f"Can't restart {name}: {err}", _LOGGER.warning) from err
 
     def container_logs(self, name: str, tail: int = 100) -> bytes:
         """Return Docker logs of container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         try:
             return docker_container.logs(tail=tail, stdout=True, stderr=True)
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't grep logs from {name}: {err}", _LOGGER.warning
             ) from err
@@ -669,9 +668,9 @@ class DockerAPI(CoreSysAttributes):
         """Read and return stats from container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         # container is not running
@@ -680,7 +679,7 @@ class DockerAPI(CoreSysAttributes):
 
         try:
             return docker_container.stats(stream=False)
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't read stats from {name}: {err}", _LOGGER.error
             ) from err
@@ -689,15 +688,15 @@ class DockerAPI(CoreSysAttributes):
         """Execute a command inside Docker container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         # Execute
         try:
             code, output = docker_container.exec_run(command)
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         return CommandReturn(code, output)
@@ -756,7 +755,7 @@ class DockerAPI(CoreSysAttributes):
             return None
 
         try:
-            return await self.images.get(docker_image_list[0])
+            return await self.images.inspect(docker_image_list[0])
         except (aiodocker.DockerError, requests.RequestException) as err:
             raise DockerError(
                 f"Could not inspect imported image due to: {err!s}", _LOGGER.error
@@ -766,7 +765,7 @@ class DockerAPI(CoreSysAttributes):
         """Export current images into a tar file."""
         try:
             docker_image = self.api.get_image(f"{image}:{version}")
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't fetch image {image}: {err}", _LOGGER.error
             ) from err
