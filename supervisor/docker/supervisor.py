@@ -1,10 +1,12 @@
 """Init file for Supervisor Docker object."""
 
+import asyncio
 from collections.abc import Awaitable
 from ipaddress import IPv4Address
 import logging
 import os
 
+import aiodocker
 from awesomeversion.awesomeversion import AwesomeVersion
 import docker
 import requests
@@ -112,19 +114,18 @@ class DockerSupervisor(DockerInterface):
         name="docker_supervisor_update_start_tag",
         concurrency=JobConcurrency.GROUP_QUEUE,
     )
-    def update_start_tag(self, image: str, version: AwesomeVersion) -> Awaitable[None]:
+    async def update_start_tag(self, image: str, version: AwesomeVersion) -> None:
         """Update start tag to new version."""
-        return self.sys_run_in_executor(self._update_start_tag, image, version)
-
-    def _update_start_tag(self, image: str, version: AwesomeVersion) -> None:
-        """Update start tag to new version.
-
-        Need run inside executor.
-        """
         try:
-            docker_container = self.sys_docker.containers.get(self.name)
-            docker_image = self.sys_docker.images.get(f"{image}:{version!s}")
-        except (docker.errors.DockerException, requests.RequestException) as err:
+            docker_container = await self.sys_run_in_executor(
+                self.sys_docker.containers.get, self.name
+            )
+            docker_image = await self.sys_docker.images.inspect(f"{image}:{version!s}")
+        except (
+            aiodocker.DockerError,
+            docker.errors.DockerException,
+            requests.RequestException,
+        ) as err:
             raise DockerError(
                 f"Can't get image or container to fix start tag: {err}", _LOGGER.error
             ) from err
@@ -144,8 +145,14 @@ class DockerSupervisor(DockerInterface):
                 # If version tag
                 if start_tag != "latest":
                     continue
-                docker_image.tag(start_image, start_tag)
-                docker_image.tag(start_image, version.string)
+                await asyncio.gather(
+                    self.sys_docker.images.tag(
+                        docker_image["Id"], start_image, tag=start_tag
+                    ),
+                    self.sys_docker.images.tag(
+                        docker_image["Id"], start_image, tag=version.string
+                    ),
+                )
 
-        except (docker.errors.DockerException, requests.RequestException) as err:
+        except (aiodocker.DockerError, requests.RequestException) as err:
             raise DockerError(f"Can't fix start tag: {err}", _LOGGER.error) from err
