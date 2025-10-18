@@ -1,8 +1,9 @@
 """Test fixup addon execute repair."""
 
-from unittest.mock import MagicMock, patch
+from http import HTTPStatus
+from unittest.mock import patch
 
-from docker.errors import NotFound
+import aiodocker
 import pytest
 
 from supervisor.addons.addon import Addon
@@ -17,7 +18,9 @@ from supervisor.resolution.fixups.addon_execute_repair import FixupAddonExecuteR
 
 async def test_fixup(docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon):
     """Test fixup rebuilds addon's container."""
-    docker.images.get.side_effect = NotFound("missing")
+    docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
     install_addon_ssh.data["image"] = "test_image"
 
     addon_execute_repair = FixupAddonExecuteRepair(coresys)
@@ -41,7 +44,9 @@ async def test_fixup_max_auto_attempts(
     docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon
 ):
     """Test fixup stops being auto-applied after 5 failures."""
-    docker.images.get.side_effect = NotFound("missing")
+    docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
     install_addon_ssh.data["image"] = "test_image"
 
     addon_execute_repair = FixupAddonExecuteRepair(coresys)
@@ -82,8 +87,6 @@ async def test_fixup_image_exists(
     docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon
 ):
     """Test fixup dismisses if image exists."""
-    docker.images.get.return_value = MagicMock()
-
     addon_execute_repair = FixupAddonExecuteRepair(coresys)
     assert addon_execute_repair.auto is True
 

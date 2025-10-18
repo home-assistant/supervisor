@@ -732,7 +732,7 @@ async def test_api_progress_updates_addon_install_update(
     """Test progress updates sent to Home Assistant for installs/updates."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.core.set_state(CoreState.RUNNING)
-    coresys.docker.docker.api.pull.return_value = load_json_fixture(
+    coresys.docker.dockerpy.api.pull.return_value = load_json_fixture(
         "docker_pull_image_log.json"
     )
     coresys.arch._supported_arch = ["amd64"]  # pylint: disable=protected-access
