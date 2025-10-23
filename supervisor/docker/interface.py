@@ -31,15 +31,12 @@ from ..const import (
 )
 from ..coresys import CoreSys
 from ..exceptions import (
-    CodeNotaryError,
-    CodeNotaryUntrusted,
     DockerAPIError,
     DockerError,
     DockerJobError,
     DockerLogOutOfOrder,
     DockerNotFound,
     DockerRequestError,
-    DockerTrustError,
 )
 from ..jobs import SupervisorJob
 from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
@@ -451,16 +448,6 @@ class DockerInterface(JobGroup, ABC):
             await async_capture_exception(err)
             raise DockerError(
                 f"Unknown error with {image}:{version!s} -> {err!s}", _LOGGER.error
-            ) from err
-        except CodeNotaryUntrusted as err:
-            raise DockerTrustError(
-                f"Pulled image {image}:{version!s} failed on content-trust verification!",
-                _LOGGER.critical,
-            ) from err
-        except CodeNotaryError as err:
-            raise DockerTrustError(
-                f"Error happened on Content-Trust check for {image}:{version!s}: {err!s}",
-                _LOGGER.error,
             ) from err
         finally:
             if listener:
