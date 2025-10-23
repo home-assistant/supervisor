@@ -9,7 +9,12 @@ from typing import Any
 from supervisor.resolution.const import UnhealthyReason
 
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DBusError, DBusObjectError, HardwareNotFound
+from ..exceptions import (
+    DBusError,
+    DBusNotConnectedError,
+    DBusObjectError,
+    HardwareNotFound,
+)
 from .const import UdevSubsystem
 from .data import Device
 
@@ -207,6 +212,8 @@ class HwDisk(CoreSysAttributes):
         try:
             block_device = self.sys_dbus.udisks2.get_block_device_by_path(device_path)
             drive = self.sys_dbus.udisks2.get_drive(block_device.drive)
+        except DBusNotConnectedError:
+            return None
         except DBusObjectError:
             _LOGGER.warning(
                 "Unable to find UDisks2 drive for device at %s", device_path.as_posix()
