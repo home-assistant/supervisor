@@ -376,3 +376,14 @@ async def test_try_get_nvme_life_time_missing_percent_used(
         coresys.config.path_supervisor
     )
     assert lifetime is None
+
+
+async def test_try_get_nvme_life_time_dbus_not_connected(coresys: CoreSys):
+    """Test getting lifetime info from an NVMe when DBUS is not connected."""
+    # Set the dbus for udisks2 bus to be None, to make it forcibly disconnected.
+    coresys.dbus.udisks2.dbus = None
+
+    lifetime = await coresys.hardware.disk.get_disk_life_time(
+        coresys.config.path_supervisor
+    )
+    assert lifetime is None
