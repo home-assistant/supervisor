@@ -306,6 +306,8 @@ class DockerInterface(JobGroup, ABC):
         # Our filters have all passed. Time to update the job
         # Only downloading and extracting have progress details. Use that to set extra
         # We'll leave it around on later stages as the total bytes may be useful after that stage
+        # Enforce range to prevent float drift error
+        progress = max(0, min(progress, 100))
         if (
             stage in {PullImageLayerStage.DOWNLOADING, PullImageLayerStage.EXTRACTING}
             and reference.progress_detail
@@ -371,7 +373,7 @@ class DockerInterface(JobGroup, ABC):
 
         # To reduce noise, limit updates to when result has changed by an entire percent or when stage changed
         if stage != install_job.stage or progress >= install_job.progress + 1:
-            install_job.update(stage=stage.status, progress=progress)
+            install_job.update(stage=stage.status, progress=max(0, min(progress, 100)))
 
     @Job(
         name="docker_interface_install",
