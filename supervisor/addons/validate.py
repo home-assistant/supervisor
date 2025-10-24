@@ -207,6 +207,12 @@ def _warn_addon_config(config: dict[str, Any]):
             name,
         )
 
+    if ATTR_CODENOTARY in config:
+        _LOGGER.warning(
+            "Add-on '%s' uses deprecated 'codenotary' field in config. This field is no longer used and will be ignored. Please report this to the maintainer.",
+            name,
+        )
+
     return config
 
 
