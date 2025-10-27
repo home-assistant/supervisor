@@ -320,6 +320,15 @@ jobs:
             exit 1
           fi
 
+      - name: Wait for Home Assistant Core to start
+        run: |
+          echo "Waiting for Home Assistant Core to start"
+          timeout 10m ha supervisor logs -f -n 10000 -b 0 | grep -q "Detect a running Home Assistant instance"
+          if [ "$?" != "0" ]; then
+            echo "Home Assistant Core did not start within 10 minutes"
+            exit 1
+          fi
+
       - name: Create full backup
         id: backup
         run: |
