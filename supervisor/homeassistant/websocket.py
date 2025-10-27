@@ -225,6 +225,10 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         # since it makes a new socket connection and we already have one.
         if not connected and not await self.sys_homeassistant.api.check_api_state():
             # No core access, don't try.
+            _LOGGER.debug(
+                "Home Assistant API is not accessible. Not sending WS message: %s",
+                message,
+            )
             return False
 
         if not self._client:
