@@ -371,6 +371,12 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 _LOGGER.error,
             ) from err
 
+        if not resp:
+            raise HomeAssistantBackupError(
+                "Preparing backup of Home Assistant Core failed. No response from HA Core.",
+                _LOGGER.error,
+            )
+
         if resp and not resp.get(ATTR_SUCCESS):
             raise HomeAssistantBackupError(
                 f"Preparing backup of Home Assistant Core failed due to: {resp.get(ATTR_ERROR, {}).get(ATTR_MESSAGE, '')}. Check HA Core logs.",
