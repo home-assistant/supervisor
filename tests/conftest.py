@@ -56,6 +56,7 @@ from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
 from .common import (
+    AsyncIterator,
     MockResponse,
     load_binary_fixture,
     load_fixture,
@@ -125,14 +126,8 @@ async def docker() -> DockerAPI:
         patch(
             "supervisor.docker.manager.DockerAPI.containers", return_value=MagicMock()
         ),
-        patch(
-            "supervisor.docker.manager.DockerAPI.api",
-            return_value=(api_mock := MagicMock()),
-        ),
-        patch(
-            "supervisor.docker.manager.DockerAPI.info",
-            return_value=MagicMock(),
-        ),
+        patch("supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()),
+        patch("supervisor.docker.manager.DockerAPI.info", return_value=MagicMock()),
         patch("supervisor.docker.manager.DockerAPI.unload"),
         patch("supervisor.docker.manager.aiodocker.Docker", return_value=MagicMock()),
         patch(
@@ -153,12 +148,11 @@ async def docker() -> DockerAPI:
             {"stream": "Loaded image: test:latest\n"}
         ]
 
+        docker_images.pull.return_value = AsyncIterator([{}])
+
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
         docker_obj.info.version = AwesomeVersion("1.0.0")
-
-        # Need an iterable for logs
-        api_mock.pull.return_value = []
 
         yield docker_obj
 

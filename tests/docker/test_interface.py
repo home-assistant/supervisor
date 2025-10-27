@@ -28,7 +28,7 @@ from supervisor.exceptions import (
 )
 from supervisor.jobs import JobSchedulerOptions, SupervisorJob
 
-from tests.common import load_json_fixture
+from tests.common import AsyncIterator, load_json_fixture
 
 
 @pytest.fixture(autouse=True)
@@ -59,8 +59,8 @@ async def test_docker_image_platform(
     """Test platform set correctly from arch."""
     coresys.docker.images.inspect.return_value = {"Id": "test:1.2.3"}
     await test_docker_interface.install(AwesomeVersion("1.2.3"), "test", arch=cpu_arch)
-    coresys.docker.dockerpy.api.pull.assert_called_once_with(
-        "test", tag="1.2.3", platform=platform, stream=True, decode=True
+    coresys.docker.images.pull.assert_called_once_with(
+        "test", tag="1.2.3", platform=platform, stream=True
     )
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -76,8 +76,8 @@ async def test_docker_image_default_platform(
         ),
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
-        coresys.docker.dockerpy.api.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", stream=True, decode=True
+        coresys.docker.images.pull.assert_called_once_with(
+            "test", tag="1.2.3", platform="linux/386", stream=True
         )
 
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
@@ -276,8 +276,9 @@ async def test_install_fires_progress_events(
     coresys: CoreSys, test_docker_interface: DockerInterface
 ):
     """Test progress events are fired during an install for listeners."""
+
     # This is from a sample pull. Filtered log to just one per unique status for test
-    coresys.docker.dockerpy.api.pull.return_value = [
+    logs = [
         {
             "status": "Pulling from home-assistant/odroid-n2-homeassistant",
             "id": "2025.7.2",
@@ -299,7 +300,11 @@ async def test_install_fires_progress_events(
             "id": "1578b14a573c",
         },
         {"status": "Pull complete", "progressDetail": {}, "id": "1578b14a573c"},
-        {"status": "Verifying Checksum", "progressDetail": {}, "id": "6a1e931d8f88"},
+        {
+            "status": "Verifying Checksum",
+            "progressDetail": {},
+            "id": "6a1e931d8f88",
+        },
         {
             "status": "Digest: sha256:490080d7da0f385928022927990e04f604615f7b8c622ef3e58253d0f089881d"
         },
@@ -307,6 +312,7 @@ async def test_install_fires_progress_events(
             "status": "Status: Downloaded newer image for ghcr.io/home-assistant/odroid-n2-homeassistant:2025.7.2"
         },
     ]
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
     events: list[PullLogEntry] = []
 
@@ -321,8 +327,8 @@ async def test_install_fires_progress_events(
         ),
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
-        coresys.docker.dockerpy.api.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", stream=True, decode=True
+        coresys.docker.images.pull.assert_called_once_with(
+            "test", tag="1.2.3", platform="linux/386", stream=True
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -402,10 +408,11 @@ async def test_install_progress_rounding_does_not_cause_misses(
 ):
     """Test extremely close progress events do not create rounding issues."""
     coresys.core.set_state(CoreState.RUNNING)
+
     # Current numbers chosen to create a rounding issue with original code
     # Where a progress update came in with a value between the actual previous
     # value and what it was rounded to. It should not raise an out of order exception
-    coresys.docker.dockerpy.api.pull.return_value = [
+    logs = [
         {
             "status": "Pulling from home-assistant/odroid-n2-homeassistant",
             "id": "2025.7.1",
@@ -445,6 +452,7 @@ async def test_install_progress_rounding_does_not_cause_misses(
             "status": "Status: Downloaded newer image for ghcr.io/home-assistant/odroid-n2-homeassistant:2025.7.1"
         },
     ]
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
     with (
         patch.object(
@@ -500,7 +508,8 @@ async def test_install_raises_on_pull_error(
     exc_msg: str,
 ):
     """Test exceptions raised from errors in pull log."""
-    coresys.docker.dockerpy.api.pull.return_value = [
+
+    logs = [
         {
             "status": "Pulling from home-assistant/odroid-n2-homeassistant",
             "id": "2025.7.2",
@@ -513,6 +522,7 @@ async def test_install_raises_on_pull_error(
         },
         error_log,
     ]
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
     with pytest.raises(exc_type, match=exc_msg):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
@@ -526,11 +536,11 @@ async def test_install_progress_handles_download_restart(
 ):
     """Test install handles docker progress events that include a download restart."""
     coresys.core.set_state(CoreState.RUNNING)
+
     # Fixture emulates a download restart as it docker logs it
     # A log out of order exception should not be raised
-    coresys.docker.dockerpy.api.pull.return_value = load_json_fixture(
-        "docker_pull_image_log_restart.json"
-    )
+    logs = load_json_fixture("docker_pull_image_log_restart.json")
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
     with (
         patch.object(

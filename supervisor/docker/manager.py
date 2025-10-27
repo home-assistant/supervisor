@@ -17,6 +17,7 @@ from typing import Any, Final, Self, cast
 
 import aiodocker
 from aiodocker.images import DockerImages
+from aiohttp import ClientSession, ClientTimeout, UnixConnector
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
@@ -211,7 +212,10 @@ class DockerAPI(CoreSysAttributes):
         # We keep both until we can fully refactor to aiodocker
         self._dockerpy: DockerClient | None = None
         self.docker: aiodocker.Docker = aiodocker.Docker(
-            url=f"unix:/{str(SOCKET_DOCKER)}", api_version="auto"
+            url="unix://localhost",  # dummy hostname for URL composition
+            connector=(connector := UnixConnector(SOCKET_DOCKER.as_posix())),
+            session=ClientSession(connector=connector, timeout=ClientTimeout(900)),
+            api_version="auto",
         )
 
         self._network: DockerNetwork | None = None
@@ -221,11 +225,13 @@ class DockerAPI(CoreSysAttributes):
 
     async def post_init(self) -> Self:
         """Post init actions that must be done in event loop."""
+        # Use /var/run/docker.sock for this one so aiodocker and dockerpy don't
+        # share the same handle. Temporary fix while refactoring this client out
         self._dockerpy = await asyncio.get_running_loop().run_in_executor(
             None,
             partial(
                 DockerClient,
-                base_url=f"unix:/{str(SOCKET_DOCKER)}",
+                base_url=f"unix://var{SOCKET_DOCKER.as_posix()}",
                 version="auto",
                 timeout=900,
             ),
@@ -433,20 +439,16 @@ class DockerAPI(CoreSysAttributes):
         raises only if the get fails afterwards. Additionally it fires progress reports for the pull
         on the bus so listeners can use that to update status for users.
         """
-
-        def api_pull():
-            pull_log = self.dockerpy.api.pull(
-                repository, tag=tag, platform=platform, stream=True, decode=True
+        async for e in self.images.pull(
+            repository, tag=tag, platform=platform, stream=True
+        ):
+            entry = PullLogEntry.from_pull_log_dict(job_id, e)
+            if entry.error:
+                raise entry.exception
+            await asyncio.gather(
+                *self.sys_bus.fire_event(BusEvent.DOCKER_IMAGE_PULL_UPDATE, entry)
             )
-            for e in pull_log:
-                entry = PullLogEntry.from_pull_log_dict(job_id, e)
-                if entry.error:
-                    raise entry.exception
-                self.sys_loop.call_soon_threadsafe(
-                    self.sys_bus.fire_event, BusEvent.DOCKER_IMAGE_PULL_UPDATE, entry
-                )
 
-        await self.sys_run_in_executor(api_pull)
         sep = "@" if tag.startswith("sha256:") else ":"
         return await self.images.inspect(f"{repository}{sep}{tag}")
 

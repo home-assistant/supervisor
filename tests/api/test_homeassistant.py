@@ -19,7 +19,7 @@ from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 
 from tests.api import common_test_api_advanced_logs
-from tests.common import load_json_fixture
+from tests.common import AsyncIterator, load_json_fixture
 
 
 @pytest.mark.parametrize("legacy_route", [True, False])
@@ -283,9 +283,9 @@ async def test_api_progress_updates_home_assistant_update(
     """Test progress updates sent to Home Assistant for updates."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.core.set_state(CoreState.RUNNING)
-    coresys.docker.dockerpy.api.pull.return_value = load_json_fixture(
-        "docker_pull_image_log.json"
-    )
+
+    logs = load_json_fixture("docker_pull_image_log.json")
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
     coresys.homeassistant.version = AwesomeVersion("2025.8.0")
 
     with (

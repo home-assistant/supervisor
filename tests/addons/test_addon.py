@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import aiodocker
 from awesomeversion import AwesomeVersion
-from docker.errors import DockerException, NotFound
+from docker.errors import APIError, DockerException, NotFound
 import pytest
 from securetar import SecureTarFile
 
@@ -931,7 +931,7 @@ async def test_addon_loads_missing_image(
 
 @pytest.mark.parametrize(
     "pull_image_exc",
-    [DockerException(), aiodocker.DockerError(400, {"message": "error"})],
+    [APIError("error"), aiodocker.DockerError(400, {"message": "error"})],
 )
 @pytest.mark.usefixtures("container", "mock_amd64_arch_supported")
 async def test_addon_load_succeeds_with_docker_errors(
@@ -973,7 +973,7 @@ async def test_addon_load_succeeds_with_docker_errors(
     caplog.clear()
     with patch.object(DockerAPI, "pull_image", side_effect=pull_image_exc):
         await install_addon_ssh.load()
-    assert "Unknown error with test/amd64-addon-ssh:9.2.1" in caplog.text
+    assert "Can't install test/amd64-addon-ssh:9.2.1:" in caplog.text
 
 
 async def test_addon_manual_only_boot(coresys: CoreSys, install_addon_example: Addon):

@@ -1,12 +1,14 @@
 """Test Home Assistant core."""
 
 from datetime import datetime, timedelta
+from http import HTTPStatus
 from unittest.mock import ANY, MagicMock, Mock, PropertyMock, call, patch
 
 import aiodocker
 from awesomeversion import AwesomeVersion
 from docker.errors import APIError, DockerException, NotFound
 import pytest
+from requests import RequestException
 from time_machine import travel
 
 from supervisor.const import CpuArch
@@ -24,7 +26,11 @@ from supervisor.exceptions import (
 from supervisor.homeassistant.api import APIState
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 from supervisor.updater import Updater
+
+from tests.common import AsyncIterator
 
 
 async def test_update_fails_if_out_of_date(coresys: CoreSys):
@@ -53,11 +59,23 @@ async def test_update_fails_if_out_of_date(coresys: CoreSys):
         await coresys.homeassistant.core.update()
 
 
-async def test_install_landingpage_docker_error(
-    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
+@pytest.mark.parametrize(
+    "err",
+    [
+        aiodocker.DockerError(HTTPStatus.TOO_MANY_REQUESTS, {"message": "ratelimit"}),
+        APIError("ratelimit", MagicMock(status_code=HTTPStatus.TOO_MANY_REQUESTS)),
+    ],
+)
+async def test_install_landingpage_docker_ratelimit_error(
+    coresys: CoreSys,
+    capture_exception: Mock,
+    caplog: pytest.LogCaptureFixture,
+    err: Exception,
 ):
-    """Test install landing page fails due to docker error."""
+    """Test install landing page fails due to docker ratelimit error."""
     coresys.security.force = True
+    coresys.docker.images.pull.side_effect = [err, AsyncIterator([{}])]
+
     with (
         patch.object(DockerHomeAssistant, "attach", side_effect=DockerError),
         patch.object(
@@ -70,19 +88,35 @@ async def test_install_landingpage_docker_error(
         ),
         patch("supervisor.homeassistant.core.asyncio.sleep") as sleep,
     ):
-        coresys.docker.dockerpy.api.pull.side_effect = [APIError("fail"), MagicMock()]
         await coresys.homeassistant.core.install_landingpage()
         sleep.assert_awaited_once_with(30)
 
     assert "Failed to install landingpage, retrying after 30sec" in caplog.text
     capture_exception.assert_not_called()
+    assert (
+        Issue(IssueType.DOCKER_RATELIMIT, ContextType.SYSTEM)
+        in coresys.resolution.issues
+    )
 
 
+@pytest.mark.parametrize(
+    "err",
+    [
+        aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}),
+        APIError("fail"),
+        DockerException(),
+        RequestException(),
+        OSError(),
+    ],
+)
 async def test_install_landingpage_other_error(
-    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys,
+    capture_exception: Mock,
+    caplog: pytest.LogCaptureFixture,
+    err: Exception,
 ):
     """Test install landing page fails due to other error."""
-    coresys.docker.images.inspect.side_effect = [(err := OSError()), MagicMock()]
+    coresys.docker.images.inspect.side_effect = [err, MagicMock()]
 
     with (
         patch.object(DockerHomeAssistant, "attach", side_effect=DockerError),
@@ -103,11 +137,23 @@ async def test_install_landingpage_other_error(
     capture_exception.assert_called_once_with(err)
 
 
-async def test_install_docker_error(
-    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
+@pytest.mark.parametrize(
+    "err",
+    [
+        aiodocker.DockerError(HTTPStatus.TOO_MANY_REQUESTS, {"message": "ratelimit"}),
+        APIError("ratelimit", MagicMock(status_code=HTTPStatus.TOO_MANY_REQUESTS)),
+    ],
+)
+async def test_install_docker_ratelimit_error(
+    coresys: CoreSys,
+    capture_exception: Mock,
+    caplog: pytest.LogCaptureFixture,
+    err: Exception,
 ):
-    """Test install fails due to docker error."""
+    """Test install fails due to docker ratelimit error."""
     coresys.security.force = True
+    coresys.docker.images.pull.side_effect = [err, AsyncIterator([{}])]
+
     with (
         patch.object(HomeAssistantCore, "start"),
         patch.object(DockerHomeAssistant, "cleanup"),
@@ -124,19 +170,35 @@ async def test_install_docker_error(
         ),
         patch("supervisor.homeassistant.core.asyncio.sleep") as sleep,
     ):
-        coresys.docker.dockerpy.api.pull.side_effect = [APIError("fail"), MagicMock()]
         await coresys.homeassistant.core.install()
         sleep.assert_awaited_once_with(30)
 
     assert "Error on Home Assistant installation. Retrying in 30sec" in caplog.text
     capture_exception.assert_not_called()
+    assert (
+        Issue(IssueType.DOCKER_RATELIMIT, ContextType.SYSTEM)
+        in coresys.resolution.issues
+    )
 
 
+@pytest.mark.parametrize(
+    "err",
+    [
+        aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}),
+        APIError("fail"),
+        DockerException(),
+        RequestException(),
+        OSError(),
+    ],
+)
 async def test_install_other_error(
-    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys,
+    capture_exception: Mock,
+    caplog: pytest.LogCaptureFixture,
+    err: Exception,
 ):
     """Test install fails due to other error."""
-    coresys.docker.images.inspect.side_effect = [(err := OSError()), MagicMock()]
+    coresys.docker.images.inspect.side_effect = [err, MagicMock()]
 
     with (
         patch.object(HomeAssistantCore, "start"),

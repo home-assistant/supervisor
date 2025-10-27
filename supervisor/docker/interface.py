@@ -452,11 +452,23 @@ class DockerInterface(JobGroup, ABC):
                     suggestions=[SuggestionType.REGISTRY_LOGIN],
                 )
                 raise DockerHubRateLimitExceeded(_LOGGER.error) from err
+            await async_capture_exception(err)
+            raise DockerError(
+                f"Can't install {image}:{version!s}: {err}", _LOGGER.error
+            ) from err
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.TOO_MANY_REQUESTS:
+                self.sys_resolution.create_issue(
+                    IssueType.DOCKER_RATELIMIT,
+                    ContextType.SYSTEM,
+                    suggestions=[SuggestionType.REGISTRY_LOGIN],
+                )
+                raise DockerHubRateLimitExceeded(_LOGGER.error) from err
+            await async_capture_exception(err)
             raise DockerError(
                 f"Can't install {image}:{version!s}: {err}", _LOGGER.error
             ) from err
         except (
-            aiodocker.DockerError,
             docker.errors.DockerException,
             requests.RequestException,
         ) as err:
