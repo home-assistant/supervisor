@@ -24,7 +24,7 @@ from supervisor.homeassistant.module import HomeAssistant
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 
-from tests.common import load_json_fixture
+from tests.common import AsyncIterator, load_json_fixture
 from tests.const import TEST_ADDON_SLUG
 
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
@@ -732,9 +732,10 @@ async def test_api_progress_updates_addon_install_update(
     """Test progress updates sent to Home Assistant for installs/updates."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.core.set_state(CoreState.RUNNING)
-    coresys.docker.docker.api.pull.return_value = load_json_fixture(
-        "docker_pull_image_log.json"
-    )
+
+    logs = load_json_fixture("docker_pull_image_log.json")
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
+
     coresys.arch._supported_arch = ["amd64"]  # pylint: disable=protected-access
     install_addon_example.data_store["version"] = AwesomeVersion("2.0.0")
 
