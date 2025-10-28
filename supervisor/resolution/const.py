@@ -39,7 +39,6 @@ class UnsupportedReason(StrEnum):
     APPARMOR = "apparmor"
     CGROUP_VERSION = "cgroup_version"
     CONNECTIVITY_CHECK = "connectivity_check"
-    CONTENT_TRUST = "content_trust"
     DBUS = "dbus"
     DNS_SERVER = "dns_server"
     DOCKER_CONFIGURATION = "docker_configuration"
