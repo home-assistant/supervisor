@@ -54,7 +54,6 @@ class UnsupportedReason(StrEnum):
     PRIVILEGED = "privileged"
     RESTART_POLICY = "restart_policy"
     SOFTWARE = "software"
-    SOURCE_MODS = "source_mods"
     SUPERVISOR_VERSION = "supervisor_version"
     SYSTEMD = "systemd"
     SYSTEMD_JOURNAL = "systemd_journal"
