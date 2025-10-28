@@ -86,7 +86,6 @@ async def test_os_update_path(
     """Test OS upgrade path across major versions."""
     coresys.os._board = "rpi4"  # pylint: disable=protected-access
     coresys.os._version = AwesomeVersion(version)  # pylint: disable=protected-access
-    # CodeNotary verification removed
     await coresys.updater.fetch_data()
 
     assert coresys.updater.version_hassos == AwesomeVersion(expected)
