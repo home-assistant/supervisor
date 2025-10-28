@@ -103,7 +103,6 @@ from .configuration import FolderMapping
 from .const import (
     ATTR_BACKUP,
     ATTR_BREAKING_VERSIONS,
-    ATTR_CODENOTARY,
     ATTR_PATH,
     ATTR_READ_ONLY,
     AddonBackupMode,
@@ -632,13 +631,8 @@ class AddonModel(JobGroup, ABC):
 
     @property
     def signed(self) -> bool:
-        """Return True if the image is signed."""
-        return ATTR_CODENOTARY in self.data
-
-    @property
-    def codenotary(self) -> str | None:
-        """Return Signer email address for CAS."""
-        return self.data.get(ATTR_CODENOTARY)
+        """Currently no signing support."""
+        return False
 
     @property
     def breaking_versions(self) -> list[AwesomeVersion]:

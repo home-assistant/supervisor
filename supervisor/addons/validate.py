@@ -423,7 +423,6 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_BACKUP, default=AddonBackupMode.HOT): vol.Coerce(
             AddonBackupMode
         ),
-        vol.Optional(ATTR_CODENOTARY): vol.Email(),
         vol.Optional(ATTR_OPTIONS, default={}): dict,
         vol.Optional(ATTR_SCHEMA, default={}): vol.Any(
             vol.Schema({str: SCHEMA_ELEMENT}),
