@@ -423,6 +423,12 @@ class APINotFound(APIError):
     status = 404
 
 
+class APIGone(APIError):
+    """API is no longer available."""
+
+    status = 410
+
+
 class APIAddonNotInstalled(APIError):
     """Not installed addon requested at addons API."""
 

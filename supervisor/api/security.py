@@ -5,6 +5,8 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
+from supervisor.exceptions import APIGone
+
 from ..const import ATTR_CONTENT_TRUST, ATTR_FORCE_SECURITY, ATTR_PWNED
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate
@@ -52,6 +54,6 @@ class APISecurity(CoreSysAttributes):
         """Run backend integrity check.
 
         CodeNotary integrity checking has been removed. This endpoint now returns
-        an error indicating the feature is currently non-functional.
+        an error indicating the feature is gone.
         """
-        return {"error": "No integrity checking available"}
+        raise APIGone("Integrity check feature has been removed.")
