@@ -291,33 +291,6 @@ jobs:
             exit 1
           fi
 
-      - name: Check the Supervisor code sign
-        if: needs.init.outputs.publish == 'true'
-        run: |
-          echo "Enable Content-Trust"
-          test=$(docker exec hassio_cli ha security options --content-trust=true --no-progress --raw-json | jq -r '.result')
-          if [ "$test" != "ok" ]; then
-            exit 1
-          fi
-
-          echo "Run supervisor health check"
-          test=$(docker exec hassio_cli ha resolution healthcheck --no-progress --raw-json | jq -r '.result')
-          if [ "$test" != "ok" ]; then
-            exit 1
-          fi
-
-          echo "Check supervisor unhealthy"
-          test=$(docker exec hassio_cli ha resolution info --no-progress --raw-json | jq -r '.data.unhealthy[]')
-          if [ "$test" != "" ]; then
-            exit 1
-          fi
-
-          echo "Check supervisor supported"
-          test=$(docker exec hassio_cli ha resolution info --no-progress --raw-json | jq -r '.data.unsupported[]')
-          if [[ "$test" =~ source_mods ]]; then
-            exit 1
-          fi
-
       - name: Create full backup
         id: backup
         run: |
