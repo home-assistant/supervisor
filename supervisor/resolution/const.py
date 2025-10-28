@@ -103,7 +103,6 @@ class IssueType(StrEnum):
     PWNED = "pwned"
     REBOOT_REQUIRED = "reboot_required"
     SECURITY = "security"
-    TRUST = "trust"
     UPDATE_FAILED = "update_failed"
     UPDATE_ROLLBACK = "update_rollback"
 
@@ -115,7 +114,6 @@ class SuggestionType(StrEnum):
     CLEAR_FULL_BACKUP = "clear_full_backup"
     CREATE_FULL_BACKUP = "create_full_backup"
     DISABLE_BOOT = "disable_boot"
-    EXECUTE_INTEGRITY = "execute_integrity"
     EXECUTE_REBOOT = "execute_reboot"
     EXECUTE_REBUILD = "execute_rebuild"
     EXECUTE_RELOAD = "execute_reload"
