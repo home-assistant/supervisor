@@ -7,7 +7,7 @@ import voluptuous as vol
 
 from supervisor.exceptions import APIGone
 
-from ..const import ATTR_CONTENT_TRUST, ATTR_FORCE_SECURITY, ATTR_PWNED
+from ..const import ATTR_FORCE_SECURITY, ATTR_PWNED
 from ..coresys import CoreSysAttributes
 from .utils import api_process, api_validate
 
@@ -15,7 +15,6 @@ from .utils import api_process, api_validate
 SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_PWNED): vol.Boolean(),
-        vol.Optional(ATTR_CONTENT_TRUST): vol.Boolean(),
         vol.Optional(ATTR_FORCE_SECURITY): vol.Boolean(),
     }
 )
@@ -28,7 +27,6 @@ class APISecurity(CoreSysAttributes):
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return Security information."""
         return {
-            ATTR_CONTENT_TRUST: self.sys_security.content_trust,
             ATTR_PWNED: self.sys_security.pwned,
             ATTR_FORCE_SECURITY: self.sys_security.force,
         }
@@ -40,8 +38,6 @@ class APISecurity(CoreSysAttributes):
 
         if ATTR_PWNED in body:
             self.sys_security.pwned = body[ATTR_PWNED]
-        if ATTR_CONTENT_TRUST in body:
-            self.sys_security.content_trust = body[ATTR_CONTENT_TRUST]
         if ATTR_FORCE_SECURITY in body:
             self.sys_security.force = body[ATTR_FORCE_SECURITY]
 

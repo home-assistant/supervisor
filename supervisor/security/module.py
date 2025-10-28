@@ -4,12 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from ..const import (
-    ATTR_CONTENT_TRUST,
-    ATTR_FORCE_SECURITY,
-    ATTR_PWNED,
-    FILE_HASSIO_SECURITY,
-)
+from ..const import ATTR_FORCE_SECURITY, ATTR_PWNED, FILE_HASSIO_SECURITY
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import PwnedError
 from ..utils.common import FileConfiguration
@@ -26,16 +21,6 @@ class Security(FileConfiguration, CoreSysAttributes):
         """Initialize updater."""
         super().__init__(FILE_HASSIO_SECURITY, SCHEMA_SECURITY_CONFIG)
         self.coresys = coresys
-
-    @property
-    def content_trust(self) -> bool:
-        """Return if content trust is enabled/disabled."""
-        return self._data[ATTR_CONTENT_TRUST]
-
-    @content_trust.setter
-    def content_trust(self, value: bool) -> None:
-        """Set content trust is enabled/disabled."""
-        self._data[ATTR_CONTENT_TRUST] = value
 
     @property
     def force(self) -> bool:
