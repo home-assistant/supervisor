@@ -108,8 +108,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_AUTO_UPDATE: self.sys_updater.auto_update,
             ATTR_DETECT_BLOCKING_IO: BlockBusterManager.is_enabled(),
             ATTR_COUNTRY: self.sys_config.country,
-            # Depricated
-            ATTR_WAIT_BOOT: self.sys_config.wait_boot,
+            # Deprecated
             ATTR_ADDONS: [
                 {
                     ATTR_NAME: addon.name,
@@ -122,10 +121,6 @@ class APISupervisor(CoreSysAttributes):
                     ATTR_ICON: addon.with_icon,
                 }
                 for addon in self.sys_addons.local.values()
-            ],
-            ATTR_ADDONS_REPOSITORIES: [
-                {ATTR_NAME: store.name, ATTR_SLUG: store.slug}
-                for store in self.sys_store.all
             ],
         }
 
@@ -182,19 +177,9 @@ class APISupervisor(CoreSysAttributes):
                 self.sys_config.detect_blocking_io = False
                 BlockBusterManager.deactivate()
 
-        # Deprecated
-        if ATTR_WAIT_BOOT in body:
-            self.sys_config.wait_boot = body[ATTR_WAIT_BOOT]
-
         # Save changes before processing addons in case of errors
         await self.sys_updater.save_data()
         await self.sys_config.save_data()
-
-        # Remove: 2022.9
-        if ATTR_ADDONS_REPOSITORIES in body:
-            await asyncio.shield(
-                self.sys_store.update_repositories(set(body[ATTR_ADDONS_REPOSITORIES]))
-            )
 
         await self.sys_resolution.evaluate.evaluate_system()
 
