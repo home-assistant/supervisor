@@ -422,8 +422,6 @@ class DockerInterface(JobGroup, ABC):
                 platform=MAP_ARCH[image_arch],
             )
 
-            # CodeNotary content trust validation has been removed
-
             # Tag latest
             if latest:
                 _LOGGER.info(
