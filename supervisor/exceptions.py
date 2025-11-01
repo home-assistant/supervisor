@@ -423,6 +423,12 @@ class APINotFound(APIError):
     status = 404
 
 
+class APIGone(APIError):
+    """API is no longer available."""
+
+    status = 410
+
+
 class APIAddonNotInstalled(APIError):
     """Not installed addon requested at addons API."""
 
@@ -575,21 +581,6 @@ class PwnedSecret(PwnedError):
 
 class PwnedConnectivityError(PwnedError):
     """Connectivity errors while checking pwned passwords."""
-
-
-# util/codenotary
-
-
-class CodeNotaryError(HassioError):
-    """Error general with CodeNotary."""
-
-
-class CodeNotaryUntrusted(CodeNotaryError):
-    """Error on untrusted content."""
-
-
-class CodeNotaryBackendError(CodeNotaryError):
-    """CodeNotary backend error happening."""
 
 
 # util/whoami

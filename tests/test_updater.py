@@ -86,10 +86,9 @@ async def test_os_update_path(
     """Test OS upgrade path across major versions."""
     coresys.os._board = "rpi4"  # pylint: disable=protected-access
     coresys.os._version = AwesomeVersion(version)  # pylint: disable=protected-access
-    with patch.object(type(coresys.security), "verify_own_content"):
-        await coresys.updater.fetch_data()
+    await coresys.updater.fetch_data()
 
-        assert coresys.updater.version_hassos == AwesomeVersion(expected)
+    assert coresys.updater.version_hassos == AwesomeVersion(expected)
 
 
 @pytest.mark.usefixtures("no_job_throttle")
@@ -105,7 +104,6 @@ async def test_delayed_fetch_for_connectivity(
         load_binary_fixture("version_stable.json")
     )
     coresys.websession.head = AsyncMock()
-    coresys.security.verify_own_content = AsyncMock()
 
     # Network connectivity change causes a series of async tasks to eventually do a version fetch
     # Rather then use some kind of sleep loop, set up listener for start of fetch data job
