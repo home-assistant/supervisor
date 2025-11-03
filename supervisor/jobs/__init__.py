@@ -327,6 +327,10 @@ class JobManager(FileConfiguration, CoreSysAttributes):
                 if not curr_parent.child_job_syncs:
                     continue
 
+                # No value in child job sync if the parent is done
+                if curr_parent.done is True or curr_parent.progress >= 100:
+                    continue
+
                 # Break after first match at each parent as it doesn't make sense
                 # to match twice. But it could match multiple parents
                 for sync in curr_parent.child_job_syncs:
