@@ -327,6 +327,17 @@ class JobManager(FileConfiguration, CoreSysAttributes):
                 if not curr_parent.child_job_syncs:
                     continue
 
+                # HACK: If parent trigger the same child job, we just skip this second
+                # sync. Maybe it would be better to have this reflected in the job stage
+                # and reset progress to 0 instead? There is no support for such stage
+                # information on Core update entities today though.
+                if curr_parent.done is True or curr_parent.progress >= 100:
+                    _LOGGER.debug(
+                        "Skipping parent job sync for done parent job %s",
+                        curr_parent.name,
+                    )
+                    continue
+
                 # Break after first match at each parent as it doesn't make sense
                 # to match twice. But it could match multiple parents
                 for sync in curr_parent.child_job_syncs:
