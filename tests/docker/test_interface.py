@@ -31,15 +31,6 @@ from supervisor.jobs import JobSchedulerOptions, SupervisorJob
 from tests.common import load_json_fixture
 
 
-@pytest.fixture(autouse=True)
-def mock_verify_content(coresys: CoreSys):
-    """Mock verify_content utility during tests."""
-    with patch.object(
-        coresys.security, "verify_content", return_value=None
-    ) as verify_content:
-        yield verify_content
-
-
 @pytest.mark.parametrize(
     "cpu_arch, platform",
     [

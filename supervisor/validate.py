@@ -12,7 +12,6 @@ from .const import (
     ATTR_AUTO_UPDATE,
     ATTR_CHANNEL,
     ATTR_CLI,
-    ATTR_CONTENT_TRUST,
     ATTR_COUNTRY,
     ATTR_DEBUG,
     ATTR_DEBUG_BLOCK,
@@ -229,7 +228,6 @@ SCHEMA_INGRESS_CONFIG = vol.Schema(
 # pylint: disable=no-value-for-parameter
 SCHEMA_SECURITY_CONFIG = vol.Schema(
     {
-        vol.Optional(ATTR_CONTENT_TRUST, default=True): vol.Boolean(),
         vol.Optional(ATTR_PWNED, default=True): vol.Boolean(),
         vol.Optional(ATTR_FORCE_SECURITY, default=False): vol.Boolean(),
     },

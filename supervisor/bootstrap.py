@@ -105,7 +105,6 @@ async def initialize_coresys() -> CoreSys:
 
     if coresys.dev:
         coresys.updater.channel = UpdateChannel.DEV
-        coresys.security.content_trust = False
 
     # Convert datetime
     logging.Formatter.converter = lambda *args: coresys.now().timetuple()
