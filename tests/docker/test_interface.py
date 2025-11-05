@@ -578,7 +578,7 @@ async def test_install_progress_handles_layers_skipping_download(
 ):
     """Test install handles small layers that skip downloading phase and go directly to download complete.
 
-    Reproduces the real-world scenario from SupervisorNoUpdateProgressLogs.txt:
+    Reproduces the real-world scenario from Supervisor issue #6286:
     - Small layer (02a6e69d8d00) completes Download complete at 10:14:08 without ever Downloading
     - Normal layer (3f4a84073184) starts Downloading at 10:14:09 with progress updates
     """
