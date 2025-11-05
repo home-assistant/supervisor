@@ -638,7 +638,7 @@ async def test_install_progress_handles_layers_skipping_download(
     # Capture immutable snapshots of install job progress using job.as_dict()
     # This solves the mutable object problem - we snapshot state at call time
     install_job_snapshots = []
-    original_on_job_change = coresys.jobs._on_job_change
+    original_on_job_change = coresys.jobs._on_job_change  # pylint: disable=W0212
 
     def capture_and_forward(job_obj, attribute, value):
         # Capture immutable snapshot if this is the install job with progress
