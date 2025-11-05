@@ -18,7 +18,7 @@ async def test_evaluation_unsupported_architectures(
 ):
     """Test evaluation of unsupported system architectures."""
     system_architecture = EvaluateSystemArchitecture(coresys)
-    coresys.core.state = CoreState.INITIALIZE
+    await coresys.core.set_state(CoreState.INITIALIZE)
 
     with patch.object(
         type(coresys.supervisor), "arch", PropertyMock(return_value=arch)
@@ -34,7 +34,7 @@ async def test_evaluation_supported_architectures(
 ):
     """Test evaluation of supported system architectures."""
     system_architecture = EvaluateSystemArchitecture(coresys)
-    coresys.core.state = CoreState.INITIALIZE
+    await coresys.core.set_state(CoreState.INITIALIZE)
 
     with patch.object(
         type(coresys.supervisor), "arch", PropertyMock(return_value=arch)
