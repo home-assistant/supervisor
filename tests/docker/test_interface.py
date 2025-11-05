@@ -569,3 +569,81 @@ async def test_install_progress_handles_download_restart(
         await event.wait()
 
     capture_exception.assert_not_called()
+
+
+async def test_install_progress_handles_layers_skipping_download(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    capture_exception: Mock,
+):
+    """Test install handles small layers that skip downloading phase and go directly to download complete."""
+    coresys.core.set_state(CoreState.RUNNING)
+    # Simulate multiple layers where one small layer (96 bytes) skips the downloading phase
+    # This layer should not block progress reporting for the parent job
+    coresys.docker.docker.api.pull.return_value = [
+        {"status": "Pulling from test/image", "id": "latest"},
+        # Layer 1: Normal layer with downloading phase
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "layer1"},
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 100, "total": 1000},
+            "progress": "[=====>                                             ]     100B/1000B",
+            "id": "layer1",
+        },
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 1000, "total": 1000},
+            "progress": "[==================================================>]    1000B/1000B",
+            "id": "layer1",
+        },
+        {"status": "Download complete", "progressDetail": {}, "id": "layer1"},
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 1000, "total": 1000},
+            "progress": "[==================================================>]    1000B/1000B",
+            "id": "layer1",
+        },
+        {"status": "Pull complete", "progressDetail": {}, "id": "layer1"},
+        # Layer 2: Small layer that skips downloading (like 02a6e69d8d00 from the logs)
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "layer2"},
+        {"status": "Waiting", "progressDetail": {}, "id": "layer2"},
+        # Goes straight to Download complete without Downloading phase
+        {"status": "Download complete", "progressDetail": {}, "id": "layer2"},
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 96, "total": 96},
+            "progress": "[==================================================>]      96B/96B",
+            "id": "layer2",
+        },
+        {"status": "Pull complete", "progressDetail": {}, "id": "layer2"},
+        {"status": "Digest: sha256:test"},
+        {"status": "Status: Downloaded newer image for test/image:latest"},
+    ]
+
+    with patch.object(
+        type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
+    ):
+        # Schedule job so we can observe that it completes successfully
+        event = asyncio.Event()
+        job, install_task = coresys.jobs.schedule_job(
+            test_docker_interface.install,
+            JobSchedulerOptions(),
+            AwesomeVersion("1.2.3"),
+            "test",
+        )
+
+        async def listen_for_job_end(reference: SupervisorJob):
+            if reference.uuid != job.uuid:
+                return
+            event.set()
+
+        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
+        await install_task
+        await event.wait()
+
+    # The key assertion: Job should complete successfully without errors
+    # Without the fix, layer2 would block all progress reporting until it reached Extracting,
+    # preventing the aggregate progress calculation from running
+    assert job.done is True
+    assert job.progress == 100
+    capture_exception.assert_not_called()
