@@ -581,35 +581,8 @@ async def test_install_progress_handles_layers_skipping_download(
     Reproduces the real-world scenario from SupervisorNoUpdateProgressLogs.txt:
     - Small layer (02a6e69d8d00) completes Download complete at 10:14:08 without ever Downloading
     - Normal layer (3f4a84073184) starts Downloading at 10:14:09 with progress updates
-    - WITHOUT fix: No parent progress updates during 10:14:09-10:14:58 (blocked by small layer's missing extra)
-    - WITH fix: Parent progress updates occur immediately after small layer reaches Download complete
     """
     coresys.core.set_state(CoreState.RUNNING)
-
-    # Track when install_job.extra gets set (indicates aggregate calculation succeeded)
-    install_job_extra_set = asyncio.Event()
-    install_job_progress_updates = []
-
-    # Hook into _process_pull_image_log to capture when parent job updates
-    original_process = test_docker_interface._process_pull_image_log
-
-    def hooked_process(install_job_id: str, reference):
-        original_process(install_job_id, reference)
-
-        # Check if install_job.extra was set (means aggregate calc succeeded)
-        install_job = coresys.jobs.get_job(install_job_id)
-        if install_job and install_job.extra and not install_job_extra_set.is_set():
-            install_job_extra_set.set()
-
-        # Track progress updates
-        if install_job and install_job.progress > 0:
-            if (
-                not install_job_progress_updates
-                or install_job.progress > install_job_progress_updates[-1]
-            ):
-                install_job_progress_updates.append(install_job.progress)
-
-    test_docker_interface._process_pull_image_log = hooked_process
 
     # Reproduce EXACT sequence from SupervisorNoUpdateProgressLogs.txt:
     # Small layer (02a6e69d8d00) completes BEFORE normal layer (3f4a84073184) starts downloading
@@ -617,12 +590,12 @@ async def test_install_progress_handles_layers_skipping_download(
         {"status": "Pulling from test/image", "id": "latest"},
         # Small layer that skips downloading (02a6e69d8d00 in logs, 96 bytes)
         {"status": "Pulling fs layer", "progressDetail": {}, "id": "02a6e69d8d00"},
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "3f4a84073184"},
         {"status": "Waiting", "progressDetail": {}, "id": "02a6e69d8d00"},
+        {"status": "Waiting", "progressDetail": {}, "id": "3f4a84073184"},
         # Goes straight to Download complete (10:14:08 in logs) - THIS IS THE KEY MOMENT
         {"status": "Download complete", "progressDetail": {}, "id": "02a6e69d8d00"},
         # Normal layer that downloads (3f4a84073184 in logs, 25MB)
-        {"status": "Pulling fs layer", "progressDetail": {}, "id": "3f4a84073184"},
-        {"status": "Waiting", "progressDetail": {}, "id": "3f4a84073184"},
         # Downloading starts (10:14:09 in logs) - progress updates should happen NOW!
         {
             "status": "Downloading",
@@ -662,9 +635,19 @@ async def test_install_progress_handles_layers_skipping_download(
         {"status": "Status: Downloaded newer image for test/image:latest"},
     ]
 
-    with patch.object(
-        type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
-    ):
+    # Capture immutable snapshots of install job progress using job.as_dict()
+    # This solves the mutable object problem - we snapshot state at call time
+    install_job_snapshots = []
+    original_on_job_change = coresys.jobs._on_job_change
+
+    def capture_and_forward(job_obj, attribute, value):
+        # Capture immutable snapshot if this is the install job with progress
+        if job_obj.name == "docker_interface_install" and job_obj.progress > 0:
+            install_job_snapshots.append(job_obj.as_dict())
+        # Forward to original to maintain functionality
+        return original_on_job_change(job_obj, attribute, value)
+
+    with patch.object(coresys.jobs, "_on_job_change", side_effect=capture_and_forward):
         event = asyncio.Event()
         job, install_task = coresys.jobs.schedule_job(
             test_docker_interface.install,
@@ -682,26 +665,13 @@ async def test_install_progress_handles_layers_skipping_download(
         await install_task
         await event.wait()
 
-        # Restore original
-        test_docker_interface._process_pull_image_log = original_process
+        # First update from layer download should have rather low progress ((260937/25445459) / 2 ~ 0.5%)
+        assert install_job_snapshots[0]["progress"] < 1
 
-    # THE KEY ASSERTIONS:
-    # 1. With the fix, install_job.extra should be set RIGHT AFTER small layer reaches Download complete
-    #    (when the first Downloading event for the normal layer comes in)
-    assert install_job_extra_set.is_set(), (
-        "Expected install_job.extra to be set after small layer reached Download complete, "
-        "but aggregate calculation was blocked. Without the fix, small layer's missing extra "
-        "field blocks aggregate calculation at interface.py:347-348 until it reaches Extracting."
-    )
+        # Total 8 events should lead to a progress update on the install job
+        assert len(install_job_snapshots) == 8
 
-    # 2. Should have multiple progress updates (not just one at the very end)
-    assert len(install_job_progress_updates) >= 2, (
-        f"Expected multiple progress updates while normal layer was downloading, "
-        f"but only got {len(install_job_progress_updates)}: {install_job_progress_updates}. "
-        f"Without the fix, updates would only come after small layer reaches Extracting (10:14:58 in logs)."
-    )
-
-    # 3. Job should complete successfully
-    assert job.done is True
-    assert job.progress == 100
-    capture_exception.assert_not_called()
+        # Job should complete successfully
+        assert job.done is True
+        assert job.progress == 100
+        capture_exception.assert_not_called()
