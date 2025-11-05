@@ -576,46 +576,88 @@ async def test_install_progress_handles_layers_skipping_download(
     test_docker_interface: DockerInterface,
     capture_exception: Mock,
 ):
-    """Test install handles small layers that skip downloading phase and go directly to download complete."""
+    """Test install handles small layers that skip downloading phase and go directly to download complete.
+
+    Reproduces the real-world scenario from SupervisorNoUpdateProgressLogs.txt:
+    - Small layer (02a6e69d8d00) completes Download complete at 10:14:08 without ever Downloading
+    - Normal layer (3f4a84073184) starts Downloading at 10:14:09 with progress updates
+    - WITHOUT fix: No parent progress updates during 10:14:09-10:14:58 (blocked by small layer's missing extra)
+    - WITH fix: Parent progress updates occur immediately after small layer reaches Download complete
+    """
     coresys.core.set_state(CoreState.RUNNING)
-    # Simulate multiple layers where one small layer (96 bytes) skips the downloading phase
-    # This layer should not block progress reporting for the parent job
+
+    # Track when install_job.extra gets set (indicates aggregate calculation succeeded)
+    install_job_extra_set = asyncio.Event()
+    install_job_progress_updates = []
+
+    # Hook into _process_pull_image_log to capture when parent job updates
+    original_process = test_docker_interface._process_pull_image_log
+
+    def hooked_process(install_job_id: str, reference):
+        original_process(install_job_id, reference)
+
+        # Check if install_job.extra was set (means aggregate calc succeeded)
+        install_job = coresys.jobs.get_job(install_job_id)
+        if install_job and install_job.extra and not install_job_extra_set.is_set():
+            install_job_extra_set.set()
+
+        # Track progress updates
+        if install_job and install_job.progress > 0:
+            if (
+                not install_job_progress_updates
+                or install_job.progress > install_job_progress_updates[-1]
+            ):
+                install_job_progress_updates.append(install_job.progress)
+
+    test_docker_interface._process_pull_image_log = hooked_process
+
+    # Reproduce EXACT sequence from SupervisorNoUpdateProgressLogs.txt:
+    # Small layer (02a6e69d8d00) completes BEFORE normal layer (3f4a84073184) starts downloading
     coresys.docker.docker.api.pull.return_value = [
         {"status": "Pulling from test/image", "id": "latest"},
-        # Layer 1: Normal layer with downloading phase
-        {"status": "Pulling fs layer", "progressDetail": {}, "id": "layer1"},
+        # Small layer that skips downloading (02a6e69d8d00 in logs, 96 bytes)
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "02a6e69d8d00"},
+        {"status": "Waiting", "progressDetail": {}, "id": "02a6e69d8d00"},
+        # Goes straight to Download complete (10:14:08 in logs) - THIS IS THE KEY MOMENT
+        {"status": "Download complete", "progressDetail": {}, "id": "02a6e69d8d00"},
+        # Normal layer that downloads (3f4a84073184 in logs, 25MB)
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "3f4a84073184"},
+        {"status": "Waiting", "progressDetail": {}, "id": "3f4a84073184"},
+        # Downloading starts (10:14:09 in logs) - progress updates should happen NOW!
         {
             "status": "Downloading",
-            "progressDetail": {"current": 100, "total": 1000},
-            "progress": "[=====>                                             ]     100B/1000B",
-            "id": "layer1",
+            "progressDetail": {"current": 260937, "total": 25371463},
+            "progress": "[>                                                  ]  260.9kB/25.37MB",
+            "id": "3f4a84073184",
         },
         {
             "status": "Downloading",
-            "progressDetail": {"current": 1000, "total": 1000},
-            "progress": "[==================================================>]    1000B/1000B",
-            "id": "layer1",
+            "progressDetail": {"current": 5505024, "total": 25371463},
+            "progress": "[==========>                                        ]  5.505MB/25.37MB",
+            "id": "3f4a84073184",
         },
-        {"status": "Download complete", "progressDetail": {}, "id": "layer1"},
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 11272192, "total": 25371463},
+            "progress": "[======================>                            ]  11.27MB/25.37MB",
+            "id": "3f4a84073184",
+        },
+        {"status": "Download complete", "progressDetail": {}, "id": "3f4a84073184"},
         {
             "status": "Extracting",
-            "progressDetail": {"current": 1000, "total": 1000},
-            "progress": "[==================================================>]    1000B/1000B",
-            "id": "layer1",
+            "progressDetail": {"current": 25371463, "total": 25371463},
+            "progress": "[==================================================>]  25.37MB/25.37MB",
+            "id": "3f4a84073184",
         },
-        {"status": "Pull complete", "progressDetail": {}, "id": "layer1"},
-        # Layer 2: Small layer that skips downloading (like 02a6e69d8d00 from the logs)
-        {"status": "Pulling fs layer", "progressDetail": {}, "id": "layer2"},
-        {"status": "Waiting", "progressDetail": {}, "id": "layer2"},
-        # Goes straight to Download complete without Downloading phase
-        {"status": "Download complete", "progressDetail": {}, "id": "layer2"},
+        {"status": "Pull complete", "progressDetail": {}, "id": "3f4a84073184"},
+        # Small layer finally extracts (10:14:58 in logs)
         {
             "status": "Extracting",
             "progressDetail": {"current": 96, "total": 96},
             "progress": "[==================================================>]      96B/96B",
-            "id": "layer2",
+            "id": "02a6e69d8d00",
         },
-        {"status": "Pull complete", "progressDetail": {}, "id": "layer2"},
+        {"status": "Pull complete", "progressDetail": {}, "id": "02a6e69d8d00"},
         {"status": "Digest: sha256:test"},
         {"status": "Status: Downloaded newer image for test/image:latest"},
     ]
@@ -623,7 +665,6 @@ async def test_install_progress_handles_layers_skipping_download(
     with patch.object(
         type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
     ):
-        # Schedule job so we can observe that it completes successfully
         event = asyncio.Event()
         job, install_task = coresys.jobs.schedule_job(
             test_docker_interface.install,
@@ -641,9 +682,26 @@ async def test_install_progress_handles_layers_skipping_download(
         await install_task
         await event.wait()
 
-    # The key assertion: Job should complete successfully without errors
-    # Without the fix, layer2 would block all progress reporting until it reached Extracting,
-    # preventing the aggregate progress calculation from running
+        # Restore original
+        test_docker_interface._process_pull_image_log = original_process
+
+    # THE KEY ASSERTIONS:
+    # 1. With the fix, install_job.extra should be set RIGHT AFTER small layer reaches Download complete
+    #    (when the first Downloading event for the normal layer comes in)
+    assert install_job_extra_set.is_set(), (
+        "Expected install_job.extra to be set after small layer reached Download complete, "
+        "but aggregate calculation was blocked. Without the fix, small layer's missing extra "
+        "field blocks aggregate calculation at interface.py:347-348 until it reaches Extracting."
+    )
+
+    # 2. Should have multiple progress updates (not just one at the very end)
+    assert len(install_job_progress_updates) >= 2, (
+        f"Expected multiple progress updates while normal layer was downloading, "
+        f"but only got {len(install_job_progress_updates)}: {install_job_progress_updates}. "
+        f"Without the fix, updates would only come after small layer reaches Extracting (10:14:58 in logs)."
+    )
+
+    # 3. Job should complete successfully
     assert job.done is True
     assert job.progress == 100
     capture_exception.assert_not_called()
