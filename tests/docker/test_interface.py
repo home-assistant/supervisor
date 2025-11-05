@@ -647,3 +647,94 @@ async def test_install_progress_handles_layers_skipping_download(
     assert job.done is True
     assert job.progress == 100
     capture_exception.assert_not_called()
+
+
+async def test_install_progress_handles_containerd_snapshotter(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    capture_exception: Mock,
+):
+    """Test install handles containerd snapshotter time-based progress (total=None)."""
+    coresys.core.set_state(CoreState.RUNNING)
+    # Containerd snapshotter reports extraction progress as time elapsed (e.g., "7 s")
+    # with current=7, total=None instead of byte-based progress
+    coresys.docker.docker.api.pull.return_value = [
+        {"status": "Pulling from test/image", "id": "latest"},
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "layer1"},
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 100, "total": 1000},
+            "progress": "[=====>                                             ]     100B/1000B",
+            "id": "layer1",
+        },
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 1000, "total": 1000},
+            "progress": "[==================================================>]    1000B/1000B",
+            "id": "layer1",
+        },
+        {"status": "Download complete", "progressDetail": {}, "id": "layer1"},
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 1000, "total": 1000},
+            "progress": "[==================================================>]    1000B/1000B",
+            "id": "layer1",
+        },
+        {"status": "Pull complete", "progressDetail": {}, "id": "layer1"},
+        # Layer 2: Containerd snapshotter with time-based extraction
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "layer2"},
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 50, "total": 500},
+            "progress": "[=====>                                             ]      50B/500B",
+            "id": "layer2",
+        },
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 500, "total": 500},
+            "progress": "[==================================================>]     500B/500B",
+            "id": "layer2",
+        },
+        {"status": "Download complete", "progressDetail": {}, "id": "layer2"},
+        # Time-based extraction progress (containerd snapshotter)
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 3, "total": None},
+            "progress": "3 s",
+            "id": "layer2",
+        },
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 7, "total": None},
+            "progress": "7 s",
+            "id": "layer2",
+        },
+        {"status": "Pull complete", "progressDetail": {}, "id": "layer2"},
+        {"status": "Digest: sha256:test"},
+        {"status": "Status: Downloaded newer image for test/image:latest"},
+    ]
+
+    with patch.object(
+        type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
+    ):
+        event = asyncio.Event()
+        job, install_task = coresys.jobs.schedule_job(
+            test_docker_interface.install,
+            JobSchedulerOptions(),
+            AwesomeVersion("1.2.3"),
+            "test",
+        )
+
+        async def listen_for_job_end(reference: SupervisorJob):
+            if reference.uuid != job.uuid:
+                return
+            event.set()
+
+        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
+        await install_task
+        await event.wait()
+
+    # The key assertion: Job should complete without crashing on None total
+    assert job.done is True
+    assert job.progress == 100
+    capture_exception.assert_not_called()

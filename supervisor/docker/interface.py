@@ -341,23 +341,40 @@ class DockerInterface(JobGroup, ABC):
         ]
 
         # First set the total bytes to be downloaded/extracted on the main job
+        # Note: With containerd snapshotter, total may be None (time-based progress instead of byte-based)
         if not install_job.extra:
             total = 0
+            has_byte_progress = True
             for job in layer_jobs:
                 if not job.extra:
                     return
+                # If any layer has None for total, we can't do byte-weighted aggregation
+                if job.extra["total"] is None:
+                    has_byte_progress = False
+                    break
                 total += job.extra["total"]
-            install_job.extra = {"total": total}
+
+            # Store whether we have byte-based progress for later use
+            install_job.extra = {"total": total if has_byte_progress else None}
         else:
             total = install_job.extra["total"]
+            has_byte_progress = total is not None
 
-        # Then determine total progress based on progress of each sub-job, factoring in size of each compared to total
+        # Then determine total progress based on progress of each sub-job
+        # If we have byte counts, weight by size. Otherwise, simple average.
         progress = 0.0
         stage = PullImageLayerStage.PULL_COMPLETE
         for job in layer_jobs:
             if not job.extra:
                 return
-            progress += job.progress * (job.extra["total"] / total)
+
+            if has_byte_progress:
+                # Byte-weighted progress (classic Docker behavior)
+                progress += job.progress * (job.extra["total"] / total)
+            else:
+                # Simple average progress (containerd snapshotter with time-based progress)
+                progress += job.progress / len(layer_jobs)
+
             job_stage = PullImageLayerStage.from_status(cast(str, job.stage))
 
             if job_stage < PullImageLayerStage.EXTRACTING:
