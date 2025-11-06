@@ -124,7 +124,7 @@ async def test_ingress_proxy_no_content_type_for_empty_body_responses(
             # 100 Continue - should not have Content-Type
             return web.Response(status=100)
         elif path == "/head":
-            # HEAD request - should not have Content-Type
+            # HEAD request - should have Content-Type (same as GET would)
             return web.Response(body=b"test", content_type="text/html")
         elif path == "/200":
             # 200 OK with body - should have Content-Type
@@ -178,13 +178,18 @@ async def test_ingress_proxy_no_content_type_for_empty_body_responses(
             assert resp.status == 304
             assert hdrs.CONTENT_TYPE not in resp.headers
 
-            # Test HEAD request - should NOT have Content-Type
+            # Test HEAD request - SHOULD have Content-Type (same as GET)
+            # per RFC 9110: HEAD should return same headers as GET
             resp = await api_client.head(
                 f"/ingress/{ingress_token}/head",
                 cookies={"ingress_session": session},
             )
             assert resp.status == 200
-            assert hdrs.CONTENT_TYPE not in resp.headers
+            assert hdrs.CONTENT_TYPE in resp.headers
+            assert "text/html" in resp.headers[hdrs.CONTENT_TYPE]
+            # Body should be empty for HEAD
+            body = await resp.read()
+            assert body == b""
 
             # Test 200 OK with body - SHOULD have Content-Type
             resp = await api_client.get(
