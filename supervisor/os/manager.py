@@ -278,7 +278,6 @@ class OSManager(CoreSysAttributes):
         name="os_manager_update",
         conditions=[
             JobCondition.HAOS,
-            JobCondition.HEALTHY,
             JobCondition.INTERNET_SYSTEM,
             JobCondition.RUNNING,
             JobCondition.SUPERVISOR_UPDATED,
