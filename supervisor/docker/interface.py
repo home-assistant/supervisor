@@ -217,7 +217,7 @@ class DockerInterface(JobGroup, ABC):
 
         await self.sys_run_in_executor(self.sys_docker.docker.login, **credentials)
 
-    def _process_pull_image_log(
+    def _process_pull_image_log(  # noqa: C901
         self, install_job_id: str, reference: PullLogEntry
     ) -> None:
         """Process events fired from a docker while pulling an image, filtered to a given job id."""
@@ -318,13 +318,17 @@ class DockerInterface(JobGroup, ABC):
                 },
             )
         else:
+            # If we reach DOWNLOAD_COMPLETE without ever having set extra (small layers that skip
+            # the downloading phase), set a minimal extra so aggregate progress calculation can proceed
+            extra = job.extra
+            if stage == PullImageLayerStage.DOWNLOAD_COMPLETE and not job.extra:
+                extra = {"current": 1, "total": 1}
+
             job.update(
                 progress=progress,
                 stage=stage.status,
                 done=stage == PullImageLayerStage.PULL_COMPLETE,
-                extra=None
-                if stage == PullImageLayerStage.RETRYING_DOWNLOAD
-                else job.extra,
+                extra=None if stage == PullImageLayerStage.RETRYING_DOWNLOAD else extra,
             )
 
         # Once we have received a progress update for every child job, start to set status of the main one

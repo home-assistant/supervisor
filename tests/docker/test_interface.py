@@ -569,3 +569,109 @@ async def test_install_progress_handles_download_restart(
         await event.wait()
 
     capture_exception.assert_not_called()
+
+
+async def test_install_progress_handles_layers_skipping_download(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    capture_exception: Mock,
+):
+    """Test install handles small layers that skip downloading phase and go directly to download complete.
+
+    Reproduces the real-world scenario from Supervisor issue #6286:
+    - Small layer (02a6e69d8d00) completes Download complete at 10:14:08 without ever Downloading
+    - Normal layer (3f4a84073184) starts Downloading at 10:14:09 with progress updates
+    """
+    coresys.core.set_state(CoreState.RUNNING)
+
+    # Reproduce EXACT sequence from SupervisorNoUpdateProgressLogs.txt:
+    # Small layer (02a6e69d8d00) completes BEFORE normal layer (3f4a84073184) starts downloading
+    coresys.docker.docker.api.pull.return_value = [
+        {"status": "Pulling from test/image", "id": "latest"},
+        # Small layer that skips downloading (02a6e69d8d00 in logs, 96 bytes)
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "02a6e69d8d00"},
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "3f4a84073184"},
+        {"status": "Waiting", "progressDetail": {}, "id": "02a6e69d8d00"},
+        {"status": "Waiting", "progressDetail": {}, "id": "3f4a84073184"},
+        # Goes straight to Download complete (10:14:08 in logs) - THIS IS THE KEY MOMENT
+        {"status": "Download complete", "progressDetail": {}, "id": "02a6e69d8d00"},
+        # Normal layer that downloads (3f4a84073184 in logs, 25MB)
+        # Downloading starts (10:14:09 in logs) - progress updates should happen NOW!
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 260937, "total": 25371463},
+            "progress": "[>                                                  ]  260.9kB/25.37MB",
+            "id": "3f4a84073184",
+        },
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 5505024, "total": 25371463},
+            "progress": "[==========>                                        ]  5.505MB/25.37MB",
+            "id": "3f4a84073184",
+        },
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 11272192, "total": 25371463},
+            "progress": "[======================>                            ]  11.27MB/25.37MB",
+            "id": "3f4a84073184",
+        },
+        {"status": "Download complete", "progressDetail": {}, "id": "3f4a84073184"},
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 25371463, "total": 25371463},
+            "progress": "[==================================================>]  25.37MB/25.37MB",
+            "id": "3f4a84073184",
+        },
+        {"status": "Pull complete", "progressDetail": {}, "id": "3f4a84073184"},
+        # Small layer finally extracts (10:14:58 in logs)
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 96, "total": 96},
+            "progress": "[==================================================>]      96B/96B",
+            "id": "02a6e69d8d00",
+        },
+        {"status": "Pull complete", "progressDetail": {}, "id": "02a6e69d8d00"},
+        {"status": "Digest: sha256:test"},
+        {"status": "Status: Downloaded newer image for test/image:latest"},
+    ]
+
+    # Capture immutable snapshots of install job progress using job.as_dict()
+    # This solves the mutable object problem - we snapshot state at call time
+    install_job_snapshots = []
+    original_on_job_change = coresys.jobs._on_job_change  # pylint: disable=W0212
+
+    def capture_and_forward(job_obj, attribute, value):
+        # Capture immutable snapshot if this is the install job with progress
+        if job_obj.name == "docker_interface_install" and job_obj.progress > 0:
+            install_job_snapshots.append(job_obj.as_dict())
+        # Forward to original to maintain functionality
+        return original_on_job_change(job_obj, attribute, value)
+
+    with patch.object(coresys.jobs, "_on_job_change", side_effect=capture_and_forward):
+        event = asyncio.Event()
+        job, install_task = coresys.jobs.schedule_job(
+            test_docker_interface.install,
+            JobSchedulerOptions(),
+            AwesomeVersion("1.2.3"),
+            "test",
+        )
+
+        async def listen_for_job_end(reference: SupervisorJob):
+            if reference.uuid != job.uuid:
+                return
+            event.set()
+
+        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
+        await install_task
+        await event.wait()
+
+        # First update from layer download should have rather low progress ((260937/25445459) / 2 ~ 0.5%)
+        assert install_job_snapshots[0]["progress"] < 1
+
+        # Total 8 events should lead to a progress update on the install job
+        assert len(install_job_snapshots) == 8
+
+        # Job should complete successfully
+        assert job.done is True
+        assert job.progress == 100
+        capture_exception.assert_not_called()
