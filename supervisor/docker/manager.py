@@ -225,13 +225,11 @@ class DockerAPI(CoreSysAttributes):
 
     async def post_init(self) -> Self:
         """Post init actions that must be done in event loop."""
-        # Use /var/run/docker.sock for this one so aiodocker and dockerpy don't
-        # share the same handle. Temporary fix while refactoring this client out
         self._dockerpy = await asyncio.get_running_loop().run_in_executor(
             None,
             partial(
                 DockerClient,
-                base_url=f"unix://var{SOCKET_DOCKER.as_posix()}",
+                base_url=f"unix:/{SOCKET_DOCKER.as_posix()}",
                 version="auto",
                 timeout=900,
             ),
