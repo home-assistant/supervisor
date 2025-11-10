@@ -574,7 +574,7 @@ async def test_install_progress_handles_layers_skipping_download(
 
     # Reproduce EXACT sequence from SupervisorNoUpdateProgressLogs.txt:
     # Small layer (02a6e69d8d00) completes BEFORE normal layer (3f4a84073184) starts downloading
-    coresys.docker.docker.api.pull.return_value = [
+    logs = [
         {"status": "Pulling from test/image", "id": "latest"},
         # Small layer that skips downloading (02a6e69d8d00 in logs, 96 bytes)
         {"status": "Pulling fs layer", "progressDetail": {}, "id": "02a6e69d8d00"},
@@ -622,6 +622,7 @@ async def test_install_progress_handles_layers_skipping_download(
         {"status": "Digest: sha256:test"},
         {"status": "Status: Downloaded newer image for test/image:latest"},
     ]
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
     # Capture immutable snapshots of install job progress using job.as_dict()
     # This solves the mutable object problem - we snapshot state at call time
