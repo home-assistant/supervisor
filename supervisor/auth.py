@@ -9,8 +9,10 @@ from .addons.addon import Addon
 from .const import ATTR_PASSWORD, ATTR_TYPE, ATTR_USERNAME, FILE_HASSIO_AUTH
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
-    AuthError,
+    AuthHomeAssistantAPIValidationError,
+    AuthInvalidNoneValueError,
     AuthListUsersError,
+    AuthListUsersNoneResponseError,
     AuthPasswordResetError,
     HomeAssistantAPIError,
     HomeAssistantWSError,
@@ -83,10 +85,8 @@ class Auth(FileConfiguration, CoreSysAttributes):
         self, addon: Addon, username: str | None, password: str | None
     ) -> bool:
         """Check username login."""
-        if password is None:
-            raise AuthError("None as password is not supported!", _LOGGER.error)
-        if username is None:
-            raise AuthError("None as username is not supported!", _LOGGER.error)
+        if username is None or password is None:
+            raise AuthInvalidNoneValueError(_LOGGER.error)
 
         _LOGGER.info("Auth request from '%s' for '%s'", addon.slug, username)
 
@@ -137,7 +137,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
         finally:
             self._running.pop(username, None)
 
-        raise AuthError()
+        raise AuthHomeAssistantAPIValidationError()
 
     async def change_password(self, username: str, password: str) -> None:
         """Change user password login."""
@@ -155,7 +155,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
         except HomeAssistantAPIError as err:
             _LOGGER.error("Can't request password reset on Home Assistant: %s", err)
 
-        raise AuthPasswordResetError()
+        raise AuthPasswordResetError(user=username)
 
     async def list_users(self) -> list[dict[str, Any]]:
         """List users on the Home Assistant instance."""
@@ -166,15 +166,12 @@ class Auth(FileConfiguration, CoreSysAttributes):
                 {ATTR_TYPE: "config/auth/list"}
             )
         except HomeAssistantWSError as err:
-            raise AuthListUsersError(
-                f"Can't request listing users on Home Assistant: {err}", _LOGGER.error
-            ) from err
+            _LOGGER.error("Can't request listing users on Home Assistant: %s", err)
+            raise AuthListUsersError() from err
 
         if users is not None:
             return users
-        raise AuthListUsersError(
-            "Can't request listing users on Home Assistant!", _LOGGER.error
-        )
+        raise AuthListUsersNoneResponseError(_LOGGER.error)
 
     @staticmethod
     def _rehash(value: str, salt2: str = "") -> str:

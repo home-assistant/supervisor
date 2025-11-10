@@ -53,7 +53,7 @@ from ..const import (
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APIForbidden, APINotFound
+from ..exceptions import APIError, APIForbidden, APINotFound, StoreAddonNotFoundError
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
@@ -104,7 +104,7 @@ class APIStore(CoreSysAttributes):
         addon_slug: str = request.match_info["addon"]
 
         if not (addon := self.sys_addons.get(addon_slug)):
-            raise APINotFound(f"Addon {addon_slug} does not exist")
+            raise StoreAddonNotFoundError(addon=addon_slug)
 
         if installed and not addon.is_installed:
             raise APIError(f"Addon {addon_slug} is not installed")
@@ -112,7 +112,7 @@ class APIStore(CoreSysAttributes):
         if not installed and addon.is_installed:
             addon = cast(Addon, addon)
             if not addon.addon_store:
-                raise APINotFound(f"Addon {addon_slug} does not exist in the store")
+                raise StoreAddonNotFoundError(addon=addon_slug)
             return addon.addon_store
 
         return addon

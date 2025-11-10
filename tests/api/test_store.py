@@ -325,7 +325,10 @@ async def test_store_addon_not_found(
     """Test store addon not found error."""
     resp = await api_client.request(method, url)
     assert resp.status == 404
-    assert await get_message(resp, json_expected) == "Addon bad does not exist"
+    assert (
+        await get_message(resp, json_expected)
+        == "Addon bad does not exist in the store"
+    )
 
 
 @pytest.mark.parametrize(

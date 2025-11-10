@@ -457,35 +457,34 @@ class DockerInterface(JobGroup, ABC):
             return True
         return False
 
-    async def is_running(self) -> bool:
-        """Return True if Docker is running."""
+    async def _get_container(self) -> Container | None:
+        """Get docker container, returns None if not found."""
         try:
-            docker_container = await self.sys_run_in_executor(
+            return await self.sys_run_in_executor(
                 self.sys_docker.containers.get, self.name
             )
         except docker.errors.NotFound:
-            return False
+            return None
         except docker.errors.DockerException as err:
-            raise DockerAPIError() from err
+            raise DockerAPIError(
+                f"Docker API error occurred while getting container information: {err!s}"
+            ) from err
         except requests.RequestException as err:
-            raise DockerRequestError() from err
+            raise DockerRequestError(
+                f"Error communicating with Docker to get container information: {err!s}"
+            ) from err
 
-        return docker_container.status == "running"
+    async def is_running(self) -> bool:
+        """Return True if Docker is running."""
+        if docker_container := await self._get_container():
+            return docker_container.status == "running"
+        return False
 
     async def current_state(self) -> ContainerState:
         """Return current state of container."""
-        try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
-            )
-        except docker.errors.NotFound:
-            return ContainerState.UNKNOWN
-        except docker.errors.DockerException as err:
-            raise DockerAPIError() from err
-        except requests.RequestException as err:
-            raise DockerRequestError() from err
-
-        return _container_state_from_model(docker_container)
+        if docker_container := await self._get_container():
+            return _container_state_from_model(docker_container)
+        return ContainerState.UNKNOWN
 
     @Job(name="docker_interface_attach", concurrency=JobConcurrency.GROUP_QUEUE)
     async def attach(
@@ -520,7 +519,9 @@ class DockerInterface(JobGroup, ABC):
 
         # Successful?
         if not self._meta:
-            raise DockerError()
+            raise DockerError(
+                f"Could not get metadata on container or image for {self.name}"
+            )
         _LOGGER.info("Attaching to %s with version %s", self.image, self.version)
 
     @Job(
@@ -723,14 +724,8 @@ class DockerInterface(JobGroup, ABC):
 
     async def is_failed(self) -> bool:
         """Return True if Docker is failing state."""
-        try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
-            )
-        except docker.errors.NotFound:
+        if not (docker_container := await self._get_container()):
             return False
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
 
         # container is not running
         if docker_container.status != "exited":

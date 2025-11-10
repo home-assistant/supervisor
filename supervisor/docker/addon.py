@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable
 from contextlib import suppress
 from ipaddress import IPv4Address
 import logging
@@ -35,6 +36,7 @@ from ..coresys import CoreSys
 from ..exceptions import (
     CoreDNSError,
     DBusError,
+    DockerBuildError,
     DockerError,
     DockerJobError,
     DockerNotFound,
@@ -682,9 +684,8 @@ class DockerAddon(DockerInterface):
     async def _build(self, version: AwesomeVersion, image: str | None = None) -> None:
         """Build a Docker container."""
         build_env = await AddonBuild(self.coresys, self.addon).load_config()
-        if not await build_env.is_valid():
-            _LOGGER.error("Invalid build environment, can't build this add-on!")
-            raise DockerError()
+        # Check if the build environment is valid, raises if not
+        await build_env.is_valid()
 
         _LOGGER.info("Starting build for %s:%s", self.image, version)
 
@@ -761,8 +762,9 @@ class DockerAddon(DockerInterface):
             requests.RequestException,
             aiodocker.DockerError,
         ) as err:
-            _LOGGER.error("Can't build %s:%s: %s", self.image, version, err)
-            raise DockerError() from err
+            raise DockerBuildError(
+                f"Can't build {self.image}:{version}: {err!s}", _LOGGER.error
+            ) from err
 
         _LOGGER.info("Build %s:%s done", self.image, version)
 
@@ -820,12 +822,9 @@ class DockerAddon(DockerInterface):
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def write_stdin(self, data: bytes) -> None:
+    def write_stdin(self, data: bytes) -> Awaitable[None]:
         """Write to add-on stdin."""
-        if not await self.is_running():
-            raise DockerError()
-
-        await self.sys_run_in_executor(self._write_stdin, data)
+        return self.sys_run_in_executor(self._write_stdin, data)
 
     def _write_stdin(self, data: bytes) -> None:
         """Write to add-on stdin.

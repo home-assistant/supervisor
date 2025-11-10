@@ -6,11 +6,13 @@ from pathlib import Path
 from unittest.mock import PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
+import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import DOCKER_HUB
+from supervisor.exceptions import AddonBuildDockerfileMissingError
 
 from tests.common import is_in_list
 
@@ -106,11 +108,11 @@ async def test_build_valid(coresys: CoreSys, install_addon_ssh: Addon):
             type(coresys.arch), "default", new=PropertyMock(return_value="aarch64")
         ),
     ):
-        assert await build.is_valid()
+        assert (await build.is_valid()) is None
 
 
 async def test_build_invalid(coresys: CoreSys, install_addon_ssh: Addon):
-    """Test platform set in docker args."""
+    """Test build not supported because Dockerfile missing for specified architecture."""
     build = await AddonBuild(coresys, install_addon_ssh).load_config()
     with (
         patch.object(
@@ -119,8 +121,9 @@ async def test_build_invalid(coresys: CoreSys, install_addon_ssh: Addon):
         patch.object(
             type(coresys.arch), "default", new=PropertyMock(return_value="amd64")
         ),
+        pytest.raises(AddonBuildDockerfileMissingError),
     ):
-        assert not await build.is_valid()
+        await build.is_valid()
 
 
 async def test_docker_config_no_registries(coresys: CoreSys, install_addon_ssh: Addon):
