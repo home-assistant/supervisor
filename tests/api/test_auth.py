@@ -6,9 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from aiohttp.hdrs import WWW_AUTHENTICATE
 from aiohttp.test_utils import TestClient
 import pytest
+from securetar import Any
 
 from supervisor.addons.addon import Addon
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import HomeAssistantAPIError, HomeAssistantWSError
 
 from tests.common import MockResponse
 from tests.const import TEST_ADDON_SLUG
@@ -100,6 +102,52 @@ async def test_password_reset(
     assert "Successful password reset for 'john'" in caplog.text
 
 
+@pytest.mark.parametrize(
+    ("post_mock", "expected_log"),
+    [
+        (
+            MagicMock(return_value=MockResponse(status=400)),
+            "The user 'john' is not registered",
+        ),
+        (
+            MagicMock(side_effect=HomeAssistantAPIError("fail")),
+            "Can't request password reset on Home Assistant: fail",
+        ),
+    ],
+)
+async def test_failed_password_reset(
+    api_client: TestClient,
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    websession: MagicMock,
+    post_mock: MagicMock,
+    expected_log: str,
+):
+    """Test failed password reset."""
+    coresys.homeassistant.api.access_token = "abc123"
+    # pylint: disable-next=protected-access
+    coresys.homeassistant.api._access_token_expires = datetime.now(tz=UTC) + timedelta(
+        days=1
+    )
+
+    websession.post = post_mock
+    resp = await api_client.post(
+        "/auth/reset", json={"username": "john", "password": "doe"}
+    )
+    assert resp.status == 400
+    body = await resp.json()
+    assert (
+        body["message"]
+        == "Unable to reset password for 'john'. Check supervisor logs for details (check with 'ha supervisor logs')"
+    )
+    assert body["error_key"] == "auth_password_reset_error"
+    assert body["extra_fields"] == {
+        "user": "john",
+        "logs_command": "ha supervisor logs",
+    }
+    assert expected_log in caplog.text
+
+
 async def test_list_users(
     api_client: TestClient, coresys: CoreSys, ha_ws_client: AsyncMock
 ):
@@ -118,6 +166,48 @@ async def test_list_users(
             "group_ids": ["system-admin"],
         },
     ]
+
+
+@pytest.mark.parametrize(
+    ("send_command_mock", "error_response", "expected_log"),
+    [
+        (
+            AsyncMock(return_value=None),
+            {
+                "result": "error",
+                "message": "Home Assistant returned invalid response of `None` instead of a list of users. Check Home Assistant logs for details (check with `ha core logs`)",
+                "error_key": "auth_list_users_none_response_error",
+                "extra_fields": {"none": "None", "logs_command": "ha core logs"},
+            },
+            "Home Assistant returned invalid response of `None` instead of a list of users. Check Home Assistant logs for details (check with `ha core logs`)",
+        ),
+        (
+            AsyncMock(side_effect=HomeAssistantWSError("fail")),
+            {
+                "result": "error",
+                "message": "Can't request listing users on Home Assistant. Check supervisor logs for details (check with 'ha supervisor logs')",
+                "error_key": "auth_list_users_error",
+                "extra_fields": {"logs_command": "ha supervisor logs"},
+            },
+            "Can't request listing users on Home Assistant: fail",
+        ),
+    ],
+)
+async def test_list_users_failure(
+    api_client: TestClient,
+    ha_ws_client: AsyncMock,
+    caplog: pytest.LogCaptureFixture,
+    send_command_mock: AsyncMock,
+    error_response: dict[str, Any],
+    expected_log: str,
+):
+    """Test failure listing users via API."""
+    ha_ws_client.async_send_command = send_command_mock
+    resp = await api_client.get("/auth/list")
+    assert resp.status == 500
+    result = await resp.json()
+    assert result == error_response
+    assert expected_log in caplog.text
 
 
 @pytest.mark.parametrize(

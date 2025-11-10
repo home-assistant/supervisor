@@ -66,13 +66,35 @@ from ..docker.const import ContainerState
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
-    AddonConfigurationError,
+    AddonBackupAppArmorProfileUnknownError,
+    AddonBackupExportImageUnknownError,
+    AddonBackupMetadataInvalidError,
+    AddonBuildImageUnknownError,
+    AddonConfigurationFileUnknownError,
+    AddonConfigurationInvalidError,
+    AddonContainerRunCommandUnknownError,
+    AddonContainerStartUnknownError,
+    AddonContainerStatsUnknownError,
+    AddonContainerStopUnknownError,
+    AddonContainerWriteStdinUnknownError,
+    AddonCreateBackupFileUnknownError,
+    AddonCreateBackupMetadataFileUnknownError,
+    AddonExtractBackupFileUnknownError,
+    AddonInstallImageUnknownError,
+    AddonNotRunningError,
     AddonNotSupportedError,
+    AddonNotSupportedWriteStdinError,
+    AddonPrePostBackupCommandReturnedError,
+    AddonRemoveImageUnknownError,
+    AddonRestoreAppArmorProfileUnknownError,
+    AddonRestoreBackupDataUnknownError,
     AddonsError,
     AddonsJobError,
     ConfigurationFileError,
+    DockerBuildError,
     DockerError,
     HostAppArmorError,
+    StoreAddonNotFoundError,
 )
 from ..hardware.data import Device
 from ..homeassistant.const import WSEvent
@@ -235,7 +257,7 @@ class Addon(AddonModel):
             await self.instance.check_image(self.version, default_image, self.arch)
         except DockerError:
             _LOGGER.info("No %s addon Docker image %s found", self.slug, self.image)
-            with suppress(DockerError):
+            with suppress(DockerError, AddonNotSupportedError):
                 await self.instance.install(self.version, default_image, arch=self.arch)
 
         self.persist[ATTR_IMAGE] = default_image
@@ -718,18 +740,16 @@ class Addon(AddonModel):
             options = self.schema.validate(self.options)
             await self.sys_run_in_executor(write_json_file, self.path_options, options)
         except vol.Invalid as ex:
-            _LOGGER.error(
-                "Add-on %s has invalid options: %s",
-                self.slug,
-                humanize_error(self.options, ex),
-            )
-        except ConfigurationFileError:
+            raise AddonConfigurationInvalidError(
+                _LOGGER.error,
+                addon=self.slug,
+                validation_error=humanize_error(self.options, ex),
+            ) from None
+        except ConfigurationFileError as err:
             _LOGGER.error("Add-on %s can't write options", self.slug)
-        else:
-            _LOGGER.debug("Add-on %s write options: %s", self.slug, options)
-            return
+            raise AddonConfigurationFileUnknownError(addon=self.slug) from err
 
-        raise AddonConfigurationError()
+        _LOGGER.debug("Add-on %s write options: %s", self.slug, options)
 
     @Job(
         name="addon_unload",
@@ -772,7 +792,7 @@ class Addon(AddonModel):
     async def install(self) -> None:
         """Install and setup this addon."""
         if not self.addon_store:
-            raise AddonsError("Missing from store, cannot install!")
+            raise StoreAddonNotFoundError(addon=self.slug)
 
         await self.sys_addons.data.install(self.addon_store)
 
@@ -793,9 +813,15 @@ class Addon(AddonModel):
             await self.instance.install(
                 self.latest_version, self.addon_store.image, arch=self.arch
             )
+        except AddonsError:
+            await self.sys_addons.data.uninstall(self)
+            raise
+        except DockerBuildError as err:
+            await self.sys_addons.data.uninstall(self)
+            raise AddonBuildImageUnknownError(addon=self.slug) from err
         except DockerError as err:
             await self.sys_addons.data.uninstall(self)
-            raise AddonsError() from err
+            raise AddonInstallImageUnknownError(addon=self.slug) from err
 
         # Finish initialization and set up listeners
         await self.load()
@@ -819,7 +845,7 @@ class Addon(AddonModel):
         try:
             await self.instance.remove(remove_image=remove_image)
         except DockerError as err:
-            raise AddonsError() from err
+            raise AddonRemoveImageUnknownError(addon=self.slug) from err
 
         self.state = AddonState.UNKNOWN
 
@@ -884,7 +910,7 @@ class Addon(AddonModel):
         if it was running. Else nothing is returned.
         """
         if not self.addon_store:
-            raise AddonsError("Missing from store, cannot update!")
+            raise StoreAddonNotFoundError(addon=self.slug)
 
         old_image = self.image
         # Cache data to prevent races with other updates to global
@@ -892,8 +918,10 @@ class Addon(AddonModel):
 
         try:
             await self.instance.update(store.version, store.image, arch=self.arch)
+        except DockerBuildError as err:
+            raise AddonBuildImageUnknownError(addon=self.slug) from err
         except DockerError as err:
-            raise AddonsError() from err
+            raise AddonInstallImageUnknownError(addon=self.slug) from err
 
         # Stop the addon if running
         if (last_state := self.state) in {AddonState.STARTED, AddonState.STARTUP}:
@@ -935,12 +963,18 @@ class Addon(AddonModel):
         """
         last_state: AddonState = self.state
         try:
-            # remove docker container but not addon config
+            # remove docker container and image but not addon config
             try:
                 await self.instance.remove()
-                await self.instance.install(self.version)
             except DockerError as err:
-                raise AddonsError() from err
+                raise AddonRemoveImageUnknownError(addon=self.slug) from err
+
+            try:
+                await self.instance.install(self.version)
+            except DockerBuildError as err:
+                raise AddonBuildImageUnknownError(addon=self.slug) from err
+            except DockerError as err:
+                raise AddonInstallImageUnknownError(addon=self.slug) from err
 
             if self.addon_store:
                 await self.sys_addons.data.update(self.addon_store)
@@ -1112,7 +1146,7 @@ class Addon(AddonModel):
             await self.instance.run()
         except DockerError as err:
             self.state = AddonState.ERROR
-            raise AddonsError() from err
+            raise AddonContainerStartUnknownError(addon=self.slug) from err
 
         return self.sys_create_task(self._wait_for_startup())
 
@@ -1128,7 +1162,7 @@ class Addon(AddonModel):
             await self.instance.stop()
         except DockerError as err:
             self.state = AddonState.ERROR
-            raise AddonsError() from err
+            raise AddonContainerStopUnknownError(addon=self.slug) from err
 
     @Job(
         name="addon_restart",
@@ -1161,9 +1195,12 @@ class Addon(AddonModel):
     async def stats(self) -> DockerStats:
         """Return stats of container."""
         try:
+            if not await self.is_running():
+                raise AddonNotRunningError(_LOGGER.warning, addon=self.slug)
+
             return await self.instance.stats()
         except DockerError as err:
-            raise AddonsError() from err
+            raise AddonContainerStatsUnknownError(addon=self.slug) from err
 
     @Job(
         name="addon_write_stdin",
@@ -1173,14 +1210,15 @@ class Addon(AddonModel):
     async def write_stdin(self, data) -> None:
         """Write data to add-on stdin."""
         if not self.with_stdin:
-            raise AddonNotSupportedError(
-                f"Add-on {self.slug} does not support writing to stdin!", _LOGGER.error
-            )
+            raise AddonNotSupportedWriteStdinError(_LOGGER.error, addon=self.slug)
 
         try:
-            return await self.instance.write_stdin(data)
+            if not await self.is_running():
+                raise AddonNotRunningError(_LOGGER.warning, addon=self.slug)
+
+            await self.instance.write_stdin(data)
         except DockerError as err:
-            raise AddonsError() from err
+            raise AddonContainerWriteStdinUnknownError(addon=self.slug) from err
 
     async def _backup_command(self, command: str) -> None:
         try:
@@ -1189,15 +1227,14 @@ class Addon(AddonModel):
                 _LOGGER.debug(
                     "Pre-/Post backup command failed with: %s", command_return.output
                 )
-                raise AddonsError(
-                    f"Pre-/Post backup command returned error code: {command_return.exit_code}",
-                    _LOGGER.error,
+                raise AddonPrePostBackupCommandReturnedError(
+                    _LOGGER.error, addon=self.slug, exit_code=command_return.exit_code
                 )
         except DockerError as err:
-            raise AddonsError(
-                f"Failed running pre-/post backup command {command}: {str(err)}",
-                _LOGGER.error,
-            ) from err
+            _LOGGER.error(
+                "Failed running pre-/post backup command %s: %s", command, err
+            )
+            raise AddonContainerRunCommandUnknownError(addon=self.slug) from err
 
     @Job(
         name="addon_begin_backup",
@@ -1286,14 +1323,17 @@ class Addon(AddonModel):
                     try:
                         self.instance.export_image(temp_path.joinpath("image.tar"))
                     except DockerError as err:
-                        raise AddonsError() from err
+                        raise AddonBackupExportImageUnknownError(
+                            addon=self.slug
+                        ) from err
 
                 # Store local configs/state
                 try:
                     write_json_file(temp_path.joinpath("addon.json"), metadata)
                 except ConfigurationFileError as err:
-                    raise AddonsError(
-                        f"Can't save meta for {self.slug}", _LOGGER.error
+                    _LOGGER.error("Can't save meta for %s: %s", self.slug, err)
+                    raise AddonCreateBackupMetadataFileUnknownError(
+                        addon=self.slug
                     ) from err
 
                 # Store AppArmor Profile
@@ -1304,8 +1344,8 @@ class Addon(AddonModel):
                             apparmor_profile, profile_backup_file
                         )
                     except HostAppArmorError as err:
-                        raise AddonsError(
-                            "Can't backup AppArmor profile", _LOGGER.error
+                        raise AddonBackupAppArmorProfileUnknownError(
+                            addon=self.slug
                         ) from err
 
                 # Write tarfile
@@ -1360,7 +1400,8 @@ class Addon(AddonModel):
             )
             _LOGGER.info("Finish backup for addon %s", self.slug)
         except (tarfile.TarError, OSError, AddFileError) as err:
-            raise AddonsError(f"Can't write tarfile: {err}", _LOGGER.error) from err
+            _LOGGER.error("Can't write backup tarfile for addon %s: %s", self.slug, err)
+            raise AddonCreateBackupFileUnknownError(addon=self.slug) from err
         finally:
             if was_running:
                 wait_for_start = await self.end_backup()
@@ -1402,28 +1443,24 @@ class Addon(AddonModel):
         try:
             tmp, data = await self.sys_run_in_executor(_extract_tarfile)
         except tarfile.TarError as err:
-            raise AddonsError(
-                f"Can't read tarfile {tar_file}: {err}", _LOGGER.error
-            ) from err
+            _LOGGER.error("Can't extract backup tarfile for %s: %s", self.slug, err)
+            raise AddonExtractBackupFileUnknownError(addon=self.slug) from err
         except ConfigurationFileError as err:
-            raise AddonsError() from err
+            raise AddonConfigurationFileUnknownError(addon=self.slug) from err
 
         try:
             # Validate
             try:
                 data = SCHEMA_ADDON_BACKUP(data)
             except vol.Invalid as err:
-                raise AddonsError(
-                    f"Can't validate {self.slug}, backup data: {humanize_error(data, err)}",
+                raise AddonBackupMetadataInvalidError(
                     _LOGGER.error,
+                    addon=self.slug,
+                    validation_error=humanize_error(data, err),
                 ) from err
 
-            # If available
-            if not self._available(data[ATTR_SYSTEM]):
-                raise AddonNotSupportedError(
-                    f"Add-on {self.slug} is not available for this platform",
-                    _LOGGER.error,
-                )
+            # Validate availability. Raises if not
+            self._validate_availability(data[ATTR_SYSTEM], logger=_LOGGER.error)
 
             # Restore local add-on information
             _LOGGER.info("Restore config for addon %s", self.slug)
@@ -1482,9 +1519,10 @@ class Addon(AddonModel):
                 try:
                     await self.sys_run_in_executor(_restore_data)
                 except shutil.Error as err:
-                    raise AddonsError(
-                        f"Can't restore origin data: {err}", _LOGGER.error
-                    ) from err
+                    _LOGGER.error(
+                        "Can't restore origin data for %s: %s", self.slug, err
+                    )
+                    raise AddonRestoreBackupDataUnknownError(addon=self.slug) from err
 
                 # Restore AppArmor
                 profile_file = Path(tmp.name, "apparmor.txt")
@@ -1495,10 +1533,13 @@ class Addon(AddonModel):
                         )
                     except HostAppArmorError as err:
                         _LOGGER.error(
-                            "Can't restore AppArmor profile for add-on %s",
+                            "Can't restore AppArmor profile for add-on %s: %s",
                             self.slug,
+                            err,
                         )
-                        raise AddonsError() from err
+                        raise AddonRestoreAppArmorProfileUnknownError(
+                            addon=self.slug
+                        ) from err
 
             finally:
                 # Is add-on loaded

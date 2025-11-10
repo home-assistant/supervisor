@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from blockbuster import BlockingError
+from docker.errors import DockerException
 import pytest
 
 from supervisor.const import CoreState
@@ -407,3 +408,37 @@ async def test_api_progress_updates_supervisor_update(
             "done": True,
         },
     ]
+
+
+async def test_api_supervisor_stats(api_client: TestClient, coresys: CoreSys):
+    """Test supervisor stats."""
+    coresys.docker.containers.get.return_value.status = "running"
+    coresys.docker.containers.get.return_value.stats.return_value = load_json_fixture(
+        "container_stats.json"
+    )
+
+    resp = await api_client.get("/supervisor/stats")
+    assert resp.status == 200
+    result = await resp.json()
+    assert result["data"]["cpu_percent"] == 90.0
+    assert result["data"]["memory_usage"] == 59700000
+    assert result["data"]["memory_limit"] == 4000000000
+    assert result["data"]["memory_percent"] == 1.49
+
+
+async def test_supervisor_api_stats_failure(
+    api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test supervisor stats failure."""
+    coresys.docker.containers.get.side_effect = DockerException("fail")
+
+    resp = await api_client.get("/supervisor/stats")
+    assert resp.status == 500
+    body = await resp.json()
+    assert (
+        body["message"]
+        == "Can't get stats for Supervisor container. Check supervisor logs for details (check with 'ha supervisor logs')"
+    )
+    assert body["error_key"] == "supervisor_stats_error"
+    assert body["extra_fields"] == {"logs_command": "ha supervisor logs"}
+    assert "Could not inspect container 'hassio_supervisor': fail" in caplog.text

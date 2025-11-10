@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import cached_property
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -19,12 +20,19 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.interface import MAP_ARCH
-from ..exceptions import ConfigurationFileError, HassioArchNotFound
+from ..exceptions import (
+    AddonBuildArchitectureNotSupportedError,
+    AddonBuildDockerfileMissingError,
+    ConfigurationFileError,
+    HassioArchNotFound,
+)
 from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
     from .manager import AnyAddon
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class AddonBuild(FileConfiguration, CoreSysAttributes):
@@ -106,7 +114,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             return self.addon.path_location.joinpath(f"Dockerfile.{self.arch}")
         return self.addon.path_location.joinpath("Dockerfile")
 
-    async def is_valid(self) -> bool:
+    async def is_valid(self) -> None:
         """Return true if the build env is valid."""
 
         def build_is_valid() -> bool:
@@ -118,9 +126,17 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             )
 
         try:
-            return await self.sys_run_in_executor(build_is_valid)
+            if not await self.sys_run_in_executor(build_is_valid):
+                raise AddonBuildDockerfileMissingError(
+                    _LOGGER.error, addon=self.addon.slug
+                )
         except HassioArchNotFound:
-            return False
+            raise AddonBuildArchitectureNotSupportedError(
+                _LOGGER.error,
+                addon=self.addon.slug,
+                addon_arch_list=self.addon.supported_arch,
+                system_arch_list=self.sys_arch.supported,
+            ) from None
 
     def get_docker_args(
         self, version: AwesomeVersion, image_tag: str
