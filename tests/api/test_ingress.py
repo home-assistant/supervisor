@@ -1,10 +1,26 @@
 """Test ingress API."""
 
-from unittest.mock import AsyncMock, patch
+from collections.abc import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from aiohttp.test_utils import TestClient
+import aiohttp
+from aiohttp import hdrs, web
+from aiohttp.test_utils import TestClient, TestServer
+import pytest
 
+from supervisor.addons.addon import Addon
 from supervisor.coresys import CoreSys
+
+
+@pytest.fixture(name="real_websession")
+async def fixture_real_websession(
+    coresys: CoreSys,
+) -> AsyncGenerator[aiohttp.ClientSession]:
+    """Fixture for real aiohttp ClientSession for ingress proxy tests."""
+    session = aiohttp.ClientSession()
+    coresys._websession = session  # pylint: disable=W0212
+    yield session
+    await session.close()
 
 
 async def test_validate_session(api_client: TestClient, coresys: CoreSys):
@@ -86,3 +102,126 @@ async def test_validate_session_with_user_id(
         assert (
             coresys.ingress.get_session_data(session).user.display_name == "Some Name"
         )
+
+
+async def test_ingress_proxy_no_content_type_for_empty_body_responses(
+    api_client: TestClient, coresys: CoreSys, real_websession: aiohttp.ClientSession
+):
+    """Test that empty body responses don't get Content-Type header."""
+
+    # Create a mock add-on backend server that returns various status codes
+    async def mock_addon_handler(request: web.Request) -> web.Response:
+        """Mock add-on handler that returns different status codes based on path."""
+        path = request.path
+
+        if path == "/204":
+            # 204 No Content - should not have Content-Type
+            return web.Response(status=204)
+        elif path == "/304":
+            # 304 Not Modified - should not have Content-Type
+            return web.Response(status=304)
+        elif path == "/100":
+            # 100 Continue - should not have Content-Type
+            return web.Response(status=100)
+        elif path == "/head":
+            # HEAD request - should have Content-Type (same as GET would)
+            return web.Response(body=b"test", content_type="text/html")
+        elif path == "/200":
+            # 200 OK with body - should have Content-Type
+            return web.Response(body=b"test content", content_type="text/plain")
+        elif path == "/200-no-content-type":
+            # 200 OK without explicit Content-Type - should get default
+            return web.Response(body=b"test content")
+        elif path == "/200-json":
+            # 200 OK with JSON - should preserve Content-Type
+            return web.Response(
+                body=b'{"key": "value"}', content_type="application/json"
+            )
+        else:
+            return web.Response(body=b"default", content_type="text/html")
+
+    # Create test server for mock add-on
+    app = web.Application()
+    app.router.add_route("*", "/{tail:.*}", mock_addon_handler)
+    addon_server = TestServer(app)
+    await addon_server.start_server()
+
+    try:
+        # Create ingress session
+        resp = await api_client.post("/ingress/session")
+        result = await resp.json()
+        session = result["data"]["session"]
+
+        # Create a mock add-on
+        mock_addon = MagicMock(spec=Addon)
+        mock_addon.slug = "test_addon"
+        mock_addon.ip_address = addon_server.host
+        mock_addon.ingress_port = addon_server.port
+        mock_addon.ingress_stream = False
+
+        # Generate an ingress token and register the add-on
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_addon):
+            # Test 204 No Content - should NOT have Content-Type
+            resp = await api_client.get(
+                f"/ingress/{ingress_token}/204",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 204
+            assert hdrs.CONTENT_TYPE not in resp.headers
+
+            # Test 304 Not Modified - should NOT have Content-Type
+            resp = await api_client.get(
+                f"/ingress/{ingress_token}/304",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 304
+            assert hdrs.CONTENT_TYPE not in resp.headers
+
+            # Test HEAD request - SHOULD have Content-Type (same as GET)
+            # per RFC 9110: HEAD should return same headers as GET
+            resp = await api_client.head(
+                f"/ingress/{ingress_token}/head",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 200
+            assert hdrs.CONTENT_TYPE in resp.headers
+            assert "text/html" in resp.headers[hdrs.CONTENT_TYPE]
+            # Body should be empty for HEAD
+            body = await resp.read()
+            assert body == b""
+
+            # Test 200 OK with body - SHOULD have Content-Type
+            resp = await api_client.get(
+                f"/ingress/{ingress_token}/200",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 200
+            assert hdrs.CONTENT_TYPE in resp.headers
+            assert resp.headers[hdrs.CONTENT_TYPE] == "text/plain"
+            body = await resp.read()
+            assert body == b"test content"
+
+            # Test 200 OK without explicit Content-Type - SHOULD get default
+            resp = await api_client.get(
+                f"/ingress/{ingress_token}/200-no-content-type",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 200
+            assert hdrs.CONTENT_TYPE in resp.headers
+            # Should get application/octet-stream as default from aiohttp ClientResponse
+            assert "application/octet-stream" in resp.headers[hdrs.CONTENT_TYPE]
+
+            # Test 200 OK with JSON - SHOULD preserve Content-Type
+            resp = await api_client.get(
+                f"/ingress/{ingress_token}/200-json",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 200
+            assert hdrs.CONTENT_TYPE in resp.headers
+            assert "application/json" in resp.headers[hdrs.CONTENT_TYPE]
+            body = await resp.read()
+            assert body == b'{"key": "value"}'
+
+    finally:
+        await addon_server.close()

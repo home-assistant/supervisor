@@ -253,18 +253,28 @@ class APIIngress(CoreSysAttributes):
             skip_auto_headers={hdrs.CONTENT_TYPE},
         ) as result:
             headers = _response_header(result)
+
             # Avoid parsing content_type in simple cases for better performance
             if maybe_content_type := result.headers.get(hdrs.CONTENT_TYPE):
                 content_type = (maybe_content_type.partition(";"))[0].strip()
             else:
                 content_type = result.content_type
+
+            # Empty body responses (304, 204, HEAD, etc.) should not be streamed,
+            # otherwise aiohttp < 3.9.0 may generate an invalid "0\r\n\r\n" chunk
+            # This also avoids setting content_type for empty responses.
+            if must_be_empty_body(request.method, result.status):
+                # If upstream contains content-type, preserve it (e.g. for HEAD requests)
+                if maybe_content_type:
+                    headers[hdrs.CONTENT_TYPE] = content_type
+                return web.Response(
+                    headers=headers,
+                    status=result.status,
+                )
+
             # Simple request
             if (
-                # empty body responses should not be streamed,
-                # otherwise aiohttp < 3.9.0 may generate
-                # an invalid "0\r\n\r\n" chunk instead of an empty response.
-                must_be_empty_body(request.method, result.status)
-                or hdrs.CONTENT_LENGTH in result.headers
+                hdrs.CONTENT_LENGTH in result.headers
                 and int(result.headers.get(hdrs.CONTENT_LENGTH, 0)) < 4_194_000
             ):
                 # Return Response
