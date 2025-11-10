@@ -51,7 +51,6 @@ async def test_if_check_make_issue(coresys: CoreSys):
     """Test check for setup."""
     free_space = Issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
     await coresys.core.set_state(CoreState.RUNNING)
-    coresys.security.content_trust = False
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         await coresys.resolution.check.check_system()
@@ -63,7 +62,6 @@ async def test_if_check_cleanup_issue(coresys: CoreSys):
     """Test check for setup."""
     free_space = Issue(IssueType.FREE_SPACE, ContextType.SYSTEM)
     await coresys.core.set_state(CoreState.RUNNING)
-    coresys.security.content_trust = False
 
     with patch("shutil.disk_usage", return_value=(1, 1, 1)):
         await coresys.resolution.check.check_system()

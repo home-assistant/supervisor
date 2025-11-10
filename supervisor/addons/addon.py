@@ -1513,13 +1513,6 @@ class Addon(AddonModel):
         _LOGGER.info("Finished restore for add-on %s", self.slug)
         return wait_for_start
 
-    def check_trust(self) -> Awaitable[None]:
-        """Calculate Addon docker content trust.
-
-        Return Coroutine.
-        """
-        return self.instance.check_trust()
-
     @Job(
         name="addon_restart_after_problem",
         throttle_period=WATCHDOG_THROTTLE_PERIOD,
@@ -1562,7 +1555,15 @@ class Addon(AddonModel):
                 )
                 break
 
-            await asyncio.sleep(WATCHDOG_RETRY_SECONDS)
+            # Exponential backoff to spread retries over the throttle window
+            delay = WATCHDOG_RETRY_SECONDS * (1 << max(attempts - 1, 0))
+            _LOGGER.debug(
+                "Watchdog will retry addon %s in %s seconds (attempt %s)",
+                self.name,
+                delay,
+                attempts + 1,
+            )
+            await asyncio.sleep(delay)
 
     async def container_state_changed(self, event: DockerContainerStateEvent) -> None:
         """Set addon state from container state."""

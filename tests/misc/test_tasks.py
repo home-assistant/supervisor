@@ -181,7 +181,6 @@ async def test_reload_updater_triggers_supervisor_update(
     """Test an updater reload triggers a supervisor update if there is one."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     await coresys.core.set_state(CoreState.RUNNING)
-    coresys.security.content_trust = False
 
     with (
         patch.object(

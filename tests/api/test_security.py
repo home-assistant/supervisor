@@ -18,16 +18,6 @@ async def test_api_security_options_force_security(api_client, coresys: CoreSys)
 
 
 @pytest.mark.asyncio
-async def test_api_security_options_content_trust(api_client, coresys: CoreSys):
-    """Test security options content trust."""
-    assert coresys.security.content_trust
-
-    await api_client.post("/security/options", json={"content_trust": False})
-
-    assert not coresys.security.content_trust
-
-
-@pytest.mark.asyncio
 async def test_api_security_options_pwned(api_client, coresys: CoreSys):
     """Test security options pwned."""
     assert coresys.security.pwned
@@ -41,11 +31,8 @@ async def test_api_security_options_pwned(api_client, coresys: CoreSys):
 async def test_api_integrity_check(
     api_client, coresys: CoreSys, supervisor_internet: AsyncMock
 ):
-    """Test security integrity check."""
-    coresys.security.content_trust = False
-
+    """Test security integrity check - now deprecated."""
     resp = await api_client.post("/security/integrity")
-    result = await resp.json()
 
-    assert result["data"]["core"] == "untested"
-    assert result["data"]["supervisor"] == "untested"
+    # CodeNotary integrity check has been removed, should return 410 Gone
+    assert resp.status == 410

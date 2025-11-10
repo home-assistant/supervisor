@@ -98,7 +98,9 @@ class SupervisorJobError:
     """Representation of an error occurring during a supervisor job."""
 
     type_: type[HassioError] = HassioError
-    message: str = "Unknown error, see supervisor logs"
+    message: str = (
+        "Unknown error, see Supervisor logs (check with 'ha supervisor logs')"
+    )
     stage: str | None = None
 
     def as_dict(self) -> dict[str, str | None]:
@@ -325,6 +327,17 @@ class JobManager(FileConfiguration, CoreSysAttributes):
             while curr_parent.parent_id:
                 curr_parent = self.get_job(curr_parent.parent_id)
                 if not curr_parent.child_job_syncs:
+                    continue
+
+                # HACK: If parent trigger the same child job, we just skip this second
+                # sync. Maybe it would be better to have this reflected in the job stage
+                # and reset progress to 0 instead? There is no support for such stage
+                # information on Core update entities today though.
+                if curr_parent.done is True or curr_parent.progress >= 100:
+                    _LOGGER.debug(
+                        "Skipping parent job sync for done parent job %s",
+                        curr_parent.name,
+                    )
                     continue
 
                 # Break after first match at each parent as it doesn't make sense

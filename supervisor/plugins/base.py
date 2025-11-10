@@ -76,13 +76,6 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         """Return True if a task is in progress."""
         return self.instance.in_progress
 
-    def check_trust(self) -> Awaitable[None]:
-        """Calculate plugin docker content trust.
-
-        Return Coroutine.
-        """
-        return self.instance.check_trust()
-
     def logs(self) -> Awaitable[bytes]:
         """Get docker plugin logs.
 

@@ -32,8 +32,6 @@ from ..const import (
 )
 from ..coresys import CoreSys
 from ..exceptions import (
-    CodeNotaryError,
-    CodeNotaryUntrusted,
     DockerAPIError,
     DockerError,
     DockerHubRateLimitExceeded,
@@ -41,7 +39,6 @@ from ..exceptions import (
     DockerLogOutOfOrder,
     DockerNotFound,
     DockerRequestError,
-    DockerTrustError,
 )
 from ..jobs import SupervisorJob
 from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
@@ -222,7 +219,7 @@ class DockerInterface(JobGroup, ABC):
 
         await self.sys_run_in_executor(self.sys_docker.dockerpy.login, **credentials)
 
-    def _process_pull_image_log(
+    def _process_pull_image_log(  # noqa: C901
         self, install_job_id: str, reference: PullLogEntry
     ) -> None:
         """Process events fired from a docker while pulling an image, filtered to a given job id."""
@@ -323,13 +320,17 @@ class DockerInterface(JobGroup, ABC):
                 },
             )
         else:
+            # If we reach DOWNLOAD_COMPLETE without ever having set extra (small layers that skip
+            # the downloading phase), set a minimal extra so aggregate progress calculation can proceed
+            extra = job.extra
+            if stage == PullImageLayerStage.DOWNLOAD_COMPLETE and not job.extra:
+                extra = {"current": 1, "total": 1}
+
             job.update(
                 progress=progress,
                 stage=stage.status,
                 done=stage == PullImageLayerStage.PULL_COMPLETE,
-                extra=None
-                if stage == PullImageLayerStage.RETRYING_DOWNLOAD
-                else job.extra,
+                extra=None if stage == PullImageLayerStage.RETRYING_DOWNLOAD else extra,
             )
 
         # Once we have received a progress update for every child job, start to set status of the main one
@@ -426,16 +427,6 @@ class DockerInterface(JobGroup, ABC):
                 platform=MAP_ARCH[image_arch],
             )
 
-            # Validate content
-            try:
-                await self._validate_trust(cast(str, docker_image["Id"]))
-            except CodeNotaryError:
-                with suppress(aiodocker.DockerError, requests.RequestException):
-                    await self.sys_docker.images.delete(
-                        f"{image}:{version!s}", force=True
-                    )
-                raise
-
             # Tag latest
             if latest:
                 _LOGGER.info(
@@ -475,16 +466,6 @@ class DockerInterface(JobGroup, ABC):
             await async_capture_exception(err)
             raise DockerError(
                 f"Unknown error with {image}:{version!s} -> {err!s}", _LOGGER.error
-            ) from err
-        except CodeNotaryUntrusted as err:
-            raise DockerTrustError(
-                f"Pulled image {image}:{version!s} failed on content-trust verification!",
-                _LOGGER.critical,
-            ) from err
-        except CodeNotaryError as err:
-            raise DockerTrustError(
-                f"Error happened on Content-Trust check for {image}:{version!s}: {err!s}",
-                _LOGGER.error,
             ) from err
         finally:
             if listener:
@@ -824,24 +805,3 @@ class DockerInterface(JobGroup, ABC):
         return self.sys_run_in_executor(
             self.sys_docker.container_run_inside, self.name, command
         )
-
-    async def _validate_trust(self, image_id: str) -> None:
-        """Validate trust of content."""
-        checksum = image_id.partition(":")[2]
-        return await self.sys_security.verify_own_content(checksum)
-
-    @Job(
-        name="docker_interface_check_trust",
-        on_condition=DockerJobError,
-        concurrency=JobConcurrency.GROUP_REJECT,
-    )
-    async def check_trust(self) -> None:
-        """Check trust of exists Docker image."""
-        try:
-            image = await self.sys_docker.images.inspect(
-                f"{self.image}:{self.version!s}"
-            )
-        except (aiodocker.DockerError, requests.RequestException):
-            return
-
-        await self._validate_trust(cast(str, image["Id"]))
