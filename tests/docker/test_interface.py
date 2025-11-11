@@ -675,3 +675,50 @@ async def test_install_progress_handles_layers_skipping_download(
         assert job.done is True
         assert job.progress == 100
         capture_exception.assert_not_called()
+
+
+async def test_install_progress_handles_containerd_snapshotter(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    capture_exception: Mock,
+):
+    """Test install handles containerd snapshotter format where extraction has no total bytes.
+
+    With containerd snapshotter, the extraction phase reports time elapsed in seconds
+    rather than bytes extracted. The progress_detail has format:
+    {"current": <seconds>, "units": "s"} with total=None
+
+    This test ensures we handle this gracefully by using the download size for
+    aggregate progress calculation.
+    """
+    coresys.core.set_state(CoreState.RUNNING)
+
+    # Fixture emulates containerd snapshotter pull log format
+    coresys.docker.docker.api.pull.return_value = load_json_fixture(
+        "docker_pull_image_log_containerd.json"
+    )
+
+    with patch.object(
+        type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
+    ):
+        event = asyncio.Event()
+        job, install_task = coresys.jobs.schedule_job(
+            test_docker_interface.install,
+            JobSchedulerOptions(),
+            AwesomeVersion("1.2.3"),
+            "test",
+        )
+
+        async def listen_for_job_end(reference: SupervisorJob):
+            if reference.uuid != job.uuid:
+                return
+            event.set()
+
+        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
+        await install_task
+        await event.wait()
+
+    # Job should complete successfully without exceptions
+    assert job.done is True
+    assert job.progress == 100
+    capture_exception.assert_not_called()

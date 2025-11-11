@@ -1,0 +1,122 @@
+[
+    {
+        "status": "Pulling from home-assistant/test-image",
+        "id": "2025.7.1"
+    },
+    {
+        "status": "Pulling fs layer",
+        "progressDetail": {},
+        "id": "layer1"
+    },
+    {
+        "status": "Pulling fs layer",
+        "progressDetail": {},
+        "id": "layer2"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 1048576,
+            "total": 5178461
+        },
+        "progress": "[===========>                                       ]  1.049MB/5.178MB",
+        "id": "layer1"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 5178461,
+            "total": 5178461
+        },
+        "progress": "[==================================================>]  5.178MB/5.178MB",
+        "id": "layer1"
+    },
+    {
+        "status": "Download complete",
+        "progressDetail": {
+            "hidecounts": true
+        },
+        "id": "layer1"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 1048576,
+            "total": 10485760
+        },
+        "progress": "[=====>                                             ]  1.049MB/10.49MB",
+        "id": "layer2"
+    },
+    {
+        "status": "Downloading",
+        "progressDetail": {
+            "current": 10485760,
+            "total": 10485760
+        },
+        "progress": "[==================================================>]  10.49MB/10.49MB",
+        "id": "layer2"
+    },
+    {
+        "status": "Download complete",
+        "progressDetail": {
+            "hidecounts": true
+        },
+        "id": "layer2"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 1,
+            "units": "s"
+        },
+        "progress": "1 s",
+        "id": "layer1"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 5,
+            "units": "s"
+        },
+        "progress": "5 s",
+        "id": "layer1"
+    },
+    {
+        "status": "Pull complete",
+        "progressDetail": {
+            "hidecounts": true
+        },
+        "id": "layer1"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 1,
+            "units": "s"
+        },
+        "progress": "1 s",
+        "id": "layer2"
+    },
+    {
+        "status": "Extracting",
+        "progressDetail": {
+            "current": 3,
+            "units": "s"
+        },
+        "progress": "3 s",
+        "id": "layer2"
+    },
+    {
+        "status": "Pull complete",
+        "progressDetail": {
+            "hidecounts": true
+        },
+        "id": "layer2"
+    },
+    {
+        "status": "Digest: sha256:abc123"
+    },
+    {
+        "status": "Status: Downloaded newer image for test/image:2025.7.1"
+    }
+]

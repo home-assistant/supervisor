@@ -309,18 +309,30 @@ class DockerInterface(JobGroup, ABC):
             stage in {PullImageLayerStage.DOWNLOADING, PullImageLayerStage.EXTRACTING}
             and reference.progress_detail
         ):
+            # For containerd snapshotter, extracting phase has total=None
+            # In that case, use the download_total from the downloading phase
+            current_extra: dict[str, Any] = job.extra if job.extra else {}
+            if (
+                stage == PullImageLayerStage.DOWNLOADING
+                and reference.progress_detail.total
+            ):
+                # Store download total for use in extraction phase with containerd snapshotter
+                current_extra["download_total"] = reference.progress_detail.total
+
             job.update(
                 progress=progress,
                 stage=stage.status,
                 extra={
                     "current": reference.progress_detail.current,
-                    "total": reference.progress_detail.total,
+                    "total": reference.progress_detail.total
+                    or current_extra.get("download_total"),
+                    "download_total": current_extra.get("download_total"),
                 },
             )
         else:
             # If we reach DOWNLOAD_COMPLETE without ever having set extra (small layers that skip
             # the downloading phase), set a minimal extra so aggregate progress calculation can proceed
-            extra = job.extra
+            extra: dict[str, Any] | None = job.extra
             if stage == PullImageLayerStage.DOWNLOAD_COMPLETE and not job.extra:
                 extra = {"current": 1, "total": 1}
 
@@ -346,7 +358,11 @@ class DockerInterface(JobGroup, ABC):
             for job in layer_jobs:
                 if not job.extra:
                     return
-                total += job.extra["total"]
+                # Use download_total if available (for containerd snapshotter), otherwise use total
+                layer_total = job.extra.get("download_total") or job.extra.get("total")
+                if layer_total is None:
+                    return
+                total += layer_total
             install_job.extra = {"total": total}
         else:
             total = install_job.extra["total"]
@@ -357,7 +373,11 @@ class DockerInterface(JobGroup, ABC):
         for job in layer_jobs:
             if not job.extra:
                 return
-            progress += job.progress * (job.extra["total"] / total)
+            # Use download_total if available (for containerd snapshotter), otherwise use total
+            layer_total = job.extra.get("download_total") or job.extra.get("total")
+            if layer_total is None:
+                return
+            progress += job.progress * (layer_total / total)
             job_stage = PullImageLayerStage.from_status(cast(str, job.stage))
 
             if job_stage < PullImageLayerStage.EXTRACTING:
