@@ -73,7 +73,6 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                         "supervisor": coresys.supervisor.version,
                     },
                     "host": {
-                        "arch": coresys.arch.default,
                         "machine": coresys.machine,
                     },
                 }

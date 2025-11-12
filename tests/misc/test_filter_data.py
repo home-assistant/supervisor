@@ -122,8 +122,10 @@ async def test_not_started(coresys):
     assert "docker" in filtered["contexts"]["versions"]
     assert "supervisor" in filtered["contexts"]["versions"]
     assert "host" in filtered["contexts"]
-    assert "arch" in filtered["contexts"]["host"]
     assert "machine" in filtered["contexts"]["host"]
+    assert filtered["contexts"]["versions"]["docker"] == coresys.docker.info.version
+    assert filtered["contexts"]["versions"]["supervisor"] == coresys.supervisor.version
+    assert filtered["contexts"]["host"]["machine"] == coresys.machine
 
 
 async def test_defaults(coresys):
