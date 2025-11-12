@@ -64,6 +64,20 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
 
     # Not full startup - missing information
     if coresys.core.state in (CoreState.INITIALIZE, CoreState.SETUP):
+        # During SETUP, we have basic system info available for better debugging
+        if coresys.core.state == CoreState.SETUP:
+            event.setdefault("contexts", {}).update(
+                {
+                    "versions": {
+                        "docker": coresys.docker.info.version,
+                        "supervisor": coresys.supervisor.version,
+                    },
+                    "host": {
+                        "arch": coresys.arch.default,
+                        "machine": coresys.machine,
+                    },
+                }
+            )
         return event
 
     # List installed addons
