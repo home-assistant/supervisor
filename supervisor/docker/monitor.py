@@ -89,7 +89,7 @@ class DockerMonitor(CoreSysAttributes, Thread):
                         DockerContainerStateEvent(
                             name=attributes["name"],
                             state=container_state,
-                            id=event["id"],
+                            id=event["Actor"]["ID"],
                             time=event["time"],
                         ),
                     )
