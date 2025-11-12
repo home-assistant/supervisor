@@ -3,22 +3,25 @@
 import asyncio
 from datetime import timedelta
 import errno
+from http import HTTPStatus
 from pathlib import Path
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, PropertyMock, call, patch
 
+import aiodocker
 from awesomeversion import AwesomeVersion
-from docker.errors import DockerException, ImageNotFound, NotFound
+from docker.errors import APIError, DockerException, NotFound
 import pytest
 from securetar import SecureTarFile
 
 from supervisor.addons.addon import Addon
 from supervisor.addons.const import AddonBackupMode
 from supervisor.addons.model import AddonModel
+from supervisor.config import CoreConfig
 from supervisor.const import AddonBoot, AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
-from supervisor.docker.manager import CommandReturn
+from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
 from supervisor.hardware.helper import HwHelper
@@ -861,16 +864,14 @@ async def test_addon_loads_wrong_image(
 
     container.remove.assert_called_with(force=True, v=True)
     # one for removing the addon, one for removing the addon builder
-    assert coresys.docker.images.remove.call_count == 2
+    assert coresys.docker.images.delete.call_count == 2
 
-    assert coresys.docker.images.remove.call_args_list[0].kwargs == {
-        "image": "local/aarch64-addon-ssh:latest",
-        "force": True,
-    }
-    assert coresys.docker.images.remove.call_args_list[1].kwargs == {
-        "image": "local/aarch64-addon-ssh:9.2.1",
-        "force": True,
-    }
+    assert coresys.docker.images.delete.call_args_list[0] == call(
+        "local/aarch64-addon-ssh:latest", force=True
+    )
+    assert coresys.docker.images.delete.call_args_list[1] == call(
+        "local/aarch64-addon-ssh:9.2.1", force=True
+    )
     mock_run_command.assert_called_once()
     assert mock_run_command.call_args.args[0] == "docker.io/library/docker"
     assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
@@ -894,7 +895,9 @@ async def test_addon_loads_missing_image(
     mock_amd64_arch_supported,
 ):
     """Test addon corrects a missing image on load."""
-    coresys.docker.images.get.side_effect = ImageNotFound("missing")
+    coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
 
     with (
         patch("pathlib.Path.is_file", return_value=True),
@@ -926,41 +929,51 @@ async def test_addon_loads_missing_image(
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
 
 
+@pytest.mark.parametrize(
+    "pull_image_exc",
+    [APIError("error"), aiodocker.DockerError(400, {"message": "error"})],
+)
+@pytest.mark.usefixtures("container", "mock_amd64_arch_supported")
 async def test_addon_load_succeeds_with_docker_errors(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
     caplog: pytest.LogCaptureFixture,
-    mock_amd64_arch_supported,
+    pull_image_exc: Exception,
 ):
     """Docker errors while building/pulling an image during load should not raise and fail setup."""
     # Build env invalid failure
-    coresys.docker.images.get.side_effect = ImageNotFound("missing")
+    coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
     caplog.clear()
     await install_addon_ssh.load()
     assert "Invalid build environment" in caplog.text
 
     # Image build failure
-    coresys.docker.images.build.side_effect = DockerException()
     caplog.clear()
     with (
         patch("pathlib.Path.is_file", return_value=True),
         patch.object(
-            type(coresys.config),
-            "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            CoreConfig, "local_to_extern_path", return_value="/addon/path/on/host"
+        ),
+        patch.object(
+            DockerAPI,
+            "run_command",
+            return_value=MagicMock(exit_code=1, output=b"error"),
         ),
     ):
         await install_addon_ssh.load()
-    assert "Can't build local/amd64-addon-ssh:9.2.1" in caplog.text
+    assert (
+        "Can't build local/amd64-addon-ssh:9.2.1: Docker build failed for local/amd64-addon-ssh:9.2.1 (exit code 1). Build output:\nerror"
+        in caplog.text
+    )
 
     # Image pull failure
     install_addon_ssh.data["image"] = "test/amd64-addon-ssh"
-    coresys.docker.images.build.reset_mock(side_effect=True)
-    coresys.docker.pull_image.side_effect = DockerException()
     caplog.clear()
-    await install_addon_ssh.load()
-    assert "Unknown error with test/amd64-addon-ssh:9.2.1" in caplog.text
+    with patch.object(DockerAPI, "pull_image", side_effect=pull_image_exc):
+        await install_addon_ssh.load()
+    assert "Can't install test/amd64-addon-ssh:9.2.1:" in caplog.text
 
 
 async def test_addon_manual_only_boot(coresys: CoreSys, install_addon_example: Addon):

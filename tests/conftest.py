@@ -9,6 +9,7 @@ import subprocess
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
+from aiodocker.docker import DockerImages
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -55,6 +56,7 @@ from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
 from .common import (
+    AsyncIterator,
     MockResponse,
     load_binary_fixture,
     load_fixture,
@@ -112,39 +114,45 @@ async def supervisor_name() -> None:
 @pytest.fixture
 async def docker() -> DockerAPI:
     """Mock DockerAPI."""
-    images = [MagicMock(tags=["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"])]
-    image = MagicMock()
-    image.attrs = {"Os": "linux", "Architecture": "amd64"}
+    image_inspect = {
+        "Os": "linux",
+        "Architecture": "amd64",
+        "Id": "test123",
+        "RepoTags": ["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"],
+    }
 
     with (
         patch("supervisor.docker.manager.DockerClient", return_value=MagicMock()),
-        patch("supervisor.docker.manager.DockerAPI.images", return_value=MagicMock()),
         patch(
             "supervisor.docker.manager.DockerAPI.containers", return_value=MagicMock()
         ),
-        patch(
-            "supervisor.docker.manager.DockerAPI.api",
-            return_value=(api_mock := MagicMock()),
-        ),
-        patch("supervisor.docker.manager.DockerAPI.images.get", return_value=image),
-        patch("supervisor.docker.manager.DockerAPI.images.list", return_value=images),
-        patch(
-            "supervisor.docker.manager.DockerAPI.info",
-            return_value=MagicMock(),
-        ),
+        patch("supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()),
+        patch("supervisor.docker.manager.DockerAPI.info", return_value=MagicMock()),
         patch("supervisor.docker.manager.DockerAPI.unload"),
+        patch("supervisor.docker.manager.aiodocker.Docker", return_value=MagicMock()),
+        patch(
+            "supervisor.docker.manager.DockerAPI.images",
+            new=PropertyMock(
+                return_value=(docker_images := MagicMock(spec=DockerImages))
+            ),
+        ),
     ):
         docker_obj = await DockerAPI(MagicMock()).post_init()
         docker_obj.config._data = {"registries": {}}
         with patch("supervisor.docker.monitor.DockerMonitor.load"):
             await docker_obj.load()
 
+        docker_images.inspect.return_value = image_inspect
+        docker_images.list.return_value = [image_inspect]
+        docker_images.import_image.return_value = [
+            {"stream": "Loaded image: test:latest\n"}
+        ]
+
+        docker_images.pull.return_value = AsyncIterator([{}])
+
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
         docker_obj.info.version = AwesomeVersion("1.0.0")
-
-        # Need an iterable for logs
-        api_mock.pull.return_value = []
 
         yield docker_obj
 
@@ -838,11 +846,9 @@ async def container(docker: DockerAPI) -> MagicMock:
     """Mock attrs and status for container on attach."""
     docker.containers.get.return_value = addon = MagicMock()
     docker.containers.create.return_value = addon
-    docker.images.build.return_value = (addon, "")
     addon.status = "stopped"
     addon.attrs = {"State": {"ExitCode": 0}}
-    with patch.object(DockerAPI, "pull_image", return_value=addon):
-        yield addon
+    yield addon
 
 
 @pytest.fixture

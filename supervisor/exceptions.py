@@ -639,9 +639,32 @@ class DockerLogOutOfOrder(DockerError):
 class DockerNoSpaceOnDevice(DockerError):
     """Raise if a docker pull fails due to available space."""
 
+    error_key = "docker_no_space_on_device"
+    message_template = "No space left on disk"
+
     def __init__(self, logger: Callable[..., None] | None = None) -> None:
         """Raise & log."""
-        super().__init__("No space left on disk", logger=logger)
+        super().__init__(None, logger=logger)
+
+
+class DockerHubRateLimitExceeded(DockerError):
+    """Raise for docker hub rate limit exceeded error."""
+
+    error_key = "dockerhub_rate_limit_exceeded"
+    message_template = (
+        "Your IP address has made too many requests to Docker Hub which activated a rate limit. "
+        "For more details see {dockerhub_rate_limit_url}"
+    )
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(
+            None,
+            logger=logger,
+            extra_fields={
+                "dockerhub_rate_limit_url": "https://www.home-assistant.io/more-info/dockerhub-rate-limit"
+            },
+        )
 
 
 class DockerJobError(DockerError, JobException):

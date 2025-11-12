@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import ANY, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import ANY, MagicMock, Mock, PropertyMock, call, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -11,6 +11,7 @@ from supervisor.const import BusEvent, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.manager import DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AudioError,
@@ -359,21 +360,26 @@ async def test_load_with_incorrect_image(
     plugin.version = AwesomeVersion("2024.4.0")
 
     container.status = "running"
-    container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
+    coresys.docker.images.inspect.return_value = img_data = (
+        coresys.docker.images.inspect.return_value
+        | {"Config": {"Labels": {"io.hass.version": "2024.4.0"}}}
+    )
+    container.attrs |= img_data
 
-    await plugin.load()
+    with patch.object(DockerAPI, "pull_image", return_value=img_data) as pull_image:
+        await plugin.load()
+        pull_image.assert_called_once_with(
+            ANY, correct_image, "2024.4.0", platform="linux/amd64"
+        )
 
     container.remove.assert_called_once_with(force=True, v=True)
-    assert coresys.docker.images.remove.call_args_list[0].kwargs == {
-        "image": f"{old_image}:latest",
-        "force": True,
-    }
-    assert coresys.docker.images.remove.call_args_list[1].kwargs == {
-        "image": f"{old_image}:2024.4.0",
-        "force": True,
-    }
-    coresys.docker.pull_image.assert_called_once_with(
-        ANY, correct_image, "2024.4.0", platform="linux/amd64"
+    assert coresys.docker.images.delete.call_args_list[0] == call(
+        f"{old_image}:latest",
+        force=True,
+    )
+    assert coresys.docker.images.delete.call_args_list[1] == call(
+        f"{old_image}:2024.4.0",
+        force=True,
     )
     assert plugin.image == correct_image
 

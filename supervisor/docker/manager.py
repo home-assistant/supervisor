@@ -6,20 +6,24 @@ import asyncio
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
+from http import HTTPStatus
 from ipaddress import IPv4Address
+import json
 import logging
 import os
 from pathlib import Path
+import re
 from typing import Any, Final, Self, cast
 
+import aiodocker
+from aiodocker.images import DockerImages
+from aiohttp import ClientSession, ClientTimeout, UnixConnector
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
 from docker.api.client import APIClient
 from docker.client import DockerClient
-from docker.errors import DockerException, ImageNotFound, NotFound
 from docker.models.containers import Container, ContainerCollection
-from docker.models.images import Image, ImageCollection
 from docker.models.networks import Network
 from docker.types.daemon import CancellableStream
 import requests
@@ -53,6 +57,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 MIN_SUPPORTED_DOCKER: Final = AwesomeVersion("24.0.0")
 DOCKER_NETWORK_HOST: Final = "host"
+RE_IMPORT_IMAGE_STREAM = re.compile(r"(^Loaded image ID: |^Loaded image: )(.+)$")
 
 
 @attr.s(frozen=True)
@@ -204,7 +209,15 @@ class DockerAPI(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
         self.coresys = coresys
-        self._docker: DockerClient | None = None
+        # We keep both until we can fully refactor to aiodocker
+        self._dockerpy: DockerClient | None = None
+        self.docker: aiodocker.Docker = aiodocker.Docker(
+            url="unix://localhost",  # dummy hostname for URL composition
+            connector=(connector := UnixConnector(SOCKET_DOCKER.as_posix())),
+            session=ClientSession(connector=connector, timeout=ClientTimeout(900)),
+            api_version="auto",
+        )
+
         self._network: DockerNetwork | None = None
         self._info: DockerInfo | None = None
         self.config: DockerConfig = DockerConfig()
@@ -212,28 +225,28 @@ class DockerAPI(CoreSysAttributes):
 
     async def post_init(self) -> Self:
         """Post init actions that must be done in event loop."""
-        self._docker = await asyncio.get_running_loop().run_in_executor(
+        self._dockerpy = await asyncio.get_running_loop().run_in_executor(
             None,
             partial(
                 DockerClient,
-                base_url=f"unix:/{str(SOCKET_DOCKER)}",
+                base_url=f"unix:/{SOCKET_DOCKER.as_posix()}",
                 version="auto",
                 timeout=900,
             ),
         )
-        self._info = DockerInfo.new(self.docker.info())
+        self._info = DockerInfo.new(self.dockerpy.info())
         await self.config.read_data()
-        self._network = await DockerNetwork(self.docker).post_init(
+        self._network = await DockerNetwork(self.dockerpy).post_init(
             self.config.enable_ipv6, self.config.mtu
         )
         return self
 
     @property
-    def docker(self) -> DockerClient:
+    def dockerpy(self) -> DockerClient:
         """Get docker API client."""
-        if not self._docker:
+        if not self._dockerpy:
             raise RuntimeError("Docker API Client not initialized!")
-        return self._docker
+        return self._dockerpy
 
     @property
     def network(self) -> DockerNetwork:
@@ -243,19 +256,19 @@ class DockerAPI(CoreSysAttributes):
         return self._network
 
     @property
-    def images(self) -> ImageCollection:
+    def images(self) -> DockerImages:
         """Return API images."""
         return self.docker.images
 
     @property
     def containers(self) -> ContainerCollection:
         """Return API containers."""
-        return self.docker.containers
+        return self.dockerpy.containers
 
     @property
     def api(self) -> APIClient:
         """Return API containers."""
-        return self.docker.api
+        return self.dockerpy.api
 
     @property
     def info(self) -> DockerInfo:
@@ -267,7 +280,7 @@ class DockerAPI(CoreSysAttributes):
     @property
     def events(self) -> CancellableStream:
         """Return docker event stream."""
-        return self.docker.events(decode=True)
+        return self.dockerpy.events(decode=True)
 
     @property
     def monitor(self) -> DockerMonitor:
@@ -383,7 +396,7 @@ class DockerAPI(CoreSysAttributes):
                 with suppress(DockerError):
                     self.network.detach_default_bridge(container)
         else:
-            host_network: Network = self.docker.networks.get(DOCKER_NETWORK_HOST)
+            host_network: Network = self.dockerpy.networks.get(DOCKER_NETWORK_HOST)
 
             # Check if container is register on host
             # https://github.com/moby/moby/issues/23302
@@ -410,35 +423,32 @@ class DockerAPI(CoreSysAttributes):
 
         return container
 
-    def pull_image(
+    async def pull_image(
         self,
         job_id: str,
         repository: str,
         tag: str = "latest",
         platform: str | None = None,
-    ) -> Image:
+    ) -> dict[str, Any]:
         """Pull the specified image and return it.
 
         This mimics the high level API of images.pull but provides better error handling by raising
         based on a docker error on pull. Whereas the high level API ignores all errors on pull and
         raises only if the get fails afterwards. Additionally it fires progress reports for the pull
         on the bus so listeners can use that to update status for users.
-
-        Must be run in executor.
         """
-        pull_log = self.docker.api.pull(
-            repository, tag=tag, platform=platform, stream=True, decode=True
-        )
-        for e in pull_log:
+        async for e in self.images.pull(
+            repository, tag=tag, platform=platform, stream=True
+        ):
             entry = PullLogEntry.from_pull_log_dict(job_id, e)
             if entry.error:
                 raise entry.exception
-            self.sys_loop.call_soon_threadsafe(
-                self.sys_bus.fire_event, BusEvent.DOCKER_IMAGE_PULL_UPDATE, entry
+            await asyncio.gather(
+                *self.sys_bus.fire_event(BusEvent.DOCKER_IMAGE_PULL_UPDATE, entry)
             )
 
         sep = "@" if tag.startswith("sha256:") else ":"
-        return self.images.get(f"{repository}{sep}{tag}")
+        return await self.images.inspect(f"{repository}{sep}{tag}")
 
     def run_command(
         self,
@@ -459,7 +469,7 @@ class DockerAPI(CoreSysAttributes):
         _LOGGER.info("Runing command '%s' on %s", command, image_with_tag)
         container = None
         try:
-            container = self.docker.containers.run(
+            container = self.dockerpy.containers.run(
                 image_with_tag,
                 command=command,
                 detach=True,
@@ -487,35 +497,35 @@ class DockerAPI(CoreSysAttributes):
         """Repair local docker overlayfs2 issues."""
         _LOGGER.info("Prune stale containers")
         try:
-            output = self.docker.api.prune_containers()
+            output = self.dockerpy.api.prune_containers()
             _LOGGER.debug("Containers prune: %s", output)
         except docker_errors.APIError as err:
             _LOGGER.warning("Error for containers prune: %s", err)
 
         _LOGGER.info("Prune stale images")
         try:
-            output = self.docker.api.prune_images(filters={"dangling": False})
+            output = self.dockerpy.api.prune_images(filters={"dangling": False})
             _LOGGER.debug("Images prune: %s", output)
         except docker_errors.APIError as err:
             _LOGGER.warning("Error for images prune: %s", err)
 
         _LOGGER.info("Prune stale builds")
         try:
-            output = self.docker.api.prune_builds()
+            output = self.dockerpy.api.prune_builds()
             _LOGGER.debug("Builds prune: %s", output)
         except docker_errors.APIError as err:
             _LOGGER.warning("Error for builds prune: %s", err)
 
         _LOGGER.info("Prune stale volumes")
         try:
-            output = self.docker.api.prune_builds()
+            output = self.dockerpy.api.prune_volumes()
             _LOGGER.debug("Volumes prune: %s", output)
         except docker_errors.APIError as err:
             _LOGGER.warning("Error for volumes prune: %s", err)
 
         _LOGGER.info("Prune stale networks")
         try:
-            output = self.docker.api.prune_networks()
+            output = self.dockerpy.api.prune_networks()
             _LOGGER.debug("Networks prune: %s", output)
         except docker_errors.APIError as err:
             _LOGGER.warning("Error for networks prune: %s", err)
@@ -537,11 +547,11 @@ class DockerAPI(CoreSysAttributes):
 
         Fix: https://github.com/moby/moby/issues/23302
         """
-        network: Network = self.docker.networks.get(network_name)
+        network: Network = self.dockerpy.networks.get(network_name)
 
         for cid, data in network.attrs.get("Containers", {}).items():
             try:
-                self.docker.containers.get(cid)
+                self.dockerpy.containers.get(cid)
                 continue
             except docker_errors.NotFound:
                 _LOGGER.debug(
@@ -556,22 +566,26 @@ class DockerAPI(CoreSysAttributes):
             with suppress(docker_errors.DockerException, requests.RequestException):
                 network.disconnect(data.get("Name", cid), force=True)
 
-    def container_is_initialized(
+    async def container_is_initialized(
         self, name: str, image: str, version: AwesomeVersion
     ) -> bool:
         """Return True if docker container exists in good state and is built from expected image."""
         try:
-            docker_container = self.containers.get(name)
-            docker_image = self.images.get(f"{image}:{version}")
-        except NotFound:
+            docker_container = await self.sys_run_in_executor(self.containers.get, name)
+            docker_image = await self.images.inspect(f"{image}:{version}")
+        except docker_errors.NotFound:
             return False
-        except (DockerException, requests.RequestException) as err:
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                return False
+            raise DockerError() from err
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         # Check the image is correct and state is good
         return (
             docker_container.image is not None
-            and docker_container.image.id == docker_image.id
+            and docker_container.image.id == docker_image["Id"]
             and docker_container.status in ("exited", "running", "created")
         )
 
@@ -581,18 +595,18 @@ class DockerAPI(CoreSysAttributes):
         """Stop/remove Docker container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         if docker_container.status == "running":
             _LOGGER.info("Stopping %s application", name)
-            with suppress(DockerException, requests.RequestException):
+            with suppress(docker_errors.DockerException, requests.RequestException):
                 docker_container.stop(timeout=timeout)
 
         if remove_container:
-            with suppress(DockerException, requests.RequestException):
+            with suppress(docker_errors.DockerException, requests.RequestException):
                 _LOGGER.info("Cleaning %s application", name)
                 docker_container.remove(force=True, v=True)
 
@@ -604,11 +618,11 @@ class DockerAPI(CoreSysAttributes):
         """Start Docker container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound(
                 f"{name} not found for starting up", _LOGGER.error
             ) from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Could not get {name} for starting up", _LOGGER.error
             ) from err
@@ -616,36 +630,36 @@ class DockerAPI(CoreSysAttributes):
         _LOGGER.info("Starting %s", name)
         try:
             docker_container.start()
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(f"Can't start {name}: {err}", _LOGGER.error) from err
 
     def restart_container(self, name: str, timeout: int) -> None:
         """Restart docker container."""
         try:
             container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         _LOGGER.info("Restarting %s", name)
         try:
             container.restart(timeout=timeout)
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(f"Can't restart {name}: {err}", _LOGGER.warning) from err
 
     def container_logs(self, name: str, tail: int = 100) -> bytes:
         """Return Docker logs of container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         try:
             return docker_container.logs(tail=tail, stdout=True, stderr=True)
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't grep logs from {name}: {err}", _LOGGER.warning
             ) from err
@@ -654,9 +668,9 @@ class DockerAPI(CoreSysAttributes):
         """Read and return stats from container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         # container is not running
@@ -665,7 +679,7 @@ class DockerAPI(CoreSysAttributes):
 
         try:
             return docker_container.stats(stream=False)
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't read stats from {name}: {err}", _LOGGER.error
             ) from err
@@ -674,61 +688,84 @@ class DockerAPI(CoreSysAttributes):
         """Execute a command inside Docker container."""
         try:
             docker_container: Container = self.containers.get(name)
-        except NotFound:
+        except docker_errors.NotFound:
             raise DockerNotFound() from None
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         # Execute
         try:
             code, output = docker_container.exec_run(command)
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
 
         return CommandReturn(code, output)
 
-    def remove_image(
+    async def remove_image(
         self, image: str, version: AwesomeVersion, latest: bool = True
     ) -> None:
         """Remove a Docker image by version and latest."""
         try:
             if latest:
                 _LOGGER.info("Removing image %s with latest", image)
-                with suppress(ImageNotFound):
-                    self.images.remove(image=f"{image}:latest", force=True)
+                try:
+                    await self.images.delete(f"{image}:latest", force=True)
+                except aiodocker.DockerError as err:
+                    if err.status != HTTPStatus.NOT_FOUND:
+                        raise
 
             _LOGGER.info("Removing image %s with %s", image, version)
-            with suppress(ImageNotFound):
-                self.images.remove(image=f"{image}:{version!s}", force=True)
+            try:
+                await self.images.delete(f"{image}:{version!s}", force=True)
+            except aiodocker.DockerError as err:
+                if err.status != HTTPStatus.NOT_FOUND:
+                    raise
 
-        except (DockerException, requests.RequestException) as err:
+        except (aiodocker.DockerError, requests.RequestException) as err:
             raise DockerError(
                 f"Can't remove image {image}: {err}", _LOGGER.warning
             ) from err
 
-    def import_image(self, tar_file: Path) -> Image | None:
+    async def import_image(self, tar_file: Path) -> dict[str, Any] | None:
         """Import a tar file as image."""
         try:
             with tar_file.open("rb") as read_tar:
-                docker_image_list: list[Image] = self.images.load(read_tar)  # type: ignore
-
-            if len(docker_image_list) != 1:
-                _LOGGER.warning(
-                    "Unexpected image count %d while importing image from tar",
-                    len(docker_image_list),
-                )
-                return None
-            return docker_image_list[0]
-        except (DockerException, OSError) as err:
+                resp: list[dict[str, Any]] = self.images.import_image(read_tar)
+        except (aiodocker.DockerError, OSError) as err:
             raise DockerError(
                 f"Can't import image from tar: {err}", _LOGGER.error
+            ) from err
+
+        docker_image_list: list[str] = []
+        for chunk in resp:
+            if "errorDetail" in chunk:
+                raise DockerError(
+                    f"Can't import image from tar: {chunk['errorDetail']['message']}",
+                    _LOGGER.error,
+                )
+            if "stream" in chunk:
+                if match := RE_IMPORT_IMAGE_STREAM.search(chunk["stream"]):
+                    docker_image_list.append(match.group(2))
+
+        if len(docker_image_list) != 1:
+            _LOGGER.warning(
+                "Unexpected image count %d while importing image from tar",
+                len(docker_image_list),
+            )
+            return None
+
+        try:
+            return await self.images.inspect(docker_image_list[0])
+        except (aiodocker.DockerError, requests.RequestException) as err:
+            raise DockerError(
+                f"Could not inspect imported image due to: {err!s}", _LOGGER.error
             ) from err
 
     def export_image(self, image: str, version: AwesomeVersion, tar_file: Path) -> None:
         """Export current images into a tar file."""
         try:
             docker_image = self.api.get_image(f"{image}:{version}")
-        except (DockerException, requests.RequestException) as err:
+        except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't fetch image {image}: {err}", _LOGGER.error
             ) from err
@@ -745,7 +782,7 @@ class DockerAPI(CoreSysAttributes):
 
         _LOGGER.info("Export image %s done", image)
 
-    def cleanup_old_images(
+    async def cleanup_old_images(
         self,
         current_image: str,
         current_version: AwesomeVersion,
@@ -756,46 +793,57 @@ class DockerAPI(CoreSysAttributes):
         """Clean up old versions of an image."""
         image = f"{current_image}:{current_version!s}"
         try:
-            keep = {cast(str, self.images.get(image).id)}
-        except ImageNotFound:
-            raise DockerNotFound(
-                f"{current_image} not found for cleanup", _LOGGER.warning
-            ) from None
-        except (DockerException, requests.RequestException) as err:
+            try:
+                image_attr = await self.images.inspect(image)
+            except aiodocker.DockerError as err:
+                if err.status == HTTPStatus.NOT_FOUND:
+                    raise DockerNotFound(
+                        f"{current_image} not found for cleanup", _LOGGER.warning
+                    ) from None
+                raise
+        except (aiodocker.DockerError, requests.RequestException) as err:
             raise DockerError(
                 f"Can't get {current_image} for cleanup", _LOGGER.warning
             ) from err
+        keep = {cast(str, image_attr["Id"])}
 
         if keep_images:
             keep_images -= {image}
-            try:
-                for image in keep_images:
-                    # If its not found, no need to preserve it from getting removed
-                    with suppress(ImageNotFound):
-                        keep.add(cast(str, self.images.get(image).id))
-            except (DockerException, requests.RequestException) as err:
-                raise DockerError(
-                    f"Failed to get one or more images from {keep} during cleanup",
-                    _LOGGER.warning,
-                ) from err
+            results = await asyncio.gather(
+                *[self.images.inspect(image) for image in keep_images],
+                return_exceptions=True,
+            )
+            for result in results:
+                # If its not found, no need to preserve it from getting removed
+                if (
+                    isinstance(result, aiodocker.DockerError)
+                    and result.status == HTTPStatus.NOT_FOUND
+                ):
+                    continue
+                if isinstance(result, BaseException):
+                    raise DockerError(
+                        f"Failed to get one or more images from {keep} during cleanup",
+                        _LOGGER.warning,
+                    ) from result
+                keep.add(cast(str, result["Id"]))
 
         # Cleanup old and current
         image_names = list(
             old_images | {current_image} if old_images else {current_image}
         )
         try:
-            # This API accepts a list of image names. Tested and confirmed working on docker==7.1.0
-            # Its typing does say only `str` though. Bit concerning, could an update break this?
-            images_list = self.images.list(name=image_names)  # type: ignore
-        except (DockerException, requests.RequestException) as err:
+            images_list = await self.images.list(
+                filters=json.dumps({"reference": image_names})
+            )
+        except (aiodocker.DockerError, requests.RequestException) as err:
             raise DockerError(
                 f"Corrupt docker overlayfs found: {err}", _LOGGER.warning
             ) from err
 
         for docker_image in images_list:
-            if docker_image.id in keep:
+            if docker_image["Id"] in keep:
                 continue
 
-            with suppress(DockerException, requests.RequestException):
-                _LOGGER.info("Cleanup images: %s", docker_image.tags)
-                self.images.remove(docker_image.id, force=True)
+            with suppress(aiodocker.DockerError, requests.RequestException):
+                _LOGGER.info("Cleanup images: %s", docker_image["RepoTags"])
+                await self.images.delete(docker_image["Id"], force=True)

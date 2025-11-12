@@ -1,6 +1,5 @@
 """Init file for Supervisor Docker object."""
 
-from collections.abc import Awaitable
 from ipaddress import IPv4Address
 import logging
 import re
@@ -236,11 +235,10 @@ class DockerHomeAssistant(DockerInterface):
             environment={ENV_TIME: self.sys_timezone},
         )
 
-    def is_initialize(self) -> Awaitable[bool]:
+    async def is_initialize(self) -> bool:
         """Return True if Docker container exists."""
-        return self.sys_run_in_executor(
-            self.sys_docker.container_is_initialized,
-            self.name,
-            self.image,
-            self.sys_homeassistant.version,
+        if not self.sys_homeassistant.version:
+            return False
+        return await self.sys_docker.container_is_initialized(
+            self.name, self.image, self.sys_homeassistant.version
         )
