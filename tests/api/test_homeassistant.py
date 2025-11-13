@@ -376,10 +376,6 @@ async def test_update_frontend_check_success(api_client: TestClient, coresys: Co
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2025.8.0")
 
-    mock_response = MagicMock()
-    mock_response.status = 200
-    mock_response.headers = {"Content-Type": "text/html; charset=utf-8"}
-
     with (
         patch.object(
             DockerHomeAssistant,
@@ -400,7 +396,7 @@ async def test_update_frontend_check_fails_triggers_rollback(
     api_client: TestClient,
     coresys: CoreSys,
     caplog: pytest.LogCaptureFixture,
-    tmp_supervisor_data,
+    tmp_supervisor_data: Path,
 ):
     """Test that update triggers rollback when frontend check fails."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
