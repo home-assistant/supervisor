@@ -303,10 +303,14 @@ class HomeAssistantCore(JobGroup):
             except HomeAssistantError:
                 # The API stoped responding between the up checks an now
                 self._error_state = True
-                data = None
+                return
+
+            if data is None:
+                self._error_state = True
+                return
 
             # Verify that the frontend is loaded
-            if data and "frontend" not in data.get("components", []):
+            if "frontend" not in data.get("components", []):
                 _LOGGER.error("API responds but frontend is not loaded")
                 self._error_state = True
             # Check that the frontend is actually accessible
