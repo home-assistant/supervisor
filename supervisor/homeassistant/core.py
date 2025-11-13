@@ -305,10 +305,6 @@ class HomeAssistantCore(JobGroup):
                 self._error_state = True
                 return
 
-            if data is None:
-                self._error_state = True
-                return
-
             # Verify that the frontend is loaded
             if "frontend" not in data.get("components", []):
                 _LOGGER.error("API responds but frontend is not loaded")

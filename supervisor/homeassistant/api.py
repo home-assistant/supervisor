@@ -175,7 +175,10 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     async def get_config(self) -> dict[str, Any]:
         """Return Home Assistant config."""
-        return await self._get_json("api/config")
+        config = await self._get_json("api/config")
+        if config is None or not isinstance(config, dict):
+            raise HomeAssistantAPIError("No config received from Home Assistant API")
+        return config
 
     async def get_core_state(self) -> dict[str, Any]:
         """Return Home Assistant core state."""
