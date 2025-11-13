@@ -309,6 +309,12 @@ class HomeAssistantCore(JobGroup):
             if data and "frontend" not in data.get("components", []):
                 _LOGGER.error("API responds but frontend is not loaded")
                 self._error_state = True
+            # Check that the frontend is actually accessible
+            elif not await self.sys_homeassistant.api.check_frontend_available():
+                _LOGGER.error(
+                    "Frontend component loaded but frontend is not accessible"
+                )
+                self._error_state = True
             else:
                 return
 
@@ -321,12 +327,12 @@ class HomeAssistantCore(JobGroup):
 
             # Make a copy of the current log file if it exists
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
-            if logfile.exists():
+            if await self.sys_run_in_executor(logfile.exists):
                 rollback_log = (
                     self.sys_config.path_homeassistant / "home-assistant-rollback.log"
                 )
 
-                shutil.copy(logfile, rollback_log)
+                await self.sys_run_in_executor(shutil.copy, logfile, rollback_log)
                 _LOGGER.info(
                     "A backup of the logfile is stored in /config/home-assistant-rollback.log"
                 )
