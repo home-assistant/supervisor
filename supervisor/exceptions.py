@@ -85,6 +85,12 @@ class APIGone(APIError):
     status = 410
 
 
+class APITooManyRequests(APIError):
+    """API too many requests error."""
+
+    status = 429
+
+
 class APIInternalServerError(APIError):
     """API internal server error."""
 
@@ -198,18 +204,11 @@ class SupervisorAppArmorError(SupervisorError):
     """Supervisor AppArmor error."""
 
 
-class SupervisorStatsError(SupervisorError, APIInternalServerError):
-    """Raise on issue getting stats for Supervisor container."""
+class SupervisorUnknownError(SupervisorError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs interacting with Supervisor or its container."""
 
-    error_key = "supervisor_stats_error"
-    message_template = (
-        f"Can't get stats for Supervisor container. {MESSAGE_CHECK_SUPERVISOR_LOGS}"
-    )
-    extra_fields = EXTRA_FIELDS_LOGS_COMMAND.copy()
-
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Initialize exception."""
-        super().__init__(None, logger)
+    error_key = "supervisor_unknown_error"
+    message_template = "An unknown error occurred with Supervisor"
 
 
 class SupervisorJobError(SupervisorError, JobException):
@@ -844,7 +843,7 @@ class DockerNoSpaceOnDevice(DockerError):
         super().__init__(None, logger=logger)
 
 
-class DockerHubRateLimitExceeded(DockerError):
+class DockerHubRateLimitExceeded(DockerError, APITooManyRequests):
     """Raise for docker hub rate limit exceeded error."""
 
     error_key = "dockerhub_rate_limit_exceeded"
@@ -852,16 +851,13 @@ class DockerHubRateLimitExceeded(DockerError):
         "Your IP address has made too many requests to Docker Hub which activated a rate limit. "
         "For more details see {dockerhub_rate_limit_url}"
     )
+    extra_fields = {
+        "dockerhub_rate_limit_url": "https://www.home-assistant.io/more-info/dockerhub-rate-limit"
+    }
 
     def __init__(self, logger: Callable[..., None] | None = None) -> None:
         """Raise & log."""
-        super().__init__(
-            None,
-            logger=logger,
-            extra_fields={
-                "dockerhub_rate_limit_url": "https://www.home-assistant.io/more-info/dockerhub-rate-limit"
-            },
-        )
+        super().__init__(None, logger=logger)
 
 
 class DockerJobError(DockerError, JobException):
