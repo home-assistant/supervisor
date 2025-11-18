@@ -445,28 +445,23 @@ async def test_install_progress_rounding_does_not_cause_misses(
     ]
     coresys.docker.images.pull.return_value = AsyncIterator(logs)
 
-    with (
-        patch.object(
-            type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
-        ),
-    ):
-        # Schedule job so we can listen for the end. Then we can assert against the WS mock
-        event = asyncio.Event()
-        job, install_task = coresys.jobs.schedule_job(
-            test_docker_interface.install,
-            JobSchedulerOptions(),
-            AwesomeVersion("1.2.3"),
-            "test",
-        )
+    # Schedule job so we can listen for the end. Then we can assert against the WS mock
+    event = asyncio.Event()
+    job, install_task = coresys.jobs.schedule_job(
+        test_docker_interface.install,
+        JobSchedulerOptions(),
+        AwesomeVersion("1.2.3"),
+        "test",
+    )
 
-        async def listen_for_job_end(reference: SupervisorJob):
-            if reference.uuid != job.uuid:
-                return
-            event.set()
+    async def listen_for_job_end(reference: SupervisorJob):
+        if reference.uuid != job.uuid:
+            return
+        event.set()
 
-        coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
-        await install_task
-        await event.wait()
+    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
+    await install_task
+    await event.wait()
 
     capture_exception.assert_not_called()
 
@@ -664,3 +659,66 @@ async def test_install_progress_handles_layers_skipping_download(
         assert job.done is True
         assert job.progress == 100
         capture_exception.assert_not_called()
+
+
+async def test_missing_total_handled_gracefully(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    ha_ws_client: AsyncMock,
+    capture_exception: Mock,
+):
+    """Test extremely close progress events do not create rounding issues."""
+    coresys.core.set_state(CoreState.RUNNING)
+
+    # Current numbers chosen to create a rounding issue with original code
+    # Where a progress update came in with a value between the actual previous
+    # value and what it was rounded to. It should not raise an out of order exception
+    logs = [
+        {
+            "status": "Pulling from home-assistant/odroid-n2-homeassistant",
+            "id": "2025.7.1",
+        },
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "1e214cd6d7d0"},
+        {
+            "status": "Downloading",
+            "progressDetail": {"current": 436480882},
+            "progress": "[===================================================]  436.5MB/436.5MB",
+            "id": "1e214cd6d7d0",
+        },
+        {"status": "Verifying Checksum", "progressDetail": {}, "id": "1e214cd6d7d0"},
+        {"status": "Download complete", "progressDetail": {}, "id": "1e214cd6d7d0"},
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 436480882},
+            "progress": "[===================================================]  436.5MB/436.5MB",
+            "id": "1e214cd6d7d0",
+        },
+        {"status": "Pull complete", "progressDetail": {}, "id": "1e214cd6d7d0"},
+        {
+            "status": "Digest: sha256:7d97da645f232f82a768d0a537e452536719d56d484d419836e53dbe3e4ec736"
+        },
+        {
+            "status": "Status: Downloaded newer image for ghcr.io/home-assistant/odroid-n2-homeassistant:2025.7.1"
+        },
+    ]
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
+
+    # Schedule job so we can listen for the end. Then we can assert against the WS mock
+    event = asyncio.Event()
+    job, install_task = coresys.jobs.schedule_job(
+        test_docker_interface.install,
+        JobSchedulerOptions(),
+        AwesomeVersion("1.2.3"),
+        "test",
+    )
+
+    async def listen_for_job_end(reference: SupervisorJob):
+        if reference.uuid != job.uuid:
+            return
+        event.set()
+
+    coresys.bus.register_event(BusEvent.SUPERVISOR_JOB_END, listen_for_job_end)
+    await install_task
+    await event.wait()
+
+    capture_exception.assert_not_called()
