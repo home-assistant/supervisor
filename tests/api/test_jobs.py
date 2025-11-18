@@ -374,6 +374,8 @@ async def test_job_with_error(
                     "type": "SupervisorError",
                     "message": "bad",
                     "stage": "test",
+                    "error_key": None,
+                    "extra_fields": None,
                 }
             ],
             "child_jobs": [
@@ -391,6 +393,8 @@ async def test_job_with_error(
                             "type": "SupervisorError",
                             "message": "bad",
                             "stage": None,
+                            "error_key": None,
+                            "extra_fields": None,
                         }
                     ],
                     "child_jobs": [],
