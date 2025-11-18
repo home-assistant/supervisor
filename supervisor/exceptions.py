@@ -358,26 +358,6 @@ class AddonConfigurationInvalidError(AddonConfigurationError, APIError):
         super().__init__(None, logger)
 
 
-class AddonBackupMetadataInvalidError(AddonsError, APIError):
-    """Raise if invalid metadata file provided for addon in backup."""
-
-    error_key = "addon_backup_metadata_invalid_error"
-    message_template = (
-        "Metadata file for add-on {addon} in backup is invalid: {validation_error}"
-    )
-
-    def __init__(
-        self,
-        logger: Callable[..., None] | None = None,
-        *,
-        addon: str,
-        validation_error: str,
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon, "validation_error": validation_error}
-        super().__init__(None, logger)
-
-
 class AddonBootConfigCannotChangeError(AddonsError, APIError):
     """Raise if user attempts to change addon boot config when it can't be changed."""
 
@@ -405,28 +385,6 @@ class AddonNotRunningError(AddonsError, APIError):
     ) -> None:
         """Initialize exception."""
         self.extra_fields = {"addon": addon}
-        super().__init__(None, logger)
-
-
-class AddonPrePostBackupCommandReturnedError(AddonsError, APIError):
-    """Raise when addon's pre/post backup command returns an error."""
-
-    error_key = "addon_pre_post_backup_command_returned_error"
-    message_template = (
-        "Pre-/Post backup command for add-on {addon} returned error code: "
-        "{exit_code}. Please report this to the addon developer. Enable debug "
-        "logging to capture complete command output using {debug_logging_command}"
-    )
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str, exit_code: int
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {
-            "addon": addon,
-            "exit_code": exit_code,
-            "debug_logging_command": "ha supervisor options --logging debug",
-        }
         super().__init__(None, logger)
 
 
@@ -546,238 +504,11 @@ class AddonBuildArchitectureNotSupportedError(AddonNotSupportedError, APIError):
         super().__init__(None, logger)
 
 
-# pylint: disable-next=too-many-ancestors
-class AddonConfigurationFileUnknownError(
-    AddonConfigurationError, APIUnknownSupervisorError
-):
-    """Raise when unknown error occurs trying to read/write addon configuration file."""
+class AddonUnknownError(AddonsError, APIUnknownSupervisorError):
+    """Raise when unknown error occurs taking an action for an addon."""
 
-    error_key = "addon_configuration_file_unknown_error"
-    message_template = (
-        "An unknown error occurred reading/writing configuration file for {addon}"
-    )
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonBuildImageUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs during image build."""
-
-    error_key = "addon_build_image_unknown_error"
-    message_template = "An unknown error occurred during build of image for {addon}"
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonInstallImageUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs during image install."""
-
-    error_key = "addon_install_image_unknown_error"
-    message_template = "An unknown error occurred during install of image for {addon}"
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonRemoveImageUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while removing an image."""
-
-    error_key = "addon_remove_image_unknown_error"
-    message_template = "An unknown error occurred while removing image for {addon}"
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonContainerStartUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while starting a container."""
-
-    error_key = "addon_container_start_unknown_error"
-    message_template = "An unknown error occurred while starting container for {addon}"
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonContainerStopUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while stopping a container."""
-
-    error_key = "addon_container_stop_unknown_error"
-    message_template = "An unknown error occurred while stopping container for {addon}"
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonContainerStatsUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while getting stats of a container."""
-
-    error_key = "addon_container_stats_unknown_error"
-    message_template = (
-        "An unknown error occurred while getting stats of container for {addon}"
-    )
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonContainerWriteStdinUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while writing to stdin of a container."""
-
-    error_key = "addon_container_write_stdin_unknown_error"
-    message_template = (
-        "An unknown error occurred while writing to stdin of container for {addon}"
-    )
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonContainerRunCommandUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while running command inside of a container."""
-
-    error_key = "addon_container_run_command_unknown_error"
-    message_template = "An unknown error occurred while running a command inside of container for {addon}"
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonCreateBackupFileUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while making the backup file for an addon."""
-
-    error_key = "addon_create_backup_file_unknown_error"
-    message_template = (
-        "An unknown error occurred while creating the backup file for {addon}"
-    )
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonCreateBackupMetadataFileUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while making the metadata file for an addon backup."""
-
-    error_key = "addon_create_backup_metadata_file_unknown_error"
-    message_template = "An unknown error occurred while creating the metadata file for backup of {addon}"
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonBackupAppArmorProfileUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while backing up the AppArmor profile of an addon."""
-
-    error_key = "addon_backup_app_armor_profile_unknown_error"
-    message_template = (
-        "An unknown error occurred while backing up the AppArmor profile of {addon}"
-    )
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonBackupExportImageUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while exporting image for an addon backup."""
-
-    error_key = "addon_backup_export_image_unknown_error"
-    message_template = (
-        "An unknown error occurred while exporting image to back up {addon}"
-    )
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonExtractBackupFileUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when an unknown error occurs while extracting backup file for an addon."""
-
-    error_key = "addon_extract_backup_file_unknown_error"
-    message_template = (
-        "An unknown error occurred while extracting the backup file for {addon}"
-    )
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonRestoreBackupDataUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when unknown error occurs while restoring data/config for addon from backup."""
-
-    error_key = "addon_restore_backup_data_unknown_error"
-    message_template = "An unknown error occurred while restoring data and config for {addon} from backup"
-
-    def __init__(
-        self, logger: Callable[..., None] | None = None, *, addon: str
-    ) -> None:
-        """Initialize exception."""
-        self.extra_fields = {"addon": addon}
-        super().__init__(logger)
-
-
-class AddonRestoreAppArmorProfileUnknownError(AddonsError, APIUnknownSupervisorError):
-    """Raise when unknown error occurs while restoring AppArmor profile for addon from backup."""
-
-    error_key = "addon_restore_app_armor_profile_unknown_error"
-    message_template = "An unknown error occurred while restoring AppArmor profile for {addon} from backup"
+    error_key = "addon_unknown_error"
+    message_template = "An unknown error occurred with addon {addon}"
 
     def __init__(
         self, logger: Callable[..., None] | None = None, *, addon: str
@@ -1260,6 +991,55 @@ class BackupPermissionError(BackupError):
 
 class BackupFileExistError(BackupError):
     """Raise if the backup file already exists."""
+
+
+class AddonBackupMetadataInvalidError(BackupError, APIError):
+    """Raise if invalid metadata file provided for addon in backup."""
+
+    error_key = "addon_backup_metadata_invalid_error"
+    message_template = (
+        "Metadata file for add-on {addon} in backup is invalid: {validation_error}"
+    )
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        addon: str,
+        validation_error: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon, "validation_error": validation_error}
+        super().__init__(None, logger)
+
+
+class AddonPrePostBackupCommandReturnedError(BackupError, APIError):
+    """Raise when addon's pre/post backup command returns an error."""
+
+    error_key = "addon_pre_post_backup_command_returned_error"
+    message_template = (
+        "Pre-/Post backup command for add-on {addon} returned error code: "
+        "{exit_code}. Please report this to the addon developer. Enable debug "
+        "logging to capture complete command output using {debug_logging_command}"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str, exit_code: int
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {
+            "addon": addon,
+            "exit_code": exit_code,
+            "debug_logging_command": "ha supervisor options --logging debug",
+        }
+        super().__init__(None, logger)
+
+
+class BackupRestoreUnknownError(BackupError, APIUnknownSupervisorError):
+    """Raise when an unknown error occurs during backup or restore."""
+
+    error_key = "backup_restore_unknown_error"
+    message_template = "An unknown error occurred during backup/restore"
 
 
 # Security

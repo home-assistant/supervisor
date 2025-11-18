@@ -5,6 +5,7 @@ from datetime import timedelta
 import errno
 from http import HTTPStatus
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import aiodocker
@@ -23,7 +24,13 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
+from supervisor.exceptions import (
+    AddonPrePostBackupCommandReturnedError,
+    AddonsJobError,
+    AddonUnknownError,
+    AudioUpdateError,
+    HassioError,
+)
 from supervisor.hardware.helper import HwHelper
 from supervisor.ingress import Ingress
 from supervisor.store.repository import Repository
@@ -502,31 +509,26 @@ async def test_backup_with_pre_post_command(
 
 
 @pytest.mark.parametrize(
-    "get_error,exception_on_exec",
+    ("container_get_side_effect", "exec_run_side_effect", "exc_type_raised"),
     [
-        (NotFound("missing"), False),
-        (DockerException(), False),
-        (None, True),
-        (None, False),
+        (NotFound("missing"), [(1, None)], AddonUnknownError),
+        (DockerException(), [(1, None)], AddonUnknownError),
+        (None, DockerException(), AddonUnknownError),
+        (None, [(1, None)], AddonPrePostBackupCommandReturnedError),
     ],
 )
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup_with_pre_command_error(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: MagicMock,
-    get_error: DockerException | None,
-    exception_on_exec: bool,
-    tmp_supervisor_data,
-    path_extern,
+    container_get_side_effect: DockerException | None,
+    exec_run_side_effect: DockerException | list[tuple[int, Any]],
+    exc_type_raised: type[HassioError],
 ) -> None:
     """Test backing up an addon with error running pre command."""
-    if get_error:
-        coresys.docker.containers.get.side_effect = get_error
-
-    if exception_on_exec:
-        container.exec_run.side_effect = DockerException()
-    else:
-        container.exec_run.return_value = (1, None)
+    coresys.docker.containers.get.side_effect = container_get_side_effect
+    container.exec_run.side_effect = exec_run_side_effect
 
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
@@ -535,7 +537,7 @@ async def test_backup_with_pre_command_error(
     with (
         patch.object(DockerAddon, "is_running", return_value=True),
         patch.object(Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")),
-        pytest.raises(AddonsError),
+        pytest.raises(exc_type_raised),
     ):
         assert await install_addon_ssh.backup(tarfile) is None
 

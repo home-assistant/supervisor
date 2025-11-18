@@ -102,13 +102,17 @@ class SupervisorJobError:
         "Unknown error, see Supervisor logs (check with 'ha supervisor logs')"
     )
     stage: str | None = None
+    error_key: str | None = None
+    extra_fields: dict[str, Any] | None = None
 
-    def as_dict(self) -> dict[str, str | None]:
+    def as_dict(self) -> dict[str, Any]:
         """Return dictionary representation."""
         return {
             "type": self.type_.__name__,
             "message": self.message,
             "stage": self.stage,
+            "error_key": self.error_key,
+            "extra_fields": self.extra_fields,
         }
 
 
@@ -158,7 +162,9 @@ class SupervisorJob:
     def capture_error(self, err: HassioError | None = None) -> None:
         """Capture an error or record that an unknown error has occurred."""
         if err:
-            new_error = SupervisorJobError(type(err), str(err), self.stage)
+            new_error = SupervisorJobError(
+                type(err), str(err), self.stage, err.error_key, err.extra_fields
+            )
         else:
             new_error = SupervisorJobError(stage=self.stage)
         self.errors += [new_error]

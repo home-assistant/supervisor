@@ -66,30 +66,16 @@ from ..docker.const import ContainerState
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
-    AddonBackupAppArmorProfileUnknownError,
-    AddonBackupExportImageUnknownError,
     AddonBackupMetadataInvalidError,
-    AddonBuildImageUnknownError,
-    AddonConfigurationFileUnknownError,
     AddonConfigurationInvalidError,
-    AddonContainerRunCommandUnknownError,
-    AddonContainerStartUnknownError,
-    AddonContainerStatsUnknownError,
-    AddonContainerStopUnknownError,
-    AddonContainerWriteStdinUnknownError,
-    AddonCreateBackupFileUnknownError,
-    AddonCreateBackupMetadataFileUnknownError,
-    AddonExtractBackupFileUnknownError,
-    AddonInstallImageUnknownError,
     AddonNotRunningError,
     AddonNotSupportedError,
     AddonNotSupportedWriteStdinError,
     AddonPrePostBackupCommandReturnedError,
-    AddonRemoveImageUnknownError,
-    AddonRestoreAppArmorProfileUnknownError,
-    AddonRestoreBackupDataUnknownError,
     AddonsError,
     AddonsJobError,
+    AddonUnknownError,
+    BackupRestoreUnknownError,
     ConfigurationFileError,
     DockerBuildError,
     DockerError,
@@ -747,7 +733,7 @@ class Addon(AddonModel):
             ) from None
         except ConfigurationFileError as err:
             _LOGGER.error("Add-on %s can't write options", self.slug)
-            raise AddonConfigurationFileUnknownError(addon=self.slug) from err
+            raise AddonUnknownError(addon=self.slug) from err
 
         _LOGGER.debug("Add-on %s write options: %s", self.slug, options)
 
@@ -817,11 +803,13 @@ class Addon(AddonModel):
             await self.sys_addons.data.uninstall(self)
             raise
         except DockerBuildError as err:
+            _LOGGER.error("Could not build image for addon %s: %s", self.slug, err)
             await self.sys_addons.data.uninstall(self)
-            raise AddonBuildImageUnknownError(addon=self.slug) from err
+            raise AddonUnknownError(addon=self.slug) from err
         except DockerError as err:
+            _LOGGER.error("Could not pull image to update addon %s: %s", self.slug, err)
             await self.sys_addons.data.uninstall(self)
-            raise AddonInstallImageUnknownError(addon=self.slug) from err
+            raise AddonUnknownError(addon=self.slug) from err
 
         # Finish initialization and set up listeners
         await self.load()
@@ -845,7 +833,8 @@ class Addon(AddonModel):
         try:
             await self.instance.remove(remove_image=remove_image)
         except DockerError as err:
-            raise AddonRemoveImageUnknownError(addon=self.slug) from err
+            _LOGGER.error("Could not remove image for addon %s: %s", self.slug, err)
+            raise AddonUnknownError(addon=self.slug) from err
 
         self.state = AddonState.UNKNOWN
 
@@ -919,9 +908,11 @@ class Addon(AddonModel):
         try:
             await self.instance.update(store.version, store.image, arch=self.arch)
         except DockerBuildError as err:
-            raise AddonBuildImageUnknownError(addon=self.slug) from err
+            _LOGGER.error("Could not build image for addon %s: %s", self.slug, err)
+            raise AddonUnknownError(addon=self.slug) from err
         except DockerError as err:
-            raise AddonInstallImageUnknownError(addon=self.slug) from err
+            _LOGGER.error("Could not pull image to update addon %s: %s", self.slug, err)
+            raise AddonUnknownError(addon=self.slug) from err
 
         # Stop the addon if running
         if (last_state := self.state) in {AddonState.STARTED, AddonState.STARTUP}:
@@ -967,14 +958,19 @@ class Addon(AddonModel):
             try:
                 await self.instance.remove()
             except DockerError as err:
-                raise AddonRemoveImageUnknownError(addon=self.slug) from err
+                _LOGGER.error("Could not remove image for addon %s: %s", self.slug, err)
+                raise AddonUnknownError(addon=self.slug) from err
 
             try:
                 await self.instance.install(self.version)
             except DockerBuildError as err:
-                raise AddonBuildImageUnknownError(addon=self.slug) from err
+                _LOGGER.error("Could not build image for addon %s: %s", self.slug, err)
+                raise AddonUnknownError(addon=self.slug) from err
             except DockerError as err:
-                raise AddonInstallImageUnknownError(addon=self.slug) from err
+                _LOGGER.error(
+                    "Could not pull image to update addon %s: %s", self.slug, err
+                )
+                raise AddonUnknownError(addon=self.slug) from err
 
             if self.addon_store:
                 await self.sys_addons.data.update(self.addon_store)
@@ -1145,8 +1141,9 @@ class Addon(AddonModel):
         try:
             await self.instance.run()
         except DockerError as err:
+            _LOGGER.error("Could not start container for addon %s: %s", self.slug, err)
             self.state = AddonState.ERROR
-            raise AddonContainerStartUnknownError(addon=self.slug) from err
+            raise AddonUnknownError(addon=self.slug) from err
 
         return self.sys_create_task(self._wait_for_startup())
 
@@ -1161,8 +1158,9 @@ class Addon(AddonModel):
         try:
             await self.instance.stop()
         except DockerError as err:
+            _LOGGER.error("Could not stop container for addon %s: %s", self.slug, err)
             self.state = AddonState.ERROR
-            raise AddonContainerStopUnknownError(addon=self.slug) from err
+            raise AddonUnknownError(addon=self.slug) from err
 
     @Job(
         name="addon_restart",
@@ -1200,7 +1198,10 @@ class Addon(AddonModel):
 
             return await self.instance.stats()
         except DockerError as err:
-            raise AddonContainerStatsUnknownError(addon=self.slug) from err
+            _LOGGER.error(
+                "Could not get stats of container for addon %s: %s", self.slug, err
+            )
+            raise AddonUnknownError(addon=self.slug) from err
 
     @Job(
         name="addon_write_stdin",
@@ -1218,7 +1219,10 @@ class Addon(AddonModel):
 
             await self.instance.write_stdin(data)
         except DockerError as err:
-            raise AddonContainerWriteStdinUnknownError(addon=self.slug) from err
+            _LOGGER.error(
+                "Could not write stdin to container for addon %s: %s", self.slug, err
+            )
+            raise AddonUnknownError(addon=self.slug) from err
 
     async def _backup_command(self, command: str) -> None:
         try:
@@ -1234,7 +1238,7 @@ class Addon(AddonModel):
             _LOGGER.error(
                 "Failed running pre-/post backup command %s: %s", command, err
             )
-            raise AddonContainerRunCommandUnknownError(addon=self.slug) from err
+            raise AddonUnknownError(addon=self.slug) from err
 
     @Job(
         name="addon_begin_backup",
@@ -1323,18 +1327,14 @@ class Addon(AddonModel):
                     try:
                         self.instance.export_image(temp_path.joinpath("image.tar"))
                     except DockerError as err:
-                        raise AddonBackupExportImageUnknownError(
-                            addon=self.slug
-                        ) from err
+                        raise BackupRestoreUnknownError() from err
 
                 # Store local configs/state
                 try:
                     write_json_file(temp_path.joinpath("addon.json"), metadata)
                 except ConfigurationFileError as err:
                     _LOGGER.error("Can't save meta for %s: %s", self.slug, err)
-                    raise AddonCreateBackupMetadataFileUnknownError(
-                        addon=self.slug
-                    ) from err
+                    raise BackupRestoreUnknownError() from err
 
                 # Store AppArmor Profile
                 if apparmor_profile:
@@ -1344,9 +1344,7 @@ class Addon(AddonModel):
                             apparmor_profile, profile_backup_file
                         )
                     except HostAppArmorError as err:
-                        raise AddonBackupAppArmorProfileUnknownError(
-                            addon=self.slug
-                        ) from err
+                        raise BackupRestoreUnknownError() from err
 
                 # Write tarfile
                 with tar_file as backup:
@@ -1401,7 +1399,7 @@ class Addon(AddonModel):
             _LOGGER.info("Finish backup for addon %s", self.slug)
         except (tarfile.TarError, OSError, AddFileError) as err:
             _LOGGER.error("Can't write backup tarfile for addon %s: %s", self.slug, err)
-            raise AddonCreateBackupFileUnknownError(addon=self.slug) from err
+            raise BackupRestoreUnknownError() from err
         finally:
             if was_running:
                 wait_for_start = await self.end_backup()
@@ -1444,9 +1442,9 @@ class Addon(AddonModel):
             tmp, data = await self.sys_run_in_executor(_extract_tarfile)
         except tarfile.TarError as err:
             _LOGGER.error("Can't extract backup tarfile for %s: %s", self.slug, err)
-            raise AddonExtractBackupFileUnknownError(addon=self.slug) from err
+            raise BackupRestoreUnknownError() from err
         except ConfigurationFileError as err:
-            raise AddonConfigurationFileUnknownError(addon=self.slug) from err
+            raise AddonUnknownError(addon=self.slug) from err
 
         try:
             # Validate
@@ -1522,7 +1520,7 @@ class Addon(AddonModel):
                     _LOGGER.error(
                         "Can't restore origin data for %s: %s", self.slug, err
                     )
-                    raise AddonRestoreBackupDataUnknownError(addon=self.slug) from err
+                    raise BackupRestoreUnknownError() from err
 
                 # Restore AppArmor
                 profile_file = Path(tmp.name, "apparmor.txt")
@@ -1537,9 +1535,7 @@ class Addon(AddonModel):
                             self.slug,
                             err,
                         )
-                        raise AddonRestoreAppArmorProfileUnknownError(
-                            addon=self.slug
-                        ) from err
+                        raise BackupRestoreUnknownError() from err
 
             finally:
                 # Is add-on loaded

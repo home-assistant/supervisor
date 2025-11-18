@@ -596,9 +596,9 @@ async def test_addon_start_options_error(
         body = await resp.json()
         assert (
             body["message"]
-            == "An unknown error occurred reading/writing configuration file for local_example. Check supervisor logs for details (check with 'ha supervisor logs')"
+            == "An unknown error occurred with addon local_example. Check supervisor logs for details (check with 'ha supervisor logs')"
         )
-        assert body["error_key"] == "addon_configuration_file_unknown_error"
+        assert body["error_key"] == "addon_unknown_error"
         assert body["extra_fields"] == {
             "addon": "local_example",
             "logs_command": "ha supervisor logs",
