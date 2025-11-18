@@ -14,7 +14,7 @@ jobs:
       latest_version: ${{ steps.latest_frontend_version.outputs.latest_tag }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - name: Get latest frontend release
         id: latest_frontend_version
         uses: abatilo/release-info-action@32cb932219f1cee3fc4f4a298fd65ead5d35b661 # v1.3.3
@@ -49,7 +49,7 @@ jobs:
     if: needs.check-version.outputs.skip != 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
       - name: Clear www folder
         run: |
           rm -rf supervisor/api/panel/*
