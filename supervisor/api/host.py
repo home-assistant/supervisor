@@ -206,6 +206,7 @@ class APIHost(CoreSysAttributes):
         identifier: str | None = None,
         follow: bool = False,
         latest: bool = False,
+        no_colors: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
         log_formatter = LogFormatter.PLAIN
@@ -280,7 +281,9 @@ class APIHost(CoreSysAttributes):
                 response = web.StreamResponse()
                 response.content_type = CONTENT_TYPE_TEXT
                 headers_returned = False
-                async for cursor, line in journal_logs_reader(resp, log_formatter):
+                async for cursor, line in journal_logs_reader(
+                    resp, log_formatter, no_colors
+                ):
                     try:
                         if not headers_returned:
                             if cursor:
@@ -318,9 +321,12 @@ class APIHost(CoreSysAttributes):
         identifier: str | None = None,
         follow: bool = False,
         latest: bool = False,
+        no_colors: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
-        return await self.advanced_logs_handler(request, identifier, follow, latest)
+        return await self.advanced_logs_handler(
+            request, identifier, follow, latest, no_colors
+        )
 
     @api_process
     async def disk_usage(self, request: web.Request) -> dict:

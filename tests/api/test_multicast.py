@@ -10,7 +10,11 @@ from tests.api import common_test_api_advanced_logs
 
 
 async def test_api_multicast_logs(
-    api_client: TestClient, journald_logs: MagicMock, coresys: CoreSys, os_available
+    api_client: TestClient,
+    journald_logs: MagicMock,
+    coresys: CoreSys,
+    os_available,
+    journal_logs_reader: MagicMock,
 ):
     """Test multicast logs."""
     await common_test_api_advanced_logs(
@@ -20,4 +24,5 @@ async def test_api_multicast_logs(
         journald_logs,
         coresys,
         os_available,
+        journal_logs_reader,
     )

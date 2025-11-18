@@ -29,6 +29,7 @@ async def test_api_core_logs(
     coresys: CoreSys,
     os_available,
     legacy_route: bool,
+    journal_logs_reader: MagicMock,
 ):
     """Test core logs."""
     await common_test_api_advanced_logs(
@@ -38,6 +39,7 @@ async def test_api_core_logs(
         journald_logs,
         coresys,
         os_available,
+        journal_logs_reader,
     )
 
 

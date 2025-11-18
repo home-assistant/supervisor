@@ -10,9 +10,19 @@ from tests.api import common_test_api_advanced_logs
 
 
 async def test_api_audio_logs(
-    api_client: TestClient, journald_logs: MagicMock, coresys: CoreSys, os_available
+    api_client: TestClient,
+    journald_logs: MagicMock,
+    coresys: CoreSys,
+    os_available,
+    journal_logs_reader: MagicMock,
 ):
     """Test audio logs."""
     await common_test_api_advanced_logs(
-        "/audio", "hassio_audio", api_client, journald_logs, coresys, os_available
+        "/audio",
+        "hassio_audio",
+        api_client,
+        journald_logs,
+        coresys,
+        os_available,
+        journal_logs_reader,
     )

@@ -1,11 +1,11 @@
 """Test for API calls."""
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import ANY, AsyncMock, MagicMock
 
 from aiohttp.test_utils import TestClient
 
 from supervisor.coresys import CoreSys
-from supervisor.host.const import LogFormat
+from supervisor.host.const import LogFormat, LogFormatter
 
 DEFAULT_LOG_RANGE = "entries=:-99:100"
 DEFAULT_LOG_RANGE_FOLLOW = "entries=:-99:18446744073709551615"
@@ -18,6 +18,7 @@ async def common_test_api_advanced_logs(
     journald_logs: MagicMock,
     coresys: CoreSys,
     os_available: None,
+    journal_logs_reader: MagicMock,
 ):
     """Template for tests of endpoints using advanced logs."""
     resp = await api_client.get(f"{path_prefix}/logs")
@@ -41,8 +42,10 @@ async def common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE_FOLLOW,
         accept=LogFormat.JOURNAL,
     )
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.PLAIN, False)
 
     journald_logs.reset_mock()
+    journal_logs_reader.reset_mock()
 
     mock_response = MagicMock()
     mock_response.text = AsyncMock(
@@ -65,8 +68,10 @@ async def common_test_api_advanced_logs(
     assert logs_call[1]["params"]["SYSLOG_IDENTIFIER"] == syslog_identifier
     assert logs_call[1]["params"]["CONTAINER_LOG_EPOCH"] == "12345"
     assert logs_call[1]["range_header"] == "entries=:0:18446744073709551615"
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.PLAIN, True)
 
     journald_logs.reset_mock()
+    journal_logs_reader.reset_mock()
 
     resp = await api_client.get(f"{path_prefix}/logs/boots/0")
     assert resp.status == 200

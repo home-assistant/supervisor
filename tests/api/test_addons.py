@@ -77,6 +77,7 @@ async def test_api_addon_logs(
     coresys: CoreSys,
     os_available,
     install_addon_ssh: Addon,
+    journal_logs_reader: MagicMock,
 ):
     """Test addon logs."""
     await common_test_api_advanced_logs(
@@ -86,6 +87,7 @@ async def test_api_addon_logs(
         journald_logs,
         coresys,
         os_available,
+        journal_logs_reader,
     )
 
 

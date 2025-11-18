@@ -67,7 +67,11 @@ async def test_options(api_client: TestClient, coresys: CoreSys):
 
 
 async def test_api_dns_logs(
-    api_client: TestClient, journald_logs: MagicMock, coresys: CoreSys, os_available
+    api_client: TestClient,
+    journald_logs: MagicMock,
+    coresys: CoreSys,
+    os_available,
+    journal_logs_reader: MagicMock,
 ):
     """Test dns logs."""
     await common_test_api_advanced_logs(
@@ -77,4 +81,5 @@ async def test_api_dns_logs(
         journald_logs,
         coresys,
         os_available,
+        journal_logs_reader,
     )
