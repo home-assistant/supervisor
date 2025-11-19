@@ -20,7 +20,6 @@ from supervisor.exceptions import HassioError
 from supervisor.store.repository import Repository
 
 from ..const import TEST_ADDON_SLUG
-from . import common_test_api_advanced_logs
 
 
 def _create_test_event(name: str, state: ContainerState) -> DockerContainerStateEvent:
@@ -72,21 +71,11 @@ async def test_addons_info_not_installed(
 
 
 async def test_api_addon_logs(
-    api_client: TestClient,
-    journald_logs: MagicMock,
-    coresys: CoreSys,
-    os_available,
+    advanced_logs_tester,
     install_addon_ssh: Addon,
 ):
     """Test addon logs."""
-    await common_test_api_advanced_logs(
-        "/addons/local_ssh",
-        "addon_local_ssh",
-        api_client,
-        journald_logs,
-        coresys,
-        os_available,
-    )
+    await advanced_logs_tester("/addons/local_ssh", "addon_local_ssh")
 
 
 async def test_api_addon_logs_not_installed(api_client: TestClient):

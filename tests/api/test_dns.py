@@ -1,13 +1,12 @@
 """Test DNS API."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from aiohttp.test_utils import TestClient
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
 
-from tests.api import common_test_api_advanced_logs
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.resolved import Resolved as ResolvedService
 
@@ -66,15 +65,6 @@ async def test_options(api_client: TestClient, coresys: CoreSys):
         restart.assert_called_once()
 
 
-async def test_api_dns_logs(
-    api_client: TestClient, journald_logs: MagicMock, coresys: CoreSys, os_available
-):
+async def test_api_dns_logs(advanced_logs_tester):
     """Test dns logs."""
-    await common_test_api_advanced_logs(
-        "/dns",
-        "hassio_dns",
-        api_client,
-        journald_logs,
-        coresys,
-        os_available,
-    )
+    await advanced_logs_tester("/dns", "hassio_dns")

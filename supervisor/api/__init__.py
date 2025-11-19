@@ -152,6 +152,7 @@ class RestAPI(CoreSysAttributes):
                         self._api_host.advanced_logs,
                         identifier=syslog_identifier,
                         latest=True,
+                        no_colors=True,
                     ),
                 ),
                 web.get(
@@ -449,6 +450,7 @@ class RestAPI(CoreSysAttributes):
                     await async_capture_exception(err)
                 kwargs.pop("follow", None)  # Follow is not supported for Docker logs
                 kwargs.pop("latest", None)  # Latest is not supported for Docker logs
+                kwargs.pop("no_colors", None)  # no_colors not supported for Docker logs
                 return await api_supervisor.logs(*args, **kwargs)
 
         self.webapp.add_routes(
@@ -460,7 +462,7 @@ class RestAPI(CoreSysAttributes):
                 ),
                 web.get(
                     "/supervisor/logs/latest",
-                    partial(get_supervisor_logs, latest=True),
+                    partial(get_supervisor_logs, latest=True, no_colors=True),
                 ),
                 web.get("/supervisor/logs/boots/{bootid}", get_supervisor_logs),
                 web.get(
@@ -576,7 +578,7 @@ class RestAPI(CoreSysAttributes):
                 ),
                 web.get(
                     "/addons/{addon}/logs/latest",
-                    partial(get_addon_logs, latest=True),
+                    partial(get_addon_logs, latest=True, no_colors=True),
                 ),
                 web.get("/addons/{addon}/logs/boots/{bootid}", get_addon_logs),
                 web.get(

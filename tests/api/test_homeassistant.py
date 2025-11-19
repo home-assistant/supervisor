@@ -18,26 +18,18 @@ from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 
-from tests.api import common_test_api_advanced_logs
 from tests.common import AsyncIterator, load_json_fixture
 
 
 @pytest.mark.parametrize("legacy_route", [True, False])
 async def test_api_core_logs(
-    api_client: TestClient,
-    journald_logs: MagicMock,
-    coresys: CoreSys,
-    os_available,
+    advanced_logs_tester: AsyncMock,
     legacy_route: bool,
 ):
     """Test core logs."""
-    await common_test_api_advanced_logs(
+    await advanced_logs_tester(
         f"/{'homeassistant' if legacy_route else 'core'}",
         "homeassistant",
-        api_client,
-        journald_logs,
-        coresys,
-        os_available,
     )
 
 
