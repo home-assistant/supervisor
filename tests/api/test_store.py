@@ -4,7 +4,6 @@ import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
-from aiohttp import ClientResponse
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
@@ -292,14 +291,6 @@ async def test_api_detached_addon_documentation(
     assert result == "Addon local_ssh does not exist in the store"
 
 
-async def get_message(resp: ClientResponse, json_expected: bool) -> str:
-    """Get message from response based on response type."""
-    if json_expected:
-        body = await resp.json()
-        return body["message"]
-    return await resp.text()
-
-
 @pytest.mark.parametrize(
     ("method", "url", "json_expected"),
     [
@@ -325,10 +316,13 @@ async def test_store_addon_not_found(
     """Test store addon not found error."""
     resp = await api_client.request(method, url)
     assert resp.status == 404
-    assert (
-        await get_message(resp, json_expected)
-        == "Addon bad does not exist in the store"
-    )
+    if json_expected:
+        body = await resp.json()
+        assert body["message"] == "Addon bad does not exist in the store"
+        assert body["error_key"] == "store_addon_not_found_error"
+        assert body["extra_fields"] == {"addon": "bad"}
+    else:
+        assert await resp.text() == "Addon bad does not exist in the store"
 
 
 @pytest.mark.parametrize(

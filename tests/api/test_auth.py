@@ -11,6 +11,7 @@ from securetar import Any
 from supervisor.addons.addon import Addon
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantAPIError, HomeAssistantWSError
+from supervisor.homeassistant.api import HomeAssistantAPI
 
 from tests.common import MockResponse
 from tests.const import TEST_ADDON_SLUG
@@ -246,6 +247,13 @@ async def test_auth_json_failure_none(
     mock_check_login.return_value = True
     resp = await api_client.post("/auth", json={"username": user, "password": password})
     assert resp.status == 401
+    assert (
+        resp.headers["WWW-Authenticate"]
+        == 'Basic realm="Home Assistant Authentication"'
+    )
+    body = await resp.json()
+    assert body["message"] == "Username and password must be strings"
+    assert body["error_key"] == "auth_invalid_non_string_value_error"
 
 
 @pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
@@ -357,3 +365,26 @@ async def test_non_addon_token_no_auth_access(api_client: TestClient):
     """Test auth where add-on is not allowed to access auth API."""
     resp = await api_client.post("/auth", json={"username": "test", "password": "pass"})
     assert resp.status == 403
+
+
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_auth_backend_login_failure(api_client: TestClient):
+    """Test backend login failure on auth."""
+    with (
+        patch.object(HomeAssistantAPI, "check_api_state", return_value=True),
+        patch.object(
+            HomeAssistantAPI, "make_request", side_effect=HomeAssistantAPIError("fail")
+        ),
+    ):
+        resp = await api_client.post(
+            "/auth", json={"username": "test", "password": "pass"}
+        )
+    assert resp.status == 500
+    body = await resp.json()
+    assert (
+        body["message"]
+        == "Unable to validate authentication details with Home Assistant. Check supervisor logs for details (check with 'ha supervisor logs')"
+    )
+    assert body["error_key"] == "auth_home_assistant_api_validation_error"
+    assert body["extra_fields"] == {"logs_command": "ha supervisor logs"}

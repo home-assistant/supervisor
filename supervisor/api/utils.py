@@ -1,7 +1,7 @@
 """Init file for Supervisor util for RESTful API."""
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 import json
 from typing import Any, cast
 
@@ -26,7 +26,7 @@ from ..const import (
     RESULT_OK,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import APIError, BackupFileNotFoundError, DockerAPIError, HassioError
+from ..exceptions import APIError, DockerAPIError, HassioError
 from ..jobs import JobSchedulerOptions, SupervisorJob
 from ..utils import check_exception_chain, get_message_from_exception_chain
 from ..utils.json import json_dumps, json_loads as json_loads_util
@@ -67,10 +67,10 @@ def api_process(method):
         """Return API information."""
         try:
             answer = await method(*args, **kwargs)
-        except BackupFileNotFoundError as err:
-            return api_return_error(err, status=404)
         except APIError as err:
-            return api_return_error(err, status=err.status, job_id=err.job_id)
+            return api_return_error(
+                err, status=err.status, job_id=err.job_id, headers=err.headers
+            )
         except HassioError as err:
             return api_return_error(err)
 
@@ -139,6 +139,7 @@ def api_return_error(
     error_type: str | None = None,
     status: int = 400,
     *,
+    headers: Mapping[str, str] | None = None,
     job_id: str | None = None,
 ) -> web.Response:
     """Return an API error message."""
@@ -151,10 +152,15 @@ def api_return_error(
 
     match error_type:
         case const.CONTENT_TYPE_TEXT:
-            return web.Response(body=message, content_type=error_type, status=status)
+            return web.Response(
+                body=message, content_type=error_type, status=status, headers=headers
+            )
         case const.CONTENT_TYPE_BINARY:
             return web.Response(
-                body=message.encode(), content_type=error_type, status=status
+                body=message.encode(),
+                content_type=error_type,
+                status=status,
+                headers=headers,
             )
         case _:
             result: dict[str, Any] = {
@@ -172,6 +178,7 @@ def api_return_error(
         result,
         status=status,
         dumps=json_dumps,
+        headers=headers,
     )
 
 

@@ -1,6 +1,6 @@
 """Core Exceptions."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 MESSAGE_CHECK_SUPERVISOR_LOGS = (
@@ -48,16 +48,19 @@ class APIError(HassioError, RuntimeError):
     """API errors."""
 
     status = 400
+    headers: Mapping[str, str] | None = None
 
     def __init__(
         self,
         message: str | None = None,
         logger: Callable[..., None] | None = None,
         *,
+        headers: Mapping[str, str] | None = None,
         job_id: str | None = None,
     ) -> None:
         """Raise & log, optionally with job."""
         super().__init__(message, logger)
+        self.headers = headers
         self.job_id = job_id
 
 
@@ -113,7 +116,10 @@ class APIUnknownSupervisorError(APIError):
     status = 500
 
     def __init__(
-        self, logger: Callable[..., None] | None = None, *, job_id: str | None = None
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        job_id: str | None = None,
     ) -> None:
         """Initialize exception."""
         self.message_template = (
@@ -556,7 +562,12 @@ class AuthPasswordResetError(AuthError, APIError):
         f"Unable to reset password for '{{user}}'. {MESSAGE_CHECK_SUPERVISOR_LOGS}"
     )
 
-    def __init__(self, logger: Callable[..., None] | None = None, *, user: str) -> None:
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        user: str,
+    ) -> None:
         """Initialize exception."""
         self.extra_fields = {"user": user} | EXTRA_FIELDS_LOGS_COMMAND
         super().__init__(None, logger)
@@ -581,16 +592,20 @@ class AuthListUsersNoneResponseError(AuthError, APIInternalServerError):
         super().__init__(None, logger)
 
 
-class AuthInvalidNoneValueError(AuthError, APIUnauthorized):
-    """Auth error if None provided as username or password."""
+class AuthInvalidNonStringValueError(AuthError, APIUnauthorized):
+    """Auth error if something besides a string provided as username or password."""
 
-    error_key = "auth_invalid_none_value_error"
-    message_template = "{none} as username or password is not supported"
-    extra_fields = {"none": "None"}
+    error_key = "auth_invalid_non_string_value_error"
+    message_template = "Username and password must be strings"
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        headers: Mapping[str, str] | None = None,
+    ) -> None:
         """Initialize exception."""
-        super().__init__(None, logger)
+        super().__init__(None, logger, headers=headers)
 
 
 class AuthHomeAssistantAPIValidationError(AuthError, APIUnknownSupervisorError):
@@ -977,7 +992,7 @@ class BackupJobError(BackupError, JobException):
     """Raise on Backup job error."""
 
 
-class BackupFileNotFoundError(BackupError):
+class BackupFileNotFoundError(BackupError, APINotFound):
     """Raise if the backup file hasn't been found."""
 
 

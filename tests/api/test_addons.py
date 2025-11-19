@@ -627,8 +627,9 @@ async def test_addon_start_options_error(
 
 
 @pytest.mark.parametrize(("method", "action"), [("get", "stats"), ("post", "stdin")])
+@pytest.mark.usefixtures("install_addon_example")
 async def test_addon_not_running_error(
-    api_client: TestClient, install_addon_example: Addon, method: str, action: str
+    api_client: TestClient, method: str, action: str
 ):
     """Test addon not running error for endpoints that require that."""
     with patch.object(
@@ -640,4 +641,15 @@ async def test_addon_not_running_error(
     body = await resp.json()
     assert body["message"] == "Add-on local_example is not running"
     assert body["error_key"] == "addon_not_running_error"
+    assert body["extra_fields"] == {"addon": "local_example"}
+
+
+@pytest.mark.usefixtures("install_addon_example")
+async def test_addon_write_stdin_not_supported_error(api_client: TestClient):
+    """Test error when trying to write stdin to addon that does not support it."""
+    resp = await api_client.post("/addons/local_example/stdin")
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["message"] == "Add-on local_example does not support writing to stdin"
+    assert body["error_key"] == "addon_not_supported_write_stdin_error"
     assert body["extra_fields"] == {"addon": "local_example"}
