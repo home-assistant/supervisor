@@ -667,12 +667,10 @@ async def test_missing_total_handled_gracefully(
     ha_ws_client: AsyncMock,
     capture_exception: Mock,
 ):
-    """Test extremely close progress events do not create rounding issues."""
+    """Test missing 'total' fields in progress details handled gracefully."""
     coresys.core.set_state(CoreState.RUNNING)
 
-    # Current numbers chosen to create a rounding issue with original code
-    # Where a progress update came in with a value between the actual previous
-    # value and what it was rounded to. It should not raise an out of order exception
+    # Progress details with missing 'total' fields observed in real-world pulls
     logs = [
         {
             "status": "Pulling from home-assistant/odroid-n2-homeassistant",
