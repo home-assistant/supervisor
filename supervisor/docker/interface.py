@@ -310,6 +310,8 @@ class DockerInterface(JobGroup, ABC):
         if (
             stage in {PullImageLayerStage.DOWNLOADING, PullImageLayerStage.EXTRACTING}
             and reference.progress_detail
+            and reference.progress_detail.current is not None
+            and reference.progress_detail.total is not None
         ):
             job.update(
                 progress=progress,
