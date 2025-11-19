@@ -657,6 +657,8 @@ class CoreSys:
             funct = partial(funct, **kwargs)
 
         # Convert datetime to event loop time base
+        # If datetime is in the past, delay will be negative and call_at will
+        # schedule the call as soon as possible.
         delay = when.timestamp() - time.time()
         loop_time = self.loop.time() + delay
 
