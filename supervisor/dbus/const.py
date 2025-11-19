@@ -306,6 +306,8 @@ class DeviceType(IntEnum):
     VLAN = 11
     TUN = 16
     VETH = 20
+    WIREGUARD = 29
+    LOOPBACK = 32
 
 
 class WirelessMethodType(IntEnum):

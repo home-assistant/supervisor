@@ -134,9 +134,10 @@ class NetworkManager(DBusInterfaceProxy):
     async def check_connectivity(self, *, force: bool = False) -> ConnectivityState:
         """Check the connectivity of the host."""
         if force:
-            return await self.connected_dbus.call("check_connectivity")
-        else:
-            return await self.connected_dbus.get("connectivity")
+            return ConnectivityState(
+                await self.connected_dbus.call("check_connectivity")
+            )
+        return ConnectivityState(await self.connected_dbus.get("connectivity"))
 
     async def connect(self, bus: MessageBus) -> None:
         """Connect to system's D-Bus."""
