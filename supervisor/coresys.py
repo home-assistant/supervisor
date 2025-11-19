@@ -9,6 +9,7 @@ from datetime import UTC, datetime, tzinfo
 from functools import partial
 import logging
 import os
+import time
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self, TypeVar
 
@@ -655,8 +656,14 @@ class CoreSys:
         if kwargs:
             funct = partial(funct, **kwargs)
 
+        # Convert datetime to event loop time base
+        # If datetime is in the past, delay will be negative and call_at will
+        # schedule the call as soon as possible.
+        delay = when.timestamp() - time.time()
+        loop_time = self.loop.time() + delay
+
         return self.loop.call_at(
-            when.timestamp(), funct, *args, context=self._create_context()
+            loop_time, funct, *args, context=self._create_context()
         )
 
 
