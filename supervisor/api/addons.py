@@ -102,6 +102,7 @@ from ..docker.stats import DockerStats
 from ..exceptions import (
     AddonBootConfigCannotChangeError,
     AddonConfigurationInvalidError,
+    AddonNotSupportedWriteStdinError,
     APIAddonNotInstalled,
     APIError,
     APIForbidden,
@@ -480,7 +481,7 @@ class APIAddons(CoreSysAttributes):
         """Write to stdin of add-on."""
         addon = self.get_addon_for_request(request)
         if not addon.with_stdin:
-            raise APIError(f"STDIN not supported the {addon.slug} add-on")
+            raise AddonNotSupportedWriteStdinError(_LOGGER.error, addon=addon.slug)
 
         data = await request.read()
         await asyncio.shield(addon.write_stdin(data))

@@ -10,7 +10,7 @@ from .const import ATTR_PASSWORD, ATTR_TYPE, ATTR_USERNAME, FILE_HASSIO_AUTH
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     AuthHomeAssistantAPIValidationError,
-    AuthInvalidNoneValueError,
+    AuthInvalidNonStringValueError,
     AuthListUsersError,
     AuthListUsersNoneResponseError,
     AuthPasswordResetError,
@@ -86,7 +86,7 @@ class Auth(FileConfiguration, CoreSysAttributes):
     ) -> bool:
         """Check username login."""
         if username is None or password is None:
-            raise AuthInvalidNoneValueError(_LOGGER.error)
+            raise AuthInvalidNonStringValueError(_LOGGER.error)
 
         _LOGGER.info("Auth request from '%s' for '%s'", addon.slug, username)
 

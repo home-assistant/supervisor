@@ -15,7 +15,7 @@ import voluptuous as vol
 from ..addons.addon import Addon
 from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIForbidden
+from ..exceptions import APIForbidden, AuthInvalidNonStringValueError
 from .const import (
     ATTR_GROUP_IDS,
     ATTR_IS_ACTIVE,
@@ -69,7 +69,9 @@ class APIAuth(CoreSysAttributes):
         try:
             _ = username.encode and password.encode  # type: ignore
         except AttributeError:
-            raise HTTPUnauthorized(headers=REALM_HEADER) from None
+            raise AuthInvalidNonStringValueError(
+                _LOGGER.error, headers=REALM_HEADER
+            ) from None
 
         return self.sys_auth.check_login(
             addon, cast(str, username), cast(str, password)
