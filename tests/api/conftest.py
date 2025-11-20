@@ -32,8 +32,24 @@ async def _common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE,
         accept=LogFormat.JOURNAL,
     )
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.PLAIN, False)
 
     journald_logs.reset_mock()
+    journal_logs_reader.reset_mock()
+
+    resp = await api_client.get(f"{path_prefix}/logs?no_colors")
+    assert resp.status == 200
+    assert resp.content_type == "text/plain"
+
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": syslog_identifier},
+        range_header=DEFAULT_LOG_RANGE,
+        accept=LogFormat.JOURNAL,
+    )
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.PLAIN, True)
+
+    journald_logs.reset_mock()
+    journal_logs_reader.reset_mock()
 
     resp = await api_client.get(f"{path_prefix}/logs/follow")
     assert resp.status == 200
