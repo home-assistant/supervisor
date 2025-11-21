@@ -34,6 +34,7 @@ class JobCondition(StrEnum):
     PLUGINS_UPDATED = "plugins_updated"
     RUNNING = "running"
     SUPERVISOR_UPDATED = "supervisor_updated"
+    ARCHITECTURE_SUPPORTED = "architecture_supported"
 
 
 class JobConcurrency(StrEnum):
