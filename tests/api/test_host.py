@@ -292,6 +292,18 @@ async def test_advaced_logs_query_parameters(
     )
     journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE, False)
 
+    journal_logs_reader.reset_mock()
+    journald_logs.reset_mock()
+
+    # Check no_colors query parameter
+    await api_client.get("/host/logs?no_colors")
+    journald_logs.assert_called_once_with(
+        params={"SYSLOG_IDENTIFIER": coresys.host.logs.default_identifiers},
+        range_header=DEFAULT_RANGE,
+        accept=LogFormat.JOURNAL,
+    )
+    journal_logs_reader.assert_called_with(ANY, LogFormatter.VERBOSE, True)
+
 
 async def test_advanced_logs_boot_id_offset(
     api_client: TestClient, coresys: CoreSys, journald_logs: MagicMock

@@ -252,6 +252,9 @@ class APIHost(CoreSysAttributes):
         if "verbose" in request.query or request.headers[ACCEPT] == CONTENT_TYPE_X_LOG:
             log_formatter = LogFormatter.VERBOSE
 
+        if "no_colors" in request.query:
+            no_colors = True
+
         if "lines" in request.query:
             lines = request.query.get("lines", DEFAULT_LINES)
             try:
