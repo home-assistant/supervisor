@@ -75,7 +75,7 @@ class Resolved(DBusInterfaceProxy):
     @dbus_property
     def current_dns_server(
         self,
-    ) -> list[tuple[int, DNSAddressFamily, bytes]] | None:
+    ) -> tuple[int, DNSAddressFamily, bytes] | None:
         """Return current DNS server."""
         return self.properties[DBUS_ATTR_CURRENT_DNS_SERVER]
 
@@ -83,7 +83,7 @@ class Resolved(DBusInterfaceProxy):
     @dbus_property
     def current_dns_server_ex(
         self,
-    ) -> list[tuple[int, DNSAddressFamily, bytes, int, str]] | None:
+    ) -> tuple[int, DNSAddressFamily, bytes, int, str] | None:
         """Return current DNS server including port and server name."""
         return self.properties[DBUS_ATTR_CURRENT_DNS_SERVER_EX]
 

@@ -41,51 +41,51 @@ async def test_dbus_resolved_info(
     assert resolved.dns_over_tls == DNSOverTLSEnabled.NO
 
     assert len(resolved.dns) == 2
-    assert resolved.dns[0] == [0, 2, inet_aton("127.0.0.1")]
-    assert resolved.dns[1] == [0, 10, inet_pton(AF_INET6, "::1")]
+    assert resolved.dns[0] == (0, 2, inet_aton("127.0.0.1"))
+    assert resolved.dns[1] == (0, 10, inet_pton(AF_INET6, "::1"))
     assert len(resolved.dns_ex) == 2
-    assert resolved.dns_ex[0] == [0, 2, inet_aton("127.0.0.1"), 0, ""]
-    assert resolved.dns_ex[1] == [0, 10, inet_pton(AF_INET6, "::1"), 0, ""]
+    assert resolved.dns_ex[0] == (0, 2, inet_aton("127.0.0.1"), 0, "")
+    assert resolved.dns_ex[1] == (0, 10, inet_pton(AF_INET6, "::1"), 0, "")
 
     assert len(resolved.fallback_dns) == 2
-    assert resolved.fallback_dns[0] == [0, 2, inet_aton("1.1.1.1")]
-    assert resolved.fallback_dns[1] == [
+    assert resolved.fallback_dns[0] == (0, 2, inet_aton("1.1.1.1"))
+    assert resolved.fallback_dns[1] == (
         0,
         10,
         inet_pton(AF_INET6, "2606:4700:4700::1111"),
-    ]
+    )
     assert len(resolved.fallback_dns_ex) == 2
-    assert resolved.fallback_dns_ex[0] == [
+    assert resolved.fallback_dns_ex[0] == (
         0,
         2,
         inet_aton("1.1.1.1"),
         0,
         "cloudflare-dns.com",
-    ]
-    assert resolved.fallback_dns_ex[1] == [
+    )
+    assert resolved.fallback_dns_ex[1] == (
         0,
         10,
         inet_pton(AF_INET6, "2606:4700:4700::1111"),
         0,
         "cloudflare-dns.com",
-    ]
+    )
 
-    assert resolved.current_dns_server == [0, 2, inet_aton("127.0.0.1")]
-    assert resolved.current_dns_server_ex == [
+    assert resolved.current_dns_server == (0, 2, inet_aton("127.0.0.1"))
+    assert resolved.current_dns_server_ex == (
         0,
         2,
         inet_aton("127.0.0.1"),
         0,
         "",
-    ]
+    )
 
     assert len(resolved.domains) == 1
-    assert resolved.domains[0] == [0, "local.hass.io", False]
+    assert resolved.domains[0] == (0, "local.hass.io", False)
 
-    assert resolved.transaction_statistics == [0, 100000]
-    assert resolved.cache_statistics == [10, 50000, 10000]
+    assert resolved.transaction_statistics == (0, 100000)
+    assert resolved.cache_statistics == (10, 50000, 10000)
     assert resolved.dnssec == DNSSECValidation.NO
-    assert resolved.dnssec_statistics == [0, 0, 0, 0]
+    assert resolved.dnssec_statistics == (0, 0, 0, 0)
     assert resolved.dnssec_supported is False
     assert resolved.dnssec_negative_trust_anchors == [
         "168.192.in-addr.arpa",

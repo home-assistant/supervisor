@@ -185,10 +185,10 @@ async def test_start_transient_unit(
             "tmp-test.mount",
             "fail",
             [
-                ["Description", Variant("s", "Test")],
-                ["What", Variant("s", "//homeassistant/config")],
-                ["Type", Variant("s", "cifs")],
-                ["Options", Variant("s", "username=homeassistant,password=password")],
+                ("Description", Variant("s", "Test")),
+                ("What", Variant("s", "//homeassistant/config")),
+                ("Type", Variant("s", "cifs")),
+                ("Options", Variant("s", "username=homeassistant,password=password")),
             ],
             [],
         )

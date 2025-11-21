@@ -45,8 +45,8 @@ class Resolved(DBusServiceMock):
     def DNS(self) -> "a(iiay)":
         """Get DNS."""
         return [
-            [0, 2, bytes([127, 0, 0, 1])],
-            [
+            (0, 2, bytes([127, 0, 0, 1])),
+            (
                 0,
                 10,
                 bytes(
@@ -69,15 +69,15 @@ class Resolved(DBusServiceMock):
                         0x1,
                     ]
                 ),
-            ],
+            ),
         ]
 
     @dbus_property(access=PropertyAccess.READ)
     def DNSEx(self) -> "a(iiayqs)":
         """Get DNSEx."""
         return [
-            [0, 2, bytes([127, 0, 0, 1]), 0, ""],
-            [
+            (0, 2, bytes([127, 0, 0, 1]), 0, ""),
+            (
                 0,
                 10,
                 bytes(
@@ -102,15 +102,15 @@ class Resolved(DBusServiceMock):
                 ),
                 0,
                 "",
-            ],
+            ),
         ]
 
     @dbus_property(access=PropertyAccess.READ)
     def FallbackDNS(self) -> "a(iiay)":
         """Get FallbackDNS."""
         return [
-            [0, 2, bytes([1, 1, 1, 1])],
-            [
+            (0, 2, bytes([1, 1, 1, 1])),
+            (
                 0,
                 10,
                 bytes(
@@ -133,15 +133,15 @@ class Resolved(DBusServiceMock):
                         0x11,
                     ]
                 ),
-            ],
+            ),
         ]
 
     @dbus_property(access=PropertyAccess.READ)
     def FallbackDNSEx(self) -> "a(iiayqs)":
         """Get FallbackDNSEx."""
         return [
-            [0, 2, bytes([1, 1, 1, 1]), 0, "cloudflare-dns.com"],
-            [
+            (0, 2, bytes([1, 1, 1, 1]), 0, "cloudflare-dns.com"),
+            (
                 0,
                 10,
                 bytes(
@@ -166,33 +166,33 @@ class Resolved(DBusServiceMock):
                 ),
                 0,
                 "cloudflare-dns.com",
-            ],
+            ),
         ]
 
     @dbus_property(access=PropertyAccess.READ)
     def CurrentDNSServer(self) -> "(iiay)":
         """Get CurrentDNSServer."""
-        return [0, 2, bytes([127, 0, 0, 1])]
+        return (0, 2, bytes([127, 0, 0, 1]))
 
     @dbus_property(access=PropertyAccess.READ)
     def CurrentDNSServerEx(self) -> "(iiayqs)":
         """Get CurrentDNSServerEx."""
-        return [0, 2, bytes([127, 0, 0, 1]), 0, ""]
+        return (0, 2, bytes([127, 0, 0, 1]), 0, "")
 
     @dbus_property(access=PropertyAccess.READ)
     def Domains(self) -> "a(isb)":
         """Get Domains."""
-        return [[0, "local.hass.io", False]]
+        return [(0, "local.hass.io", False)]
 
     @dbus_property(access=PropertyAccess.READ)
     def TransactionStatistics(self) -> "(tt)":
         """Get TransactionStatistics."""
-        return [0, 100000]
+        return (0, 100000)
 
     @dbus_property(access=PropertyAccess.READ)
     def CacheStatistics(self) -> "(ttt)":
         """Get CacheStatistics."""
-        return [10, 50000, 10000]
+        return (10, 50000, 10000)
 
     @dbus_property(access=PropertyAccess.READ)
     def DNSSEC(self) -> "s":
@@ -202,7 +202,7 @@ class Resolved(DBusServiceMock):
     @dbus_property(access=PropertyAccess.READ)
     def DNSSECStatistics(self) -> "(tttt)":
         """Get DNSSECStatistics."""
-        return [0, 0, 0, 0]
+        return (0, 0, 0, 0)
 
     @dbus_property(access=PropertyAccess.READ)
     def DNSSECSupported(self) -> "b":
