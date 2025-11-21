@@ -523,6 +523,22 @@ class AddonUnknownError(AddonsError, APIUnknownSupervisorError):
         super().__init__(logger)
 
 
+class AddonBuildFailedUnknownError(AddonsError, APIUnknownSupervisorError):
+    """Raise when the build failed for an addon due to an unknown error."""
+
+    error_key = "addon_build_failed_unknown_error"
+    message_template = (
+        "An unknown error occurred while trying to build the image for addon {addon}"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"addon": addon}
+        super().__init__(logger)
+
+
 class AddonsJobError(AddonsError, JobException):
     """Raise on job errors."""
 
