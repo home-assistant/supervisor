@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 from aiohttp import ClientResponse
 from aiohttp.test_utils import TestClient
+from docker.errors import DockerException
 import pytest
 
 from supervisor.addons.addon import Addon
@@ -653,3 +654,28 @@ async def test_addon_write_stdin_not_supported_error(api_client: TestClient):
     assert body["message"] == "Add-on local_example does not support writing to stdin"
     assert body["error_key"] == "addon_not_supported_write_stdin_error"
     assert body["extra_fields"] == {"addon": "local_example"}
+
+
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_addon_rebuild_fails_error(api_client: TestClient, coresys: CoreSys):
+    """Test error when build fails during rebuild for addon."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.docker.containers.run.side_effect = DockerException("fail")
+
+    with (
+        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])),
+        patch.object(CpuArch, "default", new=PropertyMock(return_value="aarch64")),
+        patch.object(AddonBuild, "get_docker_args", return_value={}),
+    ):
+        resp = await api_client.post("/addons/local_ssh/rebuild")
+    assert resp.status == 500
+    body = await resp.json()
+    assert (
+        body["message"]
+        == "An unknown error occurred while trying to build the image for addon local_ssh. Check supervisor logs for details (check with 'ha supervisor logs')"
+    )
+    assert body["error_key"] == "addon_build_failed_unknown_error"
+    assert body["extra_fields"] == {
+        "addon": "local_ssh",
+        "logs_command": "ha supervisor logs",
+    }
