@@ -69,7 +69,7 @@ class NetworkConnection(DBusInterfaceProxy):
     @dbus_property
     def state(self) -> ConnectionStateType:
         """Return the state of the connection."""
-        return self.properties[DBUS_ATTR_STATE]
+        return ConnectionStateType(self.properties[DBUS_ATTR_STATE])
 
     @property
     def state_flags(self) -> set[ConnectionStateFlags]:
