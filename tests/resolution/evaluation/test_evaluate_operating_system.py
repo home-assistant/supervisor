@@ -5,10 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.resolution.evaluations.operating_system import (
-    SUPPORTED_OS,
-    EvaluateOperatingSystem,
-)
+from supervisor.resolution.evaluations.operating_system import EvaluateOperatingSystem
 
 
 async def test_evaluation(coresys: CoreSys):
@@ -28,12 +25,6 @@ async def test_evaluation(coresys: CoreSys):
     await operating_system()
     assert operating_system.reason not in coresys.resolution.unsupported
     coresys.os._available = False
-
-    coresys.host._info = MagicMock(
-        operating_system=SUPPORTED_OS[0], timezone=None, timezone_tzinfo=None
-    )
-    await operating_system()
-    assert operating_system.reason not in coresys.resolution.unsupported
 
 
 async def test_did_run(coresys: CoreSys):
