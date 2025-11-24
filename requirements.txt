@@ -4,7 +4,7 @@ aiohttp==3.13.2
 atomicwrites-homeassistant==1.4.1
 attrs==25.4.0
 awesomeversion==25.8.0
-backports.zstd==1.0.0
+backports.zstd==1.1.0
 blockbuster==1.5.25
 brotli==1.2.0
 ciso8601==2.3.3
