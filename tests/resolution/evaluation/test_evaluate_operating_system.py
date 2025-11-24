@@ -22,9 +22,9 @@ async def test_evaluation(coresys: CoreSys):
     assert operating_system.reason in coresys.resolution.unsupported
 
     coresys.os._available = True
+    assert coresys.os.available
     await operating_system()
     assert operating_system.reason not in coresys.resolution.unsupported
-    coresys.os._available = False
 
 
 async def test_did_run(coresys: CoreSys):
