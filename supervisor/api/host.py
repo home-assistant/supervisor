@@ -343,7 +343,7 @@ class APIHost(CoreSysAttributes):
 
         disk = self.sys_hardware.disk
 
-        total, used, _ = await self.sys_run_in_executor(
+        total, _, free = await self.sys_run_in_executor(
             disk.disk_usage, self.sys_config.path_supervisor
         )
 
@@ -365,12 +365,13 @@ class APIHost(CoreSysAttributes):
             "id": "root",
             "label": "Root",
             "total_bytes": total,
-            "used_bytes": used,
+            "used_bytes": total - free,
             "children": [
                 {
                     "id": "system",
                     "label": "System",
-                    "used_bytes": used
+                    "used_bytes": total
+                    - free
                     - sum(path["used_bytes"] for path in known_paths),
                 },
                 *known_paths,
