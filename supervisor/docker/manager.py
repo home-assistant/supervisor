@@ -76,15 +76,25 @@ class DockerInfo:
     storage: str = attr.ib()
     logging: str = attr.ib()
     cgroup: str = attr.ib()
+    support_cpu_realtime: bool = attr.ib()
 
     @staticmethod
-    def new(data: dict[str, Any]):
+    async def new(data: dict[str, Any]) -> DockerInfo:
         """Create a object from docker info."""
+        # Check if CONFIG_RT_GROUP_SCHED is loaded (blocking I/O in executor)
+        cpu_rt_file_exists = await asyncio.get_running_loop().run_in_executor(
+            None, Path("/sys/fs/cgroup/cpu/cpu.rt_runtime_us").exists
+        )
+        cpu_rt_supported = (
+            cpu_rt_file_exists and os.environ.get(ENV_SUPERVISOR_CPU_RT) == "1"
+        )
+
         return DockerInfo(
             AwesomeVersion(data.get("ServerVersion", "0.0.0")),
             data.get("Driver", "unknown"),
             data.get("LoggingDriver", "unknown"),
             data.get("CgroupVersion", "1"),
+            cpu_rt_supported,
         )
 
     @property
@@ -94,13 +104,6 @@ class DockerInfo:
             return self.version >= MIN_SUPPORTED_DOCKER
         except AwesomeVersionCompareException:
             return False
-
-    @property
-    def support_cpu_realtime(self) -> bool:
-        """Return true, if CONFIG_RT_GROUP_SCHED is loaded."""
-        if not Path("/sys/fs/cgroup/cpu/cpu.rt_runtime_us").exists():
-            return False
-        return bool(os.environ.get(ENV_SUPERVISOR_CPU_RT) == "1")
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,7 +237,7 @@ class DockerAPI(CoreSysAttributes):
                 timeout=900,
             ),
         )
-        self._info = DockerInfo.new(self.dockerpy.info())
+        self._info = await DockerInfo.new(self.dockerpy.info())
         await self.config.read_data()
         self._network = await DockerNetwork(self.dockerpy).post_init(
             self.config.enable_ipv6, self.config.mtu
