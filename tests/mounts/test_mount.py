@@ -105,7 +105,7 @@ async def test_cifs_mount(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                [
+                (
                     "Options",
                     Variant(
                         "s",
@@ -117,10 +117,10 @@ async def test_cifs_mount(
                             ]
                         ),
                     ),
-                ],
-                ["Type", Variant("s", "cifs")],
-                ["Description", Variant("s", "Supervisor cifs mount: test")],
-                ["What", Variant("s", "//test.local/camera")],
+                ),
+                ("Type", Variant("s", "cifs")),
+                ("Description", Variant("s", "Supervisor cifs mount: test")),
+                ("What", Variant("s", "//test.local/camera")),
             ],
             [],
         )
@@ -177,10 +177,10 @@ async def test_cifs_mount_read_only(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "ro,noserverino,guest")],
-                ["Type", Variant("s", "cifs")],
-                ["Description", Variant("s", "Supervisor cifs mount: test")],
-                ["What", Variant("s", "//test.local/camera")],
+                ("Options", Variant("s", "ro,noserverino,guest")),
+                ("Type", Variant("s", "cifs")),
+                ("Description", Variant("s", "Supervisor cifs mount: test")),
+                ("What", Variant("s", "//test.local/camera")),
             ],
             [],
         )
@@ -237,10 +237,10 @@ async def test_nfs_mount(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "port=1234,soft,timeo=200")],
-                ["Type", Variant("s", "nfs")],
-                ["Description", Variant("s", "Supervisor nfs mount: test")],
-                ["What", Variant("s", "test.local:/media/camera")],
+                ("Options", Variant("s", "port=1234,soft,timeo=200")),
+                ("Type", Variant("s", "nfs")),
+                ("Description", Variant("s", "Supervisor nfs mount: test")),
+                ("What", Variant("s", "test.local:/media/camera")),
             ],
             [],
         )
@@ -283,10 +283,10 @@ async def test_nfs_mount_read_only(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "ro,port=1234,soft,timeo=200")],
-                ["Type", Variant("s", "nfs")],
-                ["Description", Variant("s", "Supervisor nfs mount: test")],
-                ["What", Variant("s", "test.local:/media/camera")],
+                ("Options", Variant("s", "ro,port=1234,soft,timeo=200")),
+                ("Type", Variant("s", "nfs")),
+                ("Description", Variant("s", "Supervisor nfs mount: test")),
+                ("What", Variant("s", "test.local:/media/camera")),
             ],
             [],
         )
@@ -331,10 +331,10 @@ async def test_load(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "noserverino,guest")],
-                ["Type", Variant("s", "cifs")],
-                ["Description", Variant("s", "Supervisor cifs mount: test")],
-                ["What", Variant("s", "//test.local/share")],
+                ("Options", Variant("s", "noserverino,guest")),
+                ("Type", Variant("s", "cifs")),
+                ("Description", Variant("s", "Supervisor cifs mount: test")),
+                ("What", Variant("s", "//test.local/share")),
             ],
             [],
         )
@@ -736,10 +736,10 @@ async def test_mount_fails_if_down(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ["Options", Variant("s", "port=1234,soft,timeo=200")],
-                ["Type", Variant("s", "nfs")],
-                ["Description", Variant("s", "Supervisor nfs mount: test")],
-                ["What", Variant("s", "test.local:/media/camera")],
+                ("Options", Variant("s", "port=1234,soft,timeo=200")),
+                ("Type", Variant("s", "nfs")),
+                ("Description", Variant("s", "Supervisor nfs mount: test")),
+                ("What", Variant("s", "test.local:/media/camera")),
             ],
             [],
         )
