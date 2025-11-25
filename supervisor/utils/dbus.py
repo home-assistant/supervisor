@@ -7,13 +7,7 @@ from collections.abc import Awaitable, Callable
 import logging
 from typing import Any, Protocol, cast
 
-from dbus_fast import (
-    ErrorType,
-    InvalidIntrospectionError,
-    Message,
-    MessageType,
-    Variant,
-)
+from dbus_fast import ErrorType, InvalidIntrospectionError, Message, MessageType
 from dbus_fast.aio.message_bus import MessageBus
 from dbus_fast.aio.proxy_object import ProxyInterface, ProxyObject
 from dbus_fast.errors import DBusError as DBusFastDBusError
@@ -265,7 +259,7 @@ class DBus:
         """
 
         async def sync_property_change(
-            prop_interface: str, changed: dict[str, Variant], invalidated: list[str]
+            prop_interface: str, changed: dict[str, Any], invalidated: list[str]
         ) -> None:
             """Sync property changes to cache."""
             if interface != prop_interface:
