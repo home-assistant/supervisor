@@ -1,10 +1,7 @@
 image: ghcr.io/home-assistant/{arch}-hassio-supervisor
 build_from:
   aarch64: ghcr.io/home-assistant/aarch64-base-python:3.13-alpine3.22-2025.11.1
-  armhf: ghcr.io/home-assistant/armhf-base-python:3.13-alpine3.22-2025.11.1
-  armv7: ghcr.io/home-assistant/armv7-base-python:3.13-alpine3.22-2025.11.1
   amd64: ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.22-2025.11.1
-  i386: ghcr.io/home-assistant/i386-base-python:3.13-alpine3.22-2025.11.1
 cosign:
   base_identity: https://github.com/home-assistant/docker-base/.*
   identity: https://github.com/home-assistant/supervisor/.*
