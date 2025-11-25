@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python
         id: python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
       - name: Restore Python virtual environment
@@ -70,7 +70,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -113,7 +113,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -171,7 +171,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -215,7 +215,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -259,7 +259,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -295,7 +295,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -341,7 +341,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
@@ -400,7 +400,7 @@ jobs:
       - name: Check out code from GitHub
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
       - name: Set up Python ${{ needs.prepare.outputs.python-version }}
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         id: python
         with:
           python-version: ${{ needs.prepare.outputs.python-version }}
