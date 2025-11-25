@@ -374,8 +374,7 @@ class APIHost(CoreSysAttributes):
                 {
                     "id": "system",
                     "label": "System",
-                    "used_bytes": total
-                    - free
+                    "used_bytes": used
                     - sum(path["used_bytes"] for path in known_paths),
                 },
                 *known_paths,
