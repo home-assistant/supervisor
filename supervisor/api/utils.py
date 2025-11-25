@@ -63,12 +63,10 @@ def json_loads(data: Any) -> dict[str, Any]:
 def api_process(method):
     """Wrap function with true/false calls to rest api."""
 
-    async def wrap_api(
-        api: CoreSysAttributes, *args, **kwargs
-    ) -> web.Response | web.StreamResponse:
+    async def wrap_api(*args, **kwargs) -> web.Response | web.StreamResponse:
         """Return API information."""
         try:
-            answer = await method(api, *args, **kwargs)
+            answer = await method(*args, **kwargs)
         except BackupFileNotFoundError as err:
             return api_return_error(err, status=404)
         except APIError as err:
@@ -109,12 +107,10 @@ def api_process_raw(content, *, error_type=None):
     def wrap_method(method):
         """Wrap function with raw output to rest api."""
 
-        async def wrap_api(
-            api: CoreSysAttributes, *args, **kwargs
-        ) -> web.Response | web.StreamResponse:
+        async def wrap_api(*args, **kwargs) -> web.Response | web.StreamResponse:
             """Return api information."""
             try:
-                msg_data = await method(api, *args, **kwargs)
+                msg_data = await method(*args, **kwargs)
             except APIError as err:
                 return api_return_error(
                     err,
