@@ -347,6 +347,10 @@ class APIHost(CoreSysAttributes):
             disk.disk_usage, self.sys_config.path_supervisor
         )
 
+        # Calculate used by subtracting free makes sure we include reserved space
+        # in used space reporting.
+        used = total - free
+
         known_paths = await self.sys_run_in_executor(
             disk.get_dir_sizes,
             {
@@ -365,13 +369,12 @@ class APIHost(CoreSysAttributes):
             "id": "root",
             "label": "Root",
             "total_bytes": total,
-            "used_bytes": total - free,
+            "used_bytes": used,
             "children": [
                 {
                     "id": "system",
                     "label": "System",
-                    "used_bytes": total
-                    - free
+                    "used_bytes": used
                     - sum(path["used_bytes"] for path in known_paths),
                 },
                 *known_paths,
