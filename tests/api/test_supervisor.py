@@ -371,29 +371,29 @@ async def test_api_progress_updates_supervisor_update(
         },
         {
             "stage": None,
-            "progress": 1.2,
+            "progress": 1.7,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 2.8,
+            "progress": 4.0,
             "done": False,
         },
     ]
     assert events[-5:] == [
         {
             "stage": None,
-            "progress": 97.2,
+            "progress": 98.2,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 98.4,
+            "progress": 98.3,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 99.4,
+            "progress": 99.3,
             "done": False,
         },
         {
