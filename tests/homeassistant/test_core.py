@@ -477,6 +477,7 @@ async def test_core_loads_wrong_image_for_machine(
             "ghcr.io/home-assistant/qemux86-64-homeassistant",
             "2024.4.0",
             platform="linux/amd64",
+            auth=None,
         )
 
     container.remove.assert_called_once_with(force=True, v=True)
@@ -535,6 +536,7 @@ async def test_core_loads_wrong_image_for_architecture(
             "ghcr.io/home-assistant/qemux86-64-homeassistant",
             "2024.4.0",
             platform="linux/amd64",
+            auth=None,
         )
 
     container.remove.assert_called_once_with(force=True, v=True)
