@@ -91,7 +91,7 @@ async def test_private_registry_credentials_passed_to_pull(
     coresys.docker.images.inspect.return_value = {"Id": f"{image}:1.2.3"}
 
     # Configure registry credentials
-    coresys.docker.config._data["registries"] = {
+    coresys.docker.config._data["registries"] = {  # pylint: disable=protected-access
         registry_key: {"username": "testuser", "password": "testpass"}
     }
 
