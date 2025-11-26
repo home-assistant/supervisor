@@ -16,7 +16,7 @@ from supervisor.addons.manager import Addon
 from supervisor.const import BusEvent, CoreState, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
-from supervisor.docker.interface import DockerInterface
+from supervisor.docker.interface import DOCKER_HUB, DockerInterface
 from supervisor.docker.manager import PullLogEntry, PullProgressDetail
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
@@ -51,7 +51,7 @@ async def test_docker_image_platform(
     coresys.docker.images.inspect.return_value = {"Id": "test:1.2.3"}
     await test_docker_interface.install(AwesomeVersion("1.2.3"), "test", arch=cpu_arch)
     coresys.docker.images.pull.assert_called_once_with(
-        "test", tag="1.2.3", platform=platform, stream=True
+        "test", tag="1.2.3", platform=platform, auth=None, stream=True
     )
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -68,10 +68,48 @@ async def test_docker_image_default_platform(
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", stream=True
+            "test", tag="1.2.3", platform="linux/386", auth=None, stream=True
         )
 
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
+
+
+@pytest.mark.parametrize(
+    "image,registry_key",
+    [
+        ("homeassistant/amd64-supervisor", DOCKER_HUB),
+        ("ghcr.io/home-assistant/amd64-supervisor", "ghcr.io"),
+    ],
+)
+async def test_private_registry_credentials_passed_to_pull(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    image: str,
+    registry_key: str,
+):
+    """Test credentials for private registries are passed to aiodocker pull."""
+    coresys.docker.images.inspect.return_value = {"Id": f"{image}:1.2.3"}
+
+    # Configure registry credentials
+    coresys.docker.config._data["registries"] = {
+        registry_key: {"username": "testuser", "password": "testpass"}
+    }
+
+    with patch.object(
+        type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
+    ):
+        await test_docker_interface.install(
+            AwesomeVersion("1.2.3"), image, arch=CpuArch.AMD64
+        )
+
+    # Verify credentials were passed to aiodocker
+    expected_auth = {"username": "testuser", "password": "testpass"}
+    if registry_key != DOCKER_HUB:
+        expected_auth["registry"] = registry_key
+
+    coresys.docker.images.pull.assert_called_once_with(
+        image, tag="1.2.3", platform="linux/amd64", auth=expected_auth, stream=True
+    )
 
 
 @pytest.mark.parametrize(
@@ -319,7 +357,7 @@ async def test_install_fires_progress_events(
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", stream=True
+            "test", tag="1.2.3", platform="linux/386", auth=None, stream=True
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 

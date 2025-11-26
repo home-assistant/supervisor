@@ -432,6 +432,7 @@ class DockerAPI(CoreSysAttributes):
         repository: str,
         tag: str = "latest",
         platform: str | None = None,
+        auth: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Pull the specified image and return it.
 
@@ -441,7 +442,7 @@ class DockerAPI(CoreSysAttributes):
         on the bus so listeners can use that to update status for users.
         """
         async for e in self.images.pull(
-            repository, tag=tag, platform=platform, stream=True
+            repository, tag=tag, platform=platform, auth=auth, stream=True
         ):
             entry = PullLogEntry.from_pull_log_dict(job_id, e)
             if entry.error:
