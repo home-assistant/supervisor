@@ -26,7 +26,10 @@ from supervisor.exceptions import (
     DockerNotFound,
     DockerRequestError,
 )
-from supervisor.jobs import JobSchedulerOptions, SupervisorJob
+from supervisor.homeassistant.const import WSEvent, WSType
+from supervisor.jobs import ChildJobSyncFilter, JobSchedulerOptions, SupervisorJob
+from supervisor.jobs.decorator import Job
+from supervisor.supervisor import Supervisor
 
 from tests.common import AsyncIterator, load_json_fixture
 
@@ -314,7 +317,7 @@ async def test_install_fires_progress_events(
         },
         {"status": "Already exists", "progressDetail": {}, "id": "6e771e15690e"},
         {"status": "Pulling fs layer", "progressDetail": {}, "id": "1578b14a573c"},
-        {"status": "Waiting", "progressDetail": {}, "id": "2488d0e401e1"},
+        {"status": "Waiting", "progressDetail": {}, "id": "1578b14a573c"},
         {
             "status": "Downloading",
             "progressDetail": {"current": 1378, "total": 1486},
@@ -384,7 +387,7 @@ async def test_install_fires_progress_events(
             job_id=ANY,
             status="Waiting",
             progress_detail=PullProgressDetail(),
-            id="2488d0e401e1",
+            id="1578b14a573c",
         ),
         PullLogEntry(
             job_id=ANY,
@@ -538,6 +541,7 @@ async def test_install_raises_on_pull_error(
             "status": "Pulling from home-assistant/odroid-n2-homeassistant",
             "id": "2025.7.2",
         },
+        {"status": "Pulling fs layer", "progressDetail": {}, "id": "1578b14a573c"},
         {
             "status": "Downloading",
             "progressDetail": {"current": 1378, "total": 1486},
@@ -758,3 +762,88 @@ async def test_missing_total_handled_gracefully(
     await event.wait()
 
     capture_exception.assert_not_called()
+
+
+async def test_install_progress_containerd_snapshot(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test install handles docker progress events using containerd snapshotter."""
+    coresys.core.set_state(CoreState.RUNNING)
+
+    class TestDockerInterface(DockerInterface):
+        """Test interface for events."""
+
+        @property
+        def name(self) -> str:
+            """Name of test interface."""
+            return "test_interface"
+
+        @Job(
+            name="mock_docker_interface_install",
+            child_job_syncs=[
+                ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+            ],
+        )
+        async def mock_install(self) -> None:
+            """Mock install."""
+            await super().install(
+                AwesomeVersion("1.2.3"), image="test", arch=CpuArch.I386
+            )
+
+    # Fixture emulates log as received when using containerd snapshotter
+    # Should not error but progress gets choppier once extraction starts
+    logs = load_json_fixture("docker_pull_image_log_containerd_snapshot.json")
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
+    test_docker_interface = TestDockerInterface(coresys)
+
+    with patch.object(Supervisor, "arch", PropertyMock(return_value="i386")):
+        await test_docker_interface.mock_install()
+        coresys.docker.images.pull.assert_called_once_with(
+            "test", tag="1.2.3", platform="linux/386", stream=True
+        )
+        coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
+
+    await asyncio.sleep(1)
+
+    def job_event(progress: float, done: bool = False):
+        return {
+            "type": WSType.SUPERVISOR_EVENT,
+            "data": {
+                "event": WSEvent.JOB,
+                "data": {
+                    "name": "mock_docker_interface_install",
+                    "reference": "test_interface",
+                    "uuid": ANY,
+                    "progress": progress,
+                    "stage": None,
+                    "done": done,
+                    "parent_id": None,
+                    "errors": [],
+                    "created": ANY,
+                    "extra": None,
+                },
+            },
+        }
+
+    assert [c.args[0] for c in ha_ws_client.async_send_command.call_args_list] == [
+        # During downloading we get continuous progress updates from download status
+        job_event(0),
+        job_event(3.4),
+        job_event(8.5),
+        job_event(10.2),
+        job_event(15.3),
+        job_event(18.8),
+        job_event(29.0),
+        job_event(35.8),
+        job_event(42.6),
+        job_event(49.5),
+        job_event(56.0),
+        job_event(62.8),
+        # Downloading phase is considered 70% of total. After we only get one update
+        # per image downloaded when extraction is finished. It uses the total size
+        # received during downloading to determine percent complete then.
+        job_event(70.0),
+        job_event(84.8),
+        job_event(100),
+        job_event(100, True),
+    ]

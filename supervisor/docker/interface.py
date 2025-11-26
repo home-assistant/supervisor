@@ -239,28 +239,16 @@ class DockerInterface(JobGroup, ABC):
                 job = j
                 break
 
-        # This likely only occurs if the logs came in out of sync and we got progress before the Pulling FS Layer one
+        # There should no longer be any real risk of logs out of order anymore.
+        # However tests with very small images have shown that sometimes Docker
+        # skips stages in log. So keeping this one as a safety check on null job
         if not job:
             raise DockerLogOutOfOrder(
                 f"Received pull image log with status {reference.status} for image id {reference.id} and parent job {install_job_id} but could not find a matching job, skipping",
                 _LOGGER.debug,
             )
 
-        # Hopefully these come in order but if they sometimes get out of sync, avoid accidentally going backwards
-        # If it happens a lot though we may need to reconsider the value of this feature
-        if job.done:
-            raise DockerLogOutOfOrder(
-                f"Received pull image log with status {reference.status} for job {job.uuid} but job was done, skipping",
-                _LOGGER.debug,
-            )
-
-        if job.stage and stage < PullImageLayerStage.from_status(job.stage):
-            raise DockerLogOutOfOrder(
-                f"Received pull image log with status {reference.status} for job {job.uuid} but job was already on stage {job.stage}, skipping",
-                _LOGGER.debug,
-            )
-
-        # For progress calcuation we assume downloading and extracting are each 50% of the time and others stages negligible
+        # For progress calcuation we assume downloading is 70% of time, extracting is 30% and others stages negligible
         progress = job.progress
         match stage:
             case PullImageLayerStage.DOWNLOADING | PullImageLayerStage.EXTRACTING:
@@ -269,22 +257,26 @@ class DockerInterface(JobGroup, ABC):
                     and reference.progress_detail.current
                     and reference.progress_detail.total
                 ):
-                    progress = 50 * (
+                    progress = (
                         reference.progress_detail.current
                         / reference.progress_detail.total
                     )
-                    if stage == PullImageLayerStage.EXTRACTING:
-                        progress += 50
+                    if stage == PullImageLayerStage.DOWNLOADING:
+                        progress = 70 * progress
+                    else:
+                        progress = 70 + 30 * progress
             case (
                 PullImageLayerStage.VERIFYING_CHECKSUM
                 | PullImageLayerStage.DOWNLOAD_COMPLETE
             ):
-                progress = 50
+                progress = 70
             case PullImageLayerStage.PULL_COMPLETE:
                 progress = 100
             case PullImageLayerStage.RETRYING_DOWNLOAD:
                 progress = 0
 
+        # No real risk of getting things out of order in current implementation
+        # but keeping this one in case another change to these trips us up.
         if stage != PullImageLayerStage.RETRYING_DOWNLOAD and progress < job.progress:
             raise DockerLogOutOfOrder(
                 f"Received pull image log with status {reference.status} for job {job.uuid} that implied progress was {progress} but current progress is {job.progress}, skipping",
@@ -348,7 +340,7 @@ class DockerInterface(JobGroup, ABC):
         progress = 0.0
         stage = PullImageLayerStage.PULL_COMPLETE
         for job in layer_jobs:
-            if not job.extra:
+            if not job.extra or not job.extra.get("total"):
                 return
             progress += job.progress * (job.extra["total"] / total)
             job_stage = PullImageLayerStage.from_status(cast(str, job.stage))
