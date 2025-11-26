@@ -596,16 +596,39 @@ async def test_install_progress_handles_download_restart(
     capture_exception.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "extract_log",
+    [
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 96, "total": 96},
+            "progress": "[==================================================>]      96B/96B",
+            "id": "02a6e69d8d00",
+        },
+        {
+            "status": "Extracting",
+            "progressDetail": {"current": 1, "units": "s"},
+            "progress": "1 s",
+            "id": "02a6e69d8d00",
+        },
+    ],
+    ids=["normal_extract_log", "containerd_snapshot_extract_log"],
+)
 async def test_install_progress_handles_layers_skipping_download(
     coresys: CoreSys,
     test_docker_interface: DockerInterface,
     capture_exception: Mock,
+    extract_log: dict[str, Any],
 ):
     """Test install handles small layers that skip downloading phase and go directly to download complete.
 
     Reproduces the real-world scenario from Supervisor issue #6286:
     - Small layer (02a6e69d8d00) completes Download complete at 10:14:08 without ever Downloading
     - Normal layer (3f4a84073184) starts Downloading at 10:14:09 with progress updates
+
+    Under containerd snapshotter this presumably can still occur and Supervisor will have even less info
+    since extract logs don't have a total. Supervisor should generally just ignore these and set progress
+    from the larger images that take all the time.
     """
     coresys.core.set_state(CoreState.RUNNING)
 
@@ -649,12 +672,7 @@ async def test_install_progress_handles_layers_skipping_download(
         },
         {"status": "Pull complete", "progressDetail": {}, "id": "3f4a84073184"},
         # Small layer finally extracts (10:14:58 in logs)
-        {
-            "status": "Extracting",
-            "progressDetail": {"current": 96, "total": 96},
-            "progress": "[==================================================>]      96B/96B",
-            "id": "02a6e69d8d00",
-        },
+        extract_log,
         {"status": "Pull complete", "progressDetail": {}, "id": "02a6e69d8d00"},
         {"status": "Digest: sha256:test"},
         {"status": "Status: Downloaded newer image for test/image:latest"},
