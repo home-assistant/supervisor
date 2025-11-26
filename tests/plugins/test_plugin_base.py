@@ -369,7 +369,7 @@ async def test_load_with_incorrect_image(
     with patch.object(DockerAPI, "pull_image", return_value=img_data) as pull_image:
         await plugin.load()
         pull_image.assert_called_once_with(
-            ANY, correct_image, "2024.4.0", platform="linux/amd64"
+            ANY, correct_image, "2024.4.0", platform="linux/amd64", auth=None
         )
 
     container.remove.assert_called_once_with(force=True, v=True)
