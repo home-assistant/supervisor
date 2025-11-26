@@ -51,7 +51,7 @@ async def test_docker_image_platform(
     coresys.docker.images.inspect.return_value = {"Id": "test:1.2.3"}
     await test_docker_interface.install(AwesomeVersion("1.2.3"), "test", arch=cpu_arch)
     coresys.docker.images.pull.assert_called_once_with(
-        "test", tag="1.2.3", platform=platform, stream=True
+        "test", tag="1.2.3", platform=platform, stream=True, auth=None
     )
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -68,7 +68,7 @@ async def test_docker_image_default_platform(
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", stream=True
+            "test", tag="1.2.3", platform="linux/386", stream=True, auth=None
         )
 
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
@@ -319,7 +319,7 @@ async def test_install_fires_progress_events(
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", stream=True
+            "test", tag="1.2.3", platform="linux/386", stream=True, auth=None
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 

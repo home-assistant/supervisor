@@ -38,6 +38,8 @@ from ..const import (
     FILE_HASSIO_DOCKER,
     SOCKET_DOCKER,
     BusEvent,
+    ATTR_USERNAME,
+    ATTR_PASSWORD,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
@@ -432,6 +434,7 @@ class DockerAPI(CoreSysAttributes):
         repository: str,
         tag: str = "latest",
         platform: str | None = None,
+        auth: str | dict | None = None,
     ) -> dict[str, Any]:
         """Pull the specified image and return it.
 
@@ -440,8 +443,16 @@ class DockerAPI(CoreSysAttributes):
         raises only if the get fails afterwards. Additionally it fires progress reports for the pull
         on the bus so listeners can use that to update status for users.
         """
+        if isinstance(auth, dict) and ATTR_USERNAME in auth and ATTR_PASSWORD in auth:
+            auth = auth[ATTR_USERNAME] + ":" + auth[ATTR_PASSWORD]
+        elif isinstance(auth, str) and ":" in auth:
+            pass  # auth is already viable
+        else:
+            _LOGGER.info("Pulling %s without authentication", repository)
+            auth = None
+
         async for e in self.images.pull(
-            repository, tag=tag, platform=platform, stream=True
+            repository, tag=tag, platform=platform, stream=True, auth=auth
         ):
             entry = PullLogEntry.from_pull_log_dict(job_id, e)
             if entry.error:

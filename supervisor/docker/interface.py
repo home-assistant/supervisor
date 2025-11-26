@@ -427,6 +427,7 @@ class DockerInterface(JobGroup, ABC):
                 image,
                 str(version),
                 platform=MAP_ARCH[image_arch],
+                auth=self._get_credentials(image),
             )
 
             # Tag latest
