@@ -817,7 +817,7 @@ async def test_install_progress_containerd_snapshot(
     with patch.object(Supervisor, "arch", PropertyMock(return_value="i386")):
         await test_docker_interface.mock_install()
         coresys.docker.images.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", stream=True
+            "test", tag="1.2.3", platform="linux/386", auth=None, stream=True
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
