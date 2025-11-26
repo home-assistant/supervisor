@@ -138,6 +138,7 @@ async def test_docker_config_no_matching_registry(
     build = await AddonBuild(coresys, install_addon_ssh).load_config()
 
     # Configure a registry that doesn't match the base image
+    # pylint: disable-next=protected-access
     coresys.docker.config._data["registries"] = {
         "some.other.registry": {"username": "user", "password": "pass"}
     }
@@ -161,6 +162,7 @@ async def test_docker_config_matching_registry(
     build = await AddonBuild(coresys, install_addon_ssh).load_config()
 
     # Configure ghcr.io registry which matches the default base image
+    # pylint: disable-next=protected-access
     coresys.docker.config._data["registries"] = {
         "ghcr.io": {"username": "testuser", "password": "testpass"}
     }
@@ -190,6 +192,7 @@ async def test_docker_config_docker_hub(coresys: CoreSys, install_addon_ssh: Add
     build = await AddonBuild(coresys, install_addon_ssh).load_config()
 
     # Configure Docker Hub registry
+    # pylint: disable-next=protected-access
     coresys.docker.config._data["registries"] = {
         DOCKER_HUB: {"username": "hubuser", "password": "hubpass"}
     }
