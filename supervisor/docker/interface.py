@@ -248,7 +248,7 @@ class DockerInterface(JobGroup, ABC):
                 _LOGGER.debug,
             )
 
-        # For progress calcuation we assume downloading is 70% of time, extracting is 30% and others stages negligible
+        # For progress calculation we assume downloading is 70% of time, extracting is 30% and others stages negligible
         progress = job.progress
         match stage:
             case PullImageLayerStage.DOWNLOADING | PullImageLayerStage.EXTRACTING:
