@@ -718,7 +718,7 @@ class DockerAddon(DockerInterface):
                         prefix="hassio_build_", dir=self.sys_config.path_tmp
                     )
                     docker_config_path = Path(temp_dir.name) / "config.json"
-                    docker_config_path.write_text(docker_config_content)
+                    docker_config_path.write_text(docker_config_content, encoding="utf-8")
                     _LOGGER.debug(
                         "Created temporary Docker config for build at %s",
                         docker_config_path,
