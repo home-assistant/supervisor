@@ -22,7 +22,7 @@ from ..const import (
     SOCKET_DOCKER,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..docker.const import DOCKER_HUB
+from ..docker.const import DOCKER_HUB, DOCKER_HUB_LEGACY
 from ..docker.interface import MAP_ARCH
 from ..exceptions import ConfigurationFileError, HassioArchNotFound
 from ..utils.common import FileConfiguration, find_one_filetype
@@ -154,8 +154,11 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
 
         # Use the actual registry URL for the key
         # Docker Hub uses "https://index.docker.io/v1/" as the key
+        # Support both docker.io (official) and hub.docker.com (legacy)
         registry_key = (
-            "https://index.docker.io/v1/" if registry == DOCKER_HUB else registry
+            "https://index.docker.io/v1/"
+            if registry in (DOCKER_HUB, DOCKER_HUB_LEGACY)
+            else registry
         )
 
         config = {"auths": {registry_key: {"auth": auth_string}}}

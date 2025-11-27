@@ -15,11 +15,64 @@ from ..const import MACHINE_ID
 
 RE_RETRYING_DOWNLOAD_STATUS = re.compile(r"Retrying in \d+ seconds?")
 
-# Docker Hub registry identifier
-DOCKER_HUB = "hub.docker.com"
+# Docker Hub registry identifier (official default)
+# Docker's default registry is docker.io
+DOCKER_HUB = "docker.io"
 
-# Regex to match images with a registry host (e.g., ghcr.io/org/image)
-IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
+# Legacy Docker Hub identifier for backward compatibility
+DOCKER_HUB_LEGACY = "hub.docker.com"
+
+# Docker image reference domain regex
+# Based on Docker's reference implementation:
+# vendor/github.com/distribution/reference/normalize.go
+#
+# A domain is detected if the part before the first / contains:
+# - "localhost" (with optional port)
+# - Contains "." (like registry.example.com or 127.0.0.1)
+# - Contains ":" (like myregistry:5000)
+# - IPv6 addresses in brackets (like [::1]:5000)
+#
+# Note: Docker also treats uppercase letters as domain indicators since
+# namespaces must be lowercase, but this regex handles lowercase matching
+# and the get_domain() function validates the domain rules.
+IMAGE_DOMAIN_REGEX = re.compile(
+    r"^("
+    r"localhost(?::[0-9]+)?|"  # localhost with optional port
+    r"(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])"  # domain component
+    r"(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*"  # more components
+    r"(?::[0-9]+)?|"  # optional port
+    r"\[[a-fA-F0-9:]+\](?::[0-9]+)?"  # IPv6 with optional port
+    r")/"  # must be followed by /
+)
+
+
+def get_domain(image_ref: str) -> str | None:
+    """Extract domain from Docker image reference.
+
+    Returns the registry domain if the image reference contains one,
+    or None if the image uses Docker Hub (docker.io).
+
+    Based on Docker's reference implementation:
+    vendor/github.com/distribution/reference/normalize.go
+
+    Examples:
+        get_domain("nginx")                        -> None (docker.io)
+        get_domain("library/nginx")                -> None (docker.io)
+        get_domain("myregistry.com/nginx")         -> "myregistry.com"
+        get_domain("localhost/myimage")            -> "localhost"
+        get_domain("localhost:5000/myimage")       -> "localhost:5000"
+        get_domain("registry.io:5000/org/app:v1")  -> "registry.io:5000"
+        get_domain("[::1]:5000/myimage")           -> "[::1]:5000"
+
+    """
+    match = IMAGE_DOMAIN_REGEX.match(image_ref)
+    if match:
+        domain = match.group(1)
+        # Must contain '.' or ':' or be 'localhost' to be a real domain
+        # This prevents treating "myuser/myimage" as having domain "myuser"
+        if "." in domain or ":" in domain or domain == "localhost":
+            return domain
+    return None  # No domain = Docker Hub (docker.io)
 
 
 class Capabilities(StrEnum):
