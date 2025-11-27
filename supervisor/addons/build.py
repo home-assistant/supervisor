@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 from functools import cached_property
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -12,12 +14,15 @@ from ..const import (
     ATTR_ARGS,
     ATTR_BUILD_FROM,
     ATTR_LABELS,
+    ATTR_PASSWORD,
     ATTR_SQUASH,
+    ATTR_USERNAME,
     FILE_SUFFIX_CONFIGURATION,
     META_ADDON,
     SOCKET_DOCKER,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.const import DOCKER_HUB
 from ..docker.interface import MAP_ARCH
 from ..exceptions import ConfigurationFileError, HassioArchNotFound
 from ..utils.common import FileConfiguration, find_one_filetype
@@ -122,8 +127,43 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         except HassioArchNotFound:
             return False
 
+    def get_docker_config_json(self) -> str | None:
+        """Generate Docker config.json content with registry credentials for base image.
+
+        Returns a JSON string with registry credentials for the base image's registry,
+        or None if no matching registry is configured.
+
+        Raises:
+            HassioArchNotFound: If the add-on is not supported on the current architecture.
+
+        """
+        # Early return before accessing base_image to avoid unnecessary arch lookup
+        if not self.sys_docker.config.registries:
+            return None
+
+        registry = self.sys_docker.config.get_registry_for_image(self.base_image)
+        if not registry:
+            return None
+
+        stored = self.sys_docker.config.registries[registry]
+        username = stored[ATTR_USERNAME]
+        password = stored[ATTR_PASSWORD]
+
+        # Docker config.json uses base64-encoded "username:password" for auth
+        auth_string = base64.b64encode(f"{username}:{password}".encode()).decode()
+
+        # Use the actual registry URL for the key
+        # Docker Hub uses "https://index.docker.io/v1/" as the key
+        registry_key = (
+            "https://index.docker.io/v1/" if registry == DOCKER_HUB else registry
+        )
+
+        config = {"auths": {registry_key: {"auth": auth_string}}}
+
+        return json.dumps(config)
+
     def get_docker_args(
-        self, version: AwesomeVersion, image_tag: str
+        self, version: AwesomeVersion, image_tag: str, docker_config_path: Path | None
     ) -> dict[str, Any]:
         """Create a dict with Docker run args."""
         dockerfile_path = self.get_dockerfile().relative_to(self.addon.path_location)
@@ -172,12 +212,24 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             self.addon.path_location
         )
 
+        volumes = {
+            SOCKET_DOCKER: {"bind": "/var/run/docker.sock", "mode": "rw"},
+            addon_extern_path: {"bind": "/addon", "mode": "ro"},
+        }
+
+        # Mount Docker config with registry credentials if available
+        if docker_config_path:
+            docker_config_extern_path = self.sys_config.local_to_extern_path(
+                docker_config_path
+            )
+            volumes[docker_config_extern_path] = {
+                "bind": "/root/.docker/config.json",
+                "mode": "ro",
+            }
+
         return {
             "command": build_cmd,
-            "volumes": {
-                SOCKET_DOCKER: {"bind": "/var/run/docker.sock", "mode": "rw"},
-                addon_extern_path: {"bind": "/addon", "mode": "ro"},
-            },
+            "volumes": volumes,
             "working_dir": "/addon",
         }
 

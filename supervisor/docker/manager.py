@@ -49,7 +49,7 @@ from ..exceptions import (
 )
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
-from .const import LABEL_MANAGED
+from .const import DOCKER_HUB, IMAGE_WITH_HOST, LABEL_MANAGED
 from .monitor import DockerMonitor
 from .network import DockerNetwork
 
@@ -201,6 +201,27 @@ class DockerConfig(FileConfiguration):
     def registries(self) -> dict[str, Any]:
         """Return credentials for docker registries."""
         return self._data.get(ATTR_REGISTRIES, {})
+
+    def get_registry_for_image(self, image: str) -> str | None:
+        """Return the registry name if credentials are available for the image.
+
+        Matches the image against configured registries and returns the registry
+        name if found, or None if no matching credentials are configured.
+        """
+        if not self.registries:
+            return None
+
+        # Check if image uses a custom registry (e.g., ghcr.io/org/image)
+        matcher = IMAGE_WITH_HOST.match(image)
+        if matcher:
+            registry = matcher.group(1)
+            if registry in self.registries:
+                return registry
+        # If no registry prefix, check for Docker Hub credentials
+        elif DOCKER_HUB in self.registries:
+            return DOCKER_HUB
+
+        return None
 
 
 class DockerAPI(CoreSysAttributes):

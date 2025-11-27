@@ -7,6 +7,7 @@ from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
+import tempfile
 from typing import TYPE_CHECKING, cast
 
 import aiodocker
@@ -705,12 +706,38 @@ class DockerAddon(DockerInterface):
             with suppress(docker.errors.NotFound):
                 self.sys_docker.containers.get(builder_name).remove(force=True, v=True)
 
-            result = self.sys_docker.run_command(
-                ADDON_BUILDER_IMAGE,
-                version=builder_version_tag,
-                name=builder_name,
-                **build_env.get_docker_args(version, addon_image_tag),
-            )
+            # Generate Docker config with registry credentials for base image if needed
+            docker_config_path: Path | None = None
+            docker_config_content = build_env.get_docker_config_json()
+            temp_dir: tempfile.TemporaryDirectory | None = None
+
+            try:
+                if docker_config_content:
+                    # Create temporary directory for docker config
+                    temp_dir = tempfile.TemporaryDirectory(
+                        prefix="hassio_build_", dir=self.sys_config.path_tmp
+                    )
+                    docker_config_path = Path(temp_dir.name) / "config.json"
+                    docker_config_path.write_text(
+                        docker_config_content, encoding="utf-8"
+                    )
+                    _LOGGER.debug(
+                        "Created temporary Docker config for build at %s",
+                        docker_config_path,
+                    )
+
+                result = self.sys_docker.run_command(
+                    ADDON_BUILDER_IMAGE,
+                    version=builder_version_tag,
+                    name=builder_name,
+                    **build_env.get_docker_args(
+                        version, addon_image_tag, docker_config_path
+                    ),
+                )
+            finally:
+                # Clean up temporary directory
+                if temp_dir:
+                    temp_dir.cleanup()
 
             logs = result.output.decode("utf-8")
 
