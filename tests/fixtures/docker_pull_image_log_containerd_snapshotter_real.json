@@ -1,0 +1,5649 @@
+[
+  {
+    "status": "Pulling from home-assistant/qemux86-64-homeassistant",
+    "id": "2026.1.0.dev202511270239"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "d3024aa9d18c"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "9fc985db40ab"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "848f17246180"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "92de47278341"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "0e79a8679713"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "4f4fb700ef54"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "a2da914d9b47"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Pulling fs layer",
+    "progressDetail": {},
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Already exists",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "4f4fb700ef54"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "d3024aa9d18c"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "0e79a8679713"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "9fc985db40ab"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 2097152,
+      "total": 457982826
+    },
+    "progress": "[>                                                  ]  2.097MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "a2da914d9b47"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 5242880,
+      "total": 22126100
+    },
+    "progress": "[===========>                                       ]  5.243MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "9fc985db40ab"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 4194304,
+      "total": 6936564
+    },
+    "progress": "[==============================>                    ]  4.194MB/6.937MB",
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 1048576,
+      "total": 100522061
+    },
+    "progress": "[>                                                  ]  1.049MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 3145728,
+      "total": 457982826
+    },
+    "progress": "[>                                                  ]  3.146MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 2097152,
+      "total": 22155340
+    },
+    "progress": "[====>                                              ]  2.097MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 7340032,
+      "total": 22126100
+    },
+    "progress": "[================>                                  ]   7.34MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 1048576,
+      "total": 73055958
+    },
+    "progress": "[>                                                  ]  1.049MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 5242880,
+      "total": 6936564
+    },
+    "progress": "[=====================================>             ]  5.243MB/6.937MB",
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 2097152,
+      "total": 100522061
+    },
+    "progress": "[=>                                                 ]  2.097MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 3145728,
+      "total": 457982826
+    },
+    "progress": "[>                                                  ]  3.146MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 3145728,
+      "total": 39898572
+    },
+    "progress": "[===>                                               ]  3.146MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 2097152,
+      "total": 22155340
+    },
+    "progress": "[====>                                              ]  2.097MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 7340032,
+      "total": 22126100
+    },
+    "progress": "[================>                                  ]   7.34MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 2097152,
+      "total": 73055958
+    },
+    "progress": "[=>                                                 ]  2.097MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 6936564,
+      "total": 6936564
+    },
+    "progress": "[==================================================>]  6.937MB/6.937MB",
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 3145728,
+      "total": 100522061
+    },
+    "progress": "[=>                                                 ]  3.146MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 4194304,
+      "total": 457982826
+    },
+    "progress": "[>                                                  ]  4.194MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 5242880,
+      "total": 39898572
+    },
+    "progress": "[======>                                            ]  5.243MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 4194304,
+      "total": 22155340
+    },
+    "progress": "[=========>                                         ]  4.194MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 7340032,
+      "total": 22126100
+    },
+    "progress": "[================>                                  ]   7.34MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 3145728,
+      "total": 73055958
+    },
+    "progress": "[==>                                                ]  3.146MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 4194304,
+      "total": 100522061
+    },
+    "progress": "[==>                                                ]  4.194MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 6291456,
+      "total": 457982826
+    },
+    "progress": "[>                                                  ]  6.291MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 7340032,
+      "total": 39898572
+    },
+    "progress": "[=========>                                         ]   7.34MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 6291456,
+      "total": 22155340
+    },
+    "progress": "[==============>                                    ]  6.291MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 9437184,
+      "total": 22126100
+    },
+    "progress": "[=====================>                             ]  9.437MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 4194304,
+      "total": 73055958
+    },
+    "progress": "[==>                                                ]  4.194MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 6291456,
+      "total": 100522061
+    },
+    "progress": "[===>                                               ]  6.291MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 9437184,
+      "total": 457982826
+    },
+    "progress": "[=>                                                 ]  9.437MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 9900032,
+      "total": 39898572
+    },
+    "progress": "[============>                                      ]    9.9MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 8388608,
+      "total": 22155340
+    },
+    "progress": "[==================>                                ]  8.389MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 12582912,
+      "total": 22126100
+    },
+    "progress": "[============================>                      ]  12.58MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 12582912,
+      "total": 39898572
+    },
+    "progress": "[===============>                                   ]  12.58MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 9437184,
+      "total": 22155340
+    },
+    "progress": "[=====================>                             ]  9.437MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 15728640,
+      "total": 22126100
+    },
+    "progress": "[===================================>               ]  15.73MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 5242880,
+      "total": 73055958
+    },
+    "progress": "[===>                                               ]  5.243MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 8388608,
+      "total": 100522061
+    },
+    "progress": "[====>                                              ]  8.389MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 12582912,
+      "total": 457982826
+    },
+    "progress": "[=>                                                 ]  12.58MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 13631488,
+      "total": 457982826
+    },
+    "progress": "[=>                                                 ]  13.63MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 17825792,
+      "total": 39898572
+    },
+    "progress": "[======================>                            ]  17.83MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 11534336,
+      "total": 22155340
+    },
+    "progress": "[==========================>                        ]  11.53MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 16777216,
+      "total": 22126100
+    },
+    "progress": "[=====================================>             ]  16.78MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 6291456,
+      "total": 73055958
+    },
+    "progress": "[====>                                              ]  6.291MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 10485760,
+      "total": 100522061
+    },
+    "progress": "[=====>                                             ]  10.49MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 18874368,
+      "total": 22126100
+    },
+    "progress": "[==========================================>        ]  18.87MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 7340032,
+      "total": 73055958
+    },
+    "progress": "[=====>                                             ]   7.34MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 12582912,
+      "total": 100522061
+    },
+    "progress": "[======>                                            ]  12.58MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 15728640,
+      "total": 457982826
+    },
+    "progress": "[=>                                                 ]  15.73MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 22020096,
+      "total": 39898572
+    },
+    "progress": "[===========================>                       ]  22.02MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 13631488,
+      "total": 22155340
+    },
+    "progress": "[==============================>                    ]  13.63MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "98acacbbcf0e"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 20971520,
+      "total": 22126100
+    },
+    "progress": "[===============================================>   ]  20.97MB/22.13MB",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 8388608,
+      "total": 73055958
+    },
+    "progress": "[=====>                                             ]  8.389MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 13631488,
+      "total": 100522061
+    },
+    "progress": "[======>                                            ]  13.63MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 17825792,
+      "total": 457982826
+    },
+    "progress": "[=>                                                 ]  17.83MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 26214400,
+      "total": 39898572
+    },
+    "progress": "[================================>                  ]  26.21MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 14680064,
+      "total": 22155340
+    },
+    "progress": "[=================================>                 ]  14.68MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 17825792,
+      "total": 22155340
+    },
+    "progress": "[========================================>          ]  17.83MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 10485760,
+      "total": 73055958
+    },
+    "progress": "[=======>                                           ]  10.49MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 16777216,
+      "total": 100522061
+    },
+    "progress": "[========>                                          ]  16.78MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 19922944,
+      "total": 457982826
+    },
+    "progress": "[==>                                                ]  19.92MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 30408704,
+      "total": 39898572
+    },
+    "progress": "[======================================>            ]  30.41MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 32505856,
+      "total": 39898572
+    },
+    "progress": "[========================================>          ]  32.51MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 18874368,
+      "total": 22155340
+    },
+    "progress": "[==========================================>        ]  18.87MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 11534336,
+      "total": 73055958
+    },
+    "progress": "[=======>                                           ]  11.53MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 17825792,
+      "total": 100522061
+    },
+    "progress": "[========>                                          ]  17.83MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 19922944,
+      "total": 457982826
+    },
+    "progress": "[==>                                                ]  19.92MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 13631488,
+      "total": 73055958
+    },
+    "progress": "[=========>                                         ]  13.63MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 20959232,
+      "total": 100522061
+    },
+    "progress": "[==========>                                        ]  20.96MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 20971520,
+      "total": 457982826
+    },
+    "progress": "[==>                                                ]  20.97MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 36700160,
+      "total": 39898572
+    },
+    "progress": "[=============================================>     ]   36.7MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 20971520,
+      "total": 22155340
+    },
+    "progress": "[===============================================>   ]  20.97MB/22.16MB",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 14680064,
+      "total": 73055958
+    },
+    "progress": "[==========>                                        ]  14.68MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 22020096,
+      "total": 100522061
+    },
+    "progress": "[==========>                                        ]  22.02MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 22020096,
+      "total": 457982826
+    },
+    "progress": "[==>                                                ]  22.02MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 39898572,
+      "total": 39898572
+    },
+    "progress": "[==================================================>]   39.9MB/39.9MB",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 16777216,
+      "total": 73055958
+    },
+    "progress": "[===========>                                       ]  16.78MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 25165824,
+      "total": 100522061
+    },
+    "progress": "[============>                                      ]  25.17MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 24117248,
+      "total": 457982826
+    },
+    "progress": "[==>                                                ]  24.12MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 18874368,
+      "total": 73055958
+    },
+    "progress": "[============>                                      ]  18.87MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 28311552,
+      "total": 100522061
+    },
+    "progress": "[==============>                                    ]  28.31MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 25165824,
+      "total": 457982826
+    },
+    "progress": "[==>                                                ]  25.17MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 20971520,
+      "total": 73055958
+    },
+    "progress": "[==============>                                    ]  20.97MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 30408704,
+      "total": 100522061
+    },
+    "progress": "[===============>                                   ]  30.41MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 27262976,
+      "total": 457982826
+    },
+    "progress": "[==>                                                ]  27.26MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 22020096,
+      "total": 73055958
+    },
+    "progress": "[===============>                                   ]  22.02MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 32505856,
+      "total": 100522061
+    },
+    "progress": "[================>                                  ]  32.51MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 28311552,
+      "total": 457982826
+    },
+    "progress": "[===>                                               ]  28.31MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 24117248,
+      "total": 73055958
+    },
+    "progress": "[================>                                  ]  24.12MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 35651584,
+      "total": 100522061
+    },
+    "progress": "[=================>                                 ]  35.65MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 30408704,
+      "total": 457982826
+    },
+    "progress": "[===>                                               ]  30.41MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 26214400,
+      "total": 73055958
+    },
+    "progress": "[=================>                                 ]  26.21MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 38797312,
+      "total": 100522061
+    },
+    "progress": "[===================>                               ]   38.8MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 31457280,
+      "total": 457982826
+    },
+    "progress": "[===>                                               ]  31.46MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 28311552,
+      "total": 73055958
+    },
+    "progress": "[===================>                               ]  28.31MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 41943040,
+      "total": 100522061
+    },
+    "progress": "[====================>                              ]  41.94MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 32505856,
+      "total": 457982826
+    },
+    "progress": "[===>                                               ]  32.51MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 30408704,
+      "total": 73055958
+    },
+    "progress": "[====================>                              ]  30.41MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 45088768,
+      "total": 100522061
+    },
+    "progress": "[======================>                            ]  45.09MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 34603008,
+      "total": 457982826
+    },
+    "progress": "[===>                                               ]   34.6MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 32505856,
+      "total": 73055958
+    },
+    "progress": "[======================>                            ]  32.51MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 48234496,
+      "total": 100522061
+    },
+    "progress": "[=======================>                           ]  48.23MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 35651584,
+      "total": 457982826
+    },
+    "progress": "[===>                                               ]  35.65MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 34603008,
+      "total": 73055958
+    },
+    "progress": "[=======================>                           ]   34.6MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 51380224,
+      "total": 100522061
+    },
+    "progress": "[=========================>                         ]  51.38MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 36700160,
+      "total": 457982826
+    },
+    "progress": "[====>                                              ]   36.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 36700160,
+      "total": 73055958
+    },
+    "progress": "[=========================>                         ]   36.7MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 54525952,
+      "total": 100522061
+    },
+    "progress": "[===========================>                       ]  54.53MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 38797312,
+      "total": 457982826
+    },
+    "progress": "[====>                                              ]   38.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "8dabf1ab3bc2"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 39845888,
+      "total": 73055958
+    },
+    "progress": "[===========================>                       ]  39.85MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 57671680,
+      "total": 100522061
+    },
+    "progress": "[============================>                      ]  57.67MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 40894464,
+      "total": 457982826
+    },
+    "progress": "[====>                                              ]  40.89MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "4f4fb700ef54"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 41943040,
+      "total": 73055958
+    },
+    "progress": "[============================>                      ]  41.94MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 59768832,
+      "total": 100522061
+    },
+    "progress": "[=============================>                     ]  59.77MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 41943040,
+      "total": 457982826
+    },
+    "progress": "[====>                                              ]  41.94MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "4f4fb700ef54"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "a2da914d9b47"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 44040192,
+      "total": 73055958
+    },
+    "progress": "[==============================>                    ]  44.04MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 61865984,
+      "total": 100522061
+    },
+    "progress": "[==============================>                    ]  61.87MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 42991616,
+      "total": 457982826
+    },
+    "progress": "[====>                                              ]  42.99MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "0e79a8679713"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 66060288,
+      "total": 100522061
+    },
+    "progress": "[================================>                  ]  66.06MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 45088768,
+      "total": 457982826
+    },
+    "progress": "[====>                                              ]  45.09MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 46137344,
+      "total": 73055958
+    },
+    "progress": "[===============================>                   ]  46.14MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 49283072,
+      "total": 73055958
+    },
+    "progress": "[=================================>                 ]  49.28MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 69206016,
+      "total": 100522061
+    },
+    "progress": "[==================================>                ]  69.21MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 46137344,
+      "total": 457982826
+    },
+    "progress": "[=====>                                             ]  46.14MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 51380224,
+      "total": 73055958
+    },
+    "progress": "[===================================>               ]  51.38MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 73400320,
+      "total": 100522061
+    },
+    "progress": "[====================================>              ]   73.4MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 48234496,
+      "total": 457982826
+    },
+    "progress": "[=====>                                             ]  48.23MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 54525952,
+      "total": 73055958
+    },
+    "progress": "[=====================================>             ]  54.53MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 77594624,
+      "total": 100522061
+    },
+    "progress": "[======================================>            ]  77.59MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 50331648,
+      "total": 457982826
+    },
+    "progress": "[=====>                                             ]  50.33MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 56623104,
+      "total": 73055958
+    },
+    "progress": "[======================================>            ]  56.62MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 81788928,
+      "total": 100522061
+    },
+    "progress": "[========================================>          ]  81.79MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 52428800,
+      "total": 457982826
+    },
+    "progress": "[=====>                                             ]  52.43MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 59768832,
+      "total": 73055958
+    },
+    "progress": "[========================================>          ]  59.77MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 85983232,
+      "total": 100522061
+    },
+    "progress": "[==========================================>        ]  85.98MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 54525952,
+      "total": 457982826
+    },
+    "progress": "[=====>                                             ]  54.53MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 62914560,
+      "total": 73055958
+    },
+    "progress": "[===========================================>       ]  62.91MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 90177536,
+      "total": 100522061
+    },
+    "progress": "[============================================>      ]  90.18MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 56623104,
+      "total": 457982826
+    },
+    "progress": "[======>                                            ]  56.62MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 65011712,
+      "total": 73055958
+    },
+    "progress": "[============================================>      ]  65.01MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 94371840,
+      "total": 100522061
+    },
+    "progress": "[==============================================>    ]  94.37MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 58720256,
+      "total": 457982826
+    },
+    "progress": "[======>                                            ]  58.72MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 68157440,
+      "total": 73055958
+    },
+    "progress": "[==============================================>    ]  68.16MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 97517568,
+      "total": 100522061
+    },
+    "progress": "[================================================>  ]  97.52MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 59768832,
+      "total": 457982826
+    },
+    "progress": "[======>                                            ]  59.77MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 70254592,
+      "total": 73055958
+    },
+    "progress": "[================================================>  ]  70.25MB/73.06MB",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 100522061,
+      "total": 100522061
+    },
+    "progress": "[==================================================>]  100.5MB/100.5MB",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 61865984,
+      "total": 457982826
+    },
+    "progress": "[======>                                            ]  61.87MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 65011712,
+      "total": 457982826
+    },
+    "progress": "[=======>                                           ]  65.01MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 67108864,
+      "total": 457982826
+    },
+    "progress": "[=======>                                           ]  67.11MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 69206016,
+      "total": 457982826
+    },
+    "progress": "[=======>                                           ]  69.21MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 71303168,
+      "total": 457982826
+    },
+    "progress": "[=======>                                           ]   71.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 73400320,
+      "total": 457982826
+    },
+    "progress": "[========>                                          ]   73.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 76546048,
+      "total": 457982826
+    },
+    "progress": "[========>                                          ]  76.55MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 78643200,
+      "total": 457982826
+    },
+    "progress": "[========>                                          ]  78.64MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 80740352,
+      "total": 457982826
+    },
+    "progress": "[========>                                          ]  80.74MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 83886080,
+      "total": 457982826
+    },
+    "progress": "[=========>                                         ]  83.89MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 85983232,
+      "total": 457982826
+    },
+    "progress": "[=========>                                         ]  85.98MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 88080384,
+      "total": 457982826
+    },
+    "progress": "[=========>                                         ]  88.08MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 90177536,
+      "total": 457982826
+    },
+    "progress": "[=========>                                         ]  90.18MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 92274688,
+      "total": 457982826
+    },
+    "progress": "[==========>                                        ]  92.27MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 94371840,
+      "total": 457982826
+    },
+    "progress": "[==========>                                        ]  94.37MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 96468992,
+      "total": 457982826
+    },
+    "progress": "[==========>                                        ]  96.47MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 99614720,
+      "total": 457982826
+    },
+    "progress": "[==========>                                        ]  99.61MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 101711872,
+      "total": 457982826
+    },
+    "progress": "[===========>                                       ]  101.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 103809024,
+      "total": 457982826
+    },
+    "progress": "[===========>                                       ]  103.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 105906176,
+      "total": 457982826
+    },
+    "progress": "[===========>                                       ]  105.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 108003328,
+      "total": 457982826
+    },
+    "progress": "[===========>                                       ]    108MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 111149056,
+      "total": 457982826
+    },
+    "progress": "[============>                                      ]  111.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 113246208,
+      "total": 457982826
+    },
+    "progress": "[============>                                      ]  113.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 115798016,
+      "total": 457982826
+    },
+    "progress": "[============>                                      ]  115.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 118489088,
+      "total": 457982826
+    },
+    "progress": "[============>                                      ]  118.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 122683392,
+      "total": 457982826
+    },
+    "progress": "[=============>                                     ]  122.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 123731968,
+      "total": 457982826
+    },
+    "progress": "[=============>                                     ]  123.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 125829120,
+      "total": 457982826
+    },
+    "progress": "[=============>                                     ]  125.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 128974848,
+      "total": 457982826
+    },
+    "progress": "[==============>                                    ]    129MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 131072000,
+      "total": 457982826
+    },
+    "progress": "[==============>                                    ]  131.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 134217728,
+      "total": 457982826
+    },
+    "progress": "[==============>                                    ]  134.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 136314880,
+      "total": 457982826
+    },
+    "progress": "[==============>                                    ]  136.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 139460608,
+      "total": 457982826
+    },
+    "progress": "[===============>                                   ]  139.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 141557760,
+      "total": 457982826
+    },
+    "progress": "[===============>                                   ]  141.6MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 144703488,
+      "total": 457982826
+    },
+    "progress": "[===============>                                   ]  144.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 146800640,
+      "total": 457982826
+    },
+    "progress": "[================>                                  ]  146.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 149946368,
+      "total": 457982826
+    },
+    "progress": "[================>                                  ]  149.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "cd93e939c33d"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 152043520,
+      "total": 457982826
+    },
+    "progress": "[================>                                  ]    152MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 155189248,
+      "total": 457982826
+    },
+    "progress": "[================>                                  ]  155.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 158334976,
+      "total": 457982826
+    },
+    "progress": "[=================>                                 ]  158.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 160432128,
+      "total": 457982826
+    },
+    "progress": "[=================>                                 ]  160.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 163577856,
+      "total": 457982826
+    },
+    "progress": "[=================>                                 ]  163.6MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 166723584,
+      "total": 457982826
+    },
+    "progress": "[==================>                                ]  166.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 169869312,
+      "total": 457982826
+    },
+    "progress": "[==================>                                ]  169.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 172490752,
+      "total": 457982826
+    },
+    "progress": "[==================>                                ]  172.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 175112192,
+      "total": 457982826
+    },
+    "progress": "[===================>                               ]  175.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 178257920,
+      "total": 457982826
+    },
+    "progress": "[===================>                               ]  178.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "848f17246180"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 181403648,
+      "total": 457982826
+    },
+    "progress": "[===================>                               ]  181.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 184549376,
+      "total": 457982826
+    },
+    "progress": "[====================>                              ]  184.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 188743680,
+      "total": 457982826
+    },
+    "progress": "[====================>                              ]  188.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 191889408,
+      "total": 457982826
+    },
+    "progress": "[====================>                              ]  191.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 196083712,
+      "total": 457982826
+    },
+    "progress": "[=====================>                             ]  196.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 199229440,
+      "total": 457982826
+    },
+    "progress": "[=====================>                             ]  199.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 203423744,
+      "total": 457982826
+    },
+    "progress": "[======================>                            ]  203.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 206569472,
+      "total": 457982826
+    },
+    "progress": "[======================>                            ]  206.6MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 210763776,
+      "total": 457982826
+    },
+    "progress": "[=======================>                           ]  210.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 214958080,
+      "total": 457982826
+    },
+    "progress": "[=======================>                           ]    215MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 219152384,
+      "total": 457982826
+    },
+    "progress": "[=======================>                           ]  219.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 222298112,
+      "total": 457982826
+    },
+    "progress": "[========================>                          ]  222.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 226492416,
+      "total": 457982826
+    },
+    "progress": "[========================>                          ]  226.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 230686720,
+      "total": 457982826
+    },
+    "progress": "[=========================>                         ]  230.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 233832448,
+      "total": 457982826
+    },
+    "progress": "[=========================>                         ]  233.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 238026752,
+      "total": 457982826
+    },
+    "progress": "[=========================>                         ]    238MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 242221056,
+      "total": 457982826
+    },
+    "progress": "[==========================>                        ]  242.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 245366784,
+      "total": 457982826
+    },
+    "progress": "[==========================>                        ]  245.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 249561088,
+      "total": 457982826
+    },
+    "progress": "[===========================>                       ]  249.6MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 253755392,
+      "total": 457982826
+    },
+    "progress": "[===========================>                       ]  253.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 257949696,
+      "total": 457982826
+    },
+    "progress": "[============================>                      ]  257.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 262144000,
+      "total": 457982826
+    },
+    "progress": "[============================>                      ]  262.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 265289728,
+      "total": 457982826
+    },
+    "progress": "[============================>                      ]  265.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 269484032,
+      "total": 457982826
+    },
+    "progress": "[=============================>                     ]  269.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 273678336,
+      "total": 457982826
+    },
+    "progress": "[=============================>                     ]  273.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 277872640,
+      "total": 457982826
+    },
+    "progress": "[==============================>                    ]  277.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 281018368,
+      "total": 457982826
+    },
+    "progress": "[==============================>                    ]    281MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 285212672,
+      "total": 457982826
+    },
+    "progress": "[===============================>                   ]  285.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 289406976,
+      "total": 457982826
+    },
+    "progress": "[===============================>                   ]  289.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 293601280,
+      "total": 457982826
+    },
+    "progress": "[================================>                  ]  293.6MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 297795584,
+      "total": 457982826
+    },
+    "progress": "[================================>                  ]  297.8MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 301989888,
+      "total": 457982826
+    },
+    "progress": "[================================>                  ]    302MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 306184192,
+      "total": 457982826
+    },
+    "progress": "[=================================>                 ]  306.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 310378496,
+      "total": 457982826
+    },
+    "progress": "[=================================>                 ]  310.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 314572800,
+      "total": 457982826
+    },
+    "progress": "[==================================>                ]  314.6MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 317718528,
+      "total": 457982826
+    },
+    "progress": "[==================================>                ]  317.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 321912832,
+      "total": 457982826
+    },
+    "progress": "[===================================>               ]  321.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 325058560,
+      "total": 457982826
+    },
+    "progress": "[===================================>               ]  325.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 329252864,
+      "total": 457982826
+    },
+    "progress": "[===================================>               ]  329.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 333447168,
+      "total": 457982826
+    },
+    "progress": "[====================================>              ]  333.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 337866752,
+      "total": 457982826
+    },
+    "progress": "[====================================>              ]  337.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 342884352,
+      "total": 457982826
+    },
+    "progress": "[=====================================>             ]  342.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 347078656,
+      "total": 457982826
+    },
+    "progress": "[=====================================>             ]  347.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 351272960,
+      "total": 457982826
+    },
+    "progress": "[======================================>            ]  351.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 355467264,
+      "total": 457982826
+    },
+    "progress": "[======================================>            ]  355.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 359661568,
+      "total": 457982826
+    },
+    "progress": "[=======================================>           ]  359.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 364904448,
+      "total": 457982826
+    },
+    "progress": "[=======================================>           ]  364.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 369098752,
+      "total": 457982826
+    },
+    "progress": "[========================================>          ]  369.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 373293056,
+      "total": 457982826
+    },
+    "progress": "[========================================>          ]  373.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 377487360,
+      "total": 457982826
+    },
+    "progress": "[=========================================>         ]  377.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 382730240,
+      "total": 457982826
+    },
+    "progress": "[=========================================>         ]  382.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 386924544,
+      "total": 457982826
+    },
+    "progress": "[==========================================>        ]  386.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 391118848,
+      "total": 457982826
+    },
+    "progress": "[==========================================>        ]  391.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 395313152,
+      "total": 457982826
+    },
+    "progress": "[===========================================>       ]  395.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 399507456,
+      "total": 457982826
+    },
+    "progress": "[===========================================>       ]  399.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 403701760,
+      "total": 457982826
+    },
+    "progress": "[============================================>      ]  403.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 407896064,
+      "total": 457982826
+    },
+    "progress": "[============================================>      ]  407.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 412090368,
+      "total": 457982826
+    },
+    "progress": "[============================================>      ]  412.1MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 416284672,
+      "total": 457982826
+    },
+    "progress": "[=============================================>     ]  416.3MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 421527552,
+      "total": 457982826
+    },
+    "progress": "[==============================================>    ]  421.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 425721856,
+      "total": 457982826
+    },
+    "progress": "[==============================================>    ]  425.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 430964736,
+      "total": 457982826
+    },
+    "progress": "[===============================================>   ]    431MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 435159040,
+      "total": 457982826
+    },
+    "progress": "[===============================================>   ]  435.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 439353344,
+      "total": 457982826
+    },
+    "progress": "[===============================================>   ]  439.4MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 443547648,
+      "total": 457982826
+    },
+    "progress": "[================================================>  ]  443.5MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 447741952,
+      "total": 457982826
+    },
+    "progress": "[================================================>  ]  447.7MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 451936256,
+      "total": 457982826
+    },
+    "progress": "[=================================================> ]  451.9MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": {
+      "current": 457179136,
+      "total": 457982826
+    },
+    "progress": "[=================================================> ]  457.2MB/458MB",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 9,
+      "units": "s"
+    },
+    "progress": "9 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 10,
+      "units": "s"
+    },
+    "progress": "10 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 11,
+      "units": "s"
+    },
+    "progress": "11 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 12,
+      "units": "s"
+    },
+    "progress": "12 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 13,
+      "units": "s"
+    },
+    "progress": "13 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 14,
+      "units": "s"
+    },
+    "progress": "14 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 15,
+      "units": "s"
+    },
+    "progress": "15 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 16,
+      "units": "s"
+    },
+    "progress": "16 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 17,
+      "units": "s"
+    },
+    "progress": "17 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 18,
+      "units": "s"
+    },
+    "progress": "18 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 19,
+      "units": "s"
+    },
+    "progress": "19 s",
+    "id": "92de47278341"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "92de47278341"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 3,
+      "units": "s"
+    },
+    "progress": "3 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 4,
+      "units": "s"
+    },
+    "progress": "4 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 5,
+      "units": "s"
+    },
+    "progress": "5 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 6,
+      "units": "s"
+    },
+    "progress": "6 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 7,
+      "units": "s"
+    },
+    "progress": "7 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 8,
+      "units": "s"
+    },
+    "progress": "8 s",
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "edfc7f19627f"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 1,
+      "units": "s"
+    },
+    "progress": "1 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": {
+      "current": 2,
+      "units": "s"
+    },
+    "progress": "2 s",
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "d3024aa9d18c"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": {
+      "hidecounts": true
+    },
+    "id": "05fd5d2e7e23"
+  },
+  {
+    "status": "Digest: sha256:812793fdc0fdf015045fd865534297741a08af96d17deda1d02e3cdfc2df83f2"
+  },
+  {
+    "status": "Status: Downloaded newer image for ghcr.io/home-assistant/qemux86-64-homeassistant:2026.1.0.dev202511270239"
+  }
+]
