@@ -129,8 +129,9 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
     def get_docker_config_json(self) -> str | None:
         """Generate Docker config.json content with registry credentials for base image.
 
-        Returns JSON string with credentials, or None if no credentials needed.
-        Must be run in executor.
+        Returns a JSON string with registry credentials for the base image's registry,
+        or None if no matching registry is configured.
+
         """
         if not self.sys_docker.config.registries:
             return None
