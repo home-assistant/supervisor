@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from aiohttp import web
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
@@ -16,6 +17,7 @@ from ..const import (
     ATTR_PASSWORD,
     ATTR_REGISTRIES,
     ATTR_STORAGE,
+    ATTR_STORAGE_DRIVER,
     ATTR_USERNAME,
     ATTR_VERSION,
 )
@@ -39,6 +41,12 @@ SCHEMA_OPTIONS = vol.Schema(
     {
         vol.Optional(ATTR_ENABLE_IPV6): vol.Maybe(vol.Boolean()),
         vol.Optional(ATTR_MTU): vol.Maybe(vol.All(int, vol.Range(min=68, max=65535))),
+    }
+)
+
+SCHEMA_MIGRATE_DOCKER_STORAGE_DRIVER = vol.Schema(
+    {
+        vol.Required(ATTR_STORAGE_DRIVER): vol.In(["overlayfs", "overlay2"]),
     }
 )
 
@@ -123,3 +131,27 @@ class APIDocker(CoreSysAttributes):
 
         del self.sys_docker.config.registries[hostname]
         await self.sys_docker.config.save_data()
+
+    @api_process
+    async def migrate_docker_storage_driver(self, request: web.Request) -> None:
+        """Migrate Docker storage driver."""
+        if (
+            not self.coresys.os.available
+            or not self.coresys.os.version
+            or self.coresys.os.version < AwesomeVersion("17.0.dev0")
+        ):
+            raise APINotFound(
+                "Home Assistant OS 17.0 or newer required for Docker storage driver migration"
+            )
+
+        body = await api_validate(SCHEMA_MIGRATE_DOCKER_STORAGE_DRIVER, request)
+        await self.sys_dbus.agent.system.migrate_docker_storage_driver(
+            body[ATTR_STORAGE_DRIVER]
+        )
+
+        _LOGGER.info("Host system reboot required to apply Docker storage migration")
+        self.sys_resolution.create_issue(
+            IssueType.REBOOT_REQUIRED,
+            ContextType.SYSTEM,
+            suggestions=[SuggestionType.EXECUTE_REBOOT],
+        )

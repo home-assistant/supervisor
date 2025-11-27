@@ -813,6 +813,10 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/docker/info", api_docker.info),
+                web.post(
+                    "/docker/migrate-storage-driver",
+                    api_docker.migrate_docker_storage_driver,
+                ),
                 web.post("/docker/options", api_docker.options),
                 web.get("/docker/registries", api_docker.registries),
                 web.post("/docker/registries", api_docker.create_registry),
