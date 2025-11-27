@@ -132,6 +132,10 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
 
         Returns a JSON string with registry credentials for the base image's registry,
         or None if no matching registry is configured.
+
+        Raises:
+            HassioArchNotFound: If the add-on is not supported on the current architecture.
+
         """
         # Early return before accessing base_image to avoid unnecessary arch lookup
         if not self.sys_docker.config.registries:
