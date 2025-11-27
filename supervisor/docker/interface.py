@@ -363,8 +363,15 @@ class DockerInterface(JobGroup, ABC):
         # Check if any layers are still pending (no extra yet)
         # If so, we're still in downloading phase even if all layers_with_extra are done
         layers_pending = len(layer_jobs) - len(layers_with_extra)
-        if layers_pending > 0 and stage == PullImageLayerStage.PULL_COMPLETE:
-            stage = PullImageLayerStage.DOWNLOADING
+        if layers_pending > 0:
+            # Scale progress to account for unreported layers
+            # This prevents tiny layers that complete first from showing inflated progress
+            # e.g., if 2/25 layers reported at 70%, actual progress is ~70 * 2/25 = 5.6%
+            layers_fraction = len(layers_with_extra) / len(layer_jobs)
+            progress = progress * layers_fraction
+
+            if stage == PullImageLayerStage.PULL_COMPLETE:
+                stage = PullImageLayerStage.DOWNLOADING
 
         # Also check if all placeholders are done but we're waiting for real layers
         if placeholder_layers and stage == PullImageLayerStage.PULL_COMPLETE:
