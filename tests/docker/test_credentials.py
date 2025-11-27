@@ -2,7 +2,8 @@
 
 # pylint: disable=protected-access
 from supervisor.coresys import CoreSys
-from supervisor.docker.interface import DOCKER_HUB, DockerInterface
+from supervisor.docker.const import DOCKER_HUB
+from supervisor.docker.interface import DockerInterface
 
 
 def test_no_credentials(coresys: CoreSys, test_docker_interface: DockerInterface):

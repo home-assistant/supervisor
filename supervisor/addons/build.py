@@ -22,7 +22,8 @@ from ..const import (
     SOCKET_DOCKER,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..docker.interface import DOCKER_HUB, IMAGE_WITH_HOST, MAP_ARCH
+from ..docker.const import DOCKER_HUB
+from ..docker.interface import MAP_ARCH
 from ..exceptions import ConfigurationFileError, HassioArchNotFound
 from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
@@ -131,23 +132,12 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
 
         Returns a JSON string with registry credentials for the base image's registry,
         or None if no matching registry is configured.
-
         """
+        # Early return before accessing base_image to avoid unnecessary arch lookup
         if not self.sys_docker.config.registries:
             return None
 
-        base_image = self.base_image
-        registry = None
-
-        # Check if base image uses a custom registry
-        matcher = IMAGE_WITH_HOST.match(base_image)
-        if matcher:
-            if matcher.group(1) in self.sys_docker.config.registries:
-                registry = matcher.group(1)
-        # If no match, check for Docker Hub credentials
-        elif DOCKER_HUB in self.sys_docker.config.registries:
-            registry = DOCKER_HUB
-
+        registry = self.sys_docker.config.get_registry_for_image(self.base_image)
         if not registry:
             return None
 

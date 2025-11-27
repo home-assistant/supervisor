@@ -15,6 +15,12 @@ from ..const import MACHINE_ID
 
 RE_RETRYING_DOWNLOAD_STATUS = re.compile(r"Retrying in \d+ seconds?")
 
+# Docker Hub registry identifier
+DOCKER_HUB = "hub.docker.com"
+
+# Regex to match images with a registry host (e.g., ghcr.io/org/image)
+IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
+
 
 class Capabilities(StrEnum):
     """Linux Capabilities."""

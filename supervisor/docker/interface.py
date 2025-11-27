@@ -8,7 +8,6 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from http import HTTPStatus
 import logging
-import re
 from time import time
 from typing import Any, cast
 from uuid import uuid4
@@ -46,15 +45,12 @@ from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.sentry import async_capture_exception
-from .const import ContainerState, PullImageLayerStage, RestartPolicy
+from .const import DOCKER_HUB, ContainerState, PullImageLayerStage, RestartPolicy
 from .manager import CommandReturn, PullLogEntry
 from .monitor import DockerContainerStateEvent
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
-DOCKER_HUB = "hub.docker.com"
 
 MAP_ARCH: dict[CpuArch | str, str] = {
     CpuArch.ARMV7: "linux/arm/v7",
@@ -180,25 +176,16 @@ class DockerInterface(JobGroup, ABC):
         return self.meta_config.get("Healthcheck")
 
     def _get_credentials(self, image: str) -> dict:
-        """Return a dictionay with credentials for docker login."""
-        registry = None
+        """Return a dictionary with credentials for docker login."""
         credentials = {}
-        matcher = IMAGE_WITH_HOST.match(image)
-
-        # Custom registry
-        if matcher:
-            if matcher.group(1) in self.sys_docker.config.registries:
-                registry = matcher.group(1)
-                credentials[ATTR_REGISTRY] = registry
-
-        # If no match assume "dockerhub" as registry
-        elif DOCKER_HUB in self.sys_docker.config.registries:
-            registry = DOCKER_HUB
+        registry = self.sys_docker.config.get_registry_for_image(image)
 
         if registry:
             stored = self.sys_docker.config.registries[registry]
             credentials[ATTR_USERNAME] = stored[ATTR_USERNAME]
             credentials[ATTR_PASSWORD] = stored[ATTR_PASSWORD]
+            if registry != DOCKER_HUB:
+                credentials[ATTR_REGISTRY] = registry
 
             _LOGGER.debug(
                 "Logging in to %s as %s",

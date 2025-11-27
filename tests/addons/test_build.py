@@ -10,7 +10,7 @@ from awesomeversion import AwesomeVersion
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
 from supervisor.coresys import CoreSys
-from supervisor.docker.interface import DOCKER_HUB
+from supervisor.docker.const import DOCKER_HUB
 
 from tests.common import is_in_list
 
