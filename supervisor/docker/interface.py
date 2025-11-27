@@ -312,24 +312,44 @@ class DockerInterface(JobGroup, ABC):
             and job.name == "Pulling container image layer"
         ]
 
-        # First set the total bytes to be downloaded/extracted on the main job
-        if not install_job.extra:
-            total = 0
-            for job in layer_jobs:
-                if not job.extra:
-                    return
-                total += job.extra["total"]
-            install_job.extra = {"total": total}
-        else:
-            total = install_job.extra["total"]
+        # Calculate total from layers that have reported size info
+        # With containerd snapshotter, some layers skip "Downloading" and go directly to
+        # "Download complete", so we can't wait for all layers to have extra before reporting progress
+        layers_with_extra = [
+            job for job in layer_jobs if job.extra and job.extra.get("total")
+        ]
+        if not layers_with_extra:
+            return
 
-        # Then determine total progress based on progress of each sub-job, factoring in size of each compared to total
+        # Sum up total bytes. Layers that skip downloading get placeholder extra={1,1}
+        # which doesn't represent actual size. Separate "real" layers from placeholders.
+        # Filter guarantees job.extra is not None and has "total" key
+        real_layers = [
+            job for job in layers_with_extra if cast(dict, job.extra)["total"] > 1
+        ]
+        placeholder_layers = [
+            job for job in layers_with_extra if cast(dict, job.extra)["total"] == 1
+        ]
+
+        # If we only have placeholder layers (no real size info yet), don't report progress
+        # This prevents tiny cached layers from showing inflated progress before
+        # the actual download sizes are known
+        if not real_layers:
+            return
+
+        total = sum(cast(dict, job.extra)["total"] for job in real_layers)
+        if total == 0:
+            return
+
+        # Update install_job.extra with current total (may increase as more layers report)
+        install_job.extra = {"total": total}
+
+        # Calculate progress based on layers that have real size info
+        # Placeholder layers (skipped downloads) count as complete but don't affect weighted progress
         progress = 0.0
         stage = PullImageLayerStage.PULL_COMPLETE
-        for job in layer_jobs:
-            if not job.extra or not job.extra.get("total"):
-                return
-            progress += job.progress * (job.extra["total"] / total)
+        for job in real_layers:
+            progress += job.progress * (cast(dict, job.extra)["total"] / total)
             job_stage = PullImageLayerStage.from_status(cast(str, job.stage))
 
             if job_stage < PullImageLayerStage.EXTRACTING:
@@ -339,6 +359,21 @@ class DockerInterface(JobGroup, ABC):
                 and job_stage < PullImageLayerStage.PULL_COMPLETE
             ):
                 stage = PullImageLayerStage.EXTRACTING
+
+        # Check if any layers are still pending (no extra yet)
+        # If so, we're still in downloading phase even if all layers_with_extra are done
+        layers_pending = len(layer_jobs) - len(layers_with_extra)
+        if layers_pending > 0 and stage == PullImageLayerStage.PULL_COMPLETE:
+            stage = PullImageLayerStage.DOWNLOADING
+
+        # Also check if all placeholders are done but we're waiting for real layers
+        if placeholder_layers and stage == PullImageLayerStage.PULL_COMPLETE:
+            # All real layers are done, but check if placeholders are still extracting
+            for job in placeholder_layers:
+                job_stage = PullImageLayerStage.from_status(cast(str, job.stage))
+                if job_stage < PullImageLayerStage.PULL_COMPLETE:
+                    stage = PullImageLayerStage.EXTRACTING
+                    break
 
         # Ensure progress is 100 at this point to prevent float drift
         if stage == PullImageLayerStage.PULL_COMPLETE:

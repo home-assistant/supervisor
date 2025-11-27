@@ -709,11 +709,13 @@ async def test_install_progress_handles_layers_skipping_download(
         await install_task
         await event.wait()
 
-        # First update from layer download should have rather low progress ((260937/25445459) / 2 ~ 0.5%)
-        assert install_job_snapshots[0]["progress"] < 1
+        # First update from layer download should have rather low progress ((260937/25371463) ~= 1%)
+        assert install_job_snapshots[0]["progress"] < 2
 
-        # Total 8 events should lead to a progress update on the install job
-        assert len(install_job_snapshots) == 8
+        # Total 7 events should lead to a progress update on the install job:
+        # 3 Downloading events + Download complete (70%) + Extracting + Pull complete (100%) + stage change
+        # Note: The small placeholder layer ({1,1}) is excluded from progress calculation
+        assert len(install_job_snapshots) == 7
 
         # Job should complete successfully
         assert job.done is True
@@ -865,3 +867,76 @@ async def test_install_progress_containerd_snapshot(
         job_event(100),
         job_event(100, True),
     ]
+
+
+async def test_install_progress_containerd_snapshotter_real_world(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test install handles real-world containerd snapshotter events.
+
+    This test uses real pull events captured from a Home Assistant Core update
+    where some layers skip the Downloading phase entirely (going directly from
+    "Pulling fs layer" to "Download complete"). This causes the bug where progress
+    jumps from 0 to 100 without intermediate updates.
+
+    Root cause: _update_install_job_status() returns early if ANY layer has
+    extra=None. Layers that skip Downloading don't get extra until Download complete,
+    so progress cannot be calculated until ALL layers reach Download complete.
+    """
+    coresys.core.set_state(CoreState.RUNNING)
+
+    class TestDockerInterface(DockerInterface):
+        """Test interface for events."""
+
+        @property
+        def name(self) -> str:
+            """Name of test interface."""
+            return "test_interface"
+
+        @Job(
+            name="mock_docker_interface_install_realworld",
+            child_job_syncs=[
+                ChildJobSyncFilter("docker_interface_install", progress_allocation=1.0)
+            ],
+        )
+        async def mock_install(self) -> None:
+            """Mock install."""
+            await super().install(
+                AwesomeVersion("1.2.3"), image="test", arch=CpuArch.I386
+            )
+
+    # Real-world fixture: 12 layers, 262 Downloading events
+    # Some layers skip Downloading entirely (small layers with containerd snapshotter)
+    logs = load_json_fixture("docker_pull_image_log_containerd_snapshotter_real.json")
+    coresys.docker.images.pull.return_value = AsyncIterator(logs)
+    test_docker_interface = TestDockerInterface(coresys)
+
+    with patch.object(Supervisor, "arch", PropertyMock(return_value="i386")):
+        await test_docker_interface.mock_install()
+
+    await asyncio.sleep(1)
+
+    # Get progress events for the parent job (what UI sees)
+    job_events = [
+        c.args[0]
+        for c in ha_ws_client.async_send_command.call_args_list
+        if c.args[0].get("data", {}).get("event") == WSEvent.JOB
+        and c.args[0].get("data", {}).get("data", {}).get("name")
+        == "mock_docker_interface_install_realworld"
+    ]
+    progress_values = [e["data"]["data"]["progress"] for e in job_events]
+
+    # We should have intermediate progress updates, not just 0 and 100
+    assert len(progress_values) > 3, (
+        f"BUG: Progress jumped 0->100 without intermediate updates. "
+        f"Got {len(progress_values)} updates: {progress_values}. "
+        f"Expected intermediate progress during the 262 Downloading events."
+    )
+
+    # Progress should be monotonically increasing
+    for i in range(1, len(progress_values)):
+        assert progress_values[i] >= progress_values[i - 1]
+
+    # Should see progress in downloading phase (0-70%)
+    downloading_progress = [p for p in progress_values if 0 < p < 70]
+    assert len(downloading_progress) > 0
