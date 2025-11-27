@@ -111,10 +111,15 @@ class PullProgressDetail:
     """Progress detail information for pull.
 
     Documentation lacking but both of these seem to be in bytes when populated.
+
+    Containerd-snapshot update - When leveraging this new feature, this information
+    becomes useless to us while extracting. It simply tells elapsed time using
+    current and units.
     """
 
     current: int | None = None
     total: int | None = None
+    units: str | None = None
 
     @classmethod
     def from_pull_log_dict(cls, value: dict[str, int]) -> PullProgressDetail:
