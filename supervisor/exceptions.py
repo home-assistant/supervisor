@@ -632,10 +632,6 @@ class DockerNotFound(DockerError):
     """Docker object don't Exists."""
 
 
-class DockerLogOutOfOrder(DockerError):
-    """Raise when log from docker action was out of order."""
-
-
 class DockerNoSpaceOnDevice(DockerError):
     """Raise if a docker pull fails due to available space."""
 
