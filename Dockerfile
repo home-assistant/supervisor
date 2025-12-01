@@ -32,7 +32,17 @@ RUN \
 # Install requirements
 RUN \
     --mount=type=bind,source=./requirements.txt,target=/usr/src/requirements.txt \
-    uv pip install --compile-bytecode --no-cache --no-build -r requirements.txt
+    --mount=type=bind,source=./wheels,target=/usr/src/wheels \
+    if ls /usr/src/wheels/musllinux/* >/dev/null 2>&1; then \
+        LOCAL_WHEELS=/usr/src/wheels/musllinux; \
+        echo "Using local wheels from: $LOCAL_WHEELS"; \
+    else \
+        LOCAL_WHEELS=; \
+        echo "No local wheels found"; \
+    fi && \
+    uv pip install --compile-bytecode --no-cache --no-build \
+        -r requirements.txt \
+        ${LOCAL_WHEELS:+--find-links $LOCAL_WHEELS}
 
 # Install Home Assistant Supervisor
 COPY . supervisor
