@@ -10,7 +10,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.addons.addon import Addon
-from supervisor.arch import CpuArch
+from supervisor.arch import CpuArchManager
 from supervisor.backups.manager import BackupManager
 from supervisor.config import CoreConfig
 from supervisor.const import AddonState, CoreState
@@ -191,7 +191,9 @@ async def test_api_store_update_healthcheck(
         patch.object(DockerAddon, "run", new=container_events_task),
         patch.object(DockerInterface, "install"),
         patch.object(DockerAddon, "is_running", return_value=False),
-        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(
+            CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
+        ),
     ):
         resp = await api_client.post(f"/store/addons/{TEST_ADDON_SLUG}/update")
 
@@ -548,7 +550,9 @@ async def test_api_store_addons_addon_availability_arch_not_supported(
         coresys.addons.data.user[addon_obj.slug] = {"version": AwesomeVersion("0.0.1")}
 
     # Mock the system architecture to be different
-    with patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])):
+    with patch.object(
+        CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
+    ):
         resp = await api_client.request(
             api_method, f"/store/addons/{addon_obj.slug}/{api_action}"
         )

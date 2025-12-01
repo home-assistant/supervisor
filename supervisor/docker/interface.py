@@ -52,7 +52,7 @@ from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-MAP_ARCH: dict[CpuArch | str, str] = {
+MAP_ARCH: dict[CpuArch, str] = {
     CpuArch.ARMV7: "linux/arm/v7",
     CpuArch.ARMHF: "linux/arm/v6",
     CpuArch.AARCH64: "linux/arm64",
@@ -366,7 +366,7 @@ class DockerInterface(JobGroup, ABC):
         if not image:
             raise ValueError("Cannot pull without an image!")
 
-        image_arch = str(arch) if arch else self.sys_arch.supervisor
+        image_arch = arch or self.sys_arch.supervisor
         listener: EventListener | None = None
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
@@ -603,9 +603,7 @@ class DockerInterface(JobGroup, ABC):
         expected_cpu_arch: CpuArch | None = None,
     ) -> None:
         """Check we have expected image with correct arch."""
-        expected_image_cpu_arch = (
-            str(expected_cpu_arch) if expected_cpu_arch else self.sys_arch.supervisor
-        )
+        arch = expected_cpu_arch or self.sys_arch.supervisor
         image_name = f"{expected_image}:{version!s}"
         if self.image == expected_image:
             try:
@@ -623,7 +621,7 @@ class DockerInterface(JobGroup, ABC):
             # If we have an image and its the right arch, all set
             # It seems that newer Docker version return a variant for arm64 images.
             # Make sure we match linux/arm64 and linux/arm64/v8.
-            expected_image_arch = MAP_ARCH[expected_image_cpu_arch]
+            expected_image_arch = MAP_ARCH[arch]
             if image_arch.startswith(expected_image_arch):
                 return
             _LOGGER.info(
@@ -636,7 +634,7 @@ class DockerInterface(JobGroup, ABC):
         # We're missing the image we need. Stop and clean up what we have then pull the right one
         with suppress(DockerError):
             await self.remove()
-        await self.install(version, expected_image, arch=expected_image_cpu_arch)
+        await self.install(version, expected_image, arch=arch)
 
     @Job(
         name="docker_interface_update",

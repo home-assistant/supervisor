@@ -9,7 +9,7 @@ import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
-from supervisor.arch import CpuArch
+from supervisor.arch import CpuArchManager
 from supervisor.const import AddonState
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
@@ -236,7 +236,9 @@ async def test_api_addon_rebuild_healthcheck(
         patch.object(AddonBuild, "is_valid", return_value=True),
         patch.object(DockerAddon, "is_running", return_value=False),
         patch.object(Addon, "need_build", new=PropertyMock(return_value=True)),
-        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(
+            CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
+        ),
         patch.object(DockerAddon, "run", new=container_events_task),
         patch.object(
             coresys.docker,
@@ -308,7 +310,9 @@ async def test_api_addon_rebuild_force(
         patch.object(
             Addon, "need_build", new=PropertyMock(return_value=False)
         ),  # Image-based
-        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(
+            CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
+        ),
     ):
         resp = await api_client.post("/addons/local_ssh/rebuild")
 
@@ -326,7 +330,9 @@ async def test_api_addon_rebuild_force(
         patch.object(
             Addon, "need_build", new=PropertyMock(return_value=False)
         ),  # Image-based
-        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(
+            CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
+        ),
         patch.object(DockerAddon, "run", new=container_events_task),
         patch.object(
             coresys.docker,

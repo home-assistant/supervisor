@@ -10,7 +10,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.addons.addon import Addon
-from supervisor.arch import CpuArch
+from supervisor.arch import CpuArchManager
 from supervisor.config import CoreConfig
 from supervisor.const import AddonBoot, AddonStartup, AddonState, BusEvent
 from supervisor.coresys import CoreSys
@@ -54,7 +54,9 @@ async def fixture_mock_arch_disk() -> AsyncGenerator[None]:
     """Mock supported arch and disk space."""
     with (
         patch("shutil.disk_usage", return_value=(42, 42, 2 * (1024.0**3))),
-        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(
+            CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
+        ),
     ):
         yield
 
