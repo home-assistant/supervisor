@@ -591,11 +591,9 @@ class TestImagePullProgress:
             )
         )
 
-        # Count-based: 2 layers total, each = 50%
-        # cached: 100% (already exists)
+        # Only 1 layer needs pulling (cached layer excluded)
         # pulled: 35% (50% of 70% download weight)
-        # Total: (100 + 35) / 2 = 67.5%
-        assert progress.calculate_progress() == pytest.approx(67.5)
+        assert progress.calculate_progress() == pytest.approx(35.0)
 
         # Complete the pulled layer
         progress.process_event(
