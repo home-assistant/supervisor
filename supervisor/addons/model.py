@@ -87,6 +87,7 @@ from ..const import (
     AddonBootConfig,
     AddonStage,
     AddonStartup,
+    CpuArch,
 )
 from ..coresys import CoreSys
 from ..docker.const import Capabilities
@@ -548,7 +549,7 @@ class AddonModel(JobGroup, ABC):
         return self.data.get(ATTR_MACHINE, [])
 
     @property
-    def arch(self) -> str:
+    def arch(self) -> CpuArch:
         """Return architecture to use for the addon's image."""
         if ATTR_IMAGE in self.data:
             return self.sys_arch.match(self.data[ATTR_ARCH])

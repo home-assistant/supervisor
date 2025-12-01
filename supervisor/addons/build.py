@@ -20,6 +20,7 @@ from ..const import (
     FILE_SUFFIX_CONFIGURATION,
     META_ADDON,
     SOCKET_DOCKER,
+    CpuArch,
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..docker.const import DOCKER_HUB
@@ -67,7 +68,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         raise RuntimeError()
 
     @cached_property
-    def arch(self) -> str:
+    def arch(self) -> CpuArch:
         """Return arch of the add-on."""
         return self.sys_arch.match([self.addon.arch])
 
