@@ -8,9 +8,7 @@ ENV \
     UV_SYSTEM_PYTHON=true
 
 ARG \
-    COSIGN_VERSION \
-    BUILD_ARCH \
-    QEMU_CPU
+    COSIGN_VERSION
 
 # Install base
 WORKDIR /usr/src
@@ -32,15 +30,9 @@ RUN \
     && pip3 install uv==0.8.9
 
 # Install requirements
-COPY requirements.txt .
 RUN \
-    if [ "${BUILD_ARCH}" = "i386" ]; then \
-        setarch="linux32"; \
-    else \
-        setarch=""; \
-    fi \
-    && ${setarch} uv pip install --compile-bytecode --no-cache --no-build -r requirements.txt \
-    && rm -f requirements.txt
+    --mount=type=bind,source=./requirements.txt,target=/usr/src/requirements.txt \
+    uv pip install --compile-bytecode --no-cache --no-build -r requirements.txt
 
 # Install Home Assistant Supervisor
 COPY . supervisor
