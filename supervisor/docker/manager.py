@@ -708,7 +708,8 @@ class DockerAPI(CoreSysAttributes):
             raise DockerError(f"Container {name} is not running", _LOGGER.error)
 
         try:
-            return docker_container.stats(stream=False)
+            # When stream=False, stats() returns dict, not Iterator
+            return cast(dict[str, Any], docker_container.stats(stream=False))
         except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't read stats from {name}: {err}", _LOGGER.error
