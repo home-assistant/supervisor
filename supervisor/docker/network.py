@@ -7,6 +7,8 @@ import logging
 from typing import Self, cast
 
 import docker
+from docker.models.containers import Container
+from docker.models.networks import Network
 import requests
 
 from ..const import (
@@ -59,7 +61,7 @@ class DockerNetwork:
     def __init__(self, docker_client: docker.DockerClient):
         """Initialize internal Supervisor network."""
         self.docker: docker.DockerClient = docker_client
-        self._network: docker.models.networks.Network
+        self._network: Network
 
     async def post_init(
         self, enable_ipv6: bool | None = None, mtu: int | None = None
@@ -76,7 +78,7 @@ class DockerNetwork:
         return DOCKER_NETWORK
 
     @property
-    def network(self) -> docker.models.networks.Network:
+    def network(self) -> Network:
         """Return docker network."""
         return self._network
 
@@ -117,7 +119,7 @@ class DockerNetwork:
 
     def _get_network(
         self, enable_ipv6: bool | None = None, mtu: int | None = None
-    ) -> docker.models.networks.Network:
+    ) -> Network:
         """Get supervisor network."""
         try:
             if network := self.docker.networks.get(DOCKER_NETWORK):
@@ -218,7 +220,7 @@ class DockerNetwork:
 
     def attach_container(
         self,
-        container: docker.models.containers.Container,
+        container: Container,
         alias: list[str] | None = None,
         ipv4: IPv4Address | None = None,
     ) -> None:
@@ -275,9 +277,7 @@ class DockerNetwork:
         if container.id not in self.containers:
             self.attach_container(container, alias, ipv4)
 
-    def detach_default_bridge(
-        self, container: docker.models.containers.Container
-    ) -> None:
+    def detach_default_bridge(self, container: Container) -> None:
         """Detach default Docker bridge.
 
         Need run inside executor.
