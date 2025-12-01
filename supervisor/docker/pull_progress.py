@@ -237,9 +237,8 @@ class ImagePullProgress:
     def calculate_progress(self) -> float:
         """Calculate overall progress 0-100.
 
-        Uses count-based progress where each layer contributes equally.
-        Each layer's individual progress (0-100) is weighted by 1/total_layers.
-        This ensures progress never goes backwards when large layers appear late.
+        Uses count-based progress where each layer that needs pulling contributes
+        equally. Layers that already exist locally are excluded from the calculation.
 
         Returns 0 until we've seen the first "Downloading" event, since Docker
         reports "Already exists" and "Pulling fs layer" events before we know
@@ -250,11 +249,18 @@ class ImagePullProgress:
         if not self._seen_downloading or not self.layers:
             return 0.0
 
+        # Only count layers that need pulling (exclude already_exists)
+        layers_to_pull = [
+            layer for layer in self.layers.values() if not layer.already_exists
+        ]
+
+        if not layers_to_pull:
+            # All layers already exist, nothing to download
+            return 100.0
+
         # Each layer contributes equally: sum of layer progresses / total layers
-        total_progress = sum(
-            layer.calculate_progress() for layer in self.layers.values()
-        )
-        return total_progress / len(self.layers)
+        total_progress = sum(layer.calculate_progress() for layer in layers_to_pull)
+        return total_progress / len(layers_to_pull)
 
     def get_stage(self) -> str | None:
         """Get current stage based on layer states."""
