@@ -761,6 +761,8 @@ async def test_api_progress_updates_addon_install_update(
         and evt.args[0]["data"]["data"]["name"] == job_name
         and evt.args[0]["data"]["data"]["reference"] == addon_slug
     ]
+    # Count-based progress: 4 layers (2 cached = 50%, 2 pulling = 25% each)
+    # Cached layers contribute immediately when downloading starts
     assert events[:4] == [
         {
             "stage": None,
@@ -769,34 +771,34 @@ async def test_api_progress_updates_addon_install_update(
         },
         {
             "stage": None,
-            "progress": 0.1,
+            "progress": 50.0,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 1.7,
+            "progress": 54.6,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 4.0,
+            "progress": 62.8,
             "done": False,
         },
     ]
     assert events[-5:] == [
         {
             "stage": None,
-            "progress": 98.2,
+            "progress": 95.7,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 98.3,
+            "progress": 97.1,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 99.3,
+            "progress": 98.4,
             "done": False,
         },
         {
