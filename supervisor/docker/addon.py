@@ -7,6 +7,7 @@ from ipaddress import IPv4Address
 import logging
 import os
 from pathlib import Path
+from socket import SocketIO
 import tempfile
 from typing import TYPE_CHECKING, cast
 
@@ -834,7 +835,10 @@ class DockerAddon(DockerInterface):
         try:
             # Load needed docker objects
             container = self.sys_docker.containers.get(self.name)
-            socket = container.attach_socket(params={"stdin": 1, "stream": 1})
+            # attach_socket returns SocketIO for local Docker connections (Unix socket)
+            socket = cast(
+                SocketIO, container.attach_socket(params={"stdin": 1, "stream": 1})
+            )
         except (docker.errors.DockerException, requests.RequestException) as err:
             _LOGGER.error("Can't attach to %s stdin: %s", self.name, err)
             raise DockerError() from err
