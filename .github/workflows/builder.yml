@@ -165,7 +165,7 @@ jobs:
 
       # home-assistant/builder doesn't support sha pinning
       - name: Build supervisor
-        uses: home-assistant/builder@2025.09.0
+        uses: home-assistant/builder@2025.11.0
         with:
           args: |
             $BUILD_ARGS \
@@ -211,7 +211,7 @@ jobs:
       # home-assistant/builder doesn't support sha pinning
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2025.09.0
+        uses: home-assistant/builder@2025.11.0
         with:
           args: |
             --test \
