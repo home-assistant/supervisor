@@ -11,7 +11,7 @@ import pytest
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
 from supervisor.arch import CpuArchManager
-from supervisor.const import AddonState, CpuArch
+from supervisor.const import AddonState
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
@@ -661,8 +661,12 @@ async def test_addon_rebuild_fails_error(api_client: TestClient, coresys: CoreSy
     coresys.docker.containers.run.side_effect = DockerException("fail")
 
     with (
-        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["aarch64"])),
-        patch.object(CpuArch, "default", new=PropertyMock(return_value="aarch64")),
+        patch.object(
+            CpuArchManager, "supported", new=PropertyMock(return_value=["aarch64"])
+        ),
+        patch.object(
+            CpuArchManager, "default", new=PropertyMock(return_value="aarch64")
+        ),
         patch.object(AddonBuild, "get_docker_args", return_value={}),
     ):
         resp = await api_client.post("/addons/local_ssh/rebuild")
