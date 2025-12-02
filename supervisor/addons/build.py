@@ -141,7 +141,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
                 _LOGGER.error,
                 addon=self.addon.slug,
                 addon_arch_list=self.addon.supported_arch,
-                system_arch_list=self.sys_arch.supported,
+                system_arch_list=[arch.value for arch in self.sys_arch.supported],
             ) from None
 
     def get_docker_config_json(self) -> str | None:

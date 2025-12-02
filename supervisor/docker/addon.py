@@ -689,7 +689,7 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Starting build for %s:%s", self.image, version)
 
-        def build_image():
+        def build_image() -> tuple[str, str]:
             if build_env.squash:
                 _LOGGER.warning(
                     "Ignoring squash build option for %s as Docker BuildKit does not support it.",
