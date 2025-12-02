@@ -13,6 +13,7 @@ from typing import Any, cast
 from uuid import uuid4
 
 import aiodocker
+import aiohttp
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
 import docker
@@ -213,8 +214,25 @@ class DockerInterface(JobGroup, ABC):
             raise ValueError("Cannot pull without an image!")
 
         image_arch = arch or self.sys_arch.supervisor
+        platform = MAP_ARCH[image_arch]
         pull_progress = ImagePullProgress()
         current_job = self.sys_jobs.current
+
+        # Try to fetch manifest for accurate size-based progress
+        # This is optional - if it fails, we fall back to count-based progress
+        try:
+            manifest = await self.sys_docker.manifest_fetcher.get_manifest(
+                image, str(version), platform=platform
+            )
+            if manifest:
+                pull_progress.set_manifest(manifest)
+                _LOGGER.debug(
+                    "Using manifest for progress: %d layers, %d bytes",
+                    manifest.layer_count,
+                    manifest.total_size,
+                )
+        except (aiohttp.ClientError, TimeoutError) as err:
+            _LOGGER.debug("Could not fetch manifest for progress: %s", err)
 
         async def process_pull_event(event: PullLogEntry) -> None:
             """Process pull event and update job progress."""
@@ -244,7 +262,7 @@ class DockerInterface(JobGroup, ABC):
                 current_job.uuid,
                 image,
                 str(version),
-                platform=MAP_ARCH[image_arch],
+                platform=platform,
                 auth=credentials,
             )
 
