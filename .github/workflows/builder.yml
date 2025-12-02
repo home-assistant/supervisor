@@ -90,8 +90,8 @@ jobs:
     strategy:
       matrix:
         arch: ${{ fromJson(needs.init.outputs.architectures) }}
+        runs-on: [ubuntu-24.04]
         include:
-          - runs-on: ubuntu-24.04
           - arch: aarch64
             runs-on: ubuntu-24.04-arm
 
