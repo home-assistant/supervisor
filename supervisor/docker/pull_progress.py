@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from .manager import PullLogEntry
+    from .manifest import ImageManifest
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -109,23 +110,43 @@ class LayerProgress:
 class ImagePullProgress:
     """Track overall progress of pulling an image.
 
-    Uses count-based progress where each layer contributes equally regardless of size.
-    This avoids progress regression when large layers are discovered late due to
-    Docker's rate-limiting of concurrent downloads.
+    When manifest layer sizes are provided, uses size-weighted progress where
+    each layer contributes proportionally to its size. This gives accurate
+    progress based on actual bytes to download.
 
-    Progress is only reported after the first "Downloading" event, since Docker
-    sends "Already exists" and "Pulling fs layer" events before we know the full
-    layer count.
+    When manifest is not available, falls back to count-based progress where
+    each layer contributes equally.
+
+    Layers that already exist locally are excluded from the progress calculation.
     """
 
     layers: dict[str, LayerProgress] = field(default_factory=dict)
     _last_reported_progress: float = field(default=0.0, repr=False)
     _seen_downloading: bool = field(default=False, repr=False)
+    _manifest_layer_sizes: dict[str, int] = field(default_factory=dict, repr=False)
+    _total_manifest_size: int = field(default=0, repr=False)
+
+    def set_manifest(self, manifest: ImageManifest) -> None:
+        """Set manifest layer sizes for accurate size-based progress.
+
+        Should be called before processing pull events.
+        """
+        self._manifest_layer_sizes = dict(manifest.layers)
+        self._total_manifest_size = manifest.total_size
+        _LOGGER.debug(
+            "Manifest set: %d layers, %d bytes total",
+            len(self._manifest_layer_sizes),
+            self._total_manifest_size,
+        )
 
     def get_or_create_layer(self, layer_id: str) -> LayerProgress:
         """Get existing layer or create new one."""
         if layer_id not in self.layers:
-            self.layers[layer_id] = LayerProgress(layer_id=layer_id)
+            # If we have manifest sizes, pre-populate the layer's total_size
+            manifest_size = self._manifest_layer_sizes.get(layer_id, 0)
+            self.layers[layer_id] = LayerProgress(
+                layer_id=layer_id, total_size=manifest_size
+            )
         return self.layers[layer_id]
 
     def process_event(self, entry: PullLogEntry) -> None:
@@ -237,8 +258,13 @@ class ImagePullProgress:
     def calculate_progress(self) -> float:
         """Calculate overall progress 0-100.
 
-        Uses count-based progress where each layer that needs pulling contributes
-        equally. Layers that already exist locally are excluded from the calculation.
+        When manifest layer sizes are available, uses size-weighted progress
+        where each layer contributes proportionally to its size.
+
+        When manifest is not available, falls back to count-based progress
+        where each layer contributes equally.
+
+        Layers that already exist locally are excluded from the calculation.
 
         Returns 0 until we've seen the first "Downloading" event, since Docker
         reports "Already exists" and "Pulling fs layer" events before we know
@@ -258,9 +284,38 @@ class ImagePullProgress:
             # All layers already exist, nothing to download
             return 100.0
 
-        # Each layer contributes equally: sum of layer progresses / total layers
+        # Use size-weighted progress if manifest sizes are available
+        if self._manifest_layer_sizes:
+            return self._calculate_size_weighted_progress(layers_to_pull)
+
+        # Fall back to count-based progress
         total_progress = sum(layer.calculate_progress() for layer in layers_to_pull)
         return total_progress / len(layers_to_pull)
+
+    def _calculate_size_weighted_progress(
+        self, layers_to_pull: list[LayerProgress]
+    ) -> float:
+        """Calculate size-weighted progress.
+
+        Each layer contributes to progress proportionally to its size.
+        Progress = sum(layer_progress * layer_size) / total_size
+        """
+        # Calculate total size of layers that need pulling
+        total_size = sum(layer.total_size for layer in layers_to_pull)
+
+        if total_size == 0:
+            # No size info available, fall back to count-based
+            total_progress = sum(layer.calculate_progress() for layer in layers_to_pull)
+            return total_progress / len(layers_to_pull)
+
+        # Weight each layer's progress by its size
+        weighted_progress = 0.0
+        for layer in layers_to_pull:
+            if layer.total_size > 0:
+                layer_weight = layer.total_size / total_size
+                weighted_progress += layer.calculate_progress() * layer_weight
+
+        return weighted_progress
 
     def get_stage(self) -> str | None:
         """Get current stage based on layer states."""

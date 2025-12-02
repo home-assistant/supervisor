@@ -3,6 +3,7 @@
 import pytest
 
 from supervisor.docker.manager import PullLogEntry, PullProgressDetail
+from supervisor.docker.manifest import ImageManifest
 from supervisor.docker.pull_progress import (
     DOWNLOAD_WEIGHT,
     EXTRACT_WEIGHT,
@@ -784,3 +785,218 @@ class TestImagePullProgress:
             )
 
         assert progress.calculate_progress() == 100.0
+
+    def test_size_weighted_progress_with_manifest(self):
+        """Test size-weighted progress when manifest layer sizes are known."""
+        # Create manifest with known layer sizes
+        # Small layer: 1KB, Large layer: 100KB
+        manifest = ImageManifest(
+            digest="sha256:test",
+            total_size=101000,
+            layers={
+                "small123456": 1000,  # 1KB - ~1% of total
+                "large123456": 100000,  # 100KB - ~99% of total
+            },
+        )
+
+        progress = ImagePullProgress()
+        progress.set_manifest(manifest)
+
+        # Layer events - small layer first
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="small123456",
+                status="Pulling fs layer",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="large123456",
+                status="Pulling fs layer",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+
+        # Small layer downloads completely
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="small123456",
+                status="Downloading",
+                progress_detail=PullProgressDetail(current=1000, total=1000),
+            )
+        )
+
+        # Size-weighted: small layer is ~1% of total size
+        # Small layer at 70% (download done) = contributes ~0.7% to overall
+        assert progress.calculate_progress() == pytest.approx(0.69, rel=0.1)
+
+        # Large layer starts downloading (1% of its size)
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="large123456",
+                status="Downloading",
+                progress_detail=PullProgressDetail(current=1000, total=100000),
+            )
+        )
+
+        # Large layer at 1% download = contributes ~0.7% (1% * 70% * 99% weight)
+        # Total: ~0.7% + ~0.7% = ~1.4%
+        current = progress.calculate_progress()
+        assert current > 0.7  # More than just small layer
+        assert current < 5.0  # But not much more
+
+        # Complete both layers
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="small123456",
+                status="Pull complete",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="large123456",
+                status="Pull complete",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+
+        assert progress.calculate_progress() == 100.0
+
+    def test_size_weighted_excludes_already_exists(self):
+        """Test that already existing layers are excluded from size-weighted progress."""
+        # Manifest has 3 layers, but one will already exist locally
+        manifest = ImageManifest(
+            digest="sha256:test",
+            total_size=200000,
+            layers={
+                "cached12345": 100000,  # Will be cached - shouldn't count
+                "layer1_1234": 50000,  # Needs pulling
+                "layer2_1234": 50000,  # Needs pulling
+            },
+        )
+
+        progress = ImagePullProgress()
+        progress.set_manifest(manifest)
+
+        # Cached layer already exists
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="cached12345",
+                status="Already exists",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+
+        # Other layers need pulling
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="layer1_1234",
+                status="Pulling fs layer",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="layer2_1234",
+                status="Pulling fs layer",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+
+        # Start downloading layer1 (50% of its size)
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="layer1_1234",
+                status="Downloading",
+                progress_detail=PullProgressDetail(current=25000, total=50000),
+            )
+        )
+
+        # layer1 is 50% of total that needs pulling (50KB out of 100KB)
+        # At 50% download = 35% layer progress (70% * 50%)
+        # Size-weighted: 50% * 35% = 17.5%
+        assert progress.calculate_progress() == pytest.approx(17.5)
+
+        # Complete layer1
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="layer1_1234",
+                status="Pull complete",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+
+        # layer1 at 100%, layer2 at 0%
+        # Size-weighted: 50% * 100% + 50% * 0% = 50%
+        assert progress.calculate_progress() == pytest.approx(50.0)
+
+    def test_fallback_to_count_based_without_manifest(self):
+        """Test that without manifest, count-based progress is used."""
+        progress = ImagePullProgress()
+
+        # No manifest set - should use count-based progress
+
+        # Two layers of different sizes
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="small",
+                status="Pulling fs layer",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="large",
+                status="Pulling fs layer",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+
+        # Small layer (1KB) completes
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="small",
+                status="Downloading",
+                progress_detail=PullProgressDetail(current=1000, total=1000),
+            )
+        )
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="small",
+                status="Pull complete",
+                progress_detail=PullProgressDetail(),
+            )
+        )
+
+        # Large layer (100MB) at 1%
+        progress.process_event(
+            PullLogEntry(
+                job_id="test",
+                id="large",
+                status="Downloading",
+                progress_detail=PullProgressDetail(current=1000000, total=100000000),
+            )
+        )
+
+        # Count-based: each layer is 50% weight
+        # small: 100% * 50% = 50%
+        # large: 0.7% (1% * 70%) * 50% = 0.35%
+        # Total: ~50.35%
+        assert progress.calculate_progress() == pytest.approx(50.35, rel=0.01)
