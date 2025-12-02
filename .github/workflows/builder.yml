@@ -72,12 +72,16 @@ jobs:
 
       - name: Get changed files
         id: changed_files
+        if: github.event_name != 'release'
         uses: masesgroup/retrieve-changed-files@491e80760c0e28d36ca6240a27b1ccb8e1402c13 # v3.0.0
 
       - name: Check if requirements files changed
         id: requirements
         run: |
-          if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|build\.yaml|\.github/workflows/builder\.yml) ]]; then
+          # No wheels build necessary for releases
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|build\.yaml|\.github/workflows/builder\.yml) ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
