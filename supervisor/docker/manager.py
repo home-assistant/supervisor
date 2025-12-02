@@ -768,7 +768,7 @@ class DockerAPI(CoreSysAttributes):
         """Import a tar file as image."""
         try:
             with tar_file.open("rb") as read_tar:
-                resp: list[dict[str, Any]] = self.images.import_image(read_tar)
+                resp: list[dict[str, Any]] = await self.images.import_image(read_tar)
         except (aiodocker.DockerError, OSError) as err:
             raise DockerError(
                 f"Can't import image from tar: {err}", _LOGGER.error
