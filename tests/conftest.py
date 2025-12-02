@@ -144,9 +144,9 @@ async def docker() -> DockerAPI:
 
         docker_images.inspect.return_value = image_inspect
         docker_images.list.return_value = [image_inspect]
-        docker_images.import_image.return_value = [
-            {"stream": "Loaded image: test:latest\n"}
-        ]
+        docker_images.import_image = AsyncMock(
+            return_value=[{"stream": "Loaded image: test:latest\n"}]
+        )
 
         docker_images.pull.return_value = AsyncIterator([{}])
 

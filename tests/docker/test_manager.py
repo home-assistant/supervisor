@@ -2,7 +2,7 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from docker.errors import APIError, DockerException, NotFound
 import pytest
@@ -412,9 +412,9 @@ async def test_repair_failures(coresys: CoreSys, caplog: pytest.LogCaptureFixtur
 async def test_import_image(coresys: CoreSys, tmp_path: Path, log_starter: str):
     """Test importing an image into docker."""
     (test_tar := tmp_path / "test.tar").touch()
-    coresys.docker.images.import_image.return_value = [
-        {"stream": f"{log_starter}: imported"}
-    ]
+    coresys.docker.images.import_image = AsyncMock(
+        return_value=[{"stream": f"{log_starter}: imported"}]
+    )
     coresys.docker.images.inspect.return_value = {"Id": "imported"}
 
     image = await coresys.docker.import_image(test_tar)
@@ -426,9 +426,9 @@ async def test_import_image(coresys: CoreSys, tmp_path: Path, log_starter: str):
 async def test_import_image_error(coresys: CoreSys, tmp_path: Path):
     """Test failure importing an image into docker."""
     (test_tar := tmp_path / "test.tar").touch()
-    coresys.docker.images.import_image.return_value = [
-        {"errorDetail": {"message": "fail"}}
-    ]
+    coresys.docker.images.import_image = AsyncMock(
+        return_value=[{"errorDetail": {"message": "fail"}}]
+    )
 
     with pytest.raises(DockerError, match="Can't import image from tar: fail"):
         await coresys.docker.import_image(test_tar)
@@ -441,10 +441,12 @@ async def test_import_multiple_images_in_tar(
 ):
     """Test importing an image into docker."""
     (test_tar := tmp_path / "test.tar").touch()
-    coresys.docker.images.import_image.return_value = [
-        {"stream": "Loaded image: imported-1"},
-        {"stream": "Loaded image: imported-2"},
-    ]
+    coresys.docker.images.import_image = AsyncMock(
+        return_value=[
+            {"stream": "Loaded image: imported-1"},
+            {"stream": "Loaded image: imported-2"},
+        ]
+    )
 
     assert await coresys.docker.import_image(test_tar) is None
 
