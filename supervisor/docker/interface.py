@@ -45,7 +45,13 @@ from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.sentry import async_capture_exception
-from .const import DOCKER_HUB, ContainerState, PullImageLayerStage, RestartPolicy
+from .const import (
+    DOCKER_HUB,
+    DOCKER_HUB_LEGACY,
+    ContainerState,
+    PullImageLayerStage,
+    RestartPolicy,
+)
 from .manager import CommandReturn, PullLogEntry
 from .monitor import DockerContainerStateEvent
 from .stats import DockerStats
@@ -184,7 +190,8 @@ class DockerInterface(JobGroup, ABC):
             stored = self.sys_docker.config.registries[registry]
             credentials[ATTR_USERNAME] = stored[ATTR_USERNAME]
             credentials[ATTR_PASSWORD] = stored[ATTR_PASSWORD]
-            if registry != DOCKER_HUB:
+            # Don't include registry for Docker Hub (both official and legacy)
+            if registry not in (DOCKER_HUB, DOCKER_HUB_LEGACY):
                 credentials[ATTR_REGISTRY] = registry
 
             _LOGGER.debug(

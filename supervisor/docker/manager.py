@@ -49,9 +49,10 @@ from ..exceptions import (
 )
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
-from .const import DOCKER_HUB, IMAGE_WITH_HOST, LABEL_MANAGED
+from .const import DOCKER_HUB, DOCKER_HUB_LEGACY, LABEL_MANAGED
 from .monitor import DockerMonitor
 from .network import DockerNetwork
+from .utils import get_registry_from_image
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -212,19 +213,25 @@ class DockerConfig(FileConfiguration):
 
         Matches the image against configured registries and returns the registry
         name if found, or None if no matching credentials are configured.
+
+        Uses Docker's domain detection logic from:
+        vendor/github.com/distribution/reference/normalize.go
         """
         if not self.registries:
             return None
 
         # Check if image uses a custom registry (e.g., ghcr.io/org/image)
-        matcher = IMAGE_WITH_HOST.match(image)
-        if matcher:
-            registry = matcher.group(1)
+        registry = get_registry_from_image(image)
+        if registry:
             if registry in self.registries:
                 return registry
-        # If no registry prefix, check for Docker Hub credentials
-        elif DOCKER_HUB in self.registries:
-            return DOCKER_HUB
+        else:
+            # No registry prefix means Docker Hub
+            # Support both docker.io (official) and hub.docker.com (legacy)
+            if DOCKER_HUB in self.registries:
+                return DOCKER_HUB
+            if DOCKER_HUB_LEGACY in self.registries:
+                return DOCKER_HUB_LEGACY
 
         return None
 

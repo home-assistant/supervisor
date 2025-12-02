@@ -15,11 +15,12 @@ from ..const import MACHINE_ID
 
 RE_RETRYING_DOWNLOAD_STATUS = re.compile(r"Retrying in \d+ seconds?")
 
-# Docker Hub registry identifier
-DOCKER_HUB = "hub.docker.com"
+# Docker Hub registry identifier (official default)
+# Docker's default registry is docker.io
+DOCKER_HUB = "docker.io"
 
-# Regex to match images with a registry host (e.g., ghcr.io/org/image)
-IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
+# Legacy Docker Hub identifier for backward compatibility
+DOCKER_HUB_LEGACY = "hub.docker.com"
 
 
 class Capabilities(StrEnum):
