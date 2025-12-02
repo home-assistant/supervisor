@@ -1,6 +1,7 @@
 # General files
 .git
 .github
+.gitkeep
 .devcontainer
 .vscode
 
