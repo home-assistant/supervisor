@@ -4,8 +4,9 @@ import pytest
 
 # pylint: disable=protected-access
 from supervisor.coresys import CoreSys
-from supervisor.docker.const import DOCKER_HUB, DOCKER_HUB_LEGACY, get_domain
+from supervisor.docker.const import DOCKER_HUB, DOCKER_HUB_LEGACY
 from supervisor.docker.interface import DockerInterface
+from supervisor.docker.utils import get_domain_from_image
 
 
 @pytest.mark.parametrize(
@@ -36,13 +37,13 @@ from supervisor.docker.interface import DockerInterface
         ("[2001:db8::1]:5000/myimage:tag", "[2001:db8::1]:5000"),
     ],
 )
-def test_get_domain(image_ref: str, expected_domain: str | None):
-    """Test get_domain extracts registry domain from image reference.
+def test_get_domain_from_image(image_ref: str, expected_domain: str | None):
+    """Test get_domain_from_image extracts registry domain from image reference.
 
     Based on Docker's reference implementation:
     vendor/github.com/distribution/reference/normalize.go
     """
-    assert get_domain(image_ref) == expected_domain
+    assert get_domain_from_image(image_ref) == expected_domain
 
 
 def test_no_credentials(coresys: CoreSys, test_docker_interface: DockerInterface):

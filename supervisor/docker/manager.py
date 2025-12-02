@@ -49,9 +49,10 @@ from ..exceptions import (
 )
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
-from .const import DOCKER_HUB, DOCKER_HUB_LEGACY, LABEL_MANAGED, get_domain
+from .const import DOCKER_HUB, DOCKER_HUB_LEGACY, LABEL_MANAGED
 from .monitor import DockerMonitor
 from .network import DockerNetwork
+from .utils import get_domain_from_image
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -215,7 +216,7 @@ class DockerConfig(FileConfiguration):
             return None
 
         # Check if image uses a custom registry (e.g., ghcr.io/org/image)
-        domain = get_domain(image)
+        domain = get_domain_from_image(image)
         if domain:
             if domain in self.registries:
                 return domain
