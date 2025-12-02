@@ -183,19 +183,22 @@ class GitRepo(CoreSysAttributes):
                 raise StoreGitError() from err
 
             try:
-                branch = self.repo.active_branch.name
+                repo = self.repo
 
-                # Download data
-                await self.sys_run_in_executor(
-                    ft.partial(
-                        self.repo.remotes.origin.fetch,
-                        **{"update-shallow": True, "depth": 1},  # type: ignore
+                def _fetch_and_check() -> tuple[str, bool]:
+                    """Fetch from origin and check if changed."""
+                    # This property access is I/O bound
+                    branch = repo.active_branch.name
+                    repo.remotes.origin.fetch(
+                        **{"update-shallow": True, "depth": 1}  # type: ignore[arg-type]
                     )
-                )
+                    changed = repo.commit(branch) != repo.commit(f"origin/{branch}")
+                    return branch, changed
 
-                if changed := self.repo.commit(branch) != self.repo.commit(
-                    f"origin/{branch}"
-                ):
+                # Download data and check for changes
+                branch, changed = await self.sys_run_in_executor(_fetch_and_check)
+
+                if changed:
                     # Jump on top of that
                     await self.sys_run_in_executor(
                         ft.partial(self.repo.git.reset, f"origin/{branch}", hard=True)
