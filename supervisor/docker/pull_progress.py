@@ -286,11 +286,11 @@ class ImagePullProgress:
 
         # Use size-weighted progress if manifest sizes are available
         if self._manifest_layer_sizes:
-            return self._calculate_size_weighted_progress(layers_to_pull)
+            return min(100, self._calculate_size_weighted_progress(layers_to_pull))
 
         # Fall back to count-based progress
         total_progress = sum(layer.calculate_progress() for layer in layers_to_pull)
-        return total_progress / len(layers_to_pull)
+        return min(100, total_progress / len(layers_to_pull))
 
     def _calculate_size_weighted_progress(
         self, layers_to_pull: list[LayerProgress]
