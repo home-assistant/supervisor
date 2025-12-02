@@ -1,12 +1,12 @@
 """Test auth API."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp.hdrs import WWW_AUTHENTICATE
 from aiohttp.test_utils import TestClient
 import pytest
-from securetar import Any
 
 from supervisor.addons.addon import Addon
 from supervisor.coresys import CoreSys

@@ -1506,7 +1506,7 @@ async def test_pre_post_backup_command_error(
 
     container.status = "running"
     container.exec_run.return_value = (1, b"")
-    with patch.object(Addon, command, return_value=PropertyMock(return_value="test")):
+    with patch.object(Addon, command, new=PropertyMock(return_value="test")):
         resp = await api_client.post(
             "/backups/new/partial", json={"addons": ["local_example"]}
         )

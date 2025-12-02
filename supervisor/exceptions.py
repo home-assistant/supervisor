@@ -111,7 +111,7 @@ class APIDBMigrationInProgress(APIError):
 
 
 class APIUnknownSupervisorError(APIError):
-    """Unknown error occurred within supervisor. Adds supervisor check logs rider to mesage template."""
+    """Unknown error occurred within supervisor. Adds supervisor check logs rider to message template."""
 
     status = 500
 

@@ -11,7 +11,7 @@ import pytest
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
 from supervisor.arch import CpuArchManager
-from supervisor.const import AddonState
+from supervisor.const import AddonState, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
@@ -633,9 +633,7 @@ async def test_addon_not_running_error(
     api_client: TestClient, method: str, action: str
 ):
     """Test addon not running error for endpoints that require that."""
-    with patch.object(
-        Addon, "with_stdin", return_value=PropertyMock(return_value=True)
-    ):
+    with patch.object(Addon, "with_stdin", new=PropertyMock(return_value=True)):
         resp = await api_client.request(method, f"/addons/local_example/{action}")
 
     assert resp.status == 400
