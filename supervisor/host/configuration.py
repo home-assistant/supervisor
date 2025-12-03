@@ -282,7 +282,7 @@ class Interface:
         }
 
         if addr_gen_mode not in mapping:
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "Unknown addr_gen_mode value from NetworkManager: %s", addr_gen_mode
             )
 
@@ -304,7 +304,7 @@ class Interface:
         }
 
         if ip6_privacy not in mapping:
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "Unknown ip6_privacy value from NetworkManager: %s", ip6_privacy
             )
 
