@@ -193,9 +193,7 @@ class AddonOptions(CoreSysAttributes):
             f"Fatal error for option '{key}' with type '{typ}' in {self._name} ({self._slug})"
         ) from None
 
-    def _nested_validate_list(
-        self, typ: Any, data_list: list[Any], key: str
-    ) -> list[Any]:
+    def _nested_validate_list(self, typ: Any, data_list: Any, key: str) -> list[Any]:
         """Validate nested items."""
         options = []
 
@@ -213,7 +211,7 @@ class AddonOptions(CoreSysAttributes):
         return options
 
     def _nested_validate_dict(
-        self, typ: dict[Any, Any], data_dict: dict[Any, Any], key: str
+        self, typ: dict[Any, Any], data_dict: Any, key: str
     ) -> dict[Any, Any]:
         """Validate nested items."""
         options = {}
@@ -279,7 +277,7 @@ class UiOptions(CoreSysAttributes):
     def _ui_schema_element(
         self,
         ui_schema: list[dict[str, Any]],
-        value: str,
+        value: str | list[Any] | dict[str, Any],
         key: str,
         multiple: bool = False,
     ):
