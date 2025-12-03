@@ -1,6 +1,7 @@
 """Init file for Supervisor host RESTful API."""
 
 import asyncio
+from collections.abc import Awaitable
 from contextlib import suppress
 import json
 import logging
@@ -99,7 +100,7 @@ class APIHost(CoreSysAttributes):
             )
 
     @api_process
-    async def info(self, request):
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Return host information."""
         return {
             ATTR_AGENT_VERSION: self.sys_dbus.agent.version,
@@ -128,7 +129,7 @@ class APIHost(CoreSysAttributes):
         }
 
     @api_process
-    async def options(self, request):
+    async def options(self, request: web.Request) -> None:
         """Edit host settings."""
         body = await api_validate(SCHEMA_OPTIONS, request)
 
@@ -139,7 +140,7 @@ class APIHost(CoreSysAttributes):
             )
 
     @api_process
-    async def reboot(self, request):
+    async def reboot(self, request: web.Request) -> None:
         """Reboot host."""
         body = await api_validate(SCHEMA_SHUTDOWN, request)
         await self._check_ha_offline_migration(force=body[ATTR_FORCE])
@@ -147,7 +148,7 @@ class APIHost(CoreSysAttributes):
         return await asyncio.shield(self.sys_host.control.reboot())
 
     @api_process
-    async def shutdown(self, request):
+    async def shutdown(self, request: web.Request) -> None:
         """Poweroff host."""
         body = await api_validate(SCHEMA_SHUTDOWN, request)
         await self._check_ha_offline_migration(force=body[ATTR_FORCE])
@@ -155,12 +156,12 @@ class APIHost(CoreSysAttributes):
         return await asyncio.shield(self.sys_host.control.shutdown())
 
     @api_process
-    def reload(self, request):
+    def reload(self, request: web.Request) -> Awaitable[None]:
         """Reload host data."""
         return asyncio.shield(self.sys_host.reload())
 
     @api_process
-    async def services(self, request):
+    async def services(self, request: web.Request) -> dict[str, Any]:
         """Return list of available services."""
         services = []
         for unit in self.sys_host.services:
@@ -175,7 +176,7 @@ class APIHost(CoreSysAttributes):
         return {ATTR_SERVICES: services}
 
     @api_process
-    async def list_boots(self, _: web.Request):
+    async def list_boots(self, _: web.Request) -> dict[str, Any]:
         """Return a list of boot IDs."""
         boot_ids = await self.sys_host.logs.get_boot_ids()
         return {
@@ -186,7 +187,7 @@ class APIHost(CoreSysAttributes):
         }
 
     @api_process
-    async def list_identifiers(self, _: web.Request):
+    async def list_identifiers(self, _: web.Request) -> dict[str, list[str]]:
         """Return a list of syslog identifiers."""
         return {ATTR_IDENTIFIERS: await self.sys_host.logs.get_identifiers()}
 
@@ -332,7 +333,7 @@ class APIHost(CoreSysAttributes):
         )
 
     @api_process
-    async def disk_usage(self, request: web.Request) -> dict:
+    async def disk_usage(self, request: web.Request) -> dict[str, Any]:
         """Return a breakdown of storage usage for the system."""
 
         max_depth = request.query.get(ATTR_MAX_DEPTH, 1)

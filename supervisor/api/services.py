@@ -1,5 +1,9 @@
 """Init file for Supervisor network RESTful API."""
 
+from typing import Any
+
+from aiohttp import web
+
 from ..const import (
     ATTR_AVAILABLE,
     ATTR_PROVIDERS,
@@ -25,7 +29,7 @@ class APIServices(CoreSysAttributes):
         return service
 
     @api_process
-    async def list_services(self, request):
+    async def list_services(self, request: web.Request) -> dict[str, Any]:
         """Show register services."""
         services = []
         for service in self.sys_services.list_services:
@@ -40,7 +44,7 @@ class APIServices(CoreSysAttributes):
         return {ATTR_SERVICES: services}
 
     @api_process
-    async def set_service(self, request):
+    async def set_service(self, request: web.Request) -> None:
         """Write data into a service."""
         service = self._extract_service(request)
         body = await api_validate(service.schema, request)
@@ -50,7 +54,7 @@ class APIServices(CoreSysAttributes):
         await service.set_service_data(addon, body)
 
     @api_process
-    async def get_service(self, request):
+    async def get_service(self, request: web.Request) -> dict[str, Any]:
         """Read data into a service."""
         service = self._extract_service(request)
 
@@ -62,7 +66,7 @@ class APIServices(CoreSysAttributes):
         return service.get_service_data()
 
     @api_process
-    async def del_service(self, request):
+    async def del_service(self, request: web.Request) -> None:
         """Delete data into a service."""
         service = self._extract_service(request)
         addon = request[REQUEST_FROM]

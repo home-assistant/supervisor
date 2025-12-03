@@ -349,13 +349,13 @@ class APIStore(CoreSysAttributes):
         return self._generate_repository_information(repository)
 
     @api_process
-    async def add_repository(self, request: web.Request):
+    async def add_repository(self, request: web.Request) -> None:
         """Add repository to the store."""
         body = await api_validate(SCHEMA_ADD_REPOSITORY, request)
         await asyncio.shield(self.sys_store.add_repository(body[ATTR_REPOSITORY]))
 
     @api_process
-    async def remove_repository(self, request: web.Request):
+    async def remove_repository(self, request: web.Request) -> None:
         """Remove repository from the store."""
         repository: Repository = self._extract_repository(request)
         await asyncio.shield(self.sys_store.remove_repository(repository))

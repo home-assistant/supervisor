@@ -390,7 +390,7 @@ class APIAddons(CoreSysAttributes):
         return data
 
     @api_process
-    async def options_config(self, request: web.Request) -> None:
+    async def options_config(self, request: web.Request) -> dict[str, Any]:
         """Validate user options for add-on."""
         slug: str = request.match_info["addon"]
         if slug != "self":
@@ -435,11 +435,11 @@ class APIAddons(CoreSysAttributes):
         }
 
     @api_process
-    async def uninstall(self, request: web.Request) -> Awaitable[None]:
+    async def uninstall(self, request: web.Request) -> None:
         """Uninstall add-on."""
         addon = self.get_addon_for_request(request)
         body: dict[str, Any] = await api_validate(SCHEMA_UNINSTALL, request)
-        return await asyncio.shield(
+        await asyncio.shield(
             self.sys_addons.uninstall(
                 addon.slug, remove_config=body[ATTR_REMOVE_CONFIG]
             )
