@@ -55,7 +55,7 @@ class APIDocker(CoreSysAttributes):
     """Handle RESTful API for Docker configuration."""
 
     @api_process
-    async def info(self, request: web.Request):
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Get docker info."""
         data_registries = {}
         for hostname, registry in self.sys_docker.config.registries.items():
@@ -113,7 +113,7 @@ class APIDocker(CoreSysAttributes):
         return {ATTR_REGISTRIES: data_registries}
 
     @api_process
-    async def create_registry(self, request: web.Request):
+    async def create_registry(self, request: web.Request) -> None:
         """Create a new docker registry."""
         body = await api_validate(SCHEMA_DOCKER_REGISTRY, request)
 
@@ -123,7 +123,7 @@ class APIDocker(CoreSysAttributes):
         await self.sys_docker.config.save_data()
 
     @api_process
-    async def remove_registry(self, request: web.Request):
+    async def remove_registry(self, request: web.Request) -> None:
         """Delete a docker registry."""
         hostname = request.match_info.get(ATTR_HOSTNAME)
         if hostname not in self.sys_docker.config.registries:

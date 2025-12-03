@@ -80,7 +80,7 @@ class APISupervisor(CoreSysAttributes):
     """Handle RESTful API for Supervisor functions."""
 
     @api_process
-    async def ping(self, request):
+    async def ping(self, request: web.Request) -> bool:
         """Return ok for signal that the API is ready."""
         return True
 

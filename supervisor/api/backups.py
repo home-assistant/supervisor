@@ -211,7 +211,7 @@ class APIBackups(CoreSysAttributes):
         await self.sys_backups.save_data()
 
     @api_process
-    async def reload(self, _):
+    async def reload(self, _: web.Request) -> bool:
         """Reload backup list."""
         await asyncio.shield(self.sys_backups.reload())
         return True
@@ -421,7 +421,7 @@ class APIBackups(CoreSysAttributes):
         await self.sys_backups.remove(backup, locations=locations)
 
     @api_process
-    async def download(self, request: web.Request):
+    async def download(self, request: web.Request) -> web.StreamResponse:
         """Download a backup file."""
         backup = self._extract_slug(request)
         # Query will give us '' for /backups, convert value to None
@@ -451,7 +451,7 @@ class APIBackups(CoreSysAttributes):
         return response
 
     @api_process
-    async def upload(self, request: web.Request):
+    async def upload(self, request: web.Request) -> dict[str, str] | bool:
         """Upload a backup file."""
         location: LOCATION_TYPE = None
         locations: list[LOCATION_TYPE] | None = None
