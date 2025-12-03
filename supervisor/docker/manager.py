@@ -474,8 +474,10 @@ class DockerAPI(CoreSysAttributes):
         raises only if the get fails afterwards. Additionally it fires progress reports for the pull
         on the bus so listeners can use that to update status for users.
         """
+        # Use timeout=None to disable timeout for pull operations, matching docker-py behavior.
+        # aiodocker converts None to ClientTimeout(total=None) which disables the timeout.
         async for e in self.images.pull(
-            repository, tag=tag, platform=platform, auth=auth, stream=True
+            repository, tag=tag, platform=platform, auth=auth, stream=True, timeout=None
         ):
             entry = PullLogEntry.from_pull_log_dict(job_id, e)
             if entry.error:

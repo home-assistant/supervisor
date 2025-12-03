@@ -111,7 +111,12 @@ async def test_private_registry_credentials_passed_to_pull(
         expected_auth["registry"] = registry_key
 
     coresys.docker.images.pull.assert_called_once_with(
-        image, tag="1.2.3", platform="linux/amd64", auth=expected_auth, stream=True
+        image,
+        tag="1.2.3",
+        platform="linux/amd64",
+        auth=expected_auth,
+        stream=True,
+        timeout=None,
     )
 
 
