@@ -115,7 +115,6 @@ jobs:
 
       - name: Write env-file for wheels build
         if: needs.init.outputs.build_wheels == 'true'
-        shell: bash
         run: |
           (
             # Fix out of memory issues with rust
