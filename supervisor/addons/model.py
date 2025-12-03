@@ -316,12 +316,12 @@ class AddonModel(JobGroup, ABC):
 
     @property
     def panel_title(self) -> str:
-        """Return panel icon for Ingress frame."""
+        """Return panel title for Ingress frame."""
         return self.data.get(ATTR_PANEL_TITLE, self.name)
 
     @property
     def panel_admin(self) -> bool:
-        """Return panel icon for Ingress frame."""
+        """Return if panel is only available for admin users."""
         return self.data[ATTR_PANEL_ADMIN]
 
     @property
