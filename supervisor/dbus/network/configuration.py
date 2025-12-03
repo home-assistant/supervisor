@@ -90,8 +90,8 @@ class Ip4Properties(IpProperties):
 class Ip6Properties(IpProperties):
     """IPv6 properties object for Network Manager."""
 
-    addr_gen_mode: int
-    ip6_privacy: int
+    addr_gen_mode: int | None
+    ip6_privacy: int | None
     dns: list[bytes] | None
 
 

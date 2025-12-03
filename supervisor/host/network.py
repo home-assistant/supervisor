@@ -16,7 +16,7 @@ from ..dbus.const import (
     DBUS_IFACE_DNS,
     DBUS_IFACE_NM,
     DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
-    ConnectionStateType,
+    ConnectionState,
     ConnectivityState,
     DeviceType,
     WirelessMethodType,
@@ -338,16 +338,16 @@ class NetworkManager(CoreSysAttributes):
                 # the state change before this point. Get the state currently to
                 # avoid any race condition.
                 await con.update()
-                state: ConnectionStateType = con.state
+                state: ConnectionState = con.state
 
-                while state != ConnectionStateType.ACTIVATED:
-                    if state == ConnectionStateType.DEACTIVATED:
+                while state != ConnectionState.ACTIVATED:
+                    if state == ConnectionState.DEACTIVATED:
                         raise HostNetworkError(
                             "Activating connection failed, check connection settings."
                         )
 
                     msg = await signal.wait_for_signal()
-                    state = msg[0]
+                    state = ConnectionState(msg[0])
                     _LOGGER.debug("Active connection state changed to %s", state)
 
         # update_only means not done by user so don't force a check afterwards
