@@ -628,9 +628,6 @@ class Backup(JobGroup):
                 if start_task := await self._addon_save(addon):
                     start_tasks.append(start_task)
             except BackupError as err:
-                err = BackupError(
-                    f"Can't backup add-on {addon.slug}: {str(err)}", _LOGGER.error
-                )
                 self.sys_jobs.current.capture_error(err)
 
         return start_tasks

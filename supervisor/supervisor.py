@@ -28,8 +28,8 @@ from .exceptions import (
     DockerError,
     HostAppArmorError,
     SupervisorAppArmorError,
-    SupervisorError,
     SupervisorJobError,
+    SupervisorUnknownError,
     SupervisorUpdateError,
 )
 from .jobs.const import JobCondition, JobThrottle
@@ -261,7 +261,7 @@ class Supervisor(CoreSysAttributes):
         try:
             return await self.instance.stats()
         except DockerError as err:
-            raise SupervisorError() from err
+            raise SupervisorUnknownError() from err
 
     async def repair(self):
         """Repair local Supervisor data."""
