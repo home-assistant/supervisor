@@ -54,7 +54,7 @@ async def test_docker_image_platform(
     coresys.docker.images.inspect.return_value = {"Id": "test:1.2.3"}
     await test_docker_interface.install(AwesomeVersion("1.2.3"), "test", arch=cpu_arch)
     coresys.docker.images.pull.assert_called_once_with(
-        "test", tag="1.2.3", platform=platform, auth=None, stream=True
+        "test", tag="1.2.3", platform=platform, auth=None, stream=True, timeout=None
     )
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -71,7 +71,12 @@ async def test_docker_image_default_platform(
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", auth=None, stream=True
+            "test",
+            tag="1.2.3",
+            platform="linux/386",
+            auth=None,
+            stream=True,
+            timeout=None,
         )
 
     coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
@@ -111,7 +116,12 @@ async def test_private_registry_credentials_passed_to_pull(
         expected_auth["registry"] = registry_key
 
     coresys.docker.images.pull.assert_called_once_with(
-        image, tag="1.2.3", platform="linux/amd64", auth=expected_auth, stream=True
+        image,
+        tag="1.2.3",
+        platform="linux/amd64",
+        auth=expected_auth,
+        stream=True,
+        timeout=None,
     )
 
 
@@ -360,7 +370,12 @@ async def test_install_fires_progress_events(
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", auth=None, stream=True
+            "test",
+            tag="1.2.3",
+            platform="linux/386",
+            auth=None,
+            stream=True,
+            timeout=None,
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
@@ -817,7 +832,12 @@ async def test_install_progress_containerd_snapshot(
     with patch.object(Supervisor, "arch", PropertyMock(return_value="i386")):
         await test_docker_interface.mock_install()
         coresys.docker.images.pull.assert_called_once_with(
-            "test", tag="1.2.3", platform="linux/386", auth=None, stream=True
+            "test",
+            tag="1.2.3",
+            platform="linux/386",
+            auth=None,
+            stream=True,
+            timeout=None,
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
