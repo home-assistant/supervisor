@@ -75,7 +75,7 @@ class AddonOptions(CoreSysAttributes):
         """Create a schema for add-on options."""
         return vol.Schema(vol.All(dict, self))
 
-    def __call__(self, struct):
+    def __call__(self, struct: dict[str, Any]) -> dict[str, Any]:
         """Create schema validator for add-ons options."""
         options = {}
 
@@ -262,7 +262,7 @@ class UiOptions(CoreSysAttributes):
 
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize UI option render."""
-        self.coresys = coresys
+        self.coresys: CoreSys = coresys
 
     def __call__(self, raw_schema: dict[str, Any]) -> list[dict[str, Any]]:
         """Generate UI schema."""
@@ -280,7 +280,7 @@ class UiOptions(CoreSysAttributes):
         value: str | list[Any] | dict[str, Any],
         key: str,
         multiple: bool = False,
-    ):
+    ) -> None:
         if isinstance(value, list):
             # nested value list
             assert not multiple
