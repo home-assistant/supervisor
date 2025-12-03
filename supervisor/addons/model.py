@@ -316,12 +316,12 @@ class AddonModel(JobGroup, ABC):
 
     @property
     def panel_title(self) -> str:
-        """Return panel icon for Ingress frame."""
+        """Return panel title for Ingress frame."""
         return self.data.get(ATTR_PANEL_TITLE, self.name)
 
     @property
-    def panel_admin(self) -> str:
-        """Return panel icon for Ingress frame."""
+    def panel_admin(self) -> bool:
+        """Return if panel is only available for admin users."""
         return self.data[ATTR_PANEL_ADMIN]
 
     @property
@@ -489,7 +489,7 @@ class AddonModel(JobGroup, ABC):
         return self.data[ATTR_DEVICETREE]
 
     @property
-    def with_tmpfs(self) -> str | None:
+    def with_tmpfs(self) -> bool:
         """Return if tmp is in memory of add-on."""
         return self.data[ATTR_TMPFS]
 
@@ -509,7 +509,7 @@ class AddonModel(JobGroup, ABC):
         return self.data[ATTR_VIDEO]
 
     @property
-    def homeassistant_version(self) -> str | None:
+    def homeassistant_version(self) -> AwesomeVersion | None:
         """Return min Home Assistant version they needed by Add-on."""
         return self.data.get(ATTR_HOMEASSISTANT)
 
