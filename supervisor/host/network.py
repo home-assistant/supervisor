@@ -347,7 +347,7 @@ class NetworkManager(CoreSysAttributes):
                         )
 
                     msg = await signal.wait_for_signal()
-                    state = msg[0]
+                    state = ConnectionStateType(msg[0])
                     _LOGGER.debug("Active connection state changed to %s", state)
 
         # update_only means not done by user so don't force a check afterwards
