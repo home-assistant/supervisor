@@ -568,15 +568,11 @@ class AuthError(HassioError):
     """Auth errors."""
 
 
-# This one uses the check logs rider even though its not a 500 error because it
-# is bad practice to return error specifics from a password reset API.
 class AuthPasswordResetError(AuthError, APIError):
     """Auth error if password reset failed."""
 
     error_key = "auth_password_reset_error"
-    message_template = (
-        f"Unable to reset password for '{{user}}'. {MESSAGE_CHECK_SUPERVISOR_LOGS}"
-    )
+    message_template = "Username '{user}' does not exist. Check list of users using '{auth_list_command}'."
 
     def __init__(
         self,
@@ -585,7 +581,7 @@ class AuthPasswordResetError(AuthError, APIError):
         user: str,
     ) -> None:
         """Initialize exception."""
-        self.extra_fields = {"user": user} | EXTRA_FIELDS_LOGS_COMMAND
+        self.extra_fields = {"user": user, "auth_list_command": "ha auth list"}
         super().__init__(None, logger)
 
 
