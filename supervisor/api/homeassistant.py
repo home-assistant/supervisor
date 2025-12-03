@@ -154,7 +154,7 @@ class APIHomeAssistant(CoreSysAttributes):
         await self.sys_homeassistant.save_data()
 
     @api_process
-    async def stats(self, request: web.Request) -> dict[Any, str]:
+    async def stats(self, request: web.Request) -> dict[str, Any]:
         """Return resource information."""
         stats = await self.sys_homeassistant.core.stats()
         if not stats:
@@ -191,7 +191,7 @@ class APIHomeAssistant(CoreSysAttributes):
         return await update_task
 
     @api_process
-    async def stop(self, request: web.Request) -> Awaitable[None]:
+    async def stop(self, request: web.Request) -> None:
         """Stop Home Assistant."""
         body = await api_validate(SCHEMA_STOP, request)
         await self._check_offline_migration(force=body[ATTR_FORCE])
