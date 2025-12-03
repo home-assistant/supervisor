@@ -1,6 +1,6 @@
 """Handle security part of this API."""
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 import logging
 import re
 from typing import Final
@@ -89,7 +89,7 @@ CORE_ONLY_PATHS: Final = re.compile(
 )
 
 # Policy role add-on API access
-ADDONS_ROLE_ACCESS: dict[str, re.Pattern] = {
+ADDONS_ROLE_ACCESS: dict[str, re.Pattern[str]] = {
     ROLE_DEFAULT: re.compile(
         r"^(?:"
         r"|/.+/info"
@@ -181,7 +181,7 @@ class SecurityMiddleware(CoreSysAttributes):
 
     @middleware
     async def block_bad_requests(
-        self, request: Request, handler: Callable
+        self, request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]
     ) -> StreamResponse:
         """Process request and tblock commonly known exploit attempts."""
         if FILTERS.search(self._recursive_unquote(request.path)):
@@ -201,7 +201,7 @@ class SecurityMiddleware(CoreSysAttributes):
 
     @middleware
     async def system_validation(
-        self, request: Request, handler: Callable
+        self, request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]
     ) -> StreamResponse:
         """Check if core is ready to response."""
         if self.sys_core.state not in VALID_API_STATES:
@@ -213,7 +213,7 @@ class SecurityMiddleware(CoreSysAttributes):
 
     @middleware
     async def token_validation(
-        self, request: Request, handler: Callable
+        self, request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]
     ) -> StreamResponse:
         """Check security access of this layer."""
         request_from: CoreSysAttributes | None = None
@@ -285,7 +285,9 @@ class SecurityMiddleware(CoreSysAttributes):
         raise HTTPForbidden()
 
     @middleware
-    async def core_proxy(self, request: Request, handler: Callable) -> StreamResponse:
+    async def core_proxy(
+        self, request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]
+    ) -> StreamResponse:
         """Validate user from Core API proxy."""
         if (
             request[REQUEST_FROM] != self.sys_homeassistant
