@@ -53,7 +53,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
       publish: ${{ steps.version.outputs.publish }}
-      requirements: ${{ steps.requirements.outputs.changed }}
+      build_wheels: ${{ steps.requirements.outputs.build_wheels }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -80,82 +80,17 @@ jobs:
         run: |
           # No wheels build necessary for releases
           if [[ "${{ github.event_name }}" == "release" ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "build_wheels=false" >> "$GITHUB_OUTPUT"
           elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|build\.yaml|\.github/workflows/builder\.yml) ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "build_wheels=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_wheels=false" >> "$GITHUB_OUTPUT"
           fi
-
-  build_wheels:
-    name: Build wheels for ${{ matrix.arch }}
-    needs: init
-    if: needs.init.outputs.requirements == 'true'
-    runs-on: ${{ matrix.runs-on }}
-    strategy:
-      matrix:
-        arch: ${{ fromJson(needs.init.outputs.architectures) }}
-        include:
-          - runs-on: ubuntu-24.04
-          - arch: aarch64
-            runs-on: ubuntu-24.04-arm
-
-    env:
-      ABI: cp313
-      TAG: musllinux_1_2
-      APK_DEPS: "libffi-dev;openssl-dev;yaml-dev"
-      SKIP_BINARY: aiohttp
-    steps:
-      - name: Checkout the repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Write env-file
-        run: |
-          (
-            # Fix out of memory issues with rust
-            echo "CARGO_NET_GIT_FETCH_WITH_CLI=true"
-          ) > .env_file
-
-      - name: Build and publish wheels
-        if: needs.init.outputs.publish == 'true'
-        uses: home-assistant/wheels@e5742a69d69f0e274e2689c998900c7d19652c21 # 2025.12.0
-        with:
-          wheels-key: ${{ secrets.WHEELS_KEY }}
-          abi: ${{ env.ABI }}
-          tag: ${{ env.TAG }}
-          arch: ${{ matrix.arch }}
-          apk: ${{ env.APK_DEPS }}
-          skip-binary: ${{ env.SKIP_BINARY }}
-          env-file: true
-          requirements: "requirements.txt"
-
-      - name: Build local wheels
-        uses: home-assistant/wheels@e5742a69d69f0e274e2689c998900c7d19652c21 # 2025.12.0
-        if: needs.init.outputs.publish == 'false'
-        with:
-          wheels-host: ""
-          wheels-user: ""
-          wheels-key: ""
-          local-wheels-repo-path: "wheels/"
-          abi: ${{ env.ABI }}
-          tag: ${{ env.TAG }}
-          arch: ${{ matrix.arch }}
-          apk: ${{ env.APK_DEPS }}
-          skip-binary: ${{ env.SKIP_BINARY }}
-          env-file: true
-          requirements: "requirements.txt"
-
-      - name: Upload local wheels artifact
-        if: needs.init.outputs.publish == 'false'
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
-        with:
-          name: wheels-${{ matrix.arch }}
-          path: wheels
-          retention-days: 1
 
   build:
     name: Build ${{ matrix.arch }} supervisor
-    needs: [init, build_wheels]
-    if: ${{ !cancelled() && !failure() }}
-    runs-on: ubuntu-latest
+    needs: init
+    runs-on: ${{ matrix.runs-on }}
     permissions:
       contents: read
       id-token: write
@@ -163,18 +98,65 @@ jobs:
     strategy:
       matrix:
         arch: ${{ fromJson(needs.init.outputs.architectures) }}
+        include:
+          - runs-on: ubuntu-24.04
+          - runs-on: ubuntu-24.04-arm
+            arch: aarch64
+    env:
+      WHEELS_ABI: cp313
+      WHEELS_TAG: musllinux_1_2
+      WHEELS_APK_DEPS: "libffi-dev;openssl-dev;yaml-dev"
+      WHEELS_SKIP_BINARY: aiohttp
     steps:
       - name: Checkout the repository
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           fetch-depth: 0
 
-      - name: Download local wheels artifact
-        if: needs.init.outputs.requirements == 'true' && needs.init.outputs.publish == 'false'
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+      - name: Write env-file for wheels build
+        if: needs.init.outputs.build_wheels == 'true'
+        run: |
+          (
+            # Fix out of memory issues with rust
+            echo "CARGO_NET_GIT_FETCH_WITH_CLI=true"
+          ) > .env_file
+
+      - name: Build and publish wheels
+        if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'true'
+        uses: home-assistant/wheels@e5742a69d69f0e274e2689c998900c7d19652c21 # 2025.12.0
+        with:
+          wheels-key: ${{ secrets.WHEELS_KEY }}
+          abi: ${{ env.WHEELS_ABI }}
+          tag: ${{ env.WHEELS_TAG }}
+          arch: ${{ matrix.arch }}
+          apk: ${{ env.WHEELS_APK_DEPS }}
+          skip-binary: ${{ env.WHEELS_SKIP_BINARY }}
+          env-file: true
+          requirements: "requirements.txt"
+
+      - name: Build local wheels
+        if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
+        uses: home-assistant/wheels@e5742a69d69f0e274e2689c998900c7d19652c21 # 2025.12.0
+        with:
+          wheels-host: ""
+          wheels-user: ""
+          wheels-key: ""
+          local-wheels-repo-path: "wheels/"
+          abi: ${{ env.WHEELS_ABI }}
+          tag: ${{ env.WHEELS_TAG }}
+          arch: ${{ matrix.arch }}
+          apk: ${{ env.WHEELS_APK_DEPS }}
+          skip-binary: ${{ env.WHEELS_SKIP_BINARY }}
+          env-file: true
+          requirements: "requirements.txt"
+
+      - name: Upload local wheels artifact
+        if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: wheels-${{ matrix.arch }}
           path: wheels
+          retention-days: 1
 
       - name: Set version
         if: needs.init.outputs.publish == 'true'
@@ -222,6 +204,7 @@ jobs:
       - name: Build supervisor
         uses: home-assistant/builder@2025.11.0
         with:
+          image: ${{ matrix.arch }}
           args: |
             $BUILD_ARGS \
             --${{ matrix.arch }} \
@@ -264,7 +247,7 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Download local wheels artifact
-        if: needs.init.outputs.requirements == 'true' && needs.init.outputs.publish == 'false'
+        if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: wheels-amd64
