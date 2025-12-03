@@ -6,8 +6,8 @@ import logging
 import socket
 
 from ..dbus.const import (
+    ConnectionState,
     ConnectionStateFlags,
-    ConnectionStateType,
     DeviceType,
     InterfaceAddrGenMode as NMInterfaceAddrGenMode,
     InterfaceIp6Privacy as NMInterfaceIp6Privacy,
@@ -317,8 +317,8 @@ class Interface:
             return False
 
         return connection.state in (
-            ConnectionStateType.ACTIVATED,
-            ConnectionStateType.ACTIVATING,
+            ConnectionState.ACTIVATED,
+            ConnectionState.ACTIVATING,
         )
 
     @staticmethod
