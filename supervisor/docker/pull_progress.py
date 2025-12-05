@@ -182,12 +182,9 @@ class ImagePullProgress:
         if status is LayerPullStatus.DOWNLOADING:
             # Mark that we've seen downloading - now we know layer count is complete
             self._seen_downloading = True
-            if (
-                entry.progress_detail
-                and entry.progress_detail.current is not None
-                and entry.progress_detail.total is not None
-            ):
+            if entry.progress_detail and entry.progress_detail.current is not None:
                 layer.download_current = entry.progress_detail.current
+            if entry.progress_detail and entry.progress_detail.total is not None:
                 # Only set total_size if not already set or if this is larger
                 # (handles case where total changes during download)
                 layer.total_size = max(layer.total_size, entry.progress_detail.total)
