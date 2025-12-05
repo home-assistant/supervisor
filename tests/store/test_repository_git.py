@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError
 import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import StoreGitCloneError, StoreGitError
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.store.git import GitRepo
 
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
@@ -119,3 +120,38 @@ async def test_git_load_error(coresys: CoreSys, tmp_path: Path, git_errors: Exce
         await repo.load()
 
     assert len(coresys.resolution.suggestions) == 0
+
+
+@pytest.mark.usefixtures("supervisor_internet")
+async def test_git_pull_missing_origin_remote(coresys: CoreSys, tmp_path: Path):
+    """Test git pull with missing origin remote creates reset suggestion.
+
+    This tests the scenario where a repository exists but has no 'origin' remote,
+    which can happen if the remote was renamed or deleted. The pull operation
+    should create a CORRUPT_REPOSITORY issue with EXECUTE_RESET suggestion.
+
+    Fixes: SUPERVISOR-69Z, SUPERVISOR-172C
+    """
+    repo = GitRepo(coresys, tmp_path, REPO_URL)
+
+    # Create a mock git repo without an origin remote
+    mock_repo = MagicMock()
+    mock_repo.remotes = []  # Empty remotes list - no 'origin'
+    mock_repo.active_branch.name = "main"
+    repo.repo = mock_repo
+
+    with (
+        patch("git.Git") as mock_git,
+        pytest.raises(StoreGitError),
+    ):
+        mock_git.return_value.ls_remote = MagicMock()
+        await repo.pull.__wrapped__(repo)
+
+    # Verify resolution issue was created
+    assert len(coresys.resolution.issues) == 1
+    assert coresys.resolution.issues[0].type == IssueType.CORRUPT_REPOSITORY
+    assert coresys.resolution.issues[0].context == ContextType.STORE
+
+    # Verify reset suggestion was created
+    assert len(coresys.resolution.suggestions) == 1
+    assert coresys.resolution.suggestions[0].type == SuggestionType.EXECUTE_RESET
