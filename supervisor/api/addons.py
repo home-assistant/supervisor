@@ -307,13 +307,17 @@ class APIAddons(CoreSysAttributes):
         # Validate/Process Body
         body = await api_validate(SCHEMA_OPTIONS, request)
         if ATTR_OPTIONS in body:
-            try:
-                addon.options = addon.schema(body[ATTR_OPTIONS])
-            except vol.Invalid as ex:
-                raise AddonConfigurationInvalidError(
-                    addon=addon.slug,
-                    validation_error=humanize_error(body[ATTR_OPTIONS], ex),
-                ) from None
+            # None resets options to defaults, otherwise validate the options
+            if body[ATTR_OPTIONS] is None:
+                addon.options = None
+            else:
+                try:
+                    addon.options = addon.schema(body[ATTR_OPTIONS])
+                except vol.Invalid as ex:
+                    raise AddonConfigurationInvalidError(
+                        addon=addon.slug,
+                        validation_error=humanize_error(body[ATTR_OPTIONS], ex),
+                    ) from None
         if ATTR_BOOT in body:
             if addon.boot_config == AddonBootConfig.MANUAL_ONLY:
                 raise AddonBootConfigCannotChangeError(

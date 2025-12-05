@@ -562,6 +562,27 @@ async def test_addon_set_options(api_client: TestClient, install_addon_example: 
     assert install_addon_example.options == {"message": "test"}
 
 
+async def test_addon_reset_options(
+    api_client: TestClient, install_addon_example: Addon
+):
+    """Test resetting options for an addon to defaults.
+
+    Fixes SUPERVISOR-171F.
+    """
+    # First set some custom options
+    install_addon_example.options = {"message": "custom"}
+    assert install_addon_example.persist["options"] == {"message": "custom"}
+
+    # Reset to defaults by sending null
+    resp = await api_client.post(
+        "/addons/local_example/options", json={"options": None}
+    )
+    assert resp.status == 200
+
+    # Persisted options should be empty (meaning defaults will be used)
+    assert install_addon_example.persist["options"] == {}
+
+
 async def test_addon_set_options_error(
     api_client: TestClient, install_addon_example: Addon
 ):
