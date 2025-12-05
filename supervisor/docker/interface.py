@@ -232,7 +232,7 @@ class DockerInterface(JobGroup, ABC):
                     manifest.total_size,
                 )
         except (aiohttp.ClientError, TimeoutError) as err:
-            _LOGGER.debug("Could not fetch manifest for progress: %s", err)
+            _LOGGER.warning("Could not fetch manifest for progress: %s", err)
 
         async def process_pull_event(event: PullLogEntry) -> None:
             """Process pull event and update job progress."""
