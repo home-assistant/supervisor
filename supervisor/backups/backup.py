@@ -60,7 +60,6 @@ from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
 from ..utils.sentinel import DEFAULT
 from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
-from .utils import password_to_key
 from .validate import SCHEMA_BACKUP
 
 IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
@@ -101,7 +100,7 @@ class Backup(JobGroup):
         self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
         self._tmp: TemporaryDirectory | None = None
         self._outer_secure_tarfile: SecureTarFile | None = None
-        self._key: bytes | None = None
+        self._password: str | None = None
         self._locations: dict[str | None, BackupLocation] = {
             location: BackupLocation(
                 path=tar_file,
@@ -327,7 +326,7 @@ class Backup(JobGroup):
 
         # Set password
         if password:
-            self._init_password(password)
+            self._password = password
             self._data[ATTR_PROTECTED] = True
             self._data[ATTR_CRYPTO] = CRYPTO_AES128
             self._locations[self.location].protected = True
@@ -337,14 +336,7 @@ class Backup(JobGroup):
 
     def set_password(self, password: str | None) -> None:
         """Set the password for an existing backup."""
-        if password:
-            self._init_password(password)
-        else:
-            self._key = None
-
-    def _init_password(self, password: str) -> None:
-        """Create key from password."""
-        self._key = password_to_key(password)
+        self._password = password
 
     async def validate_backup(self, location: str | None) -> None:
         """Validate backup.
@@ -374,9 +366,9 @@ class Backup(JobGroup):
                     with SecureTarFile(
                         ending,  # Not used
                         gzip=self.compressed,
-                        key=self._key,
                         mode="r",
                         fileobj=test_tar_file,
+                        password=self._password,
                     ):
                         # If we can read the tar file, the password is correct
                         return
@@ -592,7 +584,7 @@ class Backup(JobGroup):
         addon_file = self._outer_secure_tarfile.create_inner_tar(
             f"./{tar_name}",
             gzip=self.compressed,
-            key=self._key,
+            password=self._password,
         )
         # Take backup
         try:
@@ -643,9 +635,9 @@ class Backup(JobGroup):
         addon_file = SecureTarFile(
             Path(self._tmp.name, tar_name),
             "r",
-            key=self._key,
             gzip=self.compressed,
             bufsize=BUF_SIZE,
+            password=self._password,
         )
 
         # If exists inside backup
@@ -741,7 +733,7 @@ class Backup(JobGroup):
             with outer_secure_tarfile.create_inner_tar(
                 f"./{tar_name}",
                 gzip=self.compressed,
-                key=self._key,
+                password=self._password,
             ) as tar_file:
                 atomic_contents_add(
                     tar_file,
@@ -802,9 +794,9 @@ class Backup(JobGroup):
                 with SecureTarFile(
                     tar_name,
                     "r",
-                    key=self._key,
                     gzip=self.compressed,
                     bufsize=BUF_SIZE,
+                    password=self._password,
                 ) as tar_file:
                     tar_file.extractall(
                         path=origin_dir, members=tar_file, filter="fully_trusted"
@@ -865,7 +857,7 @@ class Backup(JobGroup):
         homeassistant_file = self._outer_secure_tarfile.create_inner_tar(
             f"./{tar_name}",
             gzip=self.compressed,
-            key=self._key,
+            password=self._password,
         )
 
         await self.sys_homeassistant.backup(homeassistant_file, exclude_database)
@@ -888,7 +880,11 @@ class Backup(JobGroup):
             self._tmp.name, f"homeassistant.tar{'.gz' if self.compressed else ''}"
         )
         homeassistant_file = SecureTarFile(
-            tar_name, "r", key=self._key, gzip=self.compressed, bufsize=BUF_SIZE
+            tar_name,
+            "r",
+            gzip=self.compressed,
+            bufsize=BUF_SIZE,
+            password=self._password,
         )
 
         await self.sys_homeassistant.restore(
