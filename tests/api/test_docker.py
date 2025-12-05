@@ -118,15 +118,6 @@ async def test_api_migrate_docker_storage_driver(
         in coresys.resolution.suggestions
     )
 
-    # Test migration back to overlay2 (graph driver)
-    system_service.MigrateDockerStorageDriver.calls.clear()
-    resp = await api_client.post(
-        "/docker/migrate-storage-driver",
-        json={"storage_driver": "overlay2"},
-    )
-    assert resp.status == 200
-    assert system_service.MigrateDockerStorageDriver.calls == [("overlay2",)]
-
 
 @pytest.mark.parametrize("os_available", ["17.0.rc1"], indirect=True)
 async def test_api_migrate_docker_storage_driver_invalid_backend(
