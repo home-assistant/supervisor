@@ -46,7 +46,7 @@ SCHEMA_OPTIONS = vol.Schema(
 
 SCHEMA_MIGRATE_DOCKER_STORAGE_DRIVER = vol.Schema(
     {
-        vol.Required(ATTR_STORAGE_DRIVER): vol.In(["overlayfs", "overlay2"]),
+        vol.Required(ATTR_STORAGE_DRIVER): vol.In(["overlayfs"]),
     }
 )
 

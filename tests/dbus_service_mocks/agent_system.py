@@ -35,8 +35,8 @@ class System(DBusServiceMock):
         """Migrate Docker storage driver."""
         if isinstance(self.response_migrate_docker_storage_driver, DBusError):
             raise self.response_migrate_docker_storage_driver  # pylint: disable=raising-bad-type
-        if backend not in ("overlayfs", "overlay2"):
+        if backend != "overlayfs":
             raise DBusError(
                 ErrorType.FAILED,
-                f"unsupported driver: {backend} (only 'overlayfs' and 'overlay2' are supported)",
+                f"unsupported driver: {backend} (only 'overlayfs' is currently supported)",
             )
