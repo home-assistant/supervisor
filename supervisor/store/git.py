@@ -227,6 +227,7 @@ class GitRepo(CoreSysAttributes):
                 git.CommandError,
                 ValueError,
                 AssertionError,
+                AttributeError,
                 UnicodeDecodeError,
             ) as err:
                 _LOGGER.error("Can't update %s repo: %s.", self.url, err)
