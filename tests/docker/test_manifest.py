@@ -111,33 +111,33 @@ async def test_get_manifest_returns_none_on_failure(
 
 def test_get_credentials_docker_hub(coresys: CoreSys, websession: MagicMock):
     """Test getting Docker Hub credentials."""
-    coresys.docker.config._data["registries"] = {
+    coresys.docker.config._data["registries"] = {  # pylint: disable=protected-access
         "docker.io": {"username": "user", "password": "pass"}
     }
     fetcher = RegistryManifestFetcher(coresys)
 
-    creds = fetcher._get_credentials(DOCKER_HUB)
+    creds = fetcher._get_credentials(DOCKER_HUB)  # pylint: disable=protected-access
 
     assert creds == ("user", "pass")
 
 
 def test_get_credentials_custom_registry(coresys: CoreSys, websession: MagicMock):
     """Test getting credentials for custom registry."""
-    coresys.docker.config._data["registries"] = {
+    coresys.docker.config._data["registries"] = {  # pylint: disable=protected-access
         "ghcr.io": {"username": "user", "password": "token"}
     }
     fetcher = RegistryManifestFetcher(coresys)
 
-    creds = fetcher._get_credentials("ghcr.io")
+    creds = fetcher._get_credentials("ghcr.io")  # pylint: disable=protected-access
 
     assert creds == ("user", "token")
 
 
 def test_get_credentials_not_found(coresys: CoreSys, websession: MagicMock):
     """Test no credentials found."""
-    coresys.docker.config._data["registries"] = {}
+    coresys.docker.config._data["registries"] = {}  # pylint: disable=protected-access
     fetcher = RegistryManifestFetcher(coresys)
 
-    creds = fetcher._get_credentials("unknown.io")
+    creds = fetcher._get_credentials("unknown.io")  # pylint: disable=protected-access
 
     assert creds is None
