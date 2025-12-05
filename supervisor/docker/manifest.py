@@ -182,7 +182,7 @@ class RegistryManifestFetcher:
         repository: str,
         reference: str,
         token: str | None,
-        platform: str | None = None,
+        platform: str,
     ) -> dict | None:
         """Fetch manifest from registry.
 
@@ -221,15 +221,10 @@ class RegistryManifestFetcher:
                 _LOGGER.warning("Empty manifest list for %s/%s", registry, repository)
                 return None
 
-            # Find matching platform
-            target_os = "linux"
-            target_arch = "amd64"  # Default
-
-            if platform:
-                # Platform format is "linux/amd64", "linux/arm64", etc.
-                parts = platform.split("/")
-                if len(parts) >= 2:
-                    target_os, target_arch = parts[0], parts[1]
+            # Platform format is "linux/amd64", "linux/arm64", etc.
+            parts = platform.split("/")
+            if len(parts) >= 2:
+                target_os, target_arch = parts[0], parts[1]
 
             platform_manifest = None
             for m in manifests:
@@ -242,13 +237,15 @@ class RegistryManifestFetcher:
                     break
 
             if not platform_manifest:
-                # Fall back to first manifest
-                _LOGGER.debug(
-                    "Platform %s/%s not found, using first manifest",
+                _LOGGER.warning(
+                    "Platform %s/%s not found in manifest list for %s/%s, "
+                    "cannot use manifest for progress tracking",
                     target_os,
                     target_arch,
+                    registry,
+                    repository,
                 )
-                platform_manifest = manifests[0]
+                return None
 
             # Fetch the platform-specific manifest
             return await self._fetch_manifest(
@@ -265,7 +262,7 @@ class RegistryManifestFetcher:
         self,
         image: str,
         tag: str,
-        platform: str | None = None,
+        platform: str,
     ) -> ImageManifest | None:
         """Fetch manifest and extract layer sizes.
 
