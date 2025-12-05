@@ -77,19 +77,11 @@ class RegistryManifestFetcher:
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize the fetcher."""
         self.coresys = coresys
-        self._session: aiohttp.ClientSession | None = None
 
-    async def _get_session(self) -> aiohttp.ClientSession:
-        """Get or create aiohttp session."""
-        if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
-        return self._session
-
-    async def close(self) -> None:
-        """Close the session."""
-        if self._session and not self._session.closed:
-            await self._session.close()
-            self._session = None
+    @property
+    def _session(self) -> aiohttp.ClientSession:
+        """Return the websession for HTTP requests."""
+        return self.coresys.websession
 
     def _get_credentials(self, registry: str) -> tuple[str, str] | None:
         """Get credentials for registry from Docker config.
@@ -112,7 +104,6 @@ class RegistryManifestFetcher:
 
     async def _get_auth_token(
         self,
-        session: aiohttp.ClientSession,
         registry: str,
         repository: str,
     ) -> str | None:
@@ -125,7 +116,7 @@ class RegistryManifestFetcher:
         manifest_url = f"https://{registry}/v2/{repository}/manifests/latest"
 
         try:
-            async with session.get(manifest_url) as resp:
+            async with self._session.get(manifest_url) as resp:
                 if resp.status == 200:
                     # No auth required
                     return None
@@ -172,7 +163,7 @@ class RegistryManifestFetcher:
                 _LOGGER.debug("Using credentials for %s", registry)
 
         try:
-            async with session.get(token_url, auth=auth) as resp:
+            async with self._session.get(token_url, auth=auth) as resp:
                 if resp.status != 200:
                     _LOGGER.warning(
                         "Failed to get token from %s: %d", realm, resp.status
@@ -187,7 +178,6 @@ class RegistryManifestFetcher:
 
     async def _fetch_manifest(
         self,
-        session: aiohttp.ClientSession,
         registry: str,
         repository: str,
         reference: str,
@@ -206,7 +196,7 @@ class RegistryManifestFetcher:
             headers["Authorization"] = f"Bearer {token}"
 
         try:
-            async with session.get(manifest_url, headers=headers) as resp:
+            async with self._session.get(manifest_url, headers=headers) as resp:
                 if resp.status != 200:
                     _LOGGER.warning(
                         "Failed to fetch manifest for %s/%s:%s - %d",
@@ -262,7 +252,6 @@ class RegistryManifestFetcher:
 
             # Fetch the platform-specific manifest
             return await self._fetch_manifest(
-                session,
                 registry,
                 repository,
                 platform_manifest["digest"],
@@ -299,14 +288,12 @@ class RegistryManifestFetcher:
             platform,
         )
 
-        session = await self._get_session()
-
         # Get auth token
-        token = await self._get_auth_token(session, registry, repository)
+        token = await self._get_auth_token(registry, repository)
 
         # Fetch manifest
         manifest = await self._fetch_manifest(
-            session, registry, repository, tag, token, platform
+            registry, repository, tag, token, platform
         )
 
         if not manifest:
