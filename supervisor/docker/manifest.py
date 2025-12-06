@@ -223,8 +223,11 @@ class RegistryManifestFetcher:
 
             # Platform format is "linux/amd64", "linux/arm64", etc.
             parts = platform.split("/")
-            if len(parts) >= 2:
-                target_os, target_arch = parts[0], parts[1]
+            if len(parts) < 2:
+                _LOGGER.warning("Invalid platform format: %s", platform)
+                return None
+
+            target_os, target_arch = parts[0], parts[1]
 
             platform_manifest = None
             for m in manifests:
