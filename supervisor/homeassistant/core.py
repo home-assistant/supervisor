@@ -48,7 +48,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SECONDS_BETWEEN_API_CHECKS: Final[int] = 5
 # Core Stage 1 and some wiggle room
-STARTUP_API_RESPONSE_TIMEOUT: Final[timedelta] = timedelta(minutes=3)
+STARTUP_API_RESPONSE_TIMEOUT: Final[timedelta] = timedelta(minutes=6)
 # All stages plus event start timeout and some wiggle rooom
 STARTUP_API_CHECK_RUNNING_TIMEOUT: Final[timedelta] = timedelta(minutes=15)
 # While database migration is running, the timeout will be extended
