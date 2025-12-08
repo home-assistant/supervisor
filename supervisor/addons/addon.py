@@ -73,6 +73,7 @@ from ..exceptions import (
     AddonNotSupportedError,
     AddonNotSupportedWriteStdinError,
     AddonPrePostBackupCommandReturnedError,
+    AddonPrePostRestoreCommandReturnedError,
     AddonsError,
     AddonsJobError,
     AddonUnknownError,
@@ -1241,6 +1242,23 @@ class Addon(AddonModel):
             )
             raise AddonUnknownError(addon=self.slug) from err
 
+    async def _restore_command(self, command: str) -> None:
+        """Execute a pre/post restore command inside the addon container."""
+        try:
+            command_return = await self.instance.run_inside(command)
+            if command_return.exit_code != 0:
+                _LOGGER.debug(
+                    "Pre-/Post restore command failed with: %s", command_return.output
+                )
+                raise AddonPrePostRestoreCommandReturnedError(
+                    _LOGGER.error, addon=self.slug, exit_code=command_return.exit_code
+                )
+        except DockerError as err:
+            _LOGGER.error(
+                "Failed running pre-/post restore command %s: %s", command, err
+            )
+            raise AddonUnknownError(addon=self.slug) from err
+
     @Job(
         name="addon_begin_backup",
         on_condition=AddonsJobError,
@@ -1461,6 +1479,10 @@ class Addon(AddonModel):
             # Validate availability. Raises if not
             self._validate_availability(data[ATTR_SYSTEM], logger=_LOGGER.error)
 
+            # Save current addon's restore_pre command before config is overwritten
+            # This allows the current addon to prepare for being restored
+            current_restore_pre = self.restore_pre if self.loaded else None
+
             # Restore local add-on information
             _LOGGER.info("Restore config for addon %s", self.slug)
             restore_image = self._image(data[ATTR_SYSTEM])
@@ -1468,8 +1490,12 @@ class Addon(AddonModel):
                 self.slug, data[ATTR_USER], data[ATTR_SYSTEM], restore_image
             )
 
-            # Stop it first if its running
+            # Run restore_pre on currently running addon before stopping
+            # This uses the current addon's restore_pre command (not the backup's)
             if await self.instance.is_running():
+                if current_restore_pre:
+                    _LOGGER.info("Running restore_pre for addon %s", self.slug)
+                    await self._restore_command(current_restore_pre)
                 await self.stop()
 
             try:
@@ -1546,6 +1572,12 @@ class Addon(AddonModel):
                 # Run add-on
                 if data[ATTR_STATE] == AddonState.STARTED:
                     wait_for_start = await self.start()
+
+                    # Run restore_post after addon is started
+                    # This uses the restored addon's restore_post command
+                    if self.restore_post:
+                        _LOGGER.info("Running restore_post for addon %s", self.slug)
+                        await self._restore_command(self.restore_post)
         finally:
             await self.sys_run_in_executor(tmp.cleanup)
         _LOGGER.info("Finished restore for add-on %s", self.slug)

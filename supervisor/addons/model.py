@@ -60,6 +60,8 @@ from ..const import (
     ATTR_PRIVILEGED,
     ATTR_REALTIME,
     ATTR_REPOSITORY,
+    ATTR_RESTORE_POST,
+    ATTR_RESTORE_PRE,
     ATTR_SCHEMA,
     ATTR_SERVICES,
     ATTR_SLUG,
@@ -412,6 +414,16 @@ class AddonModel(JobGroup, ABC):
     def backup_post(self) -> str | None:
         """Return post-backup command."""
         return self.data.get(ATTR_BACKUP_POST)
+
+    @property
+    def restore_pre(self) -> str | None:
+        """Return pre-restore command."""
+        return self.data.get(ATTR_RESTORE_PRE)
+
+    @property
+    def restore_post(self) -> str | None:
+        """Return post-restore command."""
+        return self.data.get(ATTR_RESTORE_POST)
 
     @property
     def backup_mode(self) -> AddonBackupMode:

@@ -71,6 +71,8 @@ from ..const import (
     ATTR_PROTECTED,
     ATTR_REALTIME,
     ATTR_REPOSITORY,
+    ATTR_RESTORE_POST,
+    ATTR_RESTORE_PRE,
     ATTR_SCHEMA,
     ATTR_SERVICES,
     ATTR_SLUG,
@@ -420,6 +422,8 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Optional(ATTR_BACKUP_EXCLUDE): [str],
         vol.Optional(ATTR_BACKUP_PRE): str,
         vol.Optional(ATTR_BACKUP_POST): str,
+        vol.Optional(ATTR_RESTORE_PRE): str,
+        vol.Optional(ATTR_RESTORE_POST): str,
         vol.Optional(ATTR_BACKUP, default=AddonBackupMode.HOT): vol.Coerce(
             AddonBackupMode
         ),

@@ -1058,6 +1058,28 @@ class AddonPrePostBackupCommandReturnedError(BackupError, APIError):
         super().__init__(None, logger)
 
 
+class AddonPrePostRestoreCommandReturnedError(BackupError, APIError):
+    """Raise when addon's pre/post restore command returns an error."""
+
+    error_key = "addon_pre_post_restore_command_returned_error"
+    message_template = (
+        "Pre-/Post restore command for add-on {addon} returned error code: "
+        "{exit_code}. Please report this to the addon developer. Enable debug "
+        "logging to capture complete command output using {debug_logging_command}"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, addon: str, exit_code: int
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {
+            "addon": addon,
+            "exit_code": exit_code,
+            "debug_logging_command": "ha supervisor options --logging debug",
+        }
+        super().__init__(None, logger)
+
+
 class BackupRestoreUnknownError(BackupError, APIUnknownSupervisorError):
     """Raise when an unknown error occurs during backup or restore."""
 

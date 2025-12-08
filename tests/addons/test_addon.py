@@ -26,6 +26,7 @@ from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
     AddonPrePostBackupCommandReturnedError,
+    AddonPrePostRestoreCommandReturnedError,
     AddonsJobError,
     AddonUnknownError,
     AudioUpdateError,
@@ -692,6 +693,179 @@ async def test_restore_while_running_with_watchdog(
         await asyncio.sleep(0)
         start.assert_not_called()
         restart.assert_not_called()
+
+
+async def test_restore_with_pre_command(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+    mock_aarch64_arch_supported: None,
+) -> None:
+    """Test restoring an addon with restore_pre command on currently running addon."""
+    container.status = "running"
+    container.exec_run.return_value = (0, None)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
+    with (
+        patch.object(
+            Addon, "restore_pre", new=PropertyMock(return_value="restore_pre_cmd")
+        ),
+        patch.object(DockerAddon, "is_running", return_value=True),
+        patch.object(Ingress, "update_hass_panel"),
+    ):
+        await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
+
+    # restore_pre should be called before stopping
+    assert container.exec_run.call_count == 1
+    assert container.exec_run.call_args_list[0].args[0] == "restore_pre_cmd"
+
+
+async def test_restore_with_post_command(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+    mock_aarch64_arch_supported: None,
+) -> None:
+    """Test restoring an addon with restore_post command after starting."""
+    container.status = "stopped"
+    container.exec_run.return_value = (0, None)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    # Use running backup so addon will be started after restore
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_running.tar.gz"), "r")
+    with (
+        patch.object(
+            Addon, "restore_post", new=PropertyMock(return_value="restore_post_cmd")
+        ),
+        patch.object(DockerAddon, "is_running", return_value=False),
+    ):
+        await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
+
+    # restore_post should be called after starting
+    assert container.exec_run.call_count == 1
+    assert container.exec_run.call_args_list[0].args[0] == "restore_post_cmd"
+
+
+async def test_restore_with_pre_and_post_command(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    tmp_supervisor_data,
+    path_extern,
+    mock_aarch64_arch_supported: None,
+) -> None:
+    """Test restoring an addon with both restore_pre and restore_post commands."""
+    container.status = "running"
+    container.exec_run.return_value = (0, None)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    # Use running backup so addon will be started after restore
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_running.tar.gz"), "r")
+    with (
+        patch.object(
+            Addon, "restore_pre", new=PropertyMock(return_value="restore_pre_cmd")
+        ),
+        patch.object(
+            Addon, "restore_post", new=PropertyMock(return_value="restore_post_cmd")
+        ),
+        patch.object(DockerAddon, "is_running", return_value=True),
+        patch.object(Ingress, "update_hass_panel"),
+    ):
+        await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
+
+    # Both commands should be called
+    assert container.exec_run.call_count == 2
+    assert container.exec_run.call_args_list[0].args[0] == "restore_pre_cmd"
+    assert container.exec_run.call_args_list[1].args[0] == "restore_post_cmd"
+
+
+@pytest.mark.parametrize(
+    ("container_get_side_effect", "exec_run_side_effect", "exc_type_raised"),
+    [
+        (NotFound("missing"), [(1, None)], AddonUnknownError),
+        (DockerException(), [(1, None)], AddonUnknownError),
+        (None, DockerException(), AddonUnknownError),
+        (None, [(1, None)], AddonPrePostRestoreCommandReturnedError),
+    ],
+)
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mock_aarch64_arch_supported"
+)
+async def test_restore_with_pre_command_error(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    container_get_side_effect: DockerException | None,
+    exec_run_side_effect: DockerException | list[tuple[int, Any]],
+    exc_type_raised: type[HassioError],
+) -> None:
+    """Test restoring an addon with error running restore_pre command."""
+    coresys.docker.containers.get.side_effect = container_get_side_effect
+    container.exec_run.side_effect = exec_run_side_effect
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
+    with (
+        patch.object(DockerAddon, "is_running", return_value=True),
+        patch.object(
+            Addon, "restore_pre", new=PropertyMock(return_value="restore_pre_cmd")
+        ),
+        patch.object(Ingress, "update_hass_panel"),
+        pytest.raises(exc_type_raised),
+    ):
+        await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
+
+
+@pytest.mark.parametrize(
+    ("container_get_side_effect", "exec_run_side_effect", "exc_type_raised"),
+    [
+        (NotFound("missing"), [(1, None)], AddonUnknownError),
+        (DockerException(), [(1, None)], AddonUnknownError),
+        (None, DockerException(), AddonUnknownError),
+        (None, [(1, None)], AddonPrePostRestoreCommandReturnedError),
+    ],
+)
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mock_aarch64_arch_supported"
+)
+async def test_restore_with_post_command_error(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: MagicMock,
+    container_get_side_effect: DockerException | None,
+    exec_run_side_effect: DockerException | list[tuple[int, Any]],
+    exc_type_raised: type[HassioError],
+) -> None:
+    """Test restoring an addon with error running restore_post command."""
+    coresys.docker.containers.get.side_effect = container_get_side_effect
+    container.exec_run.side_effect = exec_run_side_effect
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    install_addon_ssh.path_data.mkdir()
+    await install_addon_ssh.load()
+
+    # Use running backup so addon will be started after restore
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_running.tar.gz"), "r")
+    with (
+        patch.object(DockerAddon, "is_running", return_value=False),
+        patch.object(
+            Addon, "restore_post", new=PropertyMock(return_value="restore_post_cmd")
+        ),
+        pytest.raises(exc_type_raised),
+    ):
+        await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
 
 
 async def test_start_when_running(
