@@ -20,12 +20,15 @@ from ..const import (
     ATTR_FOLDERS,
     ATTR_HOMEASSISTANT,
     ATTR_NAME,
+    ATTR_PASSWORD,
+    ATTR_PORT,
     ATTR_PROTECTED,
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
+    ATTR_USERNAME,
     ATTR_VERSION,
     CRYPTO_AES128,
     FOLDER_ADDONS,
@@ -33,6 +36,18 @@ from ..const import (
     FOLDER_MEDIA,
     FOLDER_SHARE,
     FOLDER_SSL,
+)
+from ..mounts.const import (
+    ATTR_DEFAULT_BACKUP_MOUNT,
+    ATTR_MOUNTS,
+    ATTR_PATH,
+    ATTR_READ_ONLY,
+    ATTR_SERVER,
+    ATTR_SHARE,
+    ATTR_USAGE,
+    MountCifsVersion,
+    MountType,
+    MountUsage,
 )
 from ..store.validate import repositories
 from ..validate import SCHEMA_DOCKER_CONFIG, version_tag
@@ -134,6 +149,43 @@ SCHEMA_BACKUP = vol.Schema(
         ),
         vol.Optional(ATTR_REPOSITORIES, default=list): repositories,
         vol.Optional(ATTR_EXTRA, default=dict): dict,
+        vol.Optional(ATTR_MOUNTS, default=None): vol.Maybe(
+            vol.Schema(
+                {
+                    vol.Optional(ATTR_DEFAULT_BACKUP_MOUNT, default=None): vol.Maybe(
+                        str
+                    ),
+                    vol.Required(ATTR_MOUNTS, default=list): [
+                        vol.Schema(
+                            {
+                                vol.Required(ATTR_NAME): str,
+                                vol.Required(ATTR_TYPE): vol.Coerce(MountType),
+                                vol.Required(ATTR_USAGE): vol.Maybe(
+                                    vol.Coerce(MountUsage)
+                                ),
+                                vol.Optional(ATTR_READ_ONLY, default=False): (
+                                    vol.Boolean()
+                                ),
+                                # Network mount fields
+                                vol.Optional(ATTR_SERVER): str,
+                                vol.Optional(ATTR_PORT): int,
+                                # CIFS fields
+                                vol.Optional(ATTR_SHARE): str,
+                                vol.Optional(ATTR_USERNAME): str,
+                                vol.Optional(ATTR_PASSWORD): str,
+                                vol.Optional(ATTR_VERSION): vol.Maybe(
+                                    vol.Coerce(MountCifsVersion)
+                                ),
+                                # NFS/Bind fields
+                                vol.Optional(ATTR_PATH): str,
+                            },
+                            extra=vol.REMOVE_EXTRA,
+                        )
+                    ],
+                },
+                extra=vol.REMOVE_EXTRA,
+            )
+        ),
     },
     extra=vol.ALLOW_EXTRA,
 )

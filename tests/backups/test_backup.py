@@ -22,6 +22,7 @@ from supervisor.exceptions import (
     BackupPermissionError,
 )
 from supervisor.jobs import JobSchedulerOptions
+from supervisor.mounts.mount import Mount
 
 from tests.common import get_fixture_path
 
@@ -273,3 +274,71 @@ async def test_validate_backup(
         expected_exception,
     ):
         await enc_backup.validate_backup(None)
+
+
+async def test_store_mounts(coresys: CoreSys, tmp_path: Path, mount_propagation):
+    """Test storing mount configurations in backup."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # Initially no mounts
+    assert backup.mounts is None
+
+    # Store mounts (empty list when no mounts configured)
+    backup.store_mounts()
+
+    # Verify mounts data is stored
+    assert backup.mounts is not None
+    assert "mounts" in backup.mounts
+    assert "default_backup_mount" in backup.mounts
+    assert backup.mounts["default_backup_mount"] is None
+    assert backup.mounts["mounts"] == []
+
+
+async def test_store_mounts_with_configured_mounts(
+    coresys: CoreSys, tmp_path: Path, mount_propagation, mock_is_mount
+):
+    """Test storing mount configurations when mounts are configured."""
+    # Load mounts system
+    await coresys.mounts.load()
+
+    # Create a test mount
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test_backup_share",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "192.168.1.100",
+            "share": "backup_share",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # Store mounts
+    backup.store_mounts()
+
+    # Verify mount data is stored
+    assert backup.mounts is not None
+    assert len(backup.mounts["mounts"]) == 1
+    stored_mount = backup.mounts["mounts"][0]
+    assert stored_mount["name"] == "test_backup_share"
+    assert stored_mount["type"] == "cifs"
+    assert stored_mount["server"] == "192.168.1.100"
+    assert stored_mount["share"] == "backup_share"
+
+
+async def test_restore_mounts_empty(coresys: CoreSys, tmp_path: Path):
+    """Test restoring mounts when backup has no mounts."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # No mounts in backup
+    assert backup.mounts is None
+
+    # Restore should succeed with nothing to do
+    success = await backup.restore_mounts()
+    assert success is True
