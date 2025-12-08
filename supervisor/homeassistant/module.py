@@ -23,6 +23,7 @@ from ..const import (
     ATTR_AUDIO_OUTPUT,
     ATTR_BACKUPS_EXCLUDE_DATABASE,
     ATTR_BOOT,
+    ATTR_DUPLICATE_LOG_FILE,
     ATTR_IMAGE,
     ATTR_MESSAGE,
     ATTR_PORT,
@@ -298,6 +299,16 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
     def backups_exclude_database(self, value: bool) -> None:
         """Set whether backups should exclude database by default."""
         self._data[ATTR_BACKUPS_EXCLUDE_DATABASE] = value
+
+    @property
+    def duplicate_log_file(self) -> bool:
+        """Return True if Home Assistant should duplicate logs to file."""
+        return self._data[ATTR_DUPLICATE_LOG_FILE]
+
+    @duplicate_log_file.setter
+    def duplicate_log_file(self, value: bool) -> None:
+        """Set whether Home Assistant should duplicate logs to file."""
+        self._data[ATTR_DUPLICATE_LOG_FILE] = value
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""

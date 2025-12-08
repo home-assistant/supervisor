@@ -46,6 +46,7 @@ async def test_homeassistant_start(
             "TZ": ANY,
             "SUPERVISOR_TOKEN": ANY,
             "HASSIO_TOKEN": ANY,
+            # no "HA_DUPLICATE_LOG_FILE"
         }
         assert run.call_args.kwargs["mounts"] == [
             DEV_MOUNT,
@@ -105,6 +106,28 @@ async def test_homeassistant_start(
         assert "volumes" not in run.call_args.kwargs
 
 
+async def test_homeassistant_start_with_duplicate_log_file(
+    coresys: CoreSys, tmp_supervisor_data: Path, path_extern
+):
+    """Test starting homeassistant with duplicate_log_file enabled."""
+    coresys.homeassistant.version = AwesomeVersion("2025.12.0")
+    coresys.homeassistant.duplicate_log_file = True
+
+    with (
+        patch.object(DockerAPI, "run") as run,
+        patch.object(
+            DockerHomeAssistant, "is_running", side_effect=[False, False, True]
+        ),
+        patch("supervisor.homeassistant.core.asyncio.sleep"),
+    ):
+        await coresys.homeassistant.core.start()
+
+        run.assert_called_once()
+        env = run.call_args.kwargs["environment"]
+        assert "HA_DUPLICATE_LOG_FILE" in env
+        assert env["HA_DUPLICATE_LOG_FILE"] == "1"
+
+
 async def test_landingpage_start(
     coresys: CoreSys, tmp_supervisor_data: Path, path_extern
 ):
@@ -133,6 +156,7 @@ async def test_landingpage_start(
             "TZ": ANY,
             "SUPERVISOR_TOKEN": ANY,
             "HASSIO_TOKEN": ANY,
+            # no "HA_DUPLICATE_LOG_FILE"
         }
         assert run.call_args.kwargs["mounts"] == [
             DEV_MOUNT,
