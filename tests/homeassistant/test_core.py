@@ -387,7 +387,7 @@ async def test_api_check_timeout(
         ):
             await coresys.homeassistant.core.start()
 
-    assert coresys.homeassistant.api.get_api_state.call_count == 3
+    assert coresys.homeassistant.api.get_api_state.call_count == 10
     assert (
         "No Home Assistant Core response, assuming a fatal startup error" in caplog.text
     )
