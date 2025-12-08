@@ -50,6 +50,7 @@ from ..exceptions import (
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
 from .const import DOCKER_HUB, DOCKER_HUB_LEGACY, LABEL_MANAGED
+from .manifest import RegistryManifestFetcher
 from .monitor import DockerMonitor
 from .network import DockerNetwork
 from .utils import get_registry_from_image
@@ -258,6 +259,9 @@ class DockerAPI(CoreSysAttributes):
         self._info: DockerInfo | None = None
         self.config: DockerConfig = DockerConfig()
         self._monitor: DockerMonitor = DockerMonitor(coresys)
+        self._manifest_fetcher: RegistryManifestFetcher = RegistryManifestFetcher(
+            coresys
+        )
 
     async def post_init(self) -> Self:
         """Post init actions that must be done in event loop."""
@@ -322,6 +326,11 @@ class DockerAPI(CoreSysAttributes):
     def monitor(self) -> DockerMonitor:
         """Return docker events monitor."""
         return self._monitor
+
+    @property
+    def manifest_fetcher(self) -> RegistryManifestFetcher:
+        """Return manifest fetcher for registry access."""
+        return self._manifest_fetcher
 
     async def load(self) -> None:
         """Start docker events monitor."""
