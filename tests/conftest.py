@@ -9,6 +9,7 @@ import subprocess
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
+from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.docker import DockerImages
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient
@@ -120,11 +121,12 @@ async def docker() -> DockerAPI:
         "Id": "test123",
         "RepoTags": ["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"],
     }
+    container_inspect = image_inspect | {"State": {"ExitCode": 0}}
 
     with (
         patch("supervisor.docker.manager.DockerClient", return_value=MagicMock()),
         patch(
-            "supervisor.docker.manager.DockerAPI.containers", return_value=MagicMock()
+            "supervisor.docker.manager.DockerAPI.containerspy", return_value=MagicMock()
         ),
         patch("supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()),
         patch("supervisor.docker.manager.DockerAPI.info", return_value=MagicMock()),
@@ -134,6 +136,12 @@ async def docker() -> DockerAPI:
             "supervisor.docker.manager.DockerAPI.images",
             new=PropertyMock(
                 return_value=(docker_images := MagicMock(spec=DockerImages))
+            ),
+        ),
+        patch(
+            "supervisor.docker.manager.DockerAPI.containers",
+            new=PropertyMock(
+                return_value=(docker_containers := MagicMock(spec=DockerContainers))
             ),
         ),
     ):
@@ -147,8 +155,14 @@ async def docker() -> DockerAPI:
         docker_images.import_image = AsyncMock(
             return_value=[{"stream": "Loaded image: test:latest\n"}]
         )
-
         docker_images.pull.return_value = AsyncIterator([{}])
+
+        docker_containers.get.return_value = docker_container = MagicMock(
+            spec=DockerContainer
+        )
+        docker_containers.list.return_value = [docker_container]
+        docker_containers.create.return_value = docker_container
+        docker_container.show.return_value = container_inspect
 
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
@@ -790,7 +804,7 @@ async def docker_logs(docker: DockerAPI, supervisor_name) -> MagicMock:
     """Mock log output for a container from docker."""
     container_mock = MagicMock()
     container_mock.logs.return_value = load_binary_fixture("logs_docker_container.txt")
-    docker.containers.get.return_value = container_mock
+    docker.containerspy.get.return_value = container_mock
     yield container_mock.logs
 
 
@@ -824,7 +838,7 @@ async def os_available(request: pytest.FixtureRequest) -> None:
 @pytest.fixture
 async def mount_propagation(docker: DockerAPI, coresys: CoreSys) -> None:
     """Mock supervisor connected to container with propagation set."""
-    docker.containers.get.return_value = supervisor = MagicMock()
+    docker.containerspy.get.return_value = supervisor = MagicMock()
     supervisor.attrs = {
         "Mounts": [
             {
@@ -844,10 +858,11 @@ async def mount_propagation(docker: DockerAPI, coresys: CoreSys) -> None:
 @pytest.fixture
 async def container(docker: DockerAPI) -> MagicMock:
     """Mock attrs and status for container on attach."""
-    docker.containers.get.return_value = addon = MagicMock()
-    docker.containers.create.return_value = addon
-    addon.status = "stopped"
-    addon.attrs = {"State": {"ExitCode": 0}}
+    attrs = {"State": {"ExitCode": 0}}
+    docker.containerspy.get.return_value = addon = MagicMock(
+        status="stopped", attrs=attrs
+    )
+    docker.containers.create.return_value.show.return_value = attrs
     yield addon
 
 

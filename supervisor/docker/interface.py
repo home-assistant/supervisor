@@ -461,7 +461,7 @@ class DockerInterface(JobGroup, ABC):
         """Get docker container, returns None if not found."""
         try:
             return await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
+                self.sys_docker.containerspy.get, self.name
             )
         except docker.errors.NotFound:
             return None
@@ -493,7 +493,7 @@ class DockerInterface(JobGroup, ABC):
         """Attach to running Docker container."""
         with suppress(docker.errors.DockerException, requests.RequestException):
             docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
+                self.sys_docker.containerspy.get, self.name
             )
             self._meta = docker_container.attrs
             self.sys_docker.monitor.watch_container(docker_container)
@@ -533,8 +533,11 @@ class DockerInterface(JobGroup, ABC):
         """Run Docker image."""
         raise NotImplementedError()
 
-    async def _run(self, **kwargs) -> None:
-        """Run Docker image with retry inf necessary."""
+    async def _run(self, *, name: str, **kwargs) -> None:
+        """Run Docker image with retry if necessary."""
+        if not (image := self.image):
+            raise ValueError(f"Cannot determine image to use to run {self.name}!")
+
         if await self.is_running():
             return
 
@@ -543,16 +546,14 @@ class DockerInterface(JobGroup, ABC):
 
         # Create & Run container
         try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.run, self.image, **kwargs
-            )
+            container_metadata = await self.sys_docker.run(image, name=name, **kwargs)
         except DockerNotFound as err:
             # If image is missing, capture the exception as this shouldn't happen
             await async_capture_exception(err)
             raise
 
         # Store metadata
-        self._meta = docker_container.attrs
+        self._meta = container_metadata
 
     @Job(
         name="docker_interface_stop",

@@ -679,7 +679,7 @@ async def test_addon_write_stdin_not_supported_error(api_client: TestClient):
 async def test_addon_rebuild_fails_error(api_client: TestClient, coresys: CoreSys):
     """Test error when build fails during rebuild for addon."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    coresys.docker.containers.run.side_effect = DockerException("fail")
+    coresys.docker.containerspy.run.side_effect = DockerException("fail")
 
     with (
         patch.object(

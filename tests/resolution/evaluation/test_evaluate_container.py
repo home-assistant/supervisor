@@ -30,7 +30,7 @@ async def test_evaluation(coresys: CoreSys):
     assert container.reason not in coresys.resolution.unsupported
     assert UnhealthyReason.DOCKER not in coresys.resolution.unhealthy
 
-    coresys.docker.containers.list.return_value = [
+    coresys.docker.containerspy.list.return_value = [
         _make_image_attr("armhfbuild/watchtower:latest"),
         _make_image_attr("concerco/watchtowerv6:10.0.2"),
         _make_image_attr("containrrr/watchtower:1.1"),
@@ -47,7 +47,7 @@ async def test_evaluation(coresys: CoreSys):
         "pyouroboros/ouroboros:1.4.3",
     }
 
-    coresys.docker.containers.list.return_value = []
+    coresys.docker.containerspy.list.return_value = []
     await container()
     assert container.reason not in coresys.resolution.unsupported
 
@@ -62,7 +62,7 @@ async def test_corrupt_docker(coresys: CoreSys):
     corrupt_docker = Issue(IssueType.CORRUPT_DOCKER, ContextType.SYSTEM)
     assert corrupt_docker not in coresys.resolution.issues
 
-    coresys.docker.containers.list.side_effect = DockerException
+    coresys.docker.containerspy.list.side_effect = DockerException
     await container()
     assert corrupt_docker in coresys.resolution.issues
 

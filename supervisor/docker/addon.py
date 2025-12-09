@@ -10,14 +10,13 @@ import os
 from pathlib import Path
 from socket import SocketIO
 import tempfile
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import aiodocker
 from attr import evolve
 from awesomeversion import AwesomeVersion
 import docker
 import docker.errors
-from docker.types import Mount
 import requests
 
 from ..addons.build import AddonBuild
@@ -68,8 +67,11 @@ from .const import (
     PATH_SHARE,
     PATH_SSL,
     Capabilities,
+    DockerMount,
+    MountBindOptions,
     MountType,
     PropagationMode,
+    Ulimit,
 )
 from .interface import DockerInterface
 
@@ -272,7 +274,7 @@ class DockerAddon(DockerInterface):
         }
 
     @property
-    def network_mode(self) -> str | None:
+    def network_mode(self) -> Literal["host"] | None:
         """Return network mode for add-on."""
         if self.addon.host_network:
             return "host"
@@ -311,28 +313,28 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def ulimits(self) -> list[docker.types.Ulimit] | None:
+    def ulimits(self) -> list[Ulimit] | None:
         """Generate ulimits for add-on."""
-        limits: list[docker.types.Ulimit] = []
+        limits: list[Ulimit] = []
 
         # Need schedule functions
         if self.addon.with_realtime:
-            limits.append(docker.types.Ulimit(name="rtprio", soft=90, hard=99))
+            limits.append(Ulimit(name="rtprio", soft=90, hard=99))
 
             # Set available memory for memlock to 128MB
             mem = 128 * 1024 * 1024
-            limits.append(docker.types.Ulimit(name="memlock", soft=mem, hard=mem))
+            limits.append(Ulimit(name="memlock", soft=mem, hard=mem))
 
         # Add configurable ulimits from add-on config
         for name, config in self.addon.ulimits.items():
             if isinstance(config, int):
                 # Simple format: both soft and hard limits are the same
-                limits.append(docker.types.Ulimit(name=name, soft=config, hard=config))
+                limits.append(Ulimit(name=name, soft=config, hard=config))
             elif isinstance(config, dict):
                 # Detailed format: both soft and hard limits are mandatory
                 soft = config["soft"]
                 hard = config["hard"]
-                limits.append(docker.types.Ulimit(name=name, soft=soft, hard=hard))
+                limits.append(Ulimit(name=name, soft=soft, hard=hard))
 
         # Return None if no ulimits are present
         if limits:
@@ -351,7 +353,7 @@ class DockerAddon(DockerInterface):
         return None
 
     @property
-    def mounts(self) -> list[Mount]:
+    def mounts(self) -> list[DockerMount]:
         """Return mounts for container."""
         addon_mapping = self.addon.map_volumes
 
@@ -361,8 +363,8 @@ class DockerAddon(DockerInterface):
 
         mounts = [
             MOUNT_DEV,
-            Mount(
-                type=MountType.BIND.value,
+            DockerMount(
+                type=MountType.BIND,
                 source=self.addon.path_extern_data.as_posix(),
                 target=target_data_path or PATH_PRIVATE_DATA.as_posix(),
                 read_only=False,
@@ -372,8 +374,8 @@ class DockerAddon(DockerInterface):
         # setup config mappings
         if MappingType.CONFIG in addon_mapping:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
                     target=addon_mapping[MappingType.CONFIG].path
                     or PATH_HOMEASSISTANT_CONFIG_LEGACY.as_posix(),
@@ -385,8 +387,8 @@ class DockerAddon(DockerInterface):
             # Map addon's public config folder if not using deprecated config option
             if self.addon.addon_config_used:
                 mounts.append(
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.addon.path_extern_config.as_posix(),
                         target=addon_mapping[MappingType.ADDON_CONFIG].path
                         or PATH_PUBLIC_CONFIG.as_posix(),
@@ -397,8 +399,8 @@ class DockerAddon(DockerInterface):
             # Map Home Assistant config in new way
             if MappingType.HOMEASSISTANT_CONFIG in addon_mapping:
                 mounts.append(
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_homeassistant.as_posix(),
                         target=addon_mapping[MappingType.HOMEASSISTANT_CONFIG].path
                         or PATH_HOMEASSISTANT_CONFIG.as_posix(),
@@ -410,8 +412,8 @@ class DockerAddon(DockerInterface):
 
         if MappingType.ALL_ADDON_CONFIGS in addon_mapping:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_addon_configs.as_posix(),
                     target=addon_mapping[MappingType.ALL_ADDON_CONFIGS].path
                     or PATH_ALL_ADDON_CONFIGS.as_posix(),
@@ -421,8 +423,8 @@ class DockerAddon(DockerInterface):
 
         if MappingType.SSL in addon_mapping:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
                     target=addon_mapping[MappingType.SSL].path or PATH_SSL.as_posix(),
                     read_only=addon_mapping[MappingType.SSL].read_only,
@@ -431,8 +433,8 @@ class DockerAddon(DockerInterface):
 
         if MappingType.ADDONS in addon_mapping:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_addons_local.as_posix(),
                     target=addon_mapping[MappingType.ADDONS].path
                     or PATH_LOCAL_ADDONS.as_posix(),
@@ -442,8 +444,8 @@ class DockerAddon(DockerInterface):
 
         if MappingType.BACKUP in addon_mapping:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_backup.as_posix(),
                     target=addon_mapping[MappingType.BACKUP].path
                     or PATH_BACKUP.as_posix(),
@@ -453,25 +455,25 @@ class DockerAddon(DockerInterface):
 
         if MappingType.SHARE in addon_mapping:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
                     target=addon_mapping[MappingType.SHARE].path
                     or PATH_SHARE.as_posix(),
                     read_only=addon_mapping[MappingType.SHARE].read_only,
-                    propagation=PropagationMode.RSLAVE,
+                    bind_options=MountBindOptions(propagation=PropagationMode.RSLAVE),
                 )
             )
 
         if MappingType.MEDIA in addon_mapping:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_media.as_posix(),
                     target=addon_mapping[MappingType.MEDIA].path
                     or PATH_MEDIA.as_posix(),
                     read_only=addon_mapping[MappingType.MEDIA].read_only,
-                    propagation=PropagationMode.RSLAVE,
+                    bind_options=MountBindOptions(propagation=PropagationMode.RSLAVE),
                 )
             )
 
@@ -483,8 +485,8 @@ class DockerAddon(DockerInterface):
                 if not Path(gpio_path).exists():
                     continue
                 mounts.append(
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=gpio_path,
                         target=gpio_path,
                         read_only=False,
@@ -494,8 +496,8 @@ class DockerAddon(DockerInterface):
         # DeviceTree support
         if self.addon.with_devicetree:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source="/sys/firmware/devicetree/base",
                     target="/device-tree",
                     read_only=True,
@@ -509,8 +511,8 @@ class DockerAddon(DockerInterface):
         # Kernel Modules support
         if self.addon.with_kernel_modules:
             mounts.append(
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source="/lib/modules",
                     target="/lib/modules",
                     read_only=True,
@@ -528,20 +530,20 @@ class DockerAddon(DockerInterface):
         # Configuration Audio
         if self.addon.with_audio:
             mounts += [
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.addon.path_extern_pulse.as_posix(),
                     target="/etc/pulse/client.conf",
                     read_only=True,
                 ),
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
                     target="/run/audio",
                     read_only=True,
                 ),
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_plugins.audio.path_extern_asound.as_posix(),
                     target="/etc/asound.conf",
                     read_only=True,
@@ -551,14 +553,14 @@ class DockerAddon(DockerInterface):
         # System Journal access
         if self.addon.with_journald:
             mounts += [
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=SYSTEMD_JOURNAL_PERSISTENT.as_posix(),
                     target=SYSTEMD_JOURNAL_PERSISTENT.as_posix(),
                     read_only=True,
                 ),
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=SYSTEMD_JOURNAL_VOLATILE.as_posix(),
                     target=SYSTEMD_JOURNAL_VOLATILE.as_posix(),
                     read_only=True,
@@ -706,7 +708,9 @@ class DockerAddon(DockerInterface):
             # Remove dangling builder container if it exists by any chance
             # E.g. because of an abrupt host shutdown/reboot during a build
             with suppress(docker.errors.NotFound):
-                self.sys_docker.containers.get(builder_name).remove(force=True, v=True)
+                self.sys_docker.containerspy.get(builder_name).remove(
+                    force=True, v=True
+                )
 
             # Generate Docker config with registry credentials for base image if needed
             docker_config_path: Path | None = None
@@ -833,7 +837,7 @@ class DockerAddon(DockerInterface):
         """
         try:
             # Load needed docker objects
-            container = self.sys_docker.containers.get(self.name)
+            container = self.sys_docker.containerspy.get(self.name)
             # attach_socket returns SocketIO for local Docker connections (Unix socket)
             socket = cast(
                 SocketIO, container.attach_socket(params={"stdin": 1, "stream": 1})
@@ -896,7 +900,7 @@ class DockerAddon(DockerInterface):
 
         try:
             docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
+                self.sys_docker.containerspy.get, self.name
             )
         except docker.errors.NotFound:
             if self._hw_listener:
