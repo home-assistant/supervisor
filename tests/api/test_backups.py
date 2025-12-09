@@ -1202,7 +1202,7 @@ async def test_restore_homeassistant_adds_env(
     assert docker.containers.create.call_args.kwargs["name"] == "homeassistant"
     assert (
         f"SUPERVISOR_RESTORE_JOB_ID={job.uuid}"
-        in docker.containers.create.call_args.args[0]["Environment"]
+        in docker.containers.create.call_args.args[0]["Env"]
     )
 
 

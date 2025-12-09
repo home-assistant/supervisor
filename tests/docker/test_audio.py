@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from supervisor.coresys import CoreSys
-from supervisor.docker.const import DockerMount, MountType
+from supervisor.docker.const import DockerMount, MountType, Ulimit
 from supervisor.docker.manager import DockerAPI
 
 from . import DEV_MOUNT
@@ -28,7 +28,7 @@ async def test_start(coresys: CoreSys, tmp_supervisor_data: Path, container: Mag
         assert run.call_args.kwargs["hostname"] == "hassio-audio"
         assert run.call_args.kwargs["cap_add"] == ["SYS_NICE", "SYS_RESOURCE"]
         assert run.call_args.kwargs["ulimits"] == [
-            {"Name": "rtprio", "Soft": 10, "Hard": 10}
+            Ulimit(name="rtprio", soft=10, hard=10)
         ]
 
         assert run.call_args.kwargs["mounts"] == [
