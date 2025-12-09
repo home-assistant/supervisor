@@ -392,7 +392,7 @@ class DockerAPI(CoreSysAttributes):
         if restart_policy:
             host_config["RestartPolicy"] = restart_policy
         if extra_hosts:
-            host_config["ExtraHosts"] = extra_hosts
+            host_config["ExtraHosts"] = [f"{k}:{v}" for k, v in extra_hosts.items()]
         if mounts:
             host_config["Mounts"] = [mount.to_dict() for mount in mounts]
         if oom_score_adj is not None:
