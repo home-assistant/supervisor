@@ -426,7 +426,7 @@ class DockerAPI(CoreSysAttributes):
         if hostname:
             config["Hostname"] = hostname
         if environment:
-            config["Environment"] = [
+            config["Env"] = [
                 env if val is None else f"{env}={val}"
                 for env, val in environment.items()
             ]
