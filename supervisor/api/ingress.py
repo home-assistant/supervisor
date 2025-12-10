@@ -14,6 +14,7 @@ from aiohttp.web_exceptions import (
 )
 from multidict import CIMultiDict, istr
 import voluptuous as vol
+from yarl import URL
 
 from ..addons.addon import Addon
 from ..const import (
@@ -150,7 +151,17 @@ class APIIngress(CoreSysAttributes):
         session = request.cookies.get(COOKIE_INGRESS, "")
         if not self.sys_ingress.validate_session(session):
             _LOGGER.warning("No valid ingress session %s", session)
-            raise HTTPUnauthorized()
+            # For websocket requests, raise unauthorized
+            if _is_websocket(request):
+                raise HTTPUnauthorized()
+            # For other requests, redirect to validate-session endpoint
+            token = request.match_info["token"]
+            path = request.match_info.get("path", "")
+            ingress_url = f"/api/hassio_ingress/{token}/{path}"
+            if request.query_string:
+                ingress_url = f"{ingress_url}?{request.query_string}"
+            redirect_url = URL("/ingress/validate-session").with_query(url=ingress_url)
+            raise web.HTTPFound(redirect_url)
 
         # Process requests
         addon = self._extract_addon(request)
