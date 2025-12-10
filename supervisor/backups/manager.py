@@ -549,6 +549,10 @@ class BackupManager(FileConfiguration, JobGroup):
                     self._change_stage(BackupJobStage.FOLDERS, backup)
                     await backup.store_folders(folder_list)
 
+                # Backup mount configurations
+                self._change_stage(BackupJobStage.MOUNTS, backup)
+                backup.store_mounts()
+
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
         except BackupError as err:
@@ -749,6 +753,12 @@ class BackupManager(FileConfiguration, JobGroup):
                         addon_list
                     )
                     success = success and restore_success
+
+                # Restore mount configurations
+                if backup.mounts:
+                    self._change_stage(RestoreJobStage.MOUNTS, backup)
+                    mount_success = await backup.restore_mounts()
+                    success = success and mount_success
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:

@@ -55,6 +55,8 @@ from ..exceptions import (
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
+from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, ATTR_MOUNTS
+from ..mounts.mount import Mount
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
@@ -207,6 +209,11 @@ class Backup(JobGroup):
     def docker(self, value: dict[str, Any]) -> None:
         """Set the Docker config data."""
         self._data[ATTR_DOCKER] = value
+
+    @property
+    def mounts(self) -> dict[str, Any] | None:
+        """Return backup mount configuration data."""
+        return self._data.get(ATTR_MOUNTS)
 
     @property
     def location(self) -> str | None:
@@ -920,3 +927,69 @@ class Backup(JobGroup):
         return self.sys_store.update_repositories(
             set(self.repositories), issue_on_error=True, replace=replace
         )
+
+    def store_mounts(self) -> None:
+        """Store mount configurations into backup."""
+        mounts_data = {
+            ATTR_DEFAULT_BACKUP_MOUNT: (
+                self.sys_mounts.default_backup_mount.name
+                if self.sys_mounts.default_backup_mount
+                else None
+            ),
+            ATTR_MOUNTS: [
+                mount.to_dict(skip_secrets=False) for mount in self.sys_mounts.mounts
+            ],
+        }
+        self._data[ATTR_MOUNTS] = mounts_data
+
+    async def restore_mounts(self) -> bool:
+        """Restore mount configurations from backup.
+
+        Returns True if all mounts were restored successfully.
+        """
+        if not self.mounts:
+            return True
+
+        success = True
+        restored_mounts: list[str] = []
+
+        # Restore each mount configuration
+        for mount_data in self.mounts.get(ATTR_MOUNTS, []):
+            mount_name = mount_data.get("name", "unknown")
+            try:
+                # Skip if mount already exists
+                if mount_name in self.sys_mounts:
+                    _LOGGER.info(
+                        "Mount %s already exists, skipping restore", mount_name
+                    )
+                    continue
+
+                # Create mount from backup data
+                mount = Mount.from_dict(self.coresys, mount_data)
+                await self.sys_mounts.create_mount(mount)
+                restored_mounts.append(mount_name)
+                _LOGGER.info("Restored mount configuration: %s", mount_name)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Failed to restore mount %s: %s", mount_name, err)
+                success = False
+
+        # Restore default backup mount if specified and mount exists
+        default_mount_name = self.mounts.get(ATTR_DEFAULT_BACKUP_MOUNT)
+        if default_mount_name and default_mount_name in self.sys_mounts:
+            try:
+                self.sys_mounts.default_backup_mount = self.sys_mounts.get(
+                    default_mount_name
+                )
+                _LOGGER.info("Restored default backup mount: %s", default_mount_name)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning(
+                    "Failed to restore default backup mount %s: %s",
+                    default_mount_name,
+                    err,
+                )
+
+        # Save mount configuration
+        if restored_mounts:
+            await self.sys_mounts.save_data()
+
+        return success
