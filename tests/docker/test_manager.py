@@ -229,7 +229,7 @@ async def test_stop_container_with_cidfile_cleanup(
 
     # Mock the containers.get method and cidfile cleanup
     with (
-        patch.object(docker.containerspy, "get", return_value=mock_container),
+        patch.object(docker.containers_legacy, "get", return_value=mock_container),
     ):
         # Call stop_container with remove_container=True
         loop = asyncio.get_event_loop()
@@ -256,7 +256,7 @@ async def test_stop_container_without_removal_no_cidfile_cleanup(docker: DockerA
 
     # Mock the containers.get method and cidfile cleanup
     with (
-        patch.object(docker.containerspy, "get", return_value=mock_container),
+        patch.object(docker.containers_legacy, "get", return_value=mock_container),
         patch("pathlib.Path.unlink") as mock_unlink,
     ):
         # Call stop_container with remove_container=False
@@ -285,7 +285,7 @@ async def test_cidfile_cleanup_handles_oserror(coresys: CoreSys, docker: DockerA
 
     # Mock the containers.get method and cidfile cleanup to raise OSError
     with (
-        patch.object(docker.containerspy, "get", return_value=mock_container),
+        patch.object(docker.containers_legacy, "get", return_value=mock_container),
         patch("pathlib.Path.is_dir", return_value=False),
         patch("pathlib.Path.is_file", return_value=True),
         patch(

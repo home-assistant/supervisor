@@ -412,9 +412,9 @@ async def test_api_progress_updates_supervisor_update(
 
 async def test_api_supervisor_stats(api_client: TestClient, coresys: CoreSys):
     """Test supervisor stats."""
-    coresys.docker.containerspy.get.return_value.status = "running"
-    coresys.docker.containerspy.get.return_value.stats.return_value = load_json_fixture(
-        "container_stats.json"
+    coresys.docker.containers_legacy.get.return_value.status = "running"
+    coresys.docker.containers_legacy.get.return_value.stats.return_value = (
+        load_json_fixture("container_stats.json")
     )
 
     resp = await api_client.get("/supervisor/stats")
@@ -430,7 +430,7 @@ async def test_supervisor_api_stats_failure(
     api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
 ):
     """Test supervisor stats failure."""
-    coresys.docker.containerspy.get.side_effect = DockerException("fail")
+    coresys.docker.containers_legacy.get.side_effect = DockerException("fail")
 
     resp = await api_client.get("/supervisor/stats")
     assert resp.status == 500

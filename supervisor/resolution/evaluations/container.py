@@ -75,7 +75,7 @@ class EvaluateContainer(EvaluateBase):
 
         try:
             containers = await self.sys_run_in_executor(
-                self.sys_docker.containerspy.list
+                self.sys_docker.containers_legacy.list
             )
         except (DockerException, RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)

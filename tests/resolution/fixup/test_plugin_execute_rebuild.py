@@ -28,7 +28,7 @@ def make_mock_container_get(status: str):
 @pytest.mark.parametrize("status", ["running", "stopped"])
 async def test_fixup(docker: DockerAPI, coresys: CoreSys, status: str):
     """Test fixup rebuilds plugin's container regardless of current state."""
-    docker.containerspy.get = make_mock_container_get(status)
+    docker.containers_legacy.get = make_mock_container_get(status)
 
     plugin_execute_rebuild = FixupPluginExecuteRebuild(coresys)
 

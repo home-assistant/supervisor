@@ -54,7 +54,7 @@ class DockerSupervisor(DockerInterface):
         """Attach to running docker container."""
         try:
             docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containerspy.get, self.name
+                self.sys_docker.containers_legacy.get, self.name
             )
         except (docker.errors.DockerException, requests.RequestException) as err:
             raise DockerError() from err
@@ -91,7 +91,7 @@ class DockerSupervisor(DockerInterface):
         Need run inside executor.
         """
         try:
-            docker_container = self.sys_docker.containerspy.get(self.name)
+            docker_container = self.sys_docker.containers_legacy.get(self.name)
         except (docker.errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Could not get Supervisor container for retag: {err}", _LOGGER.error
@@ -119,7 +119,7 @@ class DockerSupervisor(DockerInterface):
         """Update start tag to new version."""
         try:
             docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containerspy.get, self.name
+                self.sys_docker.containers_legacy.get, self.name
             )
             docker_image = await self.sys_docker.images.inspect(f"{image}:{version!s}")
         except (

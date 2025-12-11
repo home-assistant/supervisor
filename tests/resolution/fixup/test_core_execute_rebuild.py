@@ -27,7 +27,7 @@ def make_mock_container_get(status: str):
 
 async def test_fixup(docker: DockerAPI, coresys: CoreSys):
     """Test fixup rebuilds core's container."""
-    docker.containerspy.get = make_mock_container_get("running")
+    docker.containers_legacy.get = make_mock_container_get("running")
 
     core_execute_rebuild = FixupCoreExecuteRebuild(coresys)
 
@@ -51,7 +51,7 @@ async def test_fixup_stopped_core(
 ):
     """Test fixup just removes HA's container when it is stopped."""
     caplog.clear()
-    docker.containerspy.get = make_mock_container_get("stopped")
+    docker.containers_legacy.get = make_mock_container_get("stopped")
     core_execute_rebuild = FixupCoreExecuteRebuild(coresys)
 
     coresys.resolution.create_issue(
@@ -65,7 +65,7 @@ async def test_fixup_stopped_core(
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
-    docker.containerspy.get("homeassistant").remove.assert_called_once_with(
+    docker.containers_legacy.get("homeassistant").remove.assert_called_once_with(
         force=True, v=True
     )
     assert "Home Assistant is stopped" in caplog.text
@@ -76,7 +76,7 @@ async def test_fixup_unknown_core(
 ):
     """Test fixup does nothing if core's container has already been removed."""
     caplog.clear()
-    docker.containerspy.get.side_effect = NotFound("")
+    docker.containers_legacy.get.side_effect = NotFound("")
     core_execute_rebuild = FixupCoreExecuteRebuild(coresys)
 
     coresys.resolution.create_issue(

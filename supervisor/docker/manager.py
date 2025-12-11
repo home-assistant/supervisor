@@ -313,7 +313,7 @@ class DockerAPI(CoreSysAttributes):
         return self.docker.containers
 
     @property
-    def containerspy(self) -> ContainerCollection:
+    def containers_legacy(self) -> ContainerCollection:
         """Return API containers from Dockerpy."""
         return self.dockerpy.containers
 
@@ -504,7 +504,7 @@ class DockerAPI(CoreSysAttributes):
         if mounts is None:
             mounts = [cid_mount]
         else:
-            mounts += [cid_mount]
+            mounts = [*mounts, cid_mount]
 
         # Create container
         config = self._create_container_config(
@@ -543,7 +543,8 @@ class DockerAPI(CoreSysAttributes):
             ) from err
 
         # Setup network and store container id in cidfile
-        def setup_network_cidfile() -> None:
+        def setup_network_and_cidfile() -> None:
+            # Write cidfile
             with cidfile_path.open("w", encoding="ascii") as cidfile:
                 cidfile.write(str(container.id))
 
@@ -571,7 +572,7 @@ class DockerAPI(CoreSysAttributes):
                     with suppress(docker_errors.NotFound):
                         host_network.disconnect(name, force=True)
 
-        await self.sys_run_in_executor(setup_network_cidfile)
+        await self.sys_run_in_executor(setup_network_and_cidfile)
 
         # Run container
         try:
@@ -738,7 +739,7 @@ class DockerAPI(CoreSysAttributes):
         """Return True if docker container exists in good state and is built from expected image."""
         try:
             docker_container = await self.sys_run_in_executor(
-                self.containerspy.get, name
+                self.containers_legacy.get, name
             )
             docker_image = await self.images.inspect(f"{image}:{version}")
         except docker_errors.NotFound:
@@ -768,7 +769,7 @@ class DockerAPI(CoreSysAttributes):
     ) -> None:
         """Stop/remove Docker container."""
         try:
-            docker_container: Container = self.containerspy.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             # Generally suppressed so we don't log this
             raise DockerNotFound() from None
@@ -795,7 +796,7 @@ class DockerAPI(CoreSysAttributes):
     def start_container(self, name: str) -> None:
         """Start Docker container."""
         try:
-            docker_container: Container = self.containerspy.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"{name} not found for starting up", _LOGGER.error
@@ -814,7 +815,7 @@ class DockerAPI(CoreSysAttributes):
     def restart_container(self, name: str, timeout: int) -> None:
         """Restart docker container."""
         try:
-            container: Container = self.containerspy.get(name)
+            container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for restarting", _LOGGER.warning
@@ -833,7 +834,7 @@ class DockerAPI(CoreSysAttributes):
     def container_logs(self, name: str, tail: int = 100) -> bytes:
         """Return Docker logs of container."""
         try:
-            docker_container: Container = self.containerspy.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for logs", _LOGGER.warning
@@ -853,7 +854,7 @@ class DockerAPI(CoreSysAttributes):
     def container_stats(self, name: str) -> dict[str, Any]:
         """Read and return stats from container."""
         try:
-            docker_container: Container = self.containerspy.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for stats", _LOGGER.warning
@@ -878,7 +879,7 @@ class DockerAPI(CoreSysAttributes):
     def container_run_inside(self, name: str, command: str) -> CommandReturn:
         """Execute a command inside Docker container."""
         try:
-            docker_container: Container = self.containerspy.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for running command", _LOGGER.warning

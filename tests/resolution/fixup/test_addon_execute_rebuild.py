@@ -31,7 +31,7 @@ async def _mock_wait_for_container() -> None:
 
 async def test_fixup(docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon):
     """Test fixup rebuilds addon's container."""
-    docker.containerspy.get = make_mock_container_get("running")
+    docker.containers_legacy.get = make_mock_container_get("running")
 
     addon_execute_rebuild = FixupAddonExecuteRebuild(coresys)
 
@@ -61,7 +61,7 @@ async def test_fixup_stopped_core(
 ):
     """Test fixup just removes addon's container when it is stopped."""
     caplog.clear()
-    docker.containerspy.get = make_mock_container_get("stopped")
+    docker.containers_legacy.get = make_mock_container_get("stopped")
     addon_execute_rebuild = FixupAddonExecuteRebuild(coresys)
 
     coresys.resolution.create_issue(
@@ -76,7 +76,7 @@ async def test_fixup_stopped_core(
 
     assert not coresys.resolution.issues
     assert not coresys.resolution.suggestions
-    docker.containerspy.get("addon_local_ssh").remove.assert_called_once_with(
+    docker.containers_legacy.get("addon_local_ssh").remove.assert_called_once_with(
         force=True, v=True
     )
     assert "Addon local_ssh is stopped" in caplog.text
@@ -90,7 +90,7 @@ async def test_fixup_unknown_core(
 ):
     """Test fixup does nothing if addon's container has already been removed."""
     caplog.clear()
-    docker.containerspy.get.side_effect = NotFound("")
+    docker.containers_legacy.get.side_effect = NotFound("")
     addon_execute_rebuild = FixupAddonExecuteRebuild(coresys)
 
     coresys.resolution.create_issue(

@@ -461,7 +461,7 @@ class DockerInterface(JobGroup, ABC):
         """Get docker container, returns None if not found."""
         try:
             return await self.sys_run_in_executor(
-                self.sys_docker.containerspy.get, self.name
+                self.sys_docker.containers_legacy.get, self.name
             )
         except docker.errors.NotFound:
             return None
@@ -493,7 +493,7 @@ class DockerInterface(JobGroup, ABC):
         """Attach to running Docker container."""
         with suppress(docker.errors.DockerException, requests.RequestException):
             docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containerspy.get, self.name
+                self.sys_docker.containers_legacy.get, self.name
             )
             self._meta = docker_container.attrs
             self.sys_docker.monitor.watch_container(docker_container)

@@ -33,7 +33,7 @@ async def test_evaluation(coresys: CoreSys, install_addon_ssh: Addon):
         meta.attrs = observer_attrs if name == "hassio_observer" else addon_attrs
         return meta
 
-    coresys.docker.containerspy.get = get_container
+    coresys.docker.containers_legacy.get = get_container
     await coresys.plugins.observer.instance.attach(TEST_VERSION)
     await install_addon_ssh.instance.attach(TEST_VERSION)
 

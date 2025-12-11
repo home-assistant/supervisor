@@ -120,7 +120,7 @@ async def test_unlabeled_container(coresys: CoreSys):
         }
     )
     with patch(
-        "supervisor.docker.manager.DockerAPI.containerspy",
+        "supervisor.docker.manager.DockerAPI.containers_legacy",
         new=PropertyMock(return_value=container_collection),
     ):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))

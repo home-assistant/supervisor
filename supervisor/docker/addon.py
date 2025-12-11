@@ -708,7 +708,7 @@ class DockerAddon(DockerInterface):
             # Remove dangling builder container if it exists by any chance
             # E.g. because of an abrupt host shutdown/reboot during a build
             with suppress(docker.errors.NotFound):
-                self.sys_docker.containerspy.get(builder_name).remove(
+                self.sys_docker.containers_legacy.get(builder_name).remove(
                     force=True, v=True
                 )
 
@@ -837,7 +837,7 @@ class DockerAddon(DockerInterface):
         """
         try:
             # Load needed docker objects
-            container = self.sys_docker.containerspy.get(self.name)
+            container = self.sys_docker.containers_legacy.get(self.name)
             # attach_socket returns SocketIO for local Docker connections (Unix socket)
             socket = cast(
                 SocketIO, container.attach_socket(params={"stdin": 1, "stream": 1})
@@ -900,7 +900,7 @@ class DockerAddon(DockerInterface):
 
         try:
             docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containerspy.get, self.name
+                self.sys_docker.containers_legacy.get, self.name
             )
         except docker.errors.NotFound:
             if self._hw_listener:

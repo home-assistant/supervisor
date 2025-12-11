@@ -35,9 +35,9 @@ async def test_api_core_logs(
 
 async def test_api_stats(api_client: TestClient, coresys: CoreSys):
     """Test stats."""
-    coresys.docker.containerspy.get.return_value.status = "running"
-    coresys.docker.containerspy.get.return_value.stats.return_value = load_json_fixture(
-        "container_stats.json"
+    coresys.docker.containers_legacy.get.return_value.status = "running"
+    coresys.docker.containers_legacy.get.return_value.stats.return_value = (
+        load_json_fixture("container_stats.json")
     )
 
     resp = await api_client.get("/homeassistant/stats")
