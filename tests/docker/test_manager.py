@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from aiodocker.containers import DockerContainer
 from docker.errors import APIError, DockerException, NotFound
 import pytest
 from requests import RequestException
@@ -139,40 +140,38 @@ async def test_run_command_custom_stdout_stderr(docker: DockerAPI):
     assert result.output == b"output"
 
 
-async def test_run_container_with_cidfile(
-    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
-):
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_container_with_cidfile(coresys: CoreSys, docker: DockerAPI):
     """Test container creation with cidfile and bind mount."""
     # Mock container
-    mock_container = MagicMock()
-    mock_container.id = "test_container_id_12345"
+    mock_container = MagicMock(spec=DockerContainer, id="test_container_id_12345")
+    mock_container.show.return_value = mock_metadata = {"Id": mock_container.id}
 
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
     extern_cidfile_path = coresys.config.path_extern_cid_files / f"{container_name}.cid"
 
-    docker.dockerpy.containers.run.return_value = mock_container
+    docker.containers.create.return_value = mock_container
 
     # Mock container creation
     with patch.object(
         docker.containers, "create", return_value=mock_container
     ) as create_mock:
         # Execute run with a container name
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda kwrgs: docker.run(**kwrgs),
-            {"image": "test_image", "tag": "latest", "name": container_name},
-        )
+        result = await docker.run("test_image", tag="latest", name=container_name)
 
         # Check the container creation parameters
         create_mock.assert_called_once()
-        kwargs = create_mock.call_args[1]
+        create_config = create_mock.call_args.args[0]
 
-        assert "volumes" in kwargs
-        assert str(extern_cidfile_path) in kwargs["volumes"]
-        assert kwargs["volumes"][str(extern_cidfile_path)]["bind"] == "/run/cid"
-        assert kwargs["volumes"][str(extern_cidfile_path)]["mode"] == "ro"
+        assert "HostConfig" in create_config
+        assert "Mounts" in create_config["HostConfig"]
+        assert {
+            "Type": "bind",
+            "Source": str(extern_cidfile_path),
+            "Target": "/run/cid",
+            "ReadOnly": True,
+        } in create_config["HostConfig"]["Mounts"]
 
         # Verify container start was called
         mock_container.start.assert_called_once()
@@ -181,16 +180,15 @@ async def test_run_container_with_cidfile(
         assert cidfile_path.exists()
         assert cidfile_path.read_text() == mock_container.id
 
-        assert result == mock_container
+        assert result == mock_metadata
 
 
-async def test_run_container_with_leftover_cidfile(
-    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
-):
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_run_container_with_leftover_cidfile(coresys: CoreSys, docker: DockerAPI):
     """Test container creation removes leftover cidfile before creating new one."""
     # Mock container
-    mock_container = MagicMock()
-    mock_container.id = "test_container_id_new"
+    mock_container = MagicMock(spec=DockerContainer, id="test_container_id_new")
+    mock_container.show.return_value = mock_metadata = {"Id": mock_container.id}
 
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
@@ -203,12 +201,7 @@ async def test_run_container_with_leftover_cidfile(
         docker.containers, "create", return_value=mock_container
     ) as create_mock:
         # Execute run with a container name
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda kwrgs: docker.run(**kwrgs),
-            {"image": "test_image", "tag": "latest", "name": container_name},
-        )
+        result = await docker.run("test_image", tag="latest", name=container_name)
 
         # Verify container was created
         create_mock.assert_called_once()
@@ -217,7 +210,7 @@ async def test_run_container_with_leftover_cidfile(
         assert cidfile_path.exists()
         assert cidfile_path.read_text() == mock_container.id
 
-        assert result == mock_container
+        assert result == mock_metadata
 
 
 async def test_stop_container_with_cidfile_cleanup(
@@ -236,7 +229,7 @@ async def test_stop_container_with_cidfile_cleanup(
 
     # Mock the containers.get method and cidfile cleanup
     with (
-        patch.object(docker.containers, "get", return_value=mock_container),
+        patch.object(docker.containers_legacy, "get", return_value=mock_container),
     ):
         # Call stop_container with remove_container=True
         loop = asyncio.get_event_loop()
@@ -263,7 +256,7 @@ async def test_stop_container_without_removal_no_cidfile_cleanup(docker: DockerA
 
     # Mock the containers.get method and cidfile cleanup
     with (
-        patch.object(docker.containers, "get", return_value=mock_container),
+        patch.object(docker.containers_legacy, "get", return_value=mock_container),
         patch("pathlib.Path.unlink") as mock_unlink,
     ):
         # Call stop_container with remove_container=False
@@ -277,9 +270,8 @@ async def test_stop_container_without_removal_no_cidfile_cleanup(docker: DockerA
         mock_unlink.assert_not_called()
 
 
-async def test_cidfile_cleanup_handles_oserror(
-    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
-):
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_cidfile_cleanup_handles_oserror(coresys: CoreSys, docker: DockerAPI):
     """Test that cidfile cleanup handles OSError gracefully."""
     # Mock container
     mock_container = MagicMock()
@@ -293,7 +285,7 @@ async def test_cidfile_cleanup_handles_oserror(
 
     # Mock the containers.get method and cidfile cleanup to raise OSError
     with (
-        patch.object(docker.containers, "get", return_value=mock_container),
+        patch.object(docker.containers_legacy, "get", return_value=mock_container),
         patch("pathlib.Path.is_dir", return_value=False),
         patch("pathlib.Path.is_file", return_value=True),
         patch(
@@ -311,8 +303,9 @@ async def test_cidfile_cleanup_handles_oserror(
         mock_unlink.assert_called_once_with(missing_ok=True)
 
 
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_run_container_with_leftover_cidfile_directory(
-    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
+    coresys: CoreSys, docker: DockerAPI
 ):
     """Test container creation removes leftover cidfile directory before creating new one.
 
@@ -321,8 +314,8 @@ async def test_run_container_with_leftover_cidfile_directory(
     the bind mount source as a directory.
     """
     # Mock container
-    mock_container = MagicMock()
-    mock_container.id = "test_container_id_new"
+    mock_container = MagicMock(spec=DockerContainer, id="test_container_id_new")
+    mock_container.show.return_value = mock_metadata = {"Id": mock_container.id}
 
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
@@ -336,12 +329,7 @@ async def test_run_container_with_leftover_cidfile_directory(
         docker.containers, "create", return_value=mock_container
     ) as create_mock:
         # Execute run with a container name
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda kwrgs: docker.run(**kwrgs),
-            {"image": "test_image", "tag": "latest", "name": container_name},
-        )
+        result = await docker.run("test_image", tag="latest", name=container_name)
 
         # Verify container was created
         create_mock.assert_called_once()
@@ -351,7 +339,7 @@ async def test_run_container_with_leftover_cidfile_directory(
         assert cidfile_path.is_file()
         assert cidfile_path.read_text() == mock_container.id
 
-        assert result == mock_container
+        assert result == mock_metadata
 
 
 async def test_repair(coresys: CoreSys, caplog: pytest.LogCaptureFixture):

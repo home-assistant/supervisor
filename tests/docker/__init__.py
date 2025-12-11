@@ -1,7 +1,12 @@
 """Docker tests."""
 
-from docker.types import Mount
+from supervisor.docker.const import DockerMount, MountBindOptions, MountType
 
 # dev mount with equivalent of bind-recursive=writable specified via dict value
-DEV_MOUNT = Mount(type="bind", source="/dev", target="/dev", read_only=True)
-DEV_MOUNT["BindOptions"] = {"ReadOnlyNonRecursive": True}
+DEV_MOUNT = DockerMount(
+    type=MountType.BIND,
+    source="/dev",
+    target="/dev",
+    read_only=True,
+    bind_options=MountBindOptions(read_only_non_recursive=True),
+)

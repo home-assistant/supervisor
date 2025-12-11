@@ -1,6 +1,7 @@
 """Test Docker interface."""
 
 import asyncio
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, call, patch
@@ -148,7 +149,7 @@ async def test_current_state(
     container_collection = MagicMock()
     container_collection.get.return_value = Container(attrs)
     with patch(
-        "supervisor.docker.manager.DockerAPI.containers",
+        "supervisor.docker.manager.DockerAPI.containers_legacy",
         new=PropertyMock(return_value=container_collection),
     ):
         assert await coresys.homeassistant.core.instance.current_state() == expected
@@ -158,7 +159,7 @@ async def test_current_state_failures(coresys: CoreSys):
     """Test failure states for current state."""
     container_collection = MagicMock()
     with patch(
-        "supervisor.docker.manager.DockerAPI.containers",
+        "supervisor.docker.manager.DockerAPI.containers_legacy",
         new=PropertyMock(return_value=container_collection),
     ):
         container_collection.get.side_effect = NotFound("dne")
@@ -211,7 +212,7 @@ async def test_attach_existing_container(
     container_collection.get.return_value = Container(attrs)
     with (
         patch(
-            "supervisor.docker.manager.DockerAPI.containers",
+            "supervisor.docker.manager.DockerAPI.containers_legacy",
             new=PropertyMock(return_value=container_collection),
         ),
         patch.object(type(coresys.bus), "fire_event") as fire_event,
@@ -253,7 +254,7 @@ async def test_attach_existing_container(
 
 async def test_attach_container_failure(coresys: CoreSys):
     """Test attach fails to find container but finds image."""
-    coresys.docker.containers.get.side_effect = DockerException()
+    coresys.docker.containers_legacy.get.side_effect = DockerException()
     coresys.docker.images.inspect.return_value.setdefault("Config", {})["Image"] = (
         "sha256:abc123"
     )
@@ -271,7 +272,7 @@ async def test_attach_container_failure(coresys: CoreSys):
 
 async def test_attach_total_failure(coresys: CoreSys):
     """Test attach fails to find container or image."""
-    coresys.docker.containers.get.side_effect = DockerException
+    coresys.docker.containers_legacy.get.side_effect = DockerException
     coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
         400, {"message": ""}
     )
@@ -304,8 +305,10 @@ async def test_run_missing_image(
     tmp_supervisor_data: Path,
 ):
     """Test run captures the exception when image is missing."""
-    coresys.docker.containers.create.side_effect = [NotFound("missing"), MagicMock()]
-    container.status = "stopped"
+    coresys.docker.containers.create.side_effect = [
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "missing"}),
+        MagicMock(),
+    ]
     install_addon_ssh.data["image"] = "test_image"
 
     with pytest.raises(DockerNotFound):

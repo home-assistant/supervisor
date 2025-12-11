@@ -35,9 +35,9 @@ async def test_api_core_logs(
 
 async def test_api_stats(api_client: TestClient, coresys: CoreSys):
     """Test stats."""
-    coresys.docker.containers.get.return_value.status = "running"
-    coresys.docker.containers.get.return_value.stats.return_value = load_json_fixture(
-        "container_stats.json"
+    coresys.docker.containers_legacy.get.return_value.status = "running"
+    coresys.docker.containers_legacy.get.return_value.stats.return_value = (
+        load_json_fixture("container_stats.json")
     )
 
     resp = await api_client.get("/homeassistant/stats")
@@ -138,14 +138,14 @@ async def test_api_rebuild(
         await api_client.post("/homeassistant/rebuild")
 
     assert container.remove.call_count == 2
-    container.start.assert_called_once()
+    coresys.docker.containers.create.return_value.start.assert_called_once()
     assert not safe_mode_marker.exists()
 
     with patch.object(HomeAssistantCore, "_block_till_run"):
         await api_client.post("/homeassistant/rebuild", json={"safe_mode": True})
 
     assert container.remove.call_count == 4
-    assert container.start.call_count == 2
+    assert coresys.docker.containers.create.return_value.start.call_count == 2
     assert safe_mode_marker.exists()
 
 
