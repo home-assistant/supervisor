@@ -222,6 +222,11 @@ class APIProxy(CoreSysAttributes):
             raise HTTPBadGateway()
         _LOGGER.info("Home Assistant WebSocket API request initialize")
 
+        # Check if transport is still valid before WebSocket upgrade
+        if request.transport is None:
+            _LOGGER.warning("WebSocket connection lost before upgrade")
+            raise web.HTTPBadRequest(reason="Connection closed")
+
         # init server
         server = web.WebSocketResponse(heartbeat=30)
         await server.prepare(request)
