@@ -227,7 +227,7 @@ async def test_listener_attached_on_install(
     container_collection.get.side_effect = DockerException()
     with (
         patch(
-            "supervisor.docker.manager.DockerAPI.containers",
+            "supervisor.docker.manager.DockerAPI.containers_legacy",
             new=PropertyMock(return_value=container_collection),
         ),
         patch("pathlib.Path.is_dir", return_value=True),
@@ -527,7 +527,7 @@ async def test_backup_with_pre_command_error(
     exc_type_raised: type[HassioError],
 ) -> None:
     """Test backing up an addon with error running pre command."""
-    coresys.docker.containers.get.side_effect = container_get_side_effect
+    coresys.docker.containers_legacy.get.side_effect = container_get_side_effect
     container.exec_run.side_effect = exec_run_side_effect
 
     install_addon_ssh.path_data.mkdir()

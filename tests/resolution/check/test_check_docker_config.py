@@ -76,7 +76,7 @@ async def test_check(
     docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon, folder: str
 ):
     """Test check reports issue when containers have incorrect config."""
-    docker.containers.get = _make_mock_container_get(
+    docker.containers_legacy.get = _make_mock_container_get(
         ["homeassistant", "hassio_audio", "addon_local_ssh"], folder
     )
     # Use state used in setup()
@@ -132,7 +132,7 @@ async def test_check(
     assert await docker_config.approve_check()
 
     # IF config issue is resolved, all issues are removed except the main one. Which will be removed if check isn't approved
-    docker.containers.get = _make_mock_container_get([])
+    docker.containers_legacy.get = _make_mock_container_get([])
     with patch.object(DockerInterface, "is_running", return_value=True):
         await coresys.plugins.load()
         await coresys.homeassistant.load()
@@ -159,7 +159,7 @@ async def test_addon_volume_mount_not_flagged(
     ]  # No media/share
 
     # Mock container that has VOLUME mount to media/share with wrong propagation
-    docker.containers.get = _make_mock_container_get_with_volume_mount(
+    docker.containers_legacy.get = _make_mock_container_get_with_volume_mount(
         ["addon_local_ssh"], folder
     )
 
@@ -221,7 +221,7 @@ async def test_addon_configured_mount_still_flagged(
             out.attrs["Mounts"].append(mount)
         return out
 
-    docker.containers.get = mock_container_get
+    docker.containers_legacy.get = mock_container_get
 
     await coresys.core.set_state(CoreState.SETUP)
     with patch.object(DockerInterface, "is_running", return_value=True):
@@ -275,7 +275,7 @@ async def test_addon_custom_target_path_flagged(
             out.attrs["Mounts"].append(mount)
         return out
 
-    docker.containers.get = mock_container_get
+    docker.containers_legacy.get = mock_container_get
 
     await coresys.core.set_state(CoreState.SETUP)
     with patch.object(DockerInterface, "is_running", return_value=True):

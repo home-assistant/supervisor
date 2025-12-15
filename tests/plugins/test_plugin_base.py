@@ -1,7 +1,6 @@
 """Test base plugin functionality."""
 
 import asyncio
-from pathlib import Path
 from unittest.mock import ANY, MagicMock, Mock, PropertyMock, call, patch
 
 from awesomeversion import AwesomeVersion
@@ -159,15 +158,13 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
     ],
     indirect=["plugin"],
 )
+@pytest.mark.usefixtures("coresys", "tmp_supervisor_data", "path_extern")
 async def test_plugin_watchdog_max_failed_attempts(
-    coresys: CoreSys,
     capture_exception: Mock,
     plugin: PluginBase,
     error: PluginError,
     container: MagicMock,
     caplog: pytest.LogCaptureFixture,
-    tmp_supervisor_data: Path,
-    path_extern,
 ) -> None:
     """Test plugin watchdog gives up after max failed attempts."""
     with patch.object(type(plugin.instance), "attach"):

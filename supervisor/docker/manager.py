@@ -13,10 +13,12 @@ import logging
 import os
 from pathlib import Path
 import re
-from typing import Any, Final, Self, cast
+from typing import Any, Final, Literal, Self, cast
 
 import aiodocker
+from aiodocker.containers import DockerContainers
 from aiodocker.images import DockerImages
+from aiodocker.types import JSONObject
 from aiohttp import ClientSession, ClientTimeout, UnixConnector
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -49,7 +51,16 @@ from ..exceptions import (
 )
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
-from .const import DOCKER_HUB, DOCKER_HUB_LEGACY, LABEL_MANAGED
+from .const import (
+    DOCKER_HUB,
+    DOCKER_HUB_LEGACY,
+    LABEL_MANAGED,
+    Capabilities,
+    DockerMount,
+    MountType,
+    RestartPolicy,
+    Ulimit,
+)
 from .monitor import DockerMonitor
 from .network import DockerNetwork
 from .utils import get_registry_from_image
@@ -297,8 +308,13 @@ class DockerAPI(CoreSysAttributes):
         return self.docker.images
 
     @property
-    def containers(self) -> ContainerCollection:
+    def containers(self) -> DockerContainers:
         """Return API containers."""
+        return self.docker.containers
+
+    @property
+    def containers_legacy(self) -> ContainerCollection:
+        """Return API containers from Dockerpy."""
         return self.dockerpy.containers
 
     @property
@@ -331,50 +347,137 @@ class DockerAPI(CoreSysAttributes):
         """Stop docker events monitor."""
         await self.monitor.unload()
 
-    def run(
+    def _create_container_config(
         self,
         image: str,
+        *,
         tag: str = "latest",
         dns: bool = True,
-        ipv4: IPv4Address | None = None,
-        **kwargs: Any,
-    ) -> Container:
-        """Create a Docker container and run it.
+        init: bool = False,
+        hostname: str | None = None,
+        detach: bool = True,
+        security_opt: list[str] | None = None,
+        restart_policy: dict[str, RestartPolicy] | None = None,
+        extra_hosts: dict[str, IPv4Address] | None = None,
+        environment: dict[str, str | None] | None = None,
+        mounts: list[DockerMount] | None = None,
+        ports: dict[str, str | int | None] | None = None,
+        oom_score_adj: int | None = None,
+        network_mode: Literal["host"] | None = None,
+        privileged: bool = False,
+        device_cgroup_rules: list[str] | None = None,
+        tmpfs: dict[str, str] | None = None,
+        entrypoint: list[str] | None = None,
+        cap_add: list[Capabilities] | None = None,
+        ulimits: list[Ulimit] | None = None,
+        cpu_rt_runtime: int | None = None,
+        stdin_open: bool = False,
+        pid_mode: str | None = None,
+        uts_mode: str | None = None,
+    ) -> JSONObject:
+        """Map kwargs to create container config.
 
-        Need run inside executor.
+        This only covers the docker options we currently use. It is not intended
+        to be exhaustive as its dockerpy equivalent was. We'll add to it as we
+        make use of new feature.
         """
-        name: str | None = kwargs.get("name")
-        network_mode: str | None = kwargs.get("network_mode")
-        hostname: str | None = kwargs.get("hostname")
+        # Set up host dependent config for container
+        host_config: dict[str, Any] = {
+            "NetworkMode": network_mode if network_mode else "default",
+            "Init": init,
+            "Privileged": privileged,
+        }
+        if security_opt:
+            host_config["SecurityOpt"] = security_opt
+        if restart_policy:
+            host_config["RestartPolicy"] = restart_policy
+        if extra_hosts:
+            host_config["ExtraHosts"] = [f"{k}:{v}" for k, v in extra_hosts.items()]
+        if mounts:
+            host_config["Mounts"] = [mount.to_dict() for mount in mounts]
+        if oom_score_adj is not None:
+            host_config["OomScoreAdj"] = oom_score_adj
+        if device_cgroup_rules:
+            host_config["DeviceCgroupRules"] = device_cgroup_rules
+        if tmpfs:
+            host_config["Tmpfs"] = tmpfs
+        if cap_add:
+            host_config["CapAdd"] = cap_add
+        if cpu_rt_runtime is not None:
+            host_config["CPURealtimeRuntime"] = cpu_rt_runtime
+        if pid_mode:
+            host_config["PidMode"] = pid_mode
+        if uts_mode:
+            host_config["UtsMode"] = uts_mode
+        if ulimits:
+            host_config["Ulimits"] = [limit.to_dict() for limit in ulimits]
 
-        if "labels" not in kwargs:
-            kwargs["labels"] = {}
-        elif isinstance(kwargs["labels"], list):
-            kwargs["labels"] = dict.fromkeys(kwargs["labels"], "")
+        # Full container config
+        config: dict[str, Any] = {
+            "Image": f"{image}:{tag}",
+            "Labels": {LABEL_MANAGED: ""},
+            "OpenStdin": stdin_open,
+            "StdinOnce": not detach and stdin_open,
+            "AttachStdin": not detach and stdin_open,
+            "AttachStdout": not detach,
+            "AttachStderr": not detach,
+            "HostConfig": host_config,
+        }
+        if hostname:
+            config["Hostname"] = hostname
+        if environment:
+            config["Env"] = [
+                env if val is None else f"{env}={val}"
+                for env, val in environment.items()
+            ]
+        if entrypoint:
+            config["Entrypoint"] = entrypoint
 
-        kwargs["labels"][LABEL_MANAGED] = ""
-
-        # Setup DNS
+        # Set up networking
         if dns:
-            kwargs["dns"] = [str(self.network.dns)]
-            kwargs["dns_search"] = [DNS_SUFFIX]
+            host_config["Dns"] = [str(self.network.dns)]
+            host_config["DnsSearch"] = [DNS_SUFFIX]
             # CoreDNS forward plug-in fails in ~6s, then fallback triggers.
             # However, the default timeout of glibc and musl is 5s. Increase
             # default timeout to make sure CoreDNS fallback is working
             # on first query.
-            kwargs["dns_opt"] = ["timeout:10"]
+            host_config["DnsOptions"] = ["timeout:10"]
             if hostname:
-                kwargs["domainname"] = DNS_SUFFIX
+                config["Domainname"] = DNS_SUFFIX
 
-        # Setup network
-        if not network_mode:
-            kwargs["network"] = None
+        # Setup ports
+        if ports:
+            port_bindings = {
+                port if "/" in port else f"{port}/tcp": [
+                    {"HostIp": "", "HostPort": str(host_port) if host_port else ""}
+                ]
+                for port, host_port in ports.items()
+            }
+            config["ExposedPorts"] = {port: {} for port in port_bindings}
+            host_config["PortBindings"] = port_bindings
+
+        return config
+
+    async def run(
+        self,
+        image: str,
+        *,
+        name: str,
+        tag: str = "latest",
+        hostname: str | None = None,
+        mounts: list[DockerMount] | None = None,
+        network_mode: Literal["host"] | None = None,
+        ipv4: IPv4Address | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Create a Docker container and run it."""
+        if not image or not name:
+            raise ValueError("image, name and tag cannot be an empty string!")
 
         # Setup cidfile and bind mount it
-        cidfile_path = None
-        if name:
-            cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
+        cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
 
+        def create_cidfile() -> None:
             # Remove the file/directory if it exists e.g. as a leftover from unclean shutdown
             # Note: Can be a directory if Docker auto-started container with restart policy
             # before Supervisor could write the CID file
@@ -388,31 +491,37 @@ class DockerAPI(CoreSysAttributes):
             # from creating it as a directory if container auto-starts
             cidfile_path.touch()
 
-            extern_cidfile_path = (
-                self.coresys.config.path_extern_cid_files / f"{name}.cid"
-            )
+        await self.sys_run_in_executor(create_cidfile)
 
-            # Bind mount to /run/cid in container
-            if "volumes" not in kwargs:
-                kwargs["volumes"] = {}
-            kwargs["volumes"][str(extern_cidfile_path)] = {
-                "bind": "/run/cid",
-                "mode": "ro",
-            }
+        # Bind mount to /run/cid in container
+        extern_cidfile_path = self.coresys.config.path_extern_cid_files / f"{name}.cid"
+        cid_mount = DockerMount(
+            type=MountType.BIND,
+            source=extern_cidfile_path.as_posix(),
+            target="/run/cid",
+            read_only=True,
+        )
+        if mounts is None:
+            mounts = [cid_mount]
+        else:
+            mounts = [*mounts, cid_mount]
 
         # Create container
+        config = self._create_container_config(
+            image,
+            tag=tag,
+            hostname=hostname,
+            mounts=mounts,
+            network_mode=network_mode,
+            **kwargs,
+        )
         try:
-            container = self.containers.create(
-                f"{image}:{tag}", use_config_proxy=False, **kwargs
-            )
-            if cidfile_path:
-                with cidfile_path.open("w", encoding="ascii") as cidfile:
-                    cidfile.write(str(container.id))
-        except docker_errors.NotFound as err:
-            raise DockerNotFound(
-                f"Image {image}:{tag} does not exist for {name}", _LOGGER.error
-            ) from err
-        except docker_errors.DockerException as err:
+            container = await self.containers.create(config, name=name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                raise DockerNotFound(
+                    f"Image {image}:{tag} does not exist for {name}", _LOGGER.error
+                ) from err
             raise DockerAPIError(
                 f"Can't create container from {name}: {err}", _LOGGER.error
             ) from err
@@ -421,43 +530,62 @@ class DockerAPI(CoreSysAttributes):
                 f"Dockerd connection issue for {name}: {err}", _LOGGER.error
             ) from err
 
-        # Attach network
-        if not network_mode:
-            alias = [hostname] if hostname else None
-            try:
-                self.network.attach_container(container, alias=alias, ipv4=ipv4)
-            except DockerError:
-                _LOGGER.warning("Can't attach %s to hassio-network!", name)
-            else:
-                with suppress(DockerError):
-                    self.network.detach_default_bridge(container)
-        else:
-            host_network: Network = self.dockerpy.networks.get(DOCKER_NETWORK_HOST)
+        # Get container metadata
+        try:
+            container_attrs = await container.show()
+        except aiodocker.DockerError as err:
+            raise DockerAPIError(
+                f"Can't inspect new container {name}: {err}", _LOGGER.error
+            ) from err
+        except requests.RequestException as err:
+            raise DockerRequestError(
+                f"Dockerd connection issue for {name}: {err}", _LOGGER.error
+            ) from err
 
-            # Check if container is register on host
-            # https://github.com/moby/moby/issues/23302
-            if name and name in (
-                val.get("Name")
-                for val in host_network.attrs.get("Containers", {}).values()
-            ):
-                with suppress(docker_errors.NotFound):
-                    host_network.disconnect(name, force=True)
+        # Setup network and store container id in cidfile
+        def setup_network_and_cidfile() -> None:
+            # Write cidfile
+            with cidfile_path.open("w", encoding="ascii") as cidfile:
+                cidfile.write(str(container.id))
+
+            # Attach network
+            if not network_mode:
+                alias = [hostname] if hostname else None
+                try:
+                    self.network.attach_container(
+                        container.id, name, alias=alias, ipv4=ipv4
+                    )
+                except DockerError:
+                    _LOGGER.warning("Can't attach %s to hassio-network!", name)
+                else:
+                    with suppress(DockerError):
+                        self.network.detach_default_bridge(container.id, name)
+            else:
+                host_network: Network = self.dockerpy.networks.get(DOCKER_NETWORK_HOST)
+
+                # Check if container is register on host
+                # https://github.com/moby/moby/issues/23302
+                if name and name in (
+                    val.get("Name")
+                    for val in host_network.attrs.get("Containers", {}).values()
+                ):
+                    with suppress(docker_errors.NotFound):
+                        host_network.disconnect(name, force=True)
+
+        await self.sys_run_in_executor(setup_network_and_cidfile)
 
         # Run container
         try:
-            container.start()
-        except docker_errors.DockerException as err:
+            await container.start()
+        except aiodocker.DockerError as err:
             raise DockerAPIError(f"Can't start {name}: {err}", _LOGGER.error) from err
         except requests.RequestException as err:
             raise DockerRequestError(
                 f"Dockerd connection issue for {name}: {err}", _LOGGER.error
             ) from err
 
-        # Update metadata
-        with suppress(docker_errors.DockerException, requests.RequestException):
-            container.reload()
-
-        return container
+        # Return metadata
+        return container_attrs
 
     async def pull_image(
         self,
@@ -610,7 +738,9 @@ class DockerAPI(CoreSysAttributes):
     ) -> bool:
         """Return True if docker container exists in good state and is built from expected image."""
         try:
-            docker_container = await self.sys_run_in_executor(self.containers.get, name)
+            docker_container = await self.sys_run_in_executor(
+                self.containers_legacy.get, name
+            )
             docker_image = await self.images.inspect(f"{image}:{version}")
         except docker_errors.NotFound:
             return False
@@ -639,7 +769,7 @@ class DockerAPI(CoreSysAttributes):
     ) -> None:
         """Stop/remove Docker container."""
         try:
-            docker_container: Container = self.containers.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             # Generally suppressed so we don't log this
             raise DockerNotFound() from None
@@ -666,7 +796,7 @@ class DockerAPI(CoreSysAttributes):
     def start_container(self, name: str) -> None:
         """Start Docker container."""
         try:
-            docker_container: Container = self.containers.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"{name} not found for starting up", _LOGGER.error
@@ -685,7 +815,7 @@ class DockerAPI(CoreSysAttributes):
     def restart_container(self, name: str, timeout: int) -> None:
         """Restart docker container."""
         try:
-            container: Container = self.containers.get(name)
+            container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for restarting", _LOGGER.warning
@@ -704,7 +834,7 @@ class DockerAPI(CoreSysAttributes):
     def container_logs(self, name: str, tail: int = 100) -> bytes:
         """Return Docker logs of container."""
         try:
-            docker_container: Container = self.containers.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for logs", _LOGGER.warning
@@ -724,7 +854,7 @@ class DockerAPI(CoreSysAttributes):
     def container_stats(self, name: str) -> dict[str, Any]:
         """Read and return stats from container."""
         try:
-            docker_container: Container = self.containers.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for stats", _LOGGER.warning
@@ -749,7 +879,7 @@ class DockerAPI(CoreSysAttributes):
     def container_run_inside(self, name: str, command: str) -> CommandReturn:
         """Execute a command inside Docker container."""
         try:
-            docker_container: Container = self.containers.get(name)
+            docker_container: Container = self.containers_legacy.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for running command", _LOGGER.warning

@@ -5,7 +5,6 @@ import logging
 import re
 
 from awesomeversion import AwesomeVersion
-from docker.types import Mount
 
 from ..const import LABEL_MACHINE
 from ..exceptions import DockerJobError
@@ -26,6 +25,8 @@ from .const import (
     PATH_PUBLIC_CONFIG,
     PATH_SHARE,
     PATH_SSL,
+    DockerMount,
+    MountBindOptions,
     MountType,
     PropagationMode,
 )
@@ -91,15 +92,15 @@ class DockerHomeAssistant(DockerInterface):
         )
 
     @property
-    def mounts(self) -> list[Mount]:
+    def mounts(self) -> list[DockerMount]:
         """Return mounts for container."""
         mounts = [
             MOUNT_DEV,
             MOUNT_DBUS,
             MOUNT_UDEV,
             # HA config folder
-            Mount(
-                type=MountType.BIND.value,
+            DockerMount(
+                type=MountType.BIND,
                 source=self.sys_config.path_extern_homeassistant.as_posix(),
                 target=PATH_PUBLIC_CONFIG.as_posix(),
                 read_only=False,
@@ -111,41 +112,45 @@ class DockerHomeAssistant(DockerInterface):
             mounts.extend(
                 [
                     # All other folders
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_ssl.as_posix(),
                         target=PATH_SSL.as_posix(),
                         read_only=True,
                     ),
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_share.as_posix(),
                         target=PATH_SHARE.as_posix(),
                         read_only=False,
-                        propagation=PropagationMode.RSLAVE.value,
+                        bind_options=MountBindOptions(
+                            propagation=PropagationMode.RSLAVE
+                        ),
                     ),
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_media.as_posix(),
                         target=PATH_MEDIA.as_posix(),
                         read_only=False,
-                        propagation=PropagationMode.RSLAVE.value,
+                        bind_options=MountBindOptions(
+                            propagation=PropagationMode.RSLAVE
+                        ),
                     ),
                     # Configuration audio
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_homeassistant.path_extern_pulse.as_posix(),
                         target="/etc/pulse/client.conf",
                         read_only=True,
                     ),
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
                         target="/run/audio",
                         read_only=True,
                     ),
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_plugins.audio.path_extern_asound.as_posix(),
                         target="/etc/asound.conf",
                         read_only=True,
@@ -216,20 +221,20 @@ class DockerHomeAssistant(DockerInterface):
             init=True,
             entrypoint=[],
             mounts=[
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
                     target="/config",
                     read_only=False,
                 ),
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
                     target="/ssl",
                     read_only=True,
                 ),
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
                     read_only=False,
