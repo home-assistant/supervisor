@@ -55,7 +55,7 @@ from ..exceptions import (
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
-from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, ATTR_MOUNTS
+from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, ATTR_MOUNTS, MountUsage
 from ..mounts.mount import Mount
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
@@ -1051,20 +1051,13 @@ class Backup(JobGroup):
                 _LOGGER.warning("Failed to restore mount %s: %s", mount_name, err)
                 success = False
 
-        # Add restored mounts to manager's internal state and save config
+        # Add restored mounts to manager's internal state
+        needs_save = False
         if restored_mounts:
             for mount in restored_mounts:
                 # Add to internal mounts dict without activating
                 self.sys_mounts._mounts[mount.name] = mount  # noqa: SLF001
-
-            # Save mount configuration to disk
-            await self.sys_mounts.save_data()
-
-            # Create tasks to activate each mount (non-blocking)
-            for mount in restored_mounts:
-                mount_tasks.append(
-                    self.sys_create_task(self._activate_restored_mount(mount))
-                )
+            needs_save = True
 
         # Restore default backup mount if specified
         default_mount_name = mounts_data.get(ATTR_DEFAULT_BACKUP_MOUNT)
@@ -1078,7 +1071,17 @@ class Backup(JobGroup):
                     default_mount_name
                 )
                 _LOGGER.info("Restored default backup mount: %s", default_mount_name)
-                await self.sys_mounts.save_data()
+                needs_save = True
+
+        # Save mount configuration to disk (once for all changes)
+        if needs_save:
+            await self.sys_mounts.save_data()
+
+        # Create tasks to activate each mount (non-blocking)
+        for mount in restored_mounts:
+            mount_tasks.append(
+                self.sys_create_task(self._activate_restored_mount(mount))
+            )
 
         return (success, mount_tasks)
 
@@ -1087,6 +1090,14 @@ class Backup(JobGroup):
         try:
             _LOGGER.info("Activating restored mount: %s", mount.name)
             await mount.load()
+
+            # Handle bind mounts for media and share usage types
+            # This mirrors the behavior in MountManager.create_mount()
+            if mount.usage == MountUsage.MEDIA:
+                await self.sys_mounts._bind_media(mount)  # noqa: SLF001
+            elif mount.usage == MountUsage.SHARE:
+                await self.sys_mounts._bind_share(mount)  # noqa: SLF001
+
             _LOGGER.info("Mount %s activated successfully", mount.name)
         except Exception as err:  # pylint: disable=broad-except
             _LOGGER.warning(
