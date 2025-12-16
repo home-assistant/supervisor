@@ -551,7 +551,7 @@ class BackupManager(FileConfiguration, JobGroup):
 
                 # Backup mount configurations
                 self._change_stage(BackupJobStage.MOUNTS, backup)
-                backup.store_mounts()
+                await backup.store_mounts()
 
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
@@ -755,9 +755,10 @@ class BackupManager(FileConfiguration, JobGroup):
                     success = success and restore_success
 
                 # Restore mount configurations
-                if backup.mounts:
+                mount_tasks: list[asyncio.Task] = []
+                if backup.has_mounts:
                     self._change_stage(RestoreJobStage.MOUNTS, backup)
-                    mount_success = await backup.restore_mounts()
+                    mount_success, mount_tasks = await backup.restore_mounts()
                     success = success and mount_success
 
                 # Wait for Home Assistant Core update/downgrade
@@ -779,6 +780,14 @@ class BackupManager(FileConfiguration, JobGroup):
                     await asyncio.gather(*addon_start_tasks, return_exceptions=True)
                 ):
                     return False
+
+            # Wait for mount activations (failures don't affect restore success
+            # since config was already saved)
+            if mount_tasks:
+                results = await asyncio.gather(*mount_tasks, return_exceptions=True)
+                for result in results:
+                    if isinstance(result, Exception):
+                        _LOGGER.warning("Mount activation error: %s", result)
 
             return success
         finally:

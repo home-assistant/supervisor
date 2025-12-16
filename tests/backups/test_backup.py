@@ -276,23 +276,21 @@ async def test_validate_backup(
         await enc_backup.validate_backup(None)
 
 
-async def test_store_mounts(coresys: CoreSys, tmp_path: Path, mount_propagation):
-    """Test storing mount configurations in backup."""
+async def test_store_mounts_no_mounts(coresys: CoreSys, tmp_path: Path):
+    """Test storing mount configurations when no mounts configured."""
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
 
-    # Initially no mounts
-    assert backup.mounts is None
+    # Initially no mounts flag
+    assert backup.has_mounts is False
 
-    # Store mounts (empty list when no mounts configured)
-    backup.store_mounts()
+    # Create backup context to enable store_mounts
+    async with backup.create():
+        # Store mounts (should do nothing when no mounts configured)
+        await backup.store_mounts()
 
-    # Verify mounts data is stored
-    assert backup.mounts is not None
-    assert "mounts" in backup.mounts
-    assert "default_backup_mount" in backup.mounts
-    assert backup.mounts["default_backup_mount"] is None
-    assert backup.mounts["mounts"] == []
+    # has_mounts should still be False since no mounts were configured
+    assert backup.has_mounts is False
 
 
 async def test_store_mounts_with_configured_mounts(
@@ -318,17 +316,12 @@ async def test_store_mounts_with_configured_mounts(
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
 
-    # Store mounts
-    backup.store_mounts()
+    # Create backup context and store mounts
+    async with backup.create():
+        await backup.store_mounts()
 
-    # Verify mount data is stored
-    assert backup.mounts is not None
-    assert len(backup.mounts["mounts"]) == 1
-    stored_mount = backup.mounts["mounts"][0]
-    assert stored_mount["name"] == "test_backup_share"
-    assert stored_mount["type"] == "cifs"
-    assert stored_mount["server"] == "192.168.1.100"
-    assert stored_mount["share"] == "backup_share"
+    # Verify has_mounts flag is set
+    assert backup.has_mounts is True
 
 
 async def test_restore_mounts_empty(coresys: CoreSys, tmp_path: Path):
@@ -337,8 +330,9 @@ async def test_restore_mounts_empty(coresys: CoreSys, tmp_path: Path):
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
 
     # No mounts in backup
-    assert backup.mounts is None
+    assert backup.has_mounts is False
 
-    # Restore should succeed with nothing to do
-    success = await backup.restore_mounts()
+    # Restore should succeed with nothing to do and return empty task list
+    success, tasks = await backup.restore_mounts()
     assert success is True
+    assert tasks == []
