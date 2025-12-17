@@ -530,18 +530,6 @@ class DockerAPI(CoreSysAttributes):
                 f"Dockerd connection issue for {name}: {err}", _LOGGER.error
             ) from err
 
-        # Get container metadata
-        try:
-            container_attrs = await container.show()
-        except aiodocker.DockerError as err:
-            raise DockerAPIError(
-                f"Can't inspect new container {name}: {err}", _LOGGER.error
-            ) from err
-        except requests.RequestException as err:
-            raise DockerRequestError(
-                f"Dockerd connection issue for {name}: {err}", _LOGGER.error
-            ) from err
-
         # Setup network and store container id in cidfile
         def setup_network_and_cidfile() -> None:
             # Write cidfile
@@ -584,7 +572,18 @@ class DockerAPI(CoreSysAttributes):
                 f"Dockerd connection issue for {name}: {err}", _LOGGER.error
             ) from err
 
-        # Return metadata
+        # Get container metadata after the container is started
+        try:
+            container_attrs = await container.show()
+        except aiodocker.DockerError as err:
+            raise DockerAPIError(
+                f"Can't inspect started container {name}: {err}", _LOGGER.error
+            ) from err
+        except requests.RequestException as err:
+            raise DockerRequestError(
+                f"Dockerd connection issue for {name}: {err}", _LOGGER.error
+            ) from err
+
         return container_attrs
 
     async def pull_image(
