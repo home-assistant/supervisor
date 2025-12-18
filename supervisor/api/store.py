@@ -7,6 +7,8 @@ from typing import Any, cast
 from aiohttp import web
 import voluptuous as vol
 
+from supervisor.resolution.const import ContextType, SuggestionType
+
 from ..addons.addon import Addon
 from ..addons.manager import AnyAddon
 from ..addons.utils import rating_security
@@ -359,3 +361,20 @@ class APIStore(CoreSysAttributes):
         """Remove repository from the store."""
         repository: Repository = self._extract_repository(request)
         await asyncio.shield(self.sys_store.remove_repository(repository))
+
+    @api_process
+    async def repositories_repository_repair(self, request: web.Request) -> None:
+        """Repair repository."""
+        repository: Repository = self._extract_repository(request)
+        await asyncio.shield(repository.reset())
+
+        # If we have an execute reset suggestion on this repository, dismiss it and the issue
+        for suggestion in self.sys_resolution.suggestions:
+            if (
+                suggestion.type == SuggestionType.EXECUTE_RESET
+                and suggestion.context == ContextType.STORE
+                and suggestion.reference == repository.slug
+            ):
+                for issue in self.sys_resolution.issues_for_suggestion(suggestion):
+                    self.sys_resolution.dismiss_issue(issue)
+                return

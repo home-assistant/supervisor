@@ -19,7 +19,13 @@ from ..const import (
     REPOSITORY_LOCAL,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import ConfigurationFileError, StoreError
+from ..exceptions import (
+    ConfigurationFileError,
+    StoreError,
+    StoreGitError,
+    StoreRepositoryLocalCannotReset,
+    StoreRepositoryUnknownError,
+)
 from ..utils.common import read_json_or_yaml_file
 from .const import BuiltinRepository
 from .git import GitRepo
@@ -198,8 +204,12 @@ class RepositoryGit(Repository, ABC):
 
     async def reset(self) -> None:
         """Reset add-on repository to fix corruption issue with files."""
-        await self._git.reset()
-        await self.load()
+        try:
+            await self._git.reset()
+            await self.load()
+        except StoreGitError as err:
+            _LOGGER.error("Can't reset repository %s: %s", self.slug, err)
+            raise StoreRepositoryUnknownError(repo=self.slug) from err
 
 
 class RepositoryLocal(RepositoryBuiltin):
@@ -238,9 +248,7 @@ class RepositoryLocal(RepositoryBuiltin):
 
     async def reset(self) -> None:
         """Raise. Not supported for local repository."""
-        raise StoreError(
-            "Can't reset local repository as it is not git based!", _LOGGER.error
-        )
+        raise StoreRepositoryLocalCannotReset(_LOGGER.error)
 
 
 class RepositoryGitBuiltin(RepositoryBuiltin, RepositoryGit):
