@@ -27,7 +27,7 @@ RUN \
     \
     && curl -Lso /usr/bin/cosign "https://github.com/home-assistant/cosign/releases/download/${COSIGN_VERSION}/cosign_${BUILD_ARCH}" \
     && chmod a+x /usr/bin/cosign \
-    && pip3 install uv==0.8.9
+    && pip3 install uv==0.9.18
 
 # Install requirements
 RUN \
