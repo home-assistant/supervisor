@@ -989,7 +989,7 @@ class StoreInvalidAddonRepo(StoreError):
     """Raise on invalid addon repo."""
 
 
-class StoreRepositoryUnknownError(AddonsError, APIUnknownSupervisorError):
+class StoreRepositoryUnknownError(StoreError, APIUnknownSupervisorError):
     """Raise when unknown error occurs taking an action for a store repository."""
 
     error_key = "store_repository_unknown_error"
