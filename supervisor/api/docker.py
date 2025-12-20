@@ -7,8 +7,6 @@ from aiohttp import web
 from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
-from supervisor.resolution.const import ContextType, IssueType, SuggestionType
-
 from ..const import (
     ATTR_ENABLE_IPV6,
     ATTR_HOSTNAME,
@@ -23,6 +21,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APINotFound
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
