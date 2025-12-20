@@ -45,6 +45,7 @@ from . import (
     CONF_ATTR_IP_DNS,
     CONF_ATTR_IP_GATEWAY,
     CONF_ATTR_IP_METHOD,
+    CONF_ATTR_IP_ROUTE_METRIC,
     CONF_ATTR_IPV4,
     CONF_ATTR_IPV6,
     CONF_ATTR_IPV6_ADDR_GEN_MODE,
@@ -92,20 +93,19 @@ def _get_ipv4_connection_settings(ipv4setting: IpSetting | None) -> dict:
     else:
         raise RuntimeError("Invalid IPv4 InterfaceMethod")
 
-    if (
-        ipv4setting
-        and ipv4setting.nameservers
-        and ipv4setting.method
-        in (
+    if ipv4setting:
+        if ipv4setting.route_metric is not None:
+            ipv4[CONF_ATTR_IP_ROUTE_METRIC] = Variant("i", ipv4setting.route_metric)
+
+        if ipv4setting.nameservers and ipv4setting.method in (
             InterfaceMethod.AUTO,
             InterfaceMethod.STATIC,
-        )
-    ):
-        nameservers = ipv4setting.nameservers if ipv4setting else []
-        ipv4[CONF_ATTR_IP_DNS] = Variant(
-            "au",
-            [socket.htonl(int(ip_address)) for ip_address in nameservers],
-        )
+        ):
+            nameservers = ipv4setting.nameservers if ipv4setting else []
+            ipv4[CONF_ATTR_IP_DNS] = Variant(
+                "au",
+                [socket.htonl(int(ip_address)) for ip_address in nameservers],
+            )
 
     return ipv4
 
@@ -173,20 +173,20 @@ def _get_ipv6_connection_settings(
     else:
         raise RuntimeError("Invalid IPv6 InterfaceMethod")
 
-    if (
-        ipv6setting
-        and ipv6setting.nameservers
-        and ipv6setting.method
-        in (
+    if ipv6setting:
+        if ipv6setting.route_metric is not None:
+            ipv6[CONF_ATTR_IP_ROUTE_METRIC] = Variant("i", ipv6setting.route_metric)
+
+        if ipv6setting.nameservers and ipv6setting.method in (
             InterfaceMethod.AUTO,
             InterfaceMethod.STATIC,
-        )
-    ):
-        nameservers = ipv6setting.nameservers if ipv6setting else []
-        ipv6[CONF_ATTR_IP_DNS] = Variant(
-            "aay",
-            [ip_address.packed for ip_address in nameservers],
-        )
+        ):
+            nameservers = ipv6setting.nameservers if ipv6setting else []
+            ipv6[CONF_ATTR_IP_DNS] = Variant(
+                "aay",
+                [ip_address.packed for ip_address in nameservers],
+            )
+
     return ipv6
 
 
