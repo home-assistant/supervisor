@@ -53,6 +53,8 @@ CONF_ATTR_802_WIRELESS_SECURITY_AUTH_ALG = "auth-alg"
 CONF_ATTR_802_WIRELESS_SECURITY_KEY_MGMT = "key-mgmt"
 CONF_ATTR_802_WIRELESS_SECURITY_PSK = "psk"
 
+CONF_ATTR_IP_ROUTE_METRIC = "route-metric"
+
 CONF_ATTR_IPV4_METHOD = "method"
 CONF_ATTR_IPV4_ADDRESS_DATA = "address-data"
 CONF_ATTR_IPV4_GATEWAY = "gateway"
@@ -74,6 +76,7 @@ IPV4_6_IGNORE_FIELDS = [
     "method",
     "addr-gen-mode",
     "ip6-privacy",
+    "route-metric",
 ]
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -297,6 +300,7 @@ class NetworkSetting(DBusInterface):
                 method=data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_METHOD),
                 address_data=address_data,
                 gateway=data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_GATEWAY),
+                route_metric=data[CONF_ATTR_IPV4].get(CONF_ATTR_IP_ROUTE_METRIC),
                 dns=data[CONF_ATTR_IPV4].get(CONF_ATTR_IPV4_DNS),
             )
 
@@ -310,6 +314,7 @@ class NetworkSetting(DBusInterface):
                 ip6_privacy=data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_PRIVACY),
                 address_data=address_data,
                 gateway=data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_GATEWAY),
+                route_metric=data[CONF_ATTR_IPV6].get(CONF_ATTR_IP_ROUTE_METRIC),
                 dns=data[CONF_ATTR_IPV6].get(CONF_ATTR_IPV6_DNS),
             )
 
