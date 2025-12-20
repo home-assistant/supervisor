@@ -67,34 +67,11 @@ async def test_api_network_info(api_client: TestClient, coresys: CoreSys):
 
 
 @pytest.mark.parametrize(
-    "interface_id", [TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_ETH_MAC]
+    "interface_id", ["default", TEST_INTERFACE_ETH_NAME, TEST_INTERFACE_ETH_MAC]
 )
 async def test_api_network_interface_info(api_client: TestClient, interface_id: str):
     """Test network manager api."""
     resp = await api_client.get(f"/network/interface/{interface_id}/info")
-    result = await resp.json()
-    assert result["data"]["ipv4"]["address"][-1] == "192.168.2.148/24"
-    assert result["data"]["ipv4"]["gateway"] == "192.168.2.1"
-    assert result["data"]["ipv4"]["nameservers"] == ["192.168.2.2"]
-    assert result["data"]["ipv4"]["ready"] is True
-    assert (
-        result["data"]["ipv6"]["address"][0] == "2a03:169:3df5:0:6be9:2588:b26a:a679/64"
-    )
-    assert result["data"]["ipv6"]["address"][1] == "2a03:169:3df5::2f1/128"
-    assert result["data"]["ipv6"]["gateway"] == "fe80::da58:d7ff:fe00:9c69"
-    assert result["data"]["ipv6"]["nameservers"] == [
-        "2001:1620:2777:1::10",
-        "2001:1620:2777:2::20",
-    ]
-    assert result["data"]["ipv6"]["ready"] is True
-    assert result["data"]["interface"] == TEST_INTERFACE_ETH_NAME
-    assert result["data"]["mdns"] == "announce"
-    assert result["data"]["llmnr"] == "announce"
-
-
-async def test_api_network_interface_info_default(api_client: TestClient):
-    """Test network manager default api."""
-    resp = await api_client.get("/network/interface/default/info")
     result = await resp.json()
     assert result["data"]["ipv4"]["address"][-1] == "192.168.2.148/24"
     assert result["data"]["ipv4"]["gateway"] == "192.168.2.1"
