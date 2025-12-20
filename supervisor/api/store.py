@@ -54,6 +54,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound, StoreAddonNotFoundError
+from ..resolution.const import ContextType, SuggestionType
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
@@ -359,3 +360,20 @@ class APIStore(CoreSysAttributes):
         """Remove repository from the store."""
         repository: Repository = self._extract_repository(request)
         await asyncio.shield(self.sys_store.remove_repository(repository))
+
+    @api_process
+    async def repositories_repository_repair(self, request: web.Request) -> None:
+        """Repair repository."""
+        repository: Repository = self._extract_repository(request)
+        await asyncio.shield(repository.reset())
+
+        # If we have an execute reset suggestion on this repository, dismiss it and the issue
+        for suggestion in self.sys_resolution.suggestions:
+            if (
+                suggestion.type == SuggestionType.EXECUTE_RESET
+                and suggestion.context == ContextType.STORE
+                and suggestion.reference == repository.slug
+            ):
+                for issue in self.sys_resolution.issues_for_suggestion(suggestion):
+                    self.sys_resolution.dismiss_issue(issue)
+                return
