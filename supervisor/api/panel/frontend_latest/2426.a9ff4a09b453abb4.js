@@ -1,0 +1,2 @@
+export const __webpack_id__="2426";export const __webpack_ids__=["2426"];export const __webpack_modules__={60673:function(){Intl.PluralRules&&"function"==typeof Intl.PluralRules.__addLocaleData&&Intl.PluralRules.__addLocaleData({data:{categories:{cardinal:["one","other"],ordinal:["one","two","few","other"]},fn:function(e,o){var t=String(e).split("."),a=!t[1],l=Number(t[0])==e,n=l&&t[0].slice(-1),_=l&&t[0].slice(-2);return o?1==n&&11!=_?"one":2==n&&12!=_?"two":3==n&&13!=_?"few":"other":1==e&&a?"one":"other"}},locale:"en"})}};
+//# sourceMappingURL=2426.a9ff4a09b453abb4.js.map
