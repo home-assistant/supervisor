@@ -7,8 +7,6 @@ from typing import Any, cast
 from aiohttp import web
 import voluptuous as vol
 
-from supervisor.resolution.const import ContextType, SuggestionType
-
 from ..addons.addon import Addon
 from ..addons.manager import AnyAddon
 from ..addons.utils import rating_security
@@ -56,6 +54,7 @@ from ..const import (
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound, StoreAddonNotFoundError
+from ..resolution.const import ContextType, SuggestionType
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
