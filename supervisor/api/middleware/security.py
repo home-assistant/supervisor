@@ -10,8 +10,6 @@ from aiohttp.web import Request, StreamResponse, middleware
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPUnauthorized
 from awesomeversion import AwesomeVersion
 
-from supervisor.homeassistant.const import LANDINGPAGE
-
 from ...addons.const import RE_SLUG
 from ...const import (
     REQUEST_FROM,
@@ -23,6 +21,7 @@ from ...const import (
     VALID_API_STATES,
 )
 from ...coresys import CoreSys, CoreSysAttributes
+from ...homeassistant.const import LANDINGPAGE
 from ...utils import version_is_new_enough
 from ..utils import api_return_error, extract_supervisor_token
 

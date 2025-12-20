@@ -13,8 +13,6 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from supervisor.jobs import ChildJobSyncFilter
-
 from .const import (
     ATTR_SUPERVISOR_INTERNET,
     SUPERVISOR_VERSION,
@@ -32,6 +30,7 @@ from .exceptions import (
     SupervisorUnknownError,
     SupervisorUpdateError,
 )
+from .jobs import ChildJobSyncFilter
 from .jobs.const import JobCondition, JobThrottle
 from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType, UnhealthyReason

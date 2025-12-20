@@ -11,8 +11,6 @@ from typing import Any
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from supervisor.utils.dt import utc_from_timestamp
-
 from ..const import (
     ATTR_ADVANCED,
     ATTR_APPARMOR,
@@ -100,6 +98,7 @@ from ..exceptions import (
 from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
 from ..utils import version_is_new_enough
+from ..utils.dt import utc_from_timestamp
 from .configuration import FolderMapping
 from .const import (
     ATTR_BACKUP,

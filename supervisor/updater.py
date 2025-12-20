@@ -8,8 +8,6 @@ import logging
 import aiohttp
 from awesomeversion import AwesomeVersion
 
-from supervisor.jobs.const import JobConcurrency, JobThrottle
-
 from .bus import EventListener
 from .const import (
     ATTR_AUDIO,
@@ -32,6 +30,7 @@ from .const import (
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import UpdaterError, UpdaterJobError
+from .jobs.const import JobConcurrency, JobThrottle
 from .jobs.decorator import Job, JobCondition
 from .utils.common import FileConfiguration
 from .validate import SCHEMA_UPDATER_CONFIG
