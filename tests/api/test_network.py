@@ -46,6 +46,7 @@ async def test_api_network_info(api_client: TestClient, coresys: CoreSys):
             assert interface["ipv4"] == {
                 "address": [],
                 "gateway": None,
+                "route_metric": None,
                 "method": "disabled",
                 "nameservers": [],
                 "ready": False,
@@ -54,6 +55,7 @@ async def test_api_network_info(api_client: TestClient, coresys: CoreSys):
                 "addr_gen_mode": "default",
                 "address": [],
                 "gateway": None,
+                "route_metric": None,
                 "ip6_privacy": "default",
                 "method": "disabled",
                 "nameservers": [],
@@ -214,6 +216,24 @@ async def test_api_network_interface_update_ethernet(
     assert "dns-data" not in settings["ipv4"]
     assert settings["ipv4"]["dns"] == Variant("au", [134744072])
     assert "gateway" not in settings["ipv4"]
+
+    # Update route metric
+    resp = await api_client.post(
+        f"/network/interface/{TEST_INTERFACE_ETH_NAME}/update",
+        json={
+            "ipv4": {
+                "route_metric": 100,
+            }
+        },
+    )
+    result = await resp.json()
+    assert result["result"] == "ok"
+    assert len(connection_settings_service.Update.calls) == 4
+    settings = connection_settings_service.Update.calls[3][0]
+
+    assert "ipv4" in settings
+    assert "route-metric" in settings["ipv4"]
+    assert settings["ipv4"]["route-metric"] == Variant("i", 100)
 
 
 async def test_api_network_interface_update_wifi(api_client: TestClient):
