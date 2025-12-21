@@ -64,6 +64,7 @@ class IpSetting:
     method: InterfaceMethod
     address: list[IPv4Interface | IPv6Interface]
     gateway: IPv4Address | IPv6Address | None
+    route_metric: int | None
     nameservers: list[IPv4Address | IPv6Address]
 
 
@@ -166,6 +167,7 @@ class Interface:
                 gateway=IPv4Address(inet.settings.ipv4.gateway)
                 if inet.settings.ipv4.gateway
                 else None,
+                route_metric=inet.settings.ipv4.route_metric,
                 nameservers=[
                     IPv4Address(socket.ntohl(ip)) for ip in inet.settings.ipv4.dns
                 ]
@@ -173,7 +175,7 @@ class Interface:
                 else [],
             )
         else:
-            ipv4_setting = IpSetting(InterfaceMethod.DISABLED, [], None, [])
+            ipv4_setting = IpSetting(InterfaceMethod.DISABLED, [], None, None, [])
 
         if inet.settings and inet.settings.ipv6:
             ipv6_setting = Ip6Setting(
@@ -193,12 +195,13 @@ class Interface:
                 gateway=IPv6Address(inet.settings.ipv6.gateway)
                 if inet.settings.ipv6.gateway
                 else None,
+                route_metric=inet.settings.ipv6.route_metric,
                 nameservers=[IPv6Address(bytes(ip)) for ip in inet.settings.ipv6.dns]
                 if inet.settings.ipv6.dns
                 else [],
             )
         else:
-            ipv6_setting = Ip6Setting(InterfaceMethod.DISABLED, [], None, [])
+            ipv6_setting = Ip6Setting(InterfaceMethod.DISABLED, [], None, None, [])
 
         ipv4_ready = (
             inet.connection is not None
