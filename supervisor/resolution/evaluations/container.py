@@ -5,10 +5,9 @@ import logging
 from docker.errors import DockerException
 from requests import RequestException
 
-from supervisor.docker.const import ADDON_BUILDER_IMAGE
-
 from ...const import CoreState
 from ...coresys import CoreSys
+from ...docker.const import ADDON_BUILDER_IMAGE
 from ..const import (
     ContextType,
     IssueType,

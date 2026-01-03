@@ -2,10 +2,9 @@
 
 import logging
 
-from supervisor.exceptions import BackupFileNotFoundError
-
 from ...backups.const import BackupType
 from ...coresys import CoreSys
+from ...exceptions import BackupFileNotFoundError
 from ..const import MINIMUM_FULL_BACKUPS, ContextType, IssueType, SuggestionType
 from .base import FixupBase
 

@@ -1,10 +1,9 @@
 """Evaluation class for restart policy."""
 
-from supervisor.docker.const import RestartPolicy
-from supervisor.docker.interface import DockerInterface
-
 from ...const import CoreState
 from ...coresys import CoreSys
+from ...docker.const import RestartPolicy
+from ...docker.interface import DockerInterface
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 

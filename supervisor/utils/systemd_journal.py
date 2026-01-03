@@ -9,8 +9,8 @@ import re
 
 from aiohttp import ClientResponse
 
-from supervisor.exceptions import MalformedBinaryEntryError
-from supervisor.host.const import LogFormatter
+from ..exceptions import MalformedBinaryEntryError
+from ..host.const import LogFormatter
 
 _RE_ANSI_CSI_COLORS_PATTERN = re.compile(r"\x1B\[[0-9;]*m")
 

@@ -2,8 +2,6 @@
 
 from typing import Any
 
-from supervisor.dbus.network.setting import NetworkSetting
-
 from ..const import (
     DBUS_ATTR_CONNECTION,
     DBUS_ATTR_ID,
@@ -22,6 +20,7 @@ from ..const import (
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .ip_configuration import IpConfiguration
+from .setting import NetworkSetting
 
 
 class NetworkConnection(DBusInterfaceProxy):

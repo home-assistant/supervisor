@@ -5,8 +5,6 @@ from contextlib import suppress
 import logging
 from typing import Any
 
-from supervisor.utils.sentry import async_capture_exception
-
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
@@ -34,6 +32,7 @@ from ..exceptions import (
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
+from ..utils.sentry import async_capture_exception
 from .configuration import AccessPoint, Interface
 from .const import InterfaceMethod, WifiMode
 

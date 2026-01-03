@@ -2,8 +2,7 @@
 
 from typing import Any
 
-from supervisor.dbus.utils import dbus_connected
-
+from ...utils import dbus_connected
 from .const import BOARD_NAME_SUPERVISED
 from .interface import BoardProxy
 
