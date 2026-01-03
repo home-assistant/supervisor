@@ -44,6 +44,7 @@ from ..const import (
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     DockerAPIError,
+    DockerContainerPortConflict,
     DockerError,
     DockerNoSpaceOnDevice,
     DockerNotFound,
@@ -70,6 +71,9 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 MIN_SUPPORTED_DOCKER: Final = AwesomeVersion("24.0.0")
 DOCKER_NETWORK_HOST: Final = "host"
 RE_IMPORT_IMAGE_STREAM = re.compile(r"(^Loaded image ID: |^Loaded image: )(.+)$")
+RE_PORT_CONFLICT_ERROR = re.compile(
+    r"^failed to set up container networking: .* failed to bind host port for 0.0.0.0:(\d+):\d+(?:\.\d+){3}:\d+\/\w+: address already in use$"
+)
 
 
 @attr.s(frozen=True)
@@ -566,6 +570,12 @@ class DockerAPI(CoreSysAttributes):
         try:
             await container.start()
         except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.INTERNAL_SERVER_ERROR and (
+                match := RE_PORT_CONFLICT_ERROR.match(err.message)
+            ):
+                raise DockerContainerPortConflict(
+                    _LOGGER.error, name=name, port=int(match.group(1))
+                ) from err
             raise DockerAPIError(f"Can't start {name}: {err}", _LOGGER.error) from err
         except requests.RequestException as err:
             raise DockerRequestError(
