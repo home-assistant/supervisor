@@ -41,17 +41,14 @@ from . import (
     CONF_ATTR_CONNECTION_MDNS,
     CONF_ATTR_CONNECTION_TYPE,
     CONF_ATTR_CONNECTION_UUID,
+    CONF_ATTR_IP_ADDRESS_DATA,
+    CONF_ATTR_IP_DNS,
+    CONF_ATTR_IP_GATEWAY,
+    CONF_ATTR_IP_METHOD,
+    CONF_ATTR_IP_ROUTE_METRIC,
     CONF_ATTR_IPV4,
-    CONF_ATTR_IPV4_ADDRESS_DATA,
-    CONF_ATTR_IPV4_DNS,
-    CONF_ATTR_IPV4_GATEWAY,
-    CONF_ATTR_IPV4_METHOD,
     CONF_ATTR_IPV6,
     CONF_ATTR_IPV6_ADDR_GEN_MODE,
-    CONF_ATTR_IPV6_ADDRESS_DATA,
-    CONF_ATTR_IPV6_DNS,
-    CONF_ATTR_IPV6_GATEWAY,
-    CONF_ATTR_IPV6_METHOD,
     CONF_ATTR_IPV6_PRIVACY,
     CONF_ATTR_MATCH,
     CONF_ATTR_MATCH_PATH,
@@ -75,11 +72,11 @@ MULTICAST_DNS_MODE_VALUE_MAPPING = {
 def _get_ipv4_connection_settings(ipv4setting: IpSetting | None) -> dict:
     ipv4 = {}
     if not ipv4setting or ipv4setting.method == InterfaceMethod.AUTO:
-        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "auto")
+        ipv4[CONF_ATTR_IP_METHOD] = Variant("s", "auto")
     elif ipv4setting.method == InterfaceMethod.DISABLED:
-        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "disabled")
+        ipv4[CONF_ATTR_IP_METHOD] = Variant("s", "disabled")
     elif ipv4setting.method == InterfaceMethod.STATIC:
-        ipv4[CONF_ATTR_IPV4_METHOD] = Variant("s", "manual")
+        ipv4[CONF_ATTR_IP_METHOD] = Variant("s", "manual")
 
         address_data = []
         for address in ipv4setting.address:
@@ -90,26 +87,25 @@ def _get_ipv4_connection_settings(ipv4setting: IpSetting | None) -> dict:
                 }
             )
 
-        ipv4[CONF_ATTR_IPV4_ADDRESS_DATA] = Variant("aa{sv}", address_data)
+        ipv4[CONF_ATTR_IP_ADDRESS_DATA] = Variant("aa{sv}", address_data)
         if ipv4setting.gateway:
-            ipv4[CONF_ATTR_IPV4_GATEWAY] = Variant("s", str(ipv4setting.gateway))
+            ipv4[CONF_ATTR_IP_GATEWAY] = Variant("s", str(ipv4setting.gateway))
     else:
         raise RuntimeError("Invalid IPv4 InterfaceMethod")
 
-    if (
-        ipv4setting
-        and ipv4setting.nameservers
-        and ipv4setting.method
-        in (
+    if ipv4setting:
+        if ipv4setting.route_metric is not None:
+            ipv4[CONF_ATTR_IP_ROUTE_METRIC] = Variant("i", ipv4setting.route_metric)
+
+        if ipv4setting.nameservers and ipv4setting.method in (
             InterfaceMethod.AUTO,
             InterfaceMethod.STATIC,
-        )
-    ):
-        nameservers = ipv4setting.nameservers if ipv4setting else []
-        ipv4[CONF_ATTR_IPV4_DNS] = Variant(
-            "au",
-            [socket.htonl(int(ip_address)) for ip_address in nameservers],
-        )
+        ):
+            nameservers = ipv4setting.nameservers if ipv4setting else []
+            ipv4[CONF_ATTR_IP_DNS] = Variant(
+                "au",
+                [socket.htonl(int(ip_address)) for ip_address in nameservers],
+            )
 
     return ipv4
 
@@ -119,7 +115,7 @@ def _get_ipv6_connection_settings(
 ) -> dict:
     ipv6 = {}
     if not ipv6setting or ipv6setting.method == InterfaceMethod.AUTO:
-        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "auto")
+        ipv6[CONF_ATTR_IP_METHOD] = Variant("s", "auto")
         if ipv6setting:
             if ipv6setting.addr_gen_mode == InterfaceAddrGenMode.EUI64:
                 ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant(
@@ -158,9 +154,9 @@ def _get_ipv6_connection_settings(
                     "i", NMInterfaceIp6Privacy.DEFAULT.value
                 )
     elif ipv6setting.method == InterfaceMethod.DISABLED:
-        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "link-local")
+        ipv6[CONF_ATTR_IP_METHOD] = Variant("s", "link-local")
     elif ipv6setting.method == InterfaceMethod.STATIC:
-        ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "manual")
+        ipv6[CONF_ATTR_IP_METHOD] = Variant("s", "manual")
 
         address_data = []
         for address in ipv6setting.address:
@@ -171,26 +167,26 @@ def _get_ipv6_connection_settings(
                 }
             )
 
-        ipv6[CONF_ATTR_IPV6_ADDRESS_DATA] = Variant("aa{sv}", address_data)
+        ipv6[CONF_ATTR_IP_ADDRESS_DATA] = Variant("aa{sv}", address_data)
         if ipv6setting.gateway:
-            ipv6[CONF_ATTR_IPV6_GATEWAY] = Variant("s", str(ipv6setting.gateway))
+            ipv6[CONF_ATTR_IP_GATEWAY] = Variant("s", str(ipv6setting.gateway))
     else:
         raise RuntimeError("Invalid IPv6 InterfaceMethod")
 
-    if (
-        ipv6setting
-        and ipv6setting.nameservers
-        and ipv6setting.method
-        in (
+    if ipv6setting:
+        if ipv6setting.route_metric is not None:
+            ipv6[CONF_ATTR_IP_ROUTE_METRIC] = Variant("i", ipv6setting.route_metric)
+
+        if ipv6setting.nameservers and ipv6setting.method in (
             InterfaceMethod.AUTO,
             InterfaceMethod.STATIC,
-        )
-    ):
-        nameservers = ipv6setting.nameservers if ipv6setting else []
-        ipv6[CONF_ATTR_IPV6_DNS] = Variant(
-            "aay",
-            [ip_address.packed for ip_address in nameservers],
-        )
+        ):
+            nameservers = ipv6setting.nameservers if ipv6setting else []
+            ipv6[CONF_ATTR_IP_DNS] = Variant(
+                "aay",
+                [ip_address.packed for ip_address in nameservers],
+            )
+
     return ipv6
 
 
