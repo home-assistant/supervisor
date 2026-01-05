@@ -8,8 +8,6 @@ from pathlib import Path
 
 import voluptuous as vol
 
-from supervisor.utils import get_latest_mtime
-
 from ..const import (
     ATTR_MAINTAINER,
     ATTR_NAME,
@@ -20,6 +18,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import ConfigurationFileError, StoreError
+from ..utils import get_latest_mtime
 from ..utils.common import read_json_or_yaml_file
 from .const import BuiltinRepository
 from .git import GitRepo
