@@ -18,7 +18,7 @@ async def _check_connection(websession: aiohttp.ClientSession) -> bool:
     """Check if internet connection is available."""
     try:
         async with websession.get(
-            "https://api.pwnedpasswords.com/range/00000",
+            _API_CALL.format(hash="00000"),
             timeout=aiohttp.ClientTimeout(total=5)
         ) as response:
             return response.status == 200
