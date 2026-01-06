@@ -21,7 +21,12 @@ from ..utils.logging import AddonLoggerAdapter
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-FORWARD_HEADERS = ("X-Speech-Content",)
+FORWARD_HEADERS = (
+    "X-Speech-Content",
+    "Accept",
+    "Last-Event-ID",
+    "Mcp-Session-Id",
+)
 HEADER_HA_ACCESS = "X-Ha-Access"
 
 # Maximum message size for websocket messages from Home Assistant.
@@ -118,10 +123,33 @@ class APIProxy(CoreSysAttributes):
         # Normal request
         path = request.match_info.get("path", "")
         async with self._api_client(request, path) as client:
+            # Check if this is a streaming response (e.g., MCP SSE endpoints)
+            if client.content_type == "text/event-stream":
+                response = web.StreamResponse(status=client.status)
+                response.content_type = client.content_type
+                # Copy relevant headers from the upstream response
+                for header in ("Cache-Control", "X-Accel-Buffering", "Mcp-Session-Id"):
+                    if header in client.headers:
+                        response.headers[header] = client.headers[header]
+                response.headers["X-Accel-Buffering"] = "no"
+                await response.prepare(request)
+                try:
+                    async for data in client.content:
+                        await response.write(data)
+                except (aiohttp.ClientError, aiohttp.ClientPayloadError):
+                    pass
+                return response
+
+            # Non-streaming response
             data = await client.read()
-            return web.Response(
+            response = web.Response(
                 body=data, status=client.status, content_type=client.content_type
             )
+            # Copy MCP-related headers from the upstream response
+            for header in ("Mcp-Session-Id",):
+                if header in client.headers:
+                    response.headers[header] = client.headers[header]
+            return response
 
     async def _websocket_client(self) -> ClientWebSocketResponse:
         """Initialize a WebSocket API connection."""
