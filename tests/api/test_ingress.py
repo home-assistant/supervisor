@@ -225,3 +225,89 @@ async def test_ingress_proxy_no_content_type_for_empty_body_responses(
 
     finally:
         await addon_server.close()
+
+
+async def test_ingress_proxy_preserves_content_encoding_identity(
+    api_client: TestClient, coresys: CoreSys, real_websession: aiohttp.ClientSession
+):
+    """Test that Content-Encoding: identity is preserved to prevent auto-compression."""
+
+    # Create a mock add-on backend server that returns Content-Encoding: identity
+    async def mock_addon_handler(request: web.Request) -> web.StreamResponse:
+        """Mock add-on handler that returns streaming response with Content-Encoding: identity."""
+        path = request.path
+
+        if path == "/stream-identity":
+            # Streaming response with explicit Content-Encoding: identity
+            # This should be preserved to prevent aiohttp from auto-compressing
+            response = web.StreamResponse(
+                status=200, headers={hdrs.CONTENT_ENCODING: "identity"}
+            )
+            response.content_type = "text/event-stream"
+            await response.prepare(request)
+            # Send some chunks
+            await response.write(b"data: event1\n\n")
+            await response.write(b"data: event2\n\n")
+            return response
+        elif path == "/stream-gzip":
+            # Streaming response with Content-Encoding: gzip
+            # This should NOT be preserved (stripped by ingress)
+            response = web.StreamResponse(
+                status=200, headers={hdrs.CONTENT_ENCODING: "gzip"}
+            )
+            response.content_type = "text/plain"
+            await response.prepare(request)
+            await response.write(b"compressed data")
+            return response
+        else:
+            return web.Response(body=b"default", content_type="text/html")
+
+    # Create test server for mock add-on
+    app = web.Application()
+    app.router.add_route("*", "/{tail:.*}", mock_addon_handler)
+    addon_server = TestServer(app)
+    await addon_server.start_server()
+
+    try:
+        # Create ingress session
+        resp = await api_client.post("/ingress/session")
+        result = await resp.json()
+        session = result["data"]["session"]
+
+        # Create a mock add-on
+        mock_addon = MagicMock(spec=Addon)
+        mock_addon.slug = "test_addon"
+        mock_addon.ip_address = addon_server.host
+        mock_addon.ingress_port = addon_server.port
+        mock_addon.ingress_stream = False
+
+        # Generate an ingress token and register the add-on
+        ingress_token = coresys.ingress.create_session()
+        with patch.object(coresys.ingress, "get", return_value=mock_addon):
+            # Test streaming with Content-Encoding: identity - SHOULD be preserved
+            resp = await api_client.get(
+                f"/ingress/{ingress_token}/stream-identity",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 200
+            # Content-Encoding: identity should be preserved
+            assert hdrs.CONTENT_ENCODING in resp.headers
+            assert resp.headers[hdrs.CONTENT_ENCODING] == "identity"
+            # Verify we can read the streaming content
+            body = await resp.read()
+            assert b"data: event1" in body
+            assert b"data: event2" in body
+
+            # Test streaming with Content-Encoding: gzip - should NOT be preserved
+            resp = await api_client.get(
+                f"/ingress/{ingress_token}/stream-gzip",
+                cookies={"ingress_session": session},
+            )
+            assert resp.status == 200
+            # Content-Encoding: gzip should be stripped
+            # aiohttp may or may not add its own compression based on Accept-Encoding
+            body = await resp.read()
+            assert b"compressed data" in body
+
+    finally:
+        await addon_server.close()

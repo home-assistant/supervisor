@@ -372,8 +372,10 @@ def _response_header(response: aiohttp.ClientResponse) -> CIMultiDict[str]:
             hdrs.TRANSFER_ENCODING,
             hdrs.CONTENT_LENGTH,
             hdrs.CONTENT_TYPE,
-            hdrs.CONTENT_ENCODING,
         ):
+            continue
+        # Preserve Content-Encoding: identity to prevent auto-compression
+        if name == hdrs.CONTENT_ENCODING and value.lower() != "identity":
             continue
         headers.add(name, value)
 
