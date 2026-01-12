@@ -632,7 +632,7 @@ class DockerAPI(CoreSysAttributes):
 
         image_with_tag = f"{image}:{version}"
 
-        _LOGGER.info("Runing command '%s' on %s", command, image_with_tag)
+        _LOGGER.info("Running command '%s' on %s", command, image_with_tag)
         container = None
         try:
             container = self.dockerpy.containers.run(
