@@ -12,5 +12,5 @@ ruff==0.14.10
 time-machine==3.2.0
 types-docker==7.1.0.20260109
 types-pyyaml==6.0.12.20250915
-types-requests==2.32.4.20250913
+types-requests==2.32.4.20260107
 urllib3==2.6.3
