@@ -226,19 +226,19 @@ class DockerHomeAssistant(DockerInterface):
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
                     target="/config",
                     read_only=False,
-                ),
+                ).to_dict(),
                 DockerMount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
                     target="/ssl",
                     read_only=True,
-                ),
+                ).to_dict(),
                 DockerMount(
                     type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
                     read_only=False,
-                ),
+                ).to_dict(),
             ],
             environment={ENV_TIME: self.sys_timezone},
         )
