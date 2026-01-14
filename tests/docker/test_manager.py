@@ -43,6 +43,7 @@ async def test_run_command_success(docker: DockerAPI):
         use_config_proxy=False,
         stdout=True,
         stderr=True,
+        mounts=None,
     )
 
     # Verify container cleanup
@@ -74,6 +75,7 @@ async def test_run_command_with_defaults(docker: DockerAPI):
         detach=True,
         network=docker.network.name,
         use_config_proxy=False,
+        mounts=None,
     )
 
     # Verify container.logs was called with default stdout/stderr
