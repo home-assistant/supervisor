@@ -27,6 +27,7 @@ from docker.api.client import APIClient
 from docker.client import DockerClient
 from docker.models.containers import Container, ContainerCollection
 from docker.models.networks import Network
+from docker.types import Mount
 from docker.types.daemon import CancellableStream
 import requests
 
@@ -621,6 +622,8 @@ class DockerAPI(CoreSysAttributes):
         image: str,
         version: str = "latest",
         command: str | list[str] | None = None,
+        *,
+        mounts: list[DockerMount] | None = None,
         **kwargs: Any,
     ) -> CommandReturn:
         """Create a temporary container and run command.
@@ -632,7 +635,7 @@ class DockerAPI(CoreSysAttributes):
 
         image_with_tag = f"{image}:{version}"
 
-        _LOGGER.info("Runing command '%s' on %s", command, image_with_tag)
+        _LOGGER.info("Running command '%s' on %s", command, image_with_tag)
         container = None
         try:
             container = self.dockerpy.containers.run(
@@ -641,6 +644,11 @@ class DockerAPI(CoreSysAttributes):
                 detach=True,
                 network=self.network.name,
                 use_config_proxy=False,
+                mounts=(
+                    [cast(Mount, mount.to_dict()) for mount in mounts]
+                    if mounts
+                    else None
+                ),
                 **kwargs,
             )
 

@@ -15,7 +15,7 @@ from supervisor.resolution.const import ContextType, IssueType
 async def fixture_dns_query() -> AsyncMock:
     """Mock aiodns query."""
     with patch(
-        "supervisor.resolution.checks.dns_server.DNSResolver.query",
+        "supervisor.resolution.checks.dns_server.DNSResolver.query_dns",
         new_callable=AsyncMock,
     ) as dns_query:
         yield dns_query

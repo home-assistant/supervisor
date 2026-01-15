@@ -10,6 +10,7 @@ import pytest
 from requests import RequestException
 
 from supervisor.coresys import CoreSys
+from supervisor.docker.const import DockerMount, MountBindOptions, MountType
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.exceptions import DockerError
 
@@ -43,6 +44,7 @@ async def test_run_command_success(docker: DockerAPI):
         use_config_proxy=False,
         stdout=True,
         stderr=True,
+        mounts=None,
     )
 
     # Verify container cleanup
@@ -74,6 +76,7 @@ async def test_run_command_with_defaults(docker: DockerAPI):
         detach=True,
         network=docker.network.name,
         use_config_proxy=False,
+        mounts=None,
     )
 
     # Verify container.logs was called with default stdout/stderr
@@ -138,6 +141,64 @@ async def test_run_command_custom_stdout_stderr(docker: DockerAPI):
     # Verify the result
     assert result.exit_code == 0
     assert result.output == b"output"
+
+
+async def test_run_command_with_mounts(docker: DockerAPI):
+    """Test command execution with mounts are correctly converted."""
+    # Mock container and its methods
+    mock_container = MagicMock()
+    mock_container.wait.return_value = {"StatusCode": 0}
+    mock_container.logs.return_value = b"output"
+
+    # Mock docker containers.run to return our mock container
+    docker.dockerpy.containers.run.return_value = mock_container
+
+    # Create test mounts
+    mounts = [
+        DockerMount(
+            type=MountType.BIND,
+            source="/dev",
+            target="/dev",
+            read_only=True,
+            bind_options=MountBindOptions(read_only_non_recursive=True),
+        ),
+        DockerMount(
+            type=MountType.VOLUME,
+            source="my_volume",
+            target="/data",
+            read_only=False,
+        ),
+    ]
+
+    # Execute the command with mounts
+    result = docker.run_command(image="alpine", command="test", mounts=mounts)
+
+    # Verify the result
+    assert result.exit_code == 0
+
+    # Check that mounts were converted correctly
+    docker.dockerpy.containers.run.assert_called_once_with(
+        "alpine:latest",
+        command="test",
+        detach=True,
+        network=docker.network.name,
+        use_config_proxy=False,
+        mounts=[
+            {
+                "Type": "bind",
+                "Source": "/dev",
+                "Target": "/dev",
+                "ReadOnly": True,
+                "BindOptions": {"ReadOnlyNonRecursive": True},
+            },
+            {
+                "Type": "volume",
+                "Source": "my_volume",
+                "Target": "/data",
+                "ReadOnly": False,
+            },
+        ],
+    )
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
