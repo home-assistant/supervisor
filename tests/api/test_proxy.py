@@ -254,3 +254,89 @@ async def test_api_proxy_get_request(
         assert response.status == 200
         assert await response.text() == "mocked response"
         assert response.content_type == "application/json"
+
+
+async def test_api_proxy_mcp_headers_forwarded(
+    api_client: TestClient,
+    install_addon_example: Addon,
+):
+    """Test that MCP headers are forwarded to Home Assistant."""
+    install_addon_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_addon_example.data["homeassistant_api"] = True
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        # Mock the response from make_request
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "application/json"
+        mock_response.read.return_value = b"mocked response"
+        mock_response.headers = {"Mcp-Session-Id": "test-session-123"}
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        response = await api_client.get(
+            "/core/api/mcp",
+            headers={
+                "Authorization": "Bearer abc123",
+                "Accept": "text/event-stream",
+                "Last-Event-ID": "5",
+                "Mcp-Session-Id": "test-session-123",
+            },
+        )
+
+        # Verify headers were forwarded in the request
+        assert make_request.call_args[1]["headers"]["Accept"] == "text/event-stream"
+        assert make_request.call_args[1]["headers"]["Last-Event-ID"] == "5"
+        assert (
+            make_request.call_args[1]["headers"]["Mcp-Session-Id"] == "test-session-123"
+        )
+
+        # Verify response headers are preserved
+        assert response.status == 200
+        assert response.headers.get("Mcp-Session-Id") == "test-session-123"
+
+
+async def test_api_proxy_streaming_response(
+    api_client: TestClient,
+    install_addon_example: Addon,
+):
+    """Test that streaming responses (text/event-stream) are handled properly."""
+    install_addon_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_addon_example.data["homeassistant_api"] = True
+
+    async def mock_content_iter():
+        """Mock async iterator for streaming content."""
+        yield b"data: event1\n\n"
+        yield b"data: event2\n\n"
+        yield b"data: event3\n\n"
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        # Mock the response from make_request
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "text/event-stream"
+        mock_response.headers = {
+            "Cache-Control": "no-cache",
+            "Mcp-Session-Id": "session-456",
+        }
+        mock_response.content = mock_content_iter()
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        response = await api_client.get(
+            "/core/api/mcp",
+            headers={
+                "Authorization": "Bearer abc123",
+                "Accept": "text/event-stream",
+            },
+        )
+
+        # Verify it's a streaming response
+        assert response.status == 200
+        assert response.content_type == "text/event-stream"
+        assert response.headers.get("X-Accel-Buffering") == "no"
+        assert response.headers.get("Mcp-Session-Id") == "session-456"
+
+        # Read the streamed content
+        content = await response.read()
+        assert b"data: event1\n\n" in content
+        assert b"data: event2\n\n" in content
+        assert b"data: event3\n\n" in content
