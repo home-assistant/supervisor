@@ -2,7 +2,7 @@
 
 import logging
 
-from ..const import DOCKER_IPV4_NETWORK_MASK, OBSERVER_DOCKER_NAME
+from ..const import DOCKER_IPV4_NETWORK_MASK, OBSERVER_DOCKER_NAME, OBSERVER_PORT
 from ..coresys import CoreSysAttributes
 from ..exceptions import DockerJobError
 from ..jobs.const import JobConcurrency
@@ -51,7 +51,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
                 ENV_NETWORK_MASK: DOCKER_IPV4_NETWORK_MASK,
             },
             mounts=[MOUNT_DOCKER],
-            ports={"80/tcp": 4357},
+            ports={"80/tcp": OBSERVER_PORT},
             oom_score_adj=-300,
         )
         _LOGGER.info(
