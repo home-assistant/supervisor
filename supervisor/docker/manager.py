@@ -25,7 +25,7 @@ from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
 from docker.api.client import APIClient
 from docker.client import DockerClient
-from docker.models.containers import Container, ContainerCollection
+from docker.models.containers import Container
 from docker.models.networks import Network
 from docker.types.daemon import CancellableStream
 import requests
@@ -319,11 +319,6 @@ class DockerAPI(CoreSysAttributes):
     def containers(self) -> DockerContainers:
         """Return API containers."""
         return self.docker.containers
-
-    @property
-    def containers_legacy(self) -> ContainerCollection:
-        """Return API containers from Dockerpy."""
-        return self.dockerpy.containers
 
     @property
     def api(self) -> APIClient:
