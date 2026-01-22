@@ -2,8 +2,9 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
@@ -33,11 +34,12 @@ async def test_api_core_logs(
     )
 
 
-async def test_api_stats(api_client: TestClient, coresys: CoreSys):
+async def test_api_stats(api_client: TestClient, container: DockerContainer):
     """Test stats."""
-    coresys.docker.containers_legacy.get.return_value.status = "running"
-    coresys.docker.containers_legacy.get.return_value.stats.return_value = (
-        load_json_fixture("container_stats.json")
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.stats = AsyncMock(
+        return_value=[load_json_fixture("container_stats.json")]
     )
 
     resp = await api_client.get("/homeassistant/stats")
@@ -49,7 +51,7 @@ async def test_api_stats(api_client: TestClient, coresys: CoreSys):
     assert result["data"]["memory_percent"] == 1.49
 
 
-async def test_api_set_options(api_client: TestClient, coresys: CoreSys):
+async def test_api_set_options(api_client: TestClient):
     """Test setting options for homeassistant."""
     resp = await api_client.get("/homeassistant/info")
     assert resp.status == 200
@@ -103,9 +105,7 @@ async def test_api_set_image(api_client: TestClient, coresys: CoreSys):
 
 
 async def test_api_restart(
-    api_client: TestClient,
-    container: MagicMock,
-    tmp_supervisor_data: Path,
+    api_client: TestClient, container: DockerContainer, tmp_supervisor_data: Path
 ):
     """Test restarting homeassistant."""
     safe_mode_marker = tmp_supervisor_data / "homeassistant" / "safe-mode"
@@ -123,12 +123,12 @@ async def test_api_restart(
     assert safe_mode_marker.exists()
 
 
+@pytest.mark.usefixtures("path_extern")
 async def test_api_rebuild(
     api_client: TestClient,
     coresys: CoreSys,
-    container: MagicMock,
+    container: DockerContainer,
     tmp_supervisor_data: Path,
-    path_extern,
 ):
     """Test rebuilding homeassistant."""
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
@@ -137,23 +137,21 @@ async def test_api_rebuild(
     with patch.object(HomeAssistantCore, "_block_till_run"):
         await api_client.post("/homeassistant/rebuild")
 
-    assert container.remove.call_count == 2
-    coresys.docker.containers.create.return_value.start.assert_called_once()
+    assert container.delete.call_count == 2
+    container.start.assert_called_once()
     assert not safe_mode_marker.exists()
 
     with patch.object(HomeAssistantCore, "_block_till_run"):
         await api_client.post("/homeassistant/rebuild", json={"safe_mode": True})
 
-    assert container.remove.call_count == 4
-    assert coresys.docker.containers.create.return_value.start.call_count == 2
+    assert container.delete.call_count == 4
+    assert container.start.call_count == 2
     assert safe_mode_marker.exists()
 
 
 @pytest.mark.parametrize("action", ["rebuild", "restart", "stop", "update"])
 async def test_migration_blocks_stopping_core(
-    api_client: TestClient,
-    coresys: CoreSys,
-    action: str,
+    api_client: TestClient, coresys: CoreSys, action: str
 ):
     """Test that an offline db migration in progress stops users from stopping/restarting core."""
     coresys.homeassistant.api.get_api_state.return_value = APIState("NOT_RUNNING", True)

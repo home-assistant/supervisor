@@ -2,10 +2,10 @@
 
 import asyncio
 from typing import Any
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
-from docker.models.containers import Container
 import pytest
 
 from supervisor.const import BusEvent
@@ -108,22 +108,16 @@ async def test_events(
             fire_event.assert_not_called()
 
 
-async def test_unlabeled_container(coresys: CoreSys):
+async def test_unlabeled_container(coresys: CoreSys, container: DockerContainer):
     """Test attaching to unlabeled container is still watched."""
-    container_collection = MagicMock()
-    container_collection.get.return_value = Container(
-        {
-            "Name": "homeassistant",
-            "Id": "abc123",
-            "State": {"Status": "running"},
-            "Config": {},
-        }
-    )
-    with patch(
-        "supervisor.docker.manager.DockerAPI.containers_legacy",
-        new=PropertyMock(return_value=container_collection),
-    ):
-        await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
+    container.id = "abc123"
+    container.show.return_value = {
+        "Name": "homeassistant",
+        "Id": "abc123",
+        "State": {"Status": "running"},
+        "Config": {},
+    }
+    await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
 
     with (
         patch(

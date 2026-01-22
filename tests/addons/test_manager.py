@@ -4,8 +4,9 @@ import asyncio
 from collections.abc import AsyncGenerator, Generator
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, call, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, call, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
 
@@ -191,8 +192,9 @@ async def test_addon_shutdown_error(
     )
 
 
+@pytest.mark.usefixtures("websession")
 async def test_addon_uninstall_removes_discovery(
-    coresys: CoreSys, install_addon_ssh: Addon, websession: MagicMock
+    coresys: CoreSys, install_addon_ssh: Addon
 ):
     """Test discovery messages removed when addon uninstalled."""
     assert coresys.discovery.list_messages == []
@@ -223,9 +225,8 @@ async def test_addon_uninstall_removes_discovery(
     assert coresys.discovery.list_messages == []
 
 
-async def test_load(
-    coresys: CoreSys, install_addon_ssh: Addon, caplog: pytest.LogCaptureFixture
-):
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_load(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test addon manager load."""
     caplog.clear()
 
@@ -241,13 +242,8 @@ async def test_load(
     assert "Found 1 installed add-ons" in caplog.text
 
 
-async def test_boot_waits_for_addons(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container,
-    tmp_supervisor_data,
-    path_extern,
-):
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_boot_waits_for_addons(coresys: CoreSys, install_addon_ssh: Addon):
     """Test addon manager boot waits for addons."""
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
@@ -278,16 +274,16 @@ async def test_boot_waits_for_addons(
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_update(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     status: str,
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test addon update."""
-    container.status = status
+    container.show.return_value["State"]["Status"] = status
+    container.show.return_value["State"]["Running"] = status == "running"
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
     with patch(
@@ -308,16 +304,16 @@ async def test_update(
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_rebuild(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     status: str,
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test addon rebuild."""
-    container.status = status
+    container.show.return_value["State"]["Status"] = status
+    container.show.return_value["State"]["Running"] = status == "running"
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
@@ -331,17 +327,16 @@ async def test_rebuild(
     assert bool(start_task) is (status == "running")
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_start_wait_cancel_on_uninstall(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     caplog: pytest.LogCaptureFixture,
-    tmp_supervisor_data,
-    path_extern,
 ) -> None:
     """Test the addon wait task is cancelled when addon is uninstalled."""
     install_addon_ssh.path_data.mkdir()
-    container.attrs["Config"] = {"Healthcheck": "exists"}
+    container.show.return_value["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
     await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
@@ -458,10 +453,11 @@ async def test_store_data_changes_during_update(
 
 
 async def test_watchdog_runs_during_update(
-    coresys: CoreSys, install_addon_ssh: Addon, container: MagicMock
+    coresys: CoreSys, install_addon_ssh: Addon, container: DockerContainer
 ):
     """Test watchdog running during a long update."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     install_addon_ssh.watchdog = True
     coresys.store.data.addons["local_ssh"]["image"] = "test_image"
     coresys.store.data.addons["local_ssh"]["version"] = AwesomeVersion("1.1.1")
@@ -469,7 +465,8 @@ async def test_watchdog_runs_during_update(
 
     # Simulate stop firing the docker event for stopped container like it normally would
     async def mock_stop(*args, **kwargs):
-        container.status = "stopped"
+        container.show.return_value["State"]["Status"] = "stopped"
+        container.show.return_value["State"]["Running"] = False
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(

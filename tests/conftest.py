@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.docker import DockerImages
+from aiodocker.execs import Exec
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -66,17 +67,16 @@ from .common import (
 )
 from .const import TEST_ADDON_SLUG
 from .dbus_service_mocks.base import DBusServiceMock
+from .dbus_service_mocks.network_active_connection import (
+    DEFAULT_OBJECT_PATH as DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH,
+    ActiveConnection as ActiveConnectionService,
+)
 from .dbus_service_mocks.network_connection_settings import (
     DEFAULT_OBJECT_PATH as DEFAULT_CONNECTION_SETTINGS_OBJECT_PATH,
     ConnectionSettings as ConnectionSettingsService,
 )
 from .dbus_service_mocks.network_dns_manager import DnsManager as DnsManagerService
 from .dbus_service_mocks.network_manager import NetworkManager as NetworkManagerService
-
-from tests.dbus_service_mocks.network_active_connection import (
-    DEFAULT_OBJECT_PATH as DEFAULT_ACTIVE_CONNECTION_OBJECT_PATH,
-    ActiveConnection as ActiveConnectionService,
-)
 
 # pylint: disable=redefined-outer-name, protected-access
 
@@ -121,14 +121,13 @@ async def docker() -> DockerAPI:
         "Id": "test123",
         "RepoTags": ["ghcr.io/home-assistant/amd64-hassio-supervisor:latest"],
     }
-    container_inspect = image_inspect | {"State": {"ExitCode": 0}}
+    container_inspect = image_inspect | {
+        "State": {"ExitCode": 0, "Status": "stopped", "Running": False},
+        "Image": "abc123",
+    }
 
     with (
         patch("supervisor.docker.manager.DockerClient", return_value=MagicMock()),
-        patch(
-            "supervisor.docker.manager.DockerAPI.containers_legacy",
-            return_value=MagicMock(),
-        ),
         patch("supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()),
         patch("supervisor.docker.manager.DockerAPI.info", return_value=MagicMock()),
         patch("supervisor.docker.manager.DockerAPI.unload"),
@@ -159,11 +158,17 @@ async def docker() -> DockerAPI:
         docker_images.pull.return_value = AsyncIterator([{}])
 
         docker_containers.get.return_value = docker_container = MagicMock(
-            spec=DockerContainer
+            spec=DockerContainer, id=container_inspect["Id"]
         )
         docker_containers.list.return_value = [docker_container]
         docker_containers.create.return_value = docker_container
         docker_container.show.return_value = container_inspect
+        docker_container.wait.return_value = {"StatusCode": 0}
+        docker_container.log = AsyncMock(return_vaue=[])
+
+        docker_container.exec.return_value = docker_exec = MagicMock(spec=Exec)
+        docker_exec.start = AsyncMock(return_value=b"")
+        docker_exec.inspect.return_value = {"ExitCode": 0}
 
         docker_obj.info.logging = "journald"
         docker_obj.info.storage = "overlay2"
@@ -805,7 +810,7 @@ async def docker_logs(docker: DockerAPI, supervisor_name) -> MagicMock:
     """Mock log output for a container from docker."""
     container_mock = MagicMock()
     container_mock.logs.return_value = load_binary_fixture("logs_docker_container.txt")
-    docker.containers_legacy.get.return_value = container_mock
+    docker.dockerpy.containers.get.return_value = container_mock
     yield container_mock.logs
 
 
@@ -837,34 +842,26 @@ async def os_available(request: pytest.FixtureRequest) -> None:
 
 
 @pytest.fixture
-async def mount_propagation(docker: DockerAPI, coresys: CoreSys) -> None:
-    """Mock supervisor connected to container with propagation set."""
-    docker.containers_legacy.get.return_value = supervisor = MagicMock()
-    supervisor.attrs = {
-        "Mounts": [
-            {
-                "Type": "bind",
-                "Source": "/mnt/data/supervisor",
-                "Destination": "/data",
-                "Mode": "rw",
-                "RW": True,
-                "Propagation": "slave",
-            }
-        ]
-    }
-    await coresys.supervisor.load()
-    yield
+async def container(docker: DockerAPI) -> DockerContainer:
+    """Mock attrs and status for container on attach."""
+    yield docker.containers.get.return_value
 
 
 @pytest.fixture
-async def container(docker: DockerAPI) -> MagicMock:
-    """Mock attrs and status for container on attach."""
-    attrs = {"State": {"ExitCode": 0}}
-    docker.containers_legacy.get.return_value = addon = MagicMock(
-        status="stopped", attrs=attrs
-    )
-    docker.containers.create.return_value.show.return_value = attrs
-    yield addon
+async def mount_propagation(container: DockerContainer, coresys: CoreSys) -> None:
+    """Mock supervisor connected to container with propagation set."""
+    container.show.return_value["Mounts"] = [
+        {
+            "Type": "bind",
+            "Source": "/mnt/data/supervisor",
+            "Destination": "/data",
+            "Mode": "rw",
+            "RW": True,
+            "Propagation": "slave",
+        }
+    ]
+    await coresys.supervisor.load()
+    yield
 
 
 @pytest.fixture

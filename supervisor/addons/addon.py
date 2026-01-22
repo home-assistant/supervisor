@@ -1176,13 +1176,6 @@ class Addon(AddonModel):
             await self.stop()
         return await self.start()
 
-    def logs(self) -> Awaitable[bytes]:
-        """Return add-ons log output.
-
-        Return a coroutine.
-        """
-        return self.instance.logs()
-
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
 

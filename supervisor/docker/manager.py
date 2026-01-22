@@ -11,12 +11,12 @@ from ipaddress import IPv4Address
 import json
 import logging
 import os
-from pathlib import Path
+from pathlib import Path, PurePath
 import re
 from typing import Any, Final, Literal, Self, cast
 
 import aiodocker
-from aiodocker.containers import DockerContainers
+from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.images import DockerImages
 from aiodocker.types import JSONObject
 from aiohttp import ClientSession, ClientTimeout, UnixConnector
@@ -27,7 +27,6 @@ from docker.api.client import APIClient
 from docker.client import DockerClient
 from docker.models.containers import Container, ContainerCollection
 from docker.models.networks import Network
-from docker.types import Mount
 from docker.types.daemon import CancellableStream
 import requests
 
@@ -73,12 +72,20 @@ DOCKER_NETWORK_HOST: Final = "host"
 RE_IMPORT_IMAGE_STREAM = re.compile(r"(^Loaded image ID: |^Loaded image: )(.+)$")
 
 
-@attr.s(frozen=True)
+@dataclass(slots=True, frozen=True)
+class ExecReturn:
+    """Return object from exec run."""
+
+    exit_code: int
+    output: bytes
+
+
+@dataclass(slots=True, frozen=True)
 class CommandReturn:
     """Return object from command run."""
 
-    exit_code: int = attr.ib()
-    output: bytes = attr.ib()
+    exit_code: int
+    log: list[str]
 
 
 @attr.s(frozen=True)
@@ -364,7 +371,7 @@ class DockerAPI(CoreSysAttributes):
         mounts: list[DockerMount] | None = None,
         ports: dict[str, str | int | None] | None = None,
         oom_score_adj: int | None = None,
-        network_mode: Literal["host"] | None = None,
+        network_mode: str | None = None,
         privileged: bool = False,
         device_cgroup_rules: list[str] | None = None,
         tmpfs: dict[str, str] | None = None,
@@ -375,6 +382,9 @@ class DockerAPI(CoreSysAttributes):
         stdin_open: bool = False,
         pid_mode: str | None = None,
         uts_mode: str | None = None,
+        command: list[str] | None = None,
+        networking_config: dict[str, Any] | None = None,
+        working_dir: PurePath | None = None,
     ) -> JSONObject:
         """Map kwargs to create container config.
 
@@ -433,6 +443,12 @@ class DockerAPI(CoreSysAttributes):
             ]
         if entrypoint:
             config["Entrypoint"] = entrypoint
+        if command:
+            config["Cmd"] = command
+        if networking_config:
+            config["NetworkingConfig"] = networking_config
+        if working_dir:
+            config["WorkingDir"] = working_dir.as_posix()
 
         # Set up networking
         if dns:
@@ -459,53 +475,59 @@ class DockerAPI(CoreSysAttributes):
 
         return config
 
-    async def run(
+    async def _run(
         self,
         image: str,
         *,
-        name: str,
+        name: str | None = None,
         tag: str = "latest",
         hostname: str | None = None,
         mounts: list[DockerMount] | None = None,
-        network_mode: Literal["host"] | None = None,
+        network_mode: str | None = None,
+        networking_config: dict[str, Any] | None = None,
         ipv4: IPv4Address | None = None,
+        skip_cidfile: bool = False,
         **kwargs,
-    ) -> dict[str, Any]:
+    ) -> DockerContainer:
         """Create a Docker container and run it."""
-        if not image or not name:
-            raise ValueError("image, name and tag cannot be an empty string!")
+        if not image or not tag:
+            raise ValueError("image and tag cannot be an empty string!")
 
-        # Setup cidfile and bind mount it
-        cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
+        cidfile_path: Path | None = None
+        if name and not skip_cidfile:
+            # Setup cidfile and bind mount it
+            cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
 
-        def create_cidfile() -> None:
-            # Remove the file/directory if it exists e.g. as a leftover from unclean shutdown
-            # Note: Can be a directory if Docker auto-started container with restart policy
-            # before Supervisor could write the CID file
-            with suppress(OSError):
-                if cidfile_path.is_dir():
-                    cidfile_path.rmdir()
-                elif cidfile_path.is_file():
-                    cidfile_path.unlink(missing_ok=True)
+            def create_cidfile() -> None:
+                # Remove the file/directory if it exists e.g. as a leftover from unclean shutdown
+                # Note: Can be a directory if Docker auto-started container with restart policy
+                # before Supervisor could write the CID file
+                with suppress(OSError):
+                    if cidfile_path.is_dir():
+                        cidfile_path.rmdir()
+                    elif cidfile_path.is_file():
+                        cidfile_path.unlink(missing_ok=True)
 
-            # Create empty CID file before adding it to volumes to prevent Docker
-            # from creating it as a directory if container auto-starts
-            cidfile_path.touch()
+                # Create empty CID file before adding it to volumes to prevent Docker
+                # from creating it as a directory if container auto-starts
+                cidfile_path.touch()
 
-        await self.sys_run_in_executor(create_cidfile)
+            await self.sys_run_in_executor(create_cidfile)
 
-        # Bind mount to /run/cid in container
-        extern_cidfile_path = self.coresys.config.path_extern_cid_files / f"{name}.cid"
-        cid_mount = DockerMount(
-            type=MountType.BIND,
-            source=extern_cidfile_path.as_posix(),
-            target="/run/cid",
-            read_only=True,
-        )
-        if mounts is None:
-            mounts = [cid_mount]
-        else:
-            mounts = [*mounts, cid_mount]
+            # Bind mount to /run/cid in container
+            extern_cidfile_path = (
+                self.coresys.config.path_extern_cid_files / f"{name}.cid"
+            )
+            cid_mount = DockerMount(
+                type=MountType.BIND,
+                source=extern_cidfile_path.as_posix(),
+                target="/run/cid",
+                read_only=True,
+            )
+            if mounts is None:
+                mounts = [cid_mount]
+            else:
+                mounts = [*mounts, cid_mount]
 
         # Create container
         config = self._create_container_config(
@@ -521,31 +543,34 @@ class DockerAPI(CoreSysAttributes):
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 raise DockerNotFound(
-                    f"Image {image}:{tag} does not exist for {name}", _LOGGER.error
+                    f"Image {image}:{tag} does not exist", _LOGGER.error
                 ) from err
             raise DockerAPIError(
-                f"Can't create container from {name}: {err}", _LOGGER.error
-            ) from err
-        except requests.RequestException as err:
-            raise DockerRequestError(
-                f"Dockerd connection issue for {name}: {err}", _LOGGER.error
+                f"Can't create container from {image}:{tag}: {err}", _LOGGER.error
             ) from err
 
-        # Setup network and store container id in cidfile
-        def setup_network_and_cidfile() -> None:
+        # Store container id in cidfile
+        def setup_cidfile(cidfile_path: Path) -> None:
             # Write cidfile
             with cidfile_path.open("w", encoding="ascii") as cidfile:
                 cidfile.write(str(container.id))
 
+        if cidfile_path:
+            await self.sys_run_in_executor(setup_cidfile, cidfile_path)
+
+        # Setup network
+        def setup_network(network_mode: Literal["host"] | None) -> None:
             # Attach network
-            if not network_mode:
+            if network_mode:
                 alias = [hostname] if hostname else None
                 try:
                     self.network.attach_container(
                         container.id, name, alias=alias, ipv4=ipv4
                     )
                 except DockerError:
-                    _LOGGER.warning("Can't attach %s to hassio-network!", name)
+                    _LOGGER.warning(
+                        "Can't attach %s to hassio-network!", name or container.id
+                    )
                 else:
                     with suppress(DockerError):
                         self.network.detach_default_bridge(container.id, name)
@@ -561,17 +586,24 @@ class DockerAPI(CoreSysAttributes):
                     with suppress(docker_errors.NotFound):
                         host_network.disconnect(name, force=True)
 
-        await self.sys_run_in_executor(setup_network_and_cidfile)
+        if not networking_config and network_mode in ("host", None):
+            await self.sys_run_in_executor(setup_network, network_mode)
 
         # Run container
         try:
             await container.start()
         except aiodocker.DockerError as err:
-            raise DockerAPIError(f"Can't start {name}: {err}", _LOGGER.error) from err
-        except requests.RequestException as err:
-            raise DockerRequestError(
-                f"Dockerd connection issue for {name}: {err}", _LOGGER.error
+            raise DockerAPIError(
+                f"Can't start {name or container.id}: {err}", _LOGGER.error
             ) from err
+
+        return container
+
+    async def run(
+        self, image: str, *, name: str, tag: str = "latest", **kwargs
+    ) -> dict[str, Any]:
+        """Create and run a container from provided config, returning its inspect metadata."""
+        container = await self._run(image, name=name, tag=tag, **kwargs)
 
         # Get container metadata after the container is started
         try:
@@ -586,6 +618,45 @@ class DockerAPI(CoreSysAttributes):
             ) from err
 
         return container_attrs
+
+    async def run_command(
+        self,
+        image: str,
+        command: list[str],
+        tag: str = "latest",
+        stdout: bool = True,
+        stderr: bool = True,
+        **kwargs: Any,
+    ) -> CommandReturn:
+        """Create a temporary container and run command, returning its output."""
+        _LOGGER.info("Runing command '%s' on %s:%s", command, image, tag)
+        container: DockerContainer | None = None
+        try:
+            container = await self._run(
+                image,
+                tag=tag,
+                command=command,
+                detach=True,
+                network_mode=self.network.name,
+                networking_config={self.network.name: None},
+                skip_cidfile=True,
+                **kwargs,
+            )
+
+            # wait until command is done
+            result = await container.wait()
+            log = await container.log(stdout=stdout, stderr=stderr, follow=False)
+
+        except (DockerError, aiodocker.DockerError) as err:
+            raise DockerError(f"Can't execute command: {err}", _LOGGER.error) from err
+
+        finally:
+            # cleanup container
+            if container:
+                with suppress(aiodocker.DockerError):
+                    await container.delete(force=True, v=True)
+
+        return CommandReturn(result["StatusCode"], log)
 
     async def pull_image(
         self,
@@ -617,140 +688,103 @@ class DockerAPI(CoreSysAttributes):
         sep = "@" if tag.startswith("sha256:") else ":"
         return await self.images.inspect(f"{repository}{sep}{tag}")
 
-    def run_command(
-        self,
-        image: str,
-        version: str = "latest",
-        command: str | list[str] | None = None,
-        *,
-        mounts: list[DockerMount] | None = None,
-        **kwargs: Any,
-    ) -> CommandReturn:
-        """Create a temporary container and run command.
-
-        Need run inside executor.
-        """
-        stdout = kwargs.get("stdout", True)
-        stderr = kwargs.get("stderr", True)
-
-        image_with_tag = f"{image}:{version}"
-
-        _LOGGER.info("Running command '%s' on %s", command, image_with_tag)
-        container = None
-        try:
-            container = self.dockerpy.containers.run(
-                image_with_tag,
-                command=command,
-                detach=True,
-                network=self.network.name,
-                use_config_proxy=False,
-                mounts=(
-                    [cast(Mount, mount.to_dict()) for mount in mounts]
-                    if mounts
-                    else None
-                ),
-                **kwargs,
-            )
-
-            # wait until command is done
-            result = container.wait()
-            output = container.logs(stdout=stdout, stderr=stderr)
-
-        except (docker_errors.DockerException, requests.RequestException) as err:
-            raise DockerError(f"Can't execute command: {err}", _LOGGER.error) from err
-
-        finally:
-            # cleanup container
-            if container:
-                with suppress(docker_errors.DockerException, requests.RequestException):
-                    container.remove(force=True, v=True)
-
-        return CommandReturn(result["StatusCode"], output)
-
-    def repair(self) -> None:
+    async def repair(self) -> None:
         """Repair local docker overlayfs2 issues."""
-        _LOGGER.info("Prune stale containers")
-        try:
-            output = self.dockerpy.api.prune_containers()
-            _LOGGER.debug("Containers prune: %s", output)
-        except docker_errors.APIError as err:
-            _LOGGER.warning("Error for containers prune: %s", err)
 
-        _LOGGER.info("Prune stale images")
-        try:
-            output = self.dockerpy.api.prune_images(filters={"dangling": False})
-            _LOGGER.debug("Images prune: %s", output)
-        except docker_errors.APIError as err:
-            _LOGGER.warning("Error for images prune: %s", err)
+        def repair_docker_blocking():
+            _LOGGER.info("Prune stale containers")
+            try:
+                output = self.dockerpy.api.prune_containers()
+                _LOGGER.debug("Containers prune: %s", output)
+            except docker_errors.APIError as err:
+                _LOGGER.warning("Error for containers prune: %s", err)
 
-        _LOGGER.info("Prune stale builds")
-        try:
-            output = self.dockerpy.api.prune_builds()
-            _LOGGER.debug("Builds prune: %s", output)
-        except docker_errors.APIError as err:
-            _LOGGER.warning("Error for builds prune: %s", err)
+            _LOGGER.info("Prune stale images")
+            try:
+                output = self.dockerpy.api.prune_images(filters={"dangling": False})
+                _LOGGER.debug("Images prune: %s", output)
+            except docker_errors.APIError as err:
+                _LOGGER.warning("Error for images prune: %s", err)
 
-        _LOGGER.info("Prune stale volumes")
-        try:
-            output = self.dockerpy.api.prune_volumes()
-            _LOGGER.debug("Volumes prune: %s", output)
-        except docker_errors.APIError as err:
-            _LOGGER.warning("Error for volumes prune: %s", err)
+            _LOGGER.info("Prune stale builds")
+            try:
+                output = self.dockerpy.api.prune_builds()
+                _LOGGER.debug("Builds prune: %s", output)
+            except docker_errors.APIError as err:
+                _LOGGER.warning("Error for builds prune: %s", err)
 
-        _LOGGER.info("Prune stale networks")
-        try:
-            output = self.dockerpy.api.prune_networks()
-            _LOGGER.debug("Networks prune: %s", output)
-        except docker_errors.APIError as err:
-            _LOGGER.warning("Error for networks prune: %s", err)
+            _LOGGER.info("Prune stale volumes")
+            try:
+                output = self.dockerpy.api.prune_volumes()
+                _LOGGER.debug("Volumes prune: %s", output)
+            except docker_errors.APIError as err:
+                _LOGGER.warning("Error for volumes prune: %s", err)
+
+            _LOGGER.info("Prune stale networks")
+            try:
+                output = self.dockerpy.api.prune_networks()
+                _LOGGER.debug("Networks prune: %s", output)
+            except docker_errors.APIError as err:
+                _LOGGER.warning("Error for networks prune: %s", err)
+
+        await self.sys_run_in_executor(repair_docker_blocking)
 
         _LOGGER.info("Fix stale container on hassio network")
         try:
-            self.prune_networks(DOCKER_NETWORK)
+            await self.prune_networks(DOCKER_NETWORK)
         except docker_errors.APIError as err:
             _LOGGER.warning("Error for networks hassio prune: %s", err)
 
         _LOGGER.info("Fix stale container on host network")
         try:
-            self.prune_networks(DOCKER_NETWORK_HOST)
+            await self.prune_networks(DOCKER_NETWORK_HOST)
         except docker_errors.APIError as err:
             _LOGGER.warning("Error for networks host prune: %s", err)
 
-    def prune_networks(self, network_name: str) -> None:
+    async def prune_networks(self, network_name: str) -> None:
         """Prune stale container from network.
 
         Fix: https://github.com/moby/moby/issues/23302
         """
-        network: Network = self.dockerpy.networks.get(network_name)
+        network: Network = await self.sys_run_in_executor(
+            self.dockerpy.networks.get, network_name
+        )
+        corrupt_containers: list[str] = []
 
         for cid, data in network.attrs.get("Containers", {}).items():
             try:
-                self.dockerpy.containers.get(cid)
+                await self.containers.get(cid)
                 continue
-            except docker_errors.NotFound:
+            except aiodocker.DockerError as err:
+                if err.status != HTTPStatus.NOT_FOUND:
+                    _LOGGER.warning(
+                        "Docker fatal error on container %s on %s: %s",
+                        cid,
+                        network_name,
+                        err,
+                    )
+                    continue
+
                 _LOGGER.debug(
                     "Docker network %s is corrupt on container: %s", network_name, cid
                 )
-            except (docker_errors.DockerException, requests.RequestException):
-                _LOGGER.warning(
-                    "Docker fatal error on container %s on %s", cid, network_name
-                )
-                continue
+                corrupt_containers.append(data.get("Name", cid))
 
-            with suppress(docker_errors.DockerException, requests.RequestException):
-                network.disconnect(data.get("Name", cid), force=True)
+        def disconnect_corrupt_containers():
+            for name in corrupt_containers:
+                with suppress(docker_errors.DockerException, requests.RequestException):
+                    network.disconnect(name, force=True)
+
+        await self.sys_run_in_executor(disconnect_corrupt_containers)
 
     async def container_is_initialized(
         self, name: str, image: str, version: AwesomeVersion
     ) -> bool:
         """Return True if docker container exists in good state and is built from expected image."""
         try:
-            docker_container = await self.sys_run_in_executor(
-                self.containers_legacy.get, name
-            )
+            docker_container = await self.containers.get(name)
+            container_metadata = await docker_container.show()
             docker_image = await self.images.inspect(f"{image}:{version}")
-        except docker_errors.NotFound:
-            return False
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.NOT_FOUND:
                 return False
@@ -758,90 +792,93 @@ class DockerAPI(CoreSysAttributes):
                 f"Could not get container {name} or image {image}:{version} to check state: {err!s}",
                 _LOGGER.error,
             ) from err
-        except (docker_errors.DockerException, requests.RequestException) as err:
-            raise DockerError(
-                f"Could not get container {name} or image {image}:{version} to check state: {err!s}",
-                _LOGGER.error,
-            ) from err
 
         # Check the image is correct and state is good
-        return (
-            docker_container.image is not None
-            and docker_container.image.id == docker_image["Id"]
-            and docker_container.status in ("exited", "running", "created")
+        metadata_image = container_metadata.get("ImageID", container_metadata["Image"])
+        status = container_metadata["State"]["Status"]
+        return metadata_image == docker_image["Id"] and status in (
+            "exited",
+            "running",
+            "created",
         )
 
-    def stop_container(
+    async def stop_container(
         self, name: str, timeout: int, remove_container: bool = True
     ) -> None:
         """Stop/remove Docker container."""
         try:
-            docker_container: Container = self.containers_legacy.get(name)
-        except docker_errors.NotFound:
-            # Generally suppressed so we don't log this
-            raise DockerNotFound() from None
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            docker_container = await self.containers.get(name)
+            container_metadata = await docker_container.show()
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                # Generally suppressed so we don't log this
+                raise DockerNotFound() from None
             raise DockerError(
                 f"Could not get container {name} for stopping: {err!s}",
                 _LOGGER.error,
             ) from err
 
-        if docker_container.status == "running":
+        if container_metadata["State"]["Status"] == "running":
             _LOGGER.info("Stopping %s application", name)
-            with suppress(docker_errors.DockerException, requests.RequestException):
-                docker_container.stop(timeout=timeout)
+            with suppress(aiodocker.DockerError):
+                await docker_container.stop(timeout=timeout)
 
         if remove_container:
-            with suppress(docker_errors.DockerException, requests.RequestException):
+            with suppress(aiodocker.DockerError):
                 _LOGGER.info("Cleaning %s application", name)
-                docker_container.remove(force=True, v=True)
+                await docker_container.delete(force=True, v=True)
 
             cidfile_path = self.coresys.config.path_cid_files / f"{name}.cid"
             with suppress(OSError):
-                cidfile_path.unlink(missing_ok=True)
+                await self.sys_run_in_executor(cidfile_path.unlink, missing_ok=True)
 
-    def start_container(self, name: str) -> None:
+    async def start_container(self, name: str) -> None:
         """Start Docker container."""
         try:
-            docker_container: Container = self.containers_legacy.get(name)
-        except docker_errors.NotFound:
-            raise DockerNotFound(
-                f"{name} not found for starting up", _LOGGER.error
-            ) from None
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            docker_container = await self.containers.get(name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                raise DockerNotFound(
+                    f"{name} not found for starting up", _LOGGER.error
+                ) from None
             raise DockerError(
                 f"Could not get {name} for starting up", _LOGGER.error
             ) from err
 
         _LOGGER.info("Starting %s", name)
         try:
-            docker_container.start()
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            await docker_container.start()
+        except aiodocker.DockerError as err:
             raise DockerError(f"Can't start {name}: {err}", _LOGGER.error) from err
 
-    def restart_container(self, name: str, timeout: int) -> None:
+    async def restart_container(self, name: str, timeout: int) -> None:
         """Restart docker container."""
         try:
-            container: Container = self.containers_legacy.get(name)
-        except docker_errors.NotFound:
-            raise DockerNotFound(
-                f"Container {name} not found for restarting", _LOGGER.warning
-            ) from None
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            container = await self.containers.get(name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                raise DockerNotFound(
+                    f"Container {name} not found for restarting", _LOGGER.warning
+                ) from None
             raise DockerError(
                 f"Could not get container {name} for restarting: {err!s}", _LOGGER.error
             ) from err
 
         _LOGGER.info("Restarting %s", name)
         try:
-            container.restart(timeout=timeout)
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            await container.restart(timeout=timeout)
+        except aiodocker.DockerError as err:
             raise DockerError(f"Can't restart {name}: {err}", _LOGGER.warning) from err
 
     def container_logs(self, name: str, tail: int = 100) -> bytes:
-        """Return Docker logs of container."""
+        """Return Docker logs of container.
+
+        Must be run in executor.
+        """
+        # Remains on docker py for now because aiodocker doesn't seem to have a way to get
+        # the raw binary of the logs. Only provides list[str] or AsyncIterator[str] options.
         try:
-            docker_container: Container = self.containers_legacy.get(name)
+            docker_container: Container = self.dockerpy.containers.get(name)
         except docker_errors.NotFound:
             raise DockerNotFound(
                 f"Container {name} not found for logs", _LOGGER.warning
@@ -858,53 +895,59 @@ class DockerAPI(CoreSysAttributes):
                 f"Can't grep logs from {name}: {err}", _LOGGER.warning
             ) from err
 
-    def container_stats(self, name: str) -> dict[str, Any]:
+    async def container_stats(self, name: str) -> dict[str, Any]:
         """Read and return stats from container."""
         try:
-            docker_container: Container = self.containers_legacy.get(name)
-        except docker_errors.NotFound:
-            raise DockerNotFound(
-                f"Container {name} not found for stats", _LOGGER.warning
-            ) from None
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            docker_container = await self.containers.get(name)
+            container_metadata = await docker_container.show()
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                raise DockerNotFound(
+                    f"Container {name} not found for stats", _LOGGER.warning
+                ) from None
             raise DockerError(
                 f"Could not inspect container '{name}': {err!s}", _LOGGER.error
             ) from err
 
         # container is not running
-        if docker_container.status != "running":
+        if container_metadata["State"]["Status"] != "running":
             raise DockerError(f"Container {name} is not running", _LOGGER.error)
 
         try:
-            # When stream=False, stats() returns dict, not Iterator
-            return cast(dict[str, Any], docker_container.stats(stream=False))
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            stats = await docker_container.stats(stream=False)
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't read stats from {name}: {err}", _LOGGER.error
             ) from err
 
-    def container_run_inside(self, name: str, command: str) -> CommandReturn:
+        if not stats:
+            raise DockerError(f"Could not get stats for {name}", _LOGGER.error)
+        return stats[-1]
+
+    async def container_run_inside(self, name: str, command: str) -> ExecReturn:
         """Execute a command inside Docker container."""
         try:
-            docker_container: Container = self.containers_legacy.get(name)
-        except docker_errors.NotFound:
-            raise DockerNotFound(
-                f"Container {name} not found for running command", _LOGGER.warning
-            ) from None
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            docker_container = await self.containers.get(name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                raise DockerNotFound(
+                    f"Container {name} not found for running command", _LOGGER.warning
+                ) from None
             raise DockerError(
                 f"Can't get container {name} to run command: {err!s}"
             ) from err
 
         # Execute
         try:
-            code, output = docker_container.exec_run(command)
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            docker_exec = await docker_container.exec(command)
+            output = await docker_exec.start(detach=True)
+            exec_metadata = await docker_exec.inspect()
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't run command in container {name}: {err!s}"
             ) from err
 
-        return CommandReturn(code, output)
+        return ExecReturn(exec_metadata["ExitCode"], output)
 
     async def remove_image(
         self, image: str, version: AwesomeVersion, latest: bool = True

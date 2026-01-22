@@ -2,16 +2,13 @@
 
 import asyncio
 from http import HTTPStatus
-from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, call, patch
 
 import aiodocker
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
-from docker.errors import DockerException, NotFound
-from docker.models.containers import Container
 import pytest
-from requests import RequestException
 
 from supervisor.addons.manager import Addon
 from supervisor.const import BusEvent, CoreState, CpuArch
@@ -25,7 +22,6 @@ from supervisor.exceptions import (
     DockerError,
     DockerNoSpaceOnDevice,
     DockerNotFound,
-    DockerRequestError,
 )
 from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.jobs import ChildJobSyncFilter, JobSchedulerOptions, SupervisorJob
@@ -143,38 +139,31 @@ async def test_private_registry_credentials_passed_to_pull(
     ],
 )
 async def test_current_state(
-    coresys: CoreSys, attrs: dict[str, Any], expected: ContainerState
+    coresys: CoreSys,
+    container: DockerContainer,
+    attrs: dict[str, Any],
+    expected: ContainerState,
 ):
     """Test current state for container."""
-    container_collection = MagicMock()
-    container_collection.get.return_value = Container(attrs)
-    with patch(
-        "supervisor.docker.manager.DockerAPI.containers_legacy",
-        new=PropertyMock(return_value=container_collection),
-    ):
-        assert await coresys.homeassistant.core.instance.current_state() == expected
+    container.show.return_value = attrs
+    assert await coresys.homeassistant.core.instance.current_state() == expected
 
 
 async def test_current_state_failures(coresys: CoreSys):
     """Test failure states for current state."""
-    container_collection = MagicMock()
-    with patch(
-        "supervisor.docker.manager.DockerAPI.containers_legacy",
-        new=PropertyMock(return_value=container_collection),
-    ):
-        container_collection.get.side_effect = NotFound("dne")
-        assert (
-            await coresys.homeassistant.core.instance.current_state()
-            == ContainerState.UNKNOWN
-        )
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        404, {"message": "dne"}
+    )
+    assert (
+        await coresys.homeassistant.core.instance.current_state()
+        == ContainerState.UNKNOWN
+    )
 
-        container_collection.get.side_effect = DockerException()
-        with pytest.raises(DockerAPIError):
-            await coresys.homeassistant.core.instance.current_state()
-
-        container_collection.get.side_effect = RequestException()
-        with pytest.raises(DockerRequestError):
-            await coresys.homeassistant.core.instance.current_state()
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        500, {"message": "fail"}
+    )
+    with pytest.raises(DockerAPIError):
+        await coresys.homeassistant.core.instance.current_state()
 
 
 @pytest.mark.parametrize(
@@ -201,20 +190,15 @@ async def test_current_state_failures(coresys: CoreSys):
 )
 async def test_attach_existing_container(
     coresys: CoreSys,
+    container: DockerContainer,
     attrs: dict[str, Any],
     expected: ContainerState,
     fired_when_skip_down: bool,
 ):
     """Test attaching to existing container."""
-    attrs["Id"] = "abc123"
-    attrs["Config"] = {}
-    container_collection = MagicMock()
-    container_collection.get.return_value = Container(attrs)
+    container.id = "abc123"
+    container.show.return_value = {"Id": "abc123", "Config": {}} | attrs
     with (
-        patch(
-            "supervisor.docker.manager.DockerAPI.containers_legacy",
-            new=PropertyMock(return_value=container_collection),
-        ),
         patch.object(type(coresys.bus), "fire_event") as fire_event,
         patch("supervisor.docker.interface.time", return_value=1),
     ):
@@ -254,7 +238,9 @@ async def test_attach_existing_container(
 
 async def test_attach_container_failure(coresys: CoreSys):
     """Test attach fails to find container but finds image."""
-    coresys.docker.containers_legacy.get.side_effect = DockerException()
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        500, {"message": "fail"}
+    )
     coresys.docker.images.inspect.return_value.setdefault("Config", {})["Image"] = (
         "sha256:abc123"
     )
@@ -272,7 +258,9 @@ async def test_attach_container_failure(coresys: CoreSys):
 
 async def test_attach_total_failure(coresys: CoreSys):
     """Test attach fails to find container or image."""
-    coresys.docker.containers_legacy.get.side_effect = DockerException
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        500, {"message": "fail"}
+    )
     coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
         400, {"message": ""}
     )
@@ -280,14 +268,11 @@ async def test_attach_total_failure(coresys: CoreSys):
         await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
 
 
-@pytest.mark.parametrize(
-    "err", [aiodocker.DockerError(400, {"message": ""}), RequestException()]
-)
-async def test_image_pull_fail(
-    coresys: CoreSys, capture_exception: Mock, err: Exception
-):
+async def test_image_pull_fail(coresys: CoreSys, capture_exception: Mock):
     """Test failure to pull image."""
-    coresys.docker.images.inspect.side_effect = err
+    coresys.docker.images.inspect.side_effect = err = aiodocker.DockerError(
+        400, {"message": ""}
+    )
     with pytest.raises(DockerError):
         await coresys.homeassistant.core.instance.install(
             AwesomeVersion("2022.7.3"), arch=CpuArch.AMD64
@@ -296,13 +281,9 @@ async def test_image_pull_fail(
     capture_exception.assert_called_once_with(err)
 
 
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_run_missing_image(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container: MagicMock,
-    capture_exception: Mock,
-    path_extern,
-    tmp_supervisor_data: Path,
+    coresys: CoreSys, install_addon_ssh: Addon, capture_exception: Mock
 ):
     """Test run captures the exception when image is missing."""
     coresys.docker.containers.create.side_effect = [
@@ -450,11 +431,9 @@ async def test_install_fires_progress_events(
     ]
 
 
+@pytest.mark.usefixtures("ha_ws_client")
 async def test_install_progress_rounding_does_not_cause_misses(
-    coresys: CoreSys,
-    test_docker_interface: DockerInterface,
-    ha_ws_client: AsyncMock,
-    capture_exception: Mock,
+    coresys: CoreSys, test_docker_interface: DockerInterface, capture_exception: Mock
 ):
     """Test extremely close progress events do not create rounding issues."""
     coresys.core.set_state(CoreState.RUNNING)
@@ -574,11 +553,9 @@ async def test_install_raises_on_pull_error(
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
 
 
+@pytest.mark.usefixtures("ha_ws_client")
 async def test_install_progress_handles_download_restart(
-    coresys: CoreSys,
-    test_docker_interface: DockerInterface,
-    ha_ws_client: AsyncMock,
-    capture_exception: Mock,
+    coresys: CoreSys, test_docker_interface: DockerInterface, capture_exception: Mock
 ):
     """Test install handles docker progress events that include a download restart."""
     coresys.core.set_state(CoreState.RUNNING)
@@ -739,11 +716,9 @@ async def test_install_progress_handles_layers_skipping_download(
         capture_exception.assert_not_called()
 
 
+@pytest.mark.usefixtures("ha_ws_client")
 async def test_missing_total_handled_gracefully(
-    coresys: CoreSys,
-    test_docker_interface: DockerInterface,
-    ha_ws_client: AsyncMock,
-    capture_exception: Mock,
+    coresys: CoreSys, test_docker_interface: DockerInterface, capture_exception: Mock
 ):
     """Test missing 'total' fields in progress details handled gracefully."""
     coresys.core.set_state(CoreState.RUNNING)

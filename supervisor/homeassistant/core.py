@@ -33,7 +33,6 @@ from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobConcurrency, JobThrot
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType
-from ..utils import convert_to_ascii
 from ..utils.sentry import async_capture_exception
 from .const import (
     LANDINGPAGE,
@@ -421,13 +420,6 @@ class HomeAssistantCore(JobGroup):
             await self.instance.stop()
         await self.start()
 
-    def logs(self) -> Awaitable[bytes]:
-        """Get HomeAssistant docker logs.
-
-        Return a coroutine.
-        """
-        return self.instance.logs()
-
     async def stats(self) -> DockerStats:
         """Return stats of Home Assistant."""
         try:
@@ -458,7 +450,15 @@ class HomeAssistantCore(JobGroup):
         """Run Home Assistant config check."""
         try:
             result = await self.instance.execute_command(
-                "python3 -m homeassistant -c /config --script check_config"
+                [
+                    "python3",
+                    "-m",
+                    "homeassistant",
+                    "-c",
+                    "/config",
+                    "--script",
+                    "check_config",
+                ]
             )
         except DockerError as err:
             raise HomeAssistantError() from err
@@ -468,7 +468,7 @@ class HomeAssistantCore(JobGroup):
             raise HomeAssistantError("Fatal error on config check!", _LOGGER.error)
 
         # Convert output
-        log = convert_to_ascii(result.output)
+        log = "\n".join(result.log)
         _LOGGER.debug("Result config check: %s", log.strip())
 
         # Parse output

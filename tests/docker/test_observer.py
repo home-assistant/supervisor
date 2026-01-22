@@ -1,16 +1,20 @@
 """Test Observer plugin container."""
 
 from ipaddress import IPv4Address, ip_network
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+
+from aiodocker.containers import DockerContainer
 
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import DockerMount, MountType
 from supervisor.docker.manager import DockerAPI
 
 
-async def test_start(coresys: CoreSys, container: MagicMock):
+async def test_start(coresys: CoreSys, container: DockerContainer):
     """Test starting observer plugin."""
-    with patch.object(DockerAPI, "run", return_value=container.attrs) as run:
+    with patch.object(
+        DockerAPI, "run", return_value=container.show.return_value
+    ) as run:
         await coresys.plugins.observer.start()
 
         run.assert_called_once()

@@ -6,7 +6,7 @@ import base64
 from functools import cached_property
 import json
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
@@ -250,7 +250,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         return {
             "command": build_cmd,
             "volumes": volumes,
-            "working_dir": "/addon",
+            "working_dir": PurePath("/addon"),
         }
 
     def _fix_label(self, label_name: str) -> str:
