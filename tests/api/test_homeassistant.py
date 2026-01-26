@@ -10,7 +10,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.backups.manager import BackupManager
-from supervisor.const import CoreState
+from supervisor.const import DNS_SUFFIX, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.interface import DockerInterface
@@ -357,3 +357,82 @@ async def test_api_progress_updates_home_assistant_update(
             "done": True,
         },
     ]
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_config_check(
+    api_client: TestClient, coresys: CoreSys, container: DockerContainer
+):
+    """Test config check API."""
+    coresys.homeassistant.version = AwesomeVersion("2025.1.0")
+
+    result = await api_client.post("/core/check")
+    assert result.status == 200
+
+    coresys.docker.containers.create.assert_called_once_with(
+        {
+            "Image": "ghcr.io/home-assistant/qemux86-64-homeassistant:2025.1.0",
+            "Labels": {"supervisor_managed": ""},
+            "OpenStdin": False,
+            "StdinOnce": False,
+            "AttachStdin": False,
+            "AttachStdout": False,
+            "AttachStderr": False,
+            "HostConfig": {
+                "NetworkMode": "hassio",
+                "Init": True,
+                "Privileged": True,
+                "Mounts": [
+                    {
+                        "Type": "bind",
+                        "Source": "/mnt/data/supervisor/homeassistant",
+                        "Target": "/config",
+                        "ReadOnly": False,
+                    },
+                    {
+                        "Type": "bind",
+                        "Source": "/mnt/data/supervisor/ssl",
+                        "Target": "/ssl",
+                        "ReadOnly": True,
+                    },
+                    {
+                        "Type": "bind",
+                        "Source": "/mnt/data/supervisor/share",
+                        "Target": "/share",
+                        "ReadOnly": False,
+                    },
+                ],
+                "Dns": [str(coresys.docker.network.dns)],
+                "DnsSearch": [DNS_SUFFIX],
+                "DnsOptions": ["timeout:10"],
+            },
+            "Env": ["TZ=Etc/UTC"],
+            "Entrypoint": [],
+            "Cmd": [
+                "python3",
+                "-m",
+                "homeassistant",
+                "-c",
+                "/config",
+                "--script",
+                "check_config",
+            ],
+        },
+        name=None,
+    )
+    container.start.assert_called_once()
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_config_check_error(api_client: TestClient, container: DockerContainer):
+    """Test config check API strips color coding from log output on error."""
+    container.log.return_value = [
+        "\x1b[36mTest logs 1\x1b[0m",
+        "\x1b[36mTest logs 2\x1b[0m",
+    ]
+    container.wait.return_value = {"StatusCode": 1}
+
+    result = await api_client.post("/core/check")
+    assert result.status == 400
+    resp = await result.json()
+    assert resp["message"] == "Test logs 1\nTest logs 2"

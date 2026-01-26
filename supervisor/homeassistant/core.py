@@ -13,6 +13,8 @@ from typing import Final
 
 from awesomeversion import AwesomeVersion
 
+from supervisor.utils import remove_colors
+
 from ..const import ATTR_HOMEASSISTANT, BusEvent
 from ..coresys import CoreSys
 from ..docker.const import ContainerState
@@ -468,7 +470,7 @@ class HomeAssistantCore(JobGroup):
             raise HomeAssistantError("Fatal error on config check!", _LOGGER.error)
 
         # Convert output
-        log = "\n".join(result.log)
+        log = remove_colors("\n".join(result.log))
         _LOGGER.debug("Result config check: %s", log.strip())
 
         # Parse output

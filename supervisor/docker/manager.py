@@ -436,7 +436,7 @@ class DockerAPI(CoreSysAttributes):
                 env if val is None else f"{env}={val}"
                 for env, val in environment.items()
             ]
-        if entrypoint:
+        if entrypoint is not None:
             config["Entrypoint"] = entrypoint
         if command:
             config["Cmd"] = command
