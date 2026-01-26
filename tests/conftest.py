@@ -164,7 +164,7 @@ async def docker() -> DockerAPI:
         docker_containers.create.return_value = docker_container
         docker_container.show.return_value = container_inspect
         docker_container.wait.return_value = {"StatusCode": 0}
-        docker_container.log = AsyncMock(return_vaue=[])
+        docker_container.log = AsyncMock(return_value=[])
 
         docker_container.exec.return_value = docker_exec = MagicMock(spec=Exec)
         docker_exec.start = AsyncMock(return_value=b"")

@@ -624,7 +624,7 @@ class DockerAPI(CoreSysAttributes):
         **kwargs: Any,
     ) -> CommandReturn:
         """Create a temporary container and run command, returning its output."""
-        _LOGGER.info("Runing command '%s' on %s:%s", command, image, tag)
+        _LOGGER.info("Running command '%s' on %s:%s", command, image, tag)
         container: DockerContainer | None = None
         try:
             container = await self._run(
