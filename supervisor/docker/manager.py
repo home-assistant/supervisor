@@ -556,7 +556,7 @@ class DockerAPI(CoreSysAttributes):
         # Setup network
         def setup_network(network_mode: Literal["host"] | None) -> None:
             # Attach network
-            if network_mode:
+            if not network_mode:
                 alias = [hostname] if hostname else None
                 try:
                     self.network.attach_container(
