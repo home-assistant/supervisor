@@ -935,7 +935,7 @@ class DockerAPI(CoreSysAttributes):
         # Execute
         try:
             docker_exec = await docker_container.exec(command)
-            output = await docker_exec.start(detach=False)
+            output = await docker_exec.start(detach=True)
             exec_metadata = await docker_exec.inspect()
         except aiodocker.DockerError as err:
             raise DockerError(
