@@ -238,6 +238,7 @@ async def test_install_other_error(
 @pytest.mark.usefixtures("path_extern")
 async def test_start(
     coresys: CoreSys,
+    container: MagicMock,
     container_exc: DockerException | None,
     image_exc: aiodocker.DockerError | None,
     remove_calls: list[call],
@@ -245,8 +246,8 @@ async def test_start(
     """Test starting Home Assistant."""
     coresys.docker.images.inspect.return_value = {"Id": "123"}
     coresys.docker.images.inspect.side_effect = image_exc
-    coresys.docker.containers.get.return_value.id = "123"
-    coresys.docker.containers.get.side_effect = container_exc
+    coresys.docker.containers_legacy.get.return_value.id = "123"
+    coresys.docker.containers_legacy.get.side_effect = container_exc
 
     with (
         patch.object(
@@ -254,7 +255,7 @@ async def test_start(
             "version",
             new=PropertyMock(return_value=AwesomeVersion("2023.7.0")),
         ),
-        patch.object(DockerAPI, "run") as run,
+        patch.object(DockerAPI, "run", return_value=container.attrs) as run,
         patch.object(HomeAssistantCore, "_block_till_run") as block_till_run,
     ):
         await coresys.homeassistant.core.start()
@@ -268,17 +269,18 @@ async def test_start(
         assert run.call_args.kwargs["name"] == "homeassistant"
         assert run.call_args.kwargs["hostname"] == "homeassistant"
 
-    coresys.docker.containers.get.return_value.stop.assert_not_called()
+    coresys.docker.containers_legacy.get.return_value.stop.assert_not_called()
     assert (
-        coresys.docker.containers.get.return_value.remove.call_args_list == remove_calls
+        coresys.docker.containers_legacy.get.return_value.remove.call_args_list
+        == remove_calls
     )
 
 
 async def test_start_existing_container(coresys: CoreSys, path_extern):
     """Test starting Home Assistant when container exists and is viable."""
     coresys.docker.images.inspect.return_value = {"Id": "123"}
-    coresys.docker.containers.get.return_value.image.id = "123"
-    coresys.docker.containers.get.return_value.status = "exited"
+    coresys.docker.containers_legacy.get.return_value.image.id = "123"
+    coresys.docker.containers_legacy.get.return_value.status = "exited"
 
     with (
         patch.object(
@@ -291,29 +293,29 @@ async def test_start_existing_container(coresys: CoreSys, path_extern):
         await coresys.homeassistant.core.start()
         block_till_run.assert_called_once()
 
-    coresys.docker.containers.get.return_value.start.assert_called_once()
-    coresys.docker.containers.get.return_value.stop.assert_not_called()
-    coresys.docker.containers.get.return_value.remove.assert_not_called()
-    coresys.docker.containers.get.return_value.run.assert_not_called()
+    coresys.docker.containers_legacy.get.return_value.start.assert_called_once()
+    coresys.docker.containers_legacy.get.return_value.stop.assert_not_called()
+    coresys.docker.containers_legacy.get.return_value.remove.assert_not_called()
+    coresys.docker.containers_legacy.get.return_value.run.assert_not_called()
 
 
 @pytest.mark.parametrize("exists", [True, False])
 async def test_stop(coresys: CoreSys, exists: bool):
     """Test stoppping Home Assistant."""
     if exists:
-        coresys.docker.containers.get.return_value.status = "running"
+        coresys.docker.containers_legacy.get.return_value.status = "running"
     else:
-        coresys.docker.containers.get.side_effect = NotFound("missing")
+        coresys.docker.containers_legacy.get.side_effect = NotFound("missing")
 
     await coresys.homeassistant.core.stop()
 
-    coresys.docker.containers.get.return_value.remove.assert_not_called()
+    coresys.docker.containers_legacy.get.return_value.remove.assert_not_called()
     if exists:
-        coresys.docker.containers.get.return_value.stop.assert_called_once_with(
+        coresys.docker.containers_legacy.get.return_value.stop.assert_called_once_with(
             timeout=260
         )
     else:
-        coresys.docker.containers.get.return_value.stop.assert_not_called()
+        coresys.docker.containers_legacy.get.return_value.stop.assert_not_called()
 
 
 async def test_restart(coresys: CoreSys):
@@ -322,18 +324,20 @@ async def test_restart(coresys: CoreSys):
         await coresys.homeassistant.core.restart()
         block_till_run.assert_called_once()
 
-    coresys.docker.containers.get.return_value.restart.assert_called_once_with(
+    coresys.docker.containers_legacy.get.return_value.restart.assert_called_once_with(
         timeout=260
     )
-    coresys.docker.containers.get.return_value.stop.assert_not_called()
+    coresys.docker.containers_legacy.get.return_value.stop.assert_not_called()
 
 
 @pytest.mark.parametrize("get_error", [NotFound("missing"), DockerException(), None])
 async def test_restart_failures(coresys: CoreSys, get_error: DockerException | None):
     """Test restart fails when container missing or can't be restarted."""
-    coresys.docker.containers.get.return_value.restart.side_effect = DockerException()
+    coresys.docker.containers_legacy.get.return_value.restart.side_effect = (
+        DockerException()
+    )
     if get_error:
-        coresys.docker.containers.get.side_effect = get_error
+        coresys.docker.containers_legacy.get.side_effect = get_error
 
     with pytest.raises(HomeAssistantError):
         await coresys.homeassistant.core.restart()
@@ -352,10 +356,12 @@ async def test_stats_failures(
     coresys: CoreSys, get_error: DockerException | None, status: str
 ):
     """Test errors when getting stats."""
-    coresys.docker.containers.get.return_value.status = status
-    coresys.docker.containers.get.return_value.stats.side_effect = DockerException()
+    coresys.docker.containers_legacy.get.return_value.status = status
+    coresys.docker.containers_legacy.get.return_value.stats.side_effect = (
+        DockerException()
+    )
     if get_error:
-        coresys.docker.containers.get.side_effect = get_error
+        coresys.docker.containers_legacy.get.side_effect = get_error
 
     with pytest.raises(HomeAssistantError):
         await coresys.homeassistant.core.stats()
@@ -387,7 +393,7 @@ async def test_api_check_timeout(
         ):
             await coresys.homeassistant.core.start()
 
-    assert coresys.homeassistant.api.get_api_state.call_count == 3
+    assert coresys.homeassistant.api.get_api_state.call_count == 10
     assert (
         "No Home Assistant Core response, assuming a fatal startup error" in caplog.text
     )

@@ -5,10 +5,9 @@ import logging
 from docker.errors import DockerException
 from requests import RequestException
 
-from supervisor.docker.const import ADDON_BUILDER_IMAGE
-
 from ...const import CoreState
 from ...coresys import CoreSys
+from ...docker.const import ADDON_BUILDER_IMAGE
 from ..const import (
     ContextType,
     IssueType,
@@ -74,7 +73,9 @@ class EvaluateContainer(EvaluateBase):
         self._images.clear()
 
         try:
-            containers = await self.sys_run_in_executor(self.sys_docker.containers.list)
+            containers = await self.sys_run_in_executor(
+                self.sys_docker.containers_legacy.list
+            )
         except (DockerException, RequestException) as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
             self.sys_resolution.create_issue(

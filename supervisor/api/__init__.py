@@ -782,6 +782,10 @@ class RestAPI(CoreSysAttributes):
                 web.delete(
                     "/store/repositories/{repository}", api_store.remove_repository
                 ),
+                web.post(
+                    "/store/repositories/{repository}/repair",
+                    api_store.repositories_repository_repair,
+                ),
             ]
         )
 
