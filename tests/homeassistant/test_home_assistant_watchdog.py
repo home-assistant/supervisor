@@ -1,8 +1,9 @@
 """Test Home Assistant watchdog."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 
 from supervisor.const import BusEvent
@@ -147,11 +148,12 @@ async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> N
 
 
 async def test_home_assistant_watchdog_skip_on_load(
-    coresys: CoreSys, container: MagicMock
+    coresys: CoreSys, container: DockerContainer
 ) -> None:
     """Test home assistant watchdog skips a crash event on load."""
-    container.status = "stopped"
-    container.attrs["State"]["ExitCode"] = 1
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    container.show.return_value["State"]["ExitCode"] = 1
     coresys.homeassistant.core.watchdog = True
 
     events = AsyncMock()

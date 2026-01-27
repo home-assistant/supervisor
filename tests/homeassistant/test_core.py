@@ -5,10 +5,9 @@ from http import HTTPStatus
 from unittest.mock import ANY, MagicMock, Mock, PropertyMock, call, patch
 
 import aiodocker
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
-from docker.errors import APIError, DockerException, NotFound
 import pytest
-from requests import RequestException
 from time_machine import travel
 
 from supervisor.const import CpuArch
@@ -59,22 +58,15 @@ async def test_update_fails_if_out_of_date(coresys: CoreSys):
         await coresys.homeassistant.core.update()
 
 
-@pytest.mark.parametrize(
-    "err",
-    [
-        aiodocker.DockerError(HTTPStatus.TOO_MANY_REQUESTS, {"message": "ratelimit"}),
-        APIError("ratelimit", MagicMock(status_code=HTTPStatus.TOO_MANY_REQUESTS)),
-    ],
-)
 async def test_install_landingpage_docker_ratelimit_error(
-    coresys: CoreSys,
-    capture_exception: Mock,
-    caplog: pytest.LogCaptureFixture,
-    err: Exception,
+    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
 ):
     """Test install landing page fails due to docker ratelimit error."""
     coresys.security.force = True
-    coresys.docker.images.pull.side_effect = [err, AsyncIterator([{}])]
+    coresys.docker.images.pull.side_effect = [
+        aiodocker.DockerError(HTTPStatus.TOO_MANY_REQUESTS, {"message": "ratelimit"}),
+        AsyncIterator([{}]),
+    ]
 
     with (
         patch.object(DockerHomeAssistant, "attach", side_effect=DockerError),
@@ -97,23 +89,21 @@ async def test_install_landingpage_docker_ratelimit_error(
         Issue(IssueType.DOCKER_RATELIMIT, ContextType.SYSTEM)
         in coresys.resolution.issues
     )
+    assert "Unhandled exception:" not in caplog.text
 
 
 @pytest.mark.parametrize(
     "err",
     [
         aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}),
-        APIError("fail"),
-        DockerException(),
-        RequestException(),
-        OSError(),
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "missing"}),
     ],
 )
 async def test_install_landingpage_other_error(
     coresys: CoreSys,
     capture_exception: Mock,
     caplog: pytest.LogCaptureFixture,
-    err: Exception,
+    err: aiodocker.DockerError,
 ):
     """Test install landing page fails due to other error."""
     coresys.docker.images.inspect.side_effect = [err, MagicMock()]
@@ -135,24 +125,18 @@ async def test_install_landingpage_other_error(
 
     assert "Failed to install landingpage, retrying after 30sec" in caplog.text
     capture_exception.assert_called_once_with(err)
+    assert "Unhandled exception:" not in caplog.text
 
 
-@pytest.mark.parametrize(
-    "err",
-    [
-        aiodocker.DockerError(HTTPStatus.TOO_MANY_REQUESTS, {"message": "ratelimit"}),
-        APIError("ratelimit", MagicMock(status_code=HTTPStatus.TOO_MANY_REQUESTS)),
-    ],
-)
 async def test_install_docker_ratelimit_error(
-    coresys: CoreSys,
-    capture_exception: Mock,
-    caplog: pytest.LogCaptureFixture,
-    err: Exception,
+    coresys: CoreSys, capture_exception: Mock, caplog: pytest.LogCaptureFixture
 ):
     """Test install fails due to docker ratelimit error."""
     coresys.security.force = True
-    coresys.docker.images.pull.side_effect = [err, AsyncIterator([{}])]
+    coresys.docker.images.pull.side_effect = [
+        aiodocker.DockerError(HTTPStatus.TOO_MANY_REQUESTS, {"message": "ratelimit"}),
+        AsyncIterator([{}]),
+    ]
 
     with (
         patch.object(HomeAssistantCore, "start"),
@@ -179,23 +163,21 @@ async def test_install_docker_ratelimit_error(
         Issue(IssueType.DOCKER_RATELIMIT, ContextType.SYSTEM)
         in coresys.resolution.issues
     )
+    assert "Unhandled exception:" not in caplog.text
 
 
 @pytest.mark.parametrize(
     "err",
     [
         aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}),
-        APIError("fail"),
-        DockerException(),
-        RequestException(),
-        OSError(),
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "missing"}),
     ],
 )
 async def test_install_other_error(
     coresys: CoreSys,
     capture_exception: Mock,
     caplog: pytest.LogCaptureFixture,
-    err: Exception,
+    err: aiodocker.DockerError,
 ):
     """Test install fails due to other error."""
     coresys.docker.images.inspect.side_effect = [err, MagicMock()]
@@ -221,12 +203,13 @@ async def test_install_other_error(
 
     assert "Error on Home Assistant installation. Retrying in 30sec" in caplog.text
     capture_exception.assert_called_once_with(err)
+    assert "Unhandled exception:" not in caplog.text
 
 
 @pytest.mark.parametrize(
-    ("container_exc", "image_exc", "remove_calls"),
+    ("container_exc", "image_exc", "delete_calls"),
     [
-        (NotFound("missing"), None, []),
+        (aiodocker.DockerError(404, {"message": "missing"}), None, []),
         (
             None,
             aiodocker.DockerError(404, {"message": "missing"}),
@@ -238,16 +221,16 @@ async def test_install_other_error(
 @pytest.mark.usefixtures("path_extern")
 async def test_start(
     coresys: CoreSys,
-    container: MagicMock,
-    container_exc: DockerException | None,
+    container: DockerContainer,
+    container_exc: aiodocker.DockerError | None,
     image_exc: aiodocker.DockerError | None,
-    remove_calls: list[call],
+    delete_calls: list[call],
 ):
     """Test starting Home Assistant."""
     coresys.docker.images.inspect.return_value = {"Id": "123"}
     coresys.docker.images.inspect.side_effect = image_exc
-    coresys.docker.containers_legacy.get.return_value.id = "123"
-    coresys.docker.containers_legacy.get.side_effect = container_exc
+    container.id = "123"
+    coresys.docker.containers.get.side_effect = container_exc
 
     with (
         patch.object(
@@ -255,7 +238,7 @@ async def test_start(
             "version",
             new=PropertyMock(return_value=AwesomeVersion("2023.7.0")),
         ),
-        patch.object(DockerAPI, "run", return_value=container.attrs) as run,
+        patch.object(DockerAPI, "run", return_value=container.show.return_value) as run,
         patch.object(HomeAssistantCore, "_block_till_run") as block_till_run,
     ):
         await coresys.homeassistant.core.start()
@@ -269,18 +252,17 @@ async def test_start(
         assert run.call_args.kwargs["name"] == "homeassistant"
         assert run.call_args.kwargs["hostname"] == "homeassistant"
 
-    coresys.docker.containers_legacy.get.return_value.stop.assert_not_called()
-    assert (
-        coresys.docker.containers_legacy.get.return_value.remove.call_args_list
-        == remove_calls
-    )
+    container.stop.assert_not_called()
+    assert container.delete.call_args_list == delete_calls
 
 
-async def test_start_existing_container(coresys: CoreSys, path_extern):
+@pytest.mark.usefixtures("path_extern")
+async def test_start_existing_container(coresys: CoreSys, container: DockerContainer):
     """Test starting Home Assistant when container exists and is viable."""
     coresys.docker.images.inspect.return_value = {"Id": "123"}
-    coresys.docker.containers_legacy.get.return_value.image.id = "123"
-    coresys.docker.containers_legacy.get.return_value.status = "exited"
+    container.show.return_value["Image"] = "123"
+    container.show.return_value["State"]["Status"] = "exited"
+    container.show.return_value["State"]["Running"] = False
 
     with (
         patch.object(
@@ -293,90 +275,102 @@ async def test_start_existing_container(coresys: CoreSys, path_extern):
         await coresys.homeassistant.core.start()
         block_till_run.assert_called_once()
 
-    coresys.docker.containers_legacy.get.return_value.start.assert_called_once()
-    coresys.docker.containers_legacy.get.return_value.stop.assert_not_called()
-    coresys.docker.containers_legacy.get.return_value.remove.assert_not_called()
-    coresys.docker.containers_legacy.get.return_value.run.assert_not_called()
+    container.start.assert_called_once()
+    container.stop.assert_not_called()
+    container.delete.assert_not_called()
+    coresys.docker.containers.create.assert_not_called()
 
 
 @pytest.mark.parametrize("exists", [True, False])
-async def test_stop(coresys: CoreSys, exists: bool):
+async def test_stop(coresys: CoreSys, container: DockerContainer, exists: bool):
     """Test stoppping Home Assistant."""
     if exists:
-        coresys.docker.containers_legacy.get.return_value.status = "running"
+        container.show.return_value["State"]["Status"] = "running"
+        container.show.return_value["State"]["Running"] = True
     else:
-        coresys.docker.containers_legacy.get.side_effect = NotFound("missing")
+        coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+            404, {"message": "missing"}
+        )
 
     await coresys.homeassistant.core.stop()
 
-    coresys.docker.containers_legacy.get.return_value.remove.assert_not_called()
+    container.delete.assert_not_called()
     if exists:
-        coresys.docker.containers_legacy.get.return_value.stop.assert_called_once_with(
-            timeout=260
-        )
+        container.stop.assert_called_once_with(timeout=260)
     else:
-        coresys.docker.containers_legacy.get.return_value.stop.assert_not_called()
+        container.stop.assert_not_called()
 
 
-async def test_restart(coresys: CoreSys):
+async def test_restart(coresys: CoreSys, container: DockerContainer):
     """Test restarting Home Assistant."""
     with patch.object(HomeAssistantCore, "_block_till_run") as block_till_run:
         await coresys.homeassistant.core.restart()
         block_till_run.assert_called_once()
 
-    coresys.docker.containers_legacy.get.return_value.restart.assert_called_once_with(
-        timeout=260
-    )
-    coresys.docker.containers_legacy.get.return_value.stop.assert_not_called()
+    container.restart.assert_called_once_with(timeout=260)
+    container.stop.assert_not_called()
 
 
-@pytest.mark.parametrize("get_error", [NotFound("missing"), DockerException(), None])
-async def test_restart_failures(coresys: CoreSys, get_error: DockerException | None):
+@pytest.mark.parametrize(
+    "get_error",
+    [
+        aiodocker.DockerError(404, {"message": "missing"}),
+        aiodocker.DockerError(500, {"message": "fail"}),
+        None,
+    ],
+)
+async def test_restart_failures(
+    coresys: CoreSys,
+    container: DockerContainer,
+    get_error: aiodocker.DockerError | None,
+):
     """Test restart fails when container missing or can't be restarted."""
-    coresys.docker.containers_legacy.get.return_value.restart.side_effect = (
-        DockerException()
-    )
+    container.restart.side_effect = aiodocker.DockerError(500, {"message": "fail"})
     if get_error:
-        coresys.docker.containers_legacy.get.side_effect = get_error
+        coresys.docker.containers.get.side_effect = get_error
 
     with pytest.raises(HomeAssistantError):
         await coresys.homeassistant.core.restart()
 
 
 @pytest.mark.parametrize(
-    "get_error,status",
+    "get_error,running",
     [
-        (NotFound("missing"), ""),
-        (DockerException(), ""),
-        (None, "stopped"),
-        (None, "running"),
+        (aiodocker.DockerError(404, {"message": "missing"}), False),
+        (aiodocker.DockerError(500, {"message": "fail"}), False),
+        (None, False),
+        (None, True),
     ],
 )
 async def test_stats_failures(
-    coresys: CoreSys, get_error: DockerException | None, status: str
+    coresys: CoreSys,
+    container: DockerContainer,
+    get_error: aiodocker.DockerError | None,
+    running: bool,
 ):
     """Test errors when getting stats."""
-    coresys.docker.containers_legacy.get.return_value.status = status
-    coresys.docker.containers_legacy.get.return_value.stats.side_effect = (
-        DockerException()
-    )
+    container.show.return_value["State"]["Status"] = "running" if running else "stopped"
+    container.show.return_value["State"]["Running"] = running
+    container.stats.side_effect = aiodocker.DockerError(500, {"message": "fail"})
     if get_error:
-        coresys.docker.containers_legacy.get.side_effect = get_error
+        coresys.docker.containers.get.side_effect = get_error
 
     with pytest.raises(HomeAssistantError):
         await coresys.homeassistant.core.stats()
 
 
 async def test_api_check_timeout(
-    coresys: CoreSys, container: MagicMock, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, container: DockerContainer, caplog: pytest.LogCaptureFixture
 ):
     """Test attempts to contact the API timeout."""
-    container.status = "stopped"
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
     coresys.homeassistant.version = AwesomeVersion("2023.9.0")
     coresys.homeassistant.api.get_api_state.return_value = None
 
     async def mock_instance_start(*_):
-        container.status = "running"
+        container.show.return_value["State"]["Status"] = "running"
+        container.show.return_value["State"]["Running"] = True
 
     with (
         patch.object(DockerHomeAssistant, "start", new=mock_instance_start),
@@ -400,14 +394,16 @@ async def test_api_check_timeout(
 
 
 async def test_api_check_success(
-    coresys: CoreSys, container: MagicMock, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, container: DockerContainer, caplog: pytest.LogCaptureFixture
 ):
     """Test attempts to contact the API timeout."""
-    container.status = "stopped"
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
     coresys.homeassistant.version = AwesomeVersion("2023.9.0")
 
     async def mock_instance_start(*_):
-        container.status = "running"
+        container.show.return_value["State"]["Status"] = "running"
+        container.show.return_value["State"]["Running"] = True
 
     with (
         patch.object(DockerHomeAssistant, "start", new=mock_instance_start),
@@ -426,7 +422,7 @@ async def test_api_check_success(
 
 
 async def test_api_check_database_migration(
-    coresys: CoreSys, container: MagicMock, caplog: pytest.LogCaptureFixture
+    coresys: CoreSys, container: DockerContainer, caplog: pytest.LogCaptureFixture
 ):
     """Test attempts to contact the API timeout."""
     calls = []
@@ -438,12 +434,14 @@ async def test_api_check_database_migration(
         else:
             return APIState("NOT_RUNNING", True)
 
-    container.status = "stopped"
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
     coresys.homeassistant.version = AwesomeVersion("2023.9.0")
     coresys.homeassistant.api.get_api_state.side_effect = mock_api_state
 
     async def mock_instance_start(*_):
-        container.status = "running"
+        container.show.return_value["State"]["Status"] = "running"
+        container.show.return_value["State"]["Running"] = True
 
     with (
         patch.object(DockerHomeAssistant, "start", new=mock_instance_start),
@@ -462,7 +460,7 @@ async def test_api_check_database_migration(
 
 
 async def test_core_loads_wrong_image_for_machine(
-    coresys: CoreSys, container: MagicMock
+    coresys: CoreSys, container: DockerContainer
 ):
     """Test core is loaded with wrong image for machine."""
     coresys.homeassistant.set_image("ghcr.io/home-assistant/odroid-n2-homeassistant")
@@ -476,7 +474,7 @@ async def test_core_loads_wrong_image_for_machine(
             "Config": {"Labels": {"io.hass.version": "2024.4.0"}},
         },
     ) as pull_image:
-        container.attrs |= pull_image.return_value
+        container.show.return_value |= pull_image.return_value
         await coresys.homeassistant.core.load()
         pull_image.assert_called_once_with(
             ANY,
@@ -486,7 +484,7 @@ async def test_core_loads_wrong_image_for_machine(
             auth=None,
         )
 
-    container.remove.assert_called_once_with(force=True, v=True)
+    container.delete.assert_called_once_with(force=True, v=True)
     assert coresys.docker.images.delete.call_args_list[0] == call(
         "ghcr.io/home-assistant/odroid-n2-homeassistant:latest",
         force=True,
@@ -500,16 +498,18 @@ async def test_core_loads_wrong_image_for_machine(
     )
 
 
-async def test_core_load_allows_image_override(coresys: CoreSys, container: MagicMock):
+async def test_core_load_allows_image_override(
+    coresys: CoreSys, container: DockerContainer
+):
     """Test core does not change image if user overrode it."""
     coresys.homeassistant.set_image("ghcr.io/home-assistant/odroid-n2-homeassistant")
     coresys.homeassistant.version = AwesomeVersion("2024.4.0")
-    container.attrs["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
+    container.show.return_value["Config"] = {"Labels": {"io.hass.version": "2024.4.0"}}
 
     coresys.homeassistant.override_image = True
     await coresys.homeassistant.core.load()
 
-    container.remove.assert_not_called()
+    container.delete.assert_not_called()
     coresys.docker.images.delete.assert_not_called()
     coresys.docker.images.inspect.assert_not_called()
     assert (
@@ -518,7 +518,7 @@ async def test_core_load_allows_image_override(coresys: CoreSys, container: Magi
 
 
 async def test_core_loads_wrong_image_for_architecture(
-    coresys: CoreSys, container: MagicMock
+    coresys: CoreSys, container: DockerContainer
 ):
     """Test core is loaded with wrong image for architecture."""
     coresys.homeassistant.version = AwesomeVersion("2024.4.0")
@@ -529,7 +529,7 @@ async def test_core_loads_wrong_image_for_architecture(
             "Config": {"Labels": {"io.hass.version": "2024.4.0"}},
         }
     )
-    container.attrs |= img_data
+    container.show.return_value |= img_data
 
     with patch.object(
         DockerAPI,
@@ -545,7 +545,7 @@ async def test_core_loads_wrong_image_for_architecture(
             auth=None,
         )
 
-    container.remove.assert_called_once_with(force=True, v=True)
+    container.delete.assert_called_once_with(force=True, v=True)
     assert coresys.docker.images.delete.call_args_list[0] == call(
         "ghcr.io/home-assistant/qemux86-64-homeassistant:latest",
         force=True,

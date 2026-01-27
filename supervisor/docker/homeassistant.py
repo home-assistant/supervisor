@@ -210,12 +210,11 @@ class DockerHomeAssistant(DockerInterface):
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def execute_command(self, command: str) -> CommandReturn:
+    async def execute_command(self, command: list[str]) -> CommandReturn:
         """Create a temporary container and run command."""
-        return await self.sys_run_in_executor(
-            self.sys_docker.run_command,
+        return await self.sys_docker.run_command(
             self.image,
-            version=self.sys_homeassistant.version,
+            tag=str(self.sys_homeassistant.version),
             command=command,
             privileged=True,
             init=True,

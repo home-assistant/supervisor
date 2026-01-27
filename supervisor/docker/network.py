@@ -220,7 +220,7 @@ class DockerNetwork:
     def attach_container(
         self,
         container_id: str,
-        name: str,
+        name: str | None,
         alias: list[str] | None = None,
         ipv4: IPv4Address | None = None,
     ) -> None:
@@ -233,7 +233,7 @@ class DockerNetwork:
             self.network.reload()
 
         # Check stale Network
-        if name in (
+        if name and name in (
             val.get("Name") for val in self.network.attrs.get("Containers", {}).values()
         ):
             self.stale_cleanup(name)
@@ -250,7 +250,7 @@ class DockerNetwork:
             requests.RequestException,
         ) as err:
             raise DockerError(
-                f"Can't connect {name} to Supervisor network: {err}",
+                f"Can't connect {name or container_id} to Supervisor network: {err}",
                 _LOGGER.error,
             ) from err
 
@@ -280,7 +280,7 @@ class DockerNetwork:
         if container_id not in self.containers:
             self.attach_container(container_id, name, alias, ipv4)
 
-    def detach_default_bridge(self, container_id: str, name: str) -> None:
+    def detach_default_bridge(self, container_id: str, name: str | None = None) -> None:
         """Detach default Docker bridge.
 
         Need run inside executor.
@@ -296,7 +296,7 @@ class DockerNetwork:
             requests.RequestException,
         ) as err:
             raise DockerError(
-                f"Can't disconnect {name} from default network: {err}",
+                f"Can't disconnect {name or container_id} from default network: {err}",
                 _LOGGER.warning,
             ) from err
 
