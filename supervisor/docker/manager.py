@@ -626,6 +626,19 @@ class DockerAPI(CoreSysAttributes):
         """Create a temporary container and run command, returning its output."""
         _LOGGER.info("Running command '%s' on %s:%s", command, image, tag)
         container: DockerContainer | None = None
+
+        # Ensure image exists, pull if not found
+        try:
+            await self.images.inspect(f"{image}:{tag}")
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                _LOGGER.info("Pulling image %s:%s", image, tag)
+                await self.images.pull(image, tag=tag)
+            else:
+                raise DockerError(
+                    f"Can't inspect image {image}:{tag}: {err}", _LOGGER.error
+                ) from err
+
         try:
             container = await self._run(
                 image,
