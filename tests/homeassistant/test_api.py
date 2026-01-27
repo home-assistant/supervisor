@@ -9,7 +9,6 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantAPIError
-from supervisor.homeassistant.const import LANDINGPAGE
 
 
 async def test_check_frontend_available_success(coresys: CoreSys):
@@ -88,23 +87,5 @@ async def test_check_frontend_available_api_error(coresys: CoreSys):
         type(coresys.homeassistant.api), "make_request", new=mock_make_request
     ):
         result = await coresys.homeassistant.api.check_frontend_available()
-
-    assert result is False
-
-
-async def test_check_frontend_available_landingpage(coresys: CoreSys):
-    """Test frontend availability check returns False for landingpage."""
-    coresys.homeassistant.version = LANDINGPAGE
-
-    result = await coresys.homeassistant.api.check_frontend_available()
-
-    assert result is False
-
-
-async def test_check_frontend_available_no_version(coresys: CoreSys):
-    """Test frontend availability check returns False when no version set."""
-    coresys.homeassistant.version = None
-
-    result = await coresys.homeassistant.api.check_frontend_available()
 
     assert result is False

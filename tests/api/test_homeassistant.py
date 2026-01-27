@@ -299,6 +299,7 @@ async def test_api_progress_updates_home_assistant_update(
         patch.object(
             HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
         ),
+        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=True),
     ):
         resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
 

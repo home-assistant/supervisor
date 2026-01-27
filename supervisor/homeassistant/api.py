@@ -226,17 +226,13 @@ class HomeAssistantAPI(CoreSysAttributes):
     async def check_frontend_available(self) -> bool:
         """Check if the frontend is accessible by fetching the root path.
 
+        Caller should make sure that Home Assistant Core is running before
+        calling this method.
+
         Returns:
             True if the frontend responds successfully, False otherwise.
 
         """
-        # Skip check on landingpage
-        if (
-            self.sys_homeassistant.version is None
-            or self.sys_homeassistant.version == LANDINGPAGE
-        ):
-            return False
-
         try:
             async with self.make_request("get", "", timeout=30) as resp:
                 # Frontend should return HTML content
