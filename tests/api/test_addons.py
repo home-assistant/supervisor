@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from pathlib import PurePath
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import aiodocker
@@ -240,7 +241,7 @@ async def test_api_addon_rebuild_healthcheck(
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            return_value=PurePath("/addon/path/on/host"),
         ),
     ):
         resp = await api_client.post("/addons/local_ssh/rebuild")
@@ -334,7 +335,7 @@ async def test_api_addon_rebuild_force(
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            return_value=PurePath("/addon/path/on/host"),
         ),
     ):
         resp = await api_client.post("/addons/local_ssh/rebuild", json={"force": True})

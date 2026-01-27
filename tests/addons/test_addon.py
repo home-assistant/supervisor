@@ -4,7 +4,7 @@ import asyncio
 from datetime import timedelta
 import errno
 from http import HTTPStatus
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Any
 from unittest.mock import MagicMock, PropertyMock, call, patch
 
@@ -851,7 +851,7 @@ async def test_addon_loads_wrong_image(
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            return_value=PurePath("/addon/path/on/host"),
         ),
     ):
         await install_addon_ssh.load()
@@ -899,7 +899,7 @@ async def test_addon_loads_missing_image(coresys: CoreSys, install_addon_ssh: Ad
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            return_value=PurePath("/addon/path/on/host"),
         ),
     ):
         await install_addon_ssh.load()
@@ -937,7 +937,9 @@ async def test_addon_load_succeeds_with_docker_errors(
     with (
         patch("pathlib.Path.is_file", return_value=True),
         patch.object(
-            CoreConfig, "local_to_extern_path", return_value="/addon/path/on/host"
+            CoreConfig,
+            "local_to_extern_path",
+            return_value=PurePath("/addon/path/on/host"),
         ),
         patch.object(
             DockerAPI, "run_command", return_value=CommandReturn(1, ["error"])
