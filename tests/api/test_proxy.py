@@ -9,7 +9,7 @@ import logging
 from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
-from aiohttp import ClientWebSocketResponse, WSCloseCode
+from aiohttp import ClientWebSocketResponse, WSCloseCode, web
 from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
@@ -221,6 +221,32 @@ async def test_proxy_auth_abort_log(
         assert (
             "Unexpected message during authentication for WebSocket API" in caplog.text
         )
+
+
+async def test_websocket_transport_none(
+    coresys,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test WebSocket connection with transport None is handled gracefully."""
+    # Get the API proxy instance from coresys
+    api_proxy = APIProxy.__new__(APIProxy)
+    api_proxy.coresys = coresys
+
+    # Create a mock request with transport set to None to simulate connection loss
+    mock_request = AsyncMock(spec=web.Request)
+    mock_request.transport = None
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        # This should raise HTTPBadRequest, not AssertionError
+        with pytest.raises(web.HTTPBadRequest) as exc_info:
+            await api_proxy.websocket(mock_request)
+
+        # Verify the error reason
+        assert exc_info.value.reason == "Connection closed"
+
+        # Verify the warning was logged
+        assert "WebSocket connection lost before upgrade" in caplog.text
 
 
 @pytest.mark.parametrize("path", ["", "mock_path"])
