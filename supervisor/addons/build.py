@@ -24,7 +24,7 @@ from ..const import (
     CpuArch,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..docker.const import DOCKER_HUB, DOCKER_HUB_LEGACY
+from ..docker.const import DOCKER_HUB, DOCKER_HUB_LEGACY, DockerMount, MountType
 from ..docker.interface import MAP_ARCH
 from ..exceptions import (
     AddonBuildArchitectureNotSupportedError,
@@ -232,24 +232,38 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             self.addon.path_location
         )
 
-        volumes = {
-            SOCKET_DOCKER: {"bind": "/var/run/docker.sock", "mode": "rw"},
-            addon_extern_path: {"bind": "/addon", "mode": "ro"},
-        }
+        mounts = [
+            DockerMount(
+                type=MountType.BIND,
+                source=SOCKET_DOCKER.as_posix(),
+                target="/var/run/docker.sock",
+                read_only=False,
+            ),
+            DockerMount(
+                type=MountType.BIND,
+                source=addon_extern_path.as_posix(),
+                target="/addon",
+                read_only=True,
+            ),
+        ]
 
         # Mount Docker config with registry credentials if available
         if docker_config_path:
             docker_config_extern_path = self.sys_config.local_to_extern_path(
                 docker_config_path
             )
-            volumes[docker_config_extern_path] = {
-                "bind": "/root/.docker/config.json",
-                "mode": "ro",
-            }
+            mounts.append(
+                DockerMount(
+                    type=MountType.BIND,
+                    source=docker_config_extern_path.as_posix(),
+                    target="/root/.docker/config.json",
+                    read_only=True,
+                )
+            )
 
         return {
             "command": build_cmd,
-            "volumes": volumes,
+            "mounts": mounts,
             "working_dir": PurePath("/addon"),
         }
 
