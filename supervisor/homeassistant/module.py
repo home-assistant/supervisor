@@ -75,7 +75,7 @@ HOMEASSISTANT_BACKUP_EXCLUDE = [
     "backups/*.tar",
     "tmp_backups/*.tar",
     "tts/*",
-    "frontend_development_artifacts/*",
+    ".cache/*",
 ]
 HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE = [
     "home-assistant_v?.db",
