@@ -13,8 +13,6 @@ import aiohttp
 from aiohttp.client_exceptions import ClientError
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
-from supervisor.jobs import ChildJobSyncFilter
-
 from .const import (
     ATTR_SUPERVISOR_INTERNET,
     SUPERVISOR_VERSION,
@@ -28,10 +26,11 @@ from .exceptions import (
     DockerError,
     HostAppArmorError,
     SupervisorAppArmorError,
-    SupervisorError,
     SupervisorJobError,
+    SupervisorUnknownError,
     SupervisorUpdateError,
 )
+from .jobs import ChildJobSyncFilter
 from .jobs.const import JobCondition, JobThrottle
 from .jobs.decorator import Job
 from .resolution.const import ContextType, IssueType, UnhealthyReason
@@ -261,7 +260,7 @@ class Supervisor(CoreSysAttributes):
         try:
             return await self.instance.stats()
         except DockerError as err:
-            raise SupervisorError() from err
+            raise SupervisorUnknownError() from err
 
     async def repair(self):
         """Repair local Supervisor data."""

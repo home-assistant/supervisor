@@ -1,5 +1,6 @@
 """NetworkInterface object for Network Manager."""
 
+import logging
 from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
@@ -22,6 +23,8 @@ from ..utils import dbus_connected
 from .connection import NetworkConnection
 from .setting import NetworkSetting
 from .wireless import NetworkWireless
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class NetworkInterface(DBusInterfaceProxy):
@@ -57,7 +60,15 @@ class NetworkInterface(DBusInterfaceProxy):
     @dbus_property
     def type(self) -> DeviceType:
         """Return interface type."""
-        return self.properties[DBUS_ATTR_DEVICE_TYPE]
+        try:
+            return DeviceType(self.properties[DBUS_ATTR_DEVICE_TYPE])
+        except ValueError:
+            _LOGGER.debug(
+                "Unknown device type %s for %s, treating as UNKNOWN",
+                self.properties[DBUS_ATTR_DEVICE_TYPE],
+                self.object_path,
+            )
+            return DeviceType.UNKNOWN
 
     @property
     @dbus_property

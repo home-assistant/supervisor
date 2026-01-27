@@ -7,11 +7,6 @@ ENV \
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 \
     UV_SYSTEM_PYTHON=true
 
-ARG \
-    COSIGN_VERSION \
-    BUILD_ARCH \
-    QEMU_CPU
-
 # Install base
 WORKDIR /usr/src
 RUN \
@@ -27,20 +22,22 @@ RUN \
         openssl \
         yaml \
     \
-    && curl -Lso /usr/bin/cosign "https://github.com/home-assistant/cosign/releases/download/${COSIGN_VERSION}/cosign_${BUILD_ARCH}" \
-    && chmod a+x /usr/bin/cosign \
-    && pip3 install uv==0.8.9
+    && pip3 install uv==0.9.18
 
 # Install requirements
-COPY requirements.txt .
 RUN \
-    if [ "${BUILD_ARCH}" = "i386" ]; then \
-        setarch="linux32"; \
+    --mount=type=bind,source=./requirements.txt,target=/usr/src/requirements.txt \
+    --mount=type=bind,source=./wheels,target=/usr/src/wheels \
+    if ls /usr/src/wheels/musllinux/* >/dev/null 2>&1; then \
+        LOCAL_WHEELS=/usr/src/wheels/musllinux; \
+        echo "Using local wheels from: $LOCAL_WHEELS"; \
     else \
-        setarch=""; \
-    fi \
-    && ${setarch} uv pip install --compile-bytecode --no-cache --no-build -r requirements.txt \
-    && rm -f requirements.txt
+        LOCAL_WHEELS=; \
+        echo "No local wheels found"; \
+    fi && \
+    uv pip install --compile-bytecode --no-cache --no-build \
+        -r requirements.txt \
+        ${LOCAL_WHEELS:+--find-links $LOCAL_WHEELS}
 
 # Install Home Assistant Supervisor
 COPY . supervisor

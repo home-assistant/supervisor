@@ -86,6 +86,22 @@ def test_format_verbose_newlines():
     )
 
 
+def test_format_verbose_colors():
+    """Test verbose formatter with ANSI colors in message."""
+    fields = {
+        "__REALTIME_TIMESTAMP": "1379403171000000",
+        "_HOSTNAME": "homeassistant",
+        "SYSLOG_IDENTIFIER": "python",
+        "_PID": "666",
+        "MESSAGE": "\x1b[32mHello, world!\x1b[0m",
+    }
+
+    assert (
+        journal_verbose_formatter(fields)
+        == "2013-09-17 07:32:51.000 homeassistant python[666]: \x1b[32mHello, world!\x1b[0m"
+    )
+
+
 async def test_parsing_simple():
     """Test plain formatter."""
     journal_logs, stream = _journal_logs_mock()
@@ -297,3 +313,54 @@ async def test_parsing_non_utf8_in_binary_message():
     )
     _, line = await anext(journal_logs_reader(journal_logs))
     assert line == "Hello, \ufffd world!"
+
+
+def test_format_plain_no_colors():
+    """Test plain formatter strips ANSI color codes when no_colors=True."""
+    fields = {"MESSAGE": "\x1b[32mHello, world!\x1b[0m"}
+    assert journal_plain_formatter(fields, no_colors=True) == "Hello, world!"
+
+
+def test_format_verbose_no_colors():
+    """Test verbose formatter strips ANSI color codes when no_colors=True."""
+    fields = {
+        "__REALTIME_TIMESTAMP": "1379403171000000",
+        "_HOSTNAME": "homeassistant",
+        "SYSLOG_IDENTIFIER": "python",
+        "_PID": "666",
+        "MESSAGE": "\x1b[32mHello, world!\x1b[0m",
+    }
+    assert (
+        journal_verbose_formatter(fields, no_colors=True)
+        == "2013-09-17 07:32:51.000 homeassistant python[666]: Hello, world!"
+    )
+
+
+async def test_parsing_colored_logs_verbose_no_colors():
+    """Test verbose formatter strips colors from colored logs."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"__REALTIME_TIMESTAMP=1379403171000000\n"
+        b"_HOSTNAME=homeassistant\n"
+        b"SYSLOG_IDENTIFIER=python\n"
+        b"_PID=666\n"
+        b"MESSAGE\n\x0e\x00\x00\x00\x00\x00\x00\x00\x1b[31mERROR\x1b[0m\n"
+        b"AFTER=after\n\n"
+    )
+    _, line = await anext(
+        journal_logs_reader(
+            journal_logs, log_formatter=LogFormatter.VERBOSE, no_colors=True
+        )
+    )
+    assert line == "2013-09-17 07:32:51.000 homeassistant python[666]: ERROR"
+
+
+async def test_parsing_multiple_color_codes():
+    """Test stripping multiple ANSI color codes in single message."""
+    journal_logs, stream = _journal_logs_mock()
+    stream.feed_data(
+        b"MESSAGE\n\x29\x00\x00\x00\x00\x00\x00\x00\x1b[31mRed\x1b[0m \x1b[32mGreen\x1b[0m \x1b[34mBlue\x1b[0m\n"
+        b"AFTER=after\n\n"
+    )
+    _, line = await anext(journal_logs_reader(journal_logs, no_colors=True))
+    assert line == "Red Green Blue"

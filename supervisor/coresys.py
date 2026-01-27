@@ -9,6 +9,7 @@ from datetime import UTC, datetime, tzinfo
 from functools import partial
 import logging
 import os
+import time
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self, TypeVar
 
@@ -28,7 +29,7 @@ from .const import (
 if TYPE_CHECKING:
     from .addons.manager import AddonManager
     from .api import RestAPI
-    from .arch import CpuArch
+    from .arch import CpuArchManager
     from .auth import Auth
     from .backups.manager import BackupManager
     from .bus import Bus
@@ -77,7 +78,7 @@ class CoreSys:
         # Internal objects pointers
         self._docker: DockerAPI | None = None
         self._core: Core | None = None
-        self._arch: CpuArch | None = None
+        self._arch: CpuArchManager | None = None
         self._auth: Auth | None = None
         self._homeassistant: HomeAssistant | None = None
         self._supervisor: Supervisor | None = None
@@ -265,17 +266,17 @@ class CoreSys:
         self._plugins = value
 
     @property
-    def arch(self) -> CpuArch:
-        """Return CpuArch object."""
+    def arch(self) -> CpuArchManager:
+        """Return CpuArchManager object."""
         if self._arch is None:
-            raise RuntimeError("CpuArch not set!")
+            raise RuntimeError("CpuArchManager not set!")
         return self._arch
 
     @arch.setter
-    def arch(self, value: CpuArch) -> None:
-        """Set a CpuArch object."""
+    def arch(self, value: CpuArchManager) -> None:
+        """Set a CpuArchManager object."""
         if self._arch:
-            raise RuntimeError("CpuArch already set!")
+            raise RuntimeError("CpuArchManager already set!")
         self._arch = value
 
     @property
@@ -655,8 +656,14 @@ class CoreSys:
         if kwargs:
             funct = partial(funct, **kwargs)
 
+        # Convert datetime to event loop time base
+        # If datetime is in the past, delay will be negative and call_at will
+        # schedule the call as soon as possible.
+        delay = when.timestamp() - time.time()
+        loop_time = self.loop.time() + delay
+
         return self.loop.call_at(
-            when.timestamp(), funct, *args, context=self._create_context()
+            loop_time, funct, *args, context=self._create_context()
         )
 
 
@@ -726,8 +733,8 @@ class CoreSysAttributes:
         return self.coresys.plugins
 
     @property
-    def sys_arch(self) -> CpuArch:
-        """Return CpuArch object."""
+    def sys_arch(self) -> CpuArchManager:
+        """Return CpuArchManager object."""
         return self.coresys.arch
 
     @property

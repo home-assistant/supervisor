@@ -250,7 +250,7 @@ class ConnectionType(StrEnum):
     WIRELESS = "802-11-wireless"
 
 
-class ConnectionStateType(IntEnum):
+class ConnectionState(IntEnum):
     """Connection states.
 
     https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMActiveConnectionState
@@ -306,6 +306,8 @@ class DeviceType(IntEnum):
     VLAN = 11
     TUN = 16
     VETH = 20
+    WIREGUARD = 29
+    LOOPBACK = 32
 
 
 class WirelessMethodType(IntEnum):

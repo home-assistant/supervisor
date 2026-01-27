@@ -5,11 +5,12 @@ from datetime import timedelta
 import errno
 from http import HTTPStatus
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import aiodocker
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
-from docker.errors import APIError, DockerException, NotFound
 import pytest
 from securetar import SecureTarFile
 
@@ -23,10 +24,15 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.exceptions import AddonsError, AddonsJobError, AudioUpdateError
+from supervisor.exceptions import (
+    AddonPrePostBackupCommandReturnedError,
+    AddonsJobError,
+    AddonUnknownError,
+    AudioUpdateError,
+    HassioError,
+)
 from supervisor.hardware.helper import HwHelper
 from supervisor.ingress import Ingress
-from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
 from .test_manager import BOOT_FAIL_ISSUE, BOOT_FAIL_SUGGESTIONS
@@ -211,18 +217,14 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_addon_ssh: Addon) -> N
         restart.assert_called_once()
 
 
-async def test_listener_attached_on_install(
-    coresys: CoreSys, mock_amd64_arch_supported: None, test_repository
-):
+@pytest.mark.usefixtures("mock_amd64_arch_supported", "test_repository")
+async def test_listener_attached_on_install(coresys: CoreSys):
     """Test events listener attached on addon install."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    container_collection = MagicMock()
-    container_collection.get.side_effect = DockerException()
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        500, {"message": "fail"}
+    )
     with (
-        patch(
-            "supervisor.docker.manager.DockerAPI.containers",
-            new=PropertyMock(return_value=container_collection),
-        ),
         patch("pathlib.Path.is_dir", return_value=True),
         patch(
             "supervisor.addons.addon.Addon.need_build",
@@ -246,9 +248,9 @@ async def test_listener_attached_on_install(
 @pytest.mark.parametrize(
     "boot_timedelta,restart_count", [(timedelta(), 1), (timedelta(days=1), 0)]
 )
+@pytest.mark.usefixtures("test_repository")
 async def test_watchdog_during_attach(
     coresys: CoreSys,
-    test_repository: Repository,
     boot_timedelta: timedelta,
     restart_count: int,
 ):
@@ -280,9 +282,8 @@ async def test_watchdog_during_attach(
         assert restart.call_count == restart_count
 
 
-async def test_install_update_fails_if_out_of_date(
-    coresys: CoreSys, install_addon_ssh: Addon
-):
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_install_update_fails_if_out_of_date(coresys: CoreSys):
     """Test install or update of addon fails when supervisor or plugin is out of date."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
@@ -335,13 +336,8 @@ async def test_listeners_removed_on_uninstall(
         )
 
 
-async def test_start(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container,
-    tmp_supervisor_data,
-    path_extern,
-) -> None:
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_start(coresys: CoreSys, install_addon_ssh: Addon) -> None:
     """Test starting an addon without healthcheck."""
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
@@ -357,17 +353,16 @@ async def test_start(
 
 
 @pytest.mark.parametrize("state", [ContainerState.HEALTHY, ContainerState.UNHEALTHY])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_start_wait_healthcheck(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     state: ContainerState,
-    tmp_supervisor_data,
-    path_extern,
 ) -> None:
     """Test starting an addon with a healthcheck waits for health status."""
     install_addon_ssh.path_data.mkdir()
-    container.attrs["Config"] = {"Healthcheck": "exists"}
+    container.show.return_value["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
     await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
@@ -388,13 +383,9 @@ async def test_start_wait_healthcheck(
     assert install_addon_ssh.state == AddonState.STARTED
 
 
+@pytest.mark.usefixtures("coresys", "tmp_supervisor_data", "path_extern")
 async def test_start_timeout(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    caplog: pytest.LogCaptureFixture,
-    container,
-    tmp_supervisor_data,
-    path_extern,
+    install_addon_ssh: Addon, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Test starting an addon times out while waiting."""
     install_addon_ssh.path_data.mkdir()
@@ -414,13 +405,8 @@ async def test_start_timeout(
     assert "Timeout while waiting for addon Terminal & SSH to start" in caplog.text
 
 
-async def test_restart(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container,
-    tmp_supervisor_data,
-    path_extern,
-) -> None:
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_restart(coresys: CoreSys, install_addon_ssh: Addon) -> None:
     """Test restarting an addon."""
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
@@ -436,16 +422,16 @@ async def test_restart(
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     status: str,
-    tmp_supervisor_data,
-    path_extern,
 ) -> None:
     """Test backing up an addon."""
-    container.status = status
+    container.show.return_value["State"]["Status"] = status
+    container.show.return_value["State"]["Running"] = status == "running"
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
@@ -454,16 +440,16 @@ async def test_backup(
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup_no_config(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     status: str,
-    tmp_supervisor_data,
-    path_extern,
 ) -> None:
     """Test backing up an addon with deleted config directory."""
-    container.status = status
+    container.show.return_value["State"]["Status"] = status
+    container.show.return_value["State"]["Running"] = status == "running"
 
     install_addon_ssh.data["map"].append({"type": "addon_config", "read_only": False})
     assert not install_addon_ssh.path_config.exists()
@@ -474,16 +460,15 @@ async def test_backup_no_config(
     assert await install_addon_ssh.backup(tarfile) is None
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup_with_pre_post_command(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
+    container: DockerContainer,
 ) -> None:
     """Test backing up an addon with pre and post command."""
-    container.status = "running"
-    container.exec_run.return_value = (0, None)
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
@@ -496,37 +481,63 @@ async def test_backup_with_pre_post_command(
     ):
         assert await install_addon_ssh.backup(tarfile) is None
 
-    assert container.exec_run.call_count == 2
-    assert container.exec_run.call_args_list[0].args[0] == "backup_pre"
-    assert container.exec_run.call_args_list[1].args[0] == "backup_post"
+    assert container.exec.call_count == 2
+    assert container.exec.call_args_list[0].args[0] == "backup_pre"
+    assert container.exec.call_args_list[1].args[0] == "backup_post"
 
 
 @pytest.mark.parametrize(
-    "get_error,exception_on_exec",
+    (
+        "container_get_side_effect",
+        "exec_start_side_effect",
+        "exec_inspect_side_effect",
+        "exc_type_raised",
+    ),
     [
-        (NotFound("missing"), False),
-        (DockerException(), False),
-        (None, True),
-        (None, False),
+        (
+            aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "missing"}),
+            None,
+            [{"ExitCode": 1}],
+            AddonUnknownError,
+        ),
+        (
+            aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "bad"}),
+            None,
+            [{"ExitCode": 1}],
+            AddonUnknownError,
+        ),
+        (
+            None,
+            aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "bad"}),
+            [{"ExitCode": 1}],
+            AddonUnknownError,
+        ),
+        (
+            None,
+            None,
+            aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "bad"}),
+            AddonUnknownError,
+        ),
+        (None, None, [{"ExitCode": 1}], AddonPrePostBackupCommandReturnedError),
     ],
 )
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup_with_pre_command_error(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
-    get_error: DockerException | None,
-    exception_on_exec: bool,
-    tmp_supervisor_data,
-    path_extern,
+    container_get_side_effect: aiodocker.DockerError | None,
+    exec_start_side_effect: aiodocker.DockerError | None,
+    exec_inspect_side_effect: aiodocker.DockerError | list[dict[str, Any]] | None,
+    exc_type_raised: type[HassioError],
 ) -> None:
     """Test backing up an addon with error running pre command."""
-    if get_error:
-        coresys.docker.containers.get.side_effect = get_error
-
-    if exception_on_exec:
-        container.exec_run.side_effect = DockerException()
-    else:
-        container.exec_run.return_value = (1, None)
+    coresys.docker.containers.get.side_effect = container_get_side_effect
+    coresys.docker.containers.get.return_value.exec.return_value.start.side_effect = (
+        exec_start_side_effect
+    )
+    coresys.docker.containers.get.return_value.exec.return_value.inspect.side_effect = (
+        exec_inspect_side_effect
+    )
 
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
@@ -535,7 +546,7 @@ async def test_backup_with_pre_command_error(
     with (
         patch.object(DockerAddon, "is_running", return_value=True),
         patch.object(Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")),
-        pytest.raises(AddonsError),
+        pytest.raises(exc_type_raised),
     ):
         assert await install_addon_ssh.backup(tarfile) is None
 
@@ -543,16 +554,16 @@ async def test_backup_with_pre_command_error(
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup_cold_mode(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     status: str,
-    tmp_supervisor_data,
-    path_extern,
 ) -> None:
     """Test backing up an addon in cold mode."""
-    container.status = status
+    container.show.return_value["State"]["Status"] = status
+    container.show.return_value["State"]["Running"] = status == "running"
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
@@ -572,22 +583,25 @@ async def test_backup_cold_mode(
     assert bool(start_task) is (status == "running")
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup_cold_mode_with_watchdog(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
+    container: DockerContainer,
 ):
     """Test backing up an addon in cold mode with watchdog active."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     install_addon_ssh.watchdog = True
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
+    # Clear task queue, including the event fired for running container
+    await asyncio.sleep(0)
 
     # Simulate stop firing the docker event for stopped container like it normally would
     async def mock_stop(*args, **kwargs):
-        container.status = "stopped"
+        container.show.return_value["State"]["Status"] = "stopped"
+        container.show.return_value["State"]["Running"] = False
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
 
     # Patching out the normal end of backup process leaves the container in a stopped state
@@ -611,15 +625,10 @@ async def test_backup_cold_mode_with_watchdog(
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
-async def test_restore(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container: MagicMock,
-    status: str,
-    tmp_supervisor_data,
-    path_extern,
-    mock_aarch64_arch_supported: None,
-) -> None:
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mock_aarch64_arch_supported"
+)
+async def test_restore(coresys: CoreSys, install_addon_ssh: Addon, status: str) -> None:
     """Test restoring an addon."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.path_data.mkdir()
@@ -632,16 +641,15 @@ async def test_restore(
     assert bool(start_task) is (status == "running")
 
 
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mock_aarch64_arch_supported"
+)
 async def test_restore_while_running(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
-    mock_aarch64_arch_supported: None,
+    coresys: CoreSys, install_addon_ssh: Addon, container: DockerContainer
 ):
     """Test restore of a running addon."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
@@ -657,16 +665,15 @@ async def test_restore_while_running(
     container.stop.assert_called_once()
 
 
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mock_aarch64_arch_supported"
+)
 async def test_restore_while_running_with_watchdog(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
-    mock_aarch64_arch_supported: None,
+    coresys: CoreSys, install_addon_ssh: Addon, container: DockerContainer
 ):
     """Test restore of a running addon with watchdog interference."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.path_data.mkdir()
     install_addon_ssh.watchdog = True
@@ -674,7 +681,8 @@ async def test_restore_while_running_with_watchdog(
 
     # Simulate stop firing the docker event for stopped container like it normally would
     async def mock_stop(*args, **kwargs):
-        container.status = "stopped"
+        container.show.return_value["State"]["Status"] = "stopped"
+        container.show.return_value["State"]["Running"] = False
         _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
 
     # We restore a stopped backup so restore will not restart it
@@ -692,14 +700,15 @@ async def test_restore_while_running_with_watchdog(
         restart.assert_not_called()
 
 
+@pytest.mark.usefixtures("coresys")
 async def test_start_when_running(
-    coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test starting an addon without healthcheck."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     await install_addon_ssh.load()
     await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STARTED
@@ -712,13 +721,8 @@ async def test_start_when_running(
     assert "local_ssh is already running" in caplog.text
 
 
-async def test_local_example_install(
-    coresys: CoreSys,
-    container: MagicMock,
-    tmp_supervisor_data: Path,
-    test_repository,
-    mock_aarch64_arch_supported: None,
-):
+@pytest.mark.usefixtures("test_repository", "mock_aarch64_arch_supported")
+async def test_local_example_install(coresys: CoreSys, tmp_supervisor_data: Path):
     """Test install of an addon."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     assert not (
@@ -732,12 +736,9 @@ async def test_local_example_install(
     assert data_dir.is_dir()
 
 
+@pytest.mark.usefixtures("coresys", "path_extern")
 async def test_local_example_start(
-    coresys: CoreSys,
-    container: MagicMock,
-    tmp_supervisor_data: Path,
-    install_addon_example: Addon,
-    path_extern,
+    tmp_supervisor_data: Path, install_addon_example: Addon
 ):
     """Test start of an addon."""
     install_addon_example.path_data.mkdir()
@@ -754,12 +755,8 @@ async def test_local_example_start(
     assert addon_config_dir.is_dir()
 
 
-async def test_local_example_ingress_port_set(
-    coresys: CoreSys,
-    container: MagicMock,
-    tmp_supervisor_data: Path,
-    install_addon_example: Addon,
-):
+@pytest.mark.usefixtures("coresys", "tmp_supervisor_data")
+async def test_local_example_ingress_port_set(install_addon_example: Addon):
     """Test start of an addon."""
     install_addon_example.path_data.mkdir()
     await install_addon_example.load()
@@ -767,11 +764,9 @@ async def test_local_example_ingress_port_set(
     assert install_addon_example.ingress_port != 0
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
 async def test_addon_pulse_error(
-    coresys: CoreSys,
-    install_addon_example: Addon,
-    caplog: pytest.LogCaptureFixture,
-    tmp_supervisor_data,
+    coresys: CoreSys, install_addon_example: Addon, caplog: pytest.LogCaptureFixture
 ):
     """Test error writing pulse config for addon."""
     with patch(
@@ -791,7 +786,8 @@ async def test_addon_pulse_error(
         assert coresys.core.healthy is False
 
 
-def test_auto_update_available(coresys: CoreSys, install_addon_example: Addon):
+@pytest.mark.usefixtures("coresys")
+def test_auto_update_available(install_addon_example: Addon):
     """Test auto update availability based on versions."""
     assert install_addon_example.auto_update is False
     assert install_addon_example.need_update is False
@@ -836,11 +832,9 @@ async def test_paths_cache(coresys: CoreSys, install_addon_ssh: Addon):
         assert install_addon_ssh.with_documentation
 
 
+@pytest.mark.usefixtures("mock_amd64_arch_supported")
 async def test_addon_loads_wrong_image(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container: MagicMock,
-    mock_amd64_arch_supported,
+    coresys: CoreSys, install_addon_ssh: Addon, container: DockerContainer
 ):
     """Test addon is loaded with incorrect image for architecture."""
     coresys.addons.data.save_data.reset_mock()
@@ -852,7 +846,7 @@ async def test_addon_loads_wrong_image(
         patch.object(
             coresys.docker,
             "run_command",
-            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
+            return_value=CommandReturn(0, ["Build successful"]),
         ) as mock_run_command,
         patch.object(
             type(coresys.config),
@@ -862,7 +856,7 @@ async def test_addon_loads_wrong_image(
     ):
         await install_addon_ssh.load()
 
-    container.remove.assert_called_with(force=True, v=True)
+    container.delete.assert_called_with(force=True, v=True)
     # one for removing the addon, one for removing the addon builder
     assert coresys.docker.images.delete.call_count == 2
 
@@ -874,7 +868,7 @@ async def test_addon_loads_wrong_image(
     )
     mock_run_command.assert_called_once()
     assert mock_run_command.call_args.args[0] == "docker.io/library/docker"
-    assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
+    assert mock_run_command.call_args.kwargs["tag"] == "1.0.0-cli"
     command = mock_run_command.call_args.kwargs["command"]
     assert is_in_list(
         ["--platform", "linux/amd64"],
@@ -888,12 +882,8 @@ async def test_addon_loads_wrong_image(
     coresys.addons.data.save_data.assert_called_once()
 
 
-async def test_addon_loads_missing_image(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container: MagicMock,
-    mock_amd64_arch_supported,
-):
+@pytest.mark.usefixtures("mock_amd64_arch_supported")
+async def test_addon_loads_missing_image(coresys: CoreSys, install_addon_ssh: Addon):
     """Test addon corrects a missing image on load."""
     coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
         HTTPStatus.NOT_FOUND, {"message": "missing"}
@@ -904,7 +894,7 @@ async def test_addon_loads_missing_image(
         patch.object(
             coresys.docker,
             "run_command",
-            new=PropertyMock(return_value=CommandReturn(0, b"Build successful")),
+            return_value=CommandReturn(0, ["Build successful"]),
         ) as mock_run_command,
         patch.object(
             type(coresys.config),
@@ -916,7 +906,7 @@ async def test_addon_loads_missing_image(
 
     mock_run_command.assert_called_once()
     assert mock_run_command.call_args.args[0] == "docker.io/library/docker"
-    assert mock_run_command.call_args.kwargs["version"] == "1.0.0-cli"
+    assert mock_run_command.call_args.kwargs["tag"] == "1.0.0-cli"
     command = mock_run_command.call_args.kwargs["command"]
     assert is_in_list(
         ["--platform", "linux/amd64"],
@@ -929,16 +919,9 @@ async def test_addon_loads_missing_image(
     assert install_addon_ssh.image == "local/amd64-addon-ssh"
 
 
-@pytest.mark.parametrize(
-    "pull_image_exc",
-    [APIError("error"), aiodocker.DockerError(400, {"message": "error"})],
-)
 @pytest.mark.usefixtures("container", "mock_amd64_arch_supported")
 async def test_addon_load_succeeds_with_docker_errors(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    caplog: pytest.LogCaptureFixture,
-    pull_image_exc: Exception,
+    coresys: CoreSys, install_addon_ssh: Addon, caplog: pytest.LogCaptureFixture
 ):
     """Docker errors while building/pulling an image during load should not raise and fail setup."""
     # Build env invalid failure
@@ -947,7 +930,7 @@ async def test_addon_load_succeeds_with_docker_errors(
     )
     caplog.clear()
     await install_addon_ssh.load()
-    assert "Invalid build environment" in caplog.text
+    assert "Cannot build addon 'local_ssh' because dockerfile is missing" in caplog.text
 
     # Image build failure
     caplog.clear()
@@ -957,26 +940,29 @@ async def test_addon_load_succeeds_with_docker_errors(
             CoreConfig, "local_to_extern_path", return_value="/addon/path/on/host"
         ),
         patch.object(
-            DockerAPI,
-            "run_command",
-            return_value=MagicMock(exit_code=1, output=b"error"),
+            DockerAPI, "run_command", return_value=CommandReturn(1, ["error"])
         ),
     ):
         await install_addon_ssh.load()
     assert (
-        "Can't build local/amd64-addon-ssh:9.2.1: Docker build failed for local/amd64-addon-ssh:9.2.1 (exit code 1). Build output:\nerror"
+        "Docker build failed for local/amd64-addon-ssh:9.2.1 (exit code 1). Build output:\nerror"
         in caplog.text
     )
 
     # Image pull failure
     install_addon_ssh.data["image"] = "test/amd64-addon-ssh"
     caplog.clear()
-    with patch.object(DockerAPI, "pull_image", side_effect=pull_image_exc):
+    with patch.object(
+        DockerAPI,
+        "pull_image",
+        side_effect=aiodocker.DockerError(400, {"message": "error"}),
+    ):
         await install_addon_ssh.load()
     assert "Can't install test/amd64-addon-ssh:9.2.1:" in caplog.text
 
 
-async def test_addon_manual_only_boot(coresys: CoreSys, install_addon_example: Addon):
+@pytest.mark.usefixtures("coresys")
+async def test_addon_manual_only_boot(install_addon_example: Addon):
     """Test an addon with manual only boot mode."""
     assert install_addon_example.boot_config == "manual_only"
     assert install_addon_example.boot == "manual"

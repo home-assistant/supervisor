@@ -9,7 +9,7 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.addons.addon import Addon
-from supervisor.arch import CpuArch
+from supervisor.arch import CpuArchManager
 from supervisor.backups.manager import BackupManager
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import AddonNotSupportedError, StoreJobError
@@ -163,7 +163,9 @@ async def test_update_unavailable_addon(
     with (
         patch.object(BackupManager, "do_backup_partial") as backup,
         patch.object(AddonStore, "data", new=PropertyMock(return_value=addon_config)),
-        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(
+            CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
+        ),
         patch.object(CoreSys, "machine", new=PropertyMock(return_value="qemux86-64")),
         patch.object(
             HomeAssistant,
@@ -219,7 +221,9 @@ async def test_install_unavailable_addon(
 
     with (
         patch.object(AddonStore, "data", new=PropertyMock(return_value=addon_config)),
-        patch.object(CpuArch, "supported", new=PropertyMock(return_value=["amd64"])),
+        patch.object(
+            CpuArchManager, "supported", new=PropertyMock(return_value=["amd64"])
+        ),
         patch.object(CoreSys, "machine", new=PropertyMock(return_value="qemux86-64")),
         patch.object(
             HomeAssistant,

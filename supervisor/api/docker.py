@@ -4,9 +4,8 @@ import logging
 from typing import Any
 
 from aiohttp import web
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
-
-from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 
 from ..const import (
     ATTR_ENABLE_IPV6,
@@ -16,11 +15,13 @@ from ..const import (
     ATTR_PASSWORD,
     ATTR_REGISTRIES,
     ATTR_STORAGE,
+    ATTR_STORAGE_DRIVER,
     ATTR_USERNAME,
     ATTR_VERSION,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import APINotFound
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from .utils import api_process, api_validate
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -42,12 +43,18 @@ SCHEMA_OPTIONS = vol.Schema(
     }
 )
 
+SCHEMA_MIGRATE_DOCKER_STORAGE_DRIVER = vol.Schema(
+    {
+        vol.Required(ATTR_STORAGE_DRIVER): vol.In(["overlayfs"]),
+    }
+)
+
 
 class APIDocker(CoreSysAttributes):
     """Handle RESTful API for Docker configuration."""
 
     @api_process
-    async def info(self, request: web.Request):
+    async def info(self, request: web.Request) -> dict[str, Any]:
         """Get docker info."""
         data_registries = {}
         for hostname, registry in self.sys_docker.config.registries.items():
@@ -105,7 +112,7 @@ class APIDocker(CoreSysAttributes):
         return {ATTR_REGISTRIES: data_registries}
 
     @api_process
-    async def create_registry(self, request: web.Request):
+    async def create_registry(self, request: web.Request) -> None:
         """Create a new docker registry."""
         body = await api_validate(SCHEMA_DOCKER_REGISTRY, request)
 
@@ -115,7 +122,7 @@ class APIDocker(CoreSysAttributes):
         await self.sys_docker.config.save_data()
 
     @api_process
-    async def remove_registry(self, request: web.Request):
+    async def remove_registry(self, request: web.Request) -> None:
         """Delete a docker registry."""
         hostname = request.match_info.get(ATTR_HOSTNAME)
         if hostname not in self.sys_docker.config.registries:
@@ -123,3 +130,27 @@ class APIDocker(CoreSysAttributes):
 
         del self.sys_docker.config.registries[hostname]
         await self.sys_docker.config.save_data()
+
+    @api_process
+    async def migrate_docker_storage_driver(self, request: web.Request) -> None:
+        """Migrate Docker storage driver."""
+        if (
+            not self.coresys.os.available
+            or not self.coresys.os.version
+            or self.coresys.os.version < AwesomeVersion("17.0.dev0")
+        ):
+            raise APINotFound(
+                "Home Assistant OS 17.0 or newer required for Docker storage driver migration"
+            )
+
+        body = await api_validate(SCHEMA_MIGRATE_DOCKER_STORAGE_DRIVER, request)
+        await self.sys_dbus.agent.system.migrate_docker_storage_driver(
+            body[ATTR_STORAGE_DRIVER]
+        )
+
+        _LOGGER.info("Host system reboot required to apply Docker storage migration")
+        self.sys_resolution.create_issue(
+            IssueType.REBOOT_REQUIRED,
+            ContextType.SYSTEM,
+            suggestions=[SuggestionType.EXECUTE_REBOOT],
+        )

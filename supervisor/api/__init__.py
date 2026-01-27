@@ -152,6 +152,7 @@ class RestAPI(CoreSysAttributes):
                         self._api_host.advanced_logs,
                         identifier=syslog_identifier,
                         latest=True,
+                        no_colors=True,
                     ),
                 ),
                 web.get(
@@ -449,6 +450,7 @@ class RestAPI(CoreSysAttributes):
                     await async_capture_exception(err)
                 kwargs.pop("follow", None)  # Follow is not supported for Docker logs
                 kwargs.pop("latest", None)  # Latest is not supported for Docker logs
+                kwargs.pop("no_colors", None)  # no_colors not supported for Docker logs
                 return await api_supervisor.logs(*args, **kwargs)
 
         self.webapp.add_routes(
@@ -460,7 +462,7 @@ class RestAPI(CoreSysAttributes):
                 ),
                 web.get(
                     "/supervisor/logs/latest",
-                    partial(get_supervisor_logs, latest=True),
+                    partial(get_supervisor_logs, latest=True, no_colors=True),
                 ),
                 web.get("/supervisor/logs/boots/{bootid}", get_supervisor_logs),
                 web.get(
@@ -576,7 +578,7 @@ class RestAPI(CoreSysAttributes):
                 ),
                 web.get(
                     "/addons/{addon}/logs/latest",
-                    partial(get_addon_logs, latest=True),
+                    partial(get_addon_logs, latest=True, no_colors=True),
                 ),
                 web.get("/addons/{addon}/logs/boots/{bootid}", get_addon_logs),
                 web.get(
@@ -780,6 +782,10 @@ class RestAPI(CoreSysAttributes):
                 web.delete(
                     "/store/repositories/{repository}", api_store.remove_repository
                 ),
+                web.post(
+                    "/store/repositories/{repository}/repair",
+                    api_store.repositories_repository_repair,
+                ),
             ]
         )
 
@@ -811,6 +817,10 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/docker/info", api_docker.info),
+                web.post(
+                    "/docker/migrate-storage-driver",
+                    api_docker.migrate_docker_storage_driver,
+                ),
                 web.post("/docker/options", api_docker.options),
                 web.get("/docker/registries", api_docker.registries),
                 web.post("/docker/registries", api_docker.create_registry),

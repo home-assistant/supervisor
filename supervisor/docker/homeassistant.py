@@ -5,7 +5,6 @@ import logging
 import re
 
 from awesomeversion import AwesomeVersion
-from docker.types import Mount
 
 from ..const import LABEL_MACHINE
 from ..exceptions import DockerJobError
@@ -14,6 +13,7 @@ from ..homeassistant.const import LANDINGPAGE
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import (
+    ENV_DUPLICATE_LOG_FILE,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_OLD,
@@ -25,6 +25,8 @@ from .const import (
     PATH_PUBLIC_CONFIG,
     PATH_SHARE,
     PATH_SSL,
+    DockerMount,
+    MountBindOptions,
     MountType,
     PropagationMode,
 )
@@ -90,15 +92,15 @@ class DockerHomeAssistant(DockerInterface):
         )
 
     @property
-    def mounts(self) -> list[Mount]:
+    def mounts(self) -> list[DockerMount]:
         """Return mounts for container."""
         mounts = [
             MOUNT_DEV,
             MOUNT_DBUS,
             MOUNT_UDEV,
             # HA config folder
-            Mount(
-                type=MountType.BIND.value,
+            DockerMount(
+                type=MountType.BIND,
                 source=self.sys_config.path_extern_homeassistant.as_posix(),
                 target=PATH_PUBLIC_CONFIG.as_posix(),
                 read_only=False,
@@ -110,41 +112,45 @@ class DockerHomeAssistant(DockerInterface):
             mounts.extend(
                 [
                     # All other folders
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_ssl.as_posix(),
                         target=PATH_SSL.as_posix(),
                         read_only=True,
                     ),
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_share.as_posix(),
                         target=PATH_SHARE.as_posix(),
                         read_only=False,
-                        propagation=PropagationMode.RSLAVE.value,
+                        bind_options=MountBindOptions(
+                            propagation=PropagationMode.RSLAVE
+                        ),
                     ),
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_config.path_extern_media.as_posix(),
                         target=PATH_MEDIA.as_posix(),
                         read_only=False,
-                        propagation=PropagationMode.RSLAVE.value,
+                        bind_options=MountBindOptions(
+                            propagation=PropagationMode.RSLAVE
+                        ),
                     ),
                     # Configuration audio
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_homeassistant.path_extern_pulse.as_posix(),
                         target="/etc/pulse/client.conf",
                         read_only=True,
                     ),
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_plugins.audio.path_extern_pulse.as_posix(),
                         target="/run/audio",
                         read_only=True,
                     ),
-                    Mount(
-                        type=MountType.BIND.value,
+                    DockerMount(
+                        type=MountType.BIND,
                         source=self.sys_plugins.audio.path_extern_asound.as_posix(),
                         target="/etc/asound.conf",
                         read_only=True,
@@ -174,6 +180,8 @@ class DockerHomeAssistant(DockerInterface):
         }
         if restore_job_id:
             environment[ENV_RESTORE_JOB_ID] = restore_job_id
+        if self.sys_homeassistant.duplicate_log_file:
+            environment[ENV_DUPLICATE_LOG_FILE] = "1"
         await self._run(
             tag=(self.sys_homeassistant.version),
             name=self.name,
@@ -202,31 +210,30 @@ class DockerHomeAssistant(DockerInterface):
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def execute_command(self, command: str) -> CommandReturn:
+    async def execute_command(self, command: list[str]) -> CommandReturn:
         """Create a temporary container and run command."""
-        return await self.sys_run_in_executor(
-            self.sys_docker.run_command,
+        return await self.sys_docker.run_command(
             self.image,
-            version=self.sys_homeassistant.version,
+            tag=str(self.sys_homeassistant.version),
             command=command,
             privileged=True,
             init=True,
             entrypoint=[],
             mounts=[
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_homeassistant.as_posix(),
                     target="/config",
                     read_only=False,
                 ),
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_ssl.as_posix(),
                     target="/ssl",
                     read_only=True,
                 ),
-                Mount(
-                    type=MountType.BIND.value,
+                DockerMount(
+                    type=MountType.BIND,
                     source=self.sys_config.path_extern_share.as_posix(),
                     target="/share",
                     read_only=False,

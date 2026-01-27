@@ -2,8 +2,6 @@
 
 from typing import Any
 
-from supervisor.dbus.network.setting import NetworkSetting
-
 from ..const import (
     DBUS_ATTR_CONNECTION,
     DBUS_ATTR_ID,
@@ -16,12 +14,13 @@ from ..const import (
     DBUS_IFACE_CONNECTION_ACTIVE,
     DBUS_NAME_NM,
     DBUS_OBJECT_BASE,
+    ConnectionState,
     ConnectionStateFlags,
-    ConnectionStateType,
 )
 from ..interface import DBusInterfaceProxy, dbus_property
 from ..utils import dbus_connected
 from .ip_configuration import IpConfiguration
+from .setting import NetworkSetting
 
 
 class NetworkConnection(DBusInterfaceProxy):
@@ -67,9 +66,9 @@ class NetworkConnection(DBusInterfaceProxy):
 
     @property
     @dbus_property
-    def state(self) -> ConnectionStateType:
+    def state(self) -> ConnectionState:
         """Return the state of the connection."""
-        return self.properties[DBUS_ATTR_STATE]
+        return ConnectionState(self.properties[DBUS_ATTR_STATE])
 
     @property
     def state_flags(self) -> set[ConnectionStateFlags]:

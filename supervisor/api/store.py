@@ -53,7 +53,8 @@ from ..const import (
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APIError, APIForbidden, APINotFound
+from ..exceptions import APIError, APIForbidden, APINotFound, StoreAddonNotFoundError
+from ..resolution.const import ContextType, SuggestionType
 from ..store.addon import AddonStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
@@ -104,7 +105,7 @@ class APIStore(CoreSysAttributes):
         addon_slug: str = request.match_info["addon"]
 
         if not (addon := self.sys_addons.get(addon_slug)):
-            raise APINotFound(f"Addon {addon_slug} does not exist")
+            raise StoreAddonNotFoundError(addon=addon_slug)
 
         if installed and not addon.is_installed:
             raise APIError(f"Addon {addon_slug} is not installed")
@@ -112,7 +113,7 @@ class APIStore(CoreSysAttributes):
         if not installed and addon.is_installed:
             addon = cast(Addon, addon)
             if not addon.addon_store:
-                raise APINotFound(f"Addon {addon_slug} does not exist in the store")
+                raise StoreAddonNotFoundError(addon=addon_slug)
             return addon.addon_store
 
         return addon
@@ -349,13 +350,30 @@ class APIStore(CoreSysAttributes):
         return self._generate_repository_information(repository)
 
     @api_process
-    async def add_repository(self, request: web.Request):
+    async def add_repository(self, request: web.Request) -> None:
         """Add repository to the store."""
         body = await api_validate(SCHEMA_ADD_REPOSITORY, request)
         await asyncio.shield(self.sys_store.add_repository(body[ATTR_REPOSITORY]))
 
     @api_process
-    async def remove_repository(self, request: web.Request):
+    async def remove_repository(self, request: web.Request) -> None:
         """Remove repository from the store."""
         repository: Repository = self._extract_repository(request)
         await asyncio.shield(self.sys_store.remove_repository(repository))
+
+    @api_process
+    async def repositories_repository_repair(self, request: web.Request) -> None:
+        """Repair repository."""
+        repository: Repository = self._extract_repository(request)
+        await asyncio.shield(repository.reset())
+
+        # If we have an execute reset suggestion on this repository, dismiss it and the issue
+        for suggestion in self.sys_resolution.suggestions:
+            if (
+                suggestion.type == SuggestionType.EXECUTE_RESET
+                and suggestion.context == ContextType.STORE
+                and suggestion.reference == repository.slug
+            ):
+                for issue in self.sys_resolution.issues_for_suggestion(suggestion):
+                    self.sys_resolution.dismiss_issue(issue)
+                return

@@ -9,7 +9,7 @@ from dbus_fast import Variant
 from .const import EncryptType, EraseMode
 
 
-def udisks2_bytes_to_path(path_bytes: bytearray) -> Path:
+def udisks2_bytes_to_path(path_bytes: bytes) -> Path:
     """Convert bytes to path object without null character on end."""
     if path_bytes and path_bytes[-1] == 0:
         return Path(path_bytes[:-1].decode())
@@ -73,7 +73,7 @@ FormatOptionsDataType = TypedDict(
     {
         "label": NotRequired[str],
         "take-ownership": NotRequired[bool],
-        "encrypt.passphrase": NotRequired[bytearray],
+        "encrypt.passphrase": NotRequired[bytes],
         "encrypt.type": NotRequired[str],
         "erase": NotRequired[str],
         "update-partition-type": NotRequired[bool],

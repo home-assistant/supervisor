@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 from contextlib import suppress
+from dataclasses import dataclass
 from enum import Enum, StrEnum
 from functools import total_ordering
 from pathlib import PurePath
 import re
-from typing import cast
-
-from docker.types import Mount
+from typing import Any, cast
 
 from ..const import MACHINE_ID
 
 RE_RETRYING_DOWNLOAD_STATUS = re.compile(r"Retrying in \d+ seconds?")
+
+# Docker Hub registry identifier (official default)
+# Docker's default registry is docker.io
+DOCKER_HUB = "docker.io"
+
+# Legacy Docker Hub identifier for backward compatibility
+DOCKER_HUB_LEGACY = "hub.docker.com"
 
 
 class Capabilities(StrEnum):
@@ -126,33 +132,94 @@ class PullImageLayerStage(Enum):
         return None
 
 
+@dataclass(slots=True, frozen=True)
+class MountBindOptions:
+    """Bind options for docker mount."""
+
+    propagation: PropagationMode | None = None
+    read_only_non_recursive: bool | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """To dictionary representation."""
+        out: dict[str, Any] = {}
+        if self.propagation:
+            out["Propagation"] = self.propagation.value
+        if self.read_only_non_recursive is not None:
+            out["ReadOnlyNonRecursive"] = self.read_only_non_recursive
+        return out
+
+
+@dataclass(slots=True, frozen=True)
+class DockerMount:
+    """A docker mount."""
+
+    type: MountType
+    source: str
+    target: str
+    read_only: bool
+    bind_options: MountBindOptions | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """To dictionary representation."""
+        out: dict[str, Any] = {
+            "Type": self.type.value,
+            "Source": self.source,
+            "Target": self.target,
+            "ReadOnly": self.read_only,
+        }
+        if self.bind_options:
+            out["BindOptions"] = self.bind_options.to_dict()
+        return out
+
+
+@dataclass(slots=True, frozen=True)
+class Ulimit:
+    """A linux user limit."""
+
+    name: str
+    soft: int
+    hard: int
+
+    def to_dict(self) -> dict[str, str | int]:
+        """To dictionary representation."""
+        return {
+            "Name": self.name,
+            "Soft": self.soft,
+            "Hard": self.hard,
+        }
+
+
+ENV_DUPLICATE_LOG_FILE = "HA_DUPLICATE_LOG_FILE"
 ENV_TIME = "TZ"
 ENV_TOKEN = "SUPERVISOR_TOKEN"
 ENV_TOKEN_OLD = "HASSIO_TOKEN"
 
 LABEL_MANAGED = "supervisor_managed"
 
-MOUNT_DBUS = Mount(
-    type=MountType.BIND.value, source="/run/dbus", target="/run/dbus", read_only=True
+MOUNT_DBUS = DockerMount(
+    type=MountType.BIND, source="/run/dbus", target="/run/dbus", read_only=True
 )
-MOUNT_DEV = Mount(
-    type=MountType.BIND.value, source="/dev", target="/dev", read_only=True
+MOUNT_DEV = DockerMount(
+    type=MountType.BIND,
+    source="/dev",
+    target="/dev",
+    read_only=True,
+    bind_options=MountBindOptions(read_only_non_recursive=True),
 )
-MOUNT_DEV.setdefault("BindOptions", {})["ReadOnlyNonRecursive"] = True
-MOUNT_DOCKER = Mount(
-    type=MountType.BIND.value,
+MOUNT_DOCKER = DockerMount(
+    type=MountType.BIND,
     source="/run/docker.sock",
     target="/run/docker.sock",
     read_only=True,
 )
-MOUNT_MACHINE_ID = Mount(
-    type=MountType.BIND.value,
+MOUNT_MACHINE_ID = DockerMount(
+    type=MountType.BIND,
     source=MACHINE_ID.as_posix(),
     target=MACHINE_ID.as_posix(),
     read_only=True,
 )
-MOUNT_UDEV = Mount(
-    type=MountType.BIND.value, source="/run/udev", target="/run/udev", read_only=True
+MOUNT_UDEV = DockerMount(
+    type=MountType.BIND, source="/run/udev", target="/run/udev", read_only=True
 )
 
 PATH_PRIVATE_DATA = PurePath("/data")

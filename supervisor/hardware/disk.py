@@ -6,8 +6,6 @@ from pathlib import Path
 import shutil
 from typing import Any
 
-from supervisor.resolution.const import UnhealthyReason
-
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     DBusError,
@@ -15,6 +13,7 @@ from ..exceptions import (
     DBusObjectError,
     HardwareNotFound,
 )
+from ..resolution.const import UnhealthyReason
 from .const import UdevSubsystem
 from .data import Device
 

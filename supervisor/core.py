@@ -434,7 +434,7 @@ class Core(CoreSysAttributes):
     async def repair(self) -> None:
         """Repair system integrity."""
         _LOGGER.info("Starting repair of Supervisor Environment")
-        await self.sys_run_in_executor(self.sys_docker.repair)
+        await self.sys_docker.repair()
 
         # Fix plugins
         await self.sys_plugins.repair()

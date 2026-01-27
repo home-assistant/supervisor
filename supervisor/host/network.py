@@ -5,8 +5,6 @@ from contextlib import suppress
 import logging
 from typing import Any
 
-from supervisor.utils.sentry import async_capture_exception
-
 from ..const import ATTR_HOST_INTERNET
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
@@ -16,7 +14,7 @@ from ..dbus.const import (
     DBUS_IFACE_DNS,
     DBUS_IFACE_NM,
     DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED,
-    ConnectionStateType,
+    ConnectionState,
     ConnectivityState,
     DeviceType,
     WirelessMethodType,
@@ -34,6 +32,7 @@ from ..exceptions import (
 from ..jobs.const import JobCondition
 from ..jobs.decorator import Job
 from ..resolution.checks.network_interface_ipv4 import CheckNetworkInterfaceIPV4
+from ..utils.sentry import async_capture_exception
 from .configuration import AccessPoint, Interface
 from .const import InterfaceMethod, WifiMode
 
@@ -338,16 +337,16 @@ class NetworkManager(CoreSysAttributes):
                 # the state change before this point. Get the state currently to
                 # avoid any race condition.
                 await con.update()
-                state: ConnectionStateType = con.state
+                state: ConnectionState = con.state
 
-                while state != ConnectionStateType.ACTIVATED:
-                    if state == ConnectionStateType.DEACTIVATED:
+                while state != ConnectionState.ACTIVATED:
+                    if state == ConnectionState.DEACTIVATED:
                         raise HostNetworkError(
                             "Activating connection failed, check connection settings."
                         )
 
                     msg = await signal.wait_for_signal()
-                    state = msg[0]
+                    state = ConnectionState(msg[0])
                     _LOGGER.debug("Active connection state changed to %s", state)
 
         # update_only means not done by user so don't force a check afterwards

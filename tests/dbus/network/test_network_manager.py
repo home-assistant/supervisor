@@ -6,7 +6,7 @@ from unittest.mock import Mock, PropertyMock, patch
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
-from supervisor.dbus.const import ConnectionStateType
+from supervisor.dbus.const import ConnectionState
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.exceptions import (
@@ -93,7 +93,7 @@ async def test_activate_connection(
         "/org/freedesktop/NetworkManager/Settings/1",
         "/org/freedesktop/NetworkManager/Devices/1",
     )
-    assert connection.state == ConnectionStateType.ACTIVATED
+    assert connection.state == ConnectionState.ACTIVATED
     assert (
         connection.settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
     )
@@ -117,7 +117,7 @@ async def test_add_and_activate_connection(
     )
     assert settings.connection.uuid == "0c23631e-2118-355c-bbb0-8943229cb0d6"
     assert settings.ipv4.method == "auto"
-    assert connection.state == ConnectionStateType.ACTIVATED
+    assert connection.state == ConnectionState.ACTIVATED
     assert (
         connection.settings.object_path == "/org/freedesktop/NetworkManager/Settings/1"
     )

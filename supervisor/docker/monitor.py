@@ -4,8 +4,8 @@ from contextlib import suppress
 from dataclasses import dataclass
 import logging
 from threading import Thread
+from typing import Any
 
-from docker.models.containers import Container
 from docker.types.daemon import CancellableStream
 
 from ..const import BusEvent
@@ -35,10 +35,15 @@ class DockerMonitor(CoreSysAttributes, Thread):
         self._events: CancellableStream | None = None
         self._unlabeled_managed_containers: list[str] = []
 
-    def watch_container(self, container: Container):
+    def watch_container(self, container_metadata: dict[str, Any]):
         """If container is missing the managed label, add name to list."""
-        if LABEL_MANAGED not in container.labels and container.name:
-            self._unlabeled_managed_containers += [container.name]
+        labels: dict[str, str] = container_metadata.get("Config", {}).get("Labels", {})
+        name: str | None = container_metadata.get("Name")
+        if name:
+            name = name.lstrip("/")
+
+        if LABEL_MANAGED not in labels and name:
+            self._unlabeled_managed_containers += [name]
 
     async def load(self):
         """Start docker events monitor."""

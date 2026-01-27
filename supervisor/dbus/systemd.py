@@ -70,7 +70,7 @@ class SystemdUnit(DBusInterface):
     @dbus_connected
     async def get_active_state(self) -> UnitActiveState:
         """Get active state of the unit."""
-        return await self.connected_dbus.Unit.get("active_state")
+        return UnitActiveState(await self.connected_dbus.Unit.get("active_state"))
 
     @dbus_connected
     def properties_changed(self) -> DBusSignalWrapper:

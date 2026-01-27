@@ -100,6 +100,9 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    AddonBootConfigCannotChangeError,
+    AddonConfigurationInvalidError,
+    AddonNotSupportedWriteStdinError,
     APIAddonNotInstalled,
     APIError,
     APIForbidden,
@@ -125,6 +128,7 @@ SCHEMA_OPTIONS = vol.Schema(
         vol.Optional(ATTR_AUDIO_INPUT): vol.Maybe(str),
         vol.Optional(ATTR_INGRESS_PANEL): vol.Boolean(),
         vol.Optional(ATTR_WATCHDOG): vol.Boolean(),
+        vol.Optional(ATTR_OPTIONS): vol.Maybe(dict),
     }
 )
 
@@ -300,19 +304,24 @@ class APIAddons(CoreSysAttributes):
         # Update secrets for validation
         await self.sys_homeassistant.secrets.reload()
 
-        # Extend schema with add-on specific validation
-        addon_schema = SCHEMA_OPTIONS.extend(
-            {vol.Optional(ATTR_OPTIONS): vol.Maybe(addon.schema)}
-        )
-
         # Validate/Process Body
-        body = await api_validate(addon_schema, request)
+        body = await api_validate(SCHEMA_OPTIONS, request)
         if ATTR_OPTIONS in body:
-            addon.options = body[ATTR_OPTIONS]
+            # None resets options to defaults, otherwise validate the options
+            if body[ATTR_OPTIONS] is None:
+                addon.options = None
+            else:
+                try:
+                    addon.options = addon.schema(body[ATTR_OPTIONS])
+                except vol.Invalid as ex:
+                    raise AddonConfigurationInvalidError(
+                        addon=addon.slug,
+                        validation_error=humanize_error(body[ATTR_OPTIONS], ex),
+                    ) from None
         if ATTR_BOOT in body:
             if addon.boot_config == AddonBootConfig.MANUAL_ONLY:
-                raise APIError(
-                    f"Addon {addon.slug} boot option is set to {addon.boot_config} so it cannot be changed"
+                raise AddonBootConfigCannotChangeError(
+                    addon=addon.slug, boot_config=addon.boot_config.value
                 )
             addon.boot = body[ATTR_BOOT]
         if ATTR_AUTO_UPDATE in body:
@@ -385,7 +394,7 @@ class APIAddons(CoreSysAttributes):
         return data
 
     @api_process
-    async def options_config(self, request: web.Request) -> None:
+    async def options_config(self, request: web.Request) -> dict[str, Any]:
         """Validate user options for add-on."""
         slug: str = request.match_info["addon"]
         if slug != "self":
@@ -430,11 +439,11 @@ class APIAddons(CoreSysAttributes):
         }
 
     @api_process
-    async def uninstall(self, request: web.Request) -> Awaitable[None]:
+    async def uninstall(self, request: web.Request) -> None:
         """Uninstall add-on."""
         addon = self.get_addon_for_request(request)
         body: dict[str, Any] = await api_validate(SCHEMA_UNINSTALL, request)
-        return await asyncio.shield(
+        await asyncio.shield(
             self.sys_addons.uninstall(
                 addon.slug, remove_config=body[ATTR_REMOVE_CONFIG]
             )
@@ -476,7 +485,7 @@ class APIAddons(CoreSysAttributes):
         """Write to stdin of add-on."""
         addon = self.get_addon_for_request(request)
         if not addon.with_stdin:
-            raise APIError(f"STDIN not supported the {addon.slug} add-on")
+            raise AddonNotSupportedWriteStdinError(_LOGGER.error, addon=addon.slug)
 
         data = await request.read()
         await asyncio.shield(addon.write_stdin(data))

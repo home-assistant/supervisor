@@ -16,7 +16,11 @@ from ....host.const import (
     InterfaceType,
     MulticastDnsMode,
 )
-from ...const import MulticastDnsValue
+from ...const import (
+    InterfaceAddrGenMode as NMInterfaceAddrGenMode,
+    InterfaceIp6Privacy as NMInterfaceIp6Privacy,
+    MulticastDnsValue,
+)
 from .. import NetworkManager
 from . import (
     CONF_ATTR_802_ETHERNET,
@@ -118,24 +122,41 @@ def _get_ipv6_connection_settings(
         ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "auto")
         if ipv6setting:
             if ipv6setting.addr_gen_mode == InterfaceAddrGenMode.EUI64:
-                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant("i", 0)
+                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant(
+                    "i", NMInterfaceAddrGenMode.EUI64.value
+                )
             elif (
                 not support_addr_gen_mode_defaults
                 or ipv6setting.addr_gen_mode == InterfaceAddrGenMode.STABLE_PRIVACY
             ):
-                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant("i", 1)
+                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant(
+                    "i", NMInterfaceAddrGenMode.STABLE_PRIVACY.value
+                )
             elif ipv6setting.addr_gen_mode == InterfaceAddrGenMode.DEFAULT_OR_EUI64:
-                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant("i", 2)
+                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant(
+                    "i", NMInterfaceAddrGenMode.DEFAULT_OR_EUI64.value
+                )
             else:
-                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant("i", 3)
+                ipv6[CONF_ATTR_IPV6_ADDR_GEN_MODE] = Variant(
+                    "i", NMInterfaceAddrGenMode.DEFAULT.value
+                )
+
             if ipv6setting.ip6_privacy == InterfaceIp6Privacy.DISABLED:
-                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant("i", 0)
+                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant(
+                    "i", NMInterfaceIp6Privacy.DISABLED.value
+                )
             elif ipv6setting.ip6_privacy == InterfaceIp6Privacy.ENABLED_PREFER_PUBLIC:
-                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant("i", 1)
+                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant(
+                    "i", NMInterfaceIp6Privacy.ENABLED_PREFER_PUBLIC.value
+                )
             elif ipv6setting.ip6_privacy == InterfaceIp6Privacy.ENABLED:
-                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant("i", 2)
+                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant(
+                    "i", NMInterfaceIp6Privacy.ENABLED.value
+                )
             else:
-                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant("i", -1)
+                ipv6[CONF_ATTR_IPV6_PRIVACY] = Variant(
+                    "i", NMInterfaceIp6Privacy.DEFAULT.value
+                )
     elif ipv6setting.method == InterfaceMethod.DISABLED:
         ipv6[CONF_ATTR_IPV6_METHOD] = Variant("s", "link-local")
     elif ipv6setting.method == InterfaceMethod.STATIC:

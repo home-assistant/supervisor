@@ -8,7 +8,6 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from http import HTTPStatus
 import logging
-import re
 from time import time
 from typing import Any, cast
 from uuid import uuid4
@@ -16,8 +15,6 @@ from uuid import uuid4
 import aiodocker
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
-import docker
-from docker.models.containers import Container
 import requests
 
 from ..bus import EventListener
@@ -46,17 +43,20 @@ from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.sentry import async_capture_exception
-from .const import ContainerState, PullImageLayerStage, RestartPolicy
-from .manager import CommandReturn, PullLogEntry
+from .const import (
+    DOCKER_HUB,
+    DOCKER_HUB_LEGACY,
+    ContainerState,
+    PullImageLayerStage,
+    RestartPolicy,
+)
+from .manager import CommandReturn, ExecReturn, PullLogEntry
 from .monitor import DockerContainerStateEvent
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-IMAGE_WITH_HOST = re.compile(r"^((?:[a-z0-9]+(?:-[a-z0-9]+)*\.)+[a-z]{2,})\/.+")
-DOCKER_HUB = "hub.docker.com"
-
-MAP_ARCH: dict[CpuArch | str, str] = {
+MAP_ARCH: dict[CpuArch, str] = {
     CpuArch.ARMV7: "linux/arm/v7",
     CpuArch.ARMHF: "linux/arm/v6",
     CpuArch.AARCH64: "linux/arm64",
@@ -65,18 +65,21 @@ MAP_ARCH: dict[CpuArch | str, str] = {
 }
 
 
-def _container_state_from_model(docker_container: Container) -> ContainerState:
+def _container_state_from_model(container_metadata: dict[str, Any]) -> ContainerState:
     """Get container state from model."""
-    if docker_container.status == "running":
-        if "Health" in docker_container.attrs["State"]:
+    if "State" not in container_metadata:
+        return ContainerState.UNKNOWN
+
+    if container_metadata["State"]["Status"] == "running":
+        if "Health" in container_metadata["State"]:
             return (
                 ContainerState.HEALTHY
-                if docker_container.attrs["State"]["Health"]["Status"] == "healthy"
+                if container_metadata["State"]["Health"]["Status"] == "healthy"
                 else ContainerState.UNHEALTHY
             )
         return ContainerState.RUNNING
 
-    if docker_container.attrs["State"]["ExitCode"] > 0:
+    if container_metadata["State"]["ExitCode"] > 0:
         return ContainerState.FAILED
 
     return ContainerState.STOPPED
@@ -180,25 +183,17 @@ class DockerInterface(JobGroup, ABC):
         return self.meta_config.get("Healthcheck")
 
     def _get_credentials(self, image: str) -> dict:
-        """Return a dictionay with credentials for docker login."""
-        registry = None
+        """Return a dictionary with credentials for docker login."""
         credentials = {}
-        matcher = IMAGE_WITH_HOST.match(image)
-
-        # Custom registry
-        if matcher:
-            if matcher.group(1) in self.sys_docker.config.registries:
-                registry = matcher.group(1)
-                credentials[ATTR_REGISTRY] = registry
-
-        # If no match assume "dockerhub" as registry
-        elif DOCKER_HUB in self.sys_docker.config.registries:
-            registry = DOCKER_HUB
+        registry = self.sys_docker.config.get_registry_for_image(image)
 
         if registry:
             stored = self.sys_docker.config.registries[registry]
             credentials[ATTR_USERNAME] = stored[ATTR_USERNAME]
             credentials[ATTR_PASSWORD] = stored[ATTR_PASSWORD]
+            # Don't include registry for Docker Hub (both official and legacy)
+            if registry not in (DOCKER_HUB, DOCKER_HUB_LEGACY):
+                credentials[ATTR_REGISTRY] = registry
 
             _LOGGER.debug(
                 "Logging in to %s as %s",
@@ -207,17 +202,6 @@ class DockerInterface(JobGroup, ABC):
             )
 
         return credentials
-
-    async def _docker_login(self, image: str) -> None:
-        """Try to log in to the registry if there are credentials available."""
-        if not self.sys_docker.config.registries:
-            return
-
-        credentials = self._get_credentials(image)
-        if not credentials:
-            return
-
-        await self.sys_run_in_executor(self.sys_docker.dockerpy.login, **credentials)
 
     def _process_pull_image_log(  # noqa: C901
         self, install_job_id: str, reference: PullLogEntry
@@ -250,28 +234,16 @@ class DockerInterface(JobGroup, ABC):
                 job = j
                 break
 
-        # This likely only occurs if the logs came in out of sync and we got progress before the Pulling FS Layer one
+        # There should no longer be any real risk of logs out of order anymore.
+        # However tests with very small images have shown that sometimes Docker
+        # skips stages in log. So keeping this one as a safety check on null job
         if not job:
             raise DockerLogOutOfOrder(
                 f"Received pull image log with status {reference.status} for image id {reference.id} and parent job {install_job_id} but could not find a matching job, skipping",
                 _LOGGER.debug,
             )
 
-        # Hopefully these come in order but if they sometimes get out of sync, avoid accidentally going backwards
-        # If it happens a lot though we may need to reconsider the value of this feature
-        if job.done:
-            raise DockerLogOutOfOrder(
-                f"Received pull image log with status {reference.status} for job {job.uuid} but job was done, skipping",
-                _LOGGER.debug,
-            )
-
-        if job.stage and stage < PullImageLayerStage.from_status(job.stage):
-            raise DockerLogOutOfOrder(
-                f"Received pull image log with status {reference.status} for job {job.uuid} but job was already on stage {job.stage}, skipping",
-                _LOGGER.debug,
-            )
-
-        # For progress calcuation we assume downloading and extracting are each 50% of the time and others stages negligible
+        # For progress calculation we assume downloading is 70% of time, extracting is 30% and others stages negligible
         progress = job.progress
         match stage:
             case PullImageLayerStage.DOWNLOADING | PullImageLayerStage.EXTRACTING:
@@ -280,22 +252,26 @@ class DockerInterface(JobGroup, ABC):
                     and reference.progress_detail.current
                     and reference.progress_detail.total
                 ):
-                    progress = 50 * (
+                    progress = (
                         reference.progress_detail.current
                         / reference.progress_detail.total
                     )
-                    if stage == PullImageLayerStage.EXTRACTING:
-                        progress += 50
+                    if stage == PullImageLayerStage.DOWNLOADING:
+                        progress = 70 * progress
+                    else:
+                        progress = 70 + 30 * progress
             case (
                 PullImageLayerStage.VERIFYING_CHECKSUM
                 | PullImageLayerStage.DOWNLOAD_COMPLETE
             ):
-                progress = 50
+                progress = 70
             case PullImageLayerStage.PULL_COMPLETE:
                 progress = 100
             case PullImageLayerStage.RETRYING_DOWNLOAD:
                 progress = 0
 
+        # No real risk of getting things out of order in current implementation
+        # but keeping this one in case another change to these trips us up.
         if stage != PullImageLayerStage.RETRYING_DOWNLOAD and progress < job.progress:
             raise DockerLogOutOfOrder(
                 f"Received pull image log with status {reference.status} for job {job.uuid} that implied progress was {progress} but current progress is {job.progress}, skipping",
@@ -310,6 +286,8 @@ class DockerInterface(JobGroup, ABC):
         if (
             stage in {PullImageLayerStage.DOWNLOADING, PullImageLayerStage.EXTRACTING}
             and reference.progress_detail
+            and reference.progress_detail.current is not None
+            and reference.progress_detail.total is not None
         ):
             job.update(
                 progress=progress,
@@ -357,7 +335,7 @@ class DockerInterface(JobGroup, ABC):
         progress = 0.0
         stage = PullImageLayerStage.PULL_COMPLETE
         for job in layer_jobs:
-            if not job.extra:
+            if not job.extra or not job.extra.get("total"):
                 return
             progress += job.progress * (job.extra["total"] / total)
             job_stage = PullImageLayerStage.from_status(cast(str, job.stage))
@@ -396,14 +374,13 @@ class DockerInterface(JobGroup, ABC):
         if not image:
             raise ValueError("Cannot pull without an image!")
 
-        image_arch = str(arch) if arch else self.sys_arch.supervisor
+        image_arch = arch or self.sys_arch.supervisor
         listener: EventListener | None = None
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
-            if self.sys_docker.config.registries:
-                # Try login if we have defined credentials
-                await self._docker_login(image)
+            # Get credentials for private registries to pass to aiodocker
+            credentials = self._get_credentials(image) or None
 
             curr_job_id = self.sys_jobs.current.uuid
 
@@ -419,12 +396,13 @@ class DockerInterface(JobGroup, ABC):
                 BusEvent.DOCKER_IMAGE_PULL_UPDATE, process_pull_image_log
             )
 
-            # Pull new image
+            # Pull new image, passing credentials to aiodocker
             docker_image = await self.sys_docker.pull_image(
                 self.sys_jobs.current.uuid,
                 image,
                 str(version),
                 platform=MAP_ARCH[image_arch],
+                auth=credentials,
             )
 
             # Tag latest
@@ -435,18 +413,6 @@ class DockerInterface(JobGroup, ABC):
                 await self.sys_docker.images.tag(
                     docker_image["Id"], image, tag="latest"
                 )
-        except docker.errors.APIError as err:
-            if err.status_code == HTTPStatus.TOO_MANY_REQUESTS:
-                self.sys_resolution.create_issue(
-                    IssueType.DOCKER_RATELIMIT,
-                    ContextType.SYSTEM,
-                    suggestions=[SuggestionType.REGISTRY_LOGIN],
-                )
-                raise DockerHubRateLimitExceeded(_LOGGER.error) from err
-            await async_capture_exception(err)
-            raise DockerError(
-                f"Can't install {image}:{version!s}: {err}", _LOGGER.error
-            ) from err
         except aiodocker.DockerError as err:
             if err.status == HTTPStatus.TOO_MANY_REQUESTS:
                 self.sys_resolution.create_issue(
@@ -458,14 +424,6 @@ class DockerInterface(JobGroup, ABC):
             await async_capture_exception(err)
             raise DockerError(
                 f"Can't install {image}:{version!s}: {err}", _LOGGER.error
-            ) from err
-        except (
-            docker.errors.DockerException,
-            requests.RequestException,
-        ) as err:
-            await async_capture_exception(err)
-            raise DockerError(
-                f"Unknown error with {image}:{version!s} -> {err!s}", _LOGGER.error
             ) from err
         finally:
             if listener:
@@ -480,49 +438,47 @@ class DockerInterface(JobGroup, ABC):
             return True
         return False
 
+    async def _get_container(self) -> dict[str, Any] | None:
+        """Get docker container, returns None if not found."""
+        try:
+            container = await self.sys_docker.containers.get(self.name)
+            return await container.show()
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                return None
+            raise DockerAPIError(
+                f"Docker API error occurred while getting container information: {err!s}"
+            ) from err
+        except requests.RequestException as err:
+            raise DockerRequestError(
+                f"Error communicating with Docker to get container information: {err!s}"
+            ) from err
+
     async def is_running(self) -> bool:
         """Return True if Docker is running."""
-        try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
-            )
-        except docker.errors.NotFound:
-            return False
-        except docker.errors.DockerException as err:
-            raise DockerAPIError() from err
-        except requests.RequestException as err:
-            raise DockerRequestError() from err
-
-        return docker_container.status == "running"
+        return bool(
+            (container_metadata := await self._get_container())
+            and "State" in container_metadata
+            and container_metadata["State"]["Running"]
+        )
 
     async def current_state(self) -> ContainerState:
         """Return current state of container."""
-        try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
-            )
-        except docker.errors.NotFound:
-            return ContainerState.UNKNOWN
-        except docker.errors.DockerException as err:
-            raise DockerAPIError() from err
-        except requests.RequestException as err:
-            raise DockerRequestError() from err
-
-        return _container_state_from_model(docker_container)
+        if container_metadata := await self._get_container():
+            return _container_state_from_model(container_metadata)
+        return ContainerState.UNKNOWN
 
     @Job(name="docker_interface_attach", concurrency=JobConcurrency.GROUP_QUEUE)
     async def attach(
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
         """Attach to running Docker container."""
-        with suppress(docker.errors.DockerException, requests.RequestException):
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
-            )
-            self._meta = docker_container.attrs
-            self.sys_docker.monitor.watch_container(docker_container)
+        with suppress(aiodocker.DockerError, requests.RequestException):
+            docker_container = await self.sys_docker.containers.get(self.name)
+            self._meta = await docker_container.show()
+            self.sys_docker.monitor.watch_container(self._meta)
 
-            state = _container_state_from_model(docker_container)
+            state = _container_state_from_model(self._meta)
             if not (
                 skip_state_event_if_down
                 and state in [ContainerState.STOPPED, ContainerState.FAILED]
@@ -531,7 +487,7 @@ class DockerInterface(JobGroup, ABC):
                 self.sys_bus.fire_event(
                     BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
                     DockerContainerStateEvent(
-                        self.name, state, cast(str, docker_container.id), int(time())
+                        self.name, state, docker_container.id, int(time())
                     ),
                 )
 
@@ -543,7 +499,9 @@ class DockerInterface(JobGroup, ABC):
 
         # Successful?
         if not self._meta:
-            raise DockerError()
+            raise DockerError(
+                f"Could not get metadata on container or image for {self.name}"
+            )
         _LOGGER.info("Attaching to %s with version %s", self.image, self.version)
 
     @Job(
@@ -555,8 +513,11 @@ class DockerInterface(JobGroup, ABC):
         """Run Docker image."""
         raise NotImplementedError()
 
-    async def _run(self, **kwargs) -> None:
-        """Run Docker image with retry inf necessary."""
+    async def _run(self, *, name: str, **kwargs) -> None:
+        """Run Docker image with retry if necessary."""
+        if not (image := self.image):
+            raise ValueError(f"Cannot determine image to use to run {self.name}!")
+
         if await self.is_running():
             return
 
@@ -565,16 +526,14 @@ class DockerInterface(JobGroup, ABC):
 
         # Create & Run container
         try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.run, self.image, **kwargs
-            )
+            container_metadata = await self.sys_docker.run(image, name=name, **kwargs)
         except DockerNotFound as err:
             # If image is missing, capture the exception as this shouldn't happen
             await async_capture_exception(err)
             raise
 
         # Store metadata
-        self._meta = docker_container.attrs
+        self._meta = container_metadata
 
     @Job(
         name="docker_interface_stop",
@@ -584,11 +543,8 @@ class DockerInterface(JobGroup, ABC):
     async def stop(self, remove_container: bool = True) -> None:
         """Stop/remove Docker container."""
         with suppress(DockerNotFound):
-            await self.sys_run_in_executor(
-                self.sys_docker.stop_container,
-                self.name,
-                self.timeout,
-                remove_container,
+            await self.sys_docker.stop_container(
+                self.name, self.timeout, remove_container
             )
 
     @Job(
@@ -598,7 +554,7 @@ class DockerInterface(JobGroup, ABC):
     )
     def start(self) -> Awaitable[None]:
         """Start Docker container."""
-        return self.sys_run_in_executor(self.sys_docker.start_container, self.name)
+        return self.sys_docker.start_container(self.name)
 
     @Job(
         name="docker_interface_remove",
@@ -633,9 +589,7 @@ class DockerInterface(JobGroup, ABC):
         expected_cpu_arch: CpuArch | None = None,
     ) -> None:
         """Check we have expected image with correct arch."""
-        expected_image_cpu_arch = (
-            str(expected_cpu_arch) if expected_cpu_arch else self.sys_arch.supervisor
-        )
+        arch = expected_cpu_arch or self.sys_arch.supervisor
         image_name = f"{expected_image}:{version!s}"
         if self.image == expected_image:
             try:
@@ -653,7 +607,7 @@ class DockerInterface(JobGroup, ABC):
             # If we have an image and its the right arch, all set
             # It seems that newer Docker version return a variant for arm64 images.
             # Make sure we match linux/arm64 and linux/arm64/v8.
-            expected_image_arch = MAP_ARCH[expected_image_cpu_arch]
+            expected_image_arch = MAP_ARCH[arch]
             if image_arch.startswith(expected_image_arch):
                 return
             _LOGGER.info(
@@ -666,7 +620,7 @@ class DockerInterface(JobGroup, ABC):
         # We're missing the image we need. Stop and clean up what we have then pull the right one
         with suppress(DockerError):
             await self.remove()
-        await self.install(version, expected_image, arch=expected_image_cpu_arch)
+        await self.install(version, expected_image, arch=arch)
 
     @Job(
         name="docker_interface_update",
@@ -726,9 +680,7 @@ class DockerInterface(JobGroup, ABC):
     )
     def restart(self) -> Awaitable[None]:
         """Restart docker container."""
-        return self.sys_run_in_executor(
-            self.sys_docker.restart_container, self.name, self.timeout
-        )
+        return self.sys_docker.restart_container(self.name, self.timeout)
 
     @Job(
         name="docker_interface_execute_command",
@@ -741,28 +693,12 @@ class DockerInterface(JobGroup, ABC):
 
     async def stats(self) -> DockerStats:
         """Read and return stats from container."""
-        stats = await self.sys_run_in_executor(
-            self.sys_docker.container_stats, self.name
-        )
+        stats = await self.sys_docker.container_stats(self.name)
         return DockerStats(stats)
 
     async def is_failed(self) -> bool:
         """Return True if Docker is failing state."""
-        try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers.get, self.name
-            )
-        except docker.errors.NotFound:
-            return False
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
-
-        # container is not running
-        if docker_container.status != "exited":
-            return False
-
-        # Check return value
-        return int(docker_container.attrs["State"]["ExitCode"]) != 0
+        return await self.current_state() == ContainerState.FAILED
 
     async def get_latest_version(self) -> AwesomeVersion:
         """Return latest version of local image."""
@@ -800,8 +736,6 @@ class DockerInterface(JobGroup, ABC):
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    def run_inside(self, command: str) -> Awaitable[CommandReturn]:
+    def run_inside(self, command: str) -> Awaitable[ExecReturn]:
         """Execute a command inside Docker container."""
-        return self.sys_run_in_executor(
-            self.sys_docker.container_run_inside, self.name, command
-        )
+        return self.sys_docker.container_run_inside(self.name, command)

@@ -13,7 +13,7 @@ from colorlog import ColoredFormatter
 
 from .addons.manager import AddonManager
 from .api import RestAPI
-from .arch import CpuArch
+from .arch import CpuArchManager
 from .auth import Auth
 from .backups.manager import BackupManager
 from .bus import Bus
@@ -71,7 +71,7 @@ async def initialize_coresys() -> CoreSys:
     coresys.jobs = await JobManager(coresys).load_config()
     coresys.core = await Core(coresys).post_init()
     coresys.plugins = await PluginManager(coresys).load_config()
-    coresys.arch = CpuArch(coresys)
+    coresys.arch = CpuArchManager(coresys)
     coresys.auth = await Auth(coresys).load_config()
     coresys.updater = await Updater(coresys).load_config()
     coresys.api = RestAPI(coresys)

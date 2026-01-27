@@ -75,7 +75,7 @@ class AddonOptions(CoreSysAttributes):
         """Create a schema for add-on options."""
         return vol.Schema(vol.All(dict, self))
 
-    def __call__(self, struct):
+    def __call__(self, struct: dict[str, Any]) -> dict[str, Any]:
         """Create schema validator for add-ons options."""
         options = {}
 
@@ -193,9 +193,7 @@ class AddonOptions(CoreSysAttributes):
             f"Fatal error for option '{key}' with type '{typ}' in {self._name} ({self._slug})"
         ) from None
 
-    def _nested_validate_list(
-        self, typ: Any, data_list: list[Any], key: str
-    ) -> list[Any]:
+    def _nested_validate_list(self, typ: Any, data_list: Any, key: str) -> list[Any]:
         """Validate nested items."""
         options = []
 
@@ -213,7 +211,7 @@ class AddonOptions(CoreSysAttributes):
         return options
 
     def _nested_validate_dict(
-        self, typ: dict[Any, Any], data_dict: dict[Any, Any], key: str
+        self, typ: dict[Any, Any], data_dict: Any, key: str
     ) -> dict[Any, Any]:
         """Validate nested items."""
         options = {}
@@ -264,7 +262,7 @@ class UiOptions(CoreSysAttributes):
 
     def __init__(self, coresys: CoreSys) -> None:
         """Initialize UI option render."""
-        self.coresys = coresys
+        self.coresys: CoreSys = coresys
 
     def __call__(self, raw_schema: dict[str, Any]) -> list[dict[str, Any]]:
         """Generate UI schema."""
@@ -279,10 +277,10 @@ class UiOptions(CoreSysAttributes):
     def _ui_schema_element(
         self,
         ui_schema: list[dict[str, Any]],
-        value: str,
+        value: str | list[Any] | dict[str, Any],
         key: str,
         multiple: bool = False,
-    ):
+    ) -> None:
         if isinstance(value, list):
             # nested value list
             assert not multiple

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 from functools import cached_property
-from pathlib import Path
+import json
+import logging
+from pathlib import Path, PurePath
 from typing import TYPE_CHECKING, Any
 
 from awesomeversion import AwesomeVersion
@@ -12,19 +15,30 @@ from ..const import (
     ATTR_ARGS,
     ATTR_BUILD_FROM,
     ATTR_LABELS,
+    ATTR_PASSWORD,
     ATTR_SQUASH,
+    ATTR_USERNAME,
     FILE_SUFFIX_CONFIGURATION,
     META_ADDON,
     SOCKET_DOCKER,
+    CpuArch,
 )
 from ..coresys import CoreSys, CoreSysAttributes
+from ..docker.const import DOCKER_HUB, DOCKER_HUB_LEGACY
 from ..docker.interface import MAP_ARCH
-from ..exceptions import ConfigurationFileError, HassioArchNotFound
+from ..exceptions import (
+    AddonBuildArchitectureNotSupportedError,
+    AddonBuildDockerfileMissingError,
+    ConfigurationFileError,
+    HassioArchNotFound,
+)
 from ..utils.common import FileConfiguration, find_one_filetype
 from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
     from .manager import AnyAddon
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class AddonBuild(FileConfiguration, CoreSysAttributes):
@@ -62,7 +76,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         raise RuntimeError()
 
     @cached_property
-    def arch(self) -> str:
+    def arch(self) -> CpuArch:
         """Return arch of the add-on."""
         return self.sys_arch.match([self.addon.arch])
 
@@ -106,7 +120,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             return self.addon.path_location.joinpath(f"Dockerfile.{self.arch}")
         return self.addon.path_location.joinpath("Dockerfile")
 
-    async def is_valid(self) -> bool:
+    async def is_valid(self) -> None:
         """Return true if the build env is valid."""
 
         def build_is_valid() -> bool:
@@ -118,12 +132,58 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             )
 
         try:
-            return await self.sys_run_in_executor(build_is_valid)
+            if not await self.sys_run_in_executor(build_is_valid):
+                raise AddonBuildDockerfileMissingError(
+                    _LOGGER.error, addon=self.addon.slug
+                )
         except HassioArchNotFound:
-            return False
+            raise AddonBuildArchitectureNotSupportedError(
+                _LOGGER.error,
+                addon=self.addon.slug,
+                addon_arch_list=self.addon.supported_arch,
+                system_arch_list=[arch.value for arch in self.sys_arch.supported],
+            ) from None
+
+    def get_docker_config_json(self) -> str | None:
+        """Generate Docker config.json content with registry credentials for base image.
+
+        Returns a JSON string with registry credentials for the base image's registry,
+        or None if no matching registry is configured.
+
+        Raises:
+            HassioArchNotFound: If the add-on is not supported on the current architecture.
+
+        """
+        # Early return before accessing base_image to avoid unnecessary arch lookup
+        if not self.sys_docker.config.registries:
+            return None
+
+        registry = self.sys_docker.config.get_registry_for_image(self.base_image)
+        if not registry:
+            return None
+
+        stored = self.sys_docker.config.registries[registry]
+        username = stored[ATTR_USERNAME]
+        password = stored[ATTR_PASSWORD]
+
+        # Docker config.json uses base64-encoded "username:password" for auth
+        auth_string = base64.b64encode(f"{username}:{password}".encode()).decode()
+
+        # Use the actual registry URL for the key
+        # Docker Hub uses "https://index.docker.io/v1/" as the key
+        # Support both docker.io (official) and hub.docker.com (legacy)
+        registry_key = (
+            "https://index.docker.io/v1/"
+            if registry in (DOCKER_HUB, DOCKER_HUB_LEGACY)
+            else registry
+        )
+
+        config = {"auths": {registry_key: {"auth": auth_string}}}
+
+        return json.dumps(config)
 
     def get_docker_args(
-        self, version: AwesomeVersion, image_tag: str
+        self, version: AwesomeVersion, image_tag: str, docker_config_path: Path | None
     ) -> dict[str, Any]:
         """Create a dict with Docker run args."""
         dockerfile_path = self.get_dockerfile().relative_to(self.addon.path_location)
@@ -172,13 +232,25 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
             self.addon.path_location
         )
 
+        volumes = {
+            SOCKET_DOCKER: {"bind": "/var/run/docker.sock", "mode": "rw"},
+            addon_extern_path: {"bind": "/addon", "mode": "ro"},
+        }
+
+        # Mount Docker config with registry credentials if available
+        if docker_config_path:
+            docker_config_extern_path = self.sys_config.local_to_extern_path(
+                docker_config_path
+            )
+            volumes[docker_config_extern_path] = {
+                "bind": "/root/.docker/config.json",
+                "mode": "ro",
+            }
+
         return {
             "command": build_cmd,
-            "volumes": {
-                SOCKET_DOCKER: {"bind": "/var/run/docker.sock", "mode": "rw"},
-                addon_extern_path: {"bind": "/addon", "mode": "ro"},
-            },
-            "working_dir": "/addon",
+            "volumes": volumes,
+            "working_dir": PurePath("/addon"),
         }
 
     def _fix_label(self, label_name: str) -> str:

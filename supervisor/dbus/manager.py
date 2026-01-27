@@ -115,7 +115,7 @@ class DBusManager(CoreSysAttributes):
 
     async def load(self) -> None:
         """Connect interfaces to D-Bus."""
-        if not SOCKET_DBUS.exists():
+        if not await self.sys_run_in_executor(SOCKET_DBUS.exists):
             _LOGGER.error(
                 "No D-Bus support on Host. Disabled any kind of host control!"
             )

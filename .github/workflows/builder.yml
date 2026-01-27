@@ -34,6 +34,9 @@ on:
 
 env:
   DEFAULT_PYTHON: "3.13"
+  COSIGN_VERSION: "v2.5.3"
+  CRANE_VERSION: "v0.20.7"
+  CRANE_SHA256: "8ef3564d264e6b5ca93f7b7f5652704c4dd29d33935aff6947dd5adefd05953e"
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
 
@@ -50,10 +53,10 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
       publish: ${{ steps.version.outputs.publish }}
-      requirements: ${{ steps.requirements.outputs.changed }}
+      build_wheels: ${{ steps.requirements.outputs.build_wheels }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -69,20 +72,25 @@ jobs:
 
       - name: Get changed files
         id: changed_files
-        if: steps.version.outputs.publish == 'false'
+        if: github.event_name != 'release'
         uses: masesgroup/retrieve-changed-files@491e80760c0e28d36ca6240a27b1ccb8e1402c13 # v3.0.0
 
       - name: Check if requirements files changed
         id: requirements
         run: |
-          if [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements.txt|build.yaml) ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+          # No wheels build necessary for releases
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "build_wheels=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|build\.yaml|\.github/workflows/builder\.yml) ]]; then
+            echo "build_wheels=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build_wheels=false" >> "$GITHUB_OUTPUT"
           fi
 
   build:
     name: Build ${{ matrix.arch }} supervisor
     needs: init
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs-on }}
     permissions:
       contents: read
       id-token: write
@@ -90,33 +98,65 @@ jobs:
     strategy:
       matrix:
         arch: ${{ fromJson(needs.init.outputs.architectures) }}
+        include:
+          - runs-on: ubuntu-24.04
+          - runs-on: ubuntu-24.04-arm
+            arch: aarch64
+    env:
+      WHEELS_ABI: cp313
+      WHEELS_TAG: musllinux_1_2
+      WHEELS_APK_DEPS: "libffi-dev;openssl-dev;yaml-dev"
+      WHEELS_SKIP_BINARY: aiohttp
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
-      - name: Write env-file
-        if: needs.init.outputs.requirements == 'true'
+      - name: Write env-file for wheels build
+        if: needs.init.outputs.build_wheels == 'true'
         run: |
           (
             # Fix out of memory issues with rust
             echo "CARGO_NET_GIT_FETCH_WITH_CLI=true"
           ) > .env_file
 
-      # home-assistant/wheels doesn't support sha pinning
-      - name: Build wheels
-        if: needs.init.outputs.requirements == 'true'
-        uses: home-assistant/wheels@2025.10.0
+      - name: Build and publish wheels
+        if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'true'
+        uses: home-assistant/wheels@e5742a69d69f0e274e2689c998900c7d19652c21 # 2025.12.0
         with:
-          abi: cp313
-          tag: musllinux_1_2
-          arch: ${{ matrix.arch }}
           wheels-key: ${{ secrets.WHEELS_KEY }}
-          apk: "libffi-dev;openssl-dev;yaml-dev"
-          skip-binary: aiohttp
+          abi: ${{ env.WHEELS_ABI }}
+          tag: ${{ env.WHEELS_TAG }}
+          arch: ${{ matrix.arch }}
+          apk: ${{ env.WHEELS_APK_DEPS }}
+          skip-binary: ${{ env.WHEELS_SKIP_BINARY }}
           env-file: true
           requirements: "requirements.txt"
+
+      - name: Build local wheels
+        if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
+        uses: home-assistant/wheels@e5742a69d69f0e274e2689c998900c7d19652c21 # 2025.12.0
+        with:
+          wheels-host: ""
+          wheels-user: ""
+          wheels-key: ""
+          local-wheels-repo-path: "wheels/"
+          abi: ${{ env.WHEELS_ABI }}
+          tag: ${{ env.WHEELS_TAG }}
+          arch: ${{ matrix.arch }}
+          apk: ${{ env.WHEELS_APK_DEPS }}
+          skip-binary: ${{ env.WHEELS_SKIP_BINARY }}
+          env-file: true
+          requirements: "requirements.txt"
+
+      - name: Upload local wheels artifact
+        if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: wheels-${{ matrix.arch }}
+          path: wheels
+          retention-days: 1
 
       - name: Set version
         if: needs.init.outputs.publish == 'true'
@@ -126,7 +166,7 @@ jobs:
 
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         if: needs.init.outputs.publish == 'true'
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
@@ -134,7 +174,7 @@ jobs:
         if: needs.init.outputs.publish == 'true'
         uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
         with:
-          cosign-release: "v2.5.3"
+          cosign-release: ${{ env.COSIGN_VERSION }}
 
       - name: Install dirhash and calc hash
         if: needs.init.outputs.publish == 'true'
@@ -162,8 +202,9 @@ jobs:
 
       # home-assistant/builder doesn't support sha pinning
       - name: Build supervisor
-        uses: home-assistant/builder@2025.09.0
+        uses: home-assistant/builder@2025.11.0
         with:
+          image: ${{ matrix.arch }}
           args: |
             $BUILD_ARGS \
             --${{ matrix.arch }} \
@@ -173,12 +214,12 @@ jobs:
 
   version:
     name: Update version
-    needs: ["init", "run_supervisor"]
+    needs: ["init", "run_supervisor", "retag_deprecated"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
         if: needs.init.outputs.publish == 'true'
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Initialize git
         if: needs.init.outputs.publish == 'true'
@@ -203,12 +244,19 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download local wheels artifact
+        if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: wheels-amd64
+          path: wheels
 
       # home-assistant/builder doesn't support sha pinning
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2025.09.0
+        uses: home-assistant/builder@2025.11.0
         with:
           args: |
             --test \
@@ -242,14 +290,35 @@ jobs:
       - name: Start the Supervisor
         run: docker start hassio_supervisor
 
-      - name: Wait for Supervisor to come up
+      - &wait_for_supervisor
+        name: Wait for Supervisor to come up
         run: |
           SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
-          ping="error"
-          while [ "$ping" != "ok" ]; do
-            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r '.result')
+          echo "Waiting for Supervisor API at http://${SUPERVISOR}/supervisor/ping"
+          timeout=300
+          elapsed=0
+
+          while [ $elapsed -lt $timeout ]; do
+            if response=$(curl -sSf "http://${SUPERVISOR}/supervisor/ping" 2>/dev/null); then
+              if echo "$response" | jq -e '.result == "ok"' >/dev/null 2>&1; then
+                echo "Supervisor is up! (took ${elapsed}s)"
+                exit 0
+              fi
+            fi
+
+            if [ $((elapsed % 15)) -eq 0 ]; then
+              echo "Still waiting... (${elapsed}s/${timeout}s)"
+            fi
+
             sleep 5
+            elapsed=$((elapsed + 5))
           done
+
+          echo "ERROR: Supervisor failed to start within ${timeout}s"
+          echo "Last response: $response"
+          echo "Checking supervisor logs..."
+          docker logs --tail 50 hassio_supervisor
+          exit 1
 
       - name: Check the Supervisor
         run: |
@@ -314,14 +383,7 @@ jobs:
             exit 1
           fi
 
-      - name: Wait for Supervisor to come up
-        run: |
-          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
-          ping="error"
-          while [ "$ping" != "ok" ]; do
-            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r '.result')
-            sleep 5
-          done
+      - *wait_for_supervisor
 
       - name: Restore SSH add-on from backup
         run: |
@@ -352,3 +414,50 @@ jobs:
       - name: Get supervisor logs on failiure
         if: ${{ cancelled() || failure() }}
         run: docker logs hassio_supervisor
+
+  retag_deprecated:
+    needs: ["build", "init"]
+    name: Re-tag deprecated ${{ matrix.arch }} images
+    if: needs.init.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      matrix:
+        arch: ["armhf", "armv7", "i386"]
+    env:
+      # Last available release for deprecated architectures
+      FROZEN_VERSION: "2025.11.5"
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+        with:
+          cosign-release: ${{ env.COSIGN_VERSION }}
+
+      - name: Install crane
+        run: |
+          curl -sLO https://github.com/google/go-containerregistry/releases/download/${{ env.CRANE_VERSION }}/go-containerregistry_Linux_x86_64.tar.gz
+          echo "${{ env.CRANE_SHA256 }}  go-containerregistry_Linux_x86_64.tar.gz" | sha256sum -c -
+          tar xzf go-containerregistry_Linux_x86_64.tar.gz crane
+          sudo mv crane /usr/local/bin/
+
+      - name: Re-tag deprecated image with updated version label
+        run: |
+          crane auth login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GITHUB_TOKEN }}
+          crane mutate \
+            --label io.hass.version=${{ needs.init.outputs.version }} \
+            --tag ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }} \
+            ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor:${{ env.FROZEN_VERSION }}
+
+      - name: Sign image with Cosign
+        run: |
+          cosign sign --yes ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}

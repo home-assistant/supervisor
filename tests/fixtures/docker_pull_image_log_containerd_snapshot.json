@@ -1,0 +1,196 @@
+[
+  {
+    "status": "Pulling from home-assistant/home-assistant",
+    "id": "2025.12.0.dev202511080235"
+  },
+  { "status": "Pulling fs layer", "progressDetail": {}, "id": "eafecc6b43cc" },
+  { "status": "Pulling fs layer", "progressDetail": {}, "id": "333270549f95" },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 1048576, "total": 21863319 },
+    "progress": "[==\u003e                                                ]  1.049MB/21.86MB",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 1048576, "total": 21179924 },
+    "progress": "[==\u003e                                                ]  1.049MB/21.18MB",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 4194304, "total": 21863319 },
+    "progress": "[=========\u003e                                         ]  4.194MB/21.86MB",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 2097152, "total": 21179924 },
+    "progress": "[====\u003e                                              ]  2.097MB/21.18MB",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 7340032, "total": 21863319 },
+    "progress": "[================\u003e                                  ]   7.34MB/21.86MB",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 4194304, "total": 21179924 },
+    "progress": "[=========\u003e                                         ]  4.194MB/21.18MB",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 13631488, "total": 21863319 },
+    "progress": "[===============================\u003e                   ]  13.63MB/21.86MB",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 8388608, "total": 21179924 },
+    "progress": "[===================\u003e                               ]  8.389MB/21.18MB",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 17825792, "total": 21863319 },
+    "progress": "[========================================\u003e          ]  17.83MB/21.86MB",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 12582912, "total": 21179924 },
+    "progress": "[=============================\u003e                     ]  12.58MB/21.18MB",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 21863319, "total": 21863319 },
+    "progress": "[==================================================\u003e]  21.86MB/21.86MB",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 16777216, "total": 21179924 },
+    "progress": "[=======================================\u003e           ]  16.78MB/21.18MB",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Downloading",
+    "progressDetail": { "current": 21179924, "total": 21179924 },
+    "progress": "[==================================================\u003e]  21.18MB/21.18MB",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": { "hidecounts": true },
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Download complete",
+    "progressDetail": { "hidecounts": true },
+    "id": "333270549f95"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 1, "units": "s" },
+    "progress": "1 s",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 1, "units": "s" },
+    "progress": "1 s",
+    "id": "333270549f95"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": { "hidecounts": true },
+    "id": "333270549f95"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 1, "units": "s" },
+    "progress": "1 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 1, "units": "s" },
+    "progress": "1 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 2, "units": "s" },
+    "progress": "2 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 2, "units": "s" },
+    "progress": "2 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 3, "units": "s" },
+    "progress": "3 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 3, "units": "s" },
+    "progress": "3 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 4, "units": "s" },
+    "progress": "4 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 4, "units": "s" },
+    "progress": "4 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 5, "units": "s" },
+    "progress": "5 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 5, "units": "s" },
+    "progress": "5 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 6, "units": "s" },
+    "progress": "6 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Extracting",
+    "progressDetail": { "current": 6, "units": "s" },
+    "progress": "6 s",
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Pull complete",
+    "progressDetail": { "hidecounts": true },
+    "id": "eafecc6b43cc"
+  },
+  {
+    "status": "Digest: sha256:bfc9efc13552c0c228f3d9d35987331cce68b43c9bc79c80a57eeadadd44cccf"
+  },
+  {
+    "status": "Status: Downloaded newer image for ghcr.io/home-assistant/home-assistant:2025.12.0.dev202511080235"
+  }
+]

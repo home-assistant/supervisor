@@ -135,7 +135,7 @@ class Mount(CoreSysAttributes, ABC):
     @property
     def state(self) -> UnitActiveState | None:
         """Get state of mount."""
-        return self._state
+        return UnitActiveState(self._state) if self._state is not None else None
 
     @cached_property
     def local_where(self) -> Path:

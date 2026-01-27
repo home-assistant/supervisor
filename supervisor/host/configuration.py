@@ -6,8 +6,8 @@ import logging
 import socket
 
 from ..dbus.const import (
+    ConnectionState,
     ConnectionStateFlags,
-    ConnectionStateType,
     DeviceType,
     InterfaceAddrGenMode as NMInterfaceAddrGenMode,
     InterfaceIp6Privacy as NMInterfaceIp6Privacy,
@@ -267,24 +267,46 @@ class Interface:
         return InterfaceMethod.DISABLED
 
     @staticmethod
-    def _map_nm_addr_gen_mode(addr_gen_mode: int) -> InterfaceAddrGenMode:
-        """Map IPv6 interface addr_gen_mode."""
+    def _map_nm_addr_gen_mode(addr_gen_mode: int | None) -> InterfaceAddrGenMode:
+        """Map IPv6 interface addr_gen_mode.
+
+        NetworkManager omits the addr_gen_mode property when set to DEFAULT, so we
+        treat None as DEFAULT here.
+        """
         mapping = {
             NMInterfaceAddrGenMode.EUI64.value: InterfaceAddrGenMode.EUI64,
             NMInterfaceAddrGenMode.STABLE_PRIVACY.value: InterfaceAddrGenMode.STABLE_PRIVACY,
             NMInterfaceAddrGenMode.DEFAULT_OR_EUI64.value: InterfaceAddrGenMode.DEFAULT_OR_EUI64,
+            NMInterfaceAddrGenMode.DEFAULT.value: InterfaceAddrGenMode.DEFAULT,
+            None: InterfaceAddrGenMode.DEFAULT,
         }
+
+        if addr_gen_mode not in mapping:
+            _LOGGER.warning(
+                "Unknown addr_gen_mode value from NetworkManager: %s", addr_gen_mode
+            )
 
         return mapping.get(addr_gen_mode, InterfaceAddrGenMode.DEFAULT)
 
     @staticmethod
-    def _map_nm_ip6_privacy(ip6_privacy: int) -> InterfaceIp6Privacy:
-        """Map IPv6 interface ip6_privacy."""
+    def _map_nm_ip6_privacy(ip6_privacy: int | None) -> InterfaceIp6Privacy:
+        """Map IPv6 interface ip6_privacy.
+
+        NetworkManager omits the ip6_privacy property when set to DEFAULT, so we
+        treat None as DEFAULT here.
+        """
         mapping = {
             NMInterfaceIp6Privacy.DISABLED.value: InterfaceIp6Privacy.DISABLED,
             NMInterfaceIp6Privacy.ENABLED_PREFER_PUBLIC.value: InterfaceIp6Privacy.ENABLED_PREFER_PUBLIC,
             NMInterfaceIp6Privacy.ENABLED.value: InterfaceIp6Privacy.ENABLED,
+            NMInterfaceIp6Privacy.DEFAULT.value: InterfaceIp6Privacy.DEFAULT,
+            None: InterfaceIp6Privacy.DEFAULT,
         }
+
+        if ip6_privacy not in mapping:
+            _LOGGER.warning(
+                "Unknown ip6_privacy value from NetworkManager: %s", ip6_privacy
+            )
 
         return mapping.get(ip6_privacy, InterfaceIp6Privacy.DEFAULT)
 
@@ -295,8 +317,8 @@ class Interface:
             return False
 
         return connection.state in (
-            ConnectionStateType.ACTIVATED,
-            ConnectionStateType.ACTIVATING,
+            ConnectionState.ACTIVATED,
+            ConnectionState.ACTIVATING,
         )
 
     @staticmethod

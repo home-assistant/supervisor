@@ -90,6 +90,49 @@ async def test_logs_coloured(journald_gateway: MagicMock, coresys: CoreSys):
         )
 
 
+async def test_logs_no_colors(journald_gateway: MagicMock, coresys: CoreSys):
+    """Test ANSI color codes being stripped when no_colors=True."""
+    journald_gateway.content.feed_data(
+        load_fixture("logs_export_supervisor.txt").encode("utf-8")
+    )
+    journald_gateway.content.feed_eof()
+
+    async with coresys.host.logs.journald_logs() as resp:
+        cursor, line = await anext(journal_logs_reader(resp, no_colors=True))
+        assert (
+            cursor
+            == "s=83fee99ca0c3466db5fc120d52ca7dd8;i=2049389;b=f5a5c442fa6548cf97474d2d57c920b3;m=4263828e8c;t=612dda478b01b;x=9ae12394c9326930"
+        )
+        # Colors should be stripped
+        assert (
+            line == "24-03-04 23:56:56 INFO (MainThread) [__main__] Closing Supervisor"
+        )
+
+
+async def test_logs_verbose_no_colors(journald_gateway: MagicMock, coresys: CoreSys):
+    """Test ANSI color codes being stripped from verbose formatted logs when no_colors=True."""
+    journald_gateway.content.feed_data(
+        load_fixture("logs_export_supervisor.txt").encode("utf-8")
+    )
+    journald_gateway.content.feed_eof()
+
+    async with coresys.host.logs.journald_logs() as resp:
+        cursor, line = await anext(
+            journal_logs_reader(
+                resp, log_formatter=LogFormatter.VERBOSE, no_colors=True
+            )
+        )
+        assert (
+            cursor
+            == "s=83fee99ca0c3466db5fc120d52ca7dd8;i=2049389;b=f5a5c442fa6548cf97474d2d57c920b3;m=4263828e8c;t=612dda478b01b;x=9ae12394c9326930"
+        )
+        # Colors should be stripped in verbose format too
+        assert (
+            line
+            == "2024-03-04 22:56:56.709 ha-hloub hassio_supervisor[466]: 24-03-04 23:56:56 INFO (MainThread) [__main__] Closing Supervisor"
+        )
+
+
 async def test_boot_ids(
     journald_gateway: MagicMock,
     coresys: CoreSys,

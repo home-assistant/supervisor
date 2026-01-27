@@ -7,6 +7,7 @@ import logging
 from typing import Self, cast
 
 import docker
+from docker.models.networks import Network
 import requests
 
 from ..const import (
@@ -59,7 +60,7 @@ class DockerNetwork:
     def __init__(self, docker_client: docker.DockerClient):
         """Initialize internal Supervisor network."""
         self.docker: docker.DockerClient = docker_client
-        self._network: docker.models.networks.Network
+        self._network: Network
 
     async def post_init(
         self, enable_ipv6: bool | None = None, mtu: int | None = None
@@ -76,7 +77,7 @@ class DockerNetwork:
         return DOCKER_NETWORK
 
     @property
-    def network(self) -> docker.models.networks.Network:
+    def network(self) -> Network:
         """Return docker network."""
         return self._network
 
@@ -117,7 +118,7 @@ class DockerNetwork:
 
     def _get_network(
         self, enable_ipv6: bool | None = None, mtu: int | None = None
-    ) -> docker.models.networks.Network:
+    ) -> Network:
         """Get supervisor network."""
         try:
             if network := self.docker.networks.get(DOCKER_NETWORK):
@@ -218,7 +219,8 @@ class DockerNetwork:
 
     def attach_container(
         self,
-        container: docker.models.containers.Container,
+        container_id: str,
+        name: str | None,
         alias: list[str] | None = None,
         ipv4: IPv4Address | None = None,
     ) -> None:
@@ -231,15 +233,15 @@ class DockerNetwork:
             self.network.reload()
 
         # Check stale Network
-        if container.name and container.name in (
+        if name and name in (
             val.get("Name") for val in self.network.attrs.get("Containers", {}).values()
         ):
-            self.stale_cleanup(container.name)
+            self.stale_cleanup(name)
 
         # Attach Network
         try:
             self.network.connect(
-                container, aliases=alias, ipv4_address=str(ipv4) if ipv4 else None
+                container_id, aliases=alias, ipv4_address=str(ipv4) if ipv4 else None
             )
         except (
             docker.errors.NotFound,
@@ -248,7 +250,7 @@ class DockerNetwork:
             requests.RequestException,
         ) as err:
             raise DockerError(
-                f"Can't connect {container.name} to Supervisor network: {err}",
+                f"Can't connect {name or container_id} to Supervisor network: {err}",
                 _LOGGER.error,
             ) from err
 
@@ -272,19 +274,20 @@ class DockerNetwork:
         ) as err:
             raise DockerError(f"Can't find {name}: {err}", _LOGGER.error) from err
 
-        if container.id not in self.containers:
-            self.attach_container(container, alias, ipv4)
+        if not (container_id := container.id):
+            raise DockerError(f"Received invalid metadata from docker for {name}")
 
-    def detach_default_bridge(
-        self, container: docker.models.containers.Container
-    ) -> None:
+        if container_id not in self.containers:
+            self.attach_container(container_id, name, alias, ipv4)
+
+    def detach_default_bridge(self, container_id: str, name: str | None = None) -> None:
         """Detach default Docker bridge.
 
         Need run inside executor.
         """
         try:
             default_network = self.docker.networks.get(DOCKER_NETWORK_DRIVER)
-            default_network.disconnect(container)
+            default_network.disconnect(container_id)
         except docker.errors.NotFound:
             pass
         except (
@@ -293,7 +296,7 @@ class DockerNetwork:
             requests.RequestException,
         ) as err:
             raise DockerError(
-                f"Can't disconnect {container.name} from default network: {err}",
+                f"Can't disconnect {name or container_id} from default network: {err}",
                 _LOGGER.warning,
             ) from err
 

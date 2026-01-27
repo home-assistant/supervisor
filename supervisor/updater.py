@@ -8,8 +8,6 @@ import logging
 import aiohttp
 from awesomeversion import AwesomeVersion
 
-from supervisor.jobs.const import JobConcurrency, JobThrottle
-
 from .bus import EventListener
 from .const import (
     ATTR_AUDIO,
@@ -32,6 +30,7 @@ from .const import (
 )
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import UpdaterError, UpdaterJobError
+from .jobs.const import JobConcurrency, JobThrottle
 from .jobs.decorator import Job, JobCondition
 from .utils.common import FileConfiguration
 from .validate import SCHEMA_UPDATER_CONFIG
@@ -242,9 +241,10 @@ class Updater(FileConfiguration, CoreSysAttributes):
     @Job(
         name="updater_fetch_data",
         conditions=[
+            JobCondition.ARCHITECTURE_SUPPORTED,
             JobCondition.INTERNET_SYSTEM,
-            JobCondition.OS_SUPPORTED,
             JobCondition.HOME_ASSISTANT_CORE_SUPPORTED,
+            JobCondition.OS_SUPPORTED,
         ],
         on_condition=UpdaterJobError,
         throttle_period=timedelta(seconds=30),

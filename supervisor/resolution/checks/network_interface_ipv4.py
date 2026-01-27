@@ -2,7 +2,7 @@
 
 from ...const import CoreState
 from ...coresys import CoreSys
-from ...dbus.const import ConnectionStateFlags, ConnectionStateType
+from ...dbus.const import ConnectionState, ConnectionStateFlags
 from ...dbus.network.interface import NetworkInterface
 from ...exceptions import NetworkInterfaceNotFound
 from ..const import ContextType, IssueType
@@ -47,7 +47,7 @@ class CheckNetworkInterfaceIPV4(CheckBase):
 
         return not (
             interface.connection.state
-            in [ConnectionStateType.ACTIVATED, ConnectionStateType.ACTIVATING]
+            in [ConnectionState.ACTIVATED, ConnectionState.ACTIVATING]
             and ConnectionStateFlags.IP4_READY in interface.connection.state_flags
         )
 

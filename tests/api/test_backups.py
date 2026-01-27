@@ -6,6 +6,7 @@ from shutil import copy
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from aiohttp import MultipartWriter
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -17,6 +18,7 @@ from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import (
+    AddonPrePostBackupCommandReturnedError,
     AddonsError,
     BackupInvalidError,
     HomeAssistantBackupError,
@@ -24,6 +26,7 @@ from supervisor.exceptions import (
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.homeassistant.websocket import HomeAssistantWebSocket
+from supervisor.jobs import SupervisorJob
 from supervisor.mounts.mount import Mount
 from supervisor.supervisor import Supervisor
 
@@ -401,6 +404,8 @@ async def test_api_backup_errors(
             "type": "BackupError",
             "message": str(err),
             "stage": None,
+            "error_key": None,
+            "extra_fields": None,
         }
     ]
     assert job["child_jobs"][2]["name"] == "backup_store_folders"
@@ -437,6 +442,8 @@ async def test_api_backup_errors(
             "type": "HomeAssistantBackupError",
             "message": "Backup error",
             "stage": "home_assistant",
+            "error_key": None,
+            "extra_fields": None,
         }
     ]
     assert job["child_jobs"][0]["name"] == "backup_store_homeassistant"
@@ -445,6 +452,8 @@ async def test_api_backup_errors(
             "type": "HomeAssistantBackupError",
             "message": "Backup error",
             "stage": None,
+            "error_key": None,
+            "extra_fields": None,
         }
     ]
     assert len(job["child_jobs"]) == 1
@@ -749,6 +758,8 @@ async def test_backup_to_multiple_locations_error_on_copy(
             "type": "BackupError",
             "message": "Could not copy backup to .cloud_backup due to: ",
             "stage": None,
+            "error_key": None,
+            "extra_fields": None,
         }
     ]
 
@@ -1191,10 +1202,8 @@ async def test_restore_homeassistant_adds_env(
 
     assert docker.containers.create.call_args.kwargs["name"] == "homeassistant"
     assert (
-        docker.containers.create.call_args.kwargs["environment"][
-            "SUPERVISOR_RESTORE_JOB_ID"
-        ]
-        == job.uuid
+        f"SUPERVISOR_RESTORE_JOB_ID={job.uuid}"
+        in docker.containers.create.call_args.args[0]["Env"]
     )
 
 
@@ -1483,3 +1492,46 @@ async def test_immediate_list_after_missing_file_restore(
     result = await resp.json()
     assert len(result["data"]["backups"]) == 1
     assert result["data"]["backups"][0]["slug"] == "93b462f8"
+
+
+@pytest.mark.parametrize("command", ["backup_pre", "backup_post"])
+@pytest.mark.usefixtures("install_addon_example", "tmp_supervisor_data")
+async def test_pre_post_backup_command_error(
+    api_client: TestClient, coresys: CoreSys, container: DockerContainer, command: str
+):
+    """Test pre/post backup command error."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.exec.return_value.inspect.return_value = {"ExitCode": 1}
+
+    with patch.object(Addon, command, new=PropertyMock(return_value="test")):
+        resp = await api_client.post(
+            "/backups/new/partial", json={"addons": ["local_example"]}
+        )
+
+    assert resp.status == 200
+    body = await resp.json()
+    job_id = body["data"]["job_id"]
+    job: SupervisorJob | None = None
+    for j in coresys.jobs.jobs:
+        if j.name == "backup_store_addons" and j.parent_id == job_id:
+            job = j
+            break
+
+    assert job
+    assert job.done is True
+    assert job.errors[0].type_ == AddonPrePostBackupCommandReturnedError
+    assert job.errors[0].message == (
+        "Pre-/Post backup command for add-on local_example returned error code: "
+        "1. Please report this to the addon developer. Enable debug "
+        "logging to capture complete command output using ha supervisor options --logging debug"
+    )
+    assert job.errors[0].error_key == "addon_pre_post_backup_command_returned_error"
+    assert job.errors[0].extra_fields == {
+        "addon": "local_example",
+        "exit_code": 1,
+        "debug_logging_command": "ha supervisor options --logging debug",
+    }

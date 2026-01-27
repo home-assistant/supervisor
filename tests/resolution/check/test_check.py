@@ -18,7 +18,7 @@ def fixture_mock_dns_query():
     """Mock aiodns query."""
     with (
         patch(
-            "supervisor.resolution.checks.dns_server.DNSResolver.query",
+            "supervisor.resolution.checks.dns_server.DNSResolver.query_dns",
             new_callable=AsyncMock,
         ),
     ):

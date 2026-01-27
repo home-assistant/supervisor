@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+from aiodocker.containers import DockerContainer
 import pytest
 
 from supervisor.addons.addon import Addon
@@ -25,12 +26,17 @@ def _make_mock_container_get(bad_config_names: list[str], folder: str = "media")
         "Propagation": "rprivate",
     }
 
-    def mock_container_get(name):
-        out = MagicMock()
-        out.status = "running"
-        out.attrs = {"State": {}, "Mounts": []}
+    async def mock_container_get(name):
+        out = MagicMock(spec=DockerContainer)
+        out.show.return_value = {
+            "State": {
+                "Status": "running",
+                "Running": True,
+            },
+            "Mounts": [],
+        }
         if name in bad_config_names:
-            out.attrs["Mounts"].append(mount)
+            out.show.return_value["Mounts"].append(mount)
 
         return out
 
@@ -52,12 +58,17 @@ def _make_mock_container_get_with_volume_mount(
         "Propagation": "rprivate",  # Wrong propagation, but not our mount
     }
 
-    def mock_container_get(name):
-        out = MagicMock()
-        out.status = "running"
-        out.attrs = {"State": {}, "Mounts": []}
+    async def mock_container_get(name):
+        out = MagicMock(spec=DockerContainer)
+        out.show.return_value = {
+            "State": {
+                "Status": "running",
+                "Running": True,
+            },
+            "Mounts": [],
+        }
         if name in bad_config_names:
-            out.attrs["Mounts"].append(mount)
+            out.show.return_value["Mounts"].append(mount)
 
         return out
 
@@ -72,9 +83,8 @@ async def test_base(coresys: CoreSys):
 
 
 @pytest.mark.parametrize("folder", ["media", "share"])
-async def test_check(
-    docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon, folder: str
-):
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_check(docker: DockerAPI, coresys: CoreSys, folder: str):
     """Test check reports issue when containers have incorrect config."""
     docker.containers.get = _make_mock_container_get(
         ["homeassistant", "hassio_audio", "addon_local_ssh"], folder
@@ -196,8 +206,9 @@ async def test_addon_volume_mount_not_flagged(
 
 
 @pytest.mark.parametrize("folder", ["media", "share"])
+@pytest.mark.usefixtures("install_addon_ssh")
 async def test_addon_configured_mount_still_flagged(
-    docker: DockerAPI, coresys: CoreSys, install_addon_ssh: Addon, folder: str
+    docker: DockerAPI, coresys: CoreSys, folder: str
 ):
     """Test that add-on with configured media/share mount is still flagged when propagation wrong."""
     # Keep the original configuration which includes media/share
@@ -213,12 +224,17 @@ async def test_addon_configured_mount_still_flagged(
         "Propagation": "rprivate",  # Wrong propagation
     }
 
-    def mock_container_get(name):
-        out = MagicMock()
-        out.status = "running"
-        out.attrs = {"State": {}, "Mounts": []}
+    async def mock_container_get(name):
+        out = MagicMock(spec=DockerContainer)
+        out.show.return_value = {
+            "State": {
+                "Status": "running",
+                "Running": True,
+            },
+            "Mounts": [],
+        }
         if name == "addon_local_ssh":
-            out.attrs["Mounts"].append(mount)
+            out.show.return_value["Mounts"].append(mount)
         return out
 
     docker.containers.get = mock_container_get
@@ -258,11 +274,16 @@ async def test_addon_custom_target_path_flagged(
         {"type": mapping_type, "read_only": False, "path": custom_path},
     ]
 
-    def mock_container_get(name: str) -> MagicMock:
+    async def mock_container_get(name: str) -> MagicMock:
         """Mock container get with custom target path mount."""
-        out = MagicMock()
-        out.status = "running"
-        out.attrs = {"State": {}, "Mounts": []}
+        out = MagicMock(spec=DockerContainer)
+        out.show.return_value = {
+            "State": {
+                "Status": "running",
+                "Running": True,
+            },
+            "Mounts": [],
+        }
 
         # Add mount with custom target path and wrong propagation
         mount = {
@@ -272,7 +293,7 @@ async def test_addon_custom_target_path_flagged(
         }
 
         if name == "addon_local_ssh":
-            out.attrs["Mounts"].append(mount)
+            out.show.return_value["Mounts"].append(mount)
         return out
 
     docker.containers.get = mock_container_get

@@ -5,8 +5,6 @@ from ...coresys import CoreSys
 from ..const import UnsupportedReason
 from .base import EvaluateBase
 
-SUPPORTED_OS = ["Debian GNU/Linux 12 (bookworm)"]
-
 
 def setup(coresys: CoreSys) -> EvaluateBase:
     """Initialize evaluation-setup function."""
@@ -33,6 +31,4 @@ class EvaluateOperatingSystem(EvaluateBase):
 
     async def evaluate(self) -> bool:
         """Run evaluation."""
-        if self.sys_os.available:
-            return False
-        return self.sys_host.info.operating_system not in SUPPORTED_OS
+        return not self.sys_os.available

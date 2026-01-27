@@ -9,7 +9,7 @@ from contextvars import Context, ContextVar, Token
 from dataclasses import dataclass
 from datetime import datetime
 import logging
-from typing import Any, Self
+from typing import Any, Self, cast
 from uuid import uuid4
 
 from attr.validators import gt, lt
@@ -102,13 +102,17 @@ class SupervisorJobError:
         "Unknown error, see Supervisor logs (check with 'ha supervisor logs')"
     )
     stage: str | None = None
+    error_key: str | None = None
+    extra_fields: dict[str, Any] | None = None
 
-    def as_dict(self) -> dict[str, str | None]:
+    def as_dict(self) -> dict[str, Any]:
         """Return dictionary representation."""
         return {
             "type": self.type_.__name__,
             "message": self.message,
             "stage": self.stage,
+            "error_key": self.error_key,
+            "extra_fields": self.extra_fields,
         }
 
 
@@ -158,7 +162,9 @@ class SupervisorJob:
     def capture_error(self, err: HassioError | None = None) -> None:
         """Capture an error or record that an unknown error has occurred."""
         if err:
-            new_error = SupervisorJobError(type(err), str(err), self.stage)
+            new_error = SupervisorJobError(
+                type(err), str(err), self.stage, err.error_key, err.extra_fields
+            )
         else:
             new_error = SupervisorJobError(stage=self.stage)
         self.errors += [new_error]
@@ -196,7 +202,7 @@ class SupervisorJob:
         self,
         progress: float | None = None,
         stage: str | None = None,
-        extra: dict[str, Any] | None = DEFAULT,  # type: ignore
+        extra: dict[str, Any] | None | type[DEFAULT] = DEFAULT,
         done: bool | None = None,
     ) -> None:
         """Update multiple fields with one on change event."""
@@ -207,8 +213,8 @@ class SupervisorJob:
             self.progress = progress
         if stage is not None:
             self.stage = stage
-        if extra != DEFAULT:
-            self.extra = extra
+        if extra is not DEFAULT:
+            self.extra = cast(dict[str, Any] | None, extra)
 
         # Done has special event. use that to trigger on change if included
         # If not then just use any other field to trigger
@@ -306,19 +312,21 @@ class JobManager(FileConfiguration, CoreSysAttributes):
         reference: str | None = None,
         initial_stage: str | None = None,
         internal: bool = False,
-        parent_id: str | None = DEFAULT,  # type: ignore
+        parent_id: str | None | type[DEFAULT] = DEFAULT,
         child_job_syncs: list[ChildJobSyncFilter] | None = None,
     ) -> SupervisorJob:
         """Create a new job."""
-        job = SupervisorJob(
-            name,
-            reference=reference,
-            stage=initial_stage,
-            on_change=self._on_job_change,
-            internal=internal,
-            child_job_syncs=child_job_syncs,
-            **({} if parent_id == DEFAULT else {"parent_id": parent_id}),  # type: ignore
-        )
+        kwargs: dict[str, Any] = {
+            "reference": reference,
+            "stage": initial_stage,
+            "on_change": self._on_job_change,
+            "internal": internal,
+            "child_job_syncs": child_job_syncs,
+        }
+        if parent_id is not DEFAULT:
+            kwargs["parent_id"] = parent_id
+
+        job = SupervisorJob(name, **kwargs)
 
         # Shouldn't happen but inability to find a parent for progress reporting
         # shouldn't raise and break the active job
