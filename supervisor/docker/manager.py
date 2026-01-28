@@ -596,7 +596,7 @@ class DockerAPI(CoreSysAttributes):
                 match := RE_PORT_CONFLICT_ERROR.match(err.message)
             ):
                 raise DockerContainerPortConflict(
-                    _LOGGER.error, name=name, port=int(match.group(1))
+                    _LOGGER.error, name=name or container.id, port=int(match.group(1))
                 ) from err
             raise DockerAPIError(f"Can't start {name or container.id}: {err}", _LOGGER.error) from err
         except requests.RequestException as err:
