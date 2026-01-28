@@ -598,10 +598,13 @@ class DockerAPI(CoreSysAttributes):
                 raise DockerContainerPortConflict(
                     _LOGGER.error, name=name or container.id, port=int(match.group(1))
                 ) from err
-            raise DockerAPIError(f"Can't start {name or container.id}: {err}", _LOGGER.error) from err
+            raise DockerAPIError(
+                f"Can't start {name or container.id}: {err}", _LOGGER.error
+            ) from err
         except requests.RequestException as err:
             raise DockerRequestError(
-                f"Dockerd connection issue for {name or container.id}: {err}", _LOGGER.error
+                f"Dockerd connection issue for {name or container.id}: {err}",
+                _LOGGER.error,
             ) from err
 
         return container
