@@ -66,6 +66,68 @@ async def test_run_command_success(docker: DockerAPI, container: DockerContainer
     container.delete.assert_called_once_with(force=True, v=True)
 
 
+async def test_run_command_pulls_image_when_not_found(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test that run_command pulls the image when it doesn't exist locally."""
+    # Mock image inspect to raise NOT_FOUND first, then succeed (after pull)
+    docker.images.inspect.side_effect = [
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "No such image"}),
+    ]
+    # Mock pull to return successfully (with stream=False, returns a list)
+    docker.images.pull = AsyncMock(return_value=[{}])
+    container.wait.return_value = {"StatusCode": 0}
+    container.log.return_value = ["output"]
+
+    # Execute the command
+    result = await docker.run_command(
+        image="alpine", tag="3.18", command=["echo", "hello"]
+    )
+
+    # Verify pull was called
+    docker.images.pull.assert_called_once_with("alpine", tag="3.18")
+
+    # Verify the command still executed successfully
+    assert result.exit_code == 0
+    assert result.log == ["output"]
+
+
+async def test_run_command_no_pull_when_image_exists(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test that run_command doesn't pull if image already exists."""
+    # Default mock already returns image data on inspect
+    container.wait.return_value = {"StatusCode": 0}
+    container.log.return_value = ["output"]
+
+    # Execute the command
+    result = await docker.run_command(
+        image="alpine", tag="3.18", command=["echo", "hello"]
+    )
+
+    # Verify inspect was called but pull was NOT called
+    docker.images.inspect.assert_called_once_with("alpine:3.18")
+    docker.images.pull.assert_not_called()
+
+    # Verify the command executed successfully
+    assert result.exit_code == 0
+
+
+async def test_run_command_inspect_error_propagates(docker: DockerAPI):
+    """Test that non-NOT_FOUND errors from image inspect are propagated."""
+    # Mock image inspect to raise a different error (e.g., server error)
+    docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "Server error"}
+    )
+
+    # Execute the command and expect DockerError
+    with pytest.raises(DockerError, match="Can't inspect image alpine:latest"):
+        await docker.run_command(image="alpine", command=["echo", "hello"])
+
+    # Verify pull was NOT called since the error wasn't NOT_FOUND
+    docker.images.pull.assert_not_called()
+
+
 async def test_run_command_docker_exception(docker: DockerAPI):
     """Test command execution when Docker raises an exception."""
     # Mock docker containers.run to raise aiodocker.DockerError
