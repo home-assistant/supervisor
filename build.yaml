@@ -5,8 +5,6 @@ build_from:
 cosign:
   base_identity: https://github.com/home-assistant/docker-base/.*
   identity: https://github.com/home-assistant/supervisor/.*
-args:
-  COSIGN_VERSION: 2.5.3
 labels:
   io.hass.type: supervisor
   org.opencontainers.image.title: Home Assistant Supervisor

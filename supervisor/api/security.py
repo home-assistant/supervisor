@@ -5,10 +5,9 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
-from supervisor.exceptions import APIGone
-
 from ..const import ATTR_FORCE_SECURITY, ATTR_PWNED
 from ..coresys import CoreSysAttributes
+from ..exceptions import APIGone
 from .utils import api_process, api_validate
 
 # pylint: disable=no-value-for-parameter

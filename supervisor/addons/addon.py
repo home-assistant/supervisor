@@ -24,8 +24,6 @@ from securetar import AddFileError, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from supervisor.utils.dt import utc_from_timestamp
-
 from ..bus import EventListener
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -94,6 +92,7 @@ from ..resolution.data import Issue
 from ..store.addon import AddonStore
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
+from ..utils.dt import utc_from_timestamp
 from ..utils.json import read_json_file, write_json_file
 from ..utils.sentry import async_capture_exception
 from .const import (
@@ -1184,13 +1183,6 @@ class Addon(AddonModel):
         with suppress(AddonsError):
             await self.stop()
         return await self.start()
-
-    def logs(self) -> Awaitable[bytes]:
-        """Return add-ons log output.
-
-        Return a coroutine.
-        """
-        return self.instance.logs()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.

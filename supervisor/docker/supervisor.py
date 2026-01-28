@@ -1,15 +1,12 @@
 """Init file for Supervisor Docker object."""
 
 import asyncio
-from collections.abc import Awaitable
 from ipaddress import IPv4Address
 import logging
 import os
 
 import aiodocker
 from awesomeversion.awesomeversion import AwesomeVersion
-import docker
-import requests
 
 from ..exceptions import DockerError
 from ..jobs.const import JobConcurrency
@@ -53,13 +50,13 @@ class DockerSupervisor(DockerInterface):
     ) -> None:
         """Attach to running docker container."""
         try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers_legacy.get, self.name
-            )
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            raise DockerError() from err
+            docker_container = await self.sys_docker.containers.get(self.name)
+            self._meta = await docker_container.show()
+        except aiodocker.DockerError as err:
+            raise DockerError(
+                f"Could not get supervisor container metadata: {err!s}"
+            ) from err
 
-        self._meta = docker_container.attrs
         _LOGGER.info(
             "Attaching to Supervisor %s with version %s",
             self.image,
@@ -81,32 +78,32 @@ class DockerSupervisor(DockerInterface):
         )
 
     @Job(name="docker_supervisor_retag", concurrency=JobConcurrency.GROUP_QUEUE)
-    def retag(self) -> Awaitable[None]:
+    async def retag(self) -> None:
         """Retag latest image to version."""
-        return self.sys_run_in_executor(self._retag)
-
-    def _retag(self) -> None:
-        """Retag latest image to version.
-
-        Need run inside executor.
-        """
         try:
-            docker_container = self.sys_docker.containers_legacy.get(self.name)
-        except (docker.errors.DockerException, requests.RequestException) as err:
+            docker_container = await self.sys_docker.containers.get(self.name)
+            container_metadata = await docker_container.show()
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Could not get Supervisor container for retag: {err}", _LOGGER.error
             ) from err
 
-        if not self.image or not docker_container.image:
+        # See https://github.com/docker/docker-py/blob/df3f8e2abc5a03de482e37214dddef9e0cee1bb1/docker/models/containers.py#L41
+        metadata_image = container_metadata.get("ImageID", container_metadata["Image"])
+        if not self.image or not metadata_image:
             raise DockerError(
                 "Could not locate image from container metadata for retag",
                 _LOGGER.error,
             )
 
         try:
-            docker_container.image.tag(self.image, tag=str(self.version))
-            docker_container.image.tag(self.image, tag="latest")
-        except (docker.errors.DockerException, requests.RequestException) as err:
+            await asyncio.gather(
+                self.sys_docker.images.tag(
+                    metadata_image, self.image, tag=str(self.version)
+                ),
+                self.sys_docker.images.tag(metadata_image, self.image, tag="latest"),
+            )
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't retag Supervisor version: {err}", _LOGGER.error
             ) from err
@@ -118,28 +115,38 @@ class DockerSupervisor(DockerInterface):
     async def update_start_tag(self, image: str, version: AwesomeVersion) -> None:
         """Update start tag to new version."""
         try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers_legacy.get, self.name
-            )
-            docker_image = await self.sys_docker.images.inspect(f"{image}:{version!s}")
-        except (
-            aiodocker.DockerError,
-            docker.errors.DockerException,
-            requests.RequestException,
-        ) as err:
+            docker_container = await self.sys_docker.containers.get(self.name)
+            container_metadata = await docker_container.show()
+        except aiodocker.DockerError as err:
             raise DockerError(
-                f"Can't get image or container to fix start tag: {err}", _LOGGER.error
+                f"Can't get container to fix start tag: {err}", _LOGGER.error
             ) from err
 
-        if not docker_container.image:
+        # See https://github.com/docker/docker-py/blob/df3f8e2abc5a03de482e37214dddef9e0cee1bb1/docker/models/containers.py#L41
+        metadata_image = container_metadata.get("ImageID", container_metadata["Image"])
+        if not metadata_image:
             raise DockerError(
                 "Cannot locate image from container metadata to fix start tag",
                 _LOGGER.error,
             )
 
         try:
+            container_image, new_image = await asyncio.gather(
+                self.sys_docker.images.inspect(metadata_image),
+                self.sys_docker.images.inspect(f"{image}:{version!s}"),
+            )
+        except aiodocker.DockerError as err:
+            raise DockerError(
+                f"Can't get image metadata to fix start tag: {err}", _LOGGER.error
+            ) from err
+
+        try:
             # Find start tag
-            for tag in docker_container.image.tags:
+            for tag in container_image["RepoTags"]:
+                # See https://github.com/docker/docker-py/blob/df3f8e2abc5a03de482e37214dddef9e0cee1bb1/docker/models/images.py#L47
+                if tag == "<none>:<none>":
+                    continue
+
                 start_image = tag.partition(":")[0]
                 start_tag = tag.partition(":")[2] or "latest"
 
@@ -148,12 +155,12 @@ class DockerSupervisor(DockerInterface):
                     continue
                 await asyncio.gather(
                     self.sys_docker.images.tag(
-                        docker_image["Id"], start_image, tag=start_tag
+                        new_image["Id"], start_image, tag=start_tag
                     ),
                     self.sys_docker.images.tag(
-                        docker_image["Id"], start_image, tag=version.string
+                        new_image["Id"], start_image, tag=version.string
                     ),
                 )
 
-        except (aiodocker.DockerError, requests.RequestException) as err:
+        except aiodocker.DockerError as err:
             raise DockerError(f"Can't fix start tag: {err}", _LOGGER.error) from err

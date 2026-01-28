@@ -48,6 +48,15 @@ class IpConfiguration(DBusInterfaceProxy):
 
     @property
     @dbus_property
+    def address(self) -> list[IPv4Interface | IPv6Interface]:
+        """Get address."""
+        return [
+            ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
+            for address in self.properties[DBUS_ATTR_ADDRESS_DATA]
+        ]
+
+    @property
+    @dbus_property
     def gateway(self) -> IPv4Address | IPv6Address | None:
         """Get gateway."""
         return (
@@ -69,13 +78,4 @@ class IpConfiguration(DBusInterfaceProxy):
         return [
             ip_address(bytes(nameserver))
             for nameserver in self.properties[DBUS_ATTR_NAMESERVERS]
-        ]
-
-    @property
-    @dbus_property
-    def address(self) -> list[IPv4Interface | IPv6Interface]:
-        """Get address."""
-        return [
-            ip_interface(f"{address[ATTR_ADDRESS]}/{address[ATTR_PREFIX]}")
-            for address in self.properties[DBUS_ATTR_ADDRESS_DATA]
         ]

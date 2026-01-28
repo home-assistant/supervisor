@@ -22,7 +22,8 @@ async def check_server(
     """Check a DNS server and report issues."""
     ip_addr = server[6:] if server.startswith("dns://") else server
     async with DNSResolver(loop=loop, nameservers=[ip_addr]) as resolver:
-        await resolver.query(DNS_CHECK_HOST, qtype)
+        # following call should be changed to resolver.query() in aiodns 5.x
+        await resolver.query_dns(DNS_CHECK_HOST, qtype)
 
 
 def setup(coresys: CoreSys) -> CheckBase:

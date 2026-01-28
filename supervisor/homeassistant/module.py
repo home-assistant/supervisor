@@ -508,7 +508,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                         tmp_dir=self.sys_config.path_tmp,
                     )
                 else:
-                    remove_folder(self.sys_config.path_homeassistant)
+                    remove_folder(self.sys_config.path_homeassistant, content_only=True)
 
                 try:
                     shutil.copytree(

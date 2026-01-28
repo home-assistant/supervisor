@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable
 from contextlib import suppress
+from http import HTTPStatus
 from ipaddress import IPv4Address
 import logging
-import os
 from pathlib import Path
-from socket import SocketIO
 import tempfile
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import aiodocker
 from attr import evolve
 from awesomeversion import AwesomeVersion
-import docker
-import docker.errors
-import requests
 
 from ..addons.build import AddonBuild
 from ..addons.const import MappingType
@@ -690,34 +685,43 @@ class DockerAddon(DockerInterface):
         await build_env.is_valid()
 
         _LOGGER.info("Starting build for %s:%s", self.image, version)
+        if build_env.squash:
+            _LOGGER.warning(
+                "Ignoring squash build option for %s as Docker BuildKit does not support it.",
+                self.addon.slug,
+            )
 
-        def build_image() -> tuple[str, str]:
-            if build_env.squash:
-                _LOGGER.warning(
-                    "Ignoring squash build option for %s as Docker BuildKit does not support it.",
-                    self.addon.slug,
-                )
+        addon_image_tag = f"{image or self.addon.image}:{version!s}"
 
-            addon_image_tag = f"{image or self.addon.image}:{version!s}"
+        docker_version = self.sys_docker.info.version
+        builder_version_tag = (
+            f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
+        )
 
-            docker_version = self.sys_docker.info.version
-            builder_version_tag = f"{docker_version.major}.{docker_version.minor}.{docker_version.micro}-cli"
+        builder_name = f"addon_builder_{self.addon.slug}"
 
-            builder_name = f"addon_builder_{self.addon.slug}"
+        # Remove dangling builder container if it exists by any chance
+        # E.g. because of an abrupt host shutdown/reboot during a build
+        try:
+            container = await self.sys_docker.containers.get(builder_name)
+            await container.delete(force=True, v=True)
+        except aiodocker.DockerError as err:
+            if err.status != HTTPStatus.NOT_FOUND:
+                raise DockerBuildError(
+                    f"Can't clean up existing builder container: {err!s}", _LOGGER.error
+                ) from err
 
-            # Remove dangling builder container if it exists by any chance
-            # E.g. because of an abrupt host shutdown/reboot during a build
-            with suppress(docker.errors.NotFound):
-                self.sys_docker.containers_legacy.get(builder_name).remove(
-                    force=True, v=True
-                )
+        # Generate Docker config with registry credentials for base image if needed
+        docker_config_content = build_env.get_docker_config_json()
+        temp_dir: tempfile.TemporaryDirectory | None = None
 
-            # Generate Docker config with registry credentials for base image if needed
-            docker_config_path: Path | None = None
-            docker_config_content = build_env.get_docker_config_json()
-            temp_dir: tempfile.TemporaryDirectory | None = None
+        try:
 
-            try:
+            def pre_build_setup() -> tuple[
+                tempfile.TemporaryDirectory | None, dict[str, Any]
+            ]:
+                docker_config_path: Path | None = None
+                temp_dir: tempfile.TemporaryDirectory | None = None
                 if docker_config_content:
                     # Create temporary directory for docker config
                     temp_dir = tempfile.TemporaryDirectory(
@@ -732,42 +736,45 @@ class DockerAddon(DockerInterface):
                         docker_config_path,
                     )
 
-                result = self.sys_docker.run_command(
-                    ADDON_BUILDER_IMAGE,
-                    version=builder_version_tag,
-                    name=builder_name,
-                    **build_env.get_docker_args(
+                return (
+                    temp_dir,
+                    build_env.get_docker_args(
                         version, addon_image_tag, docker_config_path
                     ),
                 )
-            finally:
-                # Clean up temporary directory
-                if temp_dir:
-                    temp_dir.cleanup()
 
-            logs = result.output.decode("utf-8")
+            temp_dir, build_args = await self.sys_run_in_executor(pre_build_setup)
 
-            if result.exit_code != 0:
-                error_message = f"Docker build failed for {addon_image_tag} (exit code {result.exit_code}). Build output:\n{logs}"
-                raise docker.errors.DockerException(error_message)
-
-            return addon_image_tag, logs
-
-        try:
-            addon_image_tag, log = await self.sys_run_in_executor(build_image)
-
-            _LOGGER.debug("Build %s:%s done: %s", self.image, version, log)
-
-            # Update meta data
-            self._meta = await self.sys_docker.images.inspect(addon_image_tag)
-
-        except (
-            docker.errors.DockerException,
-            requests.RequestException,
-            aiodocker.DockerError,
-        ) as err:
+            result = await self.sys_docker.run_command(
+                ADDON_BUILDER_IMAGE,
+                tag=builder_version_tag,
+                name=builder_name,
+                **build_args,
+            )
+        except DockerError as err:
             raise DockerBuildError(
                 f"Can't build {self.image}:{version}: {err!s}", _LOGGER.error
+            ) from err
+        finally:
+            # Clean up temporary directory
+            if temp_dir:
+                await self.sys_run_in_executor(temp_dir.cleanup)
+
+        logs = "\n".join(result.log)
+        if result.exit_code != 0:
+            raise DockerBuildError(
+                f"Docker build failed for {addon_image_tag} (exit code {result.exit_code}). Build output:\n{logs}",
+                _LOGGER.error,
+            )
+
+        _LOGGER.debug("Build %s:%s done: %s", self.image, version, logs)
+
+        try:
+            # Update meta data
+            self._meta = await self.sys_docker.images.inspect(addon_image_tag)
+        except aiodocker.DockerError as err:
+            raise DockerBuildError(
+                f"Can't get image metadata for {addon_image_tag} after build: {err!s}"
             ) from err
 
         _LOGGER.info("Build %s:%s done", self.image, version)
@@ -826,34 +833,26 @@ class DockerAddon(DockerInterface):
         on_condition=DockerJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    def write_stdin(self, data: bytes) -> Awaitable[None]:
+    async def write_stdin(self, data: bytes) -> None:
         """Write to add-on stdin."""
-        return self.sys_run_in_executor(self._write_stdin, data)
-
-    def _write_stdin(self, data: bytes) -> None:
-        """Write to add-on stdin.
-
-        Need run inside executor.
-        """
         try:
             # Load needed docker objects
-            container = self.sys_docker.containers_legacy.get(self.name)
-            # attach_socket returns SocketIO for local Docker connections (Unix socket)
-            socket = cast(
-                SocketIO, container.attach_socket(params={"stdin": 1, "stream": 1})
-            )
-        except (docker.errors.DockerException, requests.RequestException) as err:
-            _LOGGER.error("Can't attach to %s stdin: %s", self.name, err)
-            raise DockerError() from err
+            container = await self.sys_docker.containers.get(self.name)
+            socket = container.attach(stdin=True)
+        except aiodocker.DockerError as err:
+            raise DockerError(
+                f"Can't attach to {self.name} stdin: {err!s}", _LOGGER.error
+            ) from err
 
         try:
-            # Write to stdin
-            data += b"\n"
-            os.write(socket.fileno(), data)
-            socket.close()
-        except OSError as err:
-            _LOGGER.error("Can't write to %s stdin: %s", self.name, err)
-            raise DockerError() from err
+            await socket.write_in(data + b"\n")
+            await socket.close()
+        # Seems to raise very generic exceptions like RuntimeError or AssertionError
+        # So we catch all exceptions and re-raise them as DockerError
+        except Exception as err:
+            raise DockerError(
+                f"Can't write to {self.name} stdin: {err!s}", _LOGGER.error
+            ) from err
 
     @Job(
         name="docker_addon_stop",
@@ -899,15 +898,13 @@ class DockerAddon(DockerInterface):
             return
 
         try:
-            docker_container = await self.sys_run_in_executor(
-                self.sys_docker.containers_legacy.get, self.name
-            )
-        except docker.errors.NotFound:
-            if self._hw_listener:
-                self.sys_bus.remove_listener(self._hw_listener)
-            self._hw_listener = None
-            return
-        except (docker.errors.DockerException, requests.RequestException) as err:
+            docker_container = await self.sys_docker.containers.get(self.name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                if self._hw_listener:
+                    self.sys_bus.remove_listener(self._hw_listener)
+                self._hw_listener = None
+                return
             raise DockerError(
                 f"Can't process Hardware Event on {self.name}: {err!s}", _LOGGER.error
             ) from err

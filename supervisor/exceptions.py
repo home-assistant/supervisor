@@ -1013,12 +1013,36 @@ class StoreAddonNotFoundError(StoreError, APINotFound):
         super().__init__(None, logger)
 
 
+class StoreRepositoryLocalCannotReset(StoreError, APIError):
+    """Raise if user requests a reset on the local addon repository."""
+
+    error_key = "store_repository_local_cannot_reset"
+    message_template = "Can't reset repository {local_repo} as it is not git based!"
+    extra_fields = {"local_repo": "local"}
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Initialize exception."""
+        super().__init__(None, logger)
+
+
 class StoreJobError(StoreError, JobException):
     """Raise on job error with git."""
 
 
 class StoreInvalidAddonRepo(StoreError):
     """Raise on invalid addon repo."""
+
+
+class StoreRepositoryUnknownError(StoreError, APIUnknownSupervisorError):
+    """Raise when unknown error occurs taking an action for a store repository."""
+
+    error_key = "store_repository_unknown_error"
+    message_template = "An unknown error occurred with addon repository {repo}"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, repo: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"repo": repo}
+        super().__init__(logger)
 
 
 # Backup

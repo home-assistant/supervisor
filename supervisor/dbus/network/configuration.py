@@ -77,6 +77,7 @@ class IpProperties(ABC):
     method: str | None
     address_data: list[IpAddress] | None
     gateway: str | None
+    route_metric: int | None
 
 
 @dataclass(slots=True)

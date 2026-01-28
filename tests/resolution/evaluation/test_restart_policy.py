@@ -2,6 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 
 from supervisor.addons.addon import Addon
@@ -28,12 +29,14 @@ async def test_evaluation(coresys: CoreSys, install_addon_ssh: Addon):
     addon_attrs = no_restart_attrs
     observer_attrs = always_restart_attrs
 
-    def get_container(name: str):
-        meta = MagicMock()
-        meta.attrs = observer_attrs if name == "hassio_observer" else addon_attrs
+    async def get_container(name: str) -> DockerContainer:
+        meta = MagicMock(spec=DockerContainer)
+        meta.show.return_value = (
+            observer_attrs if name == "hassio_observer" else addon_attrs
+        )
         return meta
 
-    coresys.docker.containers_legacy.get = get_container
+    coresys.docker.containers.get = get_container
     await coresys.plugins.observer.instance.attach(TEST_VERSION)
     await install_addon_ssh.instance.attach(TEST_VERSION)
 
