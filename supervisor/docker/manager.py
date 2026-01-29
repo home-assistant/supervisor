@@ -19,7 +19,7 @@ import aiodocker
 from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.images import DockerImages
 from aiodocker.types import JSONObject
-from aiohttp import ClientSession, ClientTimeout, UnixConnector
+from aiohttp import ClientTimeout, UnixConnector
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
@@ -268,8 +268,8 @@ class DockerAPI(CoreSysAttributes):
         self._dockerpy: DockerClient | None = None
         self.docker: aiodocker.Docker = aiodocker.Docker(
             url="unix://localhost",  # dummy hostname for URL composition
-            connector=(connector := UnixConnector(SOCKET_DOCKER.as_posix())),
-            session=ClientSession(connector=connector, timeout=ClientTimeout(900)),
+            connector=UnixConnector(SOCKET_DOCKER.as_posix()),
+            timeout=ClientTimeout(900),
             api_version="auto",
         )
 
@@ -829,7 +829,7 @@ class DockerAPI(CoreSysAttributes):
         if container_metadata["State"]["Status"] == "running":
             _LOGGER.info("Stopping %s application", name)
             with suppress(aiodocker.DockerError):
-                await docker_container.stop(timeout=timeout)
+                await docker_container.stop(t=timeout)
 
         if remove_container:
             with suppress(aiodocker.DockerError):
@@ -874,7 +874,7 @@ class DockerAPI(CoreSysAttributes):
 
         _LOGGER.info("Restarting %s", name)
         try:
-            await container.restart(timeout=timeout)
+            await container.restart(t=timeout)
         except aiodocker.DockerError as err:
             raise DockerError(f"Can't restart {name}: {err}", _LOGGER.warning) from err
 
