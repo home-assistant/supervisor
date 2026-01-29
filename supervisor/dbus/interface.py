@@ -7,8 +7,7 @@ from typing import Any
 
 from dbus_fast.aio.message_bus import MessageBus
 
-from supervisor.exceptions import DBusInterfaceError, DBusNotConnectedError
-
+from ..exceptions import DBusInterfaceError, DBusNotConnectedError
 from ..utils.dbus import DBus
 from .utils import dbus_connected
 

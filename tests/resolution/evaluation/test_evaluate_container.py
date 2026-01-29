@@ -3,7 +3,8 @@
 # pylint: disable=import-error,protected-access
 from unittest.mock import MagicMock, patch
 
-from docker.errors import DockerException
+import aiodocker
+from aiodocker.containers import DockerContainer
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -12,9 +13,9 @@ from supervisor.resolution.data import Issue
 from supervisor.resolution.evaluations.container import EvaluateContainer
 
 
-def _make_image_attr(image: str) -> MagicMock:
-    out = MagicMock()
-    out.attrs = {
+def _make_image_attr(image: str) -> DockerContainer:
+    out = MagicMock(spec=DockerContainer)
+    out.show.return_value = {
         "Config": {
             "Image": image,
         },
@@ -62,7 +63,9 @@ async def test_corrupt_docker(coresys: CoreSys):
     corrupt_docker = Issue(IssueType.CORRUPT_DOCKER, ContextType.SYSTEM)
     assert corrupt_docker not in coresys.resolution.issues
 
-    coresys.docker.containers.list.side_effect = DockerException
+    coresys.docker.containers.list.side_effect = aiodocker.DockerError(
+        500, {"message": "fail"}
+    )
     await container()
     assert corrupt_docker in coresys.resolution.issues
 

@@ -36,6 +36,7 @@ from ..const import (
     ATTR_PRIMARY,
     ATTR_PSK,
     ATTR_READY,
+    ATTR_ROUTE_METRIC,
     ATTR_SIGNAL,
     ATTR_SSID,
     ATTR_SUPERVISOR_INTERNET,
@@ -68,6 +69,7 @@ _SCHEMA_IPV4_CONFIG = vol.Schema(
         vol.Optional(ATTR_ADDRESS): [vol.Coerce(IPv4Interface)],
         vol.Optional(ATTR_METHOD): vol.Coerce(InterfaceMethod),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(IPv4Address),
+        vol.Optional(ATTR_ROUTE_METRIC): vol.Coerce(int),
         vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(IPv4Address)],
     }
 )
@@ -79,6 +81,7 @@ _SCHEMA_IPV6_CONFIG = vol.Schema(
         vol.Optional(ATTR_ADDR_GEN_MODE): vol.Coerce(InterfaceAddrGenMode),
         vol.Optional(ATTR_IP6_PRIVACY): vol.Coerce(InterfaceIp6Privacy),
         vol.Optional(ATTR_GATEWAY): vol.Coerce(IPv6Address),
+        vol.Optional(ATTR_ROUTE_METRIC): vol.Coerce(int),
         vol.Optional(ATTR_NAMESERVERS): [vol.Coerce(IPv6Address)],
     }
 )
@@ -113,6 +116,7 @@ def ip4config_struct(config: IpConfig, setting: IpSetting) -> dict[str, Any]:
         ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway) if config.gateway else None,
+        ATTR_ROUTE_METRIC: setting.route_metric,
         ATTR_READY: config.ready,
     }
 
@@ -126,6 +130,7 @@ def ip6config_struct(config: IpConfig, setting: Ip6Setting) -> dict[str, Any]:
         ATTR_ADDRESS: [address.with_prefixlen for address in config.address],
         ATTR_NAMESERVERS: [str(address) for address in config.nameservers],
         ATTR_GATEWAY: str(config.gateway) if config.gateway else None,
+        ATTR_ROUTE_METRIC: setting.route_metric,
         ATTR_READY: config.ready,
     }
 
@@ -201,7 +206,7 @@ class APINetwork(CoreSysAttributes):
         raise APINotFound(f"Interface {name} does not exist") from None
 
     @api_process
-    async def info(self, request: web.Request) -> dict[str, Any]:
+    async def info(self, _: web.Request) -> dict[str, Any]:
         """Return network information."""
         return {
             ATTR_INTERFACES: [
@@ -242,6 +247,7 @@ class APINetwork(CoreSysAttributes):
                     method=config.get(ATTR_METHOD, InterfaceMethod.STATIC),
                     address=config.get(ATTR_ADDRESS, []),
                     gateway=config.get(ATTR_GATEWAY),
+                    route_metric=config.get(ATTR_ROUTE_METRIC),
                     nameservers=config.get(ATTR_NAMESERVERS, []),
                 )
             elif key == ATTR_IPV6:
@@ -255,6 +261,7 @@ class APINetwork(CoreSysAttributes):
                     ),
                     address=config.get(ATTR_ADDRESS, []),
                     gateway=config.get(ATTR_GATEWAY),
+                    route_metric=config.get(ATTR_ROUTE_METRIC),
                     nameservers=config.get(ATTR_NAMESERVERS, []),
                 )
             elif key == ATTR_WIFI:
@@ -275,7 +282,7 @@ class APINetwork(CoreSysAttributes):
         await asyncio.shield(self.sys_host.network.apply_changes(interface))
 
     @api_process
-    def reload(self, request: web.Request) -> Awaitable[None]:
+    def reload(self, _: web.Request) -> Awaitable[None]:
         """Reload network data."""
         return asyncio.shield(
             self.sys_host.network.update(force_connectivity_check=True)
@@ -325,7 +332,8 @@ class APINetwork(CoreSysAttributes):
             ipv4_setting = IpSetting(
                 method=body[ATTR_IPV4].get(ATTR_METHOD, InterfaceMethod.AUTO),
                 address=body[ATTR_IPV4].get(ATTR_ADDRESS, []),
-                gateway=body[ATTR_IPV4].get(ATTR_GATEWAY, None),
+                gateway=body[ATTR_IPV4].get(ATTR_GATEWAY),
+                route_metric=body[ATTR_IPV4].get(ATTR_ROUTE_METRIC),
                 nameservers=body[ATTR_IPV4].get(ATTR_NAMESERVERS, []),
             )
 
@@ -340,7 +348,8 @@ class APINetwork(CoreSysAttributes):
                     ATTR_IP6_PRIVACY, InterfaceIp6Privacy.DEFAULT
                 ),
                 address=body[ATTR_IPV6].get(ATTR_ADDRESS, []),
-                gateway=body[ATTR_IPV6].get(ATTR_GATEWAY, None),
+                gateway=body[ATTR_IPV6].get(ATTR_GATEWAY),
+                route_metric=body[ATTR_IPV6].get(ATTR_ROUTE_METRIC),
                 nameservers=body[ATTR_IPV6].get(ATTR_NAMESERVERS, []),
             )
 

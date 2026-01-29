@@ -2,8 +2,9 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
@@ -18,8 +19,11 @@ from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
+from supervisor.exceptions import StoreGitError
 from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.module import HomeAssistant
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.data import Issue, Suggestion
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import Repository
 
@@ -124,18 +128,93 @@ async def test_api_store_remove_repository(
     assert test_repository.slug not in coresys.store.repositories
 
 
+@pytest.mark.parametrize("repo", ["core", "a474bbd1"])
+@pytest.mark.usefixtures("test_repository")
+async def test_api_store_repair_repository(api_client: TestClient, repo: str):
+    """Test POST /store/repositories/{repository}/repair REST API."""
+    with patch("supervisor.store.repository.RepositoryGit.reset") as mock_reset:
+        response = await api_client.post(f"/store/repositories/{repo}/repair")
+
+    assert response.status == 200
+    mock_reset.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "issue_type", [IssueType.CORRUPT_REPOSITORY, IssueType.FATAL_ERROR]
+)
+@pytest.mark.usefixtures("test_repository")
+async def test_api_store_repair_repository_removes_suggestion(
+    api_client: TestClient,
+    coresys: CoreSys,
+    test_repository: Repository,
+    issue_type: IssueType,
+):
+    """Test POST /store/repositories/core/repair REST API removes EXECUTE_RESET suggestions."""
+    issue = Issue(issue_type, ContextType.STORE, reference=test_repository.slug)
+    suggestion = Suggestion(
+        SuggestionType.EXECUTE_RESET, ContextType.STORE, reference=test_repository.slug
+    )
+    coresys.resolution.add_issue(issue, suggestions=[SuggestionType.EXECUTE_RESET])
+    with patch("supervisor.store.repository.RepositoryGit.reset") as mock_reset:
+        response = await api_client.post(
+            f"/store/repositories/{test_repository.slug}/repair"
+        )
+
+    assert response.status == 200
+    mock_reset.assert_called_once()
+    assert issue not in coresys.resolution.issues
+    assert suggestion not in coresys.resolution.suggestions
+
+
+@pytest.mark.usefixtures("test_repository")
+async def test_api_store_repair_repository_local_fail(api_client: TestClient):
+    """Test POST /store/repositories/local/repair REST API fails."""
+    response = await api_client.post("/store/repositories/local/repair")
+
+    assert response.status == 400
+    result = await response.json()
+    assert result["error_key"] == "store_repository_local_cannot_reset"
+    assert result["extra_fields"] == {"local_repo": "local"}
+    assert result["message"] == "Can't reset repository local as it is not git based!"
+
+
+async def test_api_store_repair_repository_git_error(
+    api_client: TestClient, test_repository: Repository
+):
+    """Test POST /store/repositories/{repository}/repair REST API git error."""
+    with patch(
+        "supervisor.store.git.GitRepo.reset",
+        side_effect=StoreGitError("Git error"),
+    ):
+        response = await api_client.post(
+            f"/store/repositories/{test_repository.slug}/repair"
+        )
+
+    assert response.status == 500
+    result = await response.json()
+    assert result["error_key"] == "store_repository_unknown_error"
+    assert result["extra_fields"] == {
+        "repo": test_repository.slug,
+        "logs_command": "ha supervisor logs",
+    }
+    assert (
+        result["message"]
+        == f"An unknown error occurred with addon repository {test_repository.slug}. Check supervisor logs for details (check with 'ha supervisor logs')"
+    )
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_api_store_update_healthcheck(
     api_client: TestClient,
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
+    container: DockerContainer,
 ):
     """Test updating an addon with healthcheck waits for health status."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    container.status = "running"
-    container.attrs["Config"] = {"Healthcheck": "exists"}
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.show.return_value["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
     with patch(

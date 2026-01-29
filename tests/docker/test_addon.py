@@ -1,13 +1,13 @@
 """Test docker addon setup."""
 
 import asyncio
+from http import HTTPStatus
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
-from docker.errors import NotFound
-from docker.types import Mount
+import aiodocker
 import pytest
 
 from supervisor.addons import validate as vd
@@ -18,6 +18,12 @@ from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent.cgroup import CGroup
 from supervisor.docker.addon import DockerAddon
+from supervisor.docker.const import (
+    DockerMount,
+    MountBindOptions,
+    MountType,
+    PropagationMode,
+)
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import CoreDNSError, DockerNotFound
 from supervisor.hardware.data import Device
@@ -80,8 +86,8 @@ def test_base_volumes_included(
 
     # Data added as rw
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=docker_addon.addon.path_extern_data.as_posix(),
             target="/data",
             read_only=False,
@@ -99,8 +105,8 @@ def test_addon_map_folder_defaults(
     )
     # Config added and is marked rw
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=coresys.config.path_extern_homeassistant.as_posix(),
             target="/config",
             read_only=False,
@@ -110,8 +116,8 @@ def test_addon_map_folder_defaults(
 
     # SSL added and defaults to ro
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=coresys.config.path_extern_ssl.as_posix(),
             target="/ssl",
             read_only=True,
@@ -121,30 +127,30 @@ def test_addon_map_folder_defaults(
 
     # Media added and propagation set
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=coresys.config.path_extern_media.as_posix(),
             target="/media",
             read_only=True,
-            propagation="rslave",
+            bind_options=MountBindOptions(propagation=PropagationMode.RSLAVE),
         )
         in docker_addon.mounts
     )
 
     # Share added and propagation set
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=coresys.config.path_extern_share.as_posix(),
             target="/share",
             read_only=True,
-            propagation="rslave",
+            bind_options=MountBindOptions(propagation=PropagationMode.RSLAVE),
         )
         in docker_addon.mounts
     )
 
     # Backup not added
-    assert "/backup" not in [mount["Target"] for mount in docker_addon.mounts]
+    assert "/backup" not in [mount.target for mount in docker_addon.mounts]
 
 
 def test_addon_map_homeassistant_folder(
@@ -157,8 +163,8 @@ def test_addon_map_homeassistant_folder(
 
     # Home Assistant config folder mounted to /homeassistant, not /config
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=coresys.config.path_extern_homeassistant.as_posix(),
             target="/homeassistant",
             read_only=True,
@@ -177,8 +183,8 @@ def test_addon_map_addon_configs_folder(
 
     # Addon configs folder included
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=coresys.config.path_extern_addon_configs.as_posix(),
             target="/addon_configs",
             read_only=True,
@@ -197,8 +203,8 @@ def test_addon_map_addon_config_folder(
 
     # Addon config folder included
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=docker_addon.addon.path_extern_config.as_posix(),
             target="/config",
             read_only=True,
@@ -220,8 +226,8 @@ def test_addon_map_addon_config_folder_with_custom_target(
 
     # Addon config folder included
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=docker_addon.addon.path_extern_config.as_posix(),
             target="/custom/target/path",
             read_only=False,
@@ -240,8 +246,8 @@ def test_addon_map_data_folder_with_custom_target(
 
     # Addon config folder included
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=docker_addon.addon.path_extern_data.as_posix(),
             target="/custom/data/path",
             read_only=False,
@@ -260,8 +266,8 @@ def test_addon_ignore_on_config_map(
 
     # Config added and is marked rw
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source=coresys.config.path_extern_homeassistant.as_posix(),
             target="/config",
             read_only=False,
@@ -271,11 +277,10 @@ def test_addon_ignore_on_config_map(
 
     # Mount for addon's specific config folder omitted since config in map field
     assert (
-        len([mount for mount in docker_addon.mounts if mount["Target"] == "/config"])
-        == 1
+        len([mount for mount in docker_addon.mounts if mount.target == "/config"]) == 1
     )
     # Home Assistant mount omitted since config in map field
-    assert "/homeassistant" not in [mount["Target"] for mount in docker_addon.mounts]
+    assert "/homeassistant" not in [mount.target for mount in docker_addon.mounts]
 
 
 def test_journald_addon(
@@ -287,8 +292,8 @@ def test_journald_addon(
     )
 
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source="/var/log/journal",
             target="/var/log/journal",
             read_only=True,
@@ -296,8 +301,8 @@ def test_journald_addon(
         in docker_addon.mounts
     )
     assert (
-        Mount(
-            type="bind",
+        DockerMount(
+            type=MountType.BIND,
             source="/run/log/journal",
             target="/run/log/journal",
             read_only=True,
@@ -314,7 +319,7 @@ def test_not_journald_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
     )
 
-    assert "/var/log/journal" not in [mount["Target"] for mount in docker_addon.mounts]
+    assert "/var/log/journal" not in [mount.target for mount in docker_addon.mounts]
 
 
 async def test_addon_run_docker_error(
@@ -325,7 +330,9 @@ async def test_addon_run_docker_error(
 ):
     """Test docker error when addon is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
-    coresys.docker.containers.create.side_effect = NotFound("Missing")
+    coresys.docker.containers.create.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
     )

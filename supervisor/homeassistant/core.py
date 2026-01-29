@@ -13,6 +13,8 @@ from typing import Final
 
 from awesomeversion import AwesomeVersion
 
+from supervisor.utils import remove_colors
+
 from ..const import ATTR_HOMEASSISTANT, BusEvent
 from ..coresys import CoreSys
 from ..docker.const import ContainerState
@@ -33,7 +35,6 @@ from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobConcurrency, JobThrot
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType
-from ..utils import convert_to_ascii
 from ..utils.sentry import async_capture_exception
 from .const import (
     LANDINGPAGE,
@@ -48,7 +49,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 SECONDS_BETWEEN_API_CHECKS: Final[int] = 5
 # Core Stage 1 and some wiggle room
-STARTUP_API_RESPONSE_TIMEOUT: Final[timedelta] = timedelta(minutes=3)
+STARTUP_API_RESPONSE_TIMEOUT: Final[timedelta] = timedelta(minutes=10)
 # All stages plus event start timeout and some wiggle rooom
 STARTUP_API_CHECK_RUNNING_TIMEOUT: Final[timedelta] = timedelta(minutes=15)
 # While database migration is running, the timeout will be extended
@@ -303,11 +304,17 @@ class HomeAssistantCore(JobGroup):
             except HomeAssistantError:
                 # The API stoped responding between the up checks an now
                 self._error_state = True
-                data = None
+                return
 
             # Verify that the frontend is loaded
-            if data and "frontend" not in data.get("components", []):
+            if "frontend" not in data.get("components", []):
                 _LOGGER.error("API responds but frontend is not loaded")
+                self._error_state = True
+            # Check that the frontend is actually accessible
+            elif not await self.sys_homeassistant.api.check_frontend_available():
+                _LOGGER.error(
+                    "Frontend component loaded but frontend is not accessible"
+                )
                 self._error_state = True
             else:
                 return
@@ -321,12 +328,12 @@ class HomeAssistantCore(JobGroup):
 
             # Make a copy of the current log file if it exists
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
-            if logfile.exists():
+            if await self.sys_run_in_executor(logfile.exists):
                 rollback_log = (
                     self.sys_config.path_homeassistant / "home-assistant-rollback.log"
                 )
 
-                shutil.copy(logfile, rollback_log)
+                await self.sys_run_in_executor(shutil.copy, logfile, rollback_log)
                 _LOGGER.info(
                     "A backup of the logfile is stored in /config/home-assistant-rollback.log"
                 )
@@ -421,13 +428,6 @@ class HomeAssistantCore(JobGroup):
             await self.instance.stop()
         await self.start()
 
-    def logs(self) -> Awaitable[bytes]:
-        """Get HomeAssistant docker logs.
-
-        Return a coroutine.
-        """
-        return self.instance.logs()
-
     async def stats(self) -> DockerStats:
         """Return stats of Home Assistant."""
         try:
@@ -458,7 +458,15 @@ class HomeAssistantCore(JobGroup):
         """Run Home Assistant config check."""
         try:
             result = await self.instance.execute_command(
-                "python3 -m homeassistant -c /config --script check_config"
+                [
+                    "python3",
+                    "-m",
+                    "homeassistant",
+                    "-c",
+                    "/config",
+                    "--script",
+                    "check_config",
+                ]
             )
         except DockerError as err:
             raise HomeAssistantError() from err
@@ -468,7 +476,7 @@ class HomeAssistantCore(JobGroup):
             raise HomeAssistantError("Fatal error on config check!", _LOGGER.error)
 
         # Convert output
-        log = convert_to_ascii(result.output)
+        log = remove_colors("\n".join(result.log))
         _LOGGER.debug("Result config check: %s", log.strip())
 
         # Parse output

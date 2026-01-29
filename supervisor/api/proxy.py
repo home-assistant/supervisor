@@ -13,11 +13,10 @@ from aiohttp.hdrs import AUTHORIZATION, CONTENT_TYPE
 from aiohttp.http_websocket import WSMsgType
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPUnauthorized
 
-from supervisor.utils.logging import AddonLoggerAdapter
-
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, HomeAssistantAPIError, HomeAssistantAuthError
 from ..utils.json import json_dumps
+from ..utils.logging import AddonLoggerAdapter
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
