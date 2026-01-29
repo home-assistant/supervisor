@@ -18,6 +18,8 @@ from supervisor.homeassistant.api import APIState, HomeAssistantAPI
 from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 from tests.common import AsyncIterator, load_json_fixture
 
@@ -287,6 +289,7 @@ async def test_api_progress_updates_home_assistant_update(
         patch.object(
             HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
         ),
+        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=True),
     ):
         resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
 
@@ -436,3 +439,73 @@ async def test_config_check_error(api_client: TestClient, container: DockerConta
     assert result.status == 400
     resp = await result.json()
     assert resp["message"] == "Test logs 1\nTest logs 2"
+
+
+async def test_update_frontend_check_success(api_client: TestClient, coresys: CoreSys):
+    """Test that update succeeds when frontend check passes."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    with (
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(
+            HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
+        ),
+        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=True),
+    ):
+        resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
+
+    assert resp.status == 200
+
+
+async def test_update_frontend_check_fails_triggers_rollback(
+    api_client: TestClient,
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data: Path,
+):
+    """Test that update triggers rollback when frontend check fails."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    # Mock successful first update, failed frontend check, then successful rollback
+    update_call_count = 0
+
+    async def mock_update(*args, **kwargs):
+        nonlocal update_call_count
+        update_call_count += 1
+        if update_call_count == 1:
+            # First update succeeds
+            coresys.homeassistant.version = AwesomeVersion("2025.8.3")
+        elif update_call_count == 2:
+            # Rollback succeeds
+            coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    with (
+        patch.object(DockerInterface, "update", new=mock_update),
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(
+            HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
+        ),
+        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=False),
+    ):
+        resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
+
+    # Update should trigger rollback, which succeeds and returns 200
+    assert resp.status == 200
+    assert "Frontend component loaded but frontend is not accessible" in caplog.text
+    assert "HomeAssistant update failed -> rollback!" in caplog.text
+    # Should have called update twice (once for update, once for rollback)
+    assert update_call_count == 2
+    # An update_rollback issue should be created
+    assert (
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
+    )
