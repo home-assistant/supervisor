@@ -1,6 +1,7 @@
 """Test Docker manager."""
 
 from http import HTTPStatus
+import os
 from pathlib import Path
 import re
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -8,10 +9,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiodocker
 from aiodocker.containers import DockerContainer
 from aiodocker.networks import DockerNetwork
+from awesomeversion import AwesomeVersion
 from docker.errors import APIError
 import pytest
 
-from supervisor.const import DNS_SUFFIX
+from supervisor.const import DNS_SUFFIX, ENV_SUPERVISOR_CPU_RT
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import (
     LABEL_MANAGED,
@@ -533,3 +535,27 @@ async def test_import_multiple_images_in_tar(
 
     assert "Unexpected image count 2 while importing image from tar" in caplog.text
     coresys.docker.images.inspect.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("rt_file_exists", "rt_env", "rt_supported"),
+    [(False, "1", False), (True, "0", False), (True, "1", True)],
+)
+async def test_info(
+    docker: DockerAPI, rt_file_exists: bool, rt_env: str, rt_supported: bool
+):
+    """Test docker system info."""
+    docker.docker.system.info.return_value = {
+        "ServerVersion": "2.0.0",
+        "Driver": "example",
+        "LoggingDriver": "example",
+        "CgroupVersion": "2",
+    }
+    os.environ[ENV_SUPERVISOR_CPU_RT] = rt_env
+    with patch("supervisor.docker.manager.Path.exists", return_value=rt_file_exists):
+        await docker.post_init()
+    assert docker.info.version == AwesomeVersion("2.0.0")
+    assert docker.info.storage == "example"
+    assert docker.info.logging == "example"
+    assert docker.info.cgroup == "2"
+    assert docker.info.support_cpu_realtime is rt_supported

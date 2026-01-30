@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
@@ -21,12 +22,10 @@ from aiodocker.images import DockerImages
 from aiodocker.stream import Stream
 from aiodocker.types import JSONObject
 from aiohttp import ClientTimeout, UnixConnector
-import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
 from docker.client import DockerClient
 from docker.models.containers import Container
-from docker.types.daemon import CancellableStream
 import requests
 
 from ..const import (
@@ -92,18 +91,18 @@ class CommandReturn:
     log: list[str]
 
 
-@attr.s(frozen=True)
+@dataclass(slots=True, frozen=True)
 class DockerInfo:
     """Return docker information."""
 
-    version: AwesomeVersion = attr.ib()
-    storage: str = attr.ib()
-    logging: str = attr.ib()
-    cgroup: str = attr.ib()
-    support_cpu_realtime: bool = attr.ib()
+    version: AwesomeVersion
+    storage: str
+    logging: str
+    cgroup: str
+    support_cpu_realtime: bool
 
     @staticmethod
-    async def new(data: dict[str, Any]) -> DockerInfo:
+    async def new(data: Mapping[str, Any]) -> DockerInfo:
         """Create a object from docker info."""
         # Check if CONFIG_RT_GROUP_SCHED is loaded (blocking I/O in executor)
         cpu_rt_file_exists = await asyncio.get_running_loop().run_in_executor(
@@ -280,7 +279,7 @@ class DockerAPI(CoreSysAttributes):
         self._network: DockerNetwork | None = None
         self._info: DockerInfo | None = None
         self.config: DockerConfig = DockerConfig()
-        self._monitor: DockerMonitor = DockerMonitor(coresys)
+        self._monitor: DockerMonitor = DockerMonitor(coresys, self.docker)
         self._manifest_fetcher: RegistryManifestFetcher = RegistryManifestFetcher(
             coresys
         )
@@ -296,7 +295,7 @@ class DockerAPI(CoreSysAttributes):
                 timeout=900,
             ),
         )
-        self._info = await DockerInfo.new(self.dockerpy.info())
+        self._info = await DockerInfo.new(await self.docker.system.info())
         await self.config.read_data()
         self._network = await DockerNetwork(self.docker).post_init(
             self.config.enable_ipv6, self.config.mtu
@@ -333,11 +332,6 @@ class DockerAPI(CoreSysAttributes):
         if not self._info:
             raise RuntimeError("Docker Info not initialized!")
         return self._info
-
-    @property
-    def events(self) -> CancellableStream:
-        """Return docker event stream."""
-        return self.dockerpy.events(decode=True)
 
     @property
     def monitor(self) -> DockerMonitor:
