@@ -1,0 +1,2 @@
+export const __rspack_esm_id="8975";export const __rspack_esm_ids=["8975"];export const __webpack_modules__={46306(e,n,o){o.r(n);var t=o(9081);"undefined"==typeof Intl&&("undefined"!=typeof window?Object.defineProperty(window,"Intl",{value:{}}):"undefined"!=typeof global&&Object.defineProperty(global,"Intl",{value:{}})),Object.defineProperty(Intl,"getCanonicalLocales",{value:t.os,writable:!0,enumerable:!1,configurable:!0})}};
+//# sourceMappingURL=8975.79bcb169e5374f14.js.map
