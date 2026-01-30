@@ -446,6 +446,6 @@ async def test_supervisor_api_stats_failure(
     assert body["error_key"] == "supervisor_unknown_error"
     assert body["extra_fields"] == {"logs_command": "ha supervisor logs"}
     assert (
-        "Could not inspect container 'hassio_supervisor': DockerError(500, 'fail')"
+        "Could not inspect container 'hassio_supervisor': [500] {'message': 'fail'}"
         in caplog.text
     )
