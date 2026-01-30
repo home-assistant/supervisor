@@ -25,7 +25,6 @@ from aiohttp import ClientTimeout, UnixConnector
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
 from docker.client import DockerClient
-from docker.models.containers import Container
 import requests
 
 from ..const import (
@@ -895,27 +894,24 @@ class DockerAPI(CoreSysAttributes):
         except aiodocker.DockerError as err:
             raise DockerError(f"Can't restart {name}: {err}", _LOGGER.warning) from err
 
-    def container_logs(self, name: str, tail: int = 100) -> bytes:
-        """Return Docker logs of container.
-
-        Must be run in executor.
-        """
-        # Remains on docker py for now because aiodocker doesn't seem to have a way to get
-        # the raw binary of the logs. Only provides list[str] or AsyncIterator[str] options.
+    async def container_logs(self, name: str, tail: int = 100) -> list[str]:
+        """Return Docker logs of container."""
         try:
-            docker_container: Container = self.dockerpy.containers.get(name)
-        except docker_errors.NotFound:
-            raise DockerNotFound(
-                f"Container {name} not found for logs", _LOGGER.warning
-            ) from None
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            container = await self.containers.get(name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                raise DockerNotFound(
+                    f"Container {name} not found for logs", _LOGGER.warning
+                ) from None
             raise DockerError(
                 f"Could not get container {name} for logs: {err!s}", _LOGGER.error
             ) from err
 
         try:
-            return docker_container.logs(tail=tail, stdout=True, stderr=True)
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            return await container.log(
+                follow=False, stdout=True, stderr=True, tail=tail
+            )
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't grep logs from {name}: {err}", _LOGGER.warning
             ) from err

@@ -63,7 +63,6 @@ from supervisor.utils.dt import utcnow
 from .common import (
     AsyncIterator,
     MockResponse,
-    load_binary_fixture,
     load_fixture,
     load_json_fixture,
     mock_dbus_services,
@@ -860,12 +859,11 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
 
 
 @pytest.fixture
-async def docker_logs(docker: DockerAPI, supervisor_name) -> MagicMock:
+async def docker_logs(container: DockerContainer, supervisor_name) -> AsyncMock:
     """Mock log output for a container from docker."""
-    container_mock = MagicMock()
-    container_mock.logs.return_value = load_binary_fixture("logs_docker_container.txt")
-    docker.dockerpy.containers.get.return_value = container_mock
-    yield container_mock.logs
+    logs = load_fixture("logs_docker_container.txt")
+    container.log.return_value = logs.split("/n")
+    yield container.log
 
 
 @pytest.fixture

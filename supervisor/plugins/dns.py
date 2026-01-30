@@ -368,7 +368,7 @@ class PluginDns(PluginBase):
         log = await self.instance.logs()
 
         # Check the log for loop plugin output
-        if b"plugin/loop: Loop" in log:
+        if any("plugin/loop: Loop" in line for line in log):
             _LOGGER.error("Detected a DNS loop in local Network!")
             self._loop = True
             self.sys_resolution.create_issue(
