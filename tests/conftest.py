@@ -12,6 +12,7 @@ from uuid import uuid4
 from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.docker import DockerImages
 from aiodocker.execs import Exec
+from aiodocker.networks import DockerNetwork, DockerNetworks
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -125,26 +126,53 @@ async def docker() -> DockerAPI:
         "State": {"ExitCode": 0, "Status": "stopped", "Running": False},
         "Image": "abc123",
     }
+    network_inspect = {
+        "Name": "hassio",
+        "Id": "hassio123",
+        "EnableIPv4": True,
+        "EnableIPv6": False,
+        "IPAM": {
+            "Driver": "default",
+            "Options": None,
+            "Config": [
+                {
+                    "Subnet": "172.30.32.0/23",
+                    "IPRange": "172.30.33.0/24",
+                    "Gateway": "172.30.32.1",
+                }
+            ],
+        },
+        "Containers": {},
+    }
 
     with (
         patch("supervisor.docker.manager.DockerClient", return_value=MagicMock()),
-        patch("supervisor.docker.manager.DockerAPI.api", return_value=MagicMock()),
         patch("supervisor.docker.manager.DockerAPI.info", return_value=MagicMock()),
         patch("supervisor.docker.manager.DockerAPI.unload"),
-        patch("supervisor.docker.manager.aiodocker.Docker", return_value=MagicMock()),
+        patch(
+            "supervisor.docker.manager.aiodocker.Docker",
+            return_value=(
+                docker_client := MagicMock(
+                    networks=MagicMock(spec=DockerNetworks),
+                    images=(docker_images := MagicMock(spec=DockerImages)),
+                    containers=(docker_containers := MagicMock(spec=DockerContainers)),
+                )
+            ),
+        ),
         patch(
             "supervisor.docker.manager.DockerAPI.images",
-            new=PropertyMock(
-                return_value=(docker_images := MagicMock(spec=DockerImages))
-            ),
+            new=PropertyMock(return_value=docker_images),
         ),
         patch(
             "supervisor.docker.manager.DockerAPI.containers",
-            new=PropertyMock(
-                return_value=(docker_containers := MagicMock(spec=DockerContainers))
-            ),
+            new=PropertyMock(return_value=docker_containers),
         ),
     ):
+        docker_client.networks.get.return_value = docker_network = MagicMock(
+            spec=DockerNetwork
+        )
+        docker_network.show.return_value = network_inspect
+
         docker_obj = await DockerAPI(MagicMock()).post_init()
         docker_obj.config._data = {"registries": {}}
         with patch("supervisor.docker.monitor.DockerMonitor.load"):

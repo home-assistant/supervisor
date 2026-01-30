@@ -13,7 +13,7 @@ import logging
 import os
 from pathlib import Path, PurePath
 import re
-from typing import Any, Final, Literal, Self, cast
+from typing import Any, Final, Self, cast
 
 import aiodocker
 from aiodocker.containers import DockerContainer, DockerContainers
@@ -23,10 +23,8 @@ from aiohttp import ClientTimeout, UnixConnector
 import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
-from docker.api.client import APIClient
 from docker.client import DockerClient
 from docker.models.containers import Container
-from docker.models.networks import Network
 from docker.types.daemon import CancellableStream
 import requests
 
@@ -291,7 +289,7 @@ class DockerAPI(CoreSysAttributes):
         )
         self._info = await DockerInfo.new(self.dockerpy.info())
         await self.config.read_data()
-        self._network = await DockerNetwork(self.dockerpy).post_init(
+        self._network = await DockerNetwork(self.docker).post_init(
             self.config.enable_ipv6, self.config.mtu
         )
         return self
@@ -319,11 +317,6 @@ class DockerAPI(CoreSysAttributes):
     def containers(self) -> DockerContainers:
         """Return API containers."""
         return self.docker.containers
-
-    @property
-    def api(self) -> APIClient:
-        """Return API containers."""
-        return self.dockerpy.api
 
     @property
     def info(self) -> DockerInfo:
@@ -553,13 +546,13 @@ class DockerAPI(CoreSysAttributes):
         if cidfile_path:
             await self.sys_run_in_executor(setup_cidfile, cidfile_path)
 
-        # Setup network
-        def setup_network(network_mode: Literal["host"] | None) -> None:
+        # Setup network for host and default modes
+        if not networking_config and network_mode in ("host", None):
             # Attach network
             if not network_mode:
                 alias = [hostname] if hostname else None
                 try:
-                    self.network.attach_container(
+                    await self.network.attach_container(
                         container.id, name, alias=alias, ipv4=ipv4
                     )
                 except DockerError:
@@ -568,21 +561,32 @@ class DockerAPI(CoreSysAttributes):
                     )
                 else:
                     with suppress(DockerError):
-                        self.network.detach_default_bridge(container.id, name)
+                        await self.network.detach_default_bridge(container.id, name)
             else:
-                host_network: Network = self.dockerpy.networks.get(DOCKER_NETWORK_HOST)
+                try:
+                    host_network = await self.docker.networks.get(DOCKER_NETWORK_HOST)
+                    host_network_meta = await host_network.show()
+                except aiodocker.DockerError as err:
+                    raise DockerError(
+                        f"Can't get host network information from Docker: {err!s}",
+                        _LOGGER.error,
+                    ) from err
 
                 # Check if container is register on host
                 # https://github.com/moby/moby/issues/23302
                 if name and name in (
                     val.get("Name")
-                    for val in host_network.attrs.get("Containers", {}).values()
+                    for val in host_network_meta.get("Containers", {}).values()
                 ):
-                    with suppress(docker_errors.NotFound):
-                        host_network.disconnect(name, force=True)
-
-        if not networking_config and network_mode in ("host", None):
-            await self.sys_run_in_executor(setup_network, network_mode)
+                    try:
+                        await host_network.disconnect(
+                            {"Container": name, "Force": True}
+                        )
+                    except aiodocker.DockerError as err:
+                        if err.status != HTTPStatus.NOT_FOUND:
+                            raise DockerError(
+                                f"Can't disconnect container {name} from host network: {err!s}"
+                            ) from err
 
         # Run container
         try:
@@ -740,13 +744,13 @@ class DockerAPI(CoreSysAttributes):
         _LOGGER.info("Fix stale container on hassio network")
         try:
             await self.prune_networks(DOCKER_NETWORK)
-        except docker_errors.APIError as err:
+        except aiodocker.DockerError as err:
             _LOGGER.warning("Error for networks hassio prune: %s", err)
 
         _LOGGER.info("Fix stale container on host network")
         try:
             await self.prune_networks(DOCKER_NETWORK_HOST)
-        except docker_errors.APIError as err:
+        except aiodocker.DockerError as err:
             _LOGGER.warning("Error for networks host prune: %s", err)
 
     async def prune_networks(self, network_name: str) -> None:
@@ -754,12 +758,10 @@ class DockerAPI(CoreSysAttributes):
 
         Fix: https://github.com/moby/moby/issues/23302
         """
-        network: Network = await self.sys_run_in_executor(
-            self.dockerpy.networks.get, network_name
-        )
-        corrupt_containers: list[str] = []
+        network = await self.docker.networks.get(network_name)
+        network_meta = await network.show()
 
-        for cid, data in network.attrs.get("Containers", {}).items():
+        for cid, data in network_meta.get("Containers", {}).items():
             try:
                 await self.containers.get(cid)
                 continue
@@ -776,14 +778,10 @@ class DockerAPI(CoreSysAttributes):
                 _LOGGER.debug(
                     "Docker network %s is corrupt on container: %s", network_name, cid
                 )
-                corrupt_containers.append(data.get("Name", cid))
-
-        def disconnect_corrupt_containers():
-            for name in corrupt_containers:
-                with suppress(docker_errors.DockerException, requests.RequestException):
-                    network.disconnect(name, force=True)
-
-        await self.sys_run_in_executor(disconnect_corrupt_containers)
+                with suppress(aiodocker.DockerError):
+                    await network.disconnect(
+                        {"Container": data.get("Name", cid), "Force": True}
+                    )
 
     async def container_is_initialized(
         self, name: str, image: str, version: AwesomeVersion
@@ -1020,7 +1018,7 @@ class DockerAPI(CoreSysAttributes):
     def export_image(self, image: str, version: AwesomeVersion, tar_file: Path) -> None:
         """Export current images into a tar file."""
         try:
-            docker_image = self.api.get_image(f"{image}:{version}")
+            docker_image = self.dockerpy.api.get_image(f"{image}:{version}")
         except (docker_errors.DockerException, requests.RequestException) as err:
             raise DockerError(
                 f"Can't fetch image {image}: {err}", _LOGGER.error
