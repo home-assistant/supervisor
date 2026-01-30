@@ -391,6 +391,21 @@ class DockerInterface(JobGroup, ABC):
                     # Send all these to sentry. Missing a few progress updates
                     # shouldn't matter to users but matters to us
                     await async_capture_exception(err)
+                except ValueError as err:
+                    # Catch "Cannot update a job that is done" errors which occur under
+                    # some not clearly understood combination of events. Log with context
+                    # and send to Sentry to track frequency and gather debugging info.
+                    if "Cannot update a job that is done" in str(err):
+                        _LOGGER.warning(
+                            "Unexpected job state during pull: %s (layer: %s, status: %s, progress: %s)",
+                            err,
+                            reference.id,
+                            reference.status,
+                            reference.progress,
+                        )
+                        await async_capture_exception(err)
+                    else:
+                        raise
 
             listener = self.sys_bus.register_event(
                 BusEvent.DOCKER_IMAGE_PULL_UPDATE, process_pull_image_log
