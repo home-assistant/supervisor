@@ -412,6 +412,8 @@ ROLE_ADMIN = "admin"
 
 ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
 
+OBSERVER_PORT = 4357
+
 
 class AddonBootConfig(StrEnum):
     """Boot mode config for the add-on."""
