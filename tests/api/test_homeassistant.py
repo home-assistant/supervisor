@@ -306,6 +306,8 @@ async def test_api_progress_updates_home_assistant_update(
         and evt.args[0]["data"]["event"] == WSEvent.JOB
         and evt.args[0]["data"]["data"]["name"] == "home_assistant_core_update"
     ]
+    # Count-based progress: 2 layers need pulling (each worth 50%)
+    # Layers that already exist are excluded from progress calculation
     assert events[:5] == [
         {
             "stage": None,
@@ -319,34 +321,34 @@ async def test_api_progress_updates_home_assistant_update(
         },
         {
             "stage": None,
-            "progress": 0.1,
+            "progress": 9.2,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 1.7,
+            "progress": 25.6,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 4.0,
+            "progress": 35.4,
             "done": False,
         },
     ]
     assert events[-5:] == [
         {
             "stage": None,
+            "progress": 95.5,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 96.9,
+            "done": False,
+        },
+        {
+            "stage": None,
             "progress": 98.2,
-            "done": False,
-        },
-        {
-            "stage": None,
-            "progress": 98.3,
-            "done": False,
-        },
-        {
-            "stage": None,
-            "progress": 99.3,
             "done": False,
         },
         {
