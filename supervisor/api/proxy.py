@@ -156,7 +156,11 @@ class APIProxy(CoreSysAttributes):
                     request,
                     client,
                     content_type=client.content_type,
-                    headers_to_copy=("Cache-Control", "X-Accel-Buffering", "Mcp-Session-Id"),
+                    headers_to_copy=(
+                        "Cache-Control",
+                        "X-Accel-Buffering",
+                        "Mcp-Session-Id",
+                    ),
                 )
 
             # Non-streaming response

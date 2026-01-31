@@ -9,6 +9,7 @@ import logging
 from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
+import aiohttp
 from aiohttp import ClientWebSocketResponse, WSCloseCode
 from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
@@ -340,3 +341,43 @@ async def test_api_proxy_streaming_response(
         assert b"data: event1\n\n" in content
         assert b"data: event2\n\n" in content
         assert b"data: event3\n\n" in content
+
+
+async def test_api_proxy_streaming_response_client_payload_error(
+    api_client: TestClient,
+    install_addon_example: Addon,
+):
+    """Test that client payload errors during streaming are handled gracefully."""
+    install_addon_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_addon_example.data["homeassistant_api"] = True
+
+    async def mock_content_iter_error():
+        yield b"data: event1\n\n"
+        raise aiohttp.ClientPayloadError("boom")
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "text/event-stream"
+        mock_response.headers = {
+            "Cache-Control": "no-cache",
+            "Mcp-Session-Id": "session-789",
+        }
+        mock_response.content = mock_content_iter_error()
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        response = await api_client.get(
+            "/core/api/mcp",
+            headers={
+                "Authorization": "Bearer abc123",
+                "Accept": "text/event-stream",
+            },
+        )
+
+        assert response.status == 200
+        assert response.content_type == "text/event-stream"
+        assert response.headers.get("X-Accel-Buffering") == "no"
+        assert response.headers.get("Mcp-Session-Id") == "session-789"
+
+        content = await response.read()
+        assert b"data: event1\n\n" in content
