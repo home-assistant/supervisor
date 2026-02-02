@@ -240,14 +240,39 @@ class DockerInterface(JobGroup, ABC):
             if event.job_id != current_job.uuid:
                 return
 
-            # Process event through progress tracker
-            pull_progress.process_event(event)
+            try:
+                # Process event through progress tracker
+                pull_progress.process_event(event)
 
-            # Update job if progress changed significantly (>= 1%)
-            should_update, progress = pull_progress.should_update_job()
-            if should_update:
-                stage = pull_progress.get_stage()
-                current_job.update(progress=progress, stage=stage)
+                # Update job if progress changed significantly (>= 1%)
+                should_update, progress = pull_progress.should_update_job()
+                if should_update:
+                    stage = pull_progress.get_stage()
+                    current_job.update(progress=progress, stage=stage)
+            except ValueError as err:
+                # Catch ValueError from progress tracking (e.g. "Cannot update a job
+                # that is done") which can occur under rare event combinations.
+                # Log with context and send to Sentry. Continue the pull anyway as
+                # progress updates are informational only.
+                _LOGGER.warning(
+                    "ValueError during pull progress update: %s (layer: %s, status: %s, progress: %s)",
+                    err,
+                    event.id,
+                    event.status,
+                    event.progress,
+                )
+                await async_capture_exception(err)
+            except Exception as err:  # pylint: disable=broad-except
+                # Catch any other unexpected errors in progress tracking to prevent
+                # pull from failing. Progress updates are informational - the pull
+                # itself should continue. Send to Sentry for debugging.
+                _LOGGER.warning(
+                    "Error updating pull progress: %s (layer: %s, status: %s)",
+                    err,
+                    event.id,
+                    event.status,
+                )
+                await async_capture_exception(err)
 
         listener = self.sys_bus.register_event(
             BusEvent.DOCKER_IMAGE_PULL_UPDATE, process_pull_event
