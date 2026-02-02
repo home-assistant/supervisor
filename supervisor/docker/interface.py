@@ -9,15 +9,15 @@ from contextlib import suppress
 from http import HTTPStatus
 import logging
 from time import time
-from typing import Any, cast
+from typing import Any
 from uuid import uuid4
 
 import aiodocker
+import aiohttp
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
 import requests
 
-from ..bus import EventListener
 from ..const import (
     ATTR_PASSWORD,
     ATTR_REGISTRY,
@@ -33,25 +33,18 @@ from ..exceptions import (
     DockerError,
     DockerHubRateLimitExceeded,
     DockerJobError,
-    DockerLogOutOfOrder,
     DockerNotFound,
     DockerRequestError,
 )
-from ..jobs import SupervisorJob
 from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.sentry import async_capture_exception
-from .const import (
-    DOCKER_HUB,
-    DOCKER_HUB_LEGACY,
-    ContainerState,
-    PullImageLayerStage,
-    RestartPolicy,
-)
+from .const import DOCKER_HUB, DOCKER_HUB_LEGACY, ContainerState, RestartPolicy
 from .manager import CommandReturn, ExecReturn, PullLogEntry
 from .monitor import DockerContainerStateEvent
+from .pull_progress import ImagePullProgress
 from .stats import DockerStats
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -203,159 +196,6 @@ class DockerInterface(JobGroup, ABC):
 
         return credentials
 
-    def _process_pull_image_log(  # noqa: C901
-        self, install_job_id: str, reference: PullLogEntry
-    ) -> None:
-        """Process events fired from a docker while pulling an image, filtered to a given job id."""
-        if (
-            reference.job_id != install_job_id
-            or not reference.id
-            or not reference.status
-            or not (stage := PullImageLayerStage.from_status(reference.status))
-        ):
-            return
-
-        # Pulling FS Layer is our marker for a layer that needs to be downloaded and extracted. Otherwise it already exists and we can ignore
-        job: SupervisorJob | None = None
-        if stage == PullImageLayerStage.PULLING_FS_LAYER:
-            job = self.sys_jobs.new_job(
-                name="Pulling container image layer",
-                initial_stage=stage.status,
-                reference=reference.id,
-                parent_id=install_job_id,
-                internal=True,
-            )
-            job.done = False
-            return
-
-        # Find our sub job to update details of
-        for j in self.sys_jobs.jobs:
-            if j.parent_id == install_job_id and j.reference == reference.id:
-                job = j
-                break
-
-        # There should no longer be any real risk of logs out of order anymore.
-        # However tests with very small images have shown that sometimes Docker
-        # skips stages in log. So keeping this one as a safety check on null job
-        if not job:
-            raise DockerLogOutOfOrder(
-                f"Received pull image log with status {reference.status} for image id {reference.id} and parent job {install_job_id} but could not find a matching job, skipping",
-                _LOGGER.debug,
-            )
-
-        # For progress calculation we assume downloading is 70% of time, extracting is 30% and others stages negligible
-        progress = job.progress
-        match stage:
-            case PullImageLayerStage.DOWNLOADING | PullImageLayerStage.EXTRACTING:
-                if (
-                    reference.progress_detail
-                    and reference.progress_detail.current
-                    and reference.progress_detail.total
-                ):
-                    progress = (
-                        reference.progress_detail.current
-                        / reference.progress_detail.total
-                    )
-                    if stage == PullImageLayerStage.DOWNLOADING:
-                        progress = 70 * progress
-                    else:
-                        progress = 70 + 30 * progress
-            case (
-                PullImageLayerStage.VERIFYING_CHECKSUM
-                | PullImageLayerStage.DOWNLOAD_COMPLETE
-            ):
-                progress = 70
-            case PullImageLayerStage.PULL_COMPLETE:
-                progress = 100
-            case PullImageLayerStage.RETRYING_DOWNLOAD:
-                progress = 0
-
-        # No real risk of getting things out of order in current implementation
-        # but keeping this one in case another change to these trips us up.
-        if stage != PullImageLayerStage.RETRYING_DOWNLOAD and progress < job.progress:
-            raise DockerLogOutOfOrder(
-                f"Received pull image log with status {reference.status} for job {job.uuid} that implied progress was {progress} but current progress is {job.progress}, skipping",
-                _LOGGER.debug,
-            )
-
-        # Our filters have all passed. Time to update the job
-        # Only downloading and extracting have progress details. Use that to set extra
-        # We'll leave it around on later stages as the total bytes may be useful after that stage
-        # Enforce range to prevent float drift error
-        progress = max(0, min(progress, 100))
-        if (
-            stage in {PullImageLayerStage.DOWNLOADING, PullImageLayerStage.EXTRACTING}
-            and reference.progress_detail
-            and reference.progress_detail.current is not None
-            and reference.progress_detail.total is not None
-        ):
-            job.update(
-                progress=progress,
-                stage=stage.status,
-                extra={
-                    "current": reference.progress_detail.current,
-                    "total": reference.progress_detail.total,
-                },
-            )
-        else:
-            # If we reach DOWNLOAD_COMPLETE without ever having set extra (small layers that skip
-            # the downloading phase), set a minimal extra so aggregate progress calculation can proceed
-            extra = job.extra
-            if stage == PullImageLayerStage.DOWNLOAD_COMPLETE and not job.extra:
-                extra = {"current": 1, "total": 1}
-
-            job.update(
-                progress=progress,
-                stage=stage.status,
-                done=stage == PullImageLayerStage.PULL_COMPLETE,
-                extra=None if stage == PullImageLayerStage.RETRYING_DOWNLOAD else extra,
-            )
-
-        # Once we have received a progress update for every child job, start to set status of the main one
-        install_job = self.sys_jobs.get_job(install_job_id)
-        layer_jobs = [
-            job
-            for job in self.sys_jobs.jobs
-            if job.parent_id == install_job.uuid
-            and job.name == "Pulling container image layer"
-        ]
-
-        # First set the total bytes to be downloaded/extracted on the main job
-        if not install_job.extra:
-            total = 0
-            for job in layer_jobs:
-                if not job.extra:
-                    return
-                total += job.extra["total"]
-            install_job.extra = {"total": total}
-        else:
-            total = install_job.extra["total"]
-
-        # Then determine total progress based on progress of each sub-job, factoring in size of each compared to total
-        progress = 0.0
-        stage = PullImageLayerStage.PULL_COMPLETE
-        for job in layer_jobs:
-            if not job.extra or not job.extra.get("total"):
-                return
-            progress += job.progress * (job.extra["total"] / total)
-            job_stage = PullImageLayerStage.from_status(cast(str, job.stage))
-
-            if job_stage < PullImageLayerStage.EXTRACTING:
-                stage = PullImageLayerStage.DOWNLOADING
-            elif (
-                stage == PullImageLayerStage.PULL_COMPLETE
-                and job_stage < PullImageLayerStage.PULL_COMPLETE
-            ):
-                stage = PullImageLayerStage.EXTRACTING
-
-        # Ensure progress is 100 at this point to prevent float drift
-        if stage == PullImageLayerStage.PULL_COMPLETE:
-            progress = 100
-
-        # To reduce noise, limit updates to when result has changed by an entire percent or when stage changed
-        if stage != install_job.stage or progress >= install_job.progress + 1:
-            install_job.update(stage=stage.status, progress=max(0, min(progress, 100)))
-
     @Job(
         name="docker_interface_install",
         on_condition=DockerJobError,
@@ -375,48 +215,55 @@ class DockerInterface(JobGroup, ABC):
             raise ValueError("Cannot pull without an image!")
 
         image_arch = arch or self.sys_arch.supervisor
-        listener: EventListener | None = None
+        platform = MAP_ARCH[image_arch]
+        pull_progress = ImagePullProgress()
+        current_job = self.sys_jobs.current
+
+        # Try to fetch manifest for accurate size-based progress
+        # This is optional - if it fails, we fall back to count-based progress
+        try:
+            manifest = await self.sys_docker.manifest_fetcher.get_manifest(
+                image, str(version), platform=platform
+            )
+            if manifest:
+                pull_progress.set_manifest(manifest)
+                _LOGGER.debug(
+                    "Using manifest for progress: %d layers, %d bytes",
+                    manifest.layer_count,
+                    manifest.total_size,
+                )
+        except (aiohttp.ClientError, TimeoutError) as err:
+            _LOGGER.warning("Could not fetch manifest for progress: %s", err)
+
+        async def process_pull_event(event: PullLogEntry) -> None:
+            """Process pull event and update job progress."""
+            if event.job_id != current_job.uuid:
+                return
+
+            # Process event through progress tracker
+            pull_progress.process_event(event)
+
+            # Update job if progress changed significantly (>= 1%)
+            should_update, progress = pull_progress.should_update_job()
+            if should_update:
+                stage = pull_progress.get_stage()
+                current_job.update(progress=progress, stage=stage)
+
+        listener = self.sys_bus.register_event(
+            BusEvent.DOCKER_IMAGE_PULL_UPDATE, process_pull_event
+        )
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
             # Get credentials for private registries to pass to aiodocker
             credentials = self._get_credentials(image) or None
 
-            curr_job_id = self.sys_jobs.current.uuid
-
-            async def process_pull_image_log(reference: PullLogEntry) -> None:
-                try:
-                    self._process_pull_image_log(curr_job_id, reference)
-                except DockerLogOutOfOrder as err:
-                    # Send all these to sentry. Missing a few progress updates
-                    # shouldn't matter to users but matters to us
-                    await async_capture_exception(err)
-                except ValueError as err:
-                    # Catch "Cannot update a job that is done" errors which occur under
-                    # some not clearly understood combination of events. Log with context
-                    # and send to Sentry to track frequency and gather debugging info.
-                    if "Cannot update a job that is done" in str(err):
-                        _LOGGER.warning(
-                            "Unexpected job state during pull: %s (layer: %s, status: %s, progress: %s)",
-                            err,
-                            reference.id,
-                            reference.status,
-                            reference.progress,
-                        )
-                        await async_capture_exception(err)
-                    else:
-                        raise
-
-            listener = self.sys_bus.register_event(
-                BusEvent.DOCKER_IMAGE_PULL_UPDATE, process_pull_image_log
-            )
-
             # Pull new image, passing credentials to aiodocker
             docker_image = await self.sys_docker.pull_image(
-                self.sys_jobs.current.uuid,
+                current_job.uuid,
                 image,
                 str(version),
-                platform=MAP_ARCH[image_arch],
+                platform=platform,
                 auth=credentials,
             )
 
@@ -441,8 +288,7 @@ class DockerInterface(JobGroup, ABC):
                 f"Can't install {image}:{version!s}: {err}", _LOGGER.error
             ) from err
         finally:
-            if listener:
-                self.sys_bus.remove_listener(listener)
+            self.sys_bus.remove_listener(listener)
 
         self._meta = docker_image
 

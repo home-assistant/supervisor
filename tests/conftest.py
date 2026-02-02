@@ -202,6 +202,9 @@ async def docker() -> DockerAPI:
         docker_obj.info.storage = "overlay2"
         docker_obj.info.version = AwesomeVersion("1.0.0")
 
+        # Mock manifest fetcher to return None (falls back to count-based progress)
+        docker_obj._manifest_fetcher.get_manifest = AsyncMock(return_value=None)
+
         yield docker_obj
 
 
