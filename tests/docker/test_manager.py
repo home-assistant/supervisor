@@ -7,7 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiodocker
 from aiodocker.containers import DockerContainer
-from docker.errors import APIError, NotFound
+from aiodocker.networks import DockerNetwork
+from docker.errors import APIError
 import pytest
 
 from supervisor.const import DNS_SUFFIX
@@ -131,7 +132,7 @@ async def test_run_command_inspect_error_propagates(docker: DockerAPI):
 async def test_run_command_docker_exception(docker: DockerAPI):
     """Test command execution when Docker raises an exception."""
     # Mock docker containers.run to raise aiodocker.DockerError
-    docker.containers.create.side_effect = aiodocker.DockerError(
+    docker.containers.create.side_effect = err = aiodocker.DockerError(
         HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "Docker error"}
     )
 
@@ -139,7 +140,7 @@ async def test_run_command_docker_exception(docker: DockerAPI):
     with pytest.raises(
         DockerError,
         match=re.escape(
-            "Can't execute command: Can't create container from alpine:latest: DockerError(500, 'Docker error')"
+            f"Can't execute command: Can't create container from alpine:latest: {str(err)}"
         ),
     ):
         await docker.run_command(image="alpine", command="test")
@@ -335,7 +336,7 @@ async def test_stop_container_with_cidfile_cleanup(
     await docker.stop_container(timeout=10, remove_container=True, name=container_name)
 
     # Verify container operations
-    container.stop.assert_called_once_with(timeout=10)
+    container.stop.assert_called_once_with(t=10)
     container.delete.assert_called_once_with(force=True, v=True)
 
     assert not cidfile_path.exists()
@@ -356,7 +357,7 @@ async def test_stop_container_without_removal_no_cidfile_cleanup(
         await docker.stop_container(container_name, timeout=10, remove_container=False)
 
         # Verify container operations
-        container.stop.assert_called_once_with(timeout=10)
+        container.stop.assert_called_once_with(t=10)
         container.delete.assert_not_called()
 
         # Verify cidfile cleanup was NOT called
@@ -389,7 +390,7 @@ async def test_cidfile_cleanup_handles_oserror(
         await docker.stop_container(container_name, timeout=10, remove_container=True)
 
         # Verify container operations completed
-        container.stop.assert_called_once_with(timeout=10)
+        container.stop.assert_called_once_with(t=10)
         container.delete.assert_called_once_with(force=True, v=True)
 
         # Verify cidfile cleanup was attempted
@@ -434,18 +435,18 @@ async def test_repair(
     coresys: CoreSys, caplog: pytest.LogCaptureFixture, container: DockerContainer
 ):
     """Test repair API."""
-    coresys.docker.dockerpy.networks.get.side_effect = [
-        hassio := MagicMock(
-            attrs={
-                "Containers": {
-                    "good": {"Name": "good"},
-                    "corrupt": {"Name": "corrupt"},
-                    "fail": {"Name": "fail"},
-                }
-            }
-        ),
-        host := MagicMock(attrs={"Containers": {}}),
+    coresys.docker.docker.networks.get.side_effect = [
+        hassio := MagicMock(spec=DockerNetwork),
+        host := MagicMock(spec=DockerNetwork),
     ]
+    hassio.show.return_value = {
+        "Containers": {
+            "good": {"Name": "good"},
+            "corrupt": {"Name": "corrupt"},
+            "fail": {"Name": "fail"},
+        }
+    }
+    host.show.return_value = {"Containers": {}}
     coresys.docker.containers.get.side_effect = [
         container,
         aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "corrupt"}),
@@ -461,7 +462,7 @@ async def test_repair(
     coresys.docker.dockerpy.api.prune_builds.assert_called_once()
     coresys.docker.dockerpy.api.prune_volumes.assert_called_once()
     coresys.docker.dockerpy.api.prune_networks.assert_called_once()
-    hassio.disconnect.assert_called_once_with("corrupt", force=True)
+    hassio.disconnect.assert_called_once_with({"Container": "corrupt", "Force": True})
     host.disconnect.assert_not_called()
     assert "Docker fatal error on container fail on hassio" in caplog.text
 
@@ -473,7 +474,9 @@ async def test_repair_failures(coresys: CoreSys, caplog: pytest.LogCaptureFixtur
     coresys.docker.dockerpy.api.prune_builds.side_effect = APIError("fail")
     coresys.docker.dockerpy.api.prune_volumes.side_effect = APIError("fail")
     coresys.docker.dockerpy.api.prune_networks.side_effect = APIError("fail")
-    coresys.docker.dockerpy.networks.get.side_effect = NotFound("missing")
+    coresys.docker.docker.networks.get.side_effect = err = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
 
     await coresys.docker.repair()
 
@@ -482,8 +485,8 @@ async def test_repair_failures(coresys: CoreSys, caplog: pytest.LogCaptureFixtur
     assert "Error for builds prune: fail" in caplog.text
     assert "Error for volumes prune: fail" in caplog.text
     assert "Error for networks prune: fail" in caplog.text
-    assert "Error for networks hassio prune: missing" in caplog.text
-    assert "Error for networks host prune: missing" in caplog.text
+    assert f"Error for networks hassio prune: {err!s}" in caplog.text
+    assert f"Error for networks host prune: {err!s}" in caplog.text
 
 
 @pytest.mark.parametrize("log_starter", [("Loaded image ID"), ("Loaded image")])

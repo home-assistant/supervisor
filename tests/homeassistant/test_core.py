@@ -296,7 +296,7 @@ async def test_stop(coresys: CoreSys, container: DockerContainer, exists: bool):
 
     container.delete.assert_not_called()
     if exists:
-        container.stop.assert_called_once_with(timeout=260)
+        container.stop.assert_called_once_with(t=260)
     else:
         container.stop.assert_not_called()
 
@@ -307,7 +307,7 @@ async def test_restart(coresys: CoreSys, container: DockerContainer):
         await coresys.homeassistant.core.restart()
         block_till_run.assert_called_once()
 
-    container.restart.assert_called_once_with(timeout=260)
+    container.restart.assert_called_once_with(t=260)
     container.stop.assert_not_called()
 
 

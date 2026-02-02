@@ -15,7 +15,8 @@ from awesomeversion import AwesomeVersion
 
 from supervisor.utils import remove_colors
 
-from ..const import ATTR_HOMEASSISTANT, BusEvent
+from ..bus import EventListener
+from ..const import ATTR_HOMEASSISTANT, BusEvent, CoreState
 from ..coresys import CoreSys
 from ..docker.const import ContainerState
 from ..docker.homeassistant import DockerHomeAssistant
@@ -75,6 +76,7 @@ class HomeAssistantCore(JobGroup):
         super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self._error_state: bool = False
+        self._watchdog_listener: EventListener | None = None
 
     @property
     def error_state(self) -> bool:
@@ -83,8 +85,11 @@ class HomeAssistantCore(JobGroup):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
-        self.sys_bus.register_event(
+        self._watchdog_listener = self.sys_bus.register_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+        )
+        self.sys_bus.register_event(
+            BusEvent.SUPERVISOR_STATE_CHANGE, self._supervisor_state_changed
         )
 
         try:
@@ -557,6 +562,16 @@ class HomeAssistantCore(JobGroup):
 
         if event.state in [ContainerState.FAILED, ContainerState.UNHEALTHY]:
             await self._restart_after_problem(event.state)
+
+    async def _supervisor_state_changed(self, state: CoreState) -> None:
+        """Handle supervisor state changes to disable watchdog during shutdown."""
+        if state in (CoreState.SHUTDOWN, CoreState.STOPPING, CoreState.CLOSE):
+            if self._watchdog_listener:
+                _LOGGER.debug(
+                    "Unregistering Home Assistant watchdog due to system shutdown"
+                )
+                self.sys_bus.remove_listener(self._watchdog_listener)
+                self._watchdog_listener = None
 
     @Job(
         name="home_assistant_core_restart_after_problem",
