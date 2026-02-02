@@ -255,11 +255,11 @@ class DockerInterface(JobGroup, ABC):
                 # Log with context and send to Sentry. Continue the pull anyway as
                 # progress updates are informational only.
                 _LOGGER.warning(
-                    "ValueError during pull progress update: %s (layer: %s, status: %s, progress: %s)",
-                    err,
+                    ""Received an unprocessable update for pull progress (layer: %s, status: %s, progress: %s): %s",
                     event.id,
                     event.status,
                     event.progress,
+                    err,
                 )
                 await async_capture_exception(err)
             except Exception as err:  # pylint: disable=broad-except
@@ -267,10 +267,10 @@ class DockerInterface(JobGroup, ABC):
                 # pull from failing. Progress updates are informational - the pull
                 # itself should continue. Send to Sentry for debugging.
                 _LOGGER.warning(
-                    "Error updating pull progress: %s (layer: %s, status: %s)",
-                    err,
+                    "Error updating pull progress (layer: %s, status: %s): %s",
                     event.id,
                     event.status,
+                    err,
                 )
                 await async_capture_exception(err)
 
