@@ -25,6 +25,7 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
+    AddonPortConflict,
     AddonPrePostBackupCommandReturnedError,
     AddonsJobError,
     AddonUnknownError,
@@ -1002,3 +1003,37 @@ async def test_addon_disable_boot_dismisses_boot_fail(
     install_addon_ssh.boot = AddonBoot.MANUAL
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
+
+
+@pytest.mark.usefixtures(
+    "container", "mock_amd64_arch_supported", "path_extern", "tmp_supervisor_data"
+)
+async def test_addon_start_port_conflict_error(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test port conflict error when trying to start addon."""
+    install_addon_ssh.data["image"] = "test/amd64-addon-ssh"
+    coresys.docker.containers.create.return_value.start.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR,
+        {
+            "message": "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:2222:172.30.33.4:22/tcp: address already in use"
+        },
+    )
+    await install_addon_ssh.load()
+
+    caplog.clear()
+    with (
+        patch.object(Addon, "write_options"),
+        pytest.raises(
+            AddonPortConflict,
+            check=lambda exc: exc.extra_fields == {"name": "local_ssh", "port": 2222},
+        ),
+    ):
+        await install_addon_ssh.start()
+
+    assert (
+        "Cannot start container addon_local_ssh because port 2222 is already in use"
+        in caplog.text
+    )
