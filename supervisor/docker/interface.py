@@ -255,7 +255,7 @@ class DockerInterface(JobGroup, ABC):
                 # Log with context and send to Sentry. Continue the pull anyway as
                 # progress updates are informational only.
                 _LOGGER.warning(
-                    ""Received an unprocessable update for pull progress (layer: %s, status: %s, progress: %s): %s",
+                    "Received an unprocessable update for pull progress (layer: %s, status: %s, progress: %s): %s",
                     event.id,
                     event.status,
                     event.progress,
