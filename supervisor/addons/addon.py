@@ -24,6 +24,8 @@ from securetar import AddFileError, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from supervisor.docker.manager import ExecReturn
+
 from ..bus import EventListener
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -1227,10 +1229,11 @@ class Addon(AddonModel):
 
     async def _backup_command(self, command: str) -> None:
         try:
-            command_return = await self.instance.run_inside(command)
+            command_return: ExecReturn = await self.instance.run_inside(command)
             if command_return.exit_code != 0:
                 _LOGGER.debug(
-                    "Pre-/Post backup command failed with: %s", command_return.output
+                    "Pre-/Post backup command failed with: %s",
+                    command_return.output.decode("utf-8", errors="replace"),
                 )
                 raise AddonPrePostBackupCommandReturnedError(
                     _LOGGER.error, addon=self.slug, exit_code=command_return.exit_code
