@@ -20,7 +20,7 @@ from typing import Any, Final, cast
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from deepmerge import Merger
-from securetar import AddFileError, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -1308,7 +1308,7 @@ class Addon(AddonModel):
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def backup(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
+    async def backup(self, tar_file: SecureTarFile) -> asyncio.Task | None:
         """Backup state of an add-on.
 
         Returns a Task that completes when addon has state 'started' (see start)
@@ -1414,7 +1414,7 @@ class Addon(AddonModel):
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def restore(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
+    async def restore(self, tar_file: SecureTarFile) -> asyncio.Task | None:
         """Restore state of an add-on.
 
         Returns a Task that completes when addon has state 'started' (see start)

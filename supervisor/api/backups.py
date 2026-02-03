@@ -310,7 +310,7 @@ class APIBackups(CoreSysAttributes):
         if background and not backup_task.done():
             return {ATTR_JOB_ID: job_id}
 
-        backup: Backup = await backup_task
+        backup: Backup | None = await backup_task
         if backup:
             return {ATTR_JOB_ID: job_id, ATTR_SLUG: backup.slug}
         raise APIError(
@@ -346,7 +346,7 @@ class APIBackups(CoreSysAttributes):
         if background and not backup_task.done():
             return {ATTR_JOB_ID: job_id}
 
-        backup: Backup = await backup_task
+        backup: Backup | None = await backup_task
         if backup:
             return {ATTR_JOB_ID: job_id, ATTR_SLUG: backup.slug}
         raise APIError(
