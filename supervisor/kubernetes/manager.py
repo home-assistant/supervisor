@@ -158,7 +158,8 @@ class KubernetesAPI(CoreSysAttributes):
         Prefers in-cluster configuration. Falls back to kubeconfig for local dev.
         """
         try:
-            await config.load_incluster_config()
+            # kubernetes-asyncio uses a synchronous in-cluster config loader.
+            config.load_incluster_config()
             _LOGGER.debug("Loaded in-cluster Kubernetes configuration")
             return
         except Exception as err:  # noqa: BLE001
