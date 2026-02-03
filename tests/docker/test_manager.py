@@ -1,7 +1,6 @@
 """Test Docker manager."""
 
 from http import HTTPStatus
-import os
 from pathlib import Path
 import re
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -542,7 +541,11 @@ async def test_import_multiple_images_in_tar(
     [(False, "1", False), (True, "0", False), (True, "1", True)],
 )
 async def test_info(
-    docker: DockerAPI, rt_file_exists: bool, rt_env: str, rt_supported: bool
+    monkeypatch: pytest.MonkeyPatch,
+    docker: DockerAPI,
+    rt_file_exists: bool,
+    rt_env: str,
+    rt_supported: bool,
 ):
     """Test docker system info."""
     docker.docker.system.info.return_value = {
@@ -551,7 +554,7 @@ async def test_info(
         "LoggingDriver": "example",
         "CgroupVersion": "2",
     }
-    os.environ[ENV_SUPERVISOR_CPU_RT] = rt_env
+    monkeypatch.setenv(ENV_SUPERVISOR_CPU_RT, rt_env)
     with patch("supervisor.docker.manager.Path.exists", return_value=rt_file_exists):
         await docker.post_init()
     assert docker.info.version == AwesomeVersion("2.0.0")

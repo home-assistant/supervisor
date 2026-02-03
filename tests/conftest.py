@@ -3,7 +3,6 @@
 import asyncio
 from collections.abc import AsyncGenerator, Generator
 from datetime import datetime
-import os
 from pathlib import Path
 import subprocess
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
@@ -101,16 +100,16 @@ def blockbuster(request: pytest.FixtureRequest) -> BlockBuster | None:
 
 
 @pytest.fixture
-async def path_extern() -> None:
+async def path_extern(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set external path env for tests."""
-    os.environ["SUPERVISOR_SHARE"] = "/mnt/data/supervisor"
+    monkeypatch.setenv("SUPERVISOR_SHARE", "/mnt/data/supervisor")
     yield
 
 
 @pytest.fixture
-async def supervisor_name() -> None:
+async def supervisor_name(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set env for supervisor name."""
-    os.environ["SUPERVISOR_NAME"] = "hassio_supervisor"
+    monkeypatch.setenv("SUPERVISOR_NAME", "hassio_supervisor")
     yield
 
 
@@ -154,7 +153,6 @@ async def docker() -> DockerAPI:
 
     with (
         patch("supervisor.docker.manager.DockerClient", return_value=MagicMock()),
-        patch("supervisor.docker.manager.DockerAPI.unload"),
         patch(
             "supervisor.docker.manager.aiodocker.Docker",
             return_value=(
@@ -862,7 +860,7 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
 async def docker_logs(container: DockerContainer, supervisor_name) -> AsyncMock:
     """Mock log output for a container from docker."""
     logs = load_fixture("logs_docker_container.txt")
-    container.log.return_value = logs.split("/n")
+    container.log.return_value = logs.splitlines()
     yield container.log
 
 

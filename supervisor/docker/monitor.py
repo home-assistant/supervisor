@@ -72,12 +72,21 @@ class DockerMonitor(CoreSysAttributes):
     async def unload(self):
         """Stop docker events monitor."""
         await self.docker.events.stop()
-        if self._monitor_task and self._await_task:
-            await asyncio.wait(
-                [self._monitor_task, self._await_task], timeout=STOP_MONITOR_TIMEOUT
-            )
+
+        tasks = [task for task in (self._monitor_task, self._await_task) if task]
+        if tasks:
+            _, pending = await asyncio.wait(tasks, timeout=STOP_MONITOR_TIMEOUT)
+            if pending:
+                _LOGGER.warning(
+                    "Timeout stopping docker events monitor, cancelling %s pending task(s)",
+                    len(pending),
+                )
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
             self._monitor_task = None
             self._await_task = None
+
         _LOGGER.info("Stopped docker events monitor")
 
     async def _subscribe(self) -> None:
@@ -137,6 +146,8 @@ class DockerMonitor(CoreSysAttributes):
         while (event := await self._event_tasks.get()) is not None:
             try:
                 await event.task
+            # Exceptions which inherit from HassioError are already handled
+            # We can safely ignore these, we only track the unhandled ones here
             except HassioError:
                 pass
             except Exception as err:  # pylint: disable=broad-exception-caught
