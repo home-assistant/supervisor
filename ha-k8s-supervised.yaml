@@ -1,0 +1,102 @@
+# Home Assistant Supervisor (Kubernetes runtime mode)
+#
+# Change these before applying:
+# - VIP / internal gateway address: SUPERVISOR_K8S_INTERNAL_GATEWAY_ADDRESS (default: 192.168.100.130)
+# - Storage class: PVC .spec.storageClassName + SUPERVISOR_K8S_SHARED_PVC_STORAGE_CLASS (default: cephfs)
+# - Storage size: PVC .spec.resources.requests.storage + SUPERVISOR_K8S_SHARED_PVC_SIZE (default: 50Gi)
+#
+# This manifest is designed to be deployable with a namespace-scoped ServiceAccount
+# kubeconfig. That means it does NOT create:
+# - Namespace
+# - ServiceAccount
+# - Role / RoleBinding
+#
+# Prerequisites (provided by cluster admin/GitOps):
+# - Namespace `home-assistant` exists
+# - ServiceAccount `home-assistant/supervisor` exists
+# - RBAC grants that ServiceAccount permissions to manage the namespaced resources
+#   Supervisor needs (deployments/services/configmaps/secrets/pods/log/pvcs, etc.)
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ha-shared-rwx
+  namespace: home-assistant
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: cephfs
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: supervisor
+  namespace: home-assistant
+spec:
+  type: ClusterIP
+  selector:
+    app: supervisor
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: supervisor
+  namespace: home-assistant
+spec:
+  serviceName: supervisor
+  replicas: 1
+  selector:
+    matchLabels:
+      app: supervisor
+  template:
+    metadata:
+      labels:
+        app: supervisor
+    spec:
+      serviceAccountName: supervisor
+      containers:
+        - name: supervisor
+          image: shantur/homeassistant-kubernetes-supervisor:k8s-lb-fix3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          env:
+            - name: SUPERVISOR_RUNTIME
+              value: kubernetes
+            - name: SUPERVISOR_NAME
+              value: supervisor
+            - name: SUPERVISOR_SHARE
+              value: /data
+            - name: SUPERVISOR_MACHINE
+              value: generic-x86-64
+            - name: SUPERVISOR_K8S_STORAGE_MODE
+              value: shared_pvc
+            - name: SUPERVISOR_K8S_SHARED_PVC_CLAIM
+              value: ha-shared-rwx
+            - name: SUPERVISOR_K8S_SHARED_PVC_STORAGE_CLASS
+              value: cephfs
+            - name: SUPERVISOR_K8S_SHARED_PVC_SIZE
+              value: 50Gi
+            - name: SUPERVISOR_K8S_INTERNAL_GATEWAY_ADDRESS
+              value: 192.168.100.130
+            - name: SUPERVISOR_K8S_INTERNAL_GATEWAY_NAME
+              value: ha-internal
+            - name: SUPERVISOR_K8S_INTERNAL_GATEWAY_CLASS
+              value: cilium
+            - name: SUPERVISOR_K8S_MANAGE_PUBLIC_GATEWAY
+              value: "false"
+          volumeMounts:
+            - name: shared-data
+              mountPath: /data
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: ha-shared-rwx
