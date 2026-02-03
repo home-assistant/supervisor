@@ -75,103 +75,23 @@ kubectl --kubeconfig=cluster.kubeconfig -n home-assistant get pods -l app=superv
 kubectl --kubeconfig=cluster.kubeconfig -n home-assistant get svc supervisor -o wide
 ```
 
-## Verify Supervisor API
+## Resources Created
 
-With a namespace-scoped kubeconfig you may not have `pods/exec` or `port-forward`. The
-recommended approach is a short-lived helper pod:
+After applying `ha-k8s-supervised.yaml`, you should have:
 
-1) Mount the shared PVC at `/data`.
-2) Read the Supervisor token from `/data/homeassistant.json`.
-3) Call the Supervisor service (`http://supervisor`).
+- `persistentvolumeclaim/ha-shared-rwx`
+- `service/supervisor`
+- `statefulset/supervisor`
 
-Example helper pod:
+Once Supervisor is running, it will create additional resources as you use it:
 
-```bash
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant apply -f - <<'EOF'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: supervisor-api-smoke
-spec:
-  restartPolicy: Never
-  volumes:
-    - name: data
-      persistentVolumeClaim:
-        claimName: ha-shared-rwx
-  containers:
-    - name: runner
-      image: python:3.13-alpine
-      volumeMounts:
-        - name: data
-          mountPath: /data
-      command: ["sh", "-lc"]
-      args:
-        - |
-          set -e
-          apk add --no-cache curl >/dev/null
-          TOKEN="$(python3 -c 'import json; from pathlib import Path; obj=json.loads(Path("/data/homeassistant.json").read_text()); print(obj.get("access_token",""))')"
-          curl -sS -H "Authorization: Bearer $TOKEN" http://supervisor/supervisor/info
-EOF
-
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant wait --for=jsonpath='{.status.phase}'=Succeeded pod/supervisor-api-smoke --timeout=120s
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant logs supervisor-api-smoke
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant delete pod supervisor-api-smoke --ignore-not-found
-```
-
-## Install + Start Mosquitto (MQTT)
-
-Install and start using the same helper pod pattern (token + curl). Example API calls:
-
-- Install:
-  - `POST /addons/core_mosquitto/install`
-- Start:
-  - `POST /addons/core_mosquitto/start`
-- Check status:
-  - `GET /addons/core_mosquitto/info`
-
-After it starts, Supervisor should create the internal VIP L4 stack.
-
-## Verify Internal VIP (L4)
-
-Check the internal LoadBalancer Service and proxy:
-
-```bash
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant get svc ha-internal -o wide
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant get deploy ha-internal -o wide
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant get cm ha-internal-config -o yaml
-```
-
-You should see:
-
-- `service/ha-internal` is `type: LoadBalancer` with the configured VIP
-- `deployment/ha-internal` is Ready
-- `configmap/ha-internal-config` includes NGINX `stream {}` `listen` directives and
-  `proxy_pass addon-core-mosquitto...:1883`
-
-Connectivity test (from a short-lived pod):
-
-```bash
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant apply -f - <<'EOF'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: l4-tcpcheck-1883
-spec:
-  restartPolicy: Never
-  containers:
-    - name: tcpcheck
-      image: busybox:1.36
-      command: ["sh", "-lc"]
-      args:
-        - |
-          set -e
-          nc -vz -w 3 192.168.100.130 1883
-EOF
-
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant wait --for=jsonpath='{.status.phase}'=Succeeded pod/l4-tcpcheck-1883 --timeout=120s
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant logs l4-tcpcheck-1883
-kubectl --kubeconfig=cluster.kubeconfig -n home-assistant delete pod l4-tcpcheck-1883 --ignore-not-found
-```
+- Add-ons:
+  - `deployment.apps/addon-<slug>`
+  - `service/addon-<slug>`
+- Internal add-on port exposure (only when an add-on exposes ports):
+  - `service/ha-internal` (type LoadBalancer; internal VIP)
+  - `deployment/ha-internal` (NGINX stream proxy)
+  - `configmap/ha-internal-config`
 
 ## Troubleshooting
 
