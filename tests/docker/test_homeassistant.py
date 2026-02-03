@@ -1,8 +1,9 @@
 """Test Home Assistant container."""
 
 from ipaddress import IPv4Address
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
 
@@ -21,12 +22,12 @@ from . import DEV_MOUNT
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
-async def test_homeassistant_start(coresys: CoreSys, container: MagicMock):
+async def test_homeassistant_start(coresys: CoreSys, container: DockerContainer):
     """Test starting homeassistant."""
     coresys.homeassistant.version = AwesomeVersion("2023.8.1")
 
     with (
-        patch.object(DockerAPI, "run", return_value=container.attrs) as run,
+        patch.object(DockerAPI, "run", return_value=container.show.return_value) as run,
         patch.object(
             DockerHomeAssistant, "is_running", side_effect=[False, False, True]
         ),
@@ -122,14 +123,14 @@ async def test_homeassistant_start(coresys: CoreSys, container: MagicMock):
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_homeassistant_start_with_duplicate_log_file(
-    coresys: CoreSys, container: MagicMock
+    coresys: CoreSys, container: DockerContainer
 ):
     """Test starting homeassistant with duplicate_log_file enabled."""
     coresys.homeassistant.version = AwesomeVersion("2025.12.0")
     coresys.homeassistant.duplicate_log_file = True
 
     with (
-        patch.object(DockerAPI, "run", return_value=container.attrs) as run,
+        patch.object(DockerAPI, "run", return_value=container.show.return_value) as run,
         patch.object(
             DockerHomeAssistant, "is_running", side_effect=[False, False, True]
         ),
@@ -144,12 +145,12 @@ async def test_homeassistant_start_with_duplicate_log_file(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
-async def test_landingpage_start(coresys: CoreSys, container: MagicMock):
+async def test_landingpage_start(coresys: CoreSys, container: DockerContainer):
     """Test starting landingpage."""
     coresys.homeassistant.version = LANDINGPAGE
 
     with (
-        patch.object(DockerAPI, "run", return_value=container.attrs) as run,
+        patch.object(DockerAPI, "run", return_value=container.show.return_value) as run,
         patch.object(DockerHomeAssistant, "is_running", return_value=False),
     ):
         await coresys.homeassistant.core.start()
@@ -202,7 +203,7 @@ async def test_landingpage_start(coresys: CoreSys, container: MagicMock):
         assert "volumes" not in run.call_args.kwargs
 
 
-async def test_timeout(coresys: CoreSys, container: MagicMock):
+async def test_timeout(coresys: CoreSys, container: DockerContainer):
     """Test timeout for set from S6_SERVICES_GRACETIME."""
     assert coresys.homeassistant.core.instance.timeout == 260
 
@@ -211,7 +212,7 @@ async def test_timeout(coresys: CoreSys, container: MagicMock):
     assert coresys.homeassistant.core.instance.timeout == 260
 
     # Set a mock value for env in attrs, see that it changes
-    container.attrs["Config"] = {
+    container.show.return_value["Config"] = {
         "Env": [
             "SUPERVISOR=172.30.32.2",
             "HASSIO=172.30.32.2",

@@ -8,6 +8,7 @@ from shutil import copy, rmtree
 from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError
 import pytest
@@ -98,9 +99,8 @@ async def test_do_backup_full_with_filename(
     assert coresys.core.state == CoreState.RUNNING
 
 
-async def test_do_backup_full_uncompressed(
-    coresys: CoreSys, backup_mock, install_addon_ssh
-):
+@pytest.mark.usefixtures("backup_mock")
+async def test_do_backup_full_uncompressed(coresys: CoreSys, install_addon_ssh: Addon):
     """Test creating Backup."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -128,9 +128,8 @@ async def test_do_backup_full_uncompressed(
     assert coresys.core.state == CoreState.RUNNING
 
 
-async def test_do_backup_partial_minimal(
-    coresys: CoreSys, backup_mock, install_addon_ssh
-):
+@pytest.mark.usefixtures("backup_mock", "install_addon_ssh")
+async def test_do_backup_partial_minimal(coresys: CoreSys):
     """Test creating minimal partial Backup."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -155,9 +154,8 @@ async def test_do_backup_partial_minimal(
     assert coresys.core.state == CoreState.RUNNING
 
 
-async def test_do_backup_partial_minimal_uncompressed(
-    coresys: CoreSys, backup_mock, install_addon_ssh
-):
+@pytest.mark.usefixtures("backup_mock", "install_addon_ssh")
+async def test_do_backup_partial_minimal_uncompressed(coresys: CoreSys):
     """Test creating minimal partial Backup."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -184,9 +182,8 @@ async def test_do_backup_partial_minimal_uncompressed(
     assert coresys.core.state == CoreState.RUNNING
 
 
-async def test_do_backup_partial_maximal(
-    coresys: CoreSys, backup_mock, install_addon_ssh
-):
+@pytest.mark.usefixtures("backup_mock")
+async def test_do_backup_partial_maximal(coresys: CoreSys, install_addon_ssh: Addon):
     """Test creating maximal partial Backup."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -218,8 +215,9 @@ async def test_do_backup_partial_maximal(
     assert coresys.core.state == CoreState.RUNNING
 
 
+@pytest.mark.usefixtures("supervisor_internet")
 async def test_do_restore_full(
-    coresys: CoreSys, supervisor_internet, full_backup_mock, install_addon_ssh
+    coresys: CoreSys, full_backup_mock: Backup, install_addon_ssh: Addon
 ):
     """Test restoring full Backup."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -249,8 +247,9 @@ async def test_do_restore_full(
     assert coresys.core.state == CoreState.RUNNING
 
 
+@pytest.mark.usefixtures("supervisor_internet")
 async def test_do_restore_full_different_addon(
-    coresys: CoreSys, supervisor_internet, full_backup_mock, install_addon_ssh
+    coresys: CoreSys, full_backup_mock: Backup, install_addon_ssh: Addon
 ):
     """Test restoring full Backup with different addons than installed."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -281,8 +280,9 @@ async def test_do_restore_full_different_addon(
     assert coresys.core.state == CoreState.RUNNING
 
 
+@pytest.mark.usefixtures("supervisor_internet", "install_addon_ssh")
 async def test_do_restore_partial_minimal(
-    coresys: CoreSys, supervisor_internet, partial_backup_mock, install_addon_ssh
+    coresys: CoreSys, partial_backup_mock: Backup
 ):
     """Test restoring partial Backup minimal."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -306,8 +306,9 @@ async def test_do_restore_partial_minimal(
     assert coresys.core.state == CoreState.RUNNING
 
 
+@pytest.mark.usefixtures("supervisor_internet")
 async def test_do_restore_partial_maximal(
-    coresys: CoreSys, supervisor_internet, partial_backup_mock
+    coresys: CoreSys, partial_backup_mock: Backup
 ):
     """Test restoring partial Backup minimal."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -337,9 +338,9 @@ async def test_do_restore_partial_maximal(
     assert coresys.core.state == CoreState.RUNNING
 
 
+@pytest.mark.usefixtures("supervisor_internet")
 async def test_fail_invalid_full_backup(
     coresys: CoreSys,
-    supervisor_internet,
     full_backup_mock: MagicMock,
     partial_backup_mock: MagicMock,
 ):
@@ -372,8 +373,9 @@ async def test_fail_invalid_full_backup(
         await manager.do_restore_full(backup_instance)
 
 
+@pytest.mark.usefixtures("supervisor_internet")
 async def test_fail_invalid_partial_backup(
-    coresys: CoreSys, supervisor_internet, partial_backup_mock: MagicMock
+    coresys: CoreSys, partial_backup_mock: MagicMock
 ):
     """Test restore fails with invalid backup."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -406,12 +408,8 @@ async def test_fail_invalid_partial_backup(
         await manager.do_restore_partial(backup_instance)
 
 
-async def test_backup_error_homeassistant(
-    coresys: CoreSys,
-    backup_mock: MagicMock,
-    install_addon_ssh: Addon,
-    capture_exception: Mock,
-):
+@pytest.mark.usefixtures("install_addon_ssh", "capture_exception")
+async def test_backup_error_homeassistant(coresys: CoreSys, backup_mock: MagicMock):
     """Test error collected and file deleted when Home Assistant Core backup fails."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -434,11 +432,9 @@ async def test_backup_error_homeassistant(
     backup_instance.tarfile.unlink.assert_called_once()
 
 
+@pytest.mark.usefixtures("install_addon_ssh")
 async def test_backup_error_capture(
-    coresys: CoreSys,
-    backup_mock: MagicMock,
-    install_addon_ssh: Addon,
-    capture_exception: Mock,
+    coresys: CoreSys, backup_mock: MagicMock, capture_exception: Mock
 ):
     """Test error captured when backup fails."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -452,11 +448,9 @@ async def test_backup_error_capture(
     capture_exception.assert_called_once_with(err)
 
 
+@pytest.mark.usefixtures("supervisor_internet")
 async def test_restore_error(
-    coresys: CoreSys,
-    supervisor_internet,
-    full_backup_mock: MagicMock,
-    capture_exception: Mock,
+    coresys: CoreSys, full_backup_mock: MagicMock, capture_exception: Mock
 ):
     """Test restoring full Backup with errors."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -476,14 +470,15 @@ async def test_restore_error(
     capture_exception.assert_called_once_with(err)
 
 
+@pytest.mark.usefixtures(
+    "supervisor_internet",
+    "tmp_supervisor_data",
+    "path_extern",
+    "mount_propagation",
+    "mock_is_mount",
+)
 async def test_backup_media_with_mounts(
-    coresys: CoreSys,
-    supervisor_internet,
-    all_dbus_services: dict[str, DBusServiceMock],
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock]
 ):
     """Test backing up media folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -539,14 +534,15 @@ async def test_backup_media_with_mounts(
     assert not mount_dir.exists()
 
 
+@pytest.mark.usefixtures(
+    "supervisor_internet",
+    "tmp_supervisor_data",
+    "path_extern",
+    "mount_propagation",
+    "mock_is_mount",
+)
 async def test_backup_media_with_mounts_retains_files(
-    coresys: CoreSys,
-    supervisor_internet,
-    all_dbus_services: dict[str, DBusServiceMock],
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock]
 ):
     """Test backing up media folder with mounts retains mount files."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -594,14 +590,15 @@ async def test_backup_media_with_mounts_retains_files(
     ]
 
 
+@pytest.mark.usefixtures(
+    "supervisor_internet",
+    "tmp_supervisor_data",
+    "path_extern",
+    "mount_propagation",
+    "mock_is_mount",
+)
 async def test_backup_share_with_mounts(
-    coresys: CoreSys,
-    supervisor_internet,
-    all_dbus_services: dict[str, DBusServiceMock],
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock]
 ):
     """Test backing up share folder with mounts."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
@@ -664,14 +661,14 @@ async def test_backup_share_with_mounts(
     assert not mount_dir.exists()
 
 
-async def test_full_backup_to_mount(
-    coresys: CoreSys,
-    supervisor_internet,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
-):
+@pytest.mark.usefixtures(
+    "supervisor_internet",
+    "tmp_supervisor_data",
+    "path_extern",
+    "mount_propagation",
+    "mock_is_mount",
+)
+async def test_full_backup_to_mount(coresys: CoreSys):
     """Test full backup to and restoring from a mount."""
     (marker := coresys.config.path_homeassistant / "test.txt").touch()
 
@@ -711,14 +708,14 @@ async def test_full_backup_to_mount(
     assert marker.exists()
 
 
-async def test_partial_backup_to_mount(
-    coresys: CoreSys,
-    supervisor_internet,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
-):
+@pytest.mark.usefixtures(
+    "supervisor_internet",
+    "tmp_supervisor_data",
+    "path_extern",
+    "mount_propagation",
+    "mock_is_mount",
+)
+async def test_partial_backup_to_mount(coresys: CoreSys):
     """Test partial backup to and restoring from a mount."""
     (marker := coresys.config.path_homeassistant / "test.txt").touch()
 
@@ -767,13 +764,8 @@ async def test_partial_backup_to_mount(
     assert marker.exists()
 
 
-async def test_backup_to_down_mount_error(
-    coresys: CoreSys,
-    mock_is_mount: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-):
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mount_propagation")
+async def test_backup_to_down_mount_error(coresys: CoreSys, mock_is_mount: MagicMock):
     """Test backup to mount when down raises error."""
     # Add a backup mount
     (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
@@ -804,13 +796,10 @@ async def test_backup_to_down_mount_error(
         )
 
 
-async def test_backup_to_local_with_default(
-    coresys: CoreSys,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
-):
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mount_propagation", "mock_is_mount"
+)
+async def test_backup_to_local_with_default(coresys: CoreSys):
     """Test making backup to local when a default mount is specified."""
     # Add a default backup mount
     await coresys.mounts.load()
@@ -843,13 +832,10 @@ async def test_backup_to_local_with_default(
     assert (coresys.config.path_backup / f"{backup.slug}.tar").exists()
 
 
-async def test_backup_to_default(
-    coresys: CoreSys,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
-):
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mount_propagation", "mock_is_mount"
+)
+async def test_backup_to_default(coresys: CoreSys):
     """Test making backup to default mount."""
     # Add a default backup mount
     (mount_dir := coresys.config.path_mounts / "backup_test").mkdir()
@@ -883,12 +869,9 @@ async def test_backup_to_default(
     assert (mount_dir / f"{backup.slug}.tar").exists()
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mount_propagation")
 async def test_backup_to_default_mount_down_error(
-    coresys: CoreSys,
-    mock_is_mount: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
+    coresys: CoreSys, mock_is_mount: MagicMock
 ):
     """Test making backup to default mount when it is down."""
     # Add a default backup mount
@@ -916,13 +899,9 @@ async def test_backup_to_default_mount_down_error(
         await coresys.backups.do_backup_partial("test", homeassistant=True)
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mount_propagation")
 async def test_load_network_error(
-    coresys: CoreSys,
-    caplog: pytest.LogCaptureFixture,
-    mock_is_mount: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, mock_is_mount: MagicMock
 ):
     """Test load of backup manager when there is a network error."""
     (coresys.config.path_mounts / "backup_test").mkdir()
@@ -951,16 +930,14 @@ async def test_load_network_error(
     assert "Could not list backups from /data/backup_test" in caplog.text
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_backup_with_healthcheck(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
+    coresys: CoreSys, install_addon_ssh: Addon, container: DockerContainer
 ):
     """Test backup of addon with healthcheck in cold mode."""
-    container.status = "running"
-    container.attrs["Config"] = {"Healthcheck": "exists"}
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.show.return_value["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -1029,17 +1006,14 @@ async def test_backup_with_healthcheck(
     await _container_events_task
 
 
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
 async def test_restore_with_healthcheck(
-    coresys: CoreSys,
-    supervisor_internet,
-    install_addon_ssh: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
+    coresys: CoreSys, install_addon_ssh: Addon, container: DockerContainer
 ):
     """Test backup of addon with healthcheck in cold mode."""
-    container.status = "running"
-    container.attrs["Config"] = {"Healthcheck": "exists"}
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.show.return_value["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -1137,11 +1111,12 @@ def _make_backup_message_for_assert(
 async def test_backup_progress(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     ha_ws_client: AsyncMock,
 ):
     """Test progress is tracked during backups."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     install_addon_ssh.path_data.mkdir()
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -1239,11 +1214,12 @@ async def test_backup_progress(
 async def test_restore_progress(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     ha_ws_client: AsyncMock,
 ):
     """Test progress is tracked during backups."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     install_addon_ssh.path_data.mkdir()
     install_addon_ssh.state = AddonState.STARTED
     await coresys.core.set_state(CoreState.RUNNING)
@@ -1365,7 +1341,8 @@ async def test_restore_progress(
         ),
     ]
 
-    container.status = "stopped"
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
     install_addon_ssh.state = AddonState.STOPPED
     addon_backup: Backup = await coresys.backups.do_backup_partial(addons=["local_ssh"])
 
@@ -1417,15 +1394,15 @@ async def test_restore_progress(
 async def test_freeze_thaw(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     ha_ws_client: AsyncMock,
 ):
     """Test manual freeze and thaw for external snapshots."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     install_addon_ssh.path_data.mkdir()
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    container.exec_run.return_value = (0, None)
     ha_ws_client.ha_version = AwesomeVersion("2022.1.0")
 
     with (
@@ -1438,7 +1415,7 @@ async def test_freeze_thaw(
     ):
         # Run the freeze
         await coresys.backups.freeze_all()
-        container.exec_run.assert_called_once_with("pre_backup")
+        container.exec.assert_called_once_with("pre_backup")
         assert coresys.core.state == CoreState.FREEZE
 
         await asyncio.sleep(0)
@@ -1473,10 +1450,10 @@ async def test_freeze_thaw(
         ]
 
         # Release the thaw task
-        container.exec_run.reset_mock()
+        container.exec.reset_mock()
         ha_ws_client.async_send_command.reset_mock()
         await coresys.backups.thaw_all()
-        container.exec_run.assert_called_once_with("post_backup")
+        container.exec.assert_called_once_with("post_backup")
         assert coresys.core.state == CoreState.RUNNING
 
         await asyncio.sleep(0)
@@ -1505,12 +1482,9 @@ async def test_freeze_thaw(
         ]
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_freeze_thaw_timeout(
-    coresys: CoreSys,
-    ha_ws_client: AsyncMock,
-    caplog: pytest.LogCaptureFixture,
-    tmp_supervisor_data,
-    path_extern,
+    coresys: CoreSys, ha_ws_client: AsyncMock, caplog: pytest.LogCaptureFixture
 ):
     """Test manual freeze ends due to timeout expiration."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -1542,12 +1516,9 @@ async def test_cannot_manually_thaw_normal_freeze(coresys: CoreSys):
         await coresys.backups.thaw_all()
 
 
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
 async def test_restore_only_reloads_ingress_on_change(
-    coresys: CoreSys,
-    supervisor_internet,
-    install_addon_ssh: Addon,
-    tmp_supervisor_data,
-    path_extern,
+    coresys: CoreSys, install_addon_ssh: Addon
 ):
     """Test restore only tells core to reload ingress when something has changed."""
     install_addon_ssh.path_data.mkdir()
@@ -1603,14 +1574,8 @@ async def test_restore_only_reloads_ingress_on_change(
         make_request.assert_called_once_with("post", "api/hassio_push/panel/local_ssh")
 
 
-async def test_restore_new_addon(
-    coresys: CoreSys,
-    supervisor_internet,
-    install_addon_example: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
-):
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
+async def test_restore_new_addon(coresys: CoreSys, install_addon_example: Addon):
     """Test restore installing new addon."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -1635,13 +1600,9 @@ async def test_restore_new_addon(
     assert install_addon_example.path_config.exists()
 
 
+@pytest.mark.usefixtures("supervisor_internet", "tmp_supervisor_data", "path_extern")
 async def test_restore_preserves_data_config(
-    coresys: CoreSys,
-    supervisor_internet,
-    install_addon_example: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
+    coresys: CoreSys, install_addon_example: Addon
 ):
     """Test restore preserves data and config."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -1673,13 +1634,11 @@ async def test_restore_preserves_data_config(
     assert not test_config2.exists()
 
 
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mount_propagation", "mock_is_mount"
+)
 async def test_backup_to_mount_bypasses_free_space_condition(
-    coresys: CoreSys,
-    all_dbus_services: dict[str, DBusServiceMock],
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock]
 ):
     """Test backing up to a mount bypasses the check on local free space."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -1726,13 +1685,9 @@ async def test_backup_to_mount_bypasses_free_space_condition(
     "partial_backup,exclude_db_setting",
     [(False, True), (True, True), (False, False), (True, False)],
 )
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_skip_homeassistant_database(
-    coresys: CoreSys,
-    container: MagicMock,
-    partial_backup: bool,
-    exclude_db_setting: bool | None,
-    tmp_supervisor_data,
-    path_extern,
+    coresys: CoreSys, partial_backup: bool, exclude_db_setting: bool | None
 ):
     """Test exclude database option skips database in backup."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -1830,14 +1785,13 @@ async def test_backup_remove_error(
     "error_path,healthy_expected",
     [(Path("/data/backup"), False), (Path("/data/mounts/backup_test"), True)],
 )
+@pytest.mark.usefixtures("path_extern", "mount_propagation")
 async def test_reload_error(
     coresys: CoreSys,
     caplog: pytest.LogCaptureFixture,
     error_path: Path,
     healthy_expected: bool,
     mock_is_mount: MagicMock,
-    path_extern,
-    mount_propagation,
 ):
     """Test error during reload."""
     err = OSError()
@@ -1882,12 +1836,9 @@ async def test_reload_error(
         assert coresys.core.healthy is healthy_expected
 
 
+@pytest.mark.usefixtures("supervisor_internet", "install_addon_ssh")
 async def test_monitoring_after_full_restore(
-    coresys: CoreSys,
-    supervisor_internet,
-    full_backup_mock,
-    install_addon_ssh,
-    container,
+    coresys: CoreSys, full_backup_mock: Backup
 ):
     """Test monitoring of addon state still works after full restore."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -1907,12 +1858,9 @@ async def test_monitoring_after_full_restore(
     coresys.docker.unload.assert_not_called()
 
 
+@pytest.mark.usefixtures("supervisor_internet", "install_addon_ssh")
 async def test_monitoring_after_partial_restore(
-    coresys: CoreSys,
-    supervisor_internet,
-    partial_backup_mock,
-    install_addon_ssh,
-    container,
+    coresys: CoreSys, partial_backup_mock: Backup
 ):
     """Test monitoring of addon state still works after full restore."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -1939,13 +1887,12 @@ async def test_monitoring_after_partial_restore(
         {"code": "unknown_command", "message": "Unknown command."},
     ],
 )
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_core_pre_backup_actions_failed(
     coresys: CoreSys,
     ha_ws_client: AsyncMock,
     caplog: pytest.LogCaptureFixture,
     pre_backup_error: dict[str, str],
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test pre-backup actions failed in HA core stops backup."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -2111,10 +2058,8 @@ async def test_backup_remove_one_location_of_multiple(coresys: CoreSys):
     }
 
 
-@pytest.mark.usefixtures("tmp_supervisor_data")
-async def test_addon_backup_excludes(
-    coresys: CoreSys, supervisor_internet, install_addon_example: Addon
-):
+@pytest.mark.usefixtures("tmp_supervisor_data", "supervisor_internet")
+async def test_addon_backup_excludes(coresys: CoreSys, install_addon_example: Addon):
     """Test backup excludes option for addons."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -2140,9 +2085,7 @@ async def test_addon_backup_excludes(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
-async def test_remove_non_existing_backup_raises(
-    coresys: CoreSys,
-):
+async def test_remove_non_existing_backup_raises(coresys: CoreSys):
     """Test removing a backup error."""
     location: LOCATION_TYPE = None
     backup_base_path = coresys.backups._get_base_path(location)  # pylint: disable=protected-access
@@ -2200,10 +2143,7 @@ async def test_backup_multiple_locations_oserror(
 
 
 @pytest.mark.parametrize("same_mount", [True, False])
-async def test_get_upload_path_for_backup_location(
-    coresys: CoreSys,
-    same_mount,
-):
+async def test_get_upload_path_for_backup_location(coresys: CoreSys, same_mount: bool):
     """Test get_upload_path_for_location with local backup location."""
     manager = BackupManager(coresys)
 
@@ -2231,13 +2171,10 @@ async def test_get_upload_path_for_backup_location(
             assert result == target_path
 
 
-async def test_get_upload_path_for_mount_location(
-    coresys: CoreSys,
-    tmp_supervisor_data,
-    path_extern,
-    mount_propagation,
-    mock_is_mount,
-):
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mount_propagation", "mock_is_mount"
+)
+async def test_get_upload_path_for_mount_location(coresys: CoreSys):
     """Test get_upload_path_for_location with a Mount location."""
     manager = BackupManager(coresys)
 

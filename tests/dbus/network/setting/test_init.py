@@ -151,7 +151,7 @@ async def test_ipv6_addr_gen_mode(
 ):
     """Test addr_gen_mode with various NetworkManager versions."""
     interface = Interface.from_dbus_interface(dbus_interface)
-    interface.ipv6setting = Ip6Setting(InterfaceMethod.AUTO, [], None, [])
+    interface.ipv6setting = Ip6Setting(InterfaceMethod.AUTO, [], None, None, [])
 
     network_manager = MagicMock()
     type(network_manager).version = PropertyMock(return_value=AwesomeVersion(version))

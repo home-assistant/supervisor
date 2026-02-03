@@ -6,6 +6,7 @@ from shutil import copy
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from aiohttp import MultipartWriter
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -1496,14 +1497,16 @@ async def test_immediate_list_after_missing_file_restore(
 @pytest.mark.parametrize("command", ["backup_pre", "backup_post"])
 @pytest.mark.usefixtures("install_addon_example", "tmp_supervisor_data")
 async def test_pre_post_backup_command_error(
-    api_client: TestClient, coresys: CoreSys, container: MagicMock, command: str
+    api_client: TestClient, coresys: CoreSys, container: DockerContainer, command: str
 ):
     """Test pre/post backup command error."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
 
-    container.status = "running"
-    container.exec_run.return_value = (1, b"")
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.exec.return_value.inspect.return_value = {"ExitCode": 1}
+
     with patch.object(Addon, command, new=PropertyMock(return_value="test")):
         resp = await api_client.post(
             "/backups/new/partial", json={"addons": ["local_example"]}

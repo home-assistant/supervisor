@@ -175,7 +175,10 @@ class HomeAssistantAPI(CoreSysAttributes):
 
     async def get_config(self) -> dict[str, Any]:
         """Return Home Assistant config."""
-        return await self._get_json("api/config")
+        config = await self._get_json("api/config")
+        if config is None or not isinstance(config, dict):
+            raise HomeAssistantAPIError("No config received from Home Assistant API")
+        return config
 
     async def get_core_state(self) -> dict[str, Any]:
         """Return Home Assistant core state."""
@@ -219,3 +222,32 @@ class HomeAssistantAPI(CoreSysAttributes):
         if state := await self.get_api_state():
             return state.core_state == "RUNNING" or state.offline_db_migration
         return False
+
+    async def check_frontend_available(self) -> bool:
+        """Check if the frontend is accessible by fetching the root path.
+
+        Caller should make sure that Home Assistant Core is running before
+        calling this method.
+
+        Returns:
+            True if the frontend responds successfully, False otherwise.
+
+        """
+        try:
+            async with self.make_request("get", "", timeout=30) as resp:
+                # Frontend should return HTML content
+                if resp.status == 200:
+                    content_type = resp.headers.get(hdrs.CONTENT_TYPE, "")
+                    if "text/html" in content_type:
+                        _LOGGER.debug("Frontend is accessible and serving HTML")
+                        return True
+                    _LOGGER.warning(
+                        "Frontend responded but with unexpected content type: %s",
+                        content_type,
+                    )
+                    return False
+                _LOGGER.warning("Frontend returned status %s", resp.status)
+                return False
+        except HomeAssistantAPIError as err:
+            _LOGGER.debug("Cannot reach frontend: %s", err)
+            return False

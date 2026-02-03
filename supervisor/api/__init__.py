@@ -522,6 +522,7 @@ class RestAPI(CoreSysAttributes):
                 web.get("/core/api/stream", api_proxy.stream),
                 web.post("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/{path:.+}", api_proxy.api),
+                web.delete("/core/api/{path:.+}", api_proxy.api),
                 web.get("/core/api/", api_proxy.api),
             ]
         )

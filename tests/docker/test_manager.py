@@ -1,146 +1,184 @@
 """Test Docker manager."""
 
-import asyncio
+from http import HTTPStatus
 from pathlib import Path
+import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiodocker
 from aiodocker.containers import DockerContainer
-from docker.errors import APIError, DockerException, NotFound
+from aiodocker.networks import DockerNetwork
+from docker.errors import APIError
 import pytest
-from requests import RequestException
 
+from supervisor.const import DNS_SUFFIX
 from supervisor.coresys import CoreSys
-from supervisor.docker.const import DockerMount, MountBindOptions, MountType
+from supervisor.docker.const import (
+    LABEL_MANAGED,
+    DockerMount,
+    MountBindOptions,
+    MountType,
+)
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.exceptions import DockerError
 
 
-async def test_run_command_success(docker: DockerAPI):
+async def test_run_command_success(docker: DockerAPI, container: DockerContainer):
     """Test successful command execution."""
     # Mock container and its methods
-    mock_container = MagicMock()
-    mock_container.wait.return_value = {"StatusCode": 0}
-    mock_container.logs.return_value = b"command output"
-
-    # Mock docker containers.run to return our mock container
-    docker.dockerpy.containers.run.return_value = mock_container
+    container.wait.return_value = {"StatusCode": 0}
+    container.log.return_value = ["command output"]
 
     # Execute the command
-    result = docker.run_command(
-        image="alpine", version="3.18", command="echo hello", stdout=True, stderr=True
+    result = await docker.run_command(
+        image="alpine", tag="3.18", command=["echo", "hello"], stdout=True, stderr=True
     )
 
     # Verify the result
     assert isinstance(result, CommandReturn)
     assert result.exit_code == 0
-    assert result.output == b"command output"
+    assert result.log == ["command output"]
 
     # Verify docker.containers.run was called correctly
-    docker.dockerpy.containers.run.assert_called_once_with(
-        "alpine:3.18",
-        command="echo hello",
-        detach=True,
-        network=docker.network.name,
-        use_config_proxy=False,
-        stdout=True,
-        stderr=True,
-        mounts=None,
+    docker.containers.create.assert_called_once_with(
+        {
+            "Image": "alpine:3.18",
+            "Labels": {"supervisor_managed": ""},
+            "OpenStdin": False,
+            "StdinOnce": False,
+            "AttachStdin": False,
+            "AttachStdout": False,
+            "AttachStderr": False,
+            "HostConfig": {
+                "NetworkMode": "hassio",
+                "Init": False,
+                "Privileged": False,
+                "Dns": ["172.30.32.3"],
+                "DnsSearch": ["local.hass.io"],
+                "DnsOptions": ["timeout:10"],
+            },
+            "Cmd": ["echo", "hello"],
+        },
+        name=None,
     )
+    container.start.assert_called_once()
 
     # Verify container cleanup
-    mock_container.remove.assert_called_once_with(force=True, v=True)
+    container.delete.assert_called_once_with(force=True, v=True)
 
 
-async def test_run_command_with_defaults(docker: DockerAPI):
-    """Test command execution with default parameters."""
-    # Mock container and its methods
-    mock_container = MagicMock()
-    mock_container.wait.return_value = {"StatusCode": 1}
-    mock_container.logs.return_value = b"error output"
+async def test_run_command_pulls_image_when_not_found(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test that run_command pulls the image when it doesn't exist locally."""
+    # Mock image inspect to raise NOT_FOUND first, then succeed (after pull)
+    docker.images.inspect.side_effect = [
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "No such image"}),
+    ]
+    # Mock pull to return successfully (with stream=False, returns a list)
+    docker.images.pull = AsyncMock(return_value=[{}])
+    container.wait.return_value = {"StatusCode": 0}
+    container.log.return_value = ["output"]
 
-    # Mock docker containers.run to return our mock container
-    docker.dockerpy.containers.run.return_value = mock_container
-
-    # Execute the command with minimal parameters
-    result = docker.run_command(image="ubuntu")
-
-    # Verify the result
-    assert isinstance(result, CommandReturn)
-    assert result.exit_code == 1
-    assert result.output == b"error output"
-
-    # Verify docker.containers.run was called with defaults
-    docker.dockerpy.containers.run.assert_called_once_with(
-        "ubuntu:latest",  # default tag
-        command=None,  # default command
-        detach=True,
-        network=docker.network.name,
-        use_config_proxy=False,
-        mounts=None,
+    # Execute the command
+    result = await docker.run_command(
+        image="alpine", tag="3.18", command=["echo", "hello"]
     )
 
-    # Verify container.logs was called with default stdout/stderr
-    mock_container.logs.assert_called_once_with(stdout=True, stderr=True)
+    # Verify pull was called
+    docker.images.pull.assert_called_once_with("alpine", tag="3.18")
+
+    # Verify the command still executed successfully
+    assert result.exit_code == 0
+    assert result.log == ["output"]
+
+
+async def test_run_command_no_pull_when_image_exists(
+    docker: DockerAPI, container: DockerContainer
+):
+    """Test that run_command doesn't pull if image already exists."""
+    # Default mock already returns image data on inspect
+    container.wait.return_value = {"StatusCode": 0}
+    container.log.return_value = ["output"]
+
+    # Execute the command
+    result = await docker.run_command(
+        image="alpine", tag="3.18", command=["echo", "hello"]
+    )
+
+    # Verify inspect was called but pull was NOT called
+    docker.images.inspect.assert_called_once_with("alpine:3.18")
+    docker.images.pull.assert_not_called()
+
+    # Verify the command executed successfully
+    assert result.exit_code == 0
+
+
+async def test_run_command_inspect_error_propagates(docker: DockerAPI):
+    """Test that non-NOT_FOUND errors from image inspect are propagated."""
+    # Mock image inspect to raise a different error (e.g., server error)
+    docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "Server error"}
+    )
+
+    # Execute the command and expect DockerError
+    with pytest.raises(DockerError, match="Can't inspect image alpine:latest"):
+        await docker.run_command(image="alpine", command=["echo", "hello"])
+
+    # Verify pull was NOT called since the error wasn't NOT_FOUND
+    docker.images.pull.assert_not_called()
 
 
 async def test_run_command_docker_exception(docker: DockerAPI):
     """Test command execution when Docker raises an exception."""
-    # Mock docker containers.run to raise DockerException
-    docker.dockerpy.containers.run.side_effect = DockerException("Docker error")
+    # Mock docker containers.run to raise aiodocker.DockerError
+    docker.containers.create.side_effect = err = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "Docker error"}
+    )
 
     # Execute the command and expect DockerError
-    with pytest.raises(DockerError, match="Can't execute command: Docker error"):
-        docker.run_command(image="alpine", command="test")
+    with pytest.raises(
+        DockerError,
+        match=re.escape(
+            f"Can't execute command: Can't create container from alpine:latest: {str(err)}"
+        ),
+    ):
+        await docker.run_command(image="alpine", command="test")
 
 
-async def test_run_command_request_exception(docker: DockerAPI):
-    """Test command execution when requests raises an exception."""
-    # Mock docker containers.run to raise RequestException
-    docker.dockerpy.containers.run.side_effect = RequestException("Connection error")
-
-    # Execute the command and expect DockerError
-    with pytest.raises(DockerError, match="Can't execute command: Connection error"):
-        docker.run_command(image="alpine", command="test")
-
-
-async def test_run_command_cleanup_on_exception(docker: DockerAPI):
+async def test_run_command_cleanup_on_exception(
+    docker: DockerAPI, container: DockerContainer
+):
     """Test that container cleanup happens even when an exception occurs."""
-    # Mock container
-    mock_container = MagicMock()
-
-    # Mock docker.containers.run to return container, but container.wait to raise exception
-    docker.dockerpy.containers.run.return_value = mock_container
-    mock_container.wait.side_effect = DockerException("Wait failed")
+    container.wait.side_effect = aiodocker.DockerError(500, {"message": "Wait failed"})
 
     # Execute the command and expect DockerError
     with pytest.raises(DockerError):
-        docker.run_command(image="alpine", command="test")
+        await docker.run_command(image="alpine", command="test")
 
     # Verify container cleanup still happened
-    mock_container.remove.assert_called_once_with(force=True, v=True)
+    container.delete.assert_called_once_with(force=True, v=True)
 
 
-async def test_run_command_custom_stdout_stderr(docker: DockerAPI):
+async def test_run_command_custom_stdout_stderr(
+    docker: DockerAPI, container: DockerContainer
+):
     """Test command execution with custom stdout/stderr settings."""
     # Mock container and its methods
-    mock_container = MagicMock()
-    mock_container.wait.return_value = {"StatusCode": 0}
-    mock_container.logs.return_value = b"output"
-
-    # Mock docker containers.run to return our mock container
-    docker.dockerpy.containers.run.return_value = mock_container
+    container.wait.return_value = {"StatusCode": 0}
+    container.log.return_value = ["output"]
 
     # Execute the command with custom stdout/stderr
-    result = docker.run_command(
+    result = await docker.run_command(
         image="alpine", command="test", stdout=False, stderr=True
     )
 
     # Verify container.logs was called with the correct parameters
-    mock_container.logs.assert_called_once_with(stdout=False, stderr=True)
+    container.log.assert_called_once_with(stdout=False, stderr=True, follow=False)
 
     # Verify the result
     assert result.exit_code == 0
-    assert result.output == b"output"
+    assert result.log == ["output"]
 
 
 async def test_run_command_with_mounts(docker: DockerAPI):
@@ -148,7 +186,7 @@ async def test_run_command_with_mounts(docker: DockerAPI):
     # Mock container and its methods
     mock_container = MagicMock()
     mock_container.wait.return_value = {"StatusCode": 0}
-    mock_container.logs.return_value = b"output"
+    mock_container.logs.return_value = ["output"]
 
     # Mock docker containers.run to return our mock container
     docker.dockerpy.containers.run.return_value = mock_container
@@ -171,85 +209,95 @@ async def test_run_command_with_mounts(docker: DockerAPI):
     ]
 
     # Execute the command with mounts
-    result = docker.run_command(image="alpine", command="test", mounts=mounts)
+    result = await docker.run_command(image="alpine", command="test", mounts=mounts)
 
     # Verify the result
     assert result.exit_code == 0
 
     # Check that mounts were converted correctly
-    docker.dockerpy.containers.run.assert_called_once_with(
-        "alpine:latest",
-        command="test",
-        detach=True,
-        network=docker.network.name,
-        use_config_proxy=False,
-        mounts=[
-            {
-                "Type": "bind",
-                "Source": "/dev",
-                "Target": "/dev",
-                "ReadOnly": True,
-                "BindOptions": {"ReadOnlyNonRecursive": True},
+    docker.containers.create.assert_called_once_with(
+        {
+            "Image": "alpine:latest",
+            "Labels": {LABEL_MANAGED: ""},
+            "OpenStdin": False,
+            "StdinOnce": False,
+            "AttachStdin": False,
+            "AttachStdout": False,
+            "AttachStderr": False,
+            "Cmd": "test",
+            "HostConfig": {
+                "NetworkMode": docker.network.name,
+                "Init": False,
+                "Privileged": False,
+                "Dns": [str(docker.network.dns)],
+                "DnsSearch": [DNS_SUFFIX],
+                "DnsOptions": ["timeout:10"],
+                "Mounts": [
+                    {
+                        "Type": "bind",
+                        "Source": "/dev",
+                        "Target": "/dev",
+                        "ReadOnly": True,
+                        "BindOptions": {"ReadOnlyNonRecursive": True},
+                    },
+                    {
+                        "Type": "volume",
+                        "Source": "my_volume",
+                        "Target": "/data",
+                        "ReadOnly": False,
+                    },
+                ],
             },
-            {
-                "Type": "volume",
-                "Source": "my_volume",
-                "Target": "/data",
-                "ReadOnly": False,
-            },
-        ],
+        },
+        name=None,
     )
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
-async def test_run_container_with_cidfile(coresys: CoreSys, docker: DockerAPI):
+async def test_run_container_with_cidfile(
+    coresys: CoreSys, docker: DockerAPI, container: DockerContainer
+):
     """Test container creation with cidfile and bind mount."""
-    # Mock container
-    mock_container = MagicMock(spec=DockerContainer, id="test_container_id_12345")
-    mock_container.show.return_value = mock_metadata = {"Id": mock_container.id}
+    container.id = "test_container_id_12345"
+    container.show.return_value = mock_metadata = {"Id": container.id}
 
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
     extern_cidfile_path = coresys.config.path_extern_cid_files / f"{container_name}.cid"
 
-    docker.containers.create.return_value = mock_container
+    # Execute run with a container name
+    result = await docker.run("test_image", tag="latest", name=container_name)
 
-    # Mock container creation
-    with patch.object(
-        docker.containers, "create", return_value=mock_container
-    ) as create_mock:
-        # Execute run with a container name
-        result = await docker.run("test_image", tag="latest", name=container_name)
+    # Check the container creation parameters
+    docker.containers.create.assert_called_once()
+    create_config = docker.containers.create.call_args.args[0]
 
-        # Check the container creation parameters
-        create_mock.assert_called_once()
-        create_config = create_mock.call_args.args[0]
+    assert "HostConfig" in create_config
+    assert "Mounts" in create_config["HostConfig"]
+    assert {
+        "Type": "bind",
+        "Source": str(extern_cidfile_path),
+        "Target": "/run/cid",
+        "ReadOnly": True,
+    } in create_config["HostConfig"]["Mounts"]
 
-        assert "HostConfig" in create_config
-        assert "Mounts" in create_config["HostConfig"]
-        assert {
-            "Type": "bind",
-            "Source": str(extern_cidfile_path),
-            "Target": "/run/cid",
-            "ReadOnly": True,
-        } in create_config["HostConfig"]["Mounts"]
+    # Verify container start was called
+    container.start.assert_called_once()
 
-        # Verify container start was called
-        mock_container.start.assert_called_once()
+    # Verify cidfile was written with container ID
+    assert cidfile_path.exists()
+    assert cidfile_path.read_text() == container.id
 
-        # Verify cidfile was written with container ID
-        assert cidfile_path.exists()
-        assert cidfile_path.read_text() == mock_container.id
-
-        assert result == mock_metadata
+    assert result == mock_metadata
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
-async def test_run_container_with_leftover_cidfile(coresys: CoreSys, docker: DockerAPI):
+async def test_run_container_with_leftover_cidfile(
+    coresys: CoreSys, docker: DockerAPI, container: DockerContainer
+):
     """Test container creation removes leftover cidfile before creating new one."""
-    # Mock container
-    mock_container = MagicMock(spec=DockerContainer, id="test_container_id_new")
-    mock_container.show.return_value = mock_metadata = {"Id": mock_container.id}
+    container.id = "test_container_id_12345"
+    container.show.return_value = mock_metadata = {"Id": container.id}
 
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
@@ -257,30 +305,26 @@ async def test_run_container_with_leftover_cidfile(coresys: CoreSys, docker: Doc
     # Create a leftover cidfile
     cidfile_path.touch()
 
-    # Mock container creation
-    with patch.object(
-        docker.containers, "create", return_value=mock_container
-    ) as create_mock:
-        # Execute run with a container name
-        result = await docker.run("test_image", tag="latest", name=container_name)
+    # Execute run with a container name
+    result = await docker.run("test_image", tag="latest", name=container_name)
 
-        # Verify container was created
-        create_mock.assert_called_once()
+    # Verify container was created
+    docker.containers.create.assert_called_once()
 
-        # Verify new cidfile was written with container ID
-        assert cidfile_path.exists()
-        assert cidfile_path.read_text() == mock_container.id
+    # Verify new cidfile was written with container ID
+    assert cidfile_path.exists()
+    assert cidfile_path.read_text() == container.id
 
-        assert result == mock_metadata
+    assert result == mock_metadata
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_stop_container_with_cidfile_cleanup(
-    coresys: CoreSys, docker: DockerAPI, path_extern, tmp_supervisor_data
+    coresys: CoreSys, docker: DockerAPI, container: DockerContainer
 ):
     """Test container stop with cidfile cleanup."""
-    # Mock container
-    mock_container = MagicMock()
-    mock_container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
 
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
@@ -288,55 +332,45 @@ async def test_stop_container_with_cidfile_cleanup(
     # Create a cidfile
     cidfile_path.touch()
 
-    # Mock the containers.get method and cidfile cleanup
-    with (
-        patch.object(docker.containers_legacy, "get", return_value=mock_container),
-    ):
-        # Call stop_container with remove_container=True
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            None,
-            lambda kwrgs: docker.stop_container(**kwrgs),
-            {"timeout": 10, "remove_container": True, "name": container_name},
-        )
+    # Call stop_container with remove_container=True
+    await docker.stop_container(timeout=10, remove_container=True, name=container_name)
 
-        # Verify container operations
-        mock_container.stop.assert_called_once_with(timeout=10)
-        mock_container.remove.assert_called_once_with(force=True, v=True)
+    # Verify container operations
+    container.stop.assert_called_once_with(t=10)
+    container.delete.assert_called_once_with(force=True, v=True)
 
-        assert not cidfile_path.exists()
+    assert not cidfile_path.exists()
 
 
-async def test_stop_container_without_removal_no_cidfile_cleanup(docker: DockerAPI):
+async def test_stop_container_without_removal_no_cidfile_cleanup(
+    docker: DockerAPI, container: DockerContainer
+):
     """Test container stop without removal doesn't clean up cidfile."""
-    # Mock container
-    mock_container = MagicMock()
-    mock_container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
 
     container_name = "test_container"
 
     # Mock the containers.get method and cidfile cleanup
-    with (
-        patch.object(docker.containers_legacy, "get", return_value=mock_container),
-        patch("pathlib.Path.unlink") as mock_unlink,
-    ):
+    with patch("pathlib.Path.unlink") as mock_unlink:
         # Call stop_container with remove_container=False
-        docker.stop_container(container_name, timeout=10, remove_container=False)
+        await docker.stop_container(container_name, timeout=10, remove_container=False)
 
         # Verify container operations
-        mock_container.stop.assert_called_once_with(timeout=10)
-        mock_container.remove.assert_not_called()
+        container.stop.assert_called_once_with(t=10)
+        container.delete.assert_not_called()
 
         # Verify cidfile cleanup was NOT called
         mock_unlink.assert_not_called()
 
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
-async def test_cidfile_cleanup_handles_oserror(coresys: CoreSys, docker: DockerAPI):
+async def test_cidfile_cleanup_handles_oserror(
+    coresys: CoreSys, docker: DockerAPI, container: DockerContainer
+):
     """Test that cidfile cleanup handles OSError gracefully."""
-    # Mock container
-    mock_container = MagicMock()
-    mock_container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
 
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
@@ -346,7 +380,6 @@ async def test_cidfile_cleanup_handles_oserror(coresys: CoreSys, docker: DockerA
 
     # Mock the containers.get method and cidfile cleanup to raise OSError
     with (
-        patch.object(docker.containers_legacy, "get", return_value=mock_container),
         patch("pathlib.Path.is_dir", return_value=False),
         patch("pathlib.Path.is_file", return_value=True),
         patch(
@@ -354,11 +387,11 @@ async def test_cidfile_cleanup_handles_oserror(coresys: CoreSys, docker: DockerA
         ) as mock_unlink,
     ):
         # Call stop_container - should not raise exception
-        docker.stop_container(container_name, timeout=10, remove_container=True)
+        await docker.stop_container(container_name, timeout=10, remove_container=True)
 
         # Verify container operations completed
-        mock_container.stop.assert_called_once_with(timeout=10)
-        mock_container.remove.assert_called_once_with(force=True, v=True)
+        container.stop.assert_called_once_with(t=10)
+        container.delete.assert_called_once_with(force=True, v=True)
 
         # Verify cidfile cleanup was attempted
         mock_unlink.assert_called_once_with(missing_ok=True)
@@ -366,7 +399,7 @@ async def test_cidfile_cleanup_handles_oserror(coresys: CoreSys, docker: DockerA
 
 @pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_run_container_with_leftover_cidfile_directory(
-    coresys: CoreSys, docker: DockerAPI
+    coresys: CoreSys, docker: DockerAPI, container: DockerContainer
 ):
     """Test container creation removes leftover cidfile directory before creating new one.
 
@@ -374,9 +407,8 @@ async def test_run_container_with_leftover_cidfile_directory(
     before Supervisor could write the CID file, causing Docker to create
     the bind mount source as a directory.
     """
-    # Mock container
-    mock_container = MagicMock(spec=DockerContainer, id="test_container_id_new")
-    mock_container.show.return_value = mock_metadata = {"Id": mock_container.id}
+    container.id = "test_container_id_12345"
+    container.show.return_value = mock_metadata = {"Id": container.id}
 
     container_name = "test_container"
     cidfile_path = coresys.config.path_cid_files / f"{container_name}.cid"
@@ -385,45 +417,43 @@ async def test_run_container_with_leftover_cidfile_directory(
     cidfile_path.mkdir()
     assert cidfile_path.is_dir()
 
-    # Mock container creation
-    with patch.object(
-        docker.containers, "create", return_value=mock_container
-    ) as create_mock:
-        # Execute run with a container name
-        result = await docker.run("test_image", tag="latest", name=container_name)
+    # Execute run with a container name
+    result = await docker.run("test_image", tag="latest", name=container_name)
 
-        # Verify container was created
-        create_mock.assert_called_once()
+    # Verify container was created
+    docker.containers.create.assert_called_once()
 
-        # Verify new cidfile was written as a file (not directory)
-        assert cidfile_path.exists()
-        assert cidfile_path.is_file()
-        assert cidfile_path.read_text() == mock_container.id
+    # Verify new cidfile was written as a file (not directory)
+    assert cidfile_path.exists()
+    assert cidfile_path.is_file()
+    assert cidfile_path.read_text() == container.id
 
-        assert result == mock_metadata
+    assert result == mock_metadata
 
 
-async def test_repair(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
+async def test_repair(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, container: DockerContainer
+):
     """Test repair API."""
-    coresys.docker.dockerpy.networks.get.side_effect = [
-        hassio := MagicMock(
-            attrs={
-                "Containers": {
-                    "good": {"Name": "good"},
-                    "corrupt": {"Name": "corrupt"},
-                    "fail": {"Name": "fail"},
-                }
-            }
-        ),
-        host := MagicMock(attrs={"Containers": {}}),
+    coresys.docker.docker.networks.get.side_effect = [
+        hassio := MagicMock(spec=DockerNetwork),
+        host := MagicMock(spec=DockerNetwork),
     ]
-    coresys.docker.dockerpy.containers.get.side_effect = [
-        MagicMock(),
-        NotFound("corrupt"),
-        DockerException("fail"),
+    hassio.show.return_value = {
+        "Containers": {
+            "good": {"Name": "good"},
+            "corrupt": {"Name": "corrupt"},
+            "fail": {"Name": "fail"},
+        }
+    }
+    host.show.return_value = {"Containers": {}}
+    coresys.docker.containers.get.side_effect = [
+        container,
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "corrupt"}),
+        aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}),
     ]
 
-    await coresys.run_in_executor(coresys.docker.repair)
+    await coresys.docker.repair()
 
     coresys.docker.dockerpy.api.prune_containers.assert_called_once()
     coresys.docker.dockerpy.api.prune_images.assert_called_once_with(
@@ -432,7 +462,7 @@ async def test_repair(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     coresys.docker.dockerpy.api.prune_builds.assert_called_once()
     coresys.docker.dockerpy.api.prune_volumes.assert_called_once()
     coresys.docker.dockerpy.api.prune_networks.assert_called_once()
-    hassio.disconnect.assert_called_once_with("corrupt", force=True)
+    hassio.disconnect.assert_called_once_with({"Container": "corrupt", "Force": True})
     host.disconnect.assert_not_called()
     assert "Docker fatal error on container fail on hassio" in caplog.text
 
@@ -444,17 +474,19 @@ async def test_repair_failures(coresys: CoreSys, caplog: pytest.LogCaptureFixtur
     coresys.docker.dockerpy.api.prune_builds.side_effect = APIError("fail")
     coresys.docker.dockerpy.api.prune_volumes.side_effect = APIError("fail")
     coresys.docker.dockerpy.api.prune_networks.side_effect = APIError("fail")
-    coresys.docker.dockerpy.networks.get.side_effect = NotFound("missing")
+    coresys.docker.docker.networks.get.side_effect = err = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    )
 
-    await coresys.run_in_executor(coresys.docker.repair)
+    await coresys.docker.repair()
 
     assert "Error for containers prune: fail" in caplog.text
     assert "Error for images prune: fail" in caplog.text
     assert "Error for builds prune: fail" in caplog.text
     assert "Error for volumes prune: fail" in caplog.text
     assert "Error for networks prune: fail" in caplog.text
-    assert "Error for networks hassio prune: missing" in caplog.text
-    assert "Error for networks host prune: missing" in caplog.text
+    assert f"Error for networks hassio prune: {err!s}" in caplog.text
+    assert f"Error for networks host prune: {err!s}" in caplog.text
 
 
 @pytest.mark.parametrize("log_starter", [("Loaded image ID"), ("Loaded image")])

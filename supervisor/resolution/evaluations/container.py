@@ -1,9 +1,9 @@
 """Evaluation class for container."""
 
+import asyncio
 import logging
 
-from docker.errors import DockerException
-from requests import RequestException
+import aiodocker
 
 from ...const import CoreState
 from ...coresys import CoreSys
@@ -73,10 +73,9 @@ class EvaluateContainer(EvaluateBase):
         self._images.clear()
 
         try:
-            containers = await self.sys_run_in_executor(
-                self.sys_docker.containers_legacy.list
-            )
-        except (DockerException, RequestException) as err:
+            containers = await self.sys_docker.containers.list()
+            containers_metadata = await asyncio.gather(*[c.show() for c in containers])
+        except aiodocker.DockerError as err:
             _LOGGER.error("Corrupt docker overlayfs detect: %s", err)
             self.sys_resolution.create_issue(
                 IssueType.CORRUPT_DOCKER,
@@ -87,8 +86,8 @@ class EvaluateContainer(EvaluateBase):
 
         images = {
             image
-            for container in containers
-            if (config := container.attrs.get("Config")) is not None
+            for container in containers_metadata
+            if (config := container.get("Config")) is not None
             and (image := config.get("Image")) is not None
         }
         for image in images:
