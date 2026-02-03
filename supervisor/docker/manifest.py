@@ -15,7 +15,7 @@ import aiohttp
 
 from supervisor.docker.utils import get_registry_from_image
 
-from .const import DOCKER_HUB, DOCKER_HUB_LEGACY
+from .const import DOCKER_HUB, DOCKER_HUB_API, DOCKER_HUB_LEGACY
 
 if TYPE_CHECKING:
     from ..coresys import CoreSys
@@ -83,6 +83,16 @@ class RegistryManifestFetcher:
         """Return the websession for HTTP requests."""
         return self.coresys.websession
 
+    def _get_api_endpoint(self, registry: str) -> str:
+        """Get the actual API endpoint for a registry.
+
+        Translates docker.io to registry-1.docker.io for Docker Hub.
+        This matches exactly what Docker itself does internally - see daemon/pkg/registry/config.go:49
+        where Docker hardcodes DefaultRegistryHost = "registry-1.docker.io" for registry operations.
+        Without this, requests to https://docker.io/v2/... redirect to https://www.docker.com/
+        """
+        return DOCKER_HUB_API if registry == DOCKER_HUB else registry
+
     def _get_credentials(self, registry: str) -> tuple[str, str] | None:
         """Get credentials for registry from Docker config.
 
@@ -112,8 +122,10 @@ class RegistryManifestFetcher:
         Uses the WWW-Authenticate header from a 401 response to discover
         the token endpoint, then requests a token with appropriate scope.
         """
+        api_endpoint = self._get_api_endpoint(registry)
+
         # First, make an unauthenticated request to get WWW-Authenticate header
-        manifest_url = f"https://{registry}/v2/{repository}/manifests/latest"
+        manifest_url = f"https://{api_endpoint}/v2/{repository}/manifests/latest"
 
         try:
             async with self._session.get(manifest_url) as resp:
@@ -189,7 +201,8 @@ class RegistryManifestFetcher:
         If the manifest is a manifest list (multi-arch), fetches the
         platform-specific manifest.
         """
-        manifest_url = f"https://{registry}/v2/{repository}/manifests/{reference}"
+        api_endpoint = self._get_api_endpoint(registry)
+        manifest_url = f"https://{api_endpoint}/v2/{repository}/manifests/{reference}"
 
         headers = {"Accept": ", ".join(MANIFEST_MEDIA_TYPES)}
         if token:
