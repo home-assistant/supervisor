@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from supervisor.coresys import CoreSys
 from supervisor.docker.manifest import (
     DOCKER_HUB,
+    DOCKER_HUB_API,
     ImageManifest,
     RegistryManifestFetcher,
     parse_image_reference,
@@ -141,3 +142,21 @@ def test_get_credentials_not_found(coresys: CoreSys, websession: MagicMock):
     creds = fetcher._get_credentials("unknown.io")  # pylint: disable=protected-access
 
     assert creds is None
+
+
+def test_get_api_endpoint_docker_hub(coresys: CoreSys, websession: MagicMock):
+    """Test Docker Hub registry translates to API endpoint."""
+    fetcher = RegistryManifestFetcher(coresys)
+
+    endpoint = fetcher._get_api_endpoint(DOCKER_HUB)  # pylint: disable=protected-access
+
+    assert endpoint == DOCKER_HUB_API
+
+
+def test_get_api_endpoint_other_registry(coresys: CoreSys, websession: MagicMock):
+    """Test other registries pass through unchanged."""
+    fetcher = RegistryManifestFetcher(coresys)
+
+    endpoint = fetcher._get_api_endpoint("ghcr.io")  # pylint: disable=protected-access
+
+    assert endpoint == "ghcr.io"
