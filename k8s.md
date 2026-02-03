@@ -29,6 +29,127 @@ When in Kubernetes mode, Docker-only components are disabled or treated as unsup
 Many REST endpoints that are host/Docker specific return a consistent "not supported" API
 error.
 
+Installing Supervisor (Kubernetes mode)
+--------------------------------------
+
+This section describes how to deploy Supervisor itself to a Kubernetes cluster so that it
+can manage Home Assistant and add-ons using the Kubernetes backend.
+
+Requirements
+------------
+
+Cluster requirements:
+
+- Kubernetes v1.29+ recommended (tested on k3s).
+- A working DNS stack (CoreDNS) so Services resolve as
+  `<service>.<namespace>.svc.cluster.local`.
+- A LoadBalancer implementation capable of assigning a *stable* VIP for the internal
+  add-on ports Service.
+  - Cilium: LB IPAM enabled (recommended).
+
+Storage requirements:
+
+- A shared RWX PersistentVolumeClaim (PVC) that can be mounted by Supervisor, Home
+  Assistant, and add-ons.
+  - StorageClass must support `ReadWriteMany`.
+  - Capacity must match your deployment needs (Supervisor validates the requested size).
+
+RBAC requirements (namespace-scoped):
+
+- Supervisor's ServiceAccount must be allowed to create/patch/delete:
+  - Deployments (including `/scale`)
+  - StatefulSets (if Supervisor manages Home Assistant)
+  - Services
+  - ConfigMaps
+  - Secrets
+  - Pods and Pods/log (for log access)
+  - PVCs (only if you want Supervisor to create the RWX claim; otherwise it can be
+    pre-provisioned and Supervisor will validate it)
+- Gateway API permissions are only required if `SUPERVISOR_K8S_MANAGE_PUBLIC_GATEWAY=true`.
+
+Process
+-------
+
+1) Create namespace and shared RWX PVC
+
+- Create the namespace you want to run Home Assistant in (example: `home-assistant`).
+- Create a RWX PVC (example values shown):
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ha-shared-rwx
+  namespace: home-assistant
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: <your-rwx-storageclass>
+  resources:
+    requests:
+      storage: 50Gi
+```
+
+2) Create ServiceAccount + Role/RoleBinding
+
+Create a `ServiceAccount` for Supervisor and bind it to a namespaced `Role` that grants
+the permissions described in "RBAC expectations".
+
+3) Deploy Supervisor
+
+Supervisor should be deployed by your install tooling (Helm/Kustomize/GitOps). A typical
+deployment is a `StatefulSet` with a stable identity and a `Service` named `supervisor`.
+
+Key points:
+
+- Mount the shared RWX PVC at `/data` (no subPath).
+- Expose port `80` on a ClusterIP Service named `supervisor`.
+- Set required environment variables (see below).
+
+Required environment variables:
+
+- `SUPERVISOR_RUNTIME=kubernetes`
+- `SUPERVISOR_NAME=supervisor`
+- `SUPERVISOR_SHARE=/data`
+- `SUPERVISOR_MACHINE=<machine>` (e.g. `generic-x86-64`)
+
+- `SUPERVISOR_K8S_STORAGE_MODE=shared_pvc`
+- `SUPERVISOR_K8S_SHARED_PVC_CLAIM=ha-shared-rwx`
+- `SUPERVISOR_K8S_SHARED_PVC_STORAGE_CLASS=<your-rwx-storageclass>`
+- `SUPERVISOR_K8S_SHARED_PVC_SIZE=50Gi`
+
+- `SUPERVISOR_K8S_INTERNAL_GATEWAY_ADDRESS=<vip>` (example: `192.168.100.130`)
+
+Recommended / optional environment variables:
+
+- `SUPERVISOR_K8S_INTERNAL_GATEWAY_NAME` (default: `ha-internal`)
+- `SUPERVISOR_K8S_INTERNAL_GATEWAY_CLASS` (default: `cilium`)
+
+- `SUPERVISOR_K8S_INTERNAL_L4_IMAGE` (default: `nginx:1.25-alpine`)
+- `SUPERVISOR_K8S_INTERNAL_L4_SERVICE_ANNOTATIONS` (JSON object)
+  - Use this if your LoadBalancer provider requires annotations to allocate a deterministic VIP.
+  - For Cilium LB IPAM you usually do not need to set this (Supervisor will add
+    `io.cilium/lb-ipam-ips` automatically when `SUPERVISOR_K8S_INTERNAL_GATEWAY_CLASS=cilium`).
+
+4) Public ingress (GitOps-owned)
+
+Supervisor assumes your cluster GitOps provides public routing to Home Assistant. If you
+want Supervisor to manage it:
+
+- Set `SUPERVISOR_K8S_MANAGE_PUBLIC_GATEWAY=true`
+- Provide:
+  - `SUPERVISOR_K8S_GATEWAY_HOSTNAME`
+  - `SUPERVISOR_K8S_GATEWAY_TLS_SECRET`
+
+5) Verify
+
+- Ensure Supervisor API is reachable from inside the namespace:
+  - `curl -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://supervisor/supervisor/info`
+- Start an add-on that exposes ports (e.g. Mosquitto) and confirm the internal L4 VIP is
+  created:
+  - `service/ha-internal` (LoadBalancer)
+  - `deployment/ha-internal` (NGINX stream proxy)
+  - `configmap/ha-internal-config`
+
 Storage
 -------
 
