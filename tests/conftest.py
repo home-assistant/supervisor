@@ -3,16 +3,18 @@
 import asyncio
 from collections.abc import AsyncGenerator, Generator
 from datetime import datetime
-import os
 from pathlib import Path
 import subprocess
 from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
+from aiodocker.channel import Channel, ChannelSubscriber
 from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.docker import DockerImages
+from aiodocker.events import DockerEvents
 from aiodocker.execs import Exec
 from aiodocker.networks import DockerNetwork, DockerNetworks
+from aiodocker.system import DockerSystem
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -49,7 +51,6 @@ from supervisor.const import (
 from supervisor.coresys import CoreSys
 from supervisor.dbus.network import NetworkManager
 from supervisor.docker.manager import DockerAPI
-from supervisor.docker.monitor import DockerMonitor
 from supervisor.exceptions import HostLogError
 from supervisor.homeassistant.api import APIState
 from supervisor.host.logs import LogsControl
@@ -61,7 +62,6 @@ from supervisor.utils.dt import utcnow
 from .common import (
     AsyncIterator,
     MockResponse,
-    load_binary_fixture,
     load_fixture,
     load_json_fixture,
     mock_dbus_services,
@@ -100,16 +100,16 @@ def blockbuster(request: pytest.FixtureRequest) -> BlockBuster | None:
 
 
 @pytest.fixture
-async def path_extern() -> None:
+async def path_extern(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set external path env for tests."""
-    os.environ["SUPERVISOR_SHARE"] = "/mnt/data/supervisor"
+    monkeypatch.setenv("SUPERVISOR_SHARE", "/mnt/data/supervisor")
     yield
 
 
 @pytest.fixture
-async def supervisor_name() -> None:
+async def supervisor_name(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set env for supervisor name."""
-    os.environ["SUPERVISOR_NAME"] = "hassio_supervisor"
+    monkeypatch.setenv("SUPERVISOR_NAME", "hassio_supervisor")
     yield
 
 
@@ -144,18 +144,24 @@ async def docker() -> DockerAPI:
         },
         "Containers": {},
     }
+    system_info = {
+        "ServerVersion": "1.0.0",
+        "Driver": "overlay2",
+        "LoggingDriver": "journald",
+        "CgroupVersion": "1",
+    }
 
     with (
         patch("supervisor.docker.manager.DockerClient", return_value=MagicMock()),
-        patch("supervisor.docker.manager.DockerAPI.info", return_value=MagicMock()),
-        patch("supervisor.docker.manager.DockerAPI.unload"),
         patch(
             "supervisor.docker.manager.aiodocker.Docker",
             return_value=(
-                docker_client := MagicMock(
-                    networks=MagicMock(spec=DockerNetworks),
+                MagicMock(
+                    networks=(docker_networks := MagicMock(spec=DockerNetworks)),
                     images=(docker_images := MagicMock(spec=DockerImages)),
                     containers=(docker_containers := MagicMock(spec=DockerContainers)),
+                    events=(docker_events := MagicMock(spec=DockerEvents)),
+                    system=(docker_system := MagicMock(spec=DockerSystem)),
                 )
             ),
         ),
@@ -168,16 +174,21 @@ async def docker() -> DockerAPI:
             new=PropertyMock(return_value=docker_containers),
         ),
     ):
-        docker_client.networks.get.return_value = docker_network = MagicMock(
+        # Info mocking
+        docker_system.info.return_value = system_info
+
+        # Network mocking
+        docker_networks.get.return_value = docker_network = MagicMock(
             spec=DockerNetwork
         )
         docker_network.show.return_value = network_inspect
 
-        docker_obj = await DockerAPI(MagicMock()).post_init()
-        docker_obj.config._data = {"registries": {}}
-        with patch("supervisor.docker.monitor.DockerMonitor.load"):
-            await docker_obj.load()
+        # Events mocking
+        docker_events.channel = channel = Channel()
+        docker_events.subscribe.return_value = ChannelSubscriber(channel)
+        docker_events.stop = lambda *_: channel.publish(None)
 
+        # Images mocking
         docker_images.inspect.return_value = image_inspect
         docker_images.list.return_value = [image_inspect]
         docker_images.import_image = AsyncMock(
@@ -185,6 +196,7 @@ async def docker() -> DockerAPI:
         )
         docker_images.pull.return_value = AsyncIterator([{}])
 
+        # Containers mocking
         docker_containers.get.return_value = docker_container = MagicMock(
             spec=DockerContainer, id=container_inspect["Id"]
         )
@@ -200,14 +212,20 @@ async def docker() -> DockerAPI:
         docker_exec.start.return_value = create_mock_exec_stream(output=b"")
         docker_exec.inspect.return_value = {"ExitCode": 0}
 
-        docker_obj.info.logging = "journald"
-        docker_obj.info.storage = "overlay2"
-        docker_obj.info.version = AwesomeVersion("1.0.0")
+        # Load Docker manager
+        docker_obj = await DockerAPI(
+            MagicMock(create_task=asyncio.get_running_loop().create_task)
+        ).post_init()
+        docker_obj.config._data = {"registries": {}}
+        await docker_obj.load()
 
         # Mock manifest fetcher to return None (falls back to count-based progress)
         docker_obj._manifest_fetcher.get_manifest = AsyncMock(return_value=None)
 
         yield docker_obj
+
+        # Clean up
+        await docker_obj.unload()
 
 
 @pytest.fixture(scope="session")
@@ -432,8 +450,8 @@ async def fixture_all_dbus_services(
 
 @pytest.fixture
 async def coresys(
-    docker,
-    dbus_session_bus,
+    docker: DockerAPI,
+    dbus_session_bus: MessageBus,
     all_dbus_services,
     aiohttp_client,
     run_supervisor_state,
@@ -480,7 +498,7 @@ async def coresys(
     # Mock docker
     coresys_obj._docker = docker
     coresys_obj.docker.coresys = coresys_obj
-    coresys_obj.docker._monitor = DockerMonitor(coresys_obj)
+    docker.monitor.coresys = coresys_obj
 
     # Set internet state
     coresys_obj.supervisor._connectivity = True
@@ -839,12 +857,11 @@ async def journald_logs(coresys: CoreSys) -> MagicMock:
 
 
 @pytest.fixture
-async def docker_logs(docker: DockerAPI, supervisor_name) -> MagicMock:
+async def docker_logs(container: DockerContainer, supervisor_name) -> AsyncMock:
     """Mock log output for a container from docker."""
-    container_mock = MagicMock()
-    container_mock.logs.return_value = load_binary_fixture("logs_docker_container.txt")
-    docker.dockerpy.containers.get.return_value = container_mock
-    yield container_mock.logs
+    logs = load_fixture("logs_docker_container.txt")
+    container.log.return_value = logs.splitlines()
+    yield container.log
 
 
 @pytest.fixture

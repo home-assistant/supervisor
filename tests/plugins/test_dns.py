@@ -6,6 +6,7 @@ from ipaddress import IPv4Address
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
+from aiodocker.containers import DockerContainer
 import pytest
 
 from supervisor.const import BusEvent, LogLevel
@@ -13,7 +14,7 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.dns import DockerDNS
 from supervisor.docker.monitor import DockerContainerStateEvent
-from supervisor.plugins.dns import HostEntry
+from supervisor.plugins.dns import HostEntry, PluginDns
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
@@ -145,34 +146,28 @@ async def test_reset(coresys: CoreSys):
         ]
 
 
-async def test_loop_detection_on_failure(coresys: CoreSys):
+async def test_loop_detection_on_failure(coresys: CoreSys, container: DockerContainer):
     """Test loop detection when coredns fails."""
     assert len(coresys.resolution.issues) == 0
     assert len(coresys.resolution.suggestions) == 0
 
     with (
-        patch.object(type(coresys.plugins.dns.instance), "attach"),
-        patch.object(
-            type(coresys.plugins.dns.instance),
-            "is_running",
-            return_value=True,
-        ),
+        patch.object(DockerDNS, "attach"),
+        patch.object(DockerDNS, "is_running", return_value=True),
     ):
         await coresys.plugins.dns.load()
 
     with (
-        patch.object(type(coresys.plugins.dns), "rebuild") as rebuild,
+        patch.object(PluginDns, "rebuild") as rebuild,
         patch.object(
-            type(coresys.plugins.dns.instance),
+            DockerDNS,
             "current_state",
             side_effect=[
                 ContainerState.FAILED,
                 ContainerState.FAILED,
             ],
         ),
-        patch.object(type(coresys.plugins.dns.instance), "logs") as logs,
     ):
-        logs.return_value = b""
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -188,7 +183,7 @@ async def test_loop_detection_on_failure(coresys: CoreSys):
         rebuild.assert_called_once()
 
         rebuild.reset_mock()
-        logs.return_value = b"plugin/loop: Loop"
+        container.log.return_value = ["plugin/loop: Loop"]
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(

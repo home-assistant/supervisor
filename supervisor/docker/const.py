@@ -16,6 +16,10 @@ RE_RETRYING_DOWNLOAD_STATUS = re.compile(r"Retrying in \d+ seconds?")
 # Docker's default registry is docker.io
 DOCKER_HUB = "docker.io"
 
+# Docker Hub API endpoint (used for direct registry API calls)
+# While docker.io is the registry identifier, registry-1.docker.io is the actual API endpoint
+DOCKER_HUB_API = "registry-1.docker.io"
+
 # Legacy Docker Hub identifier for backward compatibility
 DOCKER_HUB_LEGACY = "hub.docker.com"
 
