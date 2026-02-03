@@ -16,9 +16,7 @@ async def test_observer_start_port_conflict(
     """Test port conflict error when trying to start observer."""
     coresys.docker.containers.create.return_value.start.side_effect = aiodocker.DockerError(
         HTTPStatus.INTERNAL_SERVER_ERROR,
-        {
-            "message": "failed to set up container networking: driver failed programming external connectivity on endpoint hassio_observer (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:4357:172.30.33.4:80/tcp: address already in use"
-        },
+        "failed to set up container networking: driver failed programming external connectivity on endpoint hassio_observer (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:4357:172.30.33.4:80/tcp: address already in use",
     )
     await coresys.plugins.observer.load()
 
