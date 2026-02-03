@@ -61,6 +61,7 @@ from ..const import (
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
 from ..docker.const import ContainerState
+from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
@@ -1227,10 +1228,11 @@ class Addon(AddonModel):
 
     async def _backup_command(self, command: str) -> None:
         try:
-            command_return = await self.instance.run_inside(command)
+            command_return: ExecReturn = await self.instance.run_inside(command)
             if command_return.exit_code != 0:
                 _LOGGER.debug(
-                    "Pre-/Post backup command failed with: %s", command_return.output
+                    "Pre-/Post backup command failed with: %s",
+                    command_return.output.decode("utf-8", errors="replace"),
                 )
                 raise AddonPrePostBackupCommandReturnedError(
                     _LOGGER.error, addon=self.slug, exit_code=command_return.exit_code

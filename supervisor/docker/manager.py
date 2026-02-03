@@ -18,6 +18,7 @@ from typing import Any, Final, Self, cast
 import aiodocker
 from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.images import DockerImages
+from aiodocker.stream import Stream
 from aiodocker.types import JSONObject
 from aiohttp import ClientTimeout, UnixConnector
 import attr
@@ -967,17 +968,41 @@ class DockerAPI(CoreSysAttributes):
                 f"Can't get container {name} to run command: {err!s}"
             ) from err
 
-        # Execute
+        # Execute - use detach=False to wait for completion and capture output
         try:
             docker_exec = await docker_container.exec(command)
-            output = await docker_exec.start(detach=True)
+            # start() with detach=False returns a Stream object (not a coroutine)
+            stream: Stream = docker_exec.start(detach=False)
+
+            # Read all output from the stream until exec completes
+            output_parts = []
+            async with stream:
+                while msg := await stream.read_out():
+                    output_parts.append(msg.data)
+
+            # Combine all output parts
+            output = b"".join(output_parts)
+
+            # After stream closes, exec is complete and exit code should be available
             exec_metadata = await docker_exec.inspect()
+
+            # Validate exit code is present
+            exit_code = exec_metadata.get("ExitCode")
+            if exit_code is None:
+                raise DockerError(
+                    f"Exec command '{command}' in {name} completed but ExitCode is None. "
+                    f"Metadata: {exec_metadata}",
+                    _LOGGER.error,
+                )
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't run command in container {name}: {err!s}"
             ) from err
 
-        return ExecReturn(exec_metadata["ExitCode"], output)
+        _LOGGER.debug(
+            "Exec command '%s' in %s exited with %d", command, name, exit_code
+        )
+        return ExecReturn(exit_code, output)
 
     async def remove_image(
         self, image: str, version: AwesomeVersion, latest: bool = True

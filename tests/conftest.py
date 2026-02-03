@@ -195,7 +195,9 @@ async def docker() -> DockerAPI:
         docker_container.log = AsyncMock(return_value=[])
 
         docker_container.exec.return_value = docker_exec = MagicMock(spec=Exec)
-        docker_exec.start = AsyncMock(return_value=b"")
+        # start() with detach=False returns a Stream (not async)
+        # Use return_value instead of side_effect to avoid it being replaced by tests
+        docker_exec.start.return_value = create_mock_exec_stream(output=b"")
         docker_exec.inspect.return_value = {"ExitCode": 0}
 
         docker_obj.info.logging = "journald"
@@ -872,10 +874,53 @@ async def os_available(request: pytest.FixtureRequest) -> None:
         yield
 
 
+def create_mock_exec_stream(output: bytes = b"") -> AsyncMock:
+    """Create a mock stream for exec with detach=False."""
+    stream = AsyncMock()
+    # Set up async context manager
+    stream.__aenter__.return_value = stream
+    stream.__aexit__.return_value = None
+    # Set up read_out to return messages then None (EOF)
+    if output:
+        Message = type("Message", (), {"data": output})
+        stream.read_out.side_effect = [Message(), None]
+    else:
+        stream.read_out.return_value = None
+    return stream
+
+
 @pytest.fixture
 async def container(docker: DockerAPI) -> DockerContainer:
     """Mock attrs and status for container on attach."""
-    yield docker.containers.get.return_value
+    container_mock = docker.containers.get.return_value
+
+    # Set up exec mock to return a mock stream
+    # Note: This must be a regular function, not async, to match aiodocker's start() behavior
+    def mock_exec_start(detach=False):
+        if detach:
+            # Old behavior for detach=True (shouldn't be used anymore)
+            # Would need to return an awaitable
+            async def _async_start():
+                return b""
+
+            return _async_start()
+        # Return mock stream for detach=False (synchronous)
+        return create_mock_exec_stream(output=b"")
+
+    # Replace the mock's start method with a MagicMock (not AsyncMock)
+    start_mock = MagicMock(side_effect=mock_exec_start)
+    container_mock.exec.return_value.start = start_mock
+
+    # Store the original side_effect so tests can override it but we can restore if needed
+    start_mock._original_side_effect = mock_exec_start
+
+    container_mock.exec.return_value.inspect.return_value = {
+        "Running": False,
+        "ExitCode": 0,
+        "Pid": 12345,
+    }
+
+    yield container_mock
 
 
 @pytest.fixture
