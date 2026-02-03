@@ -68,6 +68,12 @@ class MQTTService(ServiceInterface):
     async def set_service_data(self, addon: Addon, data: dict[str, Any]) -> None:
         """Write the data into service object."""
         if self.enabled:
+            # Allow idempotent updates from the same add-on. Some providers (notably
+            # in Kubernetes) may re-register during restarts.
+            if self._data.get(ATTR_ADDON) == addon.slug:
+                self._data.update(data)
+                await self.save()
+                return
             raise ServicesError(
                 f"There is already a MQTT service in use from {self._data[ATTR_ADDON]}",
                 _LOGGER.error,

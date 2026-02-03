@@ -166,6 +166,12 @@ class Core(CoreSysAttributes):
             self._adjust_system_datetime(),
             # Load mounts
             self.sys_mounts.load(),
+            # Reconcile internal add-on port exposure (Kubernetes runtime)
+            (
+                self.sys_kubernetes.reconcile_addon_ports()
+                if is_kubernetes
+                else asyncio.sleep(0)
+            ),
             # Load Docker manager
             (
                 self.sys_docker.load()

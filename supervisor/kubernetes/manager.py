@@ -12,11 +12,13 @@ added incrementally.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
+import hashlib
+import json
 import logging
 import os
 from pathlib import Path
-import json
 from typing import Any, Self
 
 from kubernetes_asyncio import client, config
@@ -47,12 +49,15 @@ from .const import (
     ENV_SUPERVISOR_K8S_STORAGE_MODE,
     GATEWAY_API_GROUP,
     GATEWAY_API_VERSION,
+    K8S_ANNOTATION_CILIUM_LB_IPAM_IPS,
     K8S_LABEL_MANAGED,
     K8S_NAMESPACE_FILE,
     K8S_STORAGE_MODE_SHARED_PVC,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+_INTERNAL_L4_CONFIG_KEY = "nginx.conf"
 
 
 @dataclass(slots=True, frozen=True)
@@ -381,19 +386,10 @@ class KubernetesAPI(CoreSysAttributes):
 
         await self._write_port_registry(registry)
 
-        # L4 (TCPRoute/UDPRoute) support depends on Gateway API CRDs being installed.
-        # Some clusters only provide HTTPRoute. If the CRDs are missing, skip L4
-        # programming rather than failing add-on start.
-        try:
-            await self._ensure_internal_gateway_l4_listeners(registry)
-            await self._ensure_l4_routes(registry)
-        except KubernetesError as err:
-            if "(404)" in str(err) or "Not Found" in str(err):
-                _LOGGER.info(
-                    "Gateway L4 route CRDs not available; skipping L4 exposure for add-ons"
-                )
-                return
-            raise
+        # Program internal (LAN-only) L4 exposure using a dedicated LoadBalancer
+        # service and an in-cluster TCP proxy. This avoids relying on TCPRoute/
+        # UDPRoute support in the gateway controller.
+        await self._ensure_internal_l4_proxy(registry)
 
     async def remove_addon_ports(self, *, addon_slug: str) -> None:
         """Remove all exposed ports for an add-on."""
@@ -407,16 +403,16 @@ class KubernetesAPI(CoreSysAttributes):
             return
         await self._write_port_registry(registry)
 
-        try:
-            await self._ensure_internal_gateway_l4_listeners(registry)
-            await self._ensure_l4_routes(registry)
-        except KubernetesError as err:
-            if "(404)" in str(err) or "Not Found" in str(err):
-                _LOGGER.info(
-                    "Gateway L4 route CRDs not available; skipping L4 exposure cleanup"
-                )
-                return
-            raise
+        await self._ensure_internal_l4_proxy(registry)
+
+    async def reconcile_addon_ports(self) -> None:
+        """Reconcile internal L4 exposure based on the persisted registry.
+
+        This is used on Supervisor startup in Kubernetes runtime to recreate the
+        internal LoadBalancer + proxy stack after a restart.
+        """
+        registry = await self._read_port_registry()
+        await self._ensure_internal_l4_proxy(registry)
 
     async def _read_port_registry(self) -> dict[str, dict[str, Any]]:
         name = self.context.port_registry_configmap
@@ -450,6 +446,17 @@ class KubernetesAPI(CoreSysAttributes):
         self, registry: dict[str, dict[str, Any]]
     ) -> None:
         """Ensure internal Gateway listeners include all exposed TCP/UDP ports."""
+        # If no ports are exposed, remove the internal gateway to avoid leaving
+        # stale listeners open.
+        if not registry:
+            await self.delete_custom_object(
+                group=GATEWAY_API_GROUP,
+                version=GATEWAY_API_VERSION,
+                plural="gateways",
+                name=self.context.internal_gateway_name,
+            )
+            return
+
         listeners: list[dict[str, Any]] = []
 
         # L4 listeners
@@ -490,6 +497,294 @@ class KubernetesAPI(CoreSysAttributes):
             name=self.context.internal_gateway_name,
             body=body,
         )
+
+    async def _ensure_internal_l4_proxy(self, registry: dict[str, dict[str, Any]]) -> None:
+        """Ensure internal-only L4 proxy exists for exposed add-on ports.
+
+        This creates:
+        - ConfigMap with an NGINX stream configuration
+        - Deployment running NGINX as a TCP/UDP proxy
+        - Service type LoadBalancer bound to the configured internal VIP
+        """
+        name = self.context.internal_gateway_name
+        namespace = self.context.namespace
+        labels = {K8S_LABEL_MANAGED: "true", "io.hass.component": "internal-l4"}
+
+        # Determine desired ports
+        entries: list[tuple[int, str, str, int, str]] = []
+        for key, entry in registry.items():
+            external, proto = key.split("/", 1)
+            if proto not in ("tcp", "udp"):
+                continue
+            entries.append(
+                (
+                    int(external),
+                    proto,
+                    entry["service"],
+                    int(entry["targetPort"]),
+                    entry.get("addon") or "unknown",
+                )
+            )
+
+        # Always clean up managed Gateway API L4 objects; we no longer rely on
+        # TCPRoute/UDPRoute for port exposure.
+        await self._cleanup_gateway_api_l4_objects()
+
+        # If nothing is exposed, clean up any existing proxy resources
+        if not entries:
+            await self._delete_internal_l4_proxy(name=name)
+            return
+
+        nginx_cfg = self._render_nginx_stream_cfg(namespace=namespace, entries=entries)
+        cfg_hash = hashlib.sha256(nginx_cfg.encode("utf-8")).hexdigest()[:12]
+
+        # ConfigMap
+        await self.ensure_configmap(
+            f"{name}-config",
+            data={_INTERNAL_L4_CONFIG_KEY: nginx_cfg},
+            labels=labels,
+        )
+
+        # Deployment
+        await self._ensure_internal_l4_deployment(
+            name=name,
+            namespace=namespace,
+            labels=labels,
+            config_hash=cfg_hash,
+        )
+
+        # Service
+        await self._ensure_internal_l4_service(
+            name=name,
+            namespace=namespace,
+            labels=labels,
+            ports=[(port, proto) for port, proto, *_ in entries],
+        )
+
+    async def _delete_internal_l4_proxy(self, *, name: str) -> None:
+        namespace = self.context.namespace
+        with contextlib.suppress(client.ApiException):
+            await self.apps.delete_namespaced_deployment(name=name, namespace=namespace)
+        with contextlib.suppress(client.ApiException):
+            await self.core.delete_namespaced_service(name=name, namespace=namespace)
+        with contextlib.suppress(client.ApiException):
+            await self.core.delete_namespaced_config_map(
+                name=f"{name}-config", namespace=namespace
+            )
+
+    async def _cleanup_gateway_api_l4_objects(self) -> None:
+        """Remove managed Gateway API L4 resources (TCPRoute/UDPRoute/Gateway).
+
+        Clusters differ in Gateway API L4 support; if the CRDs are not installed,
+        the API will return 404. We ignore those cases.
+        """
+
+        # Internal Gateway object used by the old implementation
+        await self.delete_custom_object(
+            group=GATEWAY_API_GROUP,
+            version=GATEWAY_API_VERSION,
+            plural="gateways",
+            name=self.context.internal_gateway_name,
+        )
+
+        namespace = self.context.namespace
+        for plural in ("tcproutes", "udproutes"):
+            try:
+                obj = await self.custom.list_namespaced_custom_object(
+                    group=GATEWAY_API_GROUP,
+                    version=GATEWAY_API_VERSION,
+                    namespace=namespace,
+                    plural=plural,
+                )
+            except client.ApiException as err:
+                if err.status == 404:
+                    continue
+                raise KubernetesError(
+                    f"Unable to list {GATEWAY_API_GROUP}/{GATEWAY_API_VERSION} {plural} in {namespace}: {err}"
+                ) from err
+
+            for item in obj.get("items", []):
+                labels = (item.get("metadata") or {}).get("labels") or {}
+                if labels.get(K8S_LABEL_MANAGED) != "true":
+                    continue
+                name = (item.get("metadata") or {}).get("name")
+                if not name:
+                    continue
+                await self.delete_custom_object(
+                    group=GATEWAY_API_GROUP,
+                    version=GATEWAY_API_VERSION,
+                    plural=plural,
+                    name=name,
+                )
+
+    def _render_nginx_stream_cfg(
+        self, *, namespace: str, entries: list[tuple[int, str, str, int, str]]
+    ) -> str:
+        """Render an NGINX stream config for TCP/UDP proxying.
+
+        entries: (external_port, proto, service_name, target_port, addon_slug)
+        """
+        lines: list[str] = [
+            "worker_processes  1;",
+            "error_log  /var/log/nginx/error.log info;",
+            "pid        /var/run/nginx.pid;",
+            "",
+            "events {",
+            "  worker_connections  1024;",
+            "}",
+            "",
+            "stream {",
+            "  # L4 proxy managed by Home Assistant Supervisor",
+            "  # NOTE: This uses Cluster DNS names for backends.",
+            "  #       A rollout occurs when this file changes.",
+            "",
+        ]
+
+        for external_port, proto, service_name, target_port, addon_slug in sorted(entries):
+            svc_fqdn = f"{service_name}.{namespace}.svc.cluster.local"
+            listen = f"  listen {external_port} {proto};" if proto == "udp" else f"  listen {external_port};"
+            lines.extend(
+                [
+                    "  server {",
+                    f"    # addon={addon_slug}",
+                    listen,
+                    "    proxy_connect_timeout 5s;",
+                    "    proxy_timeout 1m;",
+                    f"    proxy_pass {svc_fqdn}:{target_port};",
+                    "  }",
+                    "",
+                ]
+            )
+
+        lines.append("}")
+        return "\n".join(lines)
+
+    async def _ensure_internal_l4_deployment(
+        self,
+        *,
+        name: str,
+        namespace: str,
+        labels: dict[str, str],
+        config_hash: str,
+    ) -> None:
+        image = os.environ.get(
+            "SUPERVISOR_K8S_INTERNAL_L4_IMAGE", "nginx:1.25-alpine"
+        )
+        body = client.V1Deployment(
+            metadata=client.V1ObjectMeta(name=name, namespace=namespace, labels=labels),
+            spec=client.V1DeploymentSpec(
+                replicas=1,
+                selector=client.V1LabelSelector(match_labels=labels),
+                template=client.V1PodTemplateSpec(
+                    metadata=client.V1ObjectMeta(
+                        labels=labels,
+                        annotations={"io.hass.config-hash": config_hash},
+                    ),
+                    spec=client.V1PodSpec(
+                        containers=[
+                            client.V1Container(
+                                name="l4-proxy",
+                                image=image,
+                                volume_mounts=[
+                                    client.V1VolumeMount(
+                                        name="config",
+                                        mount_path="/etc/nginx/nginx.conf",
+                                        sub_path=_INTERNAL_L4_CONFIG_KEY,
+                                    )
+                                ],
+                            )
+                        ],
+                        volumes=[
+                            client.V1Volume(
+                                name="config",
+                                config_map=client.V1ConfigMapVolumeSource(
+                                    name=f"{name}-config"
+                                ),
+                            )
+                        ],
+                    ),
+                ),
+            ),
+        )
+
+        try:
+            await self.apps.create_namespaced_deployment(namespace=namespace, body=body)
+        except client.ApiException as err:
+            if err.status != 409:
+                raise KubernetesError(
+                    f"Unable to create internal L4 deployment {namespace}/{name}: {err}"
+                ) from err
+            await self.apps.patch_namespaced_deployment(
+                name=name, namespace=namespace, body=body
+            )
+
+    async def _ensure_internal_l4_service(
+        self,
+        *,
+        name: str,
+        namespace: str,
+        labels: dict[str, str],
+        ports: list[tuple[int, str]],
+    ) -> None:
+        svc_ports: list[client.V1ServicePort] = []
+        for port, proto in sorted({(p, pr) for p, pr in ports}):
+            svc_ports.append(
+                client.V1ServicePort(
+                    name=f"{proto}-{port}",
+                    port=port,
+                    target_port=port,
+                    protocol=proto.upper(),
+                )
+            )
+
+        # Provider-specific annotations for the internal LoadBalancer service.
+        #
+        # For example, on Cilium with LB IPAM enabled, you typically need
+        # `io.cilium/lb-ipam-ips` for a deterministic VIP.
+        annotations: dict[str, str] = {}
+
+        raw_annotations = os.environ.get("SUPERVISOR_K8S_INTERNAL_L4_SERVICE_ANNOTATIONS")
+        if raw_annotations:
+            try:
+                extra = json.loads(raw_annotations)
+                if not isinstance(extra, dict):
+                    raise TypeError("annotations must be a JSON object")
+            except Exception as err:  # noqa: BLE001
+                raise KubernetesError(
+                    "Invalid SUPERVISOR_K8S_INTERNAL_L4_SERVICE_ANNOTATIONS; expected a JSON object"
+                ) from err
+            annotations.update({str(k): str(v) for k, v in extra.items()})
+
+        if self.context.internal_gateway_class == "cilium":
+            annotations.setdefault(
+                K8S_ANNOTATION_CILIUM_LB_IPAM_IPS, self.context.internal_gateway_address
+            )
+
+        body = client.V1Service(
+            metadata=client.V1ObjectMeta(
+                name=name,
+                namespace=namespace,
+                labels=labels,
+                annotations=annotations or None,
+            ),
+            spec=client.V1ServiceSpec(
+                type="LoadBalancer",
+                load_balancer_ip=self.context.internal_gateway_address,
+                selector=labels,
+                ports=svc_ports,
+            ),
+        )
+
+        try:
+            await self.core.create_namespaced_service(namespace=namespace, body=body)
+        except client.ApiException as err:
+            if err.status != 409:
+                raise KubernetesError(
+                    f"Unable to create internal L4 service {namespace}/{name}: {err}"
+                ) from err
+            await self.core.patch_namespaced_service(
+                name=name, namespace=namespace, body=body
+            )
 
     async def _ensure_l4_routes(self, registry: dict[str, dict[str, Any]]) -> None:
         """Ensure TCPRoute/UDPRoute objects exist for all registry entries."""

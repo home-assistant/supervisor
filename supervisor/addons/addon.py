@@ -1143,8 +1143,27 @@ class Addon(AddonModel):
         For addons with a healthcheck, that is when they become healthy or unhealthy.
         Addons without a healthcheck have state 'started' immediately.
         """
+        runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+
         if await self.instance.is_running():
             _LOGGER.warning("%s is already running!", self.slug)
+
+            # In Kubernetes runtime there is no event stream to wait for.
+            # Ensure L4 exposure is reconciled and return immediately.
+            if runtime == SupervisorRuntime.KUBERNETES:
+                if self.ports and any(port is not None for port in self.ports.values()):
+                    service_name = getattr(
+                        self.instance, "service_name", f"addon-{self.slug}"
+                    )
+                    await self.sys_kubernetes.sync_addon_ports(
+                        addon_slug=self.slug,
+                        service_name=service_name,
+                        ports=self.ports,
+                    )
+                self.state = AddonState.STARTED
+                self._startup_event.set()
+                return self.sys_create_task(asyncio.sleep(0))
+
             return self.sys_create_task(self._wait_for_startup())
 
         # Access Token
@@ -1180,16 +1199,16 @@ class Addon(AddonModel):
                 name=self.slug,
                 port=cast(dict[str, Any], err.extra_fields)["port"],
             ) from err
-        except DockerError as err:
-            _LOGGER.error("Could not start container for addon %s: %s", self.slug, err)
+        except (DockerError, KubernetesError) as err:
+            _LOGGER.error("Could not start addon %s: %s", self.slug, err)
             self.state = AddonState.ERROR
             raise AddonUnknownError(addon=self.slug) from err
 
-        if os.environ.get(ENV_SUPERVISOR_RUNTIME) == SupervisorRuntime.KUBERNETES:
+        if runtime == SupervisorRuntime.KUBERNETES:
             # KubernetesAddon.run waits for readiness; no event stream to wait for.
             # Only sync L4 port exposure when the add-on explicitly exposes ports.
             # Ingress-only add-ons work via the Supervisor HTTP proxy and do not
-            # require Gateway TCPRoute/UDPRoute objects.
+            # require internal L4 LoadBalancer proxy resources.
             if self.ports and any(port is not None for port in self.ports.values()):
                 service_name = getattr(self.instance, "service_name", f"addon-{self.slug}")
                 await self.sys_kubernetes.sync_addon_ports(

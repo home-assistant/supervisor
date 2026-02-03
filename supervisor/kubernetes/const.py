@@ -72,3 +72,6 @@ GATEWAY_API_VERSION: Final[str] = "v1"
 # Common labels applied to Supervisor-managed Kubernetes resources.
 K8S_LABEL_MANAGED: Final[str] = "io.hass.managed"
 K8S_LABEL_COMPONENT: Final[str] = "io.hass.component"
+
+# Cilium Service LB IPAM annotation for deterministic VIP assignment.
+K8S_ANNOTATION_CILIUM_LB_IPAM_IPS: Final[str] = "io.cilium/lb-ipam-ips"
