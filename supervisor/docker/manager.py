@@ -18,6 +18,7 @@ from typing import Any, Final, Self, cast
 import aiodocker
 from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.images import DockerImages
+from aiodocker.stream import Stream
 from aiodocker.types import JSONObject
 from aiohttp import ClientTimeout, UnixConnector
 import attr
@@ -971,7 +972,7 @@ class DockerAPI(CoreSysAttributes):
         try:
             docker_exec = await docker_container.exec(command)
             # start() with detach=False returns a Stream object (not a coroutine)
-            stream = docker_exec.start(detach=False)
+            stream: Stream = docker_exec.start(detach=False)
 
             # Read all output from the stream until exec completes
             output_parts = []

@@ -24,8 +24,6 @@ from securetar import AddFileError, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from supervisor.docker.manager import ExecReturn
-
 from ..bus import EventListener
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -63,6 +61,7 @@ from ..const import (
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
 from ..docker.const import ContainerState
+from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
