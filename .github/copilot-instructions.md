@@ -276,12 +276,14 @@ Always run the pre-commit hooks at the end of code editing.
 - Access Docker via `self.sys_docker` not direct Docker API
 - Use constants from `const.py` instead of hardcoding
 - Store types in (per-module) `const.py` (e.g. supervisor/store/const.py)
+- Use relative imports within the `supervisor/` package (e.g., `from ..docker.manager import ExecReturn`)
 
 **❌ Avoid These Patterns**:
 - Direct Docker API usage - use Supervisor's Docker manager
 - Blocking operations in async context (use asyncio alternatives)
 - Hardcoded values - use constants from `const.py`
 - Manual error handling in API endpoints - let `@api_process` handle it
+- Absolute imports within the `supervisor/` package (e.g., `from supervisor.docker.manager import ...`) - use relative imports instead
 
 This guide provides the foundation for contributing to Home Assistant Supervisor.
 Follow these patterns and guidelines to ensure code quality, security, and
