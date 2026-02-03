@@ -1,21 +1,25 @@
 """Supervisor docker monitor based on events."""
 
-from contextlib import suppress
+import asyncio
 from dataclasses import dataclass
 import logging
-from threading import Thread
 from typing import Any
 
-from docker.types.daemon import CancellableStream
+import aiodocker
+from aiodocker.channel import ChannelSubscriber
 
 from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
+from ..exceptions import HassioError
+from ..utils.sentry import async_capture_exception, capture_exception
 from .const import LABEL_MANAGED, ContainerState
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+STOP_MONITOR_TIMEOUT = 5.0
 
-@dataclass
+
+@dataclass(slots=True, frozen=True)
 class DockerContainerStateEvent:
     """Event for docker container state change."""
 
@@ -25,15 +29,26 @@ class DockerContainerStateEvent:
     time: int
 
 
-class DockerMonitor(CoreSysAttributes, Thread):
+@dataclass(slots=True, frozen=True)
+class DockerEventCallbackTask:
+    """Docker event and task spawned for it."""
+
+    data: DockerContainerStateEvent
+    task: asyncio.Task
+
+
+class DockerMonitor(CoreSysAttributes):
     """Docker monitor for supervisor."""
 
-    def __init__(self, coresys: CoreSys):
+    def __init__(self, coresys: CoreSys, docker_client: aiodocker.Docker):
         """Initialize Docker monitor object."""
         super().__init__()
         self.coresys = coresys
-        self._events: CancellableStream | None = None
+        self.docker = docker_client
         self._unlabeled_managed_containers: list[str] = []
+        self._monitor_task: asyncio.Task | None = None
+        self._await_task: asyncio.Task | None = None
+        self._event_tasks: asyncio.Queue[DockerEventCallbackTask | None]
 
     def watch_container(self, container_metadata: dict[str, Any]):
         """If container is missing the managed label, add name to list."""
@@ -47,54 +62,124 @@ class DockerMonitor(CoreSysAttributes, Thread):
 
     async def load(self):
         """Start docker events monitor."""
-        self._events = self.sys_docker.events
-        Thread.start(self)
+        events = self.docker.events.subscribe()
+        self._event_tasks = asyncio.Queue()
+        self._monitor_task = self.sys_create_task(self._run(events), eager_start=True)
+        self._await_task = self.sys_create_task(
+            self._await_event_tasks(), eager_start=True
+        )
         _LOGGER.info("Started docker events monitor")
 
     async def unload(self):
         """Stop docker events monitor."""
-        self._events.close()
-        with suppress(RuntimeError):
-            self.join(timeout=5)
+        await self.docker.events.stop()
+
+        tasks = [task for task in (self._monitor_task, self._await_task) if task]
+        if tasks:
+            _, pending = await asyncio.wait(tasks, timeout=STOP_MONITOR_TIMEOUT)
+            if pending:
+                _LOGGER.warning(
+                    "Timeout stopping docker events monitor, cancelling %s pending task(s)",
+                    len(pending),
+                )
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+            self._event_tasks.shutdown(immediate=True)
+            self._monitor_task = None
+            self._await_task = None
 
         _LOGGER.info("Stopped docker events monitor")
 
-    def run(self) -> None:
+    async def _run(self, events: ChannelSubscriber) -> None:
         """Monitor and process docker events."""
-        if not self._events:
-            raise RuntimeError("Monitor has not been loaded!")
+        try:
+            while True:
+                event: dict[str, Any] | None = await events.get()
+                if event is None:
+                    break
 
-        for event in self._events:
-            attributes: dict[str, str] = event.get("Actor", {}).get("Attributes", {})
-
-            if event["Type"] == "container" and (
-                LABEL_MANAGED in attributes
-                or attributes.get("name") in self._unlabeled_managed_containers
-            ):
-                container_state: ContainerState | None = None
-                action: str = event["Action"]
-
-                if action == "start":
-                    container_state = ContainerState.RUNNING
-                elif action == "die":
-                    container_state = (
-                        ContainerState.STOPPED
-                        if int(event["Actor"]["Attributes"]["exitCode"]) == 0
-                        else ContainerState.FAILED
+                try:
+                    attributes: dict[str, str] = event.get("Actor", {}).get(
+                        "Attributes", {}
                     )
-                elif action == "health_status: healthy":
-                    container_state = ContainerState.HEALTHY
-                elif action == "health_status: unhealthy":
-                    container_state = ContainerState.UNHEALTHY
 
-                if container_state:
-                    self.sys_loop.call_soon_threadsafe(
-                        self.sys_bus.fire_event,
-                        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-                        DockerContainerStateEvent(
-                            name=attributes["name"],
-                            state=container_state,
-                            id=event["Actor"]["ID"],
-                            time=event["time"],
-                        ),
+                    if event["Type"] == "container" and (
+                        LABEL_MANAGED in attributes
+                        or attributes.get("name") in self._unlabeled_managed_containers
+                    ):
+                        container_state: ContainerState | None = None
+                        action: str = event["Action"]
+
+                        if action == "start":
+                            container_state = ContainerState.RUNNING
+                        elif action == "die":
+                            container_state = (
+                                ContainerState.STOPPED
+                                if int(event["Actor"]["Attributes"]["exitCode"]) == 0
+                                else ContainerState.FAILED
+                            )
+                        elif action == "health_status: healthy":
+                            container_state = ContainerState.HEALTHY
+                        elif action == "health_status: unhealthy":
+                            container_state = ContainerState.UNHEALTHY
+
+                        if container_state:
+                            state_event = DockerContainerStateEvent(
+                                name=attributes["name"],
+                                state=container_state,
+                                id=event["Actor"]["ID"],
+                                time=event["time"],
+                            )
+                            tasks = self.sys_bus.fire_event(
+                                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, state_event
+                            )
+                            await asyncio.gather(
+                                *[
+                                    self._event_tasks.put(
+                                        DockerEventCallbackTask(state_event, task)
+                                    )
+                                    for task in tasks
+                                ]
+                            )
+
+                # Broad exception here because one bad event cannot stop the monitor
+                # Log what went wrong and send it to sentry but continue monitoring
+                except Exception as err:  # pylint: disable=broad-exception-caught
+                    await async_capture_exception(err)
+                    _LOGGER.error(
+                        "Could not process docker event, container state my be inaccurate: %s %s",
+                        event,
+                        err,
                     )
+
+        # Can only get to this except if an error raised while getting events from queue
+        # Shouldn't really happen but any errors raised there are catastrophic and end the monitor
+        # Log that the monitor broke and send the details to sentry to review
+        except Exception as err:  # pylint: disable=broad-exception-caught
+            await async_capture_exception(err)
+            _LOGGER.error(
+                "Cannot get events from docker, monitor has crashed. Container "
+                "state information will be inaccurate: %s",
+                err,
+            )
+        finally:
+            await self._event_tasks.put(None)
+
+    async def _await_event_tasks(self):
+        """Await event callback tasks to clean up and capture output."""
+        while (event := await self._event_tasks.get()) is not None:
+            try:
+                await event.task
+            # Exceptions which inherit from HassioError are already handled
+            # We can safely ignore these, we only track the unhandled ones here
+            except HassioError:
+                pass
+            except Exception as err:  # pylint: disable=broad-exception-caught
+                capture_exception(err)
+                _LOGGER.error(
+                    "Error encountered while processing docker container state event: %s %s %s",
+                    event.task.get_name(),
+                    event.data,
+                    err,
+                )

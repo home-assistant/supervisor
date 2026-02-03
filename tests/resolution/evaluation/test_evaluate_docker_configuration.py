@@ -1,6 +1,7 @@
 """Test evaluation base."""
 
 # pylint: disable=import-error,protected-access
+from dataclasses import replace
 from unittest.mock import patch
 
 from supervisor.const import CoreState
@@ -19,25 +20,29 @@ async def test_evaluation(coresys: CoreSys):
 
     assert docker_configuration.reason not in coresys.resolution.unsupported
 
-    coresys.docker.info.storage = "unsupported"
-    coresys.docker.info.logging = EXPECTED_LOGGING
+    coresys.docker._info = replace(
+        coresys.docker.info, storage="unsupported", logging=EXPECTED_LOGGING
+    )
     await docker_configuration()
     assert docker_configuration.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
-    coresys.docker.info.storage = EXPECTED_STORAGE[0]
-    coresys.docker.info.logging = "unsupported"
+    coresys.docker._info = replace(
+        coresys.docker.info, storage=EXPECTED_STORAGE[0], logging="unsupported"
+    )
     await docker_configuration()
     assert docker_configuration.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
-    coresys.docker.info.storage = "overlay2"
-    coresys.docker.info.logging = EXPECTED_LOGGING
+    coresys.docker._info = replace(
+        coresys.docker.info, storage="overlay2", logging=EXPECTED_LOGGING
+    )
     await docker_configuration()
     assert docker_configuration.reason not in coresys.resolution.unsupported
 
-    coresys.docker.info.storage = "overlayfs"
-    coresys.docker.info.logging = EXPECTED_LOGGING
+    coresys.docker._info = replace(
+        coresys.docker.info, storage="overlayfs", logging=EXPECTED_LOGGING
+    )
     await docker_configuration()
     assert docker_configuration.reason not in coresys.resolution.unsupported
 

@@ -533,14 +533,11 @@ class DockerInterface(JobGroup, ABC):
         with suppress(DockerError):
             await self.stop()
 
-    async def logs(self) -> bytes:
+    async def logs(self) -> list[str]:
         """Return Docker logs of container."""
         with suppress(DockerError):
-            return await self.sys_run_in_executor(
-                self.sys_docker.container_logs, self.name
-            )
-
-        return b""
+            return await self.sys_docker.container_logs(self.name)
+        return []
 
     @Job(name="docker_interface_cleanup", concurrency=JobConcurrency.GROUP_QUEUE)
     async def cleanup(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial
@@ -21,12 +22,9 @@ from aiodocker.images import DockerImages
 from aiodocker.stream import Stream
 from aiodocker.types import JSONObject
 from aiohttp import ClientTimeout, UnixConnector
-import attr
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
 from docker.client import DockerClient
-from docker.models.containers import Container
-from docker.types.daemon import CancellableStream
 import requests
 
 from ..const import (
@@ -92,18 +90,18 @@ class CommandReturn:
     log: list[str]
 
 
-@attr.s(frozen=True)
+@dataclass(slots=True, frozen=True)
 class DockerInfo:
     """Return docker information."""
 
-    version: AwesomeVersion = attr.ib()
-    storage: str = attr.ib()
-    logging: str = attr.ib()
-    cgroup: str = attr.ib()
-    support_cpu_realtime: bool = attr.ib()
+    version: AwesomeVersion
+    storage: str
+    logging: str
+    cgroup: str
+    support_cpu_realtime: bool
 
     @staticmethod
-    async def new(data: dict[str, Any]) -> DockerInfo:
+    async def new(data: Mapping[str, Any]) -> DockerInfo:
         """Create a object from docker info."""
         # Check if CONFIG_RT_GROUP_SCHED is loaded (blocking I/O in executor)
         cpu_rt_file_exists = await asyncio.get_running_loop().run_in_executor(
@@ -280,7 +278,7 @@ class DockerAPI(CoreSysAttributes):
         self._network: DockerNetwork | None = None
         self._info: DockerInfo | None = None
         self.config: DockerConfig = DockerConfig()
-        self._monitor: DockerMonitor = DockerMonitor(coresys)
+        self._monitor: DockerMonitor = DockerMonitor(coresys, self.docker)
         self._manifest_fetcher: RegistryManifestFetcher = RegistryManifestFetcher(
             coresys
         )
@@ -296,7 +294,7 @@ class DockerAPI(CoreSysAttributes):
                 timeout=900,
             ),
         )
-        self._info = await DockerInfo.new(self.dockerpy.info())
+        self._info = await DockerInfo.new(await self.docker.system.info())
         await self.config.read_data()
         self._network = await DockerNetwork(self.docker).post_init(
             self.config.enable_ipv6, self.config.mtu
@@ -333,11 +331,6 @@ class DockerAPI(CoreSysAttributes):
         if not self._info:
             raise RuntimeError("Docker Info not initialized!")
         return self._info
-
-    @property
-    def events(self) -> CancellableStream:
-        """Return docker event stream."""
-        return self.dockerpy.events(decode=True)
 
     @property
     def monitor(self) -> DockerMonitor:
@@ -901,27 +894,24 @@ class DockerAPI(CoreSysAttributes):
         except aiodocker.DockerError as err:
             raise DockerError(f"Can't restart {name}: {err}", _LOGGER.warning) from err
 
-    def container_logs(self, name: str, tail: int = 100) -> bytes:
-        """Return Docker logs of container.
-
-        Must be run in executor.
-        """
-        # Remains on docker py for now because aiodocker doesn't seem to have a way to get
-        # the raw binary of the logs. Only provides list[str] or AsyncIterator[str] options.
+    async def container_logs(self, name: str, tail: int = 100) -> list[str]:
+        """Return Docker logs of container."""
         try:
-            docker_container: Container = self.dockerpy.containers.get(name)
-        except docker_errors.NotFound:
-            raise DockerNotFound(
-                f"Container {name} not found for logs", _LOGGER.warning
-            ) from None
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            container = await self.containers.get(name)
+        except aiodocker.DockerError as err:
+            if err.status == HTTPStatus.NOT_FOUND:
+                raise DockerNotFound(
+                    f"Container {name} not found for logs", _LOGGER.warning
+                ) from None
             raise DockerError(
                 f"Could not get container {name} for logs: {err!s}", _LOGGER.error
             ) from err
 
         try:
-            return docker_container.logs(tail=tail, stdout=True, stderr=True)
-        except (docker_errors.DockerException, requests.RequestException) as err:
+            return await container.log(
+                follow=False, stdout=True, stderr=True, tail=tail
+            )
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't grep logs from {name}: {err}", _LOGGER.warning
             ) from err
