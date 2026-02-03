@@ -87,12 +87,13 @@ class APISupervisor(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return host information."""
+        arch = self.sys_supervisor.arch or self.sys_arch.default
         return {
             ATTR_VERSION: self.sys_supervisor.version,
             ATTR_VERSION_LATEST: self.sys_supervisor.latest_version,
             ATTR_UPDATE_AVAILABLE: self.sys_supervisor.need_update,
             ATTR_CHANNEL: self.sys_updater.channel,
-            ATTR_ARCH: self.sys_supervisor.arch,
+            ATTR_ARCH: arch,
             ATTR_SUPPORTED: self.sys_core.supported,
             ATTR_HEALTHY: self.sys_core.healthy,
             ATTR_IP_ADDRESS: str(self.sys_supervisor.ip_address),
@@ -138,7 +139,8 @@ class APISupervisor(CoreSysAttributes):
         ):
             await self.sys_run_in_executor(validate_timezone, timezone)
             await self.sys_config.set_timezone(timezone)
-            await self.sys_host.control.set_timezone(timezone)
+            if not self.coresys.has_kubernetes:
+                await self.sys_host.control.set_timezone(timezone)
 
         if ATTR_CHANNEL in body:
             self.sys_updater.channel = body[ATTR_CHANNEL]
@@ -154,7 +156,8 @@ class APISupervisor(CoreSysAttributes):
 
         if ATTR_DIAGNOSTICS in body:
             self.sys_config.diagnostics = body[ATTR_DIAGNOSTICS]
-            await self.sys_dbus.agent.set_diagnostics(body[ATTR_DIAGNOSTICS])
+            if not self.coresys.has_kubernetes:
+                await self.sys_dbus.agent.set_diagnostics(body[ATTR_DIAGNOSTICS])
 
             if body[ATTR_DIAGNOSTICS]:
                 init_sentry(self.coresys)
@@ -192,7 +195,8 @@ class APISupervisor(CoreSysAttributes):
                 self.sys_store.update_repositories(set(body[ATTR_ADDONS_REPOSITORIES]))
             )
 
-        await self.sys_resolution.evaluate.evaluate_system()
+        if not self.coresys.has_kubernetes:
+            await self.sys_resolution.evaluate.evaluate_system()
 
     @api_process
     async def stats(self, request: web.Request) -> dict[str, Any]:
@@ -234,7 +238,11 @@ class APISupervisor(CoreSysAttributes):
         await asyncio.gather(
             asyncio.shield(self.sys_updater.reload()),
             asyncio.shield(self.sys_homeassistant.secrets.reload()),
-            asyncio.shield(self.sys_resolution.evaluate.evaluate_system()),
+            (
+                asyncio.shield(self.sys_resolution.evaluate.evaluate_system())
+                if not self.coresys.has_kubernetes
+                else asyncio.sleep(0)
+            ),
         )
 
     @api_process

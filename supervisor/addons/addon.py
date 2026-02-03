@@ -9,6 +9,7 @@ import errno
 from functools import partial
 from ipaddress import IPv4Address
 import logging
+import os
 from pathlib import Path, PurePath
 import re
 import secrets
@@ -57,6 +58,8 @@ from ..const import (
     AddonStartup,
     AddonState,
     BusEvent,
+    ENV_SUPERVISOR_RUNTIME,
+    SupervisorRuntime,
 )
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
@@ -64,6 +67,7 @@ from ..docker.const import ContainerState
 from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
+from ..kubernetes.addon import KubernetesAddon
 from ..exceptions import (
     AddonBackupMetadataInvalidError,
     AddonBuildFailedUnknownError,
@@ -81,6 +85,7 @@ from ..exceptions import (
     DockerBuildError,
     DockerContainerPortConflict,
     DockerError,
+    KubernetesError,
     HostAppArmorError,
     StoreAddonNotFoundError,
 )
@@ -145,7 +150,12 @@ class Addon(AddonModel):
     def __init__(self, coresys: CoreSys, slug: str):
         """Initialize data holder."""
         super().__init__(coresys, slug)
-        self.instance: DockerAddon = DockerAddon(coresys, self)
+        runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+        self.instance = (
+            KubernetesAddon(coresys, self)
+            if runtime == SupervisorRuntime.KUBERNETES
+            else DockerAddon(coresys, self)
+        )
         self._state: AddonState = AddonState.UNKNOWN
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
@@ -218,23 +228,29 @@ class Addon(AddonModel):
 
     async def load(self) -> None:
         """Async initialize of object."""
-        self._manual_stop = (
-            await self.sys_hardware.helper.last_boot() != self.sys_config.last_boot
-        )
+        runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+        if runtime == SupervisorRuntime.DOCKER:
+            self._manual_stop = (
+                await self.sys_hardware.helper.last_boot() != self.sys_config.last_boot
+            )
+        else:
+            # No host boot tracking in Kubernetes mode
+            self._manual_stop = False
 
         if self.is_detached:
             await super().refresh_path_cache()
 
-        self._listeners.append(
-            self.sys_bus.register_event(
-                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
+        if runtime == SupervisorRuntime.DOCKER:
+            self._listeners.append(
+                self.sys_bus.register_event(
+                    BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.container_state_changed
+                )
             )
-        )
-        self._listeners.append(
-            self.sys_bus.register_event(
-                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+            self._listeners.append(
+                self.sys_bus.register_event(
+                    BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+                )
             )
-        )
 
         await self._check_ingress_port()
 
@@ -244,13 +260,24 @@ class Addon(AddonModel):
 
             # Ensure we are using correct image for this system
             await self.instance.check_image(self.version, default_image, self.arch)
-        except DockerError:
-            _LOGGER.info("No %s addon Docker image %s found", self.slug, self.image)
-            with suppress(DockerError, AddonNotSupportedError):
+        except (DockerError, KubernetesError):
+            _LOGGER.info(
+                "No %s addon runtime image/workload %s found", self.slug, self.image
+            )
+            with suppress(DockerError, KubernetesError, AddonNotSupportedError):
                 await self.instance.install(self.version, default_image, arch=self.arch)
 
         self.persist[ATTR_IMAGE] = default_image
         await self.save_persist()
+
+        # Kubernetes has no Docker event stream; set state based on current readiness
+        if runtime == SupervisorRuntime.KUBERNETES:
+            with suppress(Exception):  # noqa: BLE001
+                self.state = (
+                    AddonState.STARTED
+                    if await self.instance.is_running()
+                    else AddonState.STOPPED
+                )
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -809,8 +836,8 @@ class Addon(AddonModel):
             _LOGGER.error("Could not build image for addon %s: %s", self.slug, err)
             await self.sys_addons.data.uninstall(self)
             raise AddonBuildFailedUnknownError(addon=self.slug) from err
-        except DockerError as err:
-            _LOGGER.error("Could not pull image to update addon %s: %s", self.slug, err)
+        except (DockerError, KubernetesError) as err:
+            _LOGGER.error("Could not install addon %s: %s", self.slug, err)
             await self.sys_addons.data.uninstall(self)
             raise AddonUnknownError(addon=self.slug) from err
 
@@ -833,10 +860,14 @@ class Addon(AddonModel):
         self, *, remove_config: bool, remove_image: bool = True
     ) -> None:
         """Uninstall and cleanup this addon."""
+        if os.environ.get(ENV_SUPERVISOR_RUNTIME) == SupervisorRuntime.KUBERNETES:
+            with suppress(KubernetesError):
+                await self.sys_kubernetes.remove_addon_ports(addon_slug=self.slug)
+
         try:
             await self.instance.remove(remove_image=remove_image)
-        except DockerError as err:
-            _LOGGER.error("Could not remove image for addon %s: %s", self.slug, err)
+        except (DockerError, KubernetesError) as err:
+            _LOGGER.error("Could not remove workload for addon %s: %s", self.slug, err)
             raise AddonUnknownError(addon=self.slug) from err
 
         self.state = AddonState.UNKNOWN
@@ -1154,6 +1185,22 @@ class Addon(AddonModel):
             self.state = AddonState.ERROR
             raise AddonUnknownError(addon=self.slug) from err
 
+        if os.environ.get(ENV_SUPERVISOR_RUNTIME) == SupervisorRuntime.KUBERNETES:
+            # KubernetesAddon.run waits for readiness; no event stream to wait for.
+            # Only sync L4 port exposure when the add-on explicitly exposes ports.
+            # Ingress-only add-ons work via the Supervisor HTTP proxy and do not
+            # require Gateway TCPRoute/UDPRoute objects.
+            if self.ports and any(port is not None for port in self.ports.values()):
+                service_name = getattr(self.instance, "service_name", f"addon-{self.slug}")
+                await self.sys_kubernetes.sync_addon_ports(
+                    addon_slug=self.slug,
+                    service_name=service_name,
+                    ports=self.ports,
+                )
+            self.state = AddonState.STARTED
+            self._startup_event.set()
+            return self.sys_create_task(asyncio.sleep(0))
+
         return self.sys_create_task(self._wait_for_startup())
 
     @Job(
@@ -1170,6 +1217,9 @@ class Addon(AddonModel):
             _LOGGER.error("Could not stop container for addon %s: %s", self.slug, err)
             self.state = AddonState.ERROR
             raise AddonUnknownError(addon=self.slug) from err
+
+        if os.environ.get(ENV_SUPERVISOR_RUNTIME) == SupervisorRuntime.KUBERNETES:
+            self.state = AddonState.STOPPED
 
     @Job(
         name="addon_restart",
@@ -1194,6 +1244,9 @@ class Addon(AddonModel):
 
     async def stats(self) -> DockerStats:
         """Return stats of container."""
+        if os.environ.get(ENV_SUPERVISOR_RUNTIME) == SupervisorRuntime.KUBERNETES:
+            raise AddonNotSupportedError()
+
         try:
             if not await self.is_running():
                 raise AddonNotRunningError(_LOGGER.warning, addon=self.slug)
@@ -1213,6 +1266,9 @@ class Addon(AddonModel):
     async def write_stdin(self, data) -> None:
         """Write data to add-on stdin."""
         if not self.with_stdin:
+            raise AddonNotSupportedWriteStdinError(_LOGGER.error, addon=self.slug)
+
+        if os.environ.get(ENV_SUPERVISOR_RUNTIME) == SupervisorRuntime.KUBERNETES:
             raise AddonNotSupportedWriteStdinError(_LOGGER.error, addon=self.slug)
 
         try:

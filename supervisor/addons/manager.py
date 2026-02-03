@@ -102,7 +102,10 @@ class AddonManager(CoreSysAttributes):
             await asyncio.gather(*tasks)
 
         # Sync DNS
-        await self.sync_dns()
+        # In Kubernetes runtime we don't manage host/Docker DNS via the CoreDNS plugin;
+        # k8s service discovery handles add-on hostnames.
+        if not self.coresys.has_kubernetes:
+            await self.sync_dns()
 
     async def boot(self, stage: AddonStartup) -> None:
         """Boot add-ons with mode auto."""
@@ -407,6 +410,9 @@ class AddonManager(CoreSysAttributes):
 
     async def sync_dns(self) -> None:
         """Sync add-ons DNS names."""
+        if self.coresys.has_kubernetes:
+            return
+
         # Update hosts
         add_host_coros: list[Awaitable[None]] = []
         for addon in self.installed:

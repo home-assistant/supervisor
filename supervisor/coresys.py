@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from .dbus.manager import DBusManager
     from .discovery import Discovery
     from .docker.manager import DockerAPI
+    from .kubernetes.manager import KubernetesAPI
     from .hardware.manager import HardwareManager
     from .homeassistant.module import HomeAssistant
     from .host.manager import HostManager
@@ -77,6 +78,7 @@ class CoreSys:
 
         # Internal objects pointers
         self._docker: DockerAPI | None = None
+        self._kubernetes: KubernetesAPI | None = None
         self._core: Core | None = None
         self._arch: CpuArchManager | None = None
         self._auth: Auth | None = None
@@ -106,6 +108,11 @@ class CoreSys:
 
         # Task factory attributes
         self._set_task_context: list[Callable[[Context], Context]] = []
+
+    @property
+    def has_kubernetes(self) -> bool:
+        """Return True if Kubernetes backend is initialized."""
+        return self._kubernetes is not None
 
     async def load_config(self) -> Self:
         """Load config in executor."""
@@ -222,6 +229,20 @@ class CoreSys:
         if self._docker:
             raise RuntimeError("Docker already set!")
         self._docker = value
+
+    @property
+    def kubernetes(self) -> KubernetesAPI:
+        """Return KubernetesAPI object."""
+        if self._kubernetes is None:
+            raise RuntimeError("Kubernetes not set!")
+        return self._kubernetes
+
+    @kubernetes.setter
+    def kubernetes(self, value: KubernetesAPI) -> None:
+        """Set Kubernetes object."""
+        if self._kubernetes:
+            raise RuntimeError("Kubernetes already set!")
+        self._kubernetes = value
 
     @property
     def scheduler(self) -> Scheduler:
@@ -719,6 +740,11 @@ class CoreSysAttributes:
     def sys_docker(self) -> DockerAPI:
         """Return DockerAPI object."""
         return self.coresys.docker
+
+    @property
+    def sys_kubernetes(self) -> KubernetesAPI:
+        """Return KubernetesAPI object."""
+        return self.coresys.kubernetes
 
     @property
     def sys_scheduler(self) -> Scheduler:

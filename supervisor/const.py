@@ -95,6 +95,11 @@ ENV_SUPERVISOR_NAME = "SUPERVISOR_NAME"
 ENV_SUPERVISOR_SHARE = "SUPERVISOR_SHARE"
 ENV_SUPERVISOR_CPU_RT = "SUPERVISOR_CPU_RT"
 
+# Runtime selection
+# Default remains Docker unless overridden.
+ENV_SUPERVISOR_RUNTIME = "SUPERVISOR_RUNTIME"
+
+
 REQUEST_FROM = "HASSIO_FROM"
 
 ATTR_ACCESS_TOKEN = "access_token"
@@ -473,6 +478,13 @@ class UpdateChannel(StrEnum):
     STABLE = "stable"
     BETA = "beta"
     DEV = "dev"
+
+
+class SupervisorRuntime(StrEnum):
+    """Runtime backend Supervisor uses for workloads."""
+
+    DOCKER = "docker"
+    KUBERNETES = "kubernetes"
 
 
 class CoreState(StrEnum):

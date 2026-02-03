@@ -67,20 +67,34 @@ class Tasks(CoreSysAttributes):
 
     async def load(self):
         """Add Tasks to scheduler."""
+        is_kubernetes = self.coresys.has_kubernetes
+
         # Update
         self.sys_scheduler.register_task(self._update_addons, RUN_UPDATE_ADDONS)
-        self.sys_scheduler.register_task(self._update_supervisor, RUN_UPDATE_SUPERVISOR)
-        self.sys_scheduler.register_task(self._update_cli, RUN_UPDATE_CLI)
-        self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
-        self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
-        self.sys_scheduler.register_task(self._update_multicast, RUN_UPDATE_MULTICAST)
-        self.sys_scheduler.register_task(self._update_observer, RUN_UPDATE_OBSERVER)
+
+        # These update paths are Docker/plugin based and not supported on Kubernetes.
+        if not is_kubernetes:
+            self.sys_scheduler.register_task(
+                self._update_supervisor, RUN_UPDATE_SUPERVISOR
+            )
+            self.sys_scheduler.register_task(self._update_cli, RUN_UPDATE_CLI)
+            self.sys_scheduler.register_task(self._update_dns, RUN_UPDATE_DNS)
+            self.sys_scheduler.register_task(self._update_audio, RUN_UPDATE_AUDIO)
+            self.sys_scheduler.register_task(
+                self._update_multicast, RUN_UPDATE_MULTICAST
+            )
+            self.sys_scheduler.register_task(
+                self._update_observer, RUN_UPDATE_OBSERVER
+            )
 
         # Reload
         self.sys_scheduler.register_task(self._reload_store, RUN_RELOAD_ADDONS)
         self.sys_scheduler.register_task(self._reload_updater, RUN_RELOAD_UPDATER)
         self.sys_scheduler.register_task(self.sys_backups.reload, RUN_RELOAD_BACKUPS)
-        self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
+
+        # Host integration is not supported on Kubernetes runtime.
+        if not is_kubernetes:
+            self.sys_scheduler.register_task(self.sys_host.reload, RUN_RELOAD_HOST)
         self.sys_scheduler.register_task(self.sys_ingress.reload, RUN_RELOAD_INGRESS)
         self.sys_scheduler.register_task(self.sys_mounts.reload, RUN_RELOAD_MOUNTS)
 
@@ -88,9 +102,12 @@ class Tasks(CoreSysAttributes):
         self.sys_scheduler.register_task(
             self._watchdog_homeassistant_api, RUN_WATCHDOG_HOMEASSISTANT_API
         )
-        self.sys_scheduler.register_task(
-            self._watchdog_observer_application, RUN_WATCHDOG_OBSERVER_APPLICATION
-        )
+
+        # Observer is a Docker-based plugin, skip in Kubernetes runtime.
+        if not is_kubernetes:
+            self.sys_scheduler.register_task(
+                self._watchdog_observer_application, RUN_WATCHDOG_OBSERVER_APPLICATION
+            )
         self.sys_scheduler.register_task(
             self._watchdog_addon_application, RUN_WATCHDOG_ADDON_APPLICATON
         )

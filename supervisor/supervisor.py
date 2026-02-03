@@ -6,6 +6,7 @@ from datetime import timedelta
 import errno
 from ipaddress import IPv4Address
 import logging
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -15,6 +16,8 @@ from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from .const import (
     ATTR_SUPERVISOR_INTERNET,
+    ENV_SUPERVISOR_RUNTIME,
+    SupervisorRuntime,
     SUPERVISOR_VERSION,
     URL_HASSIO_APPARMOR,
     BusEvent,
@@ -58,6 +61,10 @@ class Supervisor(CoreSysAttributes):
 
     async def load(self) -> None:
         """Prepare Supervisor object."""
+        if os.environ.get(ENV_SUPERVISOR_RUNTIME) == SupervisorRuntime.KUBERNETES:
+            _LOGGER.info("Skipping Supervisor Docker container setup in Kubernetes runtime")
+            return
+
         try:
             await self.instance.attach(version=self.version)
         except DockerError:
@@ -85,6 +92,11 @@ class Supervisor(CoreSysAttributes):
     @property
     def ip_address(self) -> IPv4Address:
         """Return IP of Supervisor instance."""
+        # In Kubernetes runtime we don't have the Docker-managed supervisor network.
+        # The public entrypoint is via Service/Gateway, not a fixed container IP.
+        if self.coresys.has_kubernetes:
+            return IPv4Address("0.0.0.0")
+
         return self.instance.ip_address
 
     @property

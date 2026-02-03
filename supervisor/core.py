@@ -5,10 +5,13 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
 import logging
+import os
 from typing import Self
 
 from .const import (
     ATTR_STARTUP,
+    ENV_SUPERVISOR_RUNTIME,
+    SupervisorRuntime,
     RUN_SUPERVISOR_STATE,
     STARTING_STATES,
     AddonStartup,
@@ -93,11 +96,15 @@ class Core(CoreSysAttributes):
 
     async def connect(self) -> None:
         """Connect Supervisor container."""
+        runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+
         # Load information from container
         await self.sys_supervisor.load()
 
         # Evaluate the system
-        await self.sys_resolution.evaluate.evaluate_system()
+        # Resolution is currently Docker/host focused; skip in Kubernetes runtime.
+        if runtime != SupervisorRuntime.KUBERNETES:
+            await self.sys_resolution.evaluate.evaluate_system()
 
         # Check supervisor version/update
         if self.sys_config.version == self.sys_supervisor.version:
@@ -140,28 +147,35 @@ class Core(CoreSysAttributes):
         # Check internet on startup
         await self.sys_supervisor.check_connectivity()
 
+        runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+        is_kubernetes = runtime == SupervisorRuntime.KUBERNETES
+
         # Order can be important!
         setup_loads: list[Awaitable[None]] = [
             # rest api views
             self.sys_api.load(),
-            # Load Host Hardware
-            self.sys_hardware.load(),
-            # Load DBus
-            self.sys_dbus.load(),
-            # Load Host
-            self.sys_host.load(),
-            # Load HassOS
-            self.sys_os.load(),
+            # Load Host Hardware (not applicable on Kubernetes)
+            self.sys_hardware.load() if not is_kubernetes else asyncio.sleep(0),
+            # Load DBus (not applicable on Kubernetes)
+            self.sys_dbus.load() if not is_kubernetes else asyncio.sleep(0),
+            # Load Host (not applicable on Kubernetes)
+            self.sys_host.load() if not is_kubernetes else asyncio.sleep(0),
+            # Load HassOS (not applicable on Kubernetes)
+            self.sys_os.load() if not is_kubernetes else asyncio.sleep(0),
             # Adjust timezone / time settings
             self._adjust_system_datetime(),
             # Load mounts
             self.sys_mounts.load(),
             # Load Docker manager
-            self.sys_docker.load(),
+            (
+                self.sys_docker.load()
+                if runtime != SupervisorRuntime.KUBERNETES
+                else asyncio.sleep(0)
+            ),
             # load last available data
             self.sys_updater.load(),
-            # Load Plugins container
-            self.sys_plugins.load(),
+            # Load Plugins container (Docker-based, skip on Kubernetes)
+            self.sys_plugins.load() if not is_kubernetes else asyncio.sleep(0),
             # Load Home Assistant
             self.sys_homeassistant.load(),
             # Load CPU/Arch
@@ -178,8 +192,8 @@ class Core(CoreSysAttributes):
             self.sys_discovery.load(),
             # Load ingress
             self.sys_ingress.load(),
-            # Load Resoulution
-            self.sys_resolution.load(),
+            # Load Resoulution (skip healthchecks on Kubernetes)
+            self.sys_resolution.load() if not is_kubernetes else asyncio.sleep(0),
         ]
 
         # Execute each load task in secure context
@@ -200,12 +214,16 @@ class Core(CoreSysAttributes):
         """Start Supervisor orchestration."""
         await self.set_state(CoreState.STARTUP)
 
+        runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+        is_kubernetes = runtime == SupervisorRuntime.KUBERNETES
+
         # Set OS Agent diagnostics if needed
         if (
             self.sys_dbus.agent.is_connected
             and self.sys_config.diagnostics is not None
             and self.sys_dbus.agent.diagnostics != self.sys_config.diagnostics
             and self.supported
+            and not is_kubernetes
         ):
             _LOGGER.debug("Set OS Agent diagnostics to %s", self.sys_config.diagnostics)
             await self.sys_dbus.agent.set_diagnostics(self.sys_config.diagnostics)
@@ -218,8 +236,9 @@ class Core(CoreSysAttributes):
                 "System is running in an unhealthy state and needs manual intervention!"
             )
 
-        # Mark booted partition as healthy
-        await self.sys_os.mark_healthy()
+        # Mark booted partition as healthy (HAOS only)
+        if not is_kubernetes:
+            await self.sys_os.mark_healthy()
 
         # Refresh update information
         await self.sys_updater.reload()
@@ -238,7 +257,10 @@ class Core(CoreSysAttributes):
             await self.sys_addons.boot(AddonStartup.INITIALIZE)
 
             # HomeAssistant is already running, only Supervisor restarted
-            if await self.sys_hardware.helper.last_boot() == self.sys_config.last_boot:
+            if (
+                not is_kubernetes
+                and await self.sys_hardware.helper.last_boot() == self.sys_config.last_boot
+            ):
                 _LOGGER.info("Detected Supervisor restart")
                 return
 

@@ -53,6 +53,13 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
     async def load_modules(self):
         """Load resolution evaluation, check and fixup modules."""
 
+        # Resolution modules currently include many Docker/host specific checks.
+        # In Kubernetes runtime mode we skip loading them to avoid hard dependencies
+        # on Docker and host integrations.
+        if self.coresys.has_kubernetes:
+            _LOGGER.info("Skipping resolution module loading in Kubernetes runtime")
+            return
+
         def _load_modules():
             """Load and setup all resolution modules."""
             self._evaluate.load_modules()
@@ -215,6 +222,10 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     async def load(self):
         """Load the resoulution manager."""
+        if self.coresys.has_kubernetes:
+            _LOGGER.info("Skipping resolution healthchecks in Kubernetes runtime")
+            return
+
         # Initial healthcheck check
         await self.healthcheck()
 

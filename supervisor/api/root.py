@@ -40,6 +40,26 @@ class APIRoot(CoreSysAttributes):
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Show system info."""
+        if self.coresys.has_kubernetes:
+            return {
+                ATTR_SUPERVISOR: self.sys_supervisor.version,
+                ATTR_HOMEASSISTANT: self.sys_homeassistant.version,
+                ATTR_HASSOS: None,
+                ATTR_DOCKER: None,
+                ATTR_HOSTNAME: "kubernetes",
+                ATTR_OPERATING_SYSTEM: "kubernetes",
+                ATTR_FEATURES: [],
+                ATTR_MACHINE: self.sys_machine,
+                ATTR_MACHINE_ID: self.sys_machine_id,
+                ATTR_ARCH: self.sys_arch.default,
+                ATTR_STATE: self.sys_core.state,
+                ATTR_SUPPORTED_ARCH: self.sys_arch.supported,
+                ATTR_SUPPORTED: self.sys_core.supported,
+                ATTR_CHANNEL: self.sys_updater.channel,
+                ATTR_LOGGING: self.sys_config.logging,
+                ATTR_TIMEZONE: self.sys_timezone,
+            }
+
         return {
             ATTR_SUPERVISOR: self.sys_supervisor.version,
             ATTR_HOMEASSISTANT: self.sys_homeassistant.version,
@@ -84,8 +104,8 @@ class APIRoot(CoreSysAttributes):
                 }
             )
 
-        # OS
-        if self.sys_os.need_update:
+        # OS (not applicable on Kubernetes runtime)
+        if not self.coresys.has_kubernetes and self.sys_os.need_update:
             available_updates.append(
                 {
                     ATTR_UPDATE_TYPE: "os",

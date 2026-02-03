@@ -20,7 +20,7 @@ from ..const import (
     ATTR_VERSION,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APINotFound
+from ..exceptions import APIError, APINotFound
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from .utils import api_process, api_validate
 
@@ -53,9 +53,14 @@ SCHEMA_MIGRATE_DOCKER_STORAGE_DRIVER = vol.Schema(
 class APIDocker(CoreSysAttributes):
     """Handle RESTful API for Docker configuration."""
 
+    def _require_docker(self) -> None:
+        if self.coresys.has_kubernetes:
+            raise APIError("Docker API is not supported on Kubernetes runtime")
+
     @api_process
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Get docker info."""
+        self._require_docker()
         data_registries = {}
         for hostname, registry in self.sys_docker.config.registries.items():
             data_registries[hostname] = {
@@ -73,6 +78,7 @@ class APIDocker(CoreSysAttributes):
     @api_process
     async def options(self, request: web.Request) -> None:
         """Set docker options."""
+        self._require_docker()
         body = await api_validate(SCHEMA_OPTIONS, request)
 
         reboot_required = False
@@ -103,6 +109,7 @@ class APIDocker(CoreSysAttributes):
     @api_process
     async def registries(self, request) -> dict[str, Any]:
         """Return the list of registries."""
+        self._require_docker()
         data_registries = {}
         for hostname, registry in self.sys_docker.config.registries.items():
             data_registries[hostname] = {
@@ -114,6 +121,7 @@ class APIDocker(CoreSysAttributes):
     @api_process
     async def create_registry(self, request: web.Request) -> None:
         """Create a new docker registry."""
+        self._require_docker()
         body = await api_validate(SCHEMA_DOCKER_REGISTRY, request)
 
         for hostname, registry in body.items():
@@ -124,6 +132,7 @@ class APIDocker(CoreSysAttributes):
     @api_process
     async def remove_registry(self, request: web.Request) -> None:
         """Delete a docker registry."""
+        self._require_docker()
         hostname = request.match_info.get(ATTR_HOSTNAME)
         if hostname not in self.sys_docker.config.registries:
             raise APINotFound(f"Hostname {hostname} does not exist in registries")
@@ -134,6 +143,7 @@ class APIDocker(CoreSysAttributes):
     @api_process
     async def migrate_docker_storage_driver(self, request: web.Request) -> None:
         """Migrate Docker storage driver."""
+        self._require_docker()
         if (
             not self.coresys.os.available
             or not self.coresys.os.version

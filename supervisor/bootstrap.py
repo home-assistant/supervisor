@@ -21,9 +21,11 @@ from .const import (
     ENV_HOMEASSISTANT_REPOSITORY,
     ENV_SUPERVISOR_MACHINE,
     ENV_SUPERVISOR_NAME,
+    ENV_SUPERVISOR_RUNTIME,
     ENV_SUPERVISOR_SHARE,
     SOCKET_DOCKER,
     LogLevel,
+    SupervisorRuntime,
     UpdateChannel,
 )
 from .core import Core
@@ -31,6 +33,7 @@ from .coresys import CoreSys
 from .dbus.manager import DBusManager
 from .discovery import Discovery
 from .docker.manager import DockerAPI
+from .kubernetes.manager import KubernetesAPI
 from .hardware.manager import HardwareManager
 from .homeassistant.module import HomeAssistant
 from .host.manager import HostManager
@@ -56,6 +59,8 @@ async def initialize_coresys() -> CoreSys:
     """Initialize supervisor coresys/objects."""
     coresys = await CoreSys().load_config()
 
+    runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+
     # Check if ENV is in development mode
     if coresys.dev:
         _LOGGER.warning("Environment variable 'SUPERVISOR_DEV' is set")
@@ -65,7 +70,12 @@ async def initialize_coresys() -> CoreSys:
         coresys.config.modify_log_level()
 
     # Initialize core objects
-    coresys.docker = await DockerAPI(coresys).post_init()
+    if runtime == SupervisorRuntime.DOCKER:
+        coresys.docker = await DockerAPI(coresys).post_init()
+    elif runtime == SupervisorRuntime.KUBERNETES:
+        coresys.kubernetes = await KubernetesAPI(coresys).post_init()
+    else:
+        raise RuntimeError(f"Unsupported {ENV_SUPERVISOR_RUNTIME}={runtime!s}")
     coresys.resolution = await ResolutionManager(coresys).load_config()
     await coresys.resolution.load_modules()
     coresys.jobs = await JobManager(coresys).load_config()
@@ -284,9 +294,48 @@ def check_environment() -> None:
     elif not os.environ.get(ENV_SUPERVISOR_MACHINE):
         _LOGGER.info("Use the old homeassistant repository for machine extraction")
 
+    runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+
     # check docker socket
-    if not SOCKET_DOCKER.is_socket():
+    if runtime == SupervisorRuntime.DOCKER and not SOCKET_DOCKER.is_socket():
         _LOGGER.critical("Can't find Docker socket!")
+
+    # check kubernetes runtime inputs
+    if runtime == SupervisorRuntime.KUBERNETES:
+        from .kubernetes.const import (
+            ENV_SUPERVISOR_K8S_INTERNAL_GATEWAY_ADDRESS,
+            ENV_SUPERVISOR_K8S_GATEWAY_HOSTNAME,
+            ENV_SUPERVISOR_K8S_GATEWAY_TLS_SECRET,
+            ENV_SUPERVISOR_K8S_MANAGE_PUBLIC_GATEWAY,
+            ENV_SUPERVISOR_K8S_SHARED_PVC_CLAIM,
+            ENV_SUPERVISOR_K8S_SHARED_PVC_SIZE,
+            ENV_SUPERVISOR_K8S_SHARED_PVC_STORAGE_CLASS,
+            ENV_SUPERVISOR_K8S_STORAGE_MODE,
+        )
+
+        manage_public_gateway = (
+            os.environ.get(ENV_SUPERVISOR_K8S_MANAGE_PUBLIC_GATEWAY, "false").lower()
+            in ("1", "true", "yes", "on")
+        )
+
+        for key in (
+            ENV_SUPERVISOR_K8S_STORAGE_MODE,
+            ENV_SUPERVISOR_K8S_SHARED_PVC_CLAIM,
+            ENV_SUPERVISOR_K8S_SHARED_PVC_STORAGE_CLASS,
+            ENV_SUPERVISOR_K8S_SHARED_PVC_SIZE,
+            ENV_SUPERVISOR_K8S_INTERNAL_GATEWAY_ADDRESS,
+        ):
+            if not os.environ.get(key):
+                _LOGGER.critical("Can't find '%s' environment variable!", key)
+
+        # Public Gateway settings are optional when managed by GitOps.
+        if manage_public_gateway:
+            for key in (
+                ENV_SUPERVISOR_K8S_GATEWAY_HOSTNAME,
+                ENV_SUPERVISOR_K8S_GATEWAY_TLS_SECRET,
+            ):
+                if not os.environ.get(key):
+                    _LOGGER.critical("Can't find '%s' environment variable!", key)
 
 
 def register_signal_handlers(

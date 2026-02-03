@@ -6,6 +6,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
+import os
 import re
 import secrets
 import shutil
@@ -30,6 +31,7 @@ from ..exceptions import (
     HomeAssistantStartupTimeout,
     HomeAssistantUpdateError,
     JobException,
+    KubernetesError,
 )
 from ..jobs import ChildJobSyncFilter
 from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobConcurrency, JobThrottle
@@ -45,6 +47,9 @@ from .const import (
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
+
+from ..const import ENV_SUPERVISOR_RUNTIME, SupervisorRuntime
+from ..kubernetes.homeassistant import KubernetesHomeAssistant
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -74,7 +79,13 @@ class HomeAssistantCore(JobGroup):
     def __init__(self, coresys: CoreSys):
         """Initialize Home Assistant object."""
         super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
-        self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
+        runtime = os.environ.get(ENV_SUPERVISOR_RUNTIME, SupervisorRuntime.DOCKER)
+        self._kubernetes = runtime == SupervisorRuntime.KUBERNETES
+        self.instance = (
+            KubernetesHomeAssistant(coresys)
+            if self._kubernetes
+            else DockerHomeAssistant(coresys)
+        )
         self._error_state: bool = False
         self._watchdog_listener: EventListener | None = None
 
@@ -85,9 +96,10 @@ class HomeAssistantCore(JobGroup):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
-        self._watchdog_listener = self.sys_bus.register_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
-        )
+        if not self._kubernetes:
+            self._watchdog_listener = self.sys_bus.register_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+            )
         self.sys_bus.register_event(
             BusEvent.SUPERVISOR_STATE_CHANGE, self._supervisor_state_changed
         )
@@ -109,7 +121,7 @@ class HomeAssistantCore(JobGroup):
                     version, self.sys_homeassistant.default_image
                 )
                 self.sys_homeassistant.set_image(self.sys_homeassistant.default_image)
-        except DockerError:
+        except (DockerError, KubernetesError):
             _LOGGER.info(
                 "No Home Assistant Docker image %s found.", self.sys_homeassistant.image
             )
@@ -135,12 +147,16 @@ class HomeAssistantCore(JobGroup):
     )
     async def install_landingpage(self) -> None:
         """Install a landing page."""
+        if self._kubernetes:
+            # Landingpage image is a Docker-era concept; install latest core image instead.
+            await self.install()
+            return
         # Try to use a preinstalled landingpage
         try:
             await self.instance.attach(
                 version=LANDINGPAGE, skip_state_event_if_down=True
             )
-        except DockerError:
+        except (DockerError, KubernetesError):
             pass
         else:
             _LOGGER.info("Using preinstalled landingpage")
@@ -161,7 +177,9 @@ class HomeAssistantCore(JobGroup):
 
             try:
                 await self.instance.install(
-                    LANDINGPAGE, image=self.sys_updater.image_homeassistant
+                    LANDINGPAGE,
+                    image=self.sys_updater.image_homeassistant
+                    or self.sys_homeassistant.default_image,
                 )
                 break
             except (DockerError, JobException):
@@ -173,7 +191,9 @@ class HomeAssistantCore(JobGroup):
             await asyncio.sleep(30)
 
         self.sys_homeassistant.version = LANDINGPAGE
-        self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
+        self.sys_homeassistant.set_image(
+            self.sys_updater.image_homeassistant or self.sys_homeassistant.default_image
+        )
         await self.sys_homeassistant.save_data()
 
     @Job(
@@ -193,11 +213,12 @@ class HomeAssistantCore(JobGroup):
                 try:
                     await self.instance.update(
                         to_version,
-                        image=self.sys_updater.image_homeassistant,
+                        image=self.sys_updater.image_homeassistant
+                        or self.sys_homeassistant.default_image,
                     )
                     self.sys_homeassistant.version = self.instance.version or to_version
                     break
-                except (DockerError, JobException):
+                except (DockerError, KubernetesError, JobException):
                     pass
                 except Exception as err:  # pylint: disable=broad-except
                     await async_capture_exception(err)
@@ -205,8 +226,10 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.warning("Error on Home Assistant installation. Retrying in 30sec")
             await asyncio.sleep(30)
 
-        _LOGGER.info("Home Assistant docker now installed")
-        self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
+        _LOGGER.info("Home Assistant now installed")
+        self.sys_homeassistant.set_image(
+            self.sys_updater.image_homeassistant or self.sys_homeassistant.default_image
+        )
         await self.sys_homeassistant.save_data()
 
         # finishing
@@ -217,7 +240,7 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.error("Can't start Home Assistant!")
 
         # Cleanup
-        with suppress(DockerError):
+        with suppress(DockerError, KubernetesError):
             await self.instance.cleanup()
 
     @Job(
@@ -246,6 +269,11 @@ class HomeAssistantCore(JobGroup):
         validation_complete: asyncio.Event | None = None,
     ) -> None:
         """Update HomeAssistant version."""
+        if self._kubernetes:
+            return await self._update_kubernetes(
+                version=version, backup=backup, validation_complete=validation_complete
+            )
+
         to_version = version or self.sys_homeassistant.latest_version
         if not to_version:
             raise HomeAssistantUpdateError(
@@ -280,15 +308,19 @@ class HomeAssistantCore(JobGroup):
             _LOGGER.info("Updating Home Assistant to version %s", to_version)
             try:
                 await self.instance.update(
-                    to_version, image=self.sys_updater.image_homeassistant
+                    to_version,
+                    image=self.sys_updater.image_homeassistant
+                    or self.sys_homeassistant.default_image,
                 )
-            except DockerError as err:
+            except (DockerError, KubernetesError) as err:
                 raise HomeAssistantUpdateError(
                     "Updating Home Assistant image failed", _LOGGER.warning
                 ) from err
 
             self.sys_homeassistant.version = self.instance.version or to_version
-            self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
+            self.sys_homeassistant.set_image(
+                self.sys_updater.image_homeassistant or self.sys_homeassistant.default_image
+            )
 
             if running:
                 await self.start()
@@ -296,7 +328,7 @@ class HomeAssistantCore(JobGroup):
 
             # Successfull - last step
             await self.sys_homeassistant.save_data()
-            with suppress(DockerError):
+            with suppress(DockerError, KubernetesError):
                 await self.instance.cleanup(old_image=old_image)
 
         # Update Home Assistant
@@ -347,6 +379,51 @@ class HomeAssistantCore(JobGroup):
             self.sys_resolution.create_issue(IssueType.UPDATE_FAILED, ContextType.CORE)
             raise HomeAssistantUpdateError()
 
+    async def _update_kubernetes(
+        self,
+        *,
+        version: AwesomeVersion | None,
+        backup: bool | None,
+        validation_complete: asyncio.Event | None,
+    ) -> None:
+        """Update Home Assistant using the Kubernetes backend."""
+        to_version = version or self.sys_homeassistant.latest_version
+        if not to_version:
+            raise HomeAssistantUpdateError(
+                "Cannot determine latest version of Home Assistant for update",
+                _LOGGER.error,
+            )
+
+        # If being run in the background, notify caller that validation has completed
+        if validation_complete:
+            validation_complete.set()
+
+        if backup:
+            _LOGGER.info("Skipping backup for Home Assistant update on Kubernetes runtime")
+
+        image = self.sys_updater.image_homeassistant or self.sys_homeassistant.image
+        if not image:
+            raise HomeAssistantUpdateError(
+                "Cannot determine Home Assistant image for update",
+                _LOGGER.error,
+            )
+
+        running = await self.instance.is_running()
+        _LOGGER.info("Updating Home Assistant to version %s", to_version)
+        try:
+            await self.instance.update(to_version, image=image)
+        except (KubernetesError, DockerError) as err:
+            raise HomeAssistantUpdateError(
+                "Updating Home Assistant workload failed", _LOGGER.warning
+            ) from err
+
+        self.sys_homeassistant.version = self.instance.version or to_version
+        self.sys_homeassistant.set_image(image)
+        await self.sys_homeassistant.save_data()
+
+        if running:
+            await self._block_till_run()
+
     @Job(
         name="home_assistant_core_start",
         on_condition=HomeAssistantJobError,
@@ -354,6 +431,9 @@ class HomeAssistantCore(JobGroup):
     )
     async def start(self) -> None:
         """Run Home Assistant docker."""
+        if self._kubernetes:
+            return await self._start_kubernetes()
+
         if await self.instance.is_running():
             _LOGGER.warning("Home Assistant is already running!")
             return
@@ -389,6 +469,12 @@ class HomeAssistantCore(JobGroup):
     )
     async def stop(self, *, remove_container: bool = False) -> None:
         """Stop Home Assistant Docker."""
+        if self._kubernetes:
+            try:
+                return await self.instance.stop(remove_container=remove_container)
+            except (KubernetesError, HomeAssistantError) as err:
+                raise HomeAssistantError() from err
+
         try:
             return await self.instance.stop(remove_container=remove_container)
         except DockerError as err:
@@ -410,7 +496,7 @@ class HomeAssistantCore(JobGroup):
 
         try:
             await self.instance.restart()
-        except DockerError as err:
+        except (DockerError, KubernetesError) as err:
             raise HomeAssistantError() from err
 
         await self._block_till_run()
@@ -429,15 +515,18 @@ class HomeAssistantCore(JobGroup):
                 (self.sys_config.path_homeassistant / SAFE_MODE_FILENAME).touch
             )
 
-        with suppress(DockerError):
+        with suppress(DockerError, KubernetesError):
             await self.instance.stop()
         await self.start()
 
     async def stats(self) -> DockerStats:
         """Return stats of Home Assistant."""
+        if self._kubernetes:
+            raise HomeAssistantError("Stats not supported on Kubernetes runtime")
+
         try:
             return await self.instance.stats()
-        except DockerError as err:
+        except (DockerError, KubernetesError) as err:
             raise HomeAssistantError() from err
 
     def is_running(self) -> Awaitable[bool]:
@@ -452,6 +541,11 @@ class HomeAssistantCore(JobGroup):
 
         Return a coroutine.
         """
+        if self._kubernetes:
+            async def _false() -> bool:
+                return False
+
+            return _false()
         return self.instance.is_failed()
 
     @property
@@ -461,6 +555,9 @@ class HomeAssistantCore(JobGroup):
 
     async def check_config(self) -> ConfigResult:
         """Run Home Assistant config check."""
+        if self._kubernetes:
+            raise HomeAssistantError("Config check not supported on Kubernetes runtime")
+
         try:
             result = await self.instance.execute_command(
                 [
@@ -491,6 +588,37 @@ class HomeAssistantCore(JobGroup):
 
         _LOGGER.info("Home Assistant config is valid")
         return ConfigResult(True, log)
+
+    async def _start_kubernetes(self) -> None:
+        """Start Home Assistant using the Kubernetes backend."""
+        if await self.instance.is_running():
+            _LOGGER.warning("Home Assistant is already running!")
+            return
+
+        if not self.sys_homeassistant.version:
+            # Prefer latest version from updater
+            if not self.sys_homeassistant.latest_version:
+                await self.sys_updater.reload()
+            if not self.sys_homeassistant.latest_version:
+                raise HomeAssistantError("No Home Assistant version available")
+            self.sys_homeassistant.version = self.sys_homeassistant.latest_version
+
+        if not self.sys_homeassistant.supervisor_token:
+            self.sys_homeassistant.supervisor_token = secrets.token_hex(56)
+            await self.sys_homeassistant.save_data()
+
+        image = self.sys_updater.image_homeassistant or self.sys_homeassistant.image
+        if not image:
+            raise HomeAssistantError("No Home Assistant image configured")
+
+        # Ensure workload exists
+        if not await self.instance.exists():
+            await self.instance.install(self.sys_homeassistant.version, image=image)
+            self.sys_homeassistant.set_image(image)
+            await self.sys_homeassistant.save_data()
+
+        await self.instance.start()
+        await self._block_till_run()
 
     async def _block_till_run(self) -> None:
         """Block until Home-Assistant is booting up or startup timeout."""
@@ -551,12 +679,20 @@ class HomeAssistantCore(JobGroup):
 
         _LOGGER.info("Repair Home Assistant %s", self.sys_homeassistant.version)
         try:
-            await self.instance.install(self.sys_homeassistant.version)
-        except DockerError:
+            if self._kubernetes:
+                image = self.sys_updater.image_homeassistant or self.sys_homeassistant.image
+                if not image or not self.sys_homeassistant.version:
+                    raise HomeAssistantError("Missing image/version for repair")
+                await self.instance.install(self.sys_homeassistant.version, image=image)
+            else:
+                await self.instance.install(self.sys_homeassistant.version)
+        except (DockerError, KubernetesError, HomeAssistantError):
             _LOGGER.error("Repairing of Home Assistant failed")
 
     async def watchdog_container(self, event: DockerContainerStateEvent) -> None:
         """Process state changes in Home Assistant container and restart if necessary."""
+        if self._kubernetes:
+            return
         if not (event.name == self.instance.name and self.sys_homeassistant.watchdog):
             return
 

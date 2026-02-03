@@ -931,6 +931,21 @@ class DockerJobError(DockerError, JobException):
     """Error executing docker job."""
 
 
+# kubernetes/api
+
+
+class KubernetesError(HassioError):
+    """Kubernetes API/Transport errors."""
+
+
+class KubernetesNotFound(KubernetesError):
+    """Kubernetes object does not exist."""
+
+
+class KubernetesJobError(KubernetesError, JobException):
+    """Error executing Kubernetes job."""
+
+
 # Hardware
 
 

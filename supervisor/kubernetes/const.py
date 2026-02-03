@@ -1,0 +1,74 @@
+"""Constants for Kubernetes backend."""
+
+from __future__ import annotations
+
+from typing import Final
+
+
+K8S_NAMESPACE_FILE: Final[str] = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+
+# Environment variables used to configure Kubernetes runtime.
+ENV_SUPERVISOR_K8S_NAMESPACE: Final[str] = "SUPERVISOR_K8S_NAMESPACE"
+ENV_SUPERVISOR_K8S_KUBECONFIG: Final[str] = "SUPERVISOR_K8S_KUBECONFIG"
+
+ENV_SUPERVISOR_K8S_STORAGE_MODE: Final[str] = "SUPERVISOR_K8S_STORAGE_MODE"
+ENV_SUPERVISOR_K8S_SHARED_PVC_CLAIM: Final[str] = "SUPERVISOR_K8S_SHARED_PVC_CLAIM"
+ENV_SUPERVISOR_K8S_SHARED_PVC_STORAGE_CLASS: Final[str] = (
+    "SUPERVISOR_K8S_SHARED_PVC_STORAGE_CLASS"
+)
+ENV_SUPERVISOR_K8S_SHARED_PVC_SIZE: Final[str] = "SUPERVISOR_K8S_SHARED_PVC_SIZE"
+
+ENV_SUPERVISOR_K8S_GATEWAY_HOSTNAME: Final[str] = "SUPERVISOR_K8S_GATEWAY_HOSTNAME"
+ENV_SUPERVISOR_K8S_GATEWAY_TLS_SECRET: Final[str] = "SUPERVISOR_K8S_GATEWAY_TLS_SECRET"
+ENV_SUPERVISOR_K8S_GATEWAY_CLASS: Final[str] = "SUPERVISOR_K8S_GATEWAY_CLASS"
+ENV_SUPERVISOR_K8S_GATEWAY_NAME: Final[str] = "SUPERVISOR_K8S_GATEWAY_NAME"
+ENV_SUPERVISOR_K8S_HTTPROUTE_NAME: Final[str] = "SUPERVISOR_K8S_HTTPROUTE_NAME"
+
+# Public Gateway management
+# If false, Supervisor will assume a GitOps-managed Gateway + HTTPRoute exist for
+# Home Assistant and will not attempt to create/update them.
+ENV_SUPERVISOR_K8S_MANAGE_PUBLIC_GATEWAY: Final[str] = "SUPERVISOR_K8S_MANAGE_PUBLIC_GATEWAY"
+
+# Internal (LAN-only) L4 gateway for add-on TCP/UDP ports
+ENV_SUPERVISOR_K8S_INTERNAL_GATEWAY_ADDRESS: Final[str] = (
+    "SUPERVISOR_K8S_INTERNAL_GATEWAY_ADDRESS"
+)
+ENV_SUPERVISOR_K8S_INTERNAL_GATEWAY_CLASS: Final[str] = "SUPERVISOR_K8S_INTERNAL_GATEWAY_CLASS"
+ENV_SUPERVISOR_K8S_INTERNAL_GATEWAY_NAME: Final[str] = "SUPERVISOR_K8S_INTERNAL_GATEWAY_NAME"
+
+# Port registry
+ENV_SUPERVISOR_K8S_PORT_REGISTRY_CONFIGMAP: Final[str] = (
+    "SUPERVISOR_K8S_PORT_REGISTRY_CONFIGMAP"
+)
+ENV_SUPERVISOR_K8S_PORT_REGISTRY_KEY: Final[str] = "SUPERVISOR_K8S_PORT_REGISTRY_KEY"
+
+# Service names used by Gateway API routes
+ENV_SUPERVISOR_K8S_SERVICE_HOMEASSISTANT: Final[str] = (
+    "SUPERVISOR_K8S_SERVICE_HOMEASSISTANT"
+)
+ENV_SUPERVISOR_K8S_SERVICE_HOMEASSISTANT_PORT: Final[str] = (
+    "SUPERVISOR_K8S_SERVICE_HOMEASSISTANT_PORT"
+)
+ENV_SUPERVISOR_K8S_SERVICE_SUPERVISOR: Final[str] = "SUPERVISOR_K8S_SERVICE_SUPERVISOR"
+ENV_SUPERVISOR_K8S_SERVICE_SUPERVISOR_PORT: Final[str] = (
+    "SUPERVISOR_K8S_SERVICE_SUPERVISOR_PORT"
+)
+
+# Home Assistant configuration helpers
+# Used by Supervisor to configure reverse proxy support when running behind
+# Gateway/Envoy (X-Forwarded-For).
+ENV_SUPERVISOR_K8S_HA_TRUSTED_PROXIES: Final[str] = "SUPERVISOR_K8S_HA_TRUSTED_PROXIES"
+
+# Default matches common k3s PodCIDR; override via env for your cluster.
+DEFAULT_SUPERVISOR_K8S_HA_TRUSTED_PROXIES: Final[str] = "10.42.0.0/16"
+
+# Storage modes
+K8S_STORAGE_MODE_SHARED_PVC: Final[str] = "shared_pvc"
+
+# Gateway API
+GATEWAY_API_GROUP: Final[str] = "gateway.networking.k8s.io"
+GATEWAY_API_VERSION: Final[str] = "v1"
+
+# Common labels applied to Supervisor-managed Kubernetes resources.
+K8S_LABEL_MANAGED: Final[str] = "io.hass.managed"
+K8S_LABEL_COMPONENT: Final[str] = "io.hass.component"

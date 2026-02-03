@@ -164,10 +164,12 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             return self.ports[addon_slug]
 
         port = None
-        while (
-            port is None
-            or port in self.ports.values()
-            or await check_port(self.sys_docker.network.gateway, port)
+        # In Kubernetes mode, ports are bound inside the pod network namespace.
+        # There is no shared host gateway port space to check.
+        check_gateway = self.coresys.has_kubernetes is False
+
+        while port is None or port in self.ports.values() or (
+            check_gateway and await check_port(self.sys_docker.network.gateway, port)
         ):
             port = random.randint(62000, 65500)
 

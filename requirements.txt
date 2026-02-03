@@ -29,4 +29,5 @@ sentry-sdk==2.51.0
 setuptools==80.10.2
 voluptuous==0.16.0
 dbus-fast==3.1.2
+kubernetes-asyncio==31.1.0
 zlib-fast==0.2.1

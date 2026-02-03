@@ -277,7 +277,7 @@ class Job(CoreSysAttributes):
                 if self.conditions:
                     try:
                         await Job.check_conditions(
-                            self, set(self.conditions), method.__qualname__
+                            obj, set(self.conditions), method.__qualname__
                         )
                     except JobConditionException as err:
                         return self._handle_job_condition_exception(err)
@@ -328,6 +328,20 @@ class Job(CoreSysAttributes):
         coresys: CoreSysAttributes, conditions: set[JobCondition], method_name: str
     ):
         """Check conditions."""
+        # Kubernetes runtime does not support many host/Docker checks. Skip those
+        # conditions here so jobs can run without host integrations.
+        if coresys.coresys.has_kubernetes:
+            conditions = set(conditions) - {
+                JobCondition.FREE_SPACE,
+                JobCondition.INTERNET_HOST,
+                JobCondition.HAOS,
+                JobCondition.OS_AGENT,
+                JobCondition.OS_SUPPORTED,
+                JobCondition.HOST_NETWORK,
+                JobCondition.MOUNT_AVAILABLE,
+                JobCondition.PLUGINS_UPDATED,
+            }
+
         used_conditions = set(conditions) - set(coresys.sys_jobs.ignore_conditions)
         ignored_conditions = set(conditions) & set(coresys.sys_jobs.ignore_conditions)
 
@@ -450,12 +464,16 @@ class Job(CoreSysAttributes):
                 f"'{method_name}' blocked from execution, unsupported system architecture"
             )
 
-        if JobCondition.PLUGINS_UPDATED in used_conditions and (
+        if (
+            JobCondition.PLUGINS_UPDATED in used_conditions
+            and not coresys.coresys.has_kubernetes
+            and (
             out_of_date := [
                 plugin
                 for plugin in coresys.sys_plugins.all_plugins
                 if plugin.need_update
             ]
+            )
         ):
             errors = await asyncio.gather(
                 *[plugin.update() for plugin in out_of_date], return_exceptions=True

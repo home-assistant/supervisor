@@ -68,6 +68,12 @@ class PluginManager(CoreSysAttributes):
 
     async def load(self) -> None:
         """Load Supervisor plugins."""
+        # Plugins are implemented as Docker-managed workloads.
+        # In Kubernetes runtime mode, skip plugin management.
+        if self.coresys.has_kubernetes:
+            _LOGGER.info("Skipping plugin load in Kubernetes runtime")
+            return
+
         # Sequential to avoid issue on slow IO
         for plugin in self.all_plugins:
             try:
@@ -118,12 +124,16 @@ class PluginManager(CoreSysAttributes):
 
     async def repair(self) -> None:
         """Repair Supervisor plugins."""
+        if self.coresys.has_kubernetes:
+            return
         await asyncio.wait(
             [self.sys_create_task(plugin.repair()) for plugin in self.all_plugins]
         )
 
     async def shutdown(self) -> None:
         """Shutdown Supervisor plugin."""
+        if self.coresys.has_kubernetes:
+            return
         # Sequential to avoid issue on slow IO
         for plugin in (
             plugin for plugin in self.all_plugins if plugin.slug != "observer"

@@ -10,7 +10,7 @@ from aiohttp import hdrs, web
 
 from ..const import SUPERVISOR_DOCKER_NAME, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import APIAddonNotInstalled, HostNotSupportedError
+from ..exceptions import APIAddonNotInstalled, APIError, HostNotSupportedError
 from ..utils.sentry import async_capture_exception
 from .addons import APIAddons
 from .audio import APIAudio
@@ -129,6 +129,11 @@ class RestAPI(CoreSysAttributes):
 
         await self.start()
 
+    @api_process
+    async def not_supported(self, request: web.Request) -> None:
+        """Return a consistent error for unsupported endpoints."""
+        raise APIError("Endpoint not supported on Kubernetes runtime")
+
     def _register_advanced_logs(self, path: str, syslog_identifier: str):
         """Register logs endpoint for a given path, returning logs for single syslog identifier."""
 
@@ -172,6 +177,10 @@ class RestAPI(CoreSysAttributes):
 
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes([web.route("*", "/host/{tail:.*}", self.not_supported)])
+            return
+
         api_host = self._api_host
 
         self.webapp.add_routes(
@@ -213,6 +222,12 @@ class RestAPI(CoreSysAttributes):
 
     def _register_network(self) -> None:
         """Register network functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes(
+                [web.route("*", "/network/{tail:.*}", self.not_supported)]
+            )
+            return
+
         api_network = APINetwork()
         api_network.coresys = self.coresys
 
@@ -240,6 +255,10 @@ class RestAPI(CoreSysAttributes):
 
     def _register_os(self) -> None:
         """Register OS functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes([web.route("*", "/os/{tail:.*}", self.not_supported)])
+            return
+
         api_os = APIOS()
         api_os.coresys = self.coresys
 
@@ -298,6 +317,10 @@ class RestAPI(CoreSysAttributes):
 
     def _register_cli(self) -> None:
         """Register HA cli functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes([web.route("*", "/cli/{tail:.*}", self.not_supported)])
+            return
+
         api_cli = APICli()
         api_cli.coresys = self.coresys
 
@@ -311,6 +334,12 @@ class RestAPI(CoreSysAttributes):
 
     def _register_observer(self) -> None:
         """Register Observer functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes(
+                [web.route("*", "/observer/{tail:.*}", self.not_supported)]
+            )
+            return
+
         api_observer = APIObserver()
         api_observer.coresys = self.coresys
 
@@ -324,6 +353,12 @@ class RestAPI(CoreSysAttributes):
 
     def _register_multicast(self) -> None:
         """Register Multicast functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes(
+                [web.route("*", "/multicast/{tail:.*}", self.not_supported)]
+            )
+            return
+
         api_multicast = APIMulticast()
         api_multicast.coresys = self.coresys
 
@@ -339,6 +374,12 @@ class RestAPI(CoreSysAttributes):
 
     def _register_hardware(self) -> None:
         """Register hardware functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes(
+                [web.route("*", "/hardware/{tail:.*}", self.not_supported)]
+            )
+            return
+
         api_hardware = APIHardware()
         api_hardware.coresys = self.coresys
 
@@ -681,6 +722,10 @@ class RestAPI(CoreSysAttributes):
 
     def _register_dns(self) -> None:
         """Register DNS functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes([web.route("*", "/dns/{tail:.*}", self.not_supported)])
+            return
+
         api_dns = APICoreDNS()
         api_dns.coresys = self.coresys
 
@@ -699,6 +744,12 @@ class RestAPI(CoreSysAttributes):
 
     def _register_audio(self) -> None:
         """Register Audio functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes(
+                [web.route("*", "/audio/{tail:.*}", self.not_supported)]
+            )
+            return
+
         api_audio = APIAudio()
         api_audio.coresys = self.coresys
 
@@ -722,6 +773,12 @@ class RestAPI(CoreSysAttributes):
 
     def _register_mounts(self) -> None:
         """Register mounts endpoints."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes(
+                [web.route("*", "/mounts/{tail:.*}", self.not_supported)]
+            )
+            return
+
         api_mounts = APIMounts()
         api_mounts.coresys = self.coresys
 
@@ -812,6 +869,12 @@ class RestAPI(CoreSysAttributes):
 
     def _register_docker(self) -> None:
         """Register docker configuration functions."""
+        if self.coresys.has_kubernetes:
+            self.webapp.add_routes(
+                [web.route("*", "/docker/{tail:.*}", self.not_supported)]
+            )
+            return
+
         api_docker = APIDocker()
         api_docker.coresys = self.coresys
 
@@ -839,7 +902,10 @@ class RestAPI(CoreSysAttributes):
         except OSError as err:
             _LOGGER.critical("Failed to create HTTP server at 0.0.0.0:80 -> %s", err)
         else:
-            _LOGGER.info("Starting API on %s", self.sys_docker.network.supervisor)
+            if self.coresys.has_kubernetes:
+                _LOGGER.info("Starting API on 0.0.0.0:80 (Kubernetes runtime)")
+            else:
+                _LOGGER.info("Starting API on %s", self.sys_docker.network.supervisor)
 
     async def stop(self) -> None:
         """Stop RESTful API webserver."""
@@ -850,4 +916,7 @@ class RestAPI(CoreSysAttributes):
         await self._site.stop()
         await self._runner.cleanup()
 
-        _LOGGER.info("Stopping API on %s", self.sys_docker.network.supervisor)
+        if self.coresys.has_kubernetes:
+            _LOGGER.info("Stopping API (Kubernetes runtime)")
+        else:
+            _LOGGER.info("Stopping API on %s", self.sys_docker.network.supervisor)
