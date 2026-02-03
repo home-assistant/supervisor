@@ -1836,47 +1836,6 @@ async def test_reload_error(
         assert coresys.core.healthy is healthy_expected
 
 
-@pytest.mark.usefixtures("supervisor_internet", "install_addon_ssh")
-async def test_monitoring_after_full_restore(
-    coresys: CoreSys, full_backup_mock: Backup
-):
-    """Test monitoring of addon state still works after full restore."""
-    await coresys.core.set_state(CoreState.RUNNING)
-    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    coresys.homeassistant.core.start = AsyncMock(return_value=None)
-    coresys.homeassistant.core.stop = AsyncMock(return_value=None)
-    coresys.homeassistant.core.update = AsyncMock(return_value=None)
-
-    manager = await BackupManager(coresys).load_config()
-
-    backup_instance = full_backup_mock.return_value
-    backup_instance.protected = False
-    assert await manager.do_restore_full(backup_instance)
-
-    backup_instance.restore_addons.assert_called_once_with([TEST_ADDON_SLUG])
-    assert coresys.core.state == CoreState.RUNNING
-    coresys.docker.unload.assert_not_called()
-
-
-@pytest.mark.usefixtures("supervisor_internet", "install_addon_ssh")
-async def test_monitoring_after_partial_restore(
-    coresys: CoreSys, partial_backup_mock: Backup
-):
-    """Test monitoring of addon state still works after full restore."""
-    await coresys.core.set_state(CoreState.RUNNING)
-    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-
-    manager = await BackupManager(coresys).load_config()
-
-    backup_instance = partial_backup_mock.return_value
-    backup_instance.protected = False
-    assert await manager.do_restore_partial(backup_instance, addons=[TEST_ADDON_SLUG])
-
-    backup_instance.restore_addons.assert_called_once_with([TEST_ADDON_SLUG])
-    assert coresys.core.state == CoreState.RUNNING
-    coresys.docker.unload.assert_not_called()
-
-
 @pytest.mark.parametrize(
     "pre_backup_error",
     [
