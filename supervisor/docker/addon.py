@@ -129,7 +129,7 @@ class DockerAddon(DockerInterface):
     def arch(self) -> str | None:
         """Return arch of Docker image."""
         if self.addon.legacy:
-            return self.sys_arch.default
+            return str(self.sys_arch.default)
         return super().arch
 
     @property
