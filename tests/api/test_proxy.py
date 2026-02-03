@@ -9,7 +9,7 @@ import logging
 from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
-from aiohttp import ClientWebSocketResponse, WSCloseCode
+from aiohttp import ClientPayloadError, ClientWebSocketResponse, WSCloseCode
 from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
@@ -424,7 +424,7 @@ async def test_api_proxy_streaming_response_client_payload_error(
 
     async def mock_content_iter_error():
         yield b"data: event1\n\n"
-        raise aiohttp.ClientPayloadError("boom")
+        raise ClientPayloadError("boom")
 
     with patch.object(HomeAssistantAPI, "make_request") as make_request:
         mock_response = AsyncMock()
