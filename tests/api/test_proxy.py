@@ -254,3 +254,75 @@ async def test_api_proxy_get_request(
         assert response.status == 200
         assert await response.text() == "mocked response"
         assert response.content_type == "application/json"
+
+
+@pytest.mark.parametrize(
+    "path", ["config/automation/config/test_id", "services/light/turn_on"]
+)
+async def test_api_proxy_post_request(
+    api_client: TestClient,
+    install_addon_example: Addon,
+    request: pytest.FixtureRequest,
+    path: str,
+):
+    """Test the API proxy POST request."""
+    install_addon_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_addon_example.data["homeassistant_api"] = True
+
+    request.param = "local_example"
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        # Mock the response from make_request
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "application/json"
+        mock_response.read.return_value = b'{"result": "ok"}'
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        response = await api_client.post(
+            f"/core/api/{path}",
+            headers={"Authorization": "Bearer abc123"},
+            json={"test": "data"},
+        )
+
+        assert make_request.call_args[0][0] == "post"
+        assert make_request.call_args[0][1] == f"api/{path}"
+
+        assert response.status == 200
+        assert await response.text() == '{"result": "ok"}'
+        assert response.content_type == "application/json"
+
+
+@pytest.mark.parametrize(
+    "path", ["config/automation/config/test_id", "states/light.test"]
+)
+async def test_api_proxy_delete_request(
+    api_client: TestClient,
+    install_addon_example: Addon,
+    request: pytest.FixtureRequest,
+    path: str,
+):
+    """Test the API proxy DELETE request."""
+    install_addon_example.persist[ATTR_ACCESS_TOKEN] = "abc123"
+    install_addon_example.data["homeassistant_api"] = True
+
+    request.param = "local_example"
+
+    with patch.object(HomeAssistantAPI, "make_request") as make_request:
+        # Mock the response from make_request
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.content_type = "application/json"
+        mock_response.read.return_value = b'{"result": "ok"}'
+        make_request.return_value.__aenter__.return_value = mock_response
+
+        response = await api_client.delete(
+            f"/core/api/{path}", headers={"Authorization": "Bearer abc123"}
+        )
+
+        assert make_request.call_args[0][0] == "delete"
+        assert make_request.call_args[0][1] == f"api/{path}"
+
+        assert response.status == 200
+        assert await response.text() == '{"result": "ok"}'
+        assert response.content_type == "application/json"
