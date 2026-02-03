@@ -26,6 +26,8 @@ FORWARD_HEADERS = (
     "Accept",
     "Last-Event-ID",
     "Mcp-Session-Id",
+    "MCP-Protocol-Version",
+    "Origin",
 )
 HEADER_HA_ACCESS = "X-Ha-Access"
 
@@ -158,7 +160,6 @@ class APIProxy(CoreSysAttributes):
                     content_type=client.content_type,
                     headers_to_copy=(
                         "Cache-Control",
-                        "X-Accel-Buffering",
                         "Mcp-Session-Id",
                     ),
                 )
@@ -168,8 +169,11 @@ class APIProxy(CoreSysAttributes):
             response = web.Response(
                 body=data, status=client.status, content_type=client.content_type
             )
-            # Copy MCP-related headers from the upstream response
-            for header in ("Mcp-Session-Id",):
+            # Copy selected headers from the upstream response
+            for header in (
+                "Cache-Control",
+                "Mcp-Session-Id",
+            ):
                 if header in client.headers:
                     response.headers[header] = client.headers[header]
             return response
