@@ -3,6 +3,8 @@
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from .const import OBSERVER_PORT
+
 MESSAGE_CHECK_SUPERVISOR_LOGS = (
     "Check supervisor logs for details (check with '{logs_command}')"
 )
@@ -289,6 +291,18 @@ class ObserverJobError(ObserverError, PluginJobError):
     """Raise on job error with observer plugin."""
 
 
+class ObserverPortConflict(ObserverError, APIError):
+    """Raise if observer cannot start due to a port conflict."""
+
+    error_key = "observer_port_conflict"
+    message_template = "Cannot start {observer} because port {port} is already in use"
+    extra_fields = {"observer": "observer", "port": OBSERVER_PORT}
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
 # Multicast
 
 
@@ -390,6 +404,20 @@ class AddonNotRunningError(AddonsError, APIError):
     ) -> None:
         """Initialize exception."""
         self.extra_fields = {"addon": addon}
+        super().__init__(None, logger)
+
+
+class AddonPortConflict(AddonsError, APIError):
+    """Raise if addon cannot start due to a port conflict."""
+
+    error_key = "addon_port_conflict"
+    message_template = "Cannot start addon {name} because port {port} is already in use"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, name: str, port: int
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"name": name, "port": port}
         super().__init__(None, logger)
 
 
@@ -864,6 +892,22 @@ class DockerNoSpaceOnDevice(DockerError):
     def __init__(self, logger: Callable[..., None] | None = None) -> None:
         """Raise & log."""
         super().__init__(None, logger=logger)
+
+
+class DockerContainerPortConflict(DockerError, APIError):
+    """Raise if docker cannot start a container due to a port conflict."""
+
+    error_key = "docker_container_port_conflict"
+    message_template = (
+        "Cannot start container {name} because port {port} is already in use"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, name: str, port: int
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"name": name, "port": port}
+        super().__init__(None, logger)
 
 
 class DockerHubRateLimitExceeded(DockerError, APITooManyRequests):

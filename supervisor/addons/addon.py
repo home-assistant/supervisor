@@ -15,7 +15,7 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
@@ -70,6 +70,7 @@ from ..exceptions import (
     AddonNotRunningError,
     AddonNotSupportedError,
     AddonNotSupportedWriteStdinError,
+    AddonPortConflict,
     AddonPrePostBackupCommandReturnedError,
     AddonsError,
     AddonsJobError,
@@ -77,6 +78,7 @@ from ..exceptions import (
     BackupRestoreUnknownError,
     ConfigurationFileError,
     DockerBuildError,
+    DockerContainerPortConflict,
     DockerError,
     HostAppArmorError,
     StoreAddonNotFoundError,
@@ -1140,6 +1142,12 @@ class Addon(AddonModel):
         self._startup_event.clear()
         try:
             await self.instance.run()
+        except DockerContainerPortConflict as err:
+            raise AddonPortConflict(
+                _LOGGER.error,
+                name=self.slug,
+                port=cast(dict[str, Any], err.extra_fields)["port"],
+            ) from err
         except DockerError as err:
             _LOGGER.error("Could not start container for addon %s: %s", self.slug, err)
             self.state = AddonState.ERROR
