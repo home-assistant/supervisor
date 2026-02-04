@@ -172,8 +172,8 @@ class DockerHomeAssistant(DockerInterface):
     async def run(self, *, restore_job_id: str | None = None) -> None:
         """Run Docker image."""
         environment = {
-            "SUPERVISOR": self.sys_docker.network.supervisor,
-            "HASSIO": self.sys_docker.network.supervisor,
+            "SUPERVISOR": str(self.sys_docker.network.supervisor),
+            "HASSIO": str(self.sys_docker.network.supervisor),
             ENV_TIME: self.sys_timezone,
             ENV_TOKEN: self.sys_homeassistant.supervisor_token,
             ENV_TOKEN_OLD: self.sys_homeassistant.supervisor_token,
