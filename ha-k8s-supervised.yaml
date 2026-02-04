@@ -11,6 +11,9 @@
 # - ServiceAccount
 # - Role / RoleBinding
 #
+# Supporting resources (Home Assistant core workloads, add-ons, internal L4 proxy) are
+# created/managed dynamically by Supervisor at runtime and therefore are not included here.
+#
 # Prerequisites (provided by cluster admin/GitOps):
 # - Namespace `home-assistant` exists
 # - ServiceAccount `home-assistant/supervisor` exists
@@ -63,11 +66,25 @@ spec:
       serviceAccountName: supervisor
       containers:
         - name: supervisor
-          image: shantur/homeassistant-kubernetes-supervisor:k8s-lb-fix3
-          imagePullPolicy: IfNotPresent
+          image: shantur/homeassistant-kubernetes-supervisor:2026.01.2-1
+          imagePullPolicy: Always
           ports:
             - name: http
               containerPort: 80
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 6
           env:
             - name: SUPERVISOR_RUNTIME
               value: kubernetes
@@ -93,6 +110,11 @@ spec:
               value: cilium
             - name: SUPERVISOR_K8S_MANAGE_PUBLIC_GATEWAY
               value: "false"
+            # Comma-separated list of CIDRs/IPs that Home Assistant should trust
+            # as reverse proxies when Supervisor manages the HA workload.
+            # Default k3s PodCIDR is 10.42.0.0/16.
+            - name: SUPERVISOR_K8S_HA_TRUSTED_PROXIES
+              value: 10.42.0.0/16
           volumeMounts:
             - name: shared-data
               mountPath: /data

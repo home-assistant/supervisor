@@ -1,7 +1,7 @@
 # Home Assistant Supervisor on Kubernetes (Manifest Setup)
 
-This repository contains an experimental Kubernetes runtime backend for Home Assistant
-Supervisor.
+This repository is a fork of the upstream Home Assistant Supervisor.
+It contains an experimental Kubernetes runtime backend that can manage add-ons on Kubernetes.
 
 This document describes how to deploy Supervisor using the provided manifest
 `ha-k8s-supervised.yaml`.
@@ -57,7 +57,15 @@ Open `ha-k8s-supervised.yaml` and adjust:
 
 Image:
 
-- `image: shantur/homeassistant-kubernetes-supervisor:k8s-lb-fix3`
+- Recommended: `image: shantur/homeassistant-kubernetes-supervisor:2026.01.2-1`
+- Rolling: `image: shantur/homeassistant-kubernetes-supervisor:latest`
+
+Home Assistant reverse proxy:
+
+- If Supervisor is managing the Home Assistant Core workload on Kubernetes, it can
+  configure `http.trusted_proxies` in `configuration.yaml`.
+- Set `SUPERVISOR_K8S_HA_TRUSTED_PROXIES` (comma-separated CIDRs/IPs). Default k3s
+  PodCIDR is typically `10.42.0.0/16`.
 
 ## Deploy
 
@@ -92,6 +100,12 @@ Once Supervisor is running, it will create additional resources as you use it:
   - `service/ha-internal` (type LoadBalancer; internal VIP)
   - `deployment/ha-internal` (NGINX stream proxy)
   - `configmap/ha-internal-config`
+
+Add-on logs:
+
+- In Kubernetes runtime, add-on logs are served via the Kubernetes API (`pods/log`) instead
+  of host journald.
+- Live follow is supported using Kubernetes log streaming.
 
 ## Troubleshooting
 

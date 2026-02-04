@@ -1,5 +1,10 @@
 # Home Assistant Supervisor
 
+Note: This repository is a fork of the upstream Home Assistant Supervisor.
+It adds an experimental Kubernetes runtime backend.
+
+- Kubernetes manifest documentation: `README-kube.md`
+
 ## First private cloud solution for home automation
 
 Home Assistant (former Hass.io) is a container-based system for managing your
