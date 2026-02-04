@@ -72,6 +72,9 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                         "docker": coresys.docker.info.version,
                         "supervisor": coresys.supervisor.version,
                     },
+                    "docker": {
+                        "storage_driver": coresys.docker.info.storage,
+                    },
                     "host": {
                         "machine": coresys.machine,
                     },
@@ -110,6 +113,9 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                 "agent": coresys.dbus.agent.version,
                 "docker": coresys.docker.info.version,
                 "supervisor": coresys.supervisor.version,
+            },
+            "docker": {
+                "storage_driver": coresys.docker.info.storage,
             },
             "resolution": {
                 "issues": [attr.asdict(issue) for issue in coresys.resolution.issues],
