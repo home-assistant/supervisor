@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 from kubernetes_asyncio import client
 
 from ..docker.const import ENV_TIME, ENV_TOKEN, ENV_TOKEN_OLD
+from ..const import AddonState
 from ..exceptions import AddonNotSupportedError, KubernetesError, KubernetesNotFound
 
 if TYPE_CHECKING:
@@ -307,6 +308,56 @@ class KubernetesAddon:
         if not await self.exists():
             raise KubernetesNotFound(f"Add-on {self.addon.slug} not installed")
         await self._scale(0)
+        await self._wait_stopped(timeout=60)
+
+    async def get_state(self) -> AddonState:
+        """Return add-on state based on Kubernetes resources."""
+        if not await self.exists():
+            return AddonState.STOPPED
+
+        namespace = self.coresys.kubernetes.context.namespace
+        labels = f"io.hass.type=addon,io.hass.addon={self.addon.slug},io.hass.managed=true"
+
+        # If the workload is scaled down, treat as stopped.
+        try:
+            deployment = await self.coresys.kubernetes.apps.read_namespaced_deployment(
+                name=self._names.deployment, namespace=namespace
+            )
+            if deployment.spec and (deployment.spec.replicas or 0) == 0:
+                return AddonState.STOPPED
+        except client.ApiException as err:
+            if err.status != 404:
+                raise KubernetesError(
+                    f"Unable to read Deployment {namespace}/{self._names.deployment}: {err}"
+                ) from err
+            return AddonState.STOPPED
+
+        pods = await self.coresys.kubernetes.core.list_namespaced_pod(
+            namespace=namespace, label_selector=labels
+        )
+
+        # Ready => started
+        for pod in pods.items:
+            for cond in pod.status.conditions or []:
+                if cond.type == "Ready" and cond.status == "True":
+                    return AddonState.STARTED
+
+        # Detect obvious failure states (CrashLoopBackOff, ImagePullBackOff, etc.)
+        for pod in pods.items:
+            for cs in pod.status.container_statuses or []:
+                if cs.state and cs.state.waiting and cs.state.waiting.reason:
+                    reason = cs.state.waiting.reason
+                    if reason in {
+                        "CrashLoopBackOff",
+                        "ImagePullBackOff",
+                        "ErrImagePull",
+                        "CreateContainerConfigError",
+                        "CreateContainerError",
+                    }:
+                        return AddonState.ERROR
+
+        # Otherwise it exists and is scaled up but not ready yet.
+        return AddonState.STARTUP
 
     async def restart(self) -> None:
         """Restart the add-on."""
@@ -384,7 +435,23 @@ class KubernetesAddon:
             if await self.is_running():
                 return
             await asyncio.sleep(1)
-        _LOGGER.warning("Timeout waiting for add-on %s to become Ready", self.addon.slug)
+        raise KubernetesError(
+            f"Timeout waiting for add-on {self.addon.slug} to become Ready"
+        )
+
+    async def _wait_stopped(self, *, timeout: int) -> None:
+        """Wait for add-on pods to stop after scaling down."""
+        end = asyncio.get_running_loop().time() + timeout
+        namespace = self.coresys.kubernetes.context.namespace
+        labels = f"io.hass.type=addon,io.hass.addon={self.addon.slug},io.hass.managed=true"
+        while asyncio.get_running_loop().time() < end:
+            pods = await self.coresys.kubernetes.core.list_namespaced_pod(
+                namespace=namespace, label_selector=labels
+            )
+            if not pods.items:
+                return
+            await asyncio.sleep(1)
+        raise KubernetesError(f"Timeout waiting for add-on {self.addon.slug} to stop")
 
     async def _ensure_service(self, selector_labels: dict[str, str]) -> None:
         namespace = self.coresys.kubernetes.context.namespace

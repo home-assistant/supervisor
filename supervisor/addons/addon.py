@@ -273,11 +273,14 @@ class Addon(AddonModel):
         # Kubernetes has no Docker event stream; set state based on current readiness
         if runtime == SupervisorRuntime.KUBERNETES:
             with suppress(Exception):  # noqa: BLE001
-                self.state = (
-                    AddonState.STARTED
-                    if await self.instance.is_running()
-                    else AddonState.STOPPED
-                )
+                if hasattr(self.instance, "get_state"):
+                    self.state = await self.instance.get_state()
+                else:
+                    self.state = (
+                        AddonState.STARTED
+                        if await self.instance.is_running()
+                        else AddonState.STOPPED
+                    )
 
     @property
     def ip_address(self) -> IPv4Address:
@@ -1232,7 +1235,7 @@ class Addon(AddonModel):
         self._manual_stop = True
         try:
             await self.instance.stop()
-        except DockerError as err:
+        except (DockerError, KubernetesError) as err:
             _LOGGER.error("Could not stop container for addon %s: %s", self.slug, err)
             self.state = AddonState.ERROR
             raise AddonUnknownError(addon=self.slug) from err
@@ -1264,7 +1267,15 @@ class Addon(AddonModel):
     async def stats(self) -> DockerStats:
         """Return stats of container."""
         if os.environ.get(ENV_SUPERVISOR_RUNTIME) == SupervisorRuntime.KUBERNETES:
-            raise AddonNotSupportedError()
+            # Kubernetes runtime does not expose Docker stats. Home Assistant
+            # expects /addons/<slug>/stats to exist, so return a minimal stats
+            # payload when the add-on is running.
+            if not await self.is_running():
+                raise AddonNotRunningError(_LOGGER.warning, addon=self.slug)
+
+            # Placeholder: return zeros until a metrics backend (metrics.k8s.io,
+            # cAdvisor, etc.) is integrated.
+            return DockerStats({})
 
         try:
             if not await self.is_running():
