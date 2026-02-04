@@ -93,7 +93,7 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                 "installed_addons": installed_addons,
             },
             "host": {
-                "arch": coresys.arch.default,
+                "arch": str(coresys.arch.default),
                 "board": coresys.os.board,
                 "deployment": coresys.host.info.deployment,
                 "disk_free_space": coresys.hardware.disk.get_disk_free_space(
