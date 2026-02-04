@@ -316,5 +316,5 @@ Useful checks:
   - `curl -H "Authorization: Bearer $SUPERVISOR_TOKEN" http://supervisor/core/info`
 
 - DNS/VIP correctness:
-  - ensure `ha.example.com` resolves to the public Gateway VIP
+  - ensure your Home Assistant hostname (e.g. `ha.example.com`) resolves to the public Gateway VIP
   - ensure the internal add-on VIP is not reachable from WAN
