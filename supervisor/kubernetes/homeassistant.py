@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 _RE_HTTP_SECTION: re.Pattern[str] = re.compile(r"(?m)^http:\s*$")
+_RE_TOP_LEVEL_KEY: re.Pattern[str] = re.compile(r"^[A-Za-z0-9_]+:\s*(#.*)?$")
 
 
 @dataclass(slots=True, frozen=True)
@@ -180,6 +181,20 @@ class KubernetesHomeAssistant:
             env=env,
             ports=[client.V1ContainerPort(container_port=8123)],
             volume_mounts=volume_mounts,
+            readiness_probe=client.V1Probe(
+                tcp_socket=client.V1TCPSocketAction(port=8123),
+                initial_delay_seconds=20,
+                period_seconds=5,
+                timeout_seconds=2,
+                failure_threshold=12,
+            ),
+            liveness_probe=client.V1Probe(
+                tcp_socket=client.V1TCPSocketAction(port=8123),
+                initial_delay_seconds=60,
+                period_seconds=10,
+                timeout_seconds=2,
+                failure_threshold=6,
+            ),
         )
 
         template = client.V1PodTemplateSpec(
@@ -265,6 +280,13 @@ class KubernetesHomeAssistant:
         """Start Home Assistant (scale to 1) and wait Ready."""
         await self._scale(1)
         await self._wait_ready(timeout=STARTUP_TIMEOUT)
+
+        # Home Assistant may create configuration.yaml on first start. Ensure
+        # reverse proxy support is present once HA is running.
+        changed = await self._ensure_reverse_proxy_config()
+        if changed:
+            _LOGGER.info("Restarting Home Assistant to apply reverse proxy configuration")
+            await self.restart()
 
     async def restart(self) -> None:
         await self.stop(remove_container=False)
@@ -428,12 +450,32 @@ class KubernetesHomeAssistant:
 
         We do not parse YAML because Home Assistant configs often contain custom
         tags like `!include`. Instead, we append an `http:` section if one does
-        not already exist.
+        not already exist. If it exists, we try to add missing keys conservatively.
         """
         config_file = self.coresys.config.path_homeassistant / "configuration.yaml"
         proxies = self._trusted_proxies()
 
         changed = False
+
+        def _find_http_block(lines: list[str]) -> tuple[int, int] | None:
+            """Return (http_line_index, block_end_index)."""
+            http_idx: int | None = None
+            for idx, line in enumerate(lines):
+                if line.strip() == "http:" and not line.startswith(" "):
+                    http_idx = idx
+                    break
+            if http_idx is None:
+                return None
+
+            end = len(lines)
+            for idx in range(http_idx + 1, len(lines)):
+                line = lines[idx]
+                if not line or line.startswith(" ") or line.startswith("\t") or line.lstrip().startswith("#"):
+                    continue
+                if _RE_TOP_LEVEL_KEY.match(line):
+                    end = idx
+                    break
+            return (http_idx, end)
 
         def _update_config() -> bool:
             if not config_file.exists():
@@ -453,11 +495,58 @@ class KubernetesHomeAssistant:
                 )
                 return False
 
-            if _RE_HTTP_SECTION.search(content):
-                _LOGGER.debug(
-                    "Home Assistant configuration already contains an http: section; skipping reverse proxy injection"
+            lines = content.splitlines()
+            http_block = _find_http_block(lines)
+
+            trusted_lines = [f"    - {proxy}" for proxy in proxies]
+            managed_header = "# Managed by Supervisor (Kubernetes runtime): reverse proxy support"
+
+            if http_block is None:
+                block = (
+                    f"\n\n{managed_header}\n"
+                    "http:\n"
+                    "  use_x_forwarded_for: true\n"
+                    "  trusted_proxies:\n"
+                    + "\n".join(trusted_lines)
+                    + "\n"
                 )
+
+                new_content = content.rstrip() + block
+                try:
+                    with atomic_write(config_file, overwrite=True) as fp:
+                        fp.write(new_content)
+                    config_file.chmod(0o600)
+                except OSError as err:
+                    _LOGGER.warning(
+                        "Unable to update Home Assistant configuration.yaml at %s: %s",
+                        config_file,
+                        err,
+                    )
+                    return False
+
+                return True
+
+            http_idx, end_idx = http_block
+            block_lines = lines[http_idx + 1 : end_idx]
+
+            has_use_xff = any(l.strip().startswith("use_x_forwarded_for:") for l in block_lines)
+            has_trusted = any(l.strip() == "trusted_proxies:" for l in block_lines)
+
+            # Nothing to do
+            if has_use_xff and has_trusted:
                 return False
+
+            insert_at = http_idx + 1
+            insert_lines: list[str] = []
+            if not has_use_xff:
+                insert_lines.append("  use_x_forwarded_for: true")
+            if not has_trusted:
+                insert_lines.append("  trusted_proxies:")
+                insert_lines.extend(trusted_lines)
+
+            # Insert directly after `http:` line so it remains within the http block.
+            new_lines = lines[:insert_at] + insert_lines + lines[insert_at:]
+            new_content = "\n".join(new_lines).rstrip() + "\n"
 
             backup_file = config_file.with_name("configuration.yaml.supervisor.bak")
             if not backup_file.exists():
@@ -466,16 +555,6 @@ class KubernetesHomeAssistant:
                 except OSError as err:
                     _LOGGER.debug("Unable to write config backup %s: %s", backup_file, err)
 
-            trusted_lines = "\n".join(f"    - {proxy}" for proxy in proxies)
-            block = (
-                "\n\n# Managed by Supervisor (Kubernetes runtime): reverse proxy support\n"
-                "http:\n"
-                "  use_x_forwarded_for: true\n"
-                "  trusted_proxies:\n"
-                f"{trusted_lines}\n"
-            )
-
-            new_content = content.rstrip() + block
             try:
                 with atomic_write(config_file, overwrite=True) as fp:
                     fp.write(new_content)
@@ -486,7 +565,6 @@ class KubernetesHomeAssistant:
                     config_file,
                     err,
                 )
-
                 return False
 
             return True

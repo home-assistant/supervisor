@@ -134,7 +134,11 @@ class HostManager(CoreSysAttributes):
     async def reload(self):
         """Reload host functions."""
         await self.info.update()
-        await self.sys_os.reload()
+
+        # OS reload requires RAUC over D-Bus (Home Assistant OS). In Kubernetes
+        # runtime we intentionally do not have host D-Bus available.
+        if self.sys_os.available and self.sys_dbus.rauc.is_connected:
+            await self.sys_os.reload()
 
         if self.sys_dbus.systemd.is_connected:
             await self.services.update()
