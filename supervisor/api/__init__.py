@@ -134,6 +134,79 @@ class RestAPI(CoreSysAttributes):
         """Return a consistent error for unsupported endpoints."""
         raise APIError("Endpoint not supported on Kubernetes runtime")
 
+    @api_process
+    async def host_info_kubernetes(self, request: web.Request) -> dict[str, Any]:
+        """Return minimal host info for Kubernetes runtime.
+
+        Home Assistant's hassio integration expects this endpoint to exist.
+        """
+        return {
+            "agent_version": None,
+            "apparmor_version": None,
+            "chassis": None,
+            "virtualization": "kubernetes",
+            "cpe": None,
+            "deployment": "kubernetes",
+            "disk_free": None,
+            "disk_total": None,
+            "disk_used": None,
+            "disk_life_time": None,
+            "features": [],
+            "hostname": "kubernetes",
+            "llmnr_hostname": None,
+            "kernel": None,
+            "operating_system": "kubernetes",
+            "timezone": self.sys_timezone,
+            "dt_utc": None,
+            "dt_synchronized": None,
+            "use_ntp": None,
+            "startup_time": None,
+            "boot_timestamp": None,
+            "broadcast_llmnr": None,
+            "broadcast_mdns": None,
+        }
+
+    @api_process
+    async def os_info_kubernetes(self, request: web.Request) -> dict[str, Any]:
+        """Return minimal OS info for Kubernetes runtime."""
+        return {
+            "version": None,
+            "version_latest": None,
+            "update_available": False,
+            "board": None,
+            "boot": None,
+            "data_disk": None,
+            "boot_slots": {},
+        }
+
+    @api_process
+    async def network_info_kubernetes(self, request: web.Request) -> dict[str, Any]:
+        """Return minimal network info for Kubernetes runtime."""
+        internet = self.sys_supervisor.connectivity
+        return {
+            "interfaces": [],
+            "docker": {
+                "interface": None,
+                "address": None,
+                "gateway": None,
+                "dns": None,
+            },
+            "host_internet": internet,
+            "supervisor_internet": internet,
+        }
+
+    @api_process
+    async def docker_info_kubernetes(self, request: web.Request) -> dict[str, Any]:
+        """Return minimal docker info for Kubernetes runtime."""
+        return {
+            "version": None,
+            "enable_ipv6": None,
+            "mtu": None,
+            "storage": None,
+            "logging": None,
+            "registries": {},
+        }
+
     def _register_advanced_logs(self, path: str, syslog_identifier: str):
         """Register logs endpoint for a given path, returning logs for single syslog identifier."""
 
@@ -178,7 +251,18 @@ class RestAPI(CoreSysAttributes):
     def _register_host(self) -> None:
         """Register hostcontrol functions."""
         if self.coresys.has_kubernetes:
-            self.webapp.add_routes([web.route("*", "/host/{tail:.*}", self.not_supported)])
+            api_host = self._api_host
+            # Home Assistant expects to be able to read host info even when
+            # Supervisor is not managing a traditional host OS.
+            self.webapp.add_routes(
+                [
+                    web.get("/host/info", self.host_info_kubernetes),
+                    # Home Assistant calls this endpoint for backup sizing and
+                    # general system usage reporting.
+                    web.get("/host/disks/default/usage", api_host.disk_usage),
+                    web.route("*", "/host/{tail:.*}", self.not_supported),
+                ]
+            )
             return
 
         api_host = self._api_host
@@ -224,7 +308,10 @@ class RestAPI(CoreSysAttributes):
         """Register network functions."""
         if self.coresys.has_kubernetes:
             self.webapp.add_routes(
-                [web.route("*", "/network/{tail:.*}", self.not_supported)]
+                [
+                    web.get("/network/info", self.network_info_kubernetes),
+                    web.route("*", "/network/{tail:.*}", self.not_supported),
+                ]
             )
             return
 
@@ -256,7 +343,12 @@ class RestAPI(CoreSysAttributes):
     def _register_os(self) -> None:
         """Register OS functions."""
         if self.coresys.has_kubernetes:
-            self.webapp.add_routes([web.route("*", "/os/{tail:.*}", self.not_supported)])
+            self.webapp.add_routes(
+                [
+                    web.get("/os/info", self.os_info_kubernetes),
+                    web.route("*", "/os/{tail:.*}", self.not_supported),
+                ]
+            )
             return
 
         api_os = APIOS()
@@ -608,6 +700,70 @@ class RestAPI(CoreSysAttributes):
         @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
         async def get_addon_logs(request, *args, **kwargs):
             addon = api_addons.get_addon_for_request(request)
+
+            # On Kubernetes, add-ons run as pods and logs are accessed via the
+            # Kubernetes API rather than journald.
+            if self.coresys.has_kubernetes:
+                namespace = self.coresys.kubernetes.context.namespace
+                selector = (
+                    f"io.hass.type=addon,io.hass.addon={addon.slug},io.hass.managed=true"
+                )
+                pods = await self.coresys.kubernetes.core.list_namespaced_pod(
+                    namespace=namespace, label_selector=selector
+                )
+
+                if not pods.items:
+                    raise APIError(f"No pod found for add-on {addon.slug}")
+
+                pod = next(
+                    (p for p in pods.items if p.status and p.status.phase == "Running"),
+                    pods.items[0],
+                )
+
+                lines = request.query.get("lines", "100")
+                try:
+                    tail_lines = max(1, min(1000, int(lines)))
+                except ValueError:
+                    tail_lines = 100
+
+                follow = bool(kwargs.get("follow"))
+                if follow:
+                    # Stream live logs from the kube-apiserver.
+                    k8s_resp = await self.coresys.kubernetes.core.read_namespaced_pod_log(
+                        name=pod.metadata.name,
+                        namespace=namespace,
+                        follow=True,
+                        tail_lines=tail_lines,
+                        timestamps=False,
+                        _preload_content=False,
+                    )
+
+                    response = web.StreamResponse()
+                    response.content_type = CONTENT_TYPE_TEXT
+                    response.headers["X-Accel-Buffering"] = "no"
+                    await response.prepare(request)
+
+                    try:
+                        while not k8s_resp.content.at_eof():
+                            chunk = await k8s_resp.content.readany()
+                            if not chunk:
+                                break
+                            await response.write(chunk)
+                    except (ConnectionResetError, asyncio.CancelledError):
+                        # Client disconnected or request cancelled.
+                        pass
+                    finally:
+                        k8s_resp.close()
+
+                    return response
+
+                return await self.coresys.kubernetes.core.read_namespaced_pod_log(
+                    name=pod.metadata.name,
+                    namespace=namespace,
+                    tail_lines=tail_lines,
+                    timestamps=False,
+                )
+
             kwargs["identifier"] = f"addon_{addon.slug}"
             return await self._api_host.advanced_logs(request, *args, **kwargs)
 
@@ -773,12 +929,6 @@ class RestAPI(CoreSysAttributes):
 
     def _register_mounts(self) -> None:
         """Register mounts endpoints."""
-        if self.coresys.has_kubernetes:
-            self.webapp.add_routes(
-                [web.route("*", "/mounts/{tail:.*}", self.not_supported)]
-            )
-            return
-
         api_mounts = APIMounts()
         api_mounts.coresys = self.coresys
 
@@ -871,7 +1021,10 @@ class RestAPI(CoreSysAttributes):
         """Register docker configuration functions."""
         if self.coresys.has_kubernetes:
             self.webapp.add_routes(
-                [web.route("*", "/docker/{tail:.*}", self.not_supported)]
+                [
+                    web.get("/docker/info", self.docker_info_kubernetes),
+                    web.route("*", "/docker/{tail:.*}", self.not_supported),
+                ]
             )
             return
 

@@ -203,9 +203,16 @@ class SecurityMiddleware(CoreSysAttributes):
         self, request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]
     ) -> StreamResponse:
         """Check if core is ready to response."""
+        # Always allow ping, even during startup. This endpoint is used by
+        # health checks and debugging.
+        if request.path == "/supervisor/ping":
+            return await handler(request)
+
         if self.sys_core.state not in VALID_API_STATES:
             return api_return_error(
-                message=f"System is not ready with state: {self.sys_core.state}"
+                message=f"System is not ready with state: {self.sys_core.state}",
+                status=503,
+                headers={"Retry-After": "5"},
             )
 
         return await handler(request)
