@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from securetar import AddFileError, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -410,7 +410,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     @Job(name="home_assistant_module_backup")
     async def backup(
-        self, tar_file: tarfile.TarFile, exclude_database: bool = False
+        self, tar_file: SecureTarFile, exclude_database: bool = False
     ) -> None:
         """Backup Home Assistant Core config/directory."""
         excludes = HOMEASSISTANT_BACKUP_EXCLUDE.copy()
@@ -470,7 +470,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
     @Job(name="home_assistant_module_restore")
     async def restore(
-        self, tar_file: tarfile.TarFile, exclude_database: bool = False
+        self, tar_file: SecureTarFile, exclude_database: bool | None = False
     ) -> None:
         """Restore Home Assistant Core config/ directory."""
 
@@ -502,7 +502,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                     temp_data = temp_path
 
                 _LOGGER.info("Restore Home Assistant Core config folder")
-                if exclude_database:
+                if exclude_database is True:
                     remove_folder_with_excludes(
                         self.sys_config.path_homeassistant,
                         excludes=HOMEASSISTANT_BACKUP_EXCLUDE_DATABASE,
