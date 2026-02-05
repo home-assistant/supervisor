@@ -1316,64 +1316,58 @@ class Addon(AddonModel):
         """
 
         def _addon_backup(
-            store_image: bool,
             metadata: dict[str, Any],
             apparmor_profile: str | None,
             addon_config_used: bool,
+            temp_dir: TemporaryDirectory,
+            temp_path: Path,
         ):
             """Start the backup process."""
-            with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
-                temp_path = Path(temp)
+            # Store local configs/state
+            try:
+                write_json_file(temp_path.joinpath("addon.json"), metadata)
+            except ConfigurationFileError as err:
+                _LOGGER.error("Can't save meta for %s: %s", self.slug, err)
+                raise BackupRestoreUnknownError() from err
 
-                # store local image
-                if store_image:
-                    try:
-                        self.instance.export_image(temp_path.joinpath("image.tar"))
-                    except DockerError as err:
-                        raise BackupRestoreUnknownError() from err
-
-                # Store local configs/state
+            # Store AppArmor Profile
+            if apparmor_profile:
+                profile_backup_file = temp_path.joinpath("apparmor.txt")
                 try:
-                    write_json_file(temp_path.joinpath("addon.json"), metadata)
-                except ConfigurationFileError as err:
-                    _LOGGER.error("Can't save meta for %s: %s", self.slug, err)
+                    self.sys_host.apparmor.backup_profile(
+                        apparmor_profile, profile_backup_file
+                    )
+                except HostAppArmorError as err:
+                    _LOGGER.error(
+                        "Can't backup AppArmor profile for %s: %s", self.slug, err
+                    )
                     raise BackupRestoreUnknownError() from err
 
-                # Store AppArmor Profile
-                if apparmor_profile:
-                    profile_backup_file = temp_path.joinpath("apparmor.txt")
-                    try:
-                        self.sys_host.apparmor.backup_profile(
-                            apparmor_profile, profile_backup_file
-                        )
-                    except HostAppArmorError as err:
-                        raise BackupRestoreUnknownError() from err
+            # Write tarfile
+            with tar_file as backup:
+                # Backup metadata
+                backup.add(temp_dir.name, arcname=".")
 
-                # Write tarfile
-                with tar_file as backup:
-                    # Backup metadata
-                    backup.add(temp, arcname=".")
+                # Backup data
+                atomic_contents_add(
+                    backup,
+                    self.path_data,
+                    file_filter=partial(
+                        self._is_excluded_by_filter, self.path_data, "data"
+                    ),
+                    arcname="data",
+                )
 
-                    # Backup data
+                # Backup config (if used and existing, restore handles this gracefully)
+                if addon_config_used and self.path_config.is_dir():
                     atomic_contents_add(
                         backup,
-                        self.path_data,
+                        self.path_config,
                         file_filter=partial(
-                            self._is_excluded_by_filter, self.path_data, "data"
+                            self._is_excluded_by_filter, self.path_config, "config"
                         ),
-                        arcname="data",
+                        arcname="config",
                     )
-
-                    # Backup config (if used and existing, restore handles this gracefully)
-                    if addon_config_used and self.path_config.is_dir():
-                        atomic_contents_add(
-                            backup,
-                            self.path_config,
-                            file_filter=partial(
-                                self._is_excluded_by_filter, self.path_config, "config"
-                            ),
-                            arcname="config",
-                        )
 
         wait_for_start: asyncio.Task | None = None
 
@@ -1388,22 +1382,35 @@ class Addon(AddonModel):
         )
 
         was_running = await self.begin_backup()
+        temp_dir = await self.sys_run_in_executor(
+            TemporaryDirectory, dir=self.sys_config.path_tmp
+        )
+        temp_path = Path(temp_dir.name)
+        _LOGGER.info("Building backup for add-on %s", self.slug)
         try:
-            _LOGGER.info("Building backup for add-on %s", self.slug)
+            # store local image
+            if self.need_build:
+                await self.instance.export_image(temp_path.joinpath("image.tar"))
+
             await self.sys_run_in_executor(
                 partial(
                     _addon_backup,
-                    store_image=self.need_build,
                     metadata=data,
                     apparmor_profile=apparmor_profile,
                     addon_config_used=self.addon_config_used,
+                    temp_dir=temp_dir,
+                    temp_path=temp_path,
                 )
             )
             _LOGGER.info("Finish backup for addon %s", self.slug)
+        except DockerError as err:
+            _LOGGER.error("Can't export image for addon %s: %s", self.slug, err)
+            raise BackupRestoreUnknownError() from err
         except (tarfile.TarError, OSError, AddFileError) as err:
             _LOGGER.error("Can't write backup tarfile for addon %s: %s", self.slug, err)
             raise BackupRestoreUnknownError() from err
         finally:
+            await self.sys_run_in_executor(temp_dir.cleanup)
             if was_running:
                 wait_for_start = await self.end_backup()
 
