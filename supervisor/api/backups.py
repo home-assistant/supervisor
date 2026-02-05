@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import errno
-from io import IOBase
 import logging
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
 from typing import Any, cast
 
+import aiofiles
 from aiohttp import BodyPartReader, web
 from aiohttp.hdrs import CONTENT_DISPOSITION
 import voluptuous as vol
@@ -44,6 +44,7 @@ from ..const import (
     ATTR_TIMEOUT,
     ATTR_TYPE,
     ATTR_VERSION,
+    DEFAULT_CHUNK_SIZE,
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
@@ -479,23 +480,10 @@ class APIBackups(CoreSysAttributes):
                 raise APIError(humanize_error(filename, ex)) from None
 
         tmp_path = await self.sys_backups.get_upload_path_for_location(location)
-        temp_dir: TemporaryDirectory | None = None
-        backup_file_stream: IOBase | None = None
-
-        def open_backup_file() -> Path:
-            nonlocal temp_dir, backup_file_stream
-            temp_dir = TemporaryDirectory(dir=tmp_path.as_posix())
-            tar_file = Path(temp_dir.name, "upload.tar")
-            backup_file_stream = tar_file.open("wb")
-            return tar_file
-
-        def close_backup_file() -> None:
-            if backup_file_stream:
-                # Make sure it got closed, in case of exception. It is safe to
-                # close the file stream twice.
-                backup_file_stream.close()
-            if temp_dir:
-                temp_dir.cleanup()
+        temp_dir = await self.sys_run_in_executor(
+            TemporaryDirectory, dir=tmp_path.as_posix()
+        )
+        tar_file = Path(temp_dir.name, "upload.tar")
 
         try:
             reader = await request.multipart()
@@ -503,12 +491,9 @@ class APIBackups(CoreSysAttributes):
             if not isinstance(contents, BodyPartReader):
                 raise APIError("Improperly formatted upload, could not read backup")
 
-            tar_file = await self.sys_run_in_executor(open_backup_file)
-            while chunk := await contents.read_chunk(size=2**16):
-                await self.sys_run_in_executor(
-                    cast(IOBase, backup_file_stream).write, chunk
-                )
-            await self.sys_run_in_executor(cast(IOBase, backup_file_stream).close)
+            async with aiofiles.open(tar_file, "wb") as write_tar:
+                while chunk := await contents.read_chunk(size=DEFAULT_CHUNK_SIZE):
+                    await write_tar.write(chunk)
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
@@ -533,7 +518,7 @@ class APIBackups(CoreSysAttributes):
             return False
 
         finally:
-            await self.sys_run_in_executor(close_backup_file)
+            await self.sys_run_in_executor(temp_dir.cleanup)
 
         if backup:
             return {ATTR_SLUG: backup.slug}
