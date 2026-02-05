@@ -103,19 +103,25 @@ class Resolved(DBusInterfaceProxy):
     @dbus_property
     def dns_over_tls(self) -> DNSOverTLSEnabled | None:
         """Return DNS over TLS enabled."""
-        return self.properties[DBUS_ATTR_DNS_OVER_TLS]
+        if (value := self.properties.get(DBUS_ATTR_DNS_OVER_TLS)) is not None:
+            return DNSOverTLSEnabled(value)
+        return None
 
     @property
     @dbus_property
     def dns_stub_listener(self) -> DNSStubListenerEnabled | None:
         """Return DNS stub listener enabled on port 53."""
-        return self.properties[DBUS_ATTR_DNS_STUB_LISTENER]
+        if (value := self.properties.get(DBUS_ATTR_DNS_STUB_LISTENER)) is not None:
+            return DNSStubListenerEnabled(value)
+        return None
 
     @property
     @dbus_property
     def dnssec(self) -> DNSSECValidation | None:
         """Return DNSSEC validation enforced."""
-        return self.properties[DBUS_ATTR_DNSSEC]
+        if (value := self.properties.get(DBUS_ATTR_DNSSEC)) is not None:
+            return DNSSECValidation(value)
+        return None
 
     @property
     @dbus_property
@@ -159,7 +165,9 @@ class Resolved(DBusInterfaceProxy):
     @dbus_property
     def llmnr(self) -> MulticastProtocolEnabled | None:
         """Return LLMNR enabled."""
-        return self.properties[DBUS_ATTR_LLMNR]
+        if (value := self.properties.get(DBUS_ATTR_LLMNR)) is not None:
+            return MulticastProtocolEnabled(value)
+        return None
 
     @property
     @dbus_property
@@ -171,13 +179,17 @@ class Resolved(DBusInterfaceProxy):
     @dbus_property
     def multicast_dns(self) -> MulticastProtocolEnabled | None:
         """Return MDNS enabled."""
-        return self.properties[DBUS_ATTR_MULTICAST_DNS]
+        if (value := self.properties.get(DBUS_ATTR_MULTICAST_DNS)) is not None:
+            return MulticastProtocolEnabled(value)
+        return None
 
     @property
     @dbus_property
     def resolv_conf_mode(self) -> ResolvConfMode | None:
         """Return how /etc/resolv.conf managed on host."""
-        return self.properties[DBUS_ATTR_RESOLV_CONF_MODE]
+        if (value := self.properties.get(DBUS_ATTR_RESOLV_CONF_MODE)) is not None:
+            return ResolvConfMode(value)
+        return None
 
     @property
     @dbus_property
