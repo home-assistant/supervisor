@@ -779,14 +779,11 @@ class DockerAddon(DockerInterface):
 
         _LOGGER.info("Build %s:%s done", self.image, version)
 
-    def export_image(self, tar_file: Path) -> None:
-        """Export current images into a tar file.
-
-        Must be run in executor.
-        """
+    async def export_image(self, tar_file: Path) -> None:
+        """Export current images into a tar file."""
         if not self.image:
             raise RuntimeError("Cannot export without image!")
-        self.sys_docker.export_image(self.image, self.version, tar_file)
+        await self.sys_docker.export_image(self.image, self.version, tar_file)
 
     @Job(
         name="docker_addon_import_image",
