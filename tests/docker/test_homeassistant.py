@@ -46,8 +46,8 @@ async def test_homeassistant_start(coresys: CoreSys, container: DockerContainer)
             "observer": IPv4Address("172.30.32.6"),
         }
         assert run.call_args.kwargs["environment"] == {
-            "SUPERVISOR": IPv4Address("172.30.32.2"),
-            "HASSIO": IPv4Address("172.30.32.2"),
+            "SUPERVISOR": "172.30.32.2",
+            "HASSIO": "172.30.32.2",
             "TZ": ANY,
             "SUPERVISOR_TOKEN": ANY,
             "HASSIO_TOKEN": ANY,
@@ -166,8 +166,8 @@ async def test_landingpage_start(coresys: CoreSys, container: DockerContainer):
             "observer": IPv4Address("172.30.32.6"),
         }
         assert run.call_args.kwargs["environment"] == {
-            "SUPERVISOR": IPv4Address("172.30.32.2"),
-            "HASSIO": IPv4Address("172.30.32.2"),
+            "SUPERVISOR": "172.30.32.2",
+            "HASSIO": "172.30.32.2",
             "TZ": ANY,
             "SUPERVISOR_TOKEN": ANY,
             "HASSIO_TOKEN": ANY,

@@ -1,6 +1,6 @@
 """Test Observer plugin container."""
 
-from ipaddress import IPv4Address, ip_network
+from ipaddress import IPv4Address
 from unittest.mock import patch
 
 from aiodocker.containers import DockerContainer
@@ -26,9 +26,7 @@ async def test_start(coresys: CoreSys, container: DockerContainer):
             "supervisor": IPv4Address("172.30.32.2")
         }
         assert run.call_args.kwargs["oom_score_adj"] == -300
-        assert run.call_args.kwargs["environment"]["NETWORK_MASK"] == ip_network(
-            "172.30.32.0/23"
-        )
+        assert run.call_args.kwargs["environment"]["NETWORK_MASK"] == "172.30.32.0/23"
         assert run.call_args.kwargs["ports"] == {"80/tcp": 4357}
         assert run.call_args.kwargs["mounts"] == [
             DockerMount(

@@ -48,7 +48,7 @@ class DockerObserver(DockerInterface, CoreSysAttributes):
             environment={
                 ENV_TIME: self.sys_timezone,
                 ENV_TOKEN: self.sys_plugins.observer.supervisor_token,
-                ENV_NETWORK_MASK: DOCKER_IPV4_NETWORK_MASK,
+                ENV_NETWORK_MASK: str(DOCKER_IPV4_NETWORK_MASK),
             },
             mounts=[MOUNT_DOCKER],
             ports={"80/tcp": OBSERVER_PORT},
