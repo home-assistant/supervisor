@@ -161,7 +161,7 @@ class DockerInterface(JobGroup, ABC):
             return None
 
         policy = self.meta_host["RestartPolicy"].get("Name")
-        return policy if policy else RestartPolicy.NO
+        return RestartPolicy(policy) if policy else RestartPolicy.NO
 
     @property
     def security_opt(self) -> list[str]:
