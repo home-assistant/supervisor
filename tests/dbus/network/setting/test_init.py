@@ -11,8 +11,8 @@ from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting import NetworkSetting
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
-from supervisor.host.configuration import Ip6Setting
-from supervisor.host.const import InterfaceMethod
+from supervisor.host.configuration import Ip6Setting, IpSetting, WifiConfig
+from supervisor.host.const import AuthMethod, InterfaceMethod, InterfaceType, WifiMode
 from supervisor.host.network import Interface
 
 from tests.dbus_service_mocks.network_connection_settings import (
@@ -116,9 +116,53 @@ async def test_ethernet_update(
         assert "802-11-wireless" in settings
         assert settings["802-11-wireless"]["ssid"] == Variant("ay", b"NETT")
         assert "mode" not in settings["802-11-wireless"]
-        assert "powersave" not in settings["802-11-wireless"]
+        # Powersave defaults to 1 (ignore) when not specified
+        assert settings["802-11-wireless"]["powersave"] == Variant("i", 1)
 
         assert "802-11-wireless-security" not in settings
+
+
+@pytest.mark.parametrize("powersave_value", [0, 1, 2, 3])
+async def test_wifi_powersave(
+    network_manager: NetworkManager,
+    powersave_value: int,
+):
+    """Test WiFi powersave is correctly set in connection settings."""
+    # Create a minimal wireless interface for testing powersave generation
+    interface = Interface(
+        name="wlan0",
+        mac="AA:BB:CC:DD:EE:FF",
+        path="",
+        enabled=True,
+        connected=True,
+        primary=False,
+        type=InterfaceType.WIRELESS,
+        ipv4=None,
+        ipv4setting=IpSetting(InterfaceMethod.AUTO, [], None, None, []),
+        ipv6=None,
+        ipv6setting=None,
+        wifi=WifiConfig(
+            mode=WifiMode.INFRASTRUCTURE,
+            ssid="TestNetwork",
+            auth=AuthMethod.WPA_PSK,
+            psk="testpassword",
+            signal=None,
+            powersave=powersave_value,
+        ),
+        vlan=None,
+        mdns=None,
+        llmnr=None,
+    )
+
+    conn = get_connection_from_interface(
+        interface,
+        network_manager,
+        name="Supervisor wlan0",
+        uuid="test-uuid-1234",
+    )
+
+    assert "802-11-wireless" in conn
+    assert conn["802-11-wireless"]["powersave"] == Variant("i", powersave_value)
 
 
 async def test_ipv6_disabled_is_link_local(

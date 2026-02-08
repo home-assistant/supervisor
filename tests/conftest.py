@@ -282,6 +282,7 @@ async def fixture_network_manager_services(
             ],
             "network_connection_settings": [
                 "/org/freedesktop/NetworkManager/Settings/1",
+                "/org/freedesktop/NetworkManager/Settings/3",
                 "/org/freedesktop/NetworkManager/Settings/38",
             ],
             "network_device_wireless": None,
