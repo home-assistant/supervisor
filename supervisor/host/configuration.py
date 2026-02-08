@@ -85,6 +85,7 @@ class WifiConfig:
     auth: AuthMethod
     psk: str | None
     signal: int | None
+    powersave: int | None
 
 
 @dataclass(slots=True)
@@ -376,6 +377,9 @@ class Interface:
             auth=auth,
             psk=psk,
             signal=signal,
+            powersave=inet.settings.wireless.powersave
+            if inet.settings.wireless
+            else None,
         )
 
     @staticmethod

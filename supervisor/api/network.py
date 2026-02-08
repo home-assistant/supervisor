@@ -33,6 +33,7 @@ from ..const import (
     ATTR_MODE,
     ATTR_NAMESERVERS,
     ATTR_PARENT,
+    ATTR_POWERSAVE,
     ATTR_PRIMARY,
     ATTR_PSK,
     ATTR_READY,
@@ -92,6 +93,7 @@ _SCHEMA_WIFI_CONFIG = vol.Schema(
         vol.Optional(ATTR_AUTH): vol.Coerce(AuthMethod),
         vol.Optional(ATTR_SSID): str,
         vol.Optional(ATTR_PSK): str,
+        vol.Optional(ATTR_POWERSAVE): vol.All(vol.Coerce(int), vol.Range(min=0, max=3)),
     }
 )
 
@@ -142,6 +144,7 @@ def wifi_struct(config: WifiConfig) -> dict[str, Any]:
         ATTR_AUTH: config.auth,
         ATTR_SSID: config.ssid,
         ATTR_SIGNAL: config.signal,
+        ATTR_POWERSAVE: config.powersave,
     }
 
 
@@ -271,6 +274,7 @@ class APINetwork(CoreSysAttributes):
                     auth=config.get(ATTR_AUTH, AuthMethod.OPEN),
                     psk=config.get(ATTR_PSK, None),
                     signal=None,
+                    powersave=config.get(ATTR_POWERSAVE, None),
                 )
             elif key == ATTR_ENABLED:
                 interface.enabled = config
