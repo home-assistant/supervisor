@@ -51,6 +51,7 @@ from ..exceptions import (
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupPermissionError,
+    MountError,
 )
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
@@ -1047,7 +1048,7 @@ class Backup(JobGroup):
                 mount = Mount.from_dict(self.coresys, mount_data)
                 restored_mounts.append(mount)
                 _LOGGER.info("Restored mount configuration: %s", mount_name)
-            except Exception as err:  # pylint: disable=broad-except
+            except (KeyError, TypeError, ValueError, vol.Invalid) as err:
                 _LOGGER.warning("Failed to restore mount %s: %s", mount_name, err)
                 success = False
 
@@ -1102,7 +1103,7 @@ class Backup(JobGroup):
             # pylint: enable=protected-access
 
             _LOGGER.info("Mount %s activated successfully", mount.name)
-        except Exception as err:  # pylint: disable=broad-except
+        except MountError as err:
             _LOGGER.warning(
                 "Failed to activate mount %s (config was restored, "
                 "mount may come online later): %s",
