@@ -1056,6 +1056,7 @@ class Backup(JobGroup):
         if restored_mounts:
             for mount in restored_mounts:
                 # Add to internal mounts dict without activating
+                # pylint: disable-next=protected-access
                 self.sys_mounts._mounts[mount.name] = mount  # noqa: SLF001
             needs_save = True
 
@@ -1093,10 +1094,12 @@ class Backup(JobGroup):
 
             # Handle bind mounts for media and share usage types
             # This mirrors the behavior in MountManager.create_mount()
+            # pylint: disable=protected-access
             if mount.usage == MountUsage.MEDIA:
                 await self.sys_mounts._bind_media(mount)  # noqa: SLF001
             elif mount.usage == MountUsage.SHARE:
                 await self.sys_mounts._bind_share(mount)  # noqa: SLF001
+            # pylint: enable=protected-access
 
             _LOGGER.info("Mount %s activated successfully", mount.name)
         except Exception as err:  # pylint: disable=broad-except
