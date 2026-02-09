@@ -60,15 +60,7 @@ class NetworkInterface(DBusInterfaceProxy):
     @dbus_property
     def type(self) -> DeviceType:
         """Return interface type."""
-        try:
-            return DeviceType(self.properties[DBUS_ATTR_DEVICE_TYPE])
-        except ValueError:
-            _LOGGER.debug(
-                "Unknown device type %s for %s, treating as UNKNOWN",
-                self.properties[DBUS_ATTR_DEVICE_TYPE],
-                self.object_path,
-            )
-            return DeviceType.UNKNOWN
+        return DeviceType(self.properties[DBUS_ATTR_DEVICE_TYPE])
 
     @property
     @dbus_property
