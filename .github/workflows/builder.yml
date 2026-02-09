@@ -72,7 +72,7 @@ jobs:
 
       - name: Get changed files
         id: changed_files
-        if: github.event_name != 'release'
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
         uses: masesgroup/retrieve-changed-files@491e80760c0e28d36ca6240a27b1ccb8e1402c13 # v3.0.0
 
       - name: Check if requirements files changed
@@ -81,6 +81,9 @@ jobs:
           # No wheels build necessary for releases
           if [[ "${{ github.event_name }}" == "release" ]]; then
             echo "build_wheels=false" >> "$GITHUB_OUTPUT"
+          # Always build wheels for manual dispatches
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "build_wheels=true" >> "$GITHUB_OUTPUT"
           elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|build\.yaml|\.github/workflows/builder\.yml) ]]; then
             echo "build_wheels=true" >> "$GITHUB_OUTPUT"
           else
