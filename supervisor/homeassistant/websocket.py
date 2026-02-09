@@ -46,7 +46,6 @@ class WSClient:
 
     def __init__(
         self,
-        loop: asyncio.BaseEventLoop,
         ha_version: AwesomeVersion,
         client: aiohttp.ClientWebSocketResponse,
     ):
@@ -54,7 +53,6 @@ class WSClient:
         self.ha_version = ha_version
         self._client = client
         self._message_id: int = 0
-        self._loop = loop
         self._futures: dict[int, asyncio.Future[T]] = {}  # type: ignore
 
     @property
@@ -86,7 +84,7 @@ class WSClient:
         """Send a websocket message, and return the response."""
         self._message_id += 1
         message["id"] = self._message_id
-        self._futures[message["id"]] = self._loop.create_future()
+        self._futures[message["id"]] = asyncio.get_running_loop().create_future()
         _LOGGER.debug("Sending: %s", message)
         try:
             await self._client.send_json(message, dumps=json_dumps)
@@ -157,7 +155,7 @@ class WSClient:
 
     @classmethod
     async def connect_with_auth(
-        cls, session: aiohttp.ClientSession, loop, url: str, token: str
+        cls, session: aiohttp.ClientSession, url: str, token: str
     ) -> WSClient:
         """Create an authenticated websocket client."""
         try:
@@ -176,7 +174,7 @@ class WSClient:
         if auth_ok_message[ATTR_TYPE] != "auth_ok":
             raise HomeAssistantAPIError("AUTH NOT OK")
 
-        return cls(loop, AwesomeVersion(hello_message["ha_version"]), client)
+        return cls(AwesomeVersion(hello_message["ha_version"]), client)
 
 
 class HomeAssistantWebSocket(CoreSysAttributes):
@@ -207,7 +205,6 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 await self.sys_homeassistant.api.ensure_access_token()
             client = await WSClient.connect_with_auth(
                 self.sys_websession,
-                self.sys_loop,
                 self.sys_homeassistant.ws_url,
                 cast(str, self.sys_homeassistant.api.access_token),
             )
