@@ -210,12 +210,17 @@ async def test_addon_uninstall_removes_discovery(
 
     await coresys.addons.uninstall(TEST_ADDON_SLUG)
     await asyncio.sleep(0)
-    coresys.websession.delete.assert_called_once()
+
+    # Find the delete call among all request calls (send also uses request)
+    delete_calls = [
+        c for c in coresys.websession.request.call_args_list if c.args[0] == "delete"
+    ]
+    assert len(delete_calls) == 1
     assert (
-        coresys.websession.delete.call_args.args[0]
+        delete_calls[0].args[1]
         == f"http://172.30.32.1:8123/api/hassio_push/discovery/{message.uuid}"
     )
-    assert coresys.websession.delete.call_args.kwargs["json"] == {
+    assert delete_calls[0].kwargs["json"] == {
         "addon": TEST_ADDON_SLUG,
         "service": "mqtt",
         "uuid": message.uuid,
