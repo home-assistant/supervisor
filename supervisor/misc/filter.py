@@ -72,6 +72,9 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                         "docker": coresys.docker.info.version,
                         "supervisor": coresys.supervisor.version,
                     },
+                    "docker": {
+                        "storage_driver": coresys.docker.info.storage,
+                    },
                     "host": {
                         "machine": coresys.machine,
                     },
@@ -93,7 +96,7 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                 "installed_addons": installed_addons,
             },
             "host": {
-                "arch": coresys.arch.default,
+                "arch": str(coresys.arch.default),
                 "board": coresys.os.board,
                 "deployment": coresys.host.info.deployment,
                 "disk_free_space": coresys.hardware.disk.get_disk_free_space(
@@ -110,6 +113,9 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                 "agent": coresys.dbus.agent.version,
                 "docker": coresys.docker.info.version,
                 "supervisor": coresys.supervisor.version,
+            },
+            "docker": {
+                "storage_driver": coresys.docker.info.storage,
             },
             "resolution": {
                 "issues": [attr.asdict(issue) for issue in coresys.resolution.issues],

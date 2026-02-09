@@ -1,7 +1,10 @@
 """Test evaluation base."""
 
 # pylint: disable=import-error,protected-access
+from dataclasses import replace
 from unittest.mock import patch
+
+from awesomeversion import AwesomeVersion
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
@@ -15,11 +18,22 @@ async def test_evaluation(coresys: CoreSys):
 
     assert docker_version.reason not in coresys.resolution.unsupported
 
-    coresys.docker.info.supported_version = False
+    coresys.docker._info = replace(
+        coresys.docker.info, version=AwesomeVersion("23.0.0")
+    )
+    await docker_version()
+    assert docker_version.reason in coresys.resolution.unsupported
+    coresys.resolution.unsupported.clear()
+
+    coresys.docker._info = replace(
+        coresys.docker.info, version=AwesomeVersion("nonsense")
+    )
     await docker_version()
     assert docker_version.reason in coresys.resolution.unsupported
 
-    coresys.docker.info.supported_version = True
+    coresys.docker._info = replace(
+        coresys.docker.info, version=AwesomeVersion("24.0.0")
+    )
     await docker_version()
     assert docker_version.reason not in coresys.resolution.unsupported
 

@@ -1,8 +1,9 @@
 """Test base plugin functionality."""
 
 import asyncio
-from unittest.mock import ANY, MagicMock, Mock, PropertyMock, call, patch
+from unittest.mock import ANY, Mock, PropertyMock, call, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
 
@@ -163,15 +164,16 @@ async def test_plugin_watchdog_max_failed_attempts(
     capture_exception: Mock,
     plugin: PluginBase,
     error: PluginError,
-    container: MagicMock,
+    container: DockerContainer,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test plugin watchdog gives up after max failed attempts."""
     with patch.object(type(plugin.instance), "attach"):
         await plugin.load()
 
-    container.status = "stopped"
-    container.attrs = {"State": {"ExitCode": 1}}
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    container.show.return_value["State"]["ExitCode"] = 1
     with (
         patch("supervisor.plugins.base.WATCHDOG_RETRY_SECONDS", 0),
         patch.object(type(plugin), "start", side_effect=error) as start,
@@ -325,9 +327,8 @@ async def test_update_fails_if_out_of_date(
     [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
     indirect=True,
 )
-async def test_repair_failed(
-    coresys: CoreSys, capture_exception: Mock, plugin: PluginBase
-):
+@pytest.mark.usefixtures("coresys")
+async def test_repair_failed(capture_exception: Mock, plugin: PluginBase):
     """Test repair failed."""
     with (
         patch.object(DockerInterface, "exists", return_value=False),
@@ -348,7 +349,7 @@ async def test_repair_failed(
     indirect=True,
 )
 async def test_load_with_incorrect_image(
-    coresys: CoreSys, container: MagicMock, plugin: PluginBase
+    coresys: CoreSys, container: DockerContainer, plugin: PluginBase
 ):
     """Test plugin loads with the incorrect image."""
     plugin.image = old_image = f"ghcr.io/home-assistant/aarch64-hassio-{plugin.slug}"
@@ -356,12 +357,13 @@ async def test_load_with_incorrect_image(
     coresys.updater._data["image"][plugin.slug] = correct_image  # pylint: disable=protected-access
     plugin.version = AwesomeVersion("2024.4.0")
 
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     coresys.docker.images.inspect.return_value = img_data = (
         coresys.docker.images.inspect.return_value
         | {"Config": {"Labels": {"io.hass.version": "2024.4.0"}}}
     )
-    container.attrs |= img_data
+    container.show.return_value |= img_data
 
     with patch.object(DockerAPI, "pull_image", return_value=img_data) as pull_image:
         await plugin.load()
@@ -369,7 +371,7 @@ async def test_load_with_incorrect_image(
             ANY, correct_image, "2024.4.0", platform="linux/amd64", auth=None
         )
 
-    container.remove.assert_called_once_with(force=True, v=True)
+    container.delete.assert_called_once_with(force=True, v=True)
     assert coresys.docker.images.delete.call_args_list[0] == call(
         f"{old_image}:latest",
         force=True,
@@ -386,9 +388,7 @@ async def test_load_with_incorrect_image(
     [PluginAudio, PluginCli, PluginDns, PluginMulticast, PluginObserver],
     indirect=True,
 )
-async def test_default_image_fallback(
-    coresys: CoreSys, container: MagicMock, plugin: PluginBase
-):
+async def test_default_image_fallback(coresys: CoreSys, plugin: PluginBase):
     """Test default image falls back to hard-coded constant if we fail to fetch version file."""
     assert getattr(coresys.updater, f"image_{plugin.slug}") is None
     assert plugin.default_image == f"ghcr.io/home-assistant/amd64-hassio-{plugin.slug}"

@@ -4,10 +4,11 @@
 import time
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import aiodocker
+from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 from blockbuster import BlockingError
-from docker.errors import DockerException
 import pytest
 
 from supervisor.const import CoreState
@@ -359,6 +360,8 @@ async def test_api_progress_updates_supervisor_update(
         and evt.args[0]["data"]["event"] == WSEvent.JOB
         and evt.args[0]["data"]["data"]["name"] == "supervisor_update"
     ]
+    # Count-based progress: 2 layers need pulling (each worth 50%)
+    # Layers that already exist are excluded from progress calculation
     assert events[:4] == [
         {
             "stage": None,
@@ -367,34 +370,34 @@ async def test_api_progress_updates_supervisor_update(
         },
         {
             "stage": None,
-            "progress": 0.1,
+            "progress": 9.2,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 1.7,
+            "progress": 25.6,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 4.0,
+            "progress": 35.4,
             "done": False,
         },
     ]
     assert events[-5:] == [
         {
             "stage": None,
+            "progress": 95.5,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 96.9,
+            "done": False,
+        },
+        {
+            "stage": None,
             "progress": 98.2,
-            "done": False,
-        },
-        {
-            "stage": None,
-            "progress": 98.3,
-            "done": False,
-        },
-        {
-            "stage": None,
-            "progress": 99.3,
             "done": False,
         },
         {
@@ -410,11 +413,12 @@ async def test_api_progress_updates_supervisor_update(
     ]
 
 
-async def test_api_supervisor_stats(api_client: TestClient, coresys: CoreSys):
+async def test_api_supervisor_stats(api_client: TestClient, container: DockerContainer):
     """Test supervisor stats."""
-    coresys.docker.containers_legacy.get.return_value.status = "running"
-    coresys.docker.containers_legacy.get.return_value.stats.return_value = (
-        load_json_fixture("container_stats.json")
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.stats = AsyncMock(
+        return_value=[load_json_fixture("container_stats.json")]
     )
 
     resp = await api_client.get("/supervisor/stats")
@@ -430,7 +434,9 @@ async def test_supervisor_api_stats_failure(
     api_client: TestClient, coresys: CoreSys, caplog: pytest.LogCaptureFixture
 ):
     """Test supervisor stats failure."""
-    coresys.docker.containers_legacy.get.side_effect = DockerException("fail")
+    coresys.docker.containers.get.side_effect = aiodocker.DockerError(
+        500, {"message": "fail"}
+    )
 
     resp = await api_client.get("/supervisor/stats")
     assert resp.status == 500
@@ -441,4 +447,7 @@ async def test_supervisor_api_stats_failure(
     )
     assert body["error_key"] == "supervisor_unknown_error"
     assert body["extra_fields"] == {"logs_command": "ha supervisor logs"}
-    assert "Could not inspect container 'hassio_supervisor': fail" in caplog.text
+    assert (
+        "Could not inspect container 'hassio_supervisor': [500] {'message': 'fail'}"
+        in caplog.text
+    )

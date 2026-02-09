@@ -15,12 +15,12 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from deepmerge import Merger
-from securetar import AddFileError, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -61,6 +61,7 @@ from ..const import (
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
 from ..docker.const import ContainerState
+from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
@@ -70,6 +71,7 @@ from ..exceptions import (
     AddonNotRunningError,
     AddonNotSupportedError,
     AddonNotSupportedWriteStdinError,
+    AddonPortConflict,
     AddonPrePostBackupCommandReturnedError,
     AddonsError,
     AddonsJobError,
@@ -77,6 +79,7 @@ from ..exceptions import (
     BackupRestoreUnknownError,
     ConfigurationFileError,
     DockerBuildError,
+    DockerContainerPortConflict,
     DockerError,
     HostAppArmorError,
     StoreAddonNotFoundError,
@@ -1140,6 +1143,12 @@ class Addon(AddonModel):
         self._startup_event.clear()
         try:
             await self.instance.run()
+        except DockerContainerPortConflict as err:
+            raise AddonPortConflict(
+                _LOGGER.error,
+                name=self.slug,
+                port=cast(dict[str, Any], err.extra_fields)["port"],
+            ) from err
         except DockerError as err:
             _LOGGER.error("Could not start container for addon %s: %s", self.slug, err)
             self.state = AddonState.ERROR
@@ -1175,13 +1184,6 @@ class Addon(AddonModel):
         with suppress(AddonsError):
             await self.stop()
         return await self.start()
-
-    def logs(self) -> Awaitable[bytes]:
-        """Return add-ons log output.
-
-        Return a coroutine.
-        """
-        return self.instance.logs()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -1226,10 +1228,11 @@ class Addon(AddonModel):
 
     async def _backup_command(self, command: str) -> None:
         try:
-            command_return = await self.instance.run_inside(command)
+            command_return: ExecReturn = await self.instance.run_inside(command)
             if command_return.exit_code != 0:
                 _LOGGER.debug(
-                    "Pre-/Post backup command failed with: %s", command_return.output
+                    "Pre-/Post backup command failed with: %s",
+                    command_return.output.decode("utf-8", errors="replace"),
                 )
                 raise AddonPrePostBackupCommandReturnedError(
                     _LOGGER.error, addon=self.slug, exit_code=command_return.exit_code
@@ -1305,7 +1308,7 @@ class Addon(AddonModel):
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def backup(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
+    async def backup(self, tar_file: SecureTarFile) -> asyncio.Task | None:
         """Backup state of an add-on.
 
         Returns a Task that completes when addon has state 'started' (see start)
@@ -1411,7 +1414,7 @@ class Addon(AddonModel):
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def restore(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
+    async def restore(self, tar_file: SecureTarFile) -> asyncio.Task | None:
         """Restore state of an add-on.
 
         Returns a Task that completes when addon has state 'started' (see start)

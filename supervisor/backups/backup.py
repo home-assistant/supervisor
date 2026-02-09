@@ -170,21 +170,21 @@ class Backup(JobGroup):
         self._data[ATTR_REPOSITORIES] = value
 
     @property
-    def homeassistant_version(self) -> AwesomeVersion:
+    def homeassistant_version(self) -> AwesomeVersion | None:
         """Return backup Home Assistant version."""
         if self.homeassistant is None:
             return None
         return self.homeassistant[ATTR_VERSION]
 
     @property
-    def homeassistant_exclude_database(self) -> bool:
+    def homeassistant_exclude_database(self) -> bool | None:
         """Return whether database was excluded from Home Assistant backup."""
         if self.homeassistant is None:
             return None
         return self.homeassistant[ATTR_EXCLUDE_DATABASE]
 
     @property
-    def homeassistant(self) -> dict[str, Any]:
+    def homeassistant(self) -> dict[str, Any] | None:
         """Return backup Home Assistant data."""
         return self._data[ATTR_HOMEASSISTANT]
 
@@ -863,7 +863,7 @@ class Backup(JobGroup):
         await self.sys_homeassistant.backup(homeassistant_file, exclude_database)
 
         # Store size
-        self.homeassistant[ATTR_SIZE] = await self.sys_run_in_executor(
+        self._data[ATTR_HOMEASSISTANT][ATTR_SIZE] = await self.sys_run_in_executor(
             getattr, homeassistant_file, "size"
         )
 

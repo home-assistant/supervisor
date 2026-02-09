@@ -56,7 +56,7 @@ jobs:
       build_wheels: ${{ steps.requirements.outputs.build_wheels }}
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -109,7 +109,7 @@ jobs:
       WHEELS_SKIP_BINARY: aiohttp
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
@@ -166,7 +166,7 @@ jobs:
 
       - name: Set up Python ${{ env.DEFAULT_PYTHON }}
         if: needs.init.outputs.publish == 'true'
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ env.DEFAULT_PYTHON }}
 
@@ -190,7 +190,7 @@ jobs:
 
       - name: Login to GitHub Container Registry
         if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -219,7 +219,7 @@ jobs:
     steps:
       - name: Checkout the repository
         if: needs.init.outputs.publish == 'true'
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Initialize git
         if: needs.init.outputs.publish == 'true'
@@ -244,7 +244,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Download local wheels artifact
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
@@ -290,14 +290,35 @@ jobs:
       - name: Start the Supervisor
         run: docker start hassio_supervisor
 
-      - name: Wait for Supervisor to come up
+      - &wait_for_supervisor
+        name: Wait for Supervisor to come up
         run: |
           SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
-          ping="error"
-          while [ "$ping" != "ok" ]; do
-            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r '.result')
+          echo "Waiting for Supervisor API at http://${SUPERVISOR}/supervisor/ping"
+          timeout=300
+          elapsed=0
+
+          while [ $elapsed -lt $timeout ]; do
+            if response=$(curl -sSf "http://${SUPERVISOR}/supervisor/ping" 2>/dev/null); then
+              if echo "$response" | jq -e '.result == "ok"' >/dev/null 2>&1; then
+                echo "Supervisor is up! (took ${elapsed}s)"
+                exit 0
+              fi
+            fi
+
+            if [ $((elapsed % 15)) -eq 0 ]; then
+              echo "Still waiting... (${elapsed}s/${timeout}s)"
+            fi
+
             sleep 5
+            elapsed=$((elapsed + 5))
           done
+
+          echo "ERROR: Supervisor failed to start within ${timeout}s"
+          echo "Last response: $response"
+          echo "Checking supervisor logs..."
+          docker logs --tail 50 hassio_supervisor
+          exit 1
 
       - name: Check the Supervisor
         run: |
@@ -362,14 +383,7 @@ jobs:
             exit 1
           fi
 
-      - name: Wait for Supervisor to come up
-        run: |
-          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
-          ping="error"
-          while [ "$ping" != "ok" ]; do
-            ping=$(curl -sSL "http://$SUPERVISOR/supervisor/ping" | jq -r '.result')
-            sleep 5
-          done
+      - *wait_for_supervisor
 
       - name: Restore SSH add-on from backup
         run: |
@@ -418,7 +432,7 @@ jobs:
       FROZEN_VERSION: "2025.11.5"
     steps:
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}

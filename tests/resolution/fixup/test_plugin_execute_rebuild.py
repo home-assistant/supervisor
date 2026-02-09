@@ -1,7 +1,10 @@
 """Test fixup plugin execute rebuild."""
 
+from collections.abc import Callable, Coroutine
+from typing import Any
 from unittest.mock import MagicMock, patch
 
+from aiodocker.containers import DockerContainer
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -13,13 +16,15 @@ from supervisor.resolution.fixups.plugin_execute_rebuild import (
 )
 
 
-def make_mock_container_get(status: str):
+def make_mock_container_get(
+    status: str,
+) -> Callable[[str], Coroutine[Any, Any, DockerContainer]]:
     """Make mock of container get."""
-    out = MagicMock()
+    out = MagicMock(spec=DockerContainer)
     out.status = status
-    out.attrs = {"State": {"ExitCode": 0}, "Mounts": []}
+    out.show.return_value = {"State": {"Status": status, "ExitCode": 0}, "Mounts": []}
 
-    def mock_container_get(name):
+    async def mock_container_get(name) -> DockerContainer:
         return out
 
     return mock_container_get
@@ -28,7 +33,7 @@ def make_mock_container_get(status: str):
 @pytest.mark.parametrize("status", ["running", "stopped"])
 async def test_fixup(docker: DockerAPI, coresys: CoreSys, status: str):
     """Test fixup rebuilds plugin's container regardless of current state."""
-    docker.containers_legacy.get = make_mock_container_get(status)
+    docker.containers.get = make_mock_container_get(status)
 
     plugin_execute_rebuild = FixupPluginExecuteRebuild(coresys)
 

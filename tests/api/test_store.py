@@ -2,8 +2,9 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
@@ -202,18 +203,18 @@ async def test_api_store_repair_repository_git_error(
     )
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_api_store_update_healthcheck(
     api_client: TestClient,
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
-    tmp_supervisor_data,
-    path_extern,
+    container: DockerContainer,
 ):
     """Test updating an addon with healthcheck waits for health status."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
-    container.status = "running"
-    container.attrs["Config"] = {"Healthcheck": "exists"}
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.show.return_value["Config"] = {"Healthcheck": "exists"}
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
     with patch(
@@ -839,6 +840,8 @@ async def test_api_progress_updates_addon_install_update(
         and evt.args[0]["data"]["data"]["name"] == job_name
         and evt.args[0]["data"]["data"]["reference"] == addon_slug
     ]
+    # Count-based progress: 2 layers need pulling (each worth 50%)
+    # Layers that already exist are excluded from progress calculation
     assert events[:4] == [
         {
             "stage": None,
@@ -847,34 +850,34 @@ async def test_api_progress_updates_addon_install_update(
         },
         {
             "stage": None,
-            "progress": 0.1,
+            "progress": 9.2,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 1.7,
+            "progress": 25.6,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 4.0,
+            "progress": 35.4,
             "done": False,
         },
     ]
     assert events[-5:] == [
         {
             "stage": None,
+            "progress": 95.5,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 96.9,
+            "done": False,
+        },
+        {
+            "stage": None,
             "progress": 98.2,
-            "done": False,
-        },
-        {
-            "stage": None,
-            "progress": 98.3,
-            "done": False,
-        },
-        {
-            "stage": None,
-            "progress": 99.3,
             "done": False,
         },
         {

@@ -305,6 +305,7 @@ ATTR_REGISTRIES = "registries"
 ATTR_REGISTRY = "registry"
 ATTR_REPOSITORIES = "repositories"
 ATTR_REPOSITORY = "repository"
+ATTR_ROUTE_METRIC = "route_metric"
 ATTR_SCHEMA = "schema"
 ATTR_SECURITY = "security"
 ATTR_SERIAL = "serial"
@@ -410,6 +411,8 @@ ROLE_MANAGER = "manager"
 ROLE_ADMIN = "admin"
 
 ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_ADMIN]
+
+OBSERVER_PORT = 4357
 
 
 class AddonBootConfig(StrEnum):

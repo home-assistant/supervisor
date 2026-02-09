@@ -2,12 +2,13 @@
 
 import asyncio
 from typing import Any
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
-from docker.models.containers import Container
 import pytest
 
+from supervisor.bus import Bus
 from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
@@ -90,15 +91,13 @@ async def test_events(
     event["Actor"]["Attributes"]["name"] = "some_container"
     event["Actor"]["ID"] = "abc123"
     event["time"] = 123
-    with (
-        patch(
-            "supervisor.docker.manager.DockerAPI.events",
-            new=PropertyMock(return_value=[event]),
-        ),
-        patch.object(type(coresys.bus), "fire_event") as fire_event,
-    ):
-        await coresys.docker.monitor.load()
-        await asyncio.sleep(0.1)
+
+    with patch.object(
+        Bus, "fire_event", return_value=[coresys.create_task(asyncio.sleep(0))]
+    ) as fire_event:
+        await coresys.docker.docker.events.channel.publish(event)
+        await asyncio.sleep(0)
+        await coresys.docker.monitor.unload()
         if expected:
             fire_event.assert_called_once_with(
                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
@@ -108,44 +107,32 @@ async def test_events(
             fire_event.assert_not_called()
 
 
-async def test_unlabeled_container(coresys: CoreSys):
+async def test_unlabeled_container(coresys: CoreSys, container: DockerContainer):
     """Test attaching to unlabeled container is still watched."""
-    container_collection = MagicMock()
-    container_collection.get.return_value = Container(
-        {
-            "Name": "homeassistant",
-            "Id": "abc123",
-            "State": {"Status": "running"},
-            "Config": {},
-        }
-    )
-    with patch(
-        "supervisor.docker.manager.DockerAPI.containers_legacy",
-        new=PropertyMock(return_value=container_collection),
-    ):
-        await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
+    container.id = "abc123"
+    container.show.return_value = {
+        "Name": "homeassistant",
+        "Id": "abc123",
+        "State": {"Status": "running"},
+        "Config": {},
+    }
+    await coresys.homeassistant.core.instance.attach(AwesomeVersion("2022.7.3"))
 
-    with (
-        patch(
-            "supervisor.docker.manager.DockerAPI.events",
-            new=PropertyMock(
-                return_value=[
-                    {
-                        "time": 123,
-                        "Type": "container",
-                        "Action": "die",
-                        "Actor": {
-                            "ID": "abc123",
-                            "Attributes": {"name": "homeassistant", "exitCode": "137"},
-                        },
-                    }
-                ]
-            ),
-        ),
-        patch.object(type(coresys.bus), "fire_event") as fire_event,
-    ):
-        await coresys.docker.monitor.load()
-        await asyncio.sleep(0.1)
+    with patch.object(
+        Bus, "fire_event", return_value=[coresys.create_task(asyncio.sleep(0))]
+    ) as fire_event:
+        await coresys.docker.docker.events.channel.publish(
+            {
+                "time": 123,
+                "Type": "container",
+                "Action": "die",
+                "Actor": {
+                    "ID": "abc123",
+                    "Attributes": {"name": "homeassistant", "exitCode": "137"},
+                },
+            }
+        )
+        await coresys.docker.monitor.unload()
         fire_event.assert_called_once_with(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(

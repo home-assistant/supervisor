@@ -1,6 +1,7 @@
 """Test docker addon setup."""
 
 import asyncio
+from dataclasses import replace
 from http import HTTPStatus
 from ipaddress import IPv4Address
 from pathlib import Path
@@ -73,9 +74,8 @@ def get_docker_addon(
     return docker_addon
 
 
-def test_base_volumes_included(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
-):
+@pytest.mark.usefixtures("path_extern")
+def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Dev and data volumes always included."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
@@ -96,8 +96,9 @@ def test_base_volumes_included(
     )
 
 
+@pytest.mark.usefixtures("path_extern")
 def test_addon_map_folder_defaults(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Validate defaults for mapped folders in addons."""
     docker_addon = get_docker_addon(
@@ -153,8 +154,9 @@ def test_addon_map_folder_defaults(
     assert "/backup" not in [mount.target for mount in docker_addon.mounts]
 
 
+@pytest.mark.usefixtures("path_extern")
 def test_addon_map_homeassistant_folder(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for addon which maps homeassistant folder."""
     config = load_json_fixture("addon-config-map-addon_config.json")
@@ -173,8 +175,9 @@ def test_addon_map_homeassistant_folder(
     )
 
 
+@pytest.mark.usefixtures("path_extern")
 def test_addon_map_addon_configs_folder(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for addon which maps addon configs folder."""
     config = load_json_fixture("addon-config-map-addon_config.json")
@@ -193,8 +196,9 @@ def test_addon_map_addon_configs_folder(
     )
 
 
+@pytest.mark.usefixtures("path_extern")
 def test_addon_map_addon_config_folder(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for addon which maps its own config folder."""
     docker_addon = get_docker_addon(
@@ -213,8 +217,9 @@ def test_addon_map_addon_config_folder(
     )
 
 
+@pytest.mark.usefixtures("path_extern")
 def test_addon_map_addon_config_folder_with_custom_target(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for addon which maps its own config folder and sets target path."""
     config = load_json_fixture("addon-config-map-addon_config.json")
@@ -236,8 +241,9 @@ def test_addon_map_addon_config_folder_with_custom_target(
     )
 
 
+@pytest.mark.usefixtures("path_extern")
 def test_addon_map_data_folder_with_custom_target(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for addon which sets target path for data folder."""
     config = load_json_fixture("addon-config-map-addon_config.json")
@@ -256,8 +262,9 @@ def test_addon_map_data_folder_with_custom_target(
     )
 
 
+@pytest.mark.usefixtures("path_extern")
 def test_addon_ignore_on_config_map(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for addon don't include addon config or homeassistant when config included."""
     config = load_json_fixture("basic-addon-config.json")
@@ -283,9 +290,8 @@ def test_addon_ignore_on_config_map(
     assert "/homeassistant" not in [mount.target for mount in docker_addon.mounts]
 
 
-def test_journald_addon(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
-):
+@pytest.mark.usefixtures("path_extern")
+def test_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Validate volume for journald option."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "journald-addon-config.json"
@@ -311,9 +317,8 @@ def test_journald_addon(
     )
 
 
-def test_not_journald_addon(
-    coresys: CoreSys, addonsdata_system: dict[str, Data], path_extern
-):
+@pytest.mark.usefixtures("path_extern")
+def test_not_journald_addon(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Validate journald option defaults off."""
     docker_addon = get_docker_addon(
         coresys, addonsdata_system, "basic-addon-config.json"
@@ -322,11 +327,9 @@ def test_not_journald_addon(
     assert "/var/log/journal" not in [mount.target for mount in docker_addon.mounts]
 
 
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_addon_run_docker_error(
-    coresys: CoreSys,
-    addonsdata_system: dict[str, Data],
-    path_extern,
-    tmp_supervisor_data: Path,
+    coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test docker error when addon is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
@@ -352,12 +355,9 @@ async def test_addon_run_docker_error(
     )
 
 
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 async def test_addon_run_add_host_error(
-    coresys: CoreSys,
-    addonsdata_system: dict[str, Data],
-    capture_exception: Mock,
-    path_extern,
-    tmp_supervisor_data: Path,
+    coresys: CoreSys, addonsdata_system: dict[str, Data], capture_exception: Mock
 ):
     """Test error adding host when addon is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
@@ -378,9 +378,7 @@ async def test_addon_run_add_host_error(
 
 
 async def test_addon_stop_delete_host_error(
-    coresys: CoreSys,
-    addonsdata_system: dict[str, Data],
-    capture_exception: Mock,
+    coresys: CoreSys, addonsdata_system: dict[str, Data], capture_exception: Mock
 ):
     """Test error deleting host when addon is stopped."""
     docker_addon = get_docker_addon(
@@ -424,7 +422,7 @@ TEST_HW_DEVICE = Device(
 )
 
 
-@pytest.mark.usefixtures("path_extern")
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 @pytest.mark.parametrize(
     ("dev_path", "cgroup", "is_os"),
     [
@@ -444,13 +442,12 @@ async def test_addon_new_device(
     dev_path: str,
     cgroup: str,
     is_os: bool,
-    tmp_supervisor_data: Path,
 ):
     """Test new device that is listed in static devices."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.data["devices"] = [dev_path]
     container.id = 123
-    docker.info.cgroup = cgroup
+    docker._info = replace(docker.info, cgroup=cgroup)  # pylint: disable=protected-access
 
     with (
         patch.object(Addon, "write_options"),
@@ -468,19 +465,15 @@ async def test_addon_new_device(
         add_devices.assert_called_once_with(123, "c 0:0 rwm")
 
 
-@pytest.mark.usefixtures("path_extern")
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
 @pytest.mark.parametrize("dev_path", [TEST_DEV_PATH, TEST_SYSFS_PATH])
 async def test_addon_new_device_no_haos(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    docker: DockerAPI,
-    dev_path: str,
-    tmp_supervisor_data: Path,
+    coresys: CoreSys, install_addon_ssh: Addon, docker: DockerAPI, dev_path: str
 ):
     """Test new device that is listed in static devices on non HAOS system with CGroup V2."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     install_addon_ssh.data["devices"] = [dev_path]
-    docker.info.cgroup = "2"
+    docker._info = replace(docker.info, cgroup="2")  # pylint: disable=protected-access
 
     with (
         patch.object(Addon, "write_options"),
@@ -512,10 +505,7 @@ async def test_addon_new_device_no_haos(
     assert coresys.resolution.suggestions == []
 
 
-async def test_ulimits_integration(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-):
+async def test_ulimits_integration(coresys: CoreSys, install_addon_ssh: Addon):
     """Test ulimits integration with Docker addon."""
     docker_addon = DockerAddon(coresys, install_addon_ssh)
 
