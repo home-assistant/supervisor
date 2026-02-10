@@ -273,6 +273,25 @@ def test_simple_device_schema(coresys):
         )({"name": "Pascal", "password": "1234", "input": "/dev/video1"})
 
 
+def test_device_schema_wrong_type(coresys):
+    """Test device option rejects non-string values."""
+    with pytest.raises(vol.error.Invalid):
+        AddonOptions(
+            coresys,
+            {"name": "str", "input": "device(subsystem=tty)"},
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "Pascal", "input": {"baudrate": 115200, "flow_control": True}})
+
+    with pytest.raises(vol.error.Invalid):
+        AddonOptions(
+            coresys,
+            {"name": "str", "input": "device"},
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "Pascal", "input": 12345})
+
+
 def test_simple_schema_password(coresys):
     """Test with simple schema password pwned."""
     validate = AddonOptions(
