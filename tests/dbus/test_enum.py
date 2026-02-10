@@ -267,52 +267,40 @@ class TestDBusEnumIntegration:
 class TestSentryReporting:
     """Tests for Sentry event reporting on unknown values."""
 
-    @patch("supervisor.dbus.enum.sentry_sdk")
-    def test_unknown_str_reports_to_sentry(self, mock_sentry):
+    @patch("supervisor.dbus.enum.fire_and_forget_capture_message")
+    def test_unknown_str_reports_to_sentry(self, mock_capture):
         """Test unknown StrEnum value is reported to Sentry."""
-        mock_sentry.is_initialized.return_value = True
         SampleStrEnum("delta")
-        mock_sentry.capture_message.assert_called_once_with(
-            "Unknown SampleStrEnum value received from D-Bus: delta", level="warning"
+        mock_capture.assert_called_once_with(
+            "Unknown SampleStrEnum value received from D-Bus: delta"
         )
 
-    @patch("supervisor.dbus.enum.sentry_sdk")
-    def test_unknown_int_reports_to_sentry(self, mock_sentry):
+    @patch("supervisor.dbus.enum.fire_and_forget_capture_message")
+    def test_unknown_int_reports_to_sentry(self, mock_capture):
         """Test unknown IntEnum value is reported to Sentry."""
-        mock_sentry.is_initialized.return_value = True
         SampleIntEnum(777)
-        mock_sentry.capture_message.assert_called_once_with(
-            "Unknown SampleIntEnum value received from D-Bus: 777", level="warning"
+        mock_capture.assert_called_once_with(
+            "Unknown SampleIntEnum value received from D-Bus: 777"
         )
 
-    @patch("supervisor.dbus.enum.sentry_sdk")
-    def test_duplicate_not_reported_twice(self, mock_sentry):
+    @patch("supervisor.dbus.enum.fire_and_forget_capture_message")
+    def test_duplicate_not_reported_twice(self, mock_capture):
         """Test the same unknown value is only reported to Sentry once."""
-        mock_sentry.is_initialized.return_value = True
         SampleIntEnum(888)
         SampleIntEnum(888)
         SampleIntEnum(888)
-        mock_sentry.capture_message.assert_called_once()
+        mock_capture.assert_called_once()
 
-    @patch("supervisor.dbus.enum.sentry_sdk")
-    def test_different_values_each_reported(self, mock_sentry):
+    @patch("supervisor.dbus.enum.fire_and_forget_capture_message")
+    def test_different_values_each_reported(self, mock_capture):
         """Test different unknown values are each reported separately."""
-        mock_sentry.is_initialized.return_value = True
         SampleIntEnum(100)
         SampleIntEnum(200)
-        assert mock_sentry.capture_message.call_count == 2
+        assert mock_capture.call_count == 2
 
-    @patch("supervisor.dbus.enum.sentry_sdk")
-    def test_not_reported_when_sentry_not_initialized(self, mock_sentry):
-        """Test nothing is reported when Sentry is not initialized."""
-        mock_sentry.is_initialized.return_value = False
-        SampleStrEnum("epsilon")
-        mock_sentry.capture_message.assert_not_called()
-
-    @patch("supervisor.dbus.enum.sentry_sdk")
-    def test_known_value_not_reported(self, mock_sentry):
+    @patch("supervisor.dbus.enum.fire_and_forget_capture_message")
+    def test_known_value_not_reported(self, mock_capture):
         """Test known values don't trigger Sentry reports."""
-        mock_sentry.is_initialized.return_value = True
         SampleStrEnum("alpha")
         SampleIntEnum(1)
-        mock_sentry.capture_message.assert_not_called()
+        mock_capture.assert_not_called()

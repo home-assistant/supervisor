@@ -10,7 +10,7 @@ original value for logging and debugging.
 from enum import IntEnum, StrEnum
 import logging
 
-import sentry_sdk
+from ..utils.sentry import fire_and_forget_capture_message
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -23,9 +23,9 @@ def _report_unknown_value(cls: type, value: object) -> None:
     _LOGGER.warning(msg)
 
     key = (cls.__name__, value)
-    if key not in _reported and sentry_sdk.is_initialized():
+    if key not in _reported:
         _reported.add(key)
-        sentry_sdk.capture_message(msg, level="warning")
+        fire_and_forget_capture_message(msg)
 
 
 class DBusStrEnum(StrEnum):

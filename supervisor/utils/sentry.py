@@ -3,6 +3,7 @@
 import asyncio
 from functools import partial
 import logging
+from typing import Literal
 
 from aiohttp.web_exceptions import HTTPBadGateway, HTTPServiceUnavailable
 import sentry_sdk
@@ -75,6 +76,28 @@ async def async_capture_exception(err: BaseException) -> None:
     if sentry_sdk.is_initialized():
         await asyncio.get_running_loop().run_in_executor(
             None, sentry_sdk.capture_exception, err
+        )
+
+
+def fire_and_forget_capture_message(
+    msg: str,
+    level: Literal["fatal", "critical", "error", "warning", "info", "debug"]
+    | None = "warning",
+) -> None:
+    """Capture a message and send to sentry without blocking the event loop.
+
+    Safe to call from sync code running in the event loop. The executor future
+    is intentionally not awaited (fire-and-forget).
+    """
+    if not sentry_sdk.is_initialized():
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        sentry_sdk.capture_message(msg, level=level)
+    else:
+        loop.run_in_executor(
+            None, partial(sentry_sdk.capture_message, msg, level=level)
         )
 
 
