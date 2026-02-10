@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import errno
 from functools import partial
 from http import HTTPStatus
+from io import BufferedWriter
 from ipaddress import IPv4Address
 import json
 import logging
@@ -22,7 +23,6 @@ from aiodocker.containers import DockerContainer, DockerContainers
 from aiodocker.images import DockerImages
 from aiodocker.stream import Stream
 from aiodocker.types import JSONObject
-import aiofiles
 from aiohttp import ClientTimeout, UnixConnector
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from docker import errors as docker_errors
@@ -1063,13 +1063,15 @@ class DockerAPI(CoreSysAttributes):
     ) -> None:
         """Export current images into a tar file."""
         _LOGGER.info("Exporting image %s to %s", image, tar_file)
+        image_tar_stream: BufferedWriter | None = None
+
         try:
-            async with (
-                self.images.export_image(f"{image}:{version}") as content,
-                aiofiles.open(tar_file, "wb") as write_tar,
-            ):
+            image_tar_stream = image_writer = cast(
+                BufferedWriter, await self.sys_run_in_executor(tar_file.open, "wb")
+            )
+            async with self.images.export_image(f"{image}:{version}") as content:
                 async for chunk in content.iter_chunked(DEFAULT_CHUNK_SIZE):
-                    await write_tar.write(chunk)
+                    await self.sys_run_in_executor(image_writer.write, chunk)
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't fetch image {image}: {err}", _LOGGER.error
@@ -1082,6 +1084,9 @@ class DockerAPI(CoreSysAttributes):
             raise DockerError(
                 f"Can't write tar file {tar_file}: {err}", _LOGGER.error
             ) from err
+        finally:
+            if image_tar_stream:
+                await self.sys_run_in_executor(image_tar_stream.close)
 
         _LOGGER.info("Export image %s done", image)
 
