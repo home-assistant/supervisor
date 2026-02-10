@@ -1074,7 +1074,7 @@ class DockerAPI(CoreSysAttributes):
                     await self.sys_run_in_executor(image_writer.write, chunk)
         except aiodocker.DockerError as err:
             raise DockerError(
-                f"Can't fetch image {image}: {err}", _LOGGER.error
+                f"Can't fetch image {image}:{version}: {err}", _LOGGER.error
             ) from err
         except OSError as err:
             if err.errno == errno.EBADMSG:
