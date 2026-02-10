@@ -95,7 +95,7 @@ async def test_password_reset(
         days=1
     )
 
-    websession.post = MagicMock(return_value=MockResponse(status=200))
+    websession.request = MagicMock(return_value=MockResponse(status=200))
     resp = await api_client.post(
         "/auth/reset", json={"username": "john", "password": "doe"}
     )
@@ -104,7 +104,7 @@ async def test_password_reset(
 
 
 @pytest.mark.parametrize(
-    ("post_mock", "expected_log"),
+    ("request_mock", "expected_log"),
     [
         (
             MagicMock(return_value=MockResponse(status=400)),
@@ -121,7 +121,7 @@ async def test_failed_password_reset(
     coresys: CoreSys,
     caplog: pytest.LogCaptureFixture,
     websession: MagicMock,
-    post_mock: MagicMock,
+    request_mock: MagicMock,
     expected_log: str,
 ):
     """Test failed password reset."""
@@ -131,7 +131,7 @@ async def test_failed_password_reset(
         days=1
     )
 
-    websession.post = post_mock
+    websession.request = request_mock
     resp = await api_client.post(
         "/auth/reset", json={"username": "john", "password": "doe"}
     )

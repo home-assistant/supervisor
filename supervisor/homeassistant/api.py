@@ -135,6 +135,7 @@ class HomeAssistantAPI(CoreSysAttributes):
         """
         url = f"{self.sys_homeassistant.api_url}/{path}"
         headers = headers or {}
+        client_timeout = aiohttp.ClientTimeout(total=timeout)
 
         # Passthrough content type
         if content_type is not None:
@@ -144,10 +145,11 @@ class HomeAssistantAPI(CoreSysAttributes):
             try:
                 await self.ensure_access_token()
                 headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
-                async with getattr(self.sys_websession, method)(
+                async with self.sys_websession.request(
+                    method,
                     url,
                     data=data,
-                    timeout=timeout,
+                    timeout=client_timeout,
                     json=json,
                     headers=headers,
                     params=params,
