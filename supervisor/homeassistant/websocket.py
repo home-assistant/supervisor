@@ -30,12 +30,6 @@ from ..exceptions import (
 from ..utils.json import json_dumps
 from .const import CLOSING_STATES, WSEvent, WSType
 
-MIN_VERSION = {
-    WSType.SUPERVISOR_EVENT: "2021.2.4",
-    WSType.BACKUP_START: "2022.1.0",
-    WSType.BACKUP_END: "2022.1.0",
-}
-
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
@@ -70,15 +64,6 @@ class WSClient:
 
         if not self._client.closed:
             await self._client.close()
-
-    async def async_send_message(self, message: dict[str, Any]) -> None:
-        """Send a websocket message, don't wait for response."""
-        self._message_id += 1
-        _LOGGER.debug("Sending: %s", message)
-        try:
-            await self._client.send_json(message, dumps=json_dumps)
-        except ConnectionError as err:
-            raise HomeAssistantWSConnectionError(str(err)) from err
 
     async def async_send_command(self, message: dict[str, Any]) -> T | None:
         """Send a websocket message, and return the response."""
@@ -191,7 +176,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         """Process queue once supervisor is running."""
         if reference == CoreState.RUNNING:
             for msg in self._queue:
-                await self.async_send_message(msg)
+                await self._async_send_command(msg)
 
             self._queue.clear()
 
@@ -212,14 +197,15 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             self.sys_create_task(client.start_listener())
             return client
 
-    async def _ensure_connected(self, message: dict[str, Any]) -> bool:
-        """Ensure WebSocket connection is ready for the message.
+    async def _ensure_connected(self) -> None:
+        """Ensure WebSocket connection is ready.
 
-        Returns True if ready, False if the message should be silently skipped.
-        Raises HomeAssistantWSError if there is a connection problem.
+        Raises HomeAssistantWSError if unable to connect.
         """
         if self.sys_core.state in CLOSING_STATES:
-            return False
+            raise HomeAssistantWSError(
+                "WebSocket not available, system is shutting down"
+            )
 
         connected = self._client and self._client.connected
         # If we are already connected, we can avoid the check_api_state call
@@ -229,26 +215,8 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 "Can't connect to Home Assistant Core WebSocket, the API is not reachable"
             )
 
-        if not self._client:
+        if not self._client or not self._client.connected:
             self._client = await self._get_ws_client()
-
-        if not self._client.connected:
-            self._client = await self._get_ws_client()
-
-        message_type = message.get("type")
-
-        if (
-            message_type is not None
-            and message_type in MIN_VERSION
-            and self._client.ha_version < MIN_VERSION[message_type]
-        ):
-            _LOGGER.info(
-                "WebSocket command %s is not supported until core-%s. Ignoring WebSocket message.",
-                message_type,
-                MIN_VERSION[message_type],
-            )
-            return False
-        return True
 
     async def load(self) -> None:
         """Set up queue processor after startup completes."""
@@ -256,61 +224,61 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             BusEvent.SUPERVISOR_STATE_CHANGE, self._process_queue
         )
 
-    async def async_send_message(self, message: dict[str, Any]) -> None:
-        """Send a message with the WS client."""
-        # Only commands allowed during startup as those tell Home Assistant to do something.
-        # Messages may cause clients to make follow-up API calls so those wait.
+    async def _async_send_command(self, message: dict[str, Any]) -> None:
+        """Send a fire-and-forget command via WebSocket.
+
+        Queues messages during startup. Silently handles connection errors.
+        """
         if self.sys_core.state in STARTING_STATES:
             self._queue.append(message)
             _LOGGER.debug("Queuing message until startup has completed: %s", message)
             return
 
         try:
-            if not await self._ensure_connected(message):
-                return
-        except HomeAssistantWSError:
+            await self._ensure_connected()
+        except HomeAssistantWSError as err:
+            _LOGGER.debug("Can't send WebSocket command: %s", err)
             return
 
+        # _ensure_connected guarantees self._client is set
+        assert self._client
+
         try:
-            if self._client:
-                await self._client.async_send_command(message)
-        except HomeAssistantWSConnectionError:
+            await self._client.async_send_command(message)
+        except HomeAssistantWSConnectionError as err:
+            _LOGGER.debug("Fire-and-forget WebSocket command failed: %s", err)
             if self._client:
                 await self._client.close()
             self._client = None
 
     async def async_send_command(self, message: dict[str, Any]) -> T | None:
-        """Send a command with the WS client and wait for the response.
+        """Send a command and return the response.
 
         Raises HomeAssistantWSError if unable to connect to Home Assistant Core.
-        Returns None if the message should be silently skipped (e.g. during shutdown
-        or when the command is not supported by the current Core version).
         """
-        if not await self._ensure_connected(message):
-            return None
-
+        await self._ensure_connected()
+        # _ensure_connected guarantees self._client is set
+        assert self._client
         try:
-            if self._client:
-                return await self._client.async_send_command(message)
+            return await self._client.async_send_command(message)
         except HomeAssistantWSConnectionError:
             if self._client:
                 await self._client.close()
             self._client = None
             raise
-        return None
 
-    def send_message(self, message: dict[str, Any]) -> None:
-        """Send a supervisor/event message."""
+    def send_command(self, message: dict[str, Any]) -> None:
+        """Send a fire-and-forget command via WebSocket."""
         if self.sys_core.state in CLOSING_STATES:
             return
-        self.sys_create_task(self.async_send_message(message))
+        self.sys_create_task(self._async_send_command(message))
 
     async def async_supervisor_event_custom(
         self, event: WSEvent, extra_data: dict[str, Any] | None = None
     ) -> None:
         """Send a supervisor/event message to Home Assistant with custom data."""
         try:
-            await self.async_send_message(
+            await self._async_send_command(
                 {
                     ATTR_TYPE: WSType.SUPERVISOR_EVENT,
                     ATTR_DATA: {

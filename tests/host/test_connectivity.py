@@ -49,7 +49,7 @@ async def test_connectivity_events(coresys: CoreSys, force: bool):
     await asyncio.sleep(0)
 
     with patch.object(
-        type(coresys.homeassistant.websocket), "async_send_message"
+        type(coresys.homeassistant.websocket), "_async_send_command"
     ) as send_message:
         await coresys.host.network.check_connectivity(force=force)
         await asyncio.sleep(0)

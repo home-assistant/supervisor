@@ -1186,7 +1186,9 @@ async def test_restore_homeassistant_adds_env(
     with (
         patch.object(HomeAssistantCore, "_block_till_run"),
         patch.object(
-            HomeAssistantWebSocket, "async_send_message", new=mock_async_send_message
+            HomeAssistantWebSocket,
+            "_async_send_command",
+            new=mock_async_send_message,
         ),
     ):
         resp = await api_client.post(
