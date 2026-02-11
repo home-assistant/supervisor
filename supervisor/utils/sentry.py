@@ -95,7 +95,7 @@ def fire_and_forget_capture_message(
     def _capture() -> None:
         try:
             sentry_sdk.capture_message(msg, level=level)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             _LOGGER.debug("Failed to send message to Sentry: %s", msg)
 
     try:
