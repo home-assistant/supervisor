@@ -1081,8 +1081,9 @@ class DockerAPI(CoreSysAttributes):
         image_tar_stream: BufferedWriter | None = None
 
         try:
-            image_tar_stream = image_writer = cast(
-                BufferedWriter, await self.sys_run_in_executor(tar_file.open, "wb")
+            # Lambda avoids need for a cast here. Since return type of open is based on mode
+            image_tar_stream = image_writer = await self.sys_run_in_executor(
+                lambda: tar_file.open("wb")
             )
             async with self.images.export_image(f"{image}:{version}") as content:
                 async for chunk in content.iter_chunked(DEFAULT_CHUNK_SIZE):
