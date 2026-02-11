@@ -414,6 +414,9 @@ ROLE_ALL = [ROLE_DEFAULT, ROLE_HOMEASSISTANT, ROLE_BACKUP, ROLE_MANAGER, ROLE_AD
 
 OBSERVER_PORT = 4357
 
+# Used for stream operations
+DEFAULT_CHUNK_SIZE = 2**16  # 64KiB
+
 
 class AddonBootConfig(StrEnum):
     """Boot mode config for the add-on."""

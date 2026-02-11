@@ -196,6 +196,21 @@ async def docker() -> DockerAPI:
         )
         docker_images.pull.return_value = AsyncIterator([{}])
 
+        # Export image mocking
+        class MockCM:
+            def __init__(self):
+                self.content = [b""]
+
+            async def __aenter__(self):
+                out = MagicMock()
+                out.iter_chunked.return_value = AsyncIterator(self.content)
+                return out
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return None
+
+        docker_images.export_image.return_value = MockCM()
+
         # Containers mocking
         docker_containers.get.return_value = docker_container = MagicMock(
             spec=DockerContainer, id=container_inspect["Id"]

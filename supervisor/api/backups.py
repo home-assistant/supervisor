@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import errno
-from io import IOBase
+from io import BufferedWriter
 import logging
 from pathlib import Path
 import re
@@ -44,6 +44,7 @@ from ..const import (
     ATTR_TIMEOUT,
     ATTR_TYPE,
     ATTR_VERSION,
+    DEFAULT_CHUNK_SIZE,
     REQUEST_FROM,
 )
 from ..coresys import CoreSysAttributes
@@ -480,14 +481,14 @@ class APIBackups(CoreSysAttributes):
 
         tmp_path = await self.sys_backups.get_upload_path_for_location(location)
         temp_dir: TemporaryDirectory | None = None
-        backup_file_stream: IOBase | None = None
+        backup_file_stream: BufferedWriter | None = None
 
-        def open_backup_file() -> Path:
+        def open_backup_file() -> tuple[Path, BufferedWriter]:
             nonlocal temp_dir, backup_file_stream
             temp_dir = TemporaryDirectory(dir=tmp_path.as_posix())
             tar_file = Path(temp_dir.name, "upload.tar")
             backup_file_stream = tar_file.open("wb")
-            return tar_file
+            return (tar_file, backup_file_stream)
 
         def close_backup_file() -> None:
             if backup_file_stream:
@@ -503,12 +504,10 @@ class APIBackups(CoreSysAttributes):
             if not isinstance(contents, BodyPartReader):
                 raise APIError("Improperly formatted upload, could not read backup")
 
-            tar_file = await self.sys_run_in_executor(open_backup_file)
-            while chunk := await contents.read_chunk(size=2**16):
-                await self.sys_run_in_executor(
-                    cast(IOBase, backup_file_stream).write, chunk
-                )
-            await self.sys_run_in_executor(cast(IOBase, backup_file_stream).close)
+            tar_file, backup_writer = await self.sys_run_in_executor(open_backup_file)
+            while chunk := await contents.read_chunk(size=DEFAULT_CHUNK_SIZE):
+                await self.sys_run_in_executor(backup_writer.write, chunk)
+            await self.sys_run_in_executor(backup_writer.close)
 
             backup = await asyncio.shield(
                 self.sys_backups.import_backup(
