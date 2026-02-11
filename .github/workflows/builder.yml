@@ -293,16 +293,10 @@ jobs:
       - name: Start the Supervisor
         run: docker start hassio_supervisor
 
-      - name: Get Supervisor IP
-        id: supervisor
-        run: |
-          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
-          echo "ip=${SUPERVISOR}" >> "$GITHUB_OUTPUT"
-
       - &wait_for_supervisor
         name: Wait for Supervisor to come up
         run: |
-          SUPERVISOR=${{ steps.supervisor.outputs.ip }}
+          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
           echo "Waiting for Supervisor API at http://${SUPERVISOR}/supervisor/ping"
           timeout=300
           elapsed=0
@@ -335,13 +329,12 @@ jobs:
       # removed from the jobs list once done, so we poll until it's gone.
       - name: Wait for Core to be started
         run: |
-          SUPERVISOR=${{ steps.supervisor.outputs.ip }}
           echo "Waiting for Home Assistant Core to be installed and started..."
           timeout=300
           elapsed=0
 
           while [ $elapsed -lt $timeout ]; do
-            jobs=$(curl -sSf "http://${SUPERVISOR}/jobs/info" 2>/dev/null | jq -r '.data.jobs[] | select(.name == "home_assistant_core_install" and .done == false) | .name' 2>/dev/null)
+            jobs=$(docker exec hassio_cli ha jobs info --no-progress --raw-json | jq -r '.data.jobs[] | select(.name == "home_assistant_core_install" and .done == false) | .name' 2>/dev/null)
             if [ -z "$jobs" ]; then
               echo "Home Assistant Core install/start complete (took ${elapsed}s)"
               exit 0
