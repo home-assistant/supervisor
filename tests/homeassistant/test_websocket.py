@@ -3,12 +3,14 @@
 # pylint: disable=import-error
 import asyncio
 import logging
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from awesomeversion import AwesomeVersion
+import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import HomeAssistantWSError
 from supervisor.homeassistant.const import WSEvent, WSType
 
 
@@ -91,4 +93,29 @@ async def test_send_message_during_startup(coresys: CoreSys, ha_ws_client: Async
     await coresys.homeassistant.websocket.async_supervisor_update_event(
         "test", {"lorem": "ipsum"}
     )
+    ha_ws_client.async_send_command.assert_not_called()
+
+
+async def test_send_command_core_not_reachable(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test async_send_command raises when Core API is not reachable."""
+    ha_ws_client.connected = False
+    with (
+        patch.object(coresys.homeassistant.api, "check_api_state", return_value=False),
+        pytest.raises(HomeAssistantWSError, match="not reachable"),
+    ):
+        await coresys.homeassistant.websocket.async_send_command({"type": "test"})
+
+    ha_ws_client.async_send_command.assert_not_called()
+
+
+async def test_send_message_core_not_reachable(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test async_send_message silently skips when Core API is not reachable."""
+    ha_ws_client.connected = False
+    with patch.object(coresys.homeassistant.api, "check_api_state", return_value=False):
+        await coresys.homeassistant.websocket.async_send_message({"type": "test"})
+
     ha_ws_client.async_send_command.assert_not_called()

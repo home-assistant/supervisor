@@ -93,7 +93,7 @@ async def test_begin_backup_ws_error(coresys: CoreSys):
         HomeAssistantWSConnectionError("Connection was closed")
     )
     with (
-        patch.object(HomeAssistantWebSocket, "_can_send", return_value=True),
+        patch.object(HomeAssistantWebSocket, "_ensure_connected", return_value=True),
         pytest.raises(
             HomeAssistantBackupError,
             match="Preparing backup of Home Assistant Core failed. Failed to inform HA Core: Connection was closed.",
@@ -108,7 +108,7 @@ async def test_end_backup_ws_error(coresys: CoreSys, caplog: pytest.LogCaptureFi
     coresys.homeassistant.websocket._client.async_send_command.side_effect = (
         HomeAssistantWSConnectionError("Connection was closed")
     )
-    with patch.object(HomeAssistantWebSocket, "_can_send", return_value=True):
+    with patch.object(HomeAssistantWebSocket, "_ensure_connected", return_value=True):
         await coresys.homeassistant.end_backup()
 
     assert (

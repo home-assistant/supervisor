@@ -212,8 +212,12 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             self.sys_create_task(client.start_listener())
             return client
 
-    async def _can_send(self, message: dict[str, Any]) -> bool:
-        """Determine if we can use WebSocket messages."""
+    async def _ensure_connected(self, message: dict[str, Any]) -> bool:
+        """Ensure WebSocket connection is ready for the message.
+
+        Returns True if ready, False if the message should be silently skipped.
+        Raises HomeAssistantWSError if there is a connection problem.
+        """
         if self.sys_core.state in CLOSING_STATES:
             return False
 
@@ -221,8 +225,9 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         # If we are already connected, we can avoid the check_api_state call
         # since it makes a new socket connection and we already have one.
         if not connected and not await self.sys_homeassistant.api.check_api_state():
-            # No core access, don't try.
-            return False
+            raise HomeAssistantWSError(
+                "Can't connect to Home Assistant Core WebSocket, the API is not reachable"
+            )
 
         if not self._client:
             self._client = await self._get_ws_client()
@@ -260,7 +265,10 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             _LOGGER.debug("Queuing message until startup has completed: %s", message)
             return
 
-        if not await self._can_send(message):
+        try:
+            if not await self._ensure_connected(message):
+                return
+        except HomeAssistantWSError:
             return
 
         try:
@@ -272,8 +280,13 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             self._client = None
 
     async def async_send_command(self, message: dict[str, Any]) -> T | None:
-        """Send a command with the WS client and wait for the response."""
-        if not await self._can_send(message):
+        """Send a command with the WS client and wait for the response.
+
+        Raises HomeAssistantWSError if unable to connect to Home Assistant Core.
+        Returns None if the message should be silently skipped (e.g. during shutdown
+        or when the command is not supported by the current Core version).
+        """
+        if not await self._ensure_connected(message):
             return None
 
         try:
