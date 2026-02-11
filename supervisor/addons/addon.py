@@ -926,6 +926,10 @@ class Addon(AddonModel):
             await self.sys_addons.data.update(store)
             await self._check_ingress_port()
 
+            # Reload ingress tokens in case addon gained ingress support
+            if self.with_ingress:
+                await self.sys_ingress.reload()
+
             # Cleanup
             with suppress(DockerError):
                 await self.instance.cleanup(
@@ -979,6 +983,11 @@ class Addon(AddonModel):
                 await self.sys_addons.data.update(self.addon_store)
 
             await self._check_ingress_port()
+
+            # Reload ingress tokens in case addon gained ingress support
+            if self.with_ingress:
+                await self.sys_ingress.reload()
+
             _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
 
         finally:
