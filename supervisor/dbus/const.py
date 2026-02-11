@@ -3,6 +3,8 @@
 from enum import IntEnum, StrEnum
 from socket import AF_INET, AF_INET6
 
+from .enum import DBusIntEnum, DBusStrEnum
+
 DBUS_NAME_HAOS = "io.hass.os"
 DBUS_NAME_HOSTNAME = "org.freedesktop.hostname1"
 DBUS_NAME_LOGIND = "org.freedesktop.login1"
@@ -208,7 +210,7 @@ DBUS_ATTR_WWN = "WWN"
 DBUS_ERR_SYSTEMD_NO_SUCH_UNIT = "org.freedesktop.systemd1.NoSuchUnit"
 
 
-class RaucState(StrEnum):
+class RaucState(DBusStrEnum):
     """Rauc slot states."""
 
     GOOD = "good"
@@ -216,7 +218,7 @@ class RaucState(StrEnum):
     ACTIVE = "active"
 
 
-class InterfaceMethod(StrEnum):
+class InterfaceMethod(DBusStrEnum):
     """Interface method simple."""
 
     AUTO = "auto"
@@ -225,7 +227,7 @@ class InterfaceMethod(StrEnum):
     LINK_LOCAL = "link-local"
 
 
-class InterfaceAddrGenMode(IntEnum):
+class InterfaceAddrGenMode(DBusIntEnum):
     """Interface addr_gen_mode."""
 
     EUI64 = 0
@@ -234,7 +236,7 @@ class InterfaceAddrGenMode(IntEnum):
     DEFAULT = 3
 
 
-class InterfaceIp6Privacy(IntEnum):
+class InterfaceIp6Privacy(DBusIntEnum):
     """Interface ip6_privacy."""
 
     DEFAULT = -1
@@ -243,14 +245,14 @@ class InterfaceIp6Privacy(IntEnum):
     ENABLED = 2
 
 
-class ConnectionType(StrEnum):
+class ConnectionType(DBusStrEnum):
     """Connection type."""
 
     ETHERNET = "802-3-ethernet"
     WIRELESS = "802-11-wireless"
 
 
-class ConnectionState(IntEnum):
+class ConnectionState(DBusIntEnum):
     """Connection states.
 
     https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMActiveConnectionState
@@ -280,7 +282,7 @@ class ConnectionStateFlags(IntEnum):
     EXTERNAL = 0x80
 
 
-class ConnectivityState(IntEnum):
+class ConnectivityState(DBusIntEnum):
     """Network connectvity.
 
     https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMConnectivityState
@@ -293,7 +295,7 @@ class ConnectivityState(IntEnum):
     CONNECTIVITY_FULL = 4
 
 
-class DeviceType(IntEnum):
+class DeviceType(DBusIntEnum):
     """Device types.
 
     https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMDeviceType
@@ -310,7 +312,7 @@ class DeviceType(IntEnum):
     LOOPBACK = 32
 
 
-class WirelessMethodType(IntEnum):
+class WirelessMethodType(DBusIntEnum):
     """Device Type."""
 
     UNKNOWN = 0
@@ -327,7 +329,7 @@ class DNSAddressFamily(IntEnum):
     INET6 = AF_INET6
 
 
-class MulticastProtocolEnabled(StrEnum):
+class MulticastProtocolEnabled(DBusStrEnum):
     """Multicast protocol enabled or resolve."""
 
     YES = "yes"
@@ -335,7 +337,7 @@ class MulticastProtocolEnabled(StrEnum):
     RESOLVE = "resolve"
 
 
-class MulticastDnsValue(IntEnum):
+class MulticastDnsValue(DBusIntEnum):
     """Connection MulticastDNS (mdns/llmnr) values."""
 
     DEFAULT = -1
@@ -344,7 +346,7 @@ class MulticastDnsValue(IntEnum):
     ANNOUNCE = 2
 
 
-class DNSOverTLSEnabled(StrEnum):
+class DNSOverTLSEnabled(DBusStrEnum):
     """DNS over TLS enabled."""
 
     YES = "yes"
@@ -352,7 +354,7 @@ class DNSOverTLSEnabled(StrEnum):
     OPPORTUNISTIC = "opportunistic"
 
 
-class DNSSECValidation(StrEnum):
+class DNSSECValidation(DBusStrEnum):
     """DNSSEC validation enforced."""
 
     YES = "yes"
@@ -360,7 +362,7 @@ class DNSSECValidation(StrEnum):
     ALLOW_DOWNGRADE = "allow-downgrade"
 
 
-class DNSStubListenerEnabled(StrEnum):
+class DNSStubListenerEnabled(DBusStrEnum):
     """DNS stub listener enabled."""
 
     YES = "yes"
@@ -369,7 +371,7 @@ class DNSStubListenerEnabled(StrEnum):
     UDP_ONLY = "udp"
 
 
-class ResolvConfMode(StrEnum):
+class ResolvConfMode(DBusStrEnum):
     """Resolv.conf management mode."""
 
     FOREIGN = "foreign"
@@ -398,7 +400,7 @@ class StartUnitMode(StrEnum):
     ISOLATE = "isolate"
 
 
-class UnitActiveState(StrEnum):
+class UnitActiveState(DBusStrEnum):
     """Active state of a systemd unit."""
 
     ACTIVE = "active"
