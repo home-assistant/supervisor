@@ -94,9 +94,14 @@ def blockbuster(request: pytest.FixtureRequest) -> BlockBuster | None:
     # But it will ignore calls to libraries and such that do blocking I/O directly from tests
     # Removing that would be nice but a todo for the future
 
-    blockbuster = BlockBuster(scanned_modules=["supervisor"])
-    blockbuster.functions["pathlib.Path.open"] = BlockBusterFunction(Path, "open")
-    blockbuster.functions["pathlib.Path.close"] = BlockBusterFunction(Path, "close")
+    SCANNED_MODULES = ["supervisor"]
+    blockbuster = BlockBuster(scanned_modules=SCANNED_MODULES)
+    blockbuster.functions["pathlib.Path.open"] = BlockBusterFunction(
+        Path, "open", scanned_modules=SCANNED_MODULES
+    )
+    blockbuster.functions["pathlib.Path.close"] = BlockBusterFunction(
+        Path, "close", scanned_modules=SCANNED_MODULES
+    )
     blockbuster.activate()
     yield blockbuster
     blockbuster.deactivate()
