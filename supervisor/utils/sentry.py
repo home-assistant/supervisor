@@ -91,14 +91,19 @@ def fire_and_forget_capture_message(
     """
     if not sentry_sdk.is_initialized():
         return
+
+    def _capture() -> None:
+        try:
+            sentry_sdk.capture_message(msg, level=level)
+        except Exception:
+            _LOGGER.debug("Failed to send message to Sentry: %s", msg)
+
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        sentry_sdk.capture_message(msg, level=level)
+        _capture()
     else:
-        loop.run_in_executor(
-            None, partial(sentry_sdk.capture_message, msg, level=level)
-        )
+        loop.run_in_executor(None, _capture)
 
 
 def close_sentry() -> None:
