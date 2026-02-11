@@ -337,28 +337,28 @@ jobs:
             exit 1
           fi
 
-      - name: Check the Store / Addon
+      - name: Check the Store / App
         run: |
-          echo "Install Core SSH Add-on"
-          test=$(docker exec hassio_cli ha addons install core_ssh --no-progress --raw-json | jq -r '.result')
+          echo "Install Core SSH app"
+          test=$(docker exec hassio_cli ha apps install core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           # Make sure it actually installed
-          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
+          test=$(docker exec hassio_cli ha apps info core_ssh --no-progress --raw-json | jq -r '.data.version')
           if [[ "$test" == "null" ]]; then
             exit 1
           fi
 
-          echo "Start Core SSH Add-on"
-          test=$(docker exec hassio_cli ha addons start core_ssh --no-progress --raw-json | jq -r '.result')
+          echo "Start Core SSH app"
+          test=$(docker exec hassio_cli ha apps start core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           # Make sure its state is started
-          test="$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.state')"
+          test="$(docker exec hassio_cli ha apps info core_ssh --no-progress --raw-json | jq -r '.data.state')"
           if [ "$test" != "started" ]; then
             exit 1
           fi
@@ -372,9 +372,9 @@ jobs:
           fi
           echo "slug=$(echo $test | jq -r '.data.slug')" >> "$GITHUB_OUTPUT"
 
-      - name: Uninstall SSH add-on
+      - name: Uninstall SSH app
         run: |
-          test=$(docker exec hassio_cli ha addons uninstall core_ssh --no-progress --raw-json | jq -r '.result')
+          test=$(docker exec hassio_cli ha apps uninstall core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
@@ -388,21 +388,21 @@ jobs:
 
       - *wait_for_supervisor
 
-      - name: Restore SSH add-on from backup
+      - name: Restore SSH app from backup
         run: |
-          test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --addons core_ssh --no-progress --raw-json | jq -r '.result')
+          test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --app core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           # Make sure it actually installed
-          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
+          test=$(docker exec hassio_cli ha apps info core_ssh --no-progress --raw-json | jq -r '.data.version')
           if [[ "$test" == "null" ]]; then
             exit 1
           fi
 
           # Make sure its state is started
-          test="$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.state')"
+          test="$(docker exec hassio_cli ha apps info core_ssh --no-progress --raw-json | jq -r '.data.state')"
           if [ "$test" != "started" ]; then
             exit 1
           fi
