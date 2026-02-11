@@ -14,10 +14,10 @@ from ..utils.sentry import fire_and_forget_capture_message
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-_reported: set[tuple[str, object]] = set()
+_reported: set[tuple[str, str | int]] = set()
 
 
-def _report_unknown_value(cls: type, value: object) -> None:
+def _report_unknown_value(cls: type, value: str | int) -> None:
     """Log and report an unknown D-Bus enum value to Sentry."""
     msg = f"Unknown {cls.__name__} value received from D-Bus: {value}"
     _LOGGER.warning(msg)
