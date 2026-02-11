@@ -58,6 +58,22 @@ MAP_ARCH: dict[CpuArch, str] = {
 }
 
 
+def _restart_policy_from_model(meta_host: dict[str, Any]) -> RestartPolicy | None:
+    """Get restart policy from host config model."""
+    if "RestartPolicy" not in meta_host:
+        return None
+
+    name = meta_host["RestartPolicy"].get("Name")
+    if not name:
+        return RestartPolicy.NO
+
+    if name in RestartPolicy:
+        return RestartPolicy(name)
+
+    _LOGGER.warning("Unknown Docker restart policy '%s', treating as no", name)
+    return RestartPolicy.NO
+
+
 def _container_state_from_model(container_metadata: dict[str, Any]) -> ContainerState:
     """Get container state from model."""
     if "State" not in container_metadata:
@@ -157,11 +173,7 @@ class DockerInterface(JobGroup, ABC):
     @property
     def restart_policy(self) -> RestartPolicy | None:
         """Return restart policy of container."""
-        if "RestartPolicy" not in self.meta_host:
-            return None
-
-        policy = self.meta_host["RestartPolicy"].get("Name")
-        return policy if policy else RestartPolicy.NO
+        return _restart_policy_from_model(self.meta_host)
 
     @property
     def security_opt(self) -> list[str]:
