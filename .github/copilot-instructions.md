@@ -233,6 +233,8 @@ async def backup_full(self, request: web.Request) -> dict[str, Any]:
 - **Fixtures**: Extensive use of pytest fixtures for CoreSys setup
 - **Mocking**: Mock external dependencies (Docker, D-Bus, network calls)
 - **Coverage**: Minimum 90% test coverage, 100% for security-sensitive code
+- **Style**: Use plain `test_` functions, not `Test*` classes — test classes are
+  considered legacy style in this project
 
 ### Error Handling
 
