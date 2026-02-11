@@ -58,9 +58,6 @@ MAP_ARCH: dict[CpuArch, str] = {
 }
 
 
-_RESTART_POLICY_MAP: dict[str, RestartPolicy] = {p.value: p for p in RestartPolicy}
-
-
 def _restart_policy_from_model(meta_host: dict[str, Any]) -> RestartPolicy | None:
     """Get restart policy from host config model."""
     if "RestartPolicy" not in meta_host:
@@ -70,8 +67,8 @@ def _restart_policy_from_model(meta_host: dict[str, Any]) -> RestartPolicy | Non
     if not name:
         return RestartPolicy.NO
 
-    if name in _RESTART_POLICY_MAP:
-        return _RESTART_POLICY_MAP[name]
+    if name in RestartPolicy:
+        return RestartPolicy(name)
 
     _LOGGER.warning("Unknown Docker restart policy '%s', treating as no", name)
     return RestartPolicy.NO
