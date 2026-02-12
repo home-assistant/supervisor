@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import errno
 from functools import partial
 from http import HTTPStatus
-from io import BufferedWriter
+from io import BufferedReader, BufferedWriter
 from ipaddress import IPv4Address
 import json
 import logging
@@ -1025,13 +1025,30 @@ class DockerAPI(CoreSysAttributes):
 
     async def import_image(self, tar_file: Path) -> dict[str, Any] | None:
         """Import a tar file as image."""
+        image_tar_stream: BufferedReader | None = None
         try:
-            with tar_file.open("rb") as read_tar:
-                resp: list[dict[str, Any]] = await self.images.import_image(read_tar)
-        except (aiodocker.DockerError, OSError) as err:
+            # Lambda avoids need for a cast here. Since return type of open is based on mode
+            image_tar_stream = await self.sys_run_in_executor(
+                lambda: tar_file.open("rb")
+            )
+            resp: list[dict[str, Any]] = await self.images.import_image(
+                image_tar_stream
+            )
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't import image from tar: {err}", _LOGGER.error
             ) from err
+        except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
+            raise DockerError(
+                f"Can't read tar file {tar_file}: {err}", _LOGGER.error
+            ) from err
+        finally:
+            if image_tar_stream:
+                await self.sys_run_in_executor(image_tar_stream.close)
 
         docker_image_list: list[str] = []
         for chunk in resp:
@@ -1066,12 +1083,13 @@ class DockerAPI(CoreSysAttributes):
         image_tar_stream: BufferedWriter | None = None
 
         try:
-            image_tar_stream = image_writer = cast(
-                BufferedWriter, await self.sys_run_in_executor(tar_file.open, "wb")
+            # Lambda avoids need for a cast here. Since return type of open is based on mode
+            image_tar_stream = await self.sys_run_in_executor(
+                lambda: tar_file.open("wb")
             )
             async with self.images.export_image(f"{image}:{version}") as content:
                 async for chunk in content.iter_chunked(DEFAULT_CHUNK_SIZE):
-                    await self.sys_run_in_executor(image_writer.write, chunk)
+                    await self.sys_run_in_executor(image_tar_stream.write, chunk)
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't fetch image {image}:{version}: {err}", _LOGGER.error

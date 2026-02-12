@@ -1,5 +1,6 @@
 """Tests for apparmor utility."""
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -31,13 +32,20 @@ profile test flags=(attach_disconnected,mediate_deleted) {
 
 async def test_valid_apparmor_file():
     """Test a valid apparmor file."""
-    assert validate_profile("example", get_fixture_path("apparmor_valid.txt"))
+    assert await asyncio.get_running_loop().run_in_executor(
+        None, validate_profile, "example", get_fixture_path("apparmor_valid.txt")
+    )
 
 
 async def test_apparmor_missing_profile(caplog: pytest.LogCaptureFixture):
     """Test apparmor file missing profile."""
     with pytest.raises(AppArmorInvalidError):
-        validate_profile("example", get_fixture_path("apparmor_no_profile.txt"))
+        await asyncio.get_running_loop().run_in_executor(
+            None,
+            validate_profile,
+            "example",
+            get_fixture_path("apparmor_no_profile.txt"),
+        )
 
     assert (
         "Missing AppArmor profile inside file: apparmor_no_profile.txt" in caplog.text
@@ -47,7 +55,12 @@ async def test_apparmor_missing_profile(caplog: pytest.LogCaptureFixture):
 async def test_apparmor_multiple_profiles(caplog: pytest.LogCaptureFixture):
     """Test apparmor file with too many profiles."""
     with pytest.raises(AppArmorInvalidError):
-        validate_profile("example", get_fixture_path("apparmor_multiple_profiles.txt"))
+        await asyncio.get_running_loop().run_in_executor(
+            None,
+            validate_profile,
+            "example",
+            get_fixture_path("apparmor_multiple_profiles.txt"),
+        )
 
     assert (
         "Too many AppArmor profiles inside file: apparmor_multiple_profiles.txt"
