@@ -64,8 +64,8 @@ class DockerHomeAssistant(DockerInterface):
         """Return timeout for Docker actions."""
         # Use S6_SERVICES_GRACETIME to avoid killing Home Assistant Core, see
         # https://github.com/home-assistant/core/tree/dev/Dockerfile
-        if self.meta_config and "Env" in self.meta_config:
-            for env in self.meta_config["Env"]:
+        if self.meta_config and (envs := self.meta_config.get("Env")):
+            for env in envs:
                 if match := ENV_S6_GRACETIME.match(env):
                     return 20 + int(int(match.group(1)) / 1000)
 
