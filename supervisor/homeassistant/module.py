@@ -568,10 +568,12 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 self._data[attr] = data[attr]
 
     async def list_users(self) -> list[HomeAssistantUser]:
-        """Fetch list of all users from Home Assistant Core via WebSocket."""
+        """Fetch list of all users from Home Assistant Core via WebSocket.
+
+        Raises HomeAssistantWSError on WebSocket connection/communication failure.
+        """
         raw: list[dict[str, Any]] | None = await self.websocket.async_send_command(
             {ATTR_TYPE: "config/auth/list"}
         )
-        if not raw:
-            return []
+        assert raw is not None
         return [HomeAssistantUser.from_dict(data) for data in raw]

@@ -189,18 +189,6 @@ async def test_list_users_ws_error(
     assert "Can't request listing users on Home Assistant: fail" in caplog.text
 
 
-async def test_list_users_none_response(
-    api_client: TestClient,
-    ha_ws_client: AsyncMock,
-):
-    """Test None response from WS returns empty user list."""
-    ha_ws_client.async_send_command.return_value = None
-    resp = await api_client.get("/auth/list")
-    assert resp.status == 200
-    result = await resp.json()
-    assert result["data"]["users"] == []
-
-
 @pytest.mark.parametrize(
     ("field", "api_client"),
     [("username", TEST_ADDON_SLUG), ("user", TEST_ADDON_SLUG)],

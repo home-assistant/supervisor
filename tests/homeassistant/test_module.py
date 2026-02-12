@@ -59,9 +59,10 @@ async def test_load(
 
 
 async def test_list_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
-    """Test list users returning none does not fail."""
+    """Test list users asserts on unexpected None response from Core."""
     ha_ws_client.async_send_command.return_value = None
-    assert await coresys.homeassistant.list_users() == []
+    with pytest.raises(AssertionError):
+        await coresys.homeassistant.list_users()
 
 
 async def test_write_pulse_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
