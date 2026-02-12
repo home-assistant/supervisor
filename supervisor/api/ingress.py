@@ -29,8 +29,8 @@ from ..const import (
     HEADER_REMOTE_USER_NAME,
     HEADER_TOKEN,
     HEADER_TOKEN_OLD,
+    HomeAssistantUser,
     IngressSessionData,
-    IngressSessionDataUser,
 )
 from ..coresys import CoreSysAttributes
 from ..exceptions import HomeAssistantAPIError
@@ -75,7 +75,7 @@ def status_code_must_be_empty_body(code: int) -> bool:
 class APIIngress(CoreSysAttributes):
     """Ingress view to handle add-on webui routing."""
 
-    _list_of_users: list[IngressSessionDataUser]
+    _list_of_users: list[HomeAssistantUser]
 
     def __init__(self) -> None:
         """Initialize APIIngress."""
@@ -306,18 +306,14 @@ class APIIngress(CoreSysAttributes):
 
             return response
 
-    async def _find_user_by_id(self, user_id: str) -> IngressSessionDataUser | None:
+    async def _find_user_by_id(self, user_id: str) -> HomeAssistantUser | None:
         """Find user object by the user's ID."""
         try:
-            list_of_users = await self.sys_homeassistant.get_users()
-        except (HomeAssistantAPIError, TypeError) as err:
+            self._list_of_users = await self.sys_homeassistant.list_users()
+        except HomeAssistantAPIError as err:
             _LOGGER.error(
                 "%s error occurred while requesting list of users: %s", type(err), err
             )
-            return None
-
-        if list_of_users is not None:
-            self._list_of_users = list_of_users
 
         return next((user for user in self._list_of_users if user.id == user_id), None)
 
@@ -332,8 +328,8 @@ def _init_header(
         headers[HEADER_REMOTE_USER_ID] = session_data.user.id
         if session_data.user.username is not None:
             headers[HEADER_REMOTE_USER_NAME] = session_data.user.username
-        if session_data.user.display_name is not None:
-            headers[HEADER_REMOTE_USER_DISPLAY_NAME] = session_data.user.display_name
+        if session_data.user.name is not None:
+            headers[HEADER_REMOTE_USER_DISPLAY_NAME] = session_data.user.name
 
     # filter flags
     for name, value in request.headers.items():

@@ -31,6 +31,7 @@ from .const import (
     ATTR_LOGGING,
     ATTR_MTU,
     ATTR_MULTICAST,
+    ATTR_NAME,
     ATTR_OBSERVER,
     ATTR_OTA,
     ATTR_PASSWORD,
@@ -206,7 +207,9 @@ SCHEMA_SESSION_DATA = vol.Schema(
                     {
                         vol.Required(ATTR_ID): str,
                         vol.Required(ATTR_USERNAME, default=None): vol.Maybe(str),
-                        vol.Required(ATTR_DISPLAYNAME, default=None): vol.Maybe(str),
+                        vol.Required(ATTR_NAME, default=None): vol.Maybe(str),
+                        # Legacy key, replaced by ATTR_NAME
+                        vol.Optional(ATTR_DISPLAYNAME): vol.Maybe(str),
                     }
                 )
             }
