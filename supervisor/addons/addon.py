@@ -20,10 +20,11 @@ from typing import Any, Final, cast
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from deepmerge import Merger
-from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from ..backups.utils import backup_data_filter
 from ..bus import EventListener
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -1446,8 +1447,7 @@ class Addon(AddonModel):
                 with tar_file as backup:
                     backup.extractall(
                         path=tmp.name,
-                        members=secure_path(backup),
-                        filter="fully_trusted",
+                        filter=backup_data_filter,
                     )
 
                 data = read_json_file(Path(tmp.name, "addon.json"))

@@ -18,7 +18,7 @@ import time
 from typing import Any, Self, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -60,6 +60,7 @@ from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
 from ..utils.sentinel import DEFAULT
 from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
+from .utils import backup_data_filter
 from .validate import SCHEMA_BACKUP
 
 IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
@@ -515,8 +516,7 @@ class Backup(JobGroup):
             with tarfile.open(backup_tarfile, "r:") as tar:
                 tar.extractall(
                     path=tmp.name,
-                    members=secure_path(tar),
-                    filter="fully_trusted",
+                    filter=backup_data_filter,
                 )
 
             return tmp
@@ -799,7 +799,8 @@ class Backup(JobGroup):
                     password=self._password,
                 ) as tar_file:
                     tar_file.extractall(
-                        path=origin_dir, members=tar_file, filter="fully_trusted"
+                        path=origin_dir,
+                        filter=backup_data_filter,
                     )
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:

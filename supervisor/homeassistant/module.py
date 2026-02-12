@@ -13,10 +13,11 @@ from typing import Any
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
+from ..backups.utils import backup_data_filter
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -497,8 +498,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                     with tar_file as backup:
                         backup.extractall(
                             path=temp_path,
-                            members=secure_path(backup),
-                            filter="fully_trusted",
+                            filter=backup_data_filter,
                         )
                 except tarfile.TarError as err:
                     raise HomeAssistantError(
