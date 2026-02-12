@@ -13,6 +13,7 @@ from ..exceptions import (
     AddonsError,
     BackupFileNotFoundError,
     HomeAssistantError,
+    HomeAssistantWSError,
     ObserverError,
     SupervisorUpdateError,
 )
@@ -152,7 +153,13 @@ class Tasks(CoreSysAttributes):
                 "Sending update add-on WebSocket command to Home Assistant Core: %s",
                 message,
             )
-            await self.sys_homeassistant.websocket.async_send_command(message)
+            try:
+                await self.sys_homeassistant.websocket.async_send_command(message)
+            except HomeAssistantWSError as err:
+                _LOGGER.warning(
+                    "Could not send add-on update command to Home Assistant Core: %s",
+                    err,
+                )
 
     @Job(
         name="tasks_update_supervisor",

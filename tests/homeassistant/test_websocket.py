@@ -2,18 +2,18 @@
 
 # pylint: disable=import-error
 import asyncio
-import logging
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
-from awesomeversion import AwesomeVersion
+import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
+from supervisor.exceptions import HomeAssistantWSError
 from supervisor.homeassistant.const import WSEvent, WSType
 
 
 async def test_send_command(coresys: CoreSys, ha_ws_client: AsyncMock):
-    """Test websocket error on listen."""
+    """Test sending a command returns a response."""
     await coresys.homeassistant.websocket.async_send_command({"type": "test"})
     ha_ws_client.async_send_command.assert_called_with({"type": "test"})
 
@@ -32,30 +32,10 @@ async def test_send_command(coresys: CoreSys, ha_ws_client: AsyncMock):
     )
 
 
-async def test_send_command_old_core_version(
-    coresys: CoreSys, ha_ws_client: AsyncMock, caplog
+async def test_fire_and_forget_during_startup(
+    coresys: CoreSys, ha_ws_client: AsyncMock
 ):
-    """Test websocket error on listen."""
-    caplog.set_level(logging.INFO)
-    ha_ws_client.ha_version = AwesomeVersion("1970.1.1")
-
-    await coresys.homeassistant.websocket.async_send_command(
-        {"type": "supervisor/event"}
-    )
-
-    assert (
-        "WebSocket command supervisor/event is not supported until core-2021.2.4"
-        in caplog.text
-    )
-
-    await coresys.homeassistant.websocket.async_supervisor_update_event(
-        "test", {"lorem": "ipsum"}
-    )
-    ha_ws_client.async_send_command.assert_not_called()
-
-
-async def test_send_message_during_startup(coresys: CoreSys, ha_ws_client: AsyncMock):
-    """Test websocket messages queue during startup."""
+    """Test fire-and-forget commands queue during startup and replay when running."""
     await coresys.homeassistant.websocket.load()
     await coresys.core.set_state(CoreState.SETUP)
 
@@ -91,4 +71,38 @@ async def test_send_message_during_startup(coresys: CoreSys, ha_ws_client: Async
     await coresys.homeassistant.websocket.async_supervisor_update_event(
         "test", {"lorem": "ipsum"}
     )
+    ha_ws_client.async_send_command.assert_not_called()
+
+
+async def test_send_command_core_not_reachable(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test async_send_command raises when Core API is not reachable."""
+    ha_ws_client.connected = False
+    with (
+        patch.object(coresys.homeassistant.api, "check_api_state", return_value=False),
+        pytest.raises(HomeAssistantWSError, match="not reachable"),
+    ):
+        await coresys.homeassistant.websocket.async_send_command({"type": "test"})
+
+    ha_ws_client.async_send_command.assert_not_called()
+
+
+async def test_fire_and_forget_core_not_reachable(
+    coresys: CoreSys, ha_ws_client: AsyncMock
+):
+    """Test fire-and-forget command silently skips when Core API is not reachable."""
+    ha_ws_client.connected = False
+    with patch.object(coresys.homeassistant.api, "check_api_state", return_value=False):
+        await coresys.homeassistant.websocket._async_send_command({"type": "test"})
+
+    ha_ws_client.async_send_command.assert_not_called()
+
+
+async def test_send_command_during_shutdown(coresys: CoreSys, ha_ws_client: AsyncMock):
+    """Test async_send_command raises during shutdown."""
+    await coresys.core.set_state(CoreState.SHUTDOWN)
+    with pytest.raises(HomeAssistantWSError, match="shutting down"):
+        await coresys.homeassistant.websocket.async_send_command({"type": "test"})
+
     ha_ws_client.async_send_command.assert_not_called()

@@ -360,15 +360,23 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         ):
             return
 
-        configuration: (
-            dict[str, Any] | None
-        ) = await self.sys_homeassistant.websocket.async_send_command(
-            {ATTR_TYPE: "get_config"}
-        )
+        try:
+            configuration: (
+                dict[str, Any] | None
+            ) = await self.sys_homeassistant.websocket.async_send_command(
+                {ATTR_TYPE: "get_config"}
+            )
+        except HomeAssistantWSError as err:
+            _LOGGER.warning(
+                "Can't get Home Assistant Core configuration: %s. Not sending hardware events to Home Assistant Core.",
+                err,
+            )
+            return
+
         if not configuration or "usb" not in configuration.get("components", []):
             return
 
-        self.sys_homeassistant.websocket.send_message({ATTR_TYPE: "usb/scan"})
+        self.sys_homeassistant.websocket.send_command({ATTR_TYPE: "usb/scan"})
 
     @Job(name="home_assistant_module_begin_backup")
     async def begin_backup(self) -> None:
