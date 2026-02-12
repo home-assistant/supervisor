@@ -1028,10 +1028,12 @@ class DockerAPI(CoreSysAttributes):
         image_tar_stream: BufferedReader | None = None
         try:
             # Lambda avoids need for a cast here. Since return type of open is based on mode
-            image_tar_stream = image_reader = await self.sys_run_in_executor(
+            image_tar_stream = await self.sys_run_in_executor(
                 lambda: tar_file.open("rb")
             )
-            resp: list[dict[str, Any]] = await self.images.import_image(image_reader)
+            resp: list[dict[str, Any]] = await self.images.import_image(
+                image_tar_stream
+            )
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't import image from tar: {err}", _LOGGER.error
