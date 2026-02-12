@@ -1082,12 +1082,12 @@ class DockerAPI(CoreSysAttributes):
 
         try:
             # Lambda avoids need for a cast here. Since return type of open is based on mode
-            image_tar_stream = image_writer = await self.sys_run_in_executor(
+            image_tar_stream = await self.sys_run_in_executor(
                 lambda: tar_file.open("wb")
             )
             async with self.images.export_image(f"{image}:{version}") as content:
                 async for chunk in content.iter_chunked(DEFAULT_CHUNK_SIZE):
-                    await self.sys_run_in_executor(image_writer.write, chunk)
+                    await self.sys_run_in_executor(image_tar_stream.write, chunk)
         except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't fetch image {image}:{version}: {err}", _LOGGER.error
