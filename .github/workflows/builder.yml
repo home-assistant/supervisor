@@ -296,7 +296,11 @@ jobs:
       - &wait_for_supervisor
         name: Wait for Supervisor to come up
         run: |
-          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.Networks.hassio.IPAddress}}' hassio_supervisor)
+          until SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.Networks.hassio.IPAddress}}' hassio_supervisor 2>/dev/null) && \
+                [ -n "$SUPERVISOR" ] && [ "$SUPERVISOR" != "<no value>" ]; do
+            echo "Waiting for network configuration..."
+            sleep 1
+          done
           echo "Waiting for Supervisor API at http://${SUPERVISOR}/supervisor/ping"
           timeout=300
           elapsed=0
