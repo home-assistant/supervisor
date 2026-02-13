@@ -9,7 +9,7 @@ import logging
 import re
 import secrets
 import shutil
-from typing import Final
+from typing import Any, Final
 
 from awesomeversion import AwesomeVersion
 
@@ -24,6 +24,7 @@ from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
     DockerError,
+    HomeAssistantAPIError,
     HomeAssistantCrashError,
     HomeAssistantError,
     HomeAssistantJobError,
@@ -76,12 +77,29 @@ class HomeAssistantCore(JobGroup):
         super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self._error_state: bool = False
+        self._core_config: dict[str, Any] | None = None
         self._watchdog_listener: EventListener | None = None
 
     @property
     def error_state(self) -> bool:
         """Return True if system is in error."""
         return self._error_state
+
+    @property
+    def core_config(self) -> dict[str, Any] | None:
+        """Return cached Core config or None if not available."""
+        return self._core_config
+
+    async def ensure_started(self) -> None:
+        """Ensure Home Assistant Core is running and setup is complete.
+
+        If Core is already running (e.g. after a Supervisor restart), validates
+        API readiness and populates cached state. If not running, starts it.
+        """
+        if not await self.instance.is_running():
+            await self.start()
+            return
+        await self._block_till_run()
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
@@ -329,15 +347,15 @@ class HomeAssistantCore(JobGroup):
             await _update(to_version)
 
         if not self.error_state and rollback:
-            try:
-                data = await self.sys_homeassistant.api.get_config()
-            except HomeAssistantError:
-                # The API stoped responding between the up checks an now
-                self._error_state = True
-                return
+            config = self._core_config
 
             # Verify that the frontend is loaded
-            if "frontend" not in data.get("components", []):
+            if config is None:
+                _LOGGER.error(
+                    "Cannot verify frontend after update, Core config not available"
+                )
+                self._error_state = True
+            elif "frontend" not in config.get("components", []):
                 _LOGGER.error("API responds but frontend is not loaded")
                 self._error_state = True
             # Check that the frontend is actually accessible
@@ -414,6 +432,7 @@ class HomeAssistantCore(JobGroup):
     )
     async def stop(self, *, remove_container: bool = False) -> None:
         """Stop Home Assistant Docker."""
+        self._core_config = None
         try:
             return await self.instance.stop(remove_container=remove_container)
         except DockerError as err:
@@ -524,6 +543,8 @@ class HomeAssistantCore(JobGroup):
             return
         _LOGGER.info("Wait until Home Assistant is ready")
 
+        self._core_config = None
+
         deadline = datetime.now() + STARTUP_API_RESPONSE_TIMEOUT
         last_state = None
         while not (timeout := datetime.now() >= deadline):
@@ -548,6 +569,10 @@ class HomeAssistantCore(JobGroup):
                 if state.core_state == "RUNNING":
                     _LOGGER.info("Detect a running Home Assistant instance")
                     self._error_state = False
+                    with suppress(HomeAssistantAPIError):
+                        self._core_config = (
+                            await self.sys_homeassistant.api.get_config()
+                        )
                     return
 
                 if state.offline_db_migration:
