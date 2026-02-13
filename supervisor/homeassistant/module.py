@@ -13,7 +13,7 @@ from typing import Any
 from uuid import UUID
 
 from awesomeversion import AwesomeVersion, AwesomeVersionException
-from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -495,10 +495,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 # extract backup
                 try:
                     with tar_file as backup:
+                        # The tar filter rejects path traversal and absolute names,
+                        # aborting restore of potentially crafted backups.
                         backup.extractall(
                             path=temp_path,
-                            members=secure_path(backup),
-                            filter="fully_trusted",
+                            filter="tar",
                         )
                 except tarfile.TarError as err:
                     raise HomeAssistantError(

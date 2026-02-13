@@ -18,7 +18,7 @@ import time
 from typing import Any, Self, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -513,10 +513,11 @@ class Backup(JobGroup):
             tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
 
             with tarfile.open(backup_tarfile, "r:") as tar:
+                # The tar filter rejects path traversal and absolute names,
+                # aborting restore of potentially crafted backups.
                 tar.extractall(
                     path=tmp.name,
-                    members=secure_path(tar),
-                    filter="fully_trusted",
+                    filter="tar",
                 )
 
             return tmp
@@ -798,8 +799,11 @@ class Backup(JobGroup):
                     bufsize=BUF_SIZE,
                     password=self._password,
                 ) as tar_file:
+                    # The tar filter rejects path traversal and absolute names,
+                    # aborting restore of potentially crafted backups.
                     tar_file.extractall(
-                        path=origin_dir, members=tar_file, filter="fully_trusted"
+                        path=origin_dir,
+                        filter="tar",
                     )
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
