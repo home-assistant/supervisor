@@ -306,6 +306,7 @@ class DeviceType(DBusIntEnum):
     WIRELESS = 2
     BLUETOOTH = 5
     VLAN = 11
+    BRIDGE = 13
     TUN = 16
     VETH = 20
     WIREGUARD = 29
