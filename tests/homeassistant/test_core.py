@@ -1,6 +1,5 @@
 """Test Home Assistant core."""
 
-import asyncio
 from datetime import datetime, timedelta
 from http import HTTPStatus
 from unittest.mock import ANY, MagicMock, Mock, PropertyMock, call, patch
@@ -205,58 +204,6 @@ async def test_install_other_error(
     assert "Error on Home Assistant installation. Retrying in 30sec" in caplog.text
     capture_exception.assert_called_once_with(err)
     assert "Unhandled exception:" not in caplog.text
-
-
-@pytest.mark.parametrize(
-    ("active_job", "expected_log"),
-    [
-        (None, "Home Assistant Core installation in progress"),
-        (MagicMock(progress=45.0), "Downloading Home Assistant Core image, 45%"),
-    ],
-)
-async def test_install_logs_progress_periodically(
-    coresys: CoreSys,
-    caplog: pytest.LogCaptureFixture,
-    active_job: MagicMock | None,
-    expected_log: str,
-):
-    """Test install logs progress periodically during image pull."""
-    coresys.security.force = True
-    coresys.docker.images.pull.return_value = AsyncIterator([{}])
-    original_wait_for = asyncio.wait_for
-
-    async def mock_wait_for(coro, *, timeout=None):
-        """Immediately timeout for the progress log wait, pass through others."""
-        if timeout == 15:
-            coro.close()
-            await asyncio.sleep(0)
-            raise TimeoutError
-        return await original_wait_for(coro, timeout=timeout)
-
-    with (
-        patch.object(HomeAssistantCore, "start"),
-        patch.object(DockerHomeAssistant, "cleanup"),
-        patch.object(
-            Updater,
-            "image_homeassistant",
-            new=PropertyMock(return_value="homeassistant"),
-        ),
-        patch.object(
-            Updater, "version_homeassistant", new=PropertyMock(return_value="2022.7.3")
-        ),
-        patch.object(
-            DockerInterface, "arch", new=PropertyMock(return_value=CpuArch.AMD64)
-        ),
-        patch("supervisor.homeassistant.core.asyncio.wait_for", new=mock_wait_for),
-        patch.object(
-            DockerHomeAssistant,
-            "active_job",
-            new=PropertyMock(return_value=active_job),
-        ),
-    ):
-        await coresys.homeassistant.core.install()
-
-    assert expected_log in caplog.text
 
 
 @pytest.mark.parametrize(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+import asyncio
 from collections import defaultdict
 from collections.abc import Awaitable
 from contextlib import suppress
@@ -291,6 +292,29 @@ class DockerInterface(JobGroup, ABC):
         )
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
+        stop_progress_log = asyncio.Event()
+
+        async def _periodic_progress_log() -> None:
+            """Log pull progress periodically for user visibility."""
+            while not stop_progress_log.is_set():
+                try:
+                    await asyncio.wait_for(stop_progress_log.wait(), timeout=15)
+                except TimeoutError:
+                    if current_job.progress:
+                        _LOGGER.info(
+                            "Pulling %s:%s, %d%%",
+                            image,
+                            version,
+                            int(current_job.progress),
+                        )
+                    else:
+                        _LOGGER.info(
+                            "Pulling %s:%s still in progress",
+                            image,
+                            version,
+                        )
+
+        progress_task = self.sys_create_task(_periodic_progress_log())
         try:
             # Get credentials for private registries to pass to aiodocker
             credentials = self._get_credentials(image) or None
@@ -326,6 +350,8 @@ class DockerInterface(JobGroup, ABC):
             ) from err
         finally:
             self.sys_bus.remove_listener(listener)
+            stop_progress_log.set()
+            await progress_task
 
         self._meta = docker_image
 
