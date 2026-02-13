@@ -24,7 +24,6 @@ from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..backups.utils import backup_data_filter
 from ..bus import EventListener
 from ..const import (
     ATTR_ACCESS_TOKEN,
@@ -1445,9 +1444,11 @@ class Addon(AddonModel):
             tmp = TemporaryDirectory(dir=self.sys_config.path_tmp)
             try:
                 with tar_file as backup:
+                    # The tar filter rejects path traversal and absolute names,
+                    # aborting restore of potentially crafted backups.
                     backup.extractall(
                         path=tmp.name,
-                        filter=backup_data_filter,
+                        filter="tar",
                     )
 
                 data = read_json_file(Path(tmp.name, "addon.json"))

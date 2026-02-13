@@ -17,7 +17,6 @@ from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..backups.utils import backup_data_filter
 from ..const import (
     ATTR_ACCESS_TOKEN,
     ATTR_AUDIO_INPUT,
@@ -496,9 +495,11 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                 # extract backup
                 try:
                     with tar_file as backup:
+                        # The tar filter rejects path traversal and absolute names,
+                        # aborting restore of potentially crafted backups.
                         backup.extractall(
                             path=temp_path,
-                            filter=backup_data_filter,
+                            filter="tar",
                         )
                 except tarfile.TarError as err:
                     raise HomeAssistantError(

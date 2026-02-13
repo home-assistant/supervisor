@@ -1,10 +1,8 @@
-"""Security tests for backup_data_filter."""
+"""Security tests for backup tar extraction with tar filter."""
 
 import io
 from pathlib import Path
 import tarfile
-
-from supervisor.backups.utils import backup_data_filter
 
 
 def _create_tar_gz(
@@ -24,87 +22,74 @@ def _create_tar_gz(
                 tar.addfile(info)
 
 
-def test_absolute_symlink_skipped(tmp_path: Path):
-    """Test that absolute symlinks are skipped during extraction."""
-    evil_info = tarfile.TarInfo(name="evil_link")
-    evil_info.type = tarfile.SYMTYPE
-    evil_info.linkname = "/etc/shadow"
-    normal_info = tarfile.TarInfo(name="normal.txt")
-    normal_info.size = 5
-    tar_path = tmp_path / "test.tar.gz"
-    _create_tar_gz(tar_path, [evil_info, normal_info], {"normal.txt": b"hello"})
-
-    dest = tmp_path / "out"
-    dest.mkdir()
-    with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(path=dest, filter=backup_data_filter)
-
-    assert (dest / "normal.txt").read_text() == "hello"
-    assert not (dest / "evil_link").exists()
-
-
-def test_relative_symlink_escape_skipped(tmp_path: Path):
-    """Test that relative symlinks escaping destination are skipped."""
-    evil_info = tarfile.TarInfo(name="escape_link")
-    evil_info.type = tarfile.SYMTYPE
-    evil_info.linkname = "../../etc/shadow"
-    normal_info = tarfile.TarInfo(name="normal.txt")
-    normal_info.size = 5
-    tar_path = tmp_path / "test.tar.gz"
-    _create_tar_gz(tar_path, [evil_info, normal_info], {"normal.txt": b"hello"})
-
-    dest = tmp_path / "out"
-    dest.mkdir()
-    with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(path=dest, filter=backup_data_filter)
-
-    assert (dest / "normal.txt").read_text() == "hello"
-    assert not (dest / "escape_link").exists()
-
-
-def test_device_node_skipped(tmp_path: Path):
-    """Test that device nodes are skipped during extraction."""
-    evil_info = tarfile.TarInfo(name="evil_device")
-    evil_info.type = tarfile.CHRTYPE
-    evil_info.devmajor = 1
-    evil_info.devminor = 5  # /dev/zero
-    normal_info = tarfile.TarInfo(name="normal.txt")
-    normal_info.size = 5
-    tar_path = tmp_path / "test.tar.gz"
-    _create_tar_gz(tar_path, [evil_info, normal_info], {"normal.txt": b"hello"})
-
-    dest = tmp_path / "out"
-    dest.mkdir()
-    with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(path=dest, filter=backup_data_filter)
-
-    assert (dest / "normal.txt").read_text() == "hello"
-    assert not (dest / "evil_device").exists()
-
-
-def test_path_traversal_skipped(tmp_path: Path):
-    """Test that path traversal entries are skipped."""
+def test_path_traversal_rejected(tmp_path: Path):
+    """Test that path traversal in member names is rejected."""
     traversal_info = tarfile.TarInfo(name="../../etc/passwd")
     traversal_info.size = 9
-    normal_info = tarfile.TarInfo(name="normal.txt")
-    normal_info.size = 5
+    tar_path = tmp_path / "test.tar.gz"
+    _create_tar_gz(tar_path, [traversal_info], {"../../etc/passwd": b"malicious"})
+
+    dest = tmp_path / "out"
+    dest.mkdir()
+    with tarfile.open(tar_path, "r:gz") as tar:
+        try:
+            tar.extractall(path=dest, filter="tar")
+        except tarfile.OutsideDestinationError:
+            pass
+        else:
+            raise AssertionError("Expected OutsideDestinationError")
+
+
+def test_symlink_write_through_rejected(tmp_path: Path):
+    """Test that writing through a symlink to outside destination is rejected.
+
+    The tar filter's realpath check follows already-extracted symlinks on disk,
+    catching write-through attacks even without explicit link target validation.
+    """
+    # Symlink pointing outside, then a file entry writing through it
+    link_info = tarfile.TarInfo(name="escape")
+    link_info.type = tarfile.SYMTYPE
+    link_info.linkname = "../outside"
+    file_info = tarfile.TarInfo(name="escape/evil.py")
+    file_info.size = 9
     tar_path = tmp_path / "test.tar.gz"
     _create_tar_gz(
         tar_path,
-        [traversal_info, normal_info],
-        {"../../etc/passwd": b"malicious", "normal.txt": b"hello"},
+        [link_info, file_info],
+        {"escape/evil.py": b"malicious"},
     )
 
     dest = tmp_path / "out"
     dest.mkdir()
     with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(path=dest, filter=backup_data_filter)
+        try:
+            tar.extractall(path=dest, filter="tar")
+        except tarfile.OutsideDestinationError:
+            pass
+        else:
+            raise AssertionError("Expected OutsideDestinationError")
 
-    assert (dest / "normal.txt").read_text() == "hello"
-    assert not (dest / "../../etc/passwd").exists()
+    # The evil file must not exist outside the destination
+    assert not (tmp_path / "outside" / "evil.py").exists()
 
 
-def test_valid_internal_symlinks_extracted(tmp_path: Path):
+def test_absolute_name_stripped_and_extracted(tmp_path: Path):
+    """Test that absolute member names have leading / stripped and extract safely."""
+    info = tarfile.TarInfo(name="/etc/test.conf")
+    info.size = 5
+    tar_path = tmp_path / "test.tar.gz"
+    _create_tar_gz(tar_path, [info], {"/etc/test.conf": b"hello"})
+
+    dest = tmp_path / "out"
+    dest.mkdir()
+    with tarfile.open(tar_path, "r:gz") as tar:
+        tar.extractall(path=dest, filter="tar")
+
+    # Extracted inside destination with leading / stripped
+    assert (dest / "etc" / "test.conf").read_text() == "hello"
+
+
+def test_valid_backup_with_internal_symlinks(tmp_path: Path):
     """Test that valid backups with internal relative symlinks extract correctly."""
     dir_info = tarfile.TarInfo(name="subdir")
     dir_info.type = tarfile.DIRTYPE
@@ -127,8 +112,28 @@ def test_valid_internal_symlinks_extracted(tmp_path: Path):
     dest = tmp_path / "out"
     dest.mkdir()
     with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(path=dest, filter=backup_data_filter)
+        tar.extractall(path=dest, filter="tar")
 
     assert (dest / "subdir" / "config.yaml").read_text() == "key: value\n"
     assert (dest / "config_link").is_symlink()
     assert (dest / "config_link").read_text() == "key: value\n"
+
+
+def test_uid_gid_preserved(tmp_path: Path):
+    """Test that tar filter preserves file ownership."""
+    info = tarfile.TarInfo(name="owned_file.txt")
+    info.size = 5
+    info.uid = 1000
+    info.gid = 1000
+    tar_path = tmp_path / "test.tar.gz"
+    _create_tar_gz(tar_path, [info], {"owned_file.txt": b"hello"})
+
+    dest = tmp_path / "out"
+    dest.mkdir()
+    with tarfile.open(tar_path, "r:gz") as tar:
+        # Extract member via filter only (don't actually extract, just check
+        # the filter preserves uid/gid)
+        for member in tar:
+            filtered = tarfile.tar_filter(member, str(dest))
+            assert filtered.uid == 1000
+            assert filtered.gid == 1000

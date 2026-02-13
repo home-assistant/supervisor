@@ -60,7 +60,6 @@ from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
 from ..utils.sentinel import DEFAULT
 from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
-from .utils import backup_data_filter
 from .validate import SCHEMA_BACKUP
 
 IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
@@ -514,9 +513,11 @@ class Backup(JobGroup):
             tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
 
             with tarfile.open(backup_tarfile, "r:") as tar:
+                # The tar filter rejects path traversal and absolute names,
+                # aborting restore of potentially crafted backups.
                 tar.extractall(
                     path=tmp.name,
-                    filter=backup_data_filter,
+                    filter="tar",
                 )
 
             return tmp
@@ -798,9 +799,11 @@ class Backup(JobGroup):
                     bufsize=BUF_SIZE,
                     password=self._password,
                 ) as tar_file:
+                    # The tar filter rejects path traversal and absolute names,
+                    # aborting restore of potentially crafted backups.
                     tar_file.extractall(
                         path=origin_dir,
-                        filter=backup_data_filter,
+                        filter="tar",
                     )
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
