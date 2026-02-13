@@ -620,18 +620,6 @@ class AuthListUsersError(AuthError, APIUnknownSupervisorError):
     message_template = "Can't request listing users on Home Assistant"
 
 
-class AuthListUsersNoneResponseError(AuthError, APIInternalServerError):
-    """Auth error if listing users returned invalid None response."""
-
-    error_key = "auth_list_users_none_response_error"
-    message_template = "Home Assistant returned invalid response of `{none}` instead of a list of users. Check Home Assistant logs for details (check with `{logs_command}`)"
-    extra_fields = {"none": "None", "logs_command": "ha core logs"}
-
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Initialize exception."""
-        super().__init__(None, logger)
-
-
 class AuthInvalidNonStringValueError(AuthError, APIUnauthorized):
     """Auth error if something besides a string provided as username or password."""
 

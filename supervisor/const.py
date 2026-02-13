@@ -1,11 +1,12 @@
 """Constants file for Supervisor."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from ipaddress import IPv4Network, IPv6Network
 from pathlib import Path
 from sys import version_info as systemversion
-from typing import NotRequired, Self, TypedDict
+from typing import Any, NotRequired, Self, TypedDict
 
 from aiohttp import __version__ as aiohttpversion
 
@@ -536,60 +537,77 @@ class CpuArch(StrEnum):
     AMD64 = "amd64"
 
 
-class IngressSessionDataUserDict(TypedDict):
-    """Response object for ingress session user."""
-
-    id: str
-    username: NotRequired[str | None]
-    # Name is an alias for displayname, only one should be used
-    displayname: NotRequired[str | None]
-    name: NotRequired[str | None]
-
-
 @dataclass
-class IngressSessionDataUser:
-    """Format of an IngressSessionDataUser object."""
+class HomeAssistantUser:
+    """A Home Assistant Core user.
+
+    Incomplete model — Core's User object has additional fields
+    (credentials, refresh_tokens, etc.) that are not represented here.
+    Only fields used by the Supervisor are included.
+    """
 
     id: str
-    display_name: str | None = None
     username: str | None = None
-
-    def to_dict(self) -> IngressSessionDataUserDict:
-        """Get dictionary representation."""
-        return IngressSessionDataUserDict(
-            id=self.id, displayname=self.display_name, username=self.username
-        )
+    name: str | None = None
+    is_owner: bool = False
+    is_active: bool = False
+    local_only: bool = False
+    system_generated: bool = False
+    group_ids: list[str] | None = None
 
     @classmethod
-    def from_dict(cls, data: IngressSessionDataUserDict) -> Self:
+    def from_dict(cls, data: Mapping[str, Any]) -> Self:
         """Return object from dictionary representation."""
         return cls(
             id=data["id"],
-            display_name=data.get("displayname") or data.get("name"),
             username=data.get("username"),
+            # "displayname" is a legacy key from old ingress session data
+            name=data.get("name") or data.get("displayname"),
+            is_owner=data.get("is_owner", False),
+            is_active=data.get("is_active", False),
+            local_only=data.get("local_only", False),
+            system_generated=data.get("system_generated", False),
+            group_ids=data.get("group_ids"),
         )
 
 
+class IngressSessionDataUserDict(TypedDict):
+    """Serialization format for user data stored in ingress sessions.
+
+    Legacy data may contain "displayname" instead of "name".
+    """
+
+    id: str
+    username: NotRequired[str | None]
+    name: NotRequired[str | None]
+
+
 class IngressSessionDataDict(TypedDict):
-    """Response object for ingress session data."""
+    """Serialization format for ingress session data."""
 
     user: IngressSessionDataUserDict
 
 
 @dataclass
 class IngressSessionData:
-    """Format of an IngressSessionData object."""
+    """Ingress session data attached to a session token."""
 
-    user: IngressSessionDataUser
+    user: HomeAssistantUser
 
     def to_dict(self) -> IngressSessionDataDict:
         """Get dictionary representation."""
-        return IngressSessionDataDict(user=self.user.to_dict())
+        return IngressSessionDataDict(
+            user=IngressSessionDataUserDict(
+                id=self.user.id,
+                name=self.user.name,
+                username=self.user.username,
+            )
+        )
 
     @classmethod
-    def from_dict(cls, data: IngressSessionDataDict) -> Self:
+    def from_dict(cls, data: Mapping[str, Any]) -> Self:
         """Return object from dictionary representation."""
-        return cls(user=IngressSessionDataUser.from_dict(data["user"]))
+        return cls(user=HomeAssistantUser.from_dict(data["user"]))
 
 
 STARTING_STATES = [
