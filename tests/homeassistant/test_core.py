@@ -472,6 +472,7 @@ async def test_api_check_success(
 
     assert coresys.homeassistant.api.get_api_state.call_count == 1
     assert "Detect a running Home Assistant instance" in caplog.text
+    assert coresys.homeassistant.core.core_config == {"components": ["frontend"]}
 
 
 async def test_api_check_database_migration(
@@ -510,6 +511,55 @@ async def test_api_check_database_migration(
 
     assert coresys.homeassistant.api.get_api_state.call_count == 51
     assert "Detect a running Home Assistant instance" in caplog.text
+    assert coresys.homeassistant.core.core_config == {"components": ["frontend"]}
+
+
+async def test_api_check_timeout_clears_core_config(
+    coresys: CoreSys, container: DockerContainer
+):
+    """Test that core_config is None after startup timeout."""
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    coresys.homeassistant.version = AwesomeVersion("2023.9.0")
+    coresys.homeassistant.api.get_api_state.return_value = None
+
+    # Seed the cache so we can verify it gets cleared
+    coresys.homeassistant.core._core_config = {"components": ["frontend"]}
+
+    async def mock_instance_start(*_):
+        container.show.return_value["State"]["Status"] = "running"
+        container.show.return_value["State"]["Running"] = True
+
+    with (
+        patch.object(DockerHomeAssistant, "start", new=mock_instance_start),
+        patch.object(DockerAPI, "container_is_initialized", return_value=True),
+        travel(datetime(2023, 10, 2, 0, 0, 0), tick=False) as traveller,
+    ):
+
+        async def mock_sleep(*args):
+            traveller.shift(timedelta(minutes=1))
+
+        with (
+            patch("supervisor.homeassistant.core.asyncio.sleep", new=mock_sleep),
+            pytest.raises(HomeAssistantCrashError),
+        ):
+            await coresys.homeassistant.core.start()
+
+    assert coresys.homeassistant.core.core_config is None
+
+
+async def test_stop_clears_core_config(coresys: CoreSys, container: DockerContainer):
+    """Test that stop clears the cached core config."""
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+
+    # Seed the cache
+    coresys.homeassistant.core._core_config = {"components": ["frontend", "usb"]}
+    assert coresys.homeassistant.core.core_config is not None
+
+    await coresys.homeassistant.core.stop()
+
+    assert coresys.homeassistant.core.core_config is None
 
 
 async def test_core_loads_wrong_image_for_machine(

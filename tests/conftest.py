@@ -545,6 +545,9 @@ async def coresys(
     coresys_obj.homeassistant.api.get_api_state = AsyncMock(
         return_value=APIState("RUNNING", False)
     )
+    coresys_obj.homeassistant.api.get_config = AsyncMock(
+        return_value={"components": ["frontend"]}
+    )
     coresys_obj.homeassistant._websocket._client = AsyncMock(
         ha_version=AwesomeVersion("2021.2.4")
     )
