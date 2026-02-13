@@ -51,10 +51,13 @@ from ..exceptions import (
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupPermissionError,
+    MountError,
 )
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
+from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, ATTR_MOUNTS, MountUsage
+from ..mounts.mount import Mount
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
@@ -207,6 +210,11 @@ class Backup(JobGroup):
     def docker(self, value: dict[str, Any]) -> None:
         """Set the Docker config data."""
         self._data[ATTR_DOCKER] = value
+
+    @property
+    def has_mounts(self) -> bool:
+        """Return True if backup contains mount configurations."""
+        return self._data.get(ATTR_MOUNTS, False)
 
     @property
     def location(self) -> str | None:
@@ -920,3 +928,185 @@ class Backup(JobGroup):
         return self.sys_store.update_repositories(
             set(self.repositories), issue_on_error=True, replace=replace
         )
+
+    @Job(name="backup_store_mounts", cleanup=False)
+    async def store_mounts(self) -> None:
+        """Store mount configurations into backup as encrypted tar."""
+        if not self._outer_secure_tarfile:
+            raise RuntimeError(
+                "Cannot backup components without initializing backup tar"
+            )
+
+        if not self.sys_mounts.mounts:
+            return
+
+        mounts_data = {
+            ATTR_DEFAULT_BACKUP_MOUNT: (
+                self.sys_mounts.default_backup_mount.name
+                if self.sys_mounts.default_backup_mount
+                else None
+            ),
+            ATTR_MOUNTS: [
+                mount.to_dict(skip_secrets=False) for mount in self.sys_mounts.mounts
+            ],
+        }
+
+        outer_secure_tarfile = self._outer_secure_tarfile
+        tar_name = f"mounts.tar{'.gz' if self.compressed else ''}"
+
+        def _save() -> None:
+            """Save mounts data to tar file."""
+            _LOGGER.info("Backing up mount configurations")
+
+            # Create JSON data
+            mounts_json = json.dumps(mounts_data).encode("utf-8")
+
+            with outer_secure_tarfile.create_inner_tar(
+                f"./{tar_name}",
+                gzip=self.compressed,
+                password=self._password,
+            ) as tar_file:
+                # Add mounts.json to tar
+                tarinfo = tarfile.TarInfo(name="mounts.json")
+                tarinfo.size = len(mounts_json)
+                tar_file.addfile(tarinfo, io.BytesIO(mounts_json))
+
+            _LOGGER.info("Backup mount configurations done")
+
+        try:
+            await self.sys_run_in_executor(_save)
+            self._data[ATTR_MOUNTS] = True
+        except (tarfile.TarError, OSError) as err:
+            raise BackupError(f"Can't write mounts tarfile: {err!s}") from err
+
+    @Job(name="backup_restore_mounts", cleanup=False)
+    async def restore_mounts(
+        self, *, replace_default_backup_mount: bool = False
+    ) -> tuple[bool, list[asyncio.Task]]:
+        """Restore mount configurations from backup.
+
+        Returns tuple of (success, list of mount activation tasks).
+        The tasks should be awaited after the restore is complete to activate mounts.
+        """
+        if not self.has_mounts:
+            return (True, [])
+
+        if not self._tmp:
+            raise RuntimeError("Cannot restore components without opening backup tar")
+
+        tar_name = Path(self._tmp.name, f"mounts.tar{'.gz' if self.compressed else ''}")
+
+        # Extract and parse mounts data
+        def _load_mounts_data() -> dict[str, Any] | None:
+            """Load mounts data from tar file."""
+            if not tar_name.exists():
+                _LOGGER.warning("Mounts tar file not found in backup")
+                return None
+
+            with SecureTarFile(
+                tar_name,
+                "r",
+                gzip=self.compressed,
+                bufsize=BUF_SIZE,
+                password=self._password,
+            ) as tar_file:
+                try:
+                    member = tar_file.getmember("mounts.json")
+                    file_obj = tar_file.extractfile(member)
+                    if file_obj:
+                        return json.loads(file_obj.read().decode("utf-8"))
+                except KeyError:
+                    _LOGGER.warning("mounts.json not found in mounts tar")
+                    return None
+
+            return None
+
+        try:
+            mounts_data = await self.sys_run_in_executor(_load_mounts_data)
+        except (tarfile.TarError, OSError, json.JSONDecodeError) as err:
+            _LOGGER.warning("Failed to read mounts data from backup: %s", err)
+            return (False, [])
+
+        if not mounts_data:
+            return (True, [])
+
+        success = True
+        mount_tasks: list[asyncio.Task] = []
+        restored_mounts: list[Mount] = []
+
+        # Restore each mount configuration
+        for mount_data in mounts_data.get(ATTR_MOUNTS, []):
+            mount_name = mount_data.get("name", "unknown")
+
+            # Skip if mount already exists
+            if mount_name in self.sys_mounts:
+                _LOGGER.info("Mount %s already exists, skipping restore", mount_name)
+                continue
+
+            try:
+                # Create mount object from backup data
+                mount = Mount.from_dict(self.coresys, mount_data)
+                restored_mounts.append(mount)
+                _LOGGER.info("Restored mount configuration: %s", mount_name)
+            except (KeyError, TypeError, ValueError, vol.Invalid) as err:
+                _LOGGER.warning("Failed to restore mount %s: %s", mount_name, err)
+                success = False
+
+        # Add restored mounts to manager's internal state
+        needs_save = False
+        if restored_mounts:
+            for mount in restored_mounts:
+                # Add to internal mounts dict without activating
+                # pylint: disable-next=protected-access
+                self.sys_mounts._mounts[mount.name] = mount  # noqa: SLF001
+            needs_save = True
+
+        # Restore default backup mount if specified
+        default_mount_name = mounts_data.get(ATTR_DEFAULT_BACKUP_MOUNT)
+        if default_mount_name and default_mount_name in self.sys_mounts:
+            # Only set if current default is None or explicitly requested
+            if (
+                self.sys_mounts.default_backup_mount is None
+                or replace_default_backup_mount
+            ):
+                self.sys_mounts.default_backup_mount = self.sys_mounts.get(
+                    default_mount_name
+                )
+                _LOGGER.info("Restored default backup mount: %s", default_mount_name)
+                needs_save = True
+
+        # Save mount configuration to disk (once for all changes)
+        if needs_save:
+            await self.sys_mounts.save_data()
+
+        # Create tasks to activate each mount (non-blocking)
+        for mount in restored_mounts:
+            mount_tasks.append(
+                self.sys_create_task(self._activate_restored_mount(mount))
+            )
+
+        return (success, mount_tasks)
+
+    async def _activate_restored_mount(self, mount: Mount) -> None:
+        """Activate a restored mount. Logs errors but doesn't raise."""
+        try:
+            _LOGGER.info("Activating restored mount: %s", mount.name)
+            await mount.load()
+
+            # Handle bind mounts for media and share usage types
+            # This mirrors the behavior in MountManager.create_mount()
+            # pylint: disable=protected-access
+            if mount.usage == MountUsage.MEDIA:
+                await self.sys_mounts._bind_media(mount)  # noqa: SLF001
+            elif mount.usage == MountUsage.SHARE:
+                await self.sys_mounts._bind_share(mount)  # noqa: SLF001
+            # pylint: enable=protected-access
+
+            _LOGGER.info("Mount %s activated successfully", mount.name)
+        except MountError as err:
+            _LOGGER.warning(
+                "Failed to activate mount %s (config was restored, "
+                "mount may come online later): %s",
+                mount.name,
+                err,
+            )
