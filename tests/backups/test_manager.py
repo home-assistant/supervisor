@@ -1175,6 +1175,7 @@ async def test_backup_progress(
         ),
         _make_backup_message_for_assert(reference=full_backup.slug, stage="addons"),
         _make_backup_message_for_assert(reference=full_backup.slug, stage="folders"),
+        _make_backup_message_for_assert(reference=full_backup.slug, stage="mounts"),
         _make_backup_message_for_assert(
             reference=full_backup.slug, stage="finishing_file"
         ),
@@ -1219,6 +1220,9 @@ async def test_backup_progress(
         ),
         _make_backup_message_for_assert(
             action="partial_backup", reference=partial_backup.slug, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            action="partial_backup", reference=partial_backup.slug, stage="mounts"
         ),
         _make_backup_message_for_assert(
             action="partial_backup",

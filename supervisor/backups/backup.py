@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
+import errno
 import io
 import json
 import logging
@@ -51,13 +52,14 @@ from ..exceptions import (
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupPermissionError,
-    MountError,
 )
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
-from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, ATTR_MOUNTS, MountUsage
+from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, ATTR_MOUNTS
 from ..mounts.mount import Mount
+from ..mounts.validate import SCHEMA_MOUNTS_CONFIG
+from ..resolution.const import UnhealthyReason
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
@@ -980,9 +982,7 @@ class Backup(JobGroup):
             raise BackupError(f"Can't write mounts tarfile: {err!s}") from err
 
     @Job(name="backup_restore_mounts", cleanup=False)
-    async def restore_mounts(
-        self, *, replace_default_backup_mount: bool = False
-    ) -> tuple[bool, list[asyncio.Task]]:
+    async def restore_mounts(self) -> tuple[bool, list[asyncio.Task]]:
         """Restore mount configurations from backup.
 
         Returns tuple of (success, list of mount activation tasks).
@@ -1023,90 +1023,55 @@ class Backup(JobGroup):
 
         try:
             mounts_data = await self.sys_run_in_executor(_load_mounts_data)
-        except (tarfile.TarError, OSError, json.JSONDecodeError) as err:
+        except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
+            _LOGGER.warning("Failed to read mounts tar from backup: %s", err)
+            return (False, [])
+        except (tarfile.TarError, json.JSONDecodeError) as err:
             _LOGGER.warning("Failed to read mounts data from backup: %s", err)
             return (False, [])
 
         if not mounts_data:
             return (True, [])
 
+        # Validate mounts data against schema
+        try:
+            mounts_data = SCHEMA_MOUNTS_CONFIG(mounts_data)
+        except vol.Invalid as err:
+            _LOGGER.warning("Invalid mounts data in backup: %s", err)
+            return (False, [])
+
         success = True
         mount_tasks: list[asyncio.Task] = []
-        restored_mounts: list[Mount] = []
 
         # Restore each mount configuration
         for mount_data in mounts_data.get(ATTR_MOUNTS, []):
-            mount_name = mount_data.get("name", "unknown")
-
-            # Skip if mount already exists
-            if mount_name in self.sys_mounts:
-                _LOGGER.info("Mount %s already exists, skipping restore", mount_name)
-                continue
+            mount_name = mount_data[ATTR_NAME]
 
             try:
-                # Create mount object from backup data
                 mount = Mount.from_dict(self.coresys, mount_data)
-                restored_mounts.append(mount)
+                mount_tasks.append(await self.sys_mounts.restore_mount(mount))
                 _LOGGER.info("Restored mount configuration: %s", mount_name)
-            except (KeyError, TypeError, ValueError, vol.Invalid) as err:
+            except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.warning("Failed to restore mount %s: %s", mount_name, err)
                 success = False
 
-        # Add restored mounts to manager's internal state
-        needs_save = False
-        if restored_mounts:
-            for mount in restored_mounts:
-                # Add to internal mounts dict without activating
-                # pylint: disable-next=protected-access
-                self.sys_mounts._mounts[mount.name] = mount  # noqa: SLF001
-            needs_save = True
-
-        # Restore default backup mount if specified
+        # Restore default backup mount if not already set
         default_mount_name = mounts_data.get(ATTR_DEFAULT_BACKUP_MOUNT)
-        if default_mount_name and default_mount_name in self.sys_mounts:
-            # Only set if current default is None or explicitly requested
-            if (
-                self.sys_mounts.default_backup_mount is None
-                or replace_default_backup_mount
-            ):
-                self.sys_mounts.default_backup_mount = self.sys_mounts.get(
-                    default_mount_name
-                )
-                _LOGGER.info("Restored default backup mount: %s", default_mount_name)
-                needs_save = True
-
-        # Save mount configuration to disk (once for all changes)
-        if needs_save:
-            await self.sys_mounts.save_data()
-
-        # Create tasks to activate each mount (non-blocking)
-        for mount in restored_mounts:
-            mount_tasks.append(
-                self.sys_create_task(self._activate_restored_mount(mount))
+        if (
+            default_mount_name
+            and default_mount_name in self.sys_mounts
+            and self.sys_mounts.default_backup_mount is None
+        ):
+            self.sys_mounts.default_backup_mount = self.sys_mounts.get(
+                default_mount_name
             )
+            _LOGGER.info("Restored default backup mount: %s", default_mount_name)
+
+        # Save mount configuration to disk
+        await self.sys_mounts.save_data()
 
         return (success, mount_tasks)
-
-    async def _activate_restored_mount(self, mount: Mount) -> None:
-        """Activate a restored mount. Logs errors but doesn't raise."""
-        try:
-            _LOGGER.info("Activating restored mount: %s", mount.name)
-            await mount.load()
-
-            # Handle bind mounts for media and share usage types
-            # This mirrors the behavior in MountManager.create_mount()
-            # pylint: disable=protected-access
-            if mount.usage == MountUsage.MEDIA:
-                await self.sys_mounts._bind_media(mount)  # noqa: SLF001
-            elif mount.usage == MountUsage.SHARE:
-                await self.sys_mounts._bind_share(mount)  # noqa: SLF001
-            # pylint: enable=protected-access
-
-            _LOGGER.info("Mount %s activated successfully", mount.name)
-        except MountError as err:
-            _LOGGER.warning(
-                "Failed to activate mount %s (config was restored, "
-                "mount may come online later): %s",
-                mount.name,
-                err,
-            )

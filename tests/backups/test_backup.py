@@ -293,14 +293,9 @@ async def test_store_mounts_no_mounts(coresys: CoreSys, tmp_path: Path):
     assert backup.has_mounts is False
 
 
-async def test_store_mounts_with_configured_mounts(
-    coresys: CoreSys, tmp_path: Path, mount_propagation, mock_is_mount
-):
+async def test_store_mounts_with_configured_mounts(coresys: CoreSys, tmp_path: Path):
     """Test storing mount configurations when mounts are configured."""
-    # Load mounts system
-    await coresys.mounts.load()
-
-    # Create a test mount
+    # Add a test mount directly to manager state (avoids needing dbus)
     mount = Mount.from_dict(
         coresys,
         {
@@ -311,7 +306,7 @@ async def test_store_mounts_with_configured_mounts(
             "share": "backup_share",
         },
     )
-    await coresys.mounts.create_mount(mount)
+    coresys.mounts._mounts[mount.name] = mount  # noqa: SLF001
 
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
