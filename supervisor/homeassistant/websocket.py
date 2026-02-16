@@ -146,7 +146,7 @@ class WSClient:
         try:
             client = await session.ws_connect(url, ssl=False)
         except aiohttp.client_exceptions.ClientConnectorError:
-            raise HomeAssistantWSError("Can't connect") from None
+            raise HomeAssistantWSConnectionError("Can't connect") from None
 
         hello_message = await client.receive_json()
 
@@ -200,10 +200,11 @@ class HomeAssistantWebSocket(CoreSysAttributes):
     async def _ensure_connected(self) -> None:
         """Ensure WebSocket connection is ready.
 
-        Raises HomeAssistantWSError if unable to connect.
+        Raises HomeAssistantWSConnectionError if unable to connect.
+        Raises HomeAssistantAuthError if authentication with Core fails.
         """
         if self.sys_core.state in CLOSING_STATES:
-            raise HomeAssistantWSError(
+            raise HomeAssistantWSConnectionError(
                 "WebSocket not available, system is shutting down"
             )
 
@@ -211,7 +212,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         # If we are already connected, we can avoid the check_api_state call
         # since it makes a new socket connection and we already have one.
         if not connected and not await self.sys_homeassistant.api.check_api_state():
-            raise HomeAssistantWSError(
+            raise HomeAssistantWSConnectionError(
                 "Can't connect to Home Assistant Core WebSocket, the API is not reachable"
             )
 

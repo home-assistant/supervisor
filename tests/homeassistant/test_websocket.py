@@ -8,7 +8,7 @@ import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HomeAssistantWSError
+from supervisor.exceptions import HomeAssistantWSConnectionError
 from supervisor.homeassistant.const import WSEvent, WSType
 
 
@@ -81,7 +81,7 @@ async def test_send_command_core_not_reachable(
     ha_ws_client.connected = False
     with (
         patch.object(coresys.homeassistant.api, "check_api_state", return_value=False),
-        pytest.raises(HomeAssistantWSError, match="not reachable"),
+        pytest.raises(HomeAssistantWSConnectionError, match="not reachable"),
     ):
         await coresys.homeassistant.websocket.async_send_command({"type": "test"})
 
@@ -102,7 +102,7 @@ async def test_fire_and_forget_core_not_reachable(
 async def test_send_command_during_shutdown(coresys: CoreSys, ha_ws_client: AsyncMock):
     """Test async_send_command raises during shutdown."""
     await coresys.core.set_state(CoreState.SHUTDOWN)
-    with pytest.raises(HomeAssistantWSError, match="shutting down"):
+    with pytest.raises(HomeAssistantWSConnectionError, match="shutting down"):
         await coresys.homeassistant.websocket.async_send_command({"type": "test"})
 
     ha_ws_client.async_send_command.assert_not_called()
