@@ -75,12 +75,6 @@ def status_code_must_be_empty_body(code: int) -> bool:
 class APIIngress(CoreSysAttributes):
     """Ingress view to handle add-on webui routing."""
 
-    _list_of_users: list[HomeAssistantUser]
-
-    def __init__(self) -> None:
-        """Initialize APIIngress."""
-        self._list_of_users = []
-
     def _extract_addon(self, request: web.Request) -> Addon:
         """Return addon, throw an exception it it doesn't exist."""
         token = request.match_info["token"]
@@ -309,13 +303,12 @@ class APIIngress(CoreSysAttributes):
     async def _find_user_by_id(self, user_id: str) -> HomeAssistantUser | None:
         """Find user object by the user's ID."""
         try:
-            self._list_of_users = await self.sys_homeassistant.list_users()
+            users = await self.sys_homeassistant.list_users()
         except HomeAssistantAPIError as err:
-            _LOGGER.error(
-                "%s error occurred while requesting list of users: %s", type(err), err
-            )
+            _LOGGER.warning("Could not fetch list of users: %s", err)
+            return None
 
-        return next((user for user in self._list_of_users if user.id == user_id), None)
+        return next((user for user in users if user.id == user_id), None)
 
 
 def _init_header(
