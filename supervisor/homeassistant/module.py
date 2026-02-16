@@ -572,8 +572,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
 
         Raises HomeAssistantWSError on WebSocket connection/communication failure.
         """
-        raw: list[dict[str, Any]] | None = await self.websocket.async_send_command(
+        raw: list[dict[str, Any]] = await self.websocket.async_send_command(
             {ATTR_TYPE: "config/auth/list"}
         )
-        assert raw is not None
         return [HomeAssistantUser.from_dict(data) for data in raw]

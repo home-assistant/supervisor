@@ -65,7 +65,7 @@ class WSClient:
         if not self._client.closed:
             await self._client.close()
 
-    async def async_send_command(self, message: dict[str, Any]) -> T | None:
+    async def async_send_command(self, message: dict[str, Any]) -> T:
         """Send a websocket message, and return the response."""
         self._message_id += 1
         message["id"] = self._message_id
@@ -251,10 +251,10 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 await self._client.close()
             self._client = None
 
-    async def async_send_command(self, message: dict[str, Any]) -> T | None:
+    async def async_send_command(self, message: dict[str, Any]) -> T:
         """Send a command and return the response.
 
-        Raises HomeAssistantWSError if unable to connect to Home Assistant Core.
+        Raises HomeAssistantWSError on WebSocket connection or communication failure.
         """
         await self._ensure_connected()
         # _ensure_connected guarantees self._client is set

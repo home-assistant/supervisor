@@ -59,9 +59,9 @@ async def test_load(
 
 
 async def test_list_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
-    """Test list users asserts on unexpected None response from Core."""
+    """Test list users raises on unexpected None response from Core."""
     ha_ws_client.async_send_command.return_value = None
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         await coresys.homeassistant.list_users()
 
 
