@@ -50,6 +50,7 @@ include-labels:
   - "build"
   - "ci"
   - "chore"
+  - "revert"
   - "dependencies"
 
 template: |
