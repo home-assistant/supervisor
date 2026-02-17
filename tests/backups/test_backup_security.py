@@ -167,7 +167,7 @@ async def test_homeassistant_restore_rejects_path_traversal(
     traversal_info.size = 9
     _create_tar_gz(tar_path, [traversal_info], {"../../etc/passwd": b"malicious"})
 
-    tar_file = SecureTarFile(tar_path, "r", gzip=True)
+    tar_file = SecureTarFile(tar_path, gzip=True)
     with pytest.raises(BackupInvalidError):
         await coresys.homeassistant.restore(tar_file)
 
@@ -181,7 +181,7 @@ async def test_addon_restore_rejects_path_traversal(
     traversal_info.size = 9
     _create_tar_gz(tar_path, [traversal_info], {"../../etc/passwd": b"malicious"})
 
-    tar_file = SecureTarFile(tar_path, "r", gzip=True)
+    tar_file = SecureTarFile(tar_path, gzip=True)
     with pytest.raises(BackupInvalidError):
         await install_addon_ssh.restore(tar_file)
 
@@ -203,7 +203,7 @@ async def test_addon_restore_rejects_symlink_escape(
         {"escape/evil.py": b"malicious"},
     )
 
-    tar_file = SecureTarFile(tar_path, "r", gzip=True)
+    tar_file = SecureTarFile(tar_path, gzip=True)
     with pytest.raises(BackupInvalidError):
         await install_addon_ssh.restore(tar_file)
 
