@@ -6,13 +6,12 @@ import logging
 from typing import Any, TypedDict, cast
 
 from .addons.addon import Addon
-from .const import ATTR_PASSWORD, ATTR_TYPE, ATTR_USERNAME, FILE_HASSIO_AUTH
+from .const import ATTR_PASSWORD, ATTR_USERNAME, FILE_HASSIO_AUTH, HomeAssistantUser
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (
     AuthHomeAssistantAPIValidationError,
     AuthInvalidNonStringValueError,
     AuthListUsersError,
-    AuthListUsersNoneResponseError,
     AuthPasswordResetError,
     HomeAssistantAPIError,
     HomeAssistantWSError,
@@ -157,21 +156,13 @@ class Auth(FileConfiguration, CoreSysAttributes):
 
         raise AuthPasswordResetError(user=username)
 
-    async def list_users(self) -> list[dict[str, Any]]:
+    async def list_users(self) -> list[HomeAssistantUser]:
         """List users on the Home Assistant instance."""
         try:
-            users: (
-                list[dict[str, Any]] | None
-            ) = await self.sys_homeassistant.websocket.async_send_command(
-                {ATTR_TYPE: "config/auth/list"}
-            )
+            return await self.sys_homeassistant.list_users()
         except HomeAssistantWSError as err:
             _LOGGER.error("Can't request listing users on Home Assistant: %s", err)
             raise AuthListUsersError() from err
-
-        if users is not None:
-            return users
-        raise AuthListUsersNoneResponseError(_LOGGER.error)
 
     @staticmethod
     def _rehash(value: str, salt2: str = "") -> str:

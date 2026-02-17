@@ -58,12 +58,11 @@ async def test_load(
     assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}
 
 
-async def test_get_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
-    """Test get users returning none does not fail."""
+async def test_list_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
+    """Test list users raises on unexpected None response from Core."""
     ha_ws_client.async_send_command.return_value = None
-    assert (
-        await coresys.homeassistant.get_users.__wrapped__(coresys.homeassistant) == []
-    )
+    with pytest.raises(TypeError):
+        await coresys.homeassistant.list_users()
 
 
 async def test_write_pulse_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
