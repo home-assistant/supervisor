@@ -12,13 +12,18 @@ import json
 import logging
 from pathlib import Path, PurePath
 import tarfile
-from tarfile import TarFile
 from tempfile import TemporaryDirectory
 import time
 from typing import Any, Self, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
+from securetar import (
+    AddFileError,
+    SecureTarArchive,
+    SecureTarFile,
+    atomic_contents_add,
+    secure_path,
+)
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -99,7 +104,7 @@ class Backup(JobGroup):
         )
         self._data: dict[str, Any] = data or {ATTR_SLUG: slug}
         self._tmp: TemporaryDirectory | None = None
-        self._outer_secure_tarfile: SecureTarFile | None = None
+        self._outer_secure_tarfile: SecureTarArchive | None = None
         self._password: str | None = None
         self._locations: dict[str | None, BackupLocation] = {
             location: BackupLocation(
@@ -364,9 +369,7 @@ class Backup(JobGroup):
                 test_tar_file = backup.extractfile(test_tar_name)
                 try:
                     with SecureTarFile(
-                        ending,  # Not used
                         gzip=self.compressed,
-                        mode="r",
                         fileobj=test_tar_file,
                         password=self._password,
                     ):
@@ -441,7 +444,7 @@ class Backup(JobGroup):
     async def create(self) -> AsyncGenerator[None]:
         """Create new backup file."""
 
-        def _open_outer_tarfile() -> tuple[SecureTarFile, tarfile.TarFile]:
+        def _open_outer_tarfile() -> SecureTarArchive:
             """Create and open outer tarfile."""
             if self.tarfile.is_file():
                 raise BackupFileExistError(
@@ -449,14 +452,15 @@ class Backup(JobGroup):
                     _LOGGER.error,
                 )
 
-            _outer_secure_tarfile = SecureTarFile(
+            _outer_secure_tarfile = SecureTarArchive(
                 self.tarfile,
                 "w",
-                gzip=False,
                 bufsize=BUF_SIZE,
+                create_version=2,
+                password=self._password,
             )
             try:
-                _outer_tarfile = _outer_secure_tarfile.open()
+                _outer_secure_tarfile.open()
             except PermissionError as ex:
                 raise BackupPermissionError(
                     f"Cannot open backup file {self.tarfile.as_posix()}, permission error!",
@@ -468,11 +472,9 @@ class Backup(JobGroup):
                     _LOGGER.error,
                 ) from ex
 
-            return _outer_secure_tarfile, _outer_tarfile
+            return _outer_secure_tarfile
 
-        outer_secure_tarfile, outer_tarfile = await self.sys_run_in_executor(
-            _open_outer_tarfile
-        )
+        outer_secure_tarfile = await self.sys_run_in_executor(_open_outer_tarfile)
         self._outer_secure_tarfile = outer_secure_tarfile
 
         def _close_outer_tarfile() -> int:
@@ -483,7 +485,7 @@ class Backup(JobGroup):
         try:
             yield
         finally:
-            await self._create_cleanup(outer_tarfile)
+            await self._create_cleanup(outer_secure_tarfile)
             size_bytes = await self.sys_run_in_executor(_close_outer_tarfile)
             self._locations[self.location].size_bytes = size_bytes
             self._outer_secure_tarfile = None
@@ -531,7 +533,7 @@ class Backup(JobGroup):
             if self._tmp:
                 await self.sys_run_in_executor(self._tmp.cleanup)
 
-    async def _create_cleanup(self, outer_tarfile: TarFile) -> None:
+    async def _create_cleanup(self, outer_archive: SecureTarArchive) -> None:
         """Cleanup after backup creation.
 
         Separate method to be called from create to ensure
@@ -554,7 +556,7 @@ class Backup(JobGroup):
             tar_info = tarfile.TarInfo(name="./backup.json")
             tar_info.size = len(raw_bytes)
             tar_info.mtime = int(time.time())
-            outer_tarfile.addfile(tar_info, fileobj=fileobj)
+            outer_archive.tar.addfile(tar_info, fileobj=fileobj)
 
         try:
             await self.sys_run_in_executor(_add_backup_json)
@@ -581,10 +583,9 @@ class Backup(JobGroup):
 
         tar_name = f"{slug}.tar{'.gz' if self.compressed else ''}"
 
-        addon_file = self._outer_secure_tarfile.create_inner_tar(
+        addon_file = self._outer_secure_tarfile.create_tar(
             f"./{tar_name}",
             gzip=self.compressed,
-            password=self._password,
         )
         # Take backup
         try:
@@ -634,7 +635,6 @@ class Backup(JobGroup):
         tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
         addon_file = SecureTarFile(
             Path(self._tmp.name, tar_name),
-            "r",
             gzip=self.compressed,
             bufsize=BUF_SIZE,
             password=self._password,
@@ -730,10 +730,9 @@ class Backup(JobGroup):
 
                 return False
 
-            with outer_secure_tarfile.create_inner_tar(
+            with outer_secure_tarfile.create_tar(
                 f"./{tar_name}",
                 gzip=self.compressed,
-                password=self._password,
             ) as tar_file:
                 atomic_contents_add(
                     tar_file,
@@ -793,7 +792,6 @@ class Backup(JobGroup):
                 _LOGGER.info("Restore folder %s", name)
                 with SecureTarFile(
                     tar_name,
-                    "r",
                     gzip=self.compressed,
                     bufsize=BUF_SIZE,
                     password=self._password,
@@ -854,10 +852,9 @@ class Backup(JobGroup):
 
         tar_name = f"homeassistant.tar{'.gz' if self.compressed else ''}"
         # Backup Home Assistant Core config directory
-        homeassistant_file = self._outer_secure_tarfile.create_inner_tar(
+        homeassistant_file = self._outer_secure_tarfile.create_tar(
             f"./{tar_name}",
             gzip=self.compressed,
-            password=self._password,
         )
 
         await self.sys_homeassistant.backup(homeassistant_file, exclude_database)
@@ -881,7 +878,6 @@ class Backup(JobGroup):
         )
         homeassistant_file = SecureTarFile(
             tar_name,
-            "r",
             gzip=self.compressed,
             bufsize=BUF_SIZE,
             password=self._password,
