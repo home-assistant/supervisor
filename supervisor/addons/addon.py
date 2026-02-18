@@ -1445,7 +1445,7 @@ class Addon(AddonModel):
             try:
                 with tar_file as backup:
                     # The tar filter rejects path traversal and absolute names,
-                    # aborting restore of potentially crafted backups.
+                    # aborting restore of malicious backups with such exploits.
                     backup.extractall(
                         path=tmp.name,
                         filter="tar",
