@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import dataclass
 import errno
-from functools import partial
 from http import HTTPStatus
 from io import BufferedReader, BufferedWriter
 from ipaddress import IPv4Address
@@ -25,8 +24,6 @@ from aiodocker.stream import Stream
 from aiodocker.types import JSONObject
 from aiohttp import ClientTimeout, UnixConnector
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-from docker import errors as docker_errors
-from docker.client import DockerClient
 import requests
 
 from ..const import (
@@ -270,8 +267,6 @@ class DockerAPI(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Docker base wrapper."""
         self.coresys = coresys
-        # We keep both until we can fully refactor to aiodocker
-        self._dockerpy: DockerClient | None = None
         self.docker: aiodocker.Docker = aiodocker.Docker(
             url="unix://localhost",  # dummy hostname for URL composition
             connector=UnixConnector(SOCKET_DOCKER.as_posix()),
@@ -289,28 +284,12 @@ class DockerAPI(CoreSysAttributes):
 
     async def post_init(self) -> Self:
         """Post init actions that must be done in event loop."""
-        self._dockerpy = await asyncio.get_running_loop().run_in_executor(
-            None,
-            partial(
-                DockerClient,
-                base_url=f"unix:/{SOCKET_DOCKER.as_posix()}",
-                version="auto",
-                timeout=900,
-            ),
-        )
         self._info = await DockerInfo.new(await self.docker.system.info())
         await self.config.read_data()
         self._network = await DockerNetwork(self.docker).post_init(
             self.config.enable_ipv6, self.config.mtu
         )
         return self
-
-    @property
-    def dockerpy(self) -> DockerClient:
-        """Get docker API client."""
-        if not self._dockerpy:
-            raise RuntimeError("Docker API Client not initialized!")
-        return self._dockerpy
 
     @property
     def network(self) -> DockerNetwork:
@@ -725,43 +704,40 @@ class DockerAPI(CoreSysAttributes):
     async def repair(self) -> None:
         """Repair local docker overlayfs2 issues."""
 
-        def repair_docker_blocking():
-            _LOGGER.info("Prune stale containers")
-            try:
-                output = self.dockerpy.api.prune_containers()
-                _LOGGER.debug("Containers prune: %s", output)
-            except docker_errors.APIError as err:
-                _LOGGER.warning("Error for containers prune: %s", err)
+        _LOGGER.info("Prune stale containers")
+        try:
+            output = await self.docker.containers.prune()
+            _LOGGER.debug("Containers prune: %s", output)
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error for containers prune: %s", err)
 
-            _LOGGER.info("Prune stale images")
-            try:
-                output = self.dockerpy.api.prune_images(filters={"dangling": False})
-                _LOGGER.debug("Images prune: %s", output)
-            except docker_errors.APIError as err:
-                _LOGGER.warning("Error for images prune: %s", err)
+        _LOGGER.info("Prune stale images")
+        try:
+            output = await self.images.prune(filters={"dangling": "false"})
+            _LOGGER.debug("Images prune: %s", output)
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error for images prune: %s", err)
 
-            _LOGGER.info("Prune stale builds")
-            try:
-                output = self.dockerpy.api.prune_builds()
-                _LOGGER.debug("Builds prune: %s", output)
-            except docker_errors.APIError as err:
-                _LOGGER.warning("Error for builds prune: %s", err)
+        _LOGGER.info("Prune stale builds")
+        try:
+            output = await self.images.prune_builds()
+            _LOGGER.debug("Builds prune: %s", output)
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error for builds prune: %s", err)
 
-            _LOGGER.info("Prune stale volumes")
-            try:
-                output = self.dockerpy.api.prune_volumes()
-                _LOGGER.debug("Volumes prune: %s", output)
-            except docker_errors.APIError as err:
-                _LOGGER.warning("Error for volumes prune: %s", err)
+        _LOGGER.info("Prune stale volumes")
+        try:
+            output = await self.docker.volumes.prune()
+            _LOGGER.debug("Volumes prune: %s", output)
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error for volumes prune: %s", err)
 
-            _LOGGER.info("Prune stale networks")
-            try:
-                output = self.dockerpy.api.prune_networks()
-                _LOGGER.debug("Networks prune: %s", output)
-            except docker_errors.APIError as err:
-                _LOGGER.warning("Error for networks prune: %s", err)
-
-        await self.sys_run_in_executor(repair_docker_blocking)
+        _LOGGER.info("Prune stale networks")
+        try:
+            output = await self.docker.networks.prune()
+            _LOGGER.debug("Networks prune: %s", output)
+        except aiodocker.DockerError as err:
+            _LOGGER.warning("Error for networks prune: %s", err)
 
         _LOGGER.info("Fix stale container on hassio network")
         try:

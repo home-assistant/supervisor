@@ -9,7 +9,6 @@ import aiodocker
 from aiodocker.containers import DockerContainer
 from aiodocker.networks import DockerNetwork
 from awesomeversion import AwesomeVersion
-from docker.errors import APIError
 import pytest
 
 from supervisor.const import DNS_SUFFIX, ENV_SUPERVISOR_CPU_RT
@@ -184,14 +183,6 @@ async def test_run_command_custom_stdout_stderr(
 
 async def test_run_command_with_mounts(docker: DockerAPI):
     """Test command execution with mounts are correctly converted."""
-    # Mock container and its methods
-    mock_container = MagicMock()
-    mock_container.wait.return_value = {"StatusCode": 0}
-    mock_container.logs.return_value = ["output"]
-
-    # Mock docker containers.run to return our mock container
-    docker.dockerpy.containers.run.return_value = mock_container
-
     # Create test mounts
     mounts = [
         DockerMount(
@@ -456,13 +447,13 @@ async def test_repair(
 
     await coresys.docker.repair()
 
-    coresys.docker.dockerpy.api.prune_containers.assert_called_once()
-    coresys.docker.dockerpy.api.prune_images.assert_called_once_with(
-        filters={"dangling": False}
+    coresys.docker.docker.containers.prune.assert_called_once()
+    coresys.docker.docker.images.prune.assert_called_once_with(
+        filters={"dangling": "false"}
     )
-    coresys.docker.dockerpy.api.prune_builds.assert_called_once()
-    coresys.docker.dockerpy.api.prune_volumes.assert_called_once()
-    coresys.docker.dockerpy.api.prune_networks.assert_called_once()
+    coresys.docker.docker.images.prune_builds.assert_called_once()
+    coresys.docker.docker.volumes.prune.assert_called_once()
+    coresys.docker.docker.networks.prune.assert_called_once()
     hassio.disconnect.assert_called_once_with({"Container": "corrupt", "Force": True})
     host.disconnect.assert_not_called()
     assert "Docker fatal error on container fail on hassio" in caplog.text
@@ -470,24 +461,27 @@ async def test_repair(
 
 async def test_repair_failures(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test repair proceeds best it can through failures."""
-    coresys.docker.dockerpy.api.prune_containers.side_effect = APIError("fail")
-    coresys.docker.dockerpy.api.prune_images.side_effect = APIError("fail")
-    coresys.docker.dockerpy.api.prune_builds.side_effect = APIError("fail")
-    coresys.docker.dockerpy.api.prune_volumes.side_effect = APIError("fail")
-    coresys.docker.dockerpy.api.prune_networks.side_effect = APIError("fail")
-    coresys.docker.docker.networks.get.side_effect = err = aiodocker.DockerError(
-        HTTPStatus.NOT_FOUND, {"message": "missing"}
+    fail_err = aiodocker.DockerError(
+        HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "fail"}
+    )
+    coresys.docker.docker.containers.prune.side_effect = fail_err
+    coresys.docker.docker.images.prune.side_effect = fail_err
+    coresys.docker.docker.images.prune_builds.side_effect = fail_err
+    coresys.docker.docker.volumes.prune.side_effect = fail_err
+    coresys.docker.docker.networks.prune.side_effect = fail_err
+    coresys.docker.docker.networks.get.side_effect = missing_err = (
+        aiodocker.DockerError(HTTPStatus.NOT_FOUND, {"message": "missing"})
     )
 
     await coresys.docker.repair()
 
-    assert "Error for containers prune: fail" in caplog.text
-    assert "Error for images prune: fail" in caplog.text
-    assert "Error for builds prune: fail" in caplog.text
-    assert "Error for volumes prune: fail" in caplog.text
-    assert "Error for networks prune: fail" in caplog.text
-    assert f"Error for networks hassio prune: {err!s}" in caplog.text
-    assert f"Error for networks host prune: {err!s}" in caplog.text
+    assert f"Error for containers prune: {fail_err!s}" in caplog.text
+    assert f"Error for images prune: {fail_err!s}" in caplog.text
+    assert f"Error for builds prune: {fail_err!s}" in caplog.text
+    assert f"Error for volumes prune: {fail_err!s}" in caplog.text
+    assert f"Error for networks prune: {fail_err!s}" in caplog.text
+    assert f"Error for networks hassio prune: {missing_err!s}" in caplog.text
+    assert f"Error for networks host prune: {missing_err!s}" in caplog.text
 
 
 @pytest.mark.parametrize("log_starter", [("Loaded image ID"), ("Loaded image")])

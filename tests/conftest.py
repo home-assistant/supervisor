@@ -15,6 +15,7 @@ from aiodocker.events import DockerEvents
 from aiodocker.execs import Exec
 from aiodocker.networks import DockerNetwork, DockerNetworks
 from aiodocker.system import DockerSystem
+from aiodocker.volumes import DockerVolumes
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
@@ -160,7 +161,6 @@ async def docker() -> DockerAPI:
     }
 
     with (
-        patch("supervisor.docker.manager.DockerClient", return_value=MagicMock()),
         patch(
             "supervisor.docker.manager.aiodocker.Docker",
             return_value=(
@@ -170,6 +170,7 @@ async def docker() -> DockerAPI:
                     containers=(docker_containers := MagicMock(spec=DockerContainers)),
                     events=(docker_events := MagicMock(spec=DockerEvents)),
                     system=(docker_system := MagicMock(spec=DockerSystem)),
+                    volumes=MagicMock(spec=DockerVolumes),
                 )
             ),
         ),
