@@ -4,6 +4,12 @@ import io
 from pathlib import Path
 import tarfile
 
+import pytest
+
+from supervisor.backups.backup import Backup
+from supervisor.coresys import CoreSys
+from supervisor.exceptions import BackupInvalidError
+
 
 def _create_tar_gz(
     path: Path,
@@ -31,13 +37,11 @@ def test_path_traversal_rejected(tmp_path: Path):
 
     dest = tmp_path / "out"
     dest.mkdir()
-    with tarfile.open(tar_path, "r:gz") as tar:
-        try:
-            tar.extractall(path=dest, filter="tar")
-        except tarfile.OutsideDestinationError:
-            pass
-        else:
-            raise AssertionError("Expected OutsideDestinationError")
+    with (
+        tarfile.open(tar_path, "r:gz") as tar,
+        pytest.raises(tarfile.OutsideDestinationError),
+    ):
+        tar.extractall(path=dest, filter="tar")
 
 
 def test_symlink_write_through_rejected(tmp_path: Path):
@@ -61,13 +65,11 @@ def test_symlink_write_through_rejected(tmp_path: Path):
 
     dest = tmp_path / "out"
     dest.mkdir()
-    with tarfile.open(tar_path, "r:gz") as tar:
-        try:
-            tar.extractall(path=dest, filter="tar")
-        except tarfile.OutsideDestinationError:
-            pass
-        else:
-            raise AssertionError("Expected OutsideDestinationError")
+    with (
+        tarfile.open(tar_path, "r:gz") as tar,
+        pytest.raises(tarfile.OutsideDestinationError),
+    ):
+        tar.extractall(path=dest, filter="tar")
 
     # The evil file must not exist outside the destination
     assert not (tmp_path / "outside" / "evil.py").exists()
@@ -137,3 +139,17 @@ def test_uid_gid_preserved(tmp_path: Path):
             filtered = tarfile.tar_filter(member, str(dest))
             assert filtered.uid == 1000
             assert filtered.gid == 1000
+
+
+async def test_backup_open_rejects_path_traversal(coresys: CoreSys, tmp_path: Path):
+    """Test that Backup.open() raises BackupInvalidError for path traversal."""
+    tar_path = tmp_path / "malicious.tar"
+    traversal_info = tarfile.TarInfo(name="../../etc/passwd")
+    traversal_info.size = 9
+    with tarfile.open(tar_path, "w:") as tar:
+        tar.addfile(traversal_info, io.BytesIO(b"malicious"))
+
+    backup = Backup(coresys, tar_path, "test", None)
+    with pytest.raises(BackupInvalidError):
+        async with backup.open(None):
+            pass
