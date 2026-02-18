@@ -870,3 +870,43 @@ async def test_install_progress_containerd_snapshot(
         job_event(100),
         job_event(100, True),
     ]
+
+
+@pytest.mark.parametrize(
+    ("progress", "expected_log"),
+    [
+        (0, "Pulling test:1.2.3 still in progress"),
+        (45.0, "Pulling test:1.2.3, 45%"),
+    ],
+)
+async def test_install_logs_progress_periodically(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+    caplog: pytest.LogCaptureFixture,
+    progress: float,
+    expected_log: str,
+):
+    """Test install logs progress periodically during image pull."""
+    original_wait_for = asyncio.wait_for
+    fired = False
+
+    async def mock_wait_for(coro, *, timeout=None):
+        """Immediately timeout once for the progress log wait."""
+        nonlocal fired
+        if timeout == 15 and not fired:
+            fired = True
+            coro.close()
+            # Set desired progress on the job created by @Job decorator
+            if progress:
+                for job in coresys.jobs.jobs:
+                    if job.name == "docker_interface_install":
+                        job.progress = progress
+                        break
+            await asyncio.sleep(0)
+            raise TimeoutError
+        return await original_wait_for(coro, timeout=timeout)
+
+    with patch("supervisor.docker.interface.asyncio.wait_for", new=mock_wait_for):
+        await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
+
+    assert expected_log in caplog.text

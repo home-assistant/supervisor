@@ -184,51 +184,26 @@ class HomeAssistantCore(JobGroup):
     async def install(self) -> None:
         """Install Home Assistant Core."""
         _LOGGER.info("Home Assistant setup")
-        stop_progress_log = asyncio.Event()
+        while True:
+            # read homeassistant tag and install it
+            if not self.sys_homeassistant.latest_version:
+                await self.sys_updater.reload()
 
-        async def _periodic_progress_log() -> None:
-            """Log installation progress periodically for user visibility."""
-            while not stop_progress_log.is_set():
+            if to_version := self.sys_homeassistant.latest_version:
                 try:
-                    await asyncio.wait_for(stop_progress_log.wait(), timeout=15)
-                except TimeoutError:
-                    if (job := self.instance.active_job) and job.progress:
-                        _LOGGER.info(
-                            "Downloading Home Assistant Core image, %d%%",
-                            int(job.progress),
-                        )
-                    else:
-                        _LOGGER.info("Home Assistant Core installation in progress")
+                    await self.instance.update(
+                        to_version,
+                        image=self.sys_updater.image_homeassistant,
+                    )
+                    self.sys_homeassistant.version = self.instance.version or to_version
+                    break
+                except (DockerError, JobException):
+                    pass
+                except Exception as err:  # pylint: disable=broad-except
+                    await async_capture_exception(err)
 
-        progress_task = self.sys_create_task(_periodic_progress_log())
-        try:
-            while True:
-                # read homeassistant tag and install it
-                if not self.sys_homeassistant.latest_version:
-                    await self.sys_updater.reload()
-
-                if to_version := self.sys_homeassistant.latest_version:
-                    try:
-                        await self.instance.update(
-                            to_version,
-                            image=self.sys_updater.image_homeassistant,
-                        )
-                        self.sys_homeassistant.version = (
-                            self.instance.version or to_version
-                        )
-                        break
-                    except (DockerError, JobException):
-                        pass
-                    except Exception as err:  # pylint: disable=broad-except
-                        await async_capture_exception(err)
-
-                _LOGGER.warning(
-                    "Error on Home Assistant installation. Retrying in 30sec"
-                )
-                await asyncio.sleep(30)
-        finally:
-            stop_progress_log.set()
-            await progress_task
+            _LOGGER.warning("Error on Home Assistant installation. Retrying in 30sec")
+            await asyncio.sleep(30)
 
         _LOGGER.info("Home Assistant docker now installed")
         self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
