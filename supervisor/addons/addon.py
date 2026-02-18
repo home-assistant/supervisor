@@ -1461,11 +1461,13 @@ class Addon(AddonModel):
 
         try:
             tmp, data = await self.sys_run_in_executor(_extract_tarfile)
-        except tarfile.TarError as err:
+        except tarfile.FilterError as err:
             raise BackupInvalidError(
                 f"Can't extract backup tarfile for {self.slug}: {err}",
                 _LOGGER.error,
             ) from err
+        except tarfile.TarError as err:
+            raise BackupRestoreUnknownError() from err
         except ConfigurationFileError as err:
             raise AddonUnknownError(addon=self.slug) from err
 

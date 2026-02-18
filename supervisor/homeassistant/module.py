@@ -40,6 +40,7 @@ from ..const import (
 )
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
+    BackupInvalidError,
     ConfigurationFileError,
     HomeAssistantBackupError,
     HomeAssistantError,
@@ -501,6 +502,10 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
                             path=temp_path,
                             filter="tar",
                         )
+                except tarfile.FilterError as err:
+                    raise BackupInvalidError(
+                        f"Invalid tarfile {tar_file}: {err}", _LOGGER.error
+                    ) from err
                 except tarfile.TarError as err:
                     raise HomeAssistantError(
                         f"Can't read tarfile {tar_file}: {err}", _LOGGER.error

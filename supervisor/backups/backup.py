@@ -520,8 +520,13 @@ class Backup(JobGroup):
                         path=tmp.name,
                         filter="tar",
                     )
-            except tarfile.TarError as err:
+            except tarfile.FilterError as err:
                 raise BackupInvalidError(
+                    f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
+                    _LOGGER.error,
+                ) from err
+            except tarfile.TarError as err:
+                raise BackupError(
                     f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
                     _LOGGER.error,
                 ) from err
@@ -812,8 +817,12 @@ class Backup(JobGroup):
                         filter="tar",
                     )
                 _LOGGER.info("Restore folder %s done", name)
-            except (tarfile.TarError, OSError) as err:
+            except tarfile.FilterError as err:
                 raise BackupInvalidError(
+                    f"Can't restore folder {name}: {err}", _LOGGER.warning
+                ) from err
+            except (tarfile.TarError, OSError) as err:
+                raise BackupError(
                     f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
 
