@@ -512,13 +512,19 @@ class Backup(JobGroup):
                 )
             tmp = TemporaryDirectory(dir=str(backup_tarfile.parent))
 
-            with tarfile.open(backup_tarfile, "r:") as tar:
-                # The tar filter rejects path traversal and absolute names,
-                # aborting restore of potentially crafted backups.
-                tar.extractall(
-                    path=tmp.name,
-                    filter="tar",
-                )
+            try:
+                with tarfile.open(backup_tarfile, "r:") as tar:
+                    # The tar filter rejects path traversal and absolute names,
+                    # aborting restore of potentially crafted backups.
+                    tar.extractall(
+                        path=tmp.name,
+                        filter="tar",
+                    )
+            except tarfile.TarError as err:
+                raise BackupInvalidError(
+                    f"Can't read backup tarfile {backup_tarfile.as_posix()}: {err}",
+                    _LOGGER.error,
+                ) from err
 
             return tmp
 
@@ -807,7 +813,7 @@ class Backup(JobGroup):
                     )
                 _LOGGER.info("Restore folder %s done", name)
             except (tarfile.TarError, OSError) as err:
-                raise BackupError(
+                raise BackupInvalidError(
                     f"Can't restore folder {name}: {err}", _LOGGER.warning
                 ) from err
 

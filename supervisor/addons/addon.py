@@ -76,6 +76,7 @@ from ..exceptions import (
     AddonsError,
     AddonsJobError,
     AddonUnknownError,
+    BackupInvalidError,
     BackupRestoreUnknownError,
     ConfigurationFileError,
     DockerBuildError,
@@ -1461,8 +1462,10 @@ class Addon(AddonModel):
         try:
             tmp, data = await self.sys_run_in_executor(_extract_tarfile)
         except tarfile.TarError as err:
-            _LOGGER.error("Can't extract backup tarfile for %s: %s", self.slug, err)
-            raise BackupRestoreUnknownError() from err
+            raise BackupInvalidError(
+                f"Can't extract backup tarfile for {self.slug}: {err}",
+                _LOGGER.error,
+            ) from err
         except ConfigurationFileError as err:
             raise AddonUnknownError(addon=self.slug) from err
 
