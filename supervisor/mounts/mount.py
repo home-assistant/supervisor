@@ -215,10 +215,10 @@ class Mount(CoreSysAttributes, ABC):
         await self._update_state(unit)
 
         # If active, dismiss corresponding failed mount issue if found
-        if (
-            mounted := await self.is_mounted()
-        ) and self.failed_issue in self.sys_resolution.issues:
-            self.sys_resolution.dismiss_issue(self.failed_issue)
+        if (mounted := await self.is_mounted()) and (
+            issue := self.sys_resolution.get_issue_if_present(self.failed_issue)
+        ):
+            self.sys_resolution.dismiss_issue(issue)
 
         return mounted
 
@@ -361,8 +361,8 @@ class Mount(CoreSysAttributes, ABC):
                 await self._restart()
 
         # If it is mounted now, dismiss corresponding issue if present
-        if self.failed_issue in self.sys_resolution.issues:
-            self.sys_resolution.dismiss_issue(self.failed_issue)
+        if issue := self.sys_resolution.get_issue_if_present(self.failed_issue):
+            self.sys_resolution.dismiss_issue(issue)
 
     async def _restart(self) -> None:
         """Restart mount unit to re-mount."""

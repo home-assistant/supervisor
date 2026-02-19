@@ -1,5 +1,6 @@
 """Test Resolution API."""
 
+from http import HTTPStatus
 from unittest.mock import AsyncMock
 
 from aiohttp.test_utils import TestClient
@@ -46,7 +47,7 @@ async def test_api_resolution_base(coresys: CoreSys, api_client: TestClient):
 async def test_api_resolution_dismiss_suggestion(
     coresys: CoreSys, api_client: TestClient
 ):
-    """Test resolution manager suggestion apply api."""
+    """Test resolution manager dismiss suggestion api."""
     coresys.resolution.add_suggestion(
         clear_backup := Suggestion(SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM)
     )
@@ -189,7 +190,9 @@ async def test_issue_not_found(api_client: TestClient, method: str, url: str):
     resp = await api_client.request(method, url)
     assert resp.status == 404
     body = await resp.json()
-    assert body["message"] == "The supplied UUID is not a valid issue"
+    assert body["message"] == "Issue bad does not exist"
+    assert body["error_key"] == "resolution_issue_not_found_error"
+    assert body["extra_fields"] == {"uuid": "bad"}
 
 
 @pytest.mark.parametrize(
@@ -201,7 +204,9 @@ async def test_suggestion_not_found(api_client: TestClient, method: str, url: st
     resp = await api_client.request(method, url)
     assert resp.status == 404
     body = await resp.json()
-    assert body["message"] == "The supplied UUID is not a valid suggestion"
+    assert body["message"] == "Suggestion bad does not exist"
+    assert body["error_key"] == "resolution_suggestion_not_found_error"
+    assert body["extra_fields"] == {"uuid": "bad"}
 
 
 @pytest.mark.parametrize(
@@ -211,6 +216,8 @@ async def test_suggestion_not_found(api_client: TestClient, method: str, url: st
 async def test_check_not_found(api_client: TestClient, method: str, url: str):
     """Test check not found error."""
     resp = await api_client.request(method, url)
-    assert resp.status == 404
+    assert resp.status == HTTPStatus.NOT_FOUND
     body = await resp.json()
-    assert body["message"] == "The supplied check slug is not available"
+    assert body["message"] == "Check 'bad' does not exist"
+    assert body["error_key"] == "resolution_check_not_found_error"
+    assert body["extra_fields"] == {"check": "bad"}
