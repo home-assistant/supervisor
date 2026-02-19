@@ -20,7 +20,7 @@ from typing import Any, Final, cast
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from deepmerge import Merger
-from securetar import AddFileError, SecureTarFile, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -76,6 +76,7 @@ from ..exceptions import (
     AddonsError,
     AddonsJobError,
     AddonUnknownError,
+    BackupInvalidError,
     BackupRestoreUnknownError,
     ConfigurationFileError,
     DockerBuildError,
@@ -1444,10 +1445,11 @@ class Addon(AddonModel):
             tmp = TemporaryDirectory(dir=self.sys_config.path_tmp)
             try:
                 with tar_file as backup:
+                    # The tar filter rejects path traversal and absolute names,
+                    # aborting restore of malicious backups with such exploits.
                     backup.extractall(
                         path=tmp.name,
-                        members=secure_path(backup),
-                        filter="fully_trusted",
+                        filter="tar",
                     )
 
                 data = read_json_file(Path(tmp.name, "addon.json"))
@@ -1459,8 +1461,12 @@ class Addon(AddonModel):
 
         try:
             tmp, data = await self.sys_run_in_executor(_extract_tarfile)
+        except tarfile.FilterError as err:
+            raise BackupInvalidError(
+                f"Can't extract backup tarfile for {self.slug}: {err}",
+                _LOGGER.error,
+            ) from err
         except tarfile.TarError as err:
-            _LOGGER.error("Can't extract backup tarfile for %s: %s", self.slug, err)
             raise BackupRestoreUnknownError() from err
         except ConfigurationFileError as err:
             raise AddonUnknownError(addon=self.slug) from err
