@@ -43,7 +43,9 @@ async def test_reading_addon_files_error(coresys: CoreSys):
         assert reset_repo in coresys.resolution.suggestions
         assert coresys.core.healthy is True
 
-        coresys.resolution.dismiss_issue(corrupt_repo)
+        coresys.resolution.dismiss_issue(
+            coresys.resolution.get_issue_if_present(corrupt_repo)
+        )
         err.errno = errno.EBADMSG
         assert (await coresys.store.data._find_addon_configs(Path("test"), {})) is None
         assert corrupt_repo in coresys.resolution.issues

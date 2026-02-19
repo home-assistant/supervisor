@@ -19,7 +19,6 @@ from ..const import (
     ATTR_UNSUPPORTED,
 )
 from ..coresys import CoreSysAttributes
-from ..exceptions import APINotFound, ResolutionNotFound
 from ..resolution.checks.base import CheckBase
 from ..resolution.data import Issue, Suggestion
 from .utils import api_process, api_validate
@@ -32,26 +31,17 @@ class APIResoulution(CoreSysAttributes):
 
     def _extract_issue(self, request: web.Request) -> Issue:
         """Extract issue from request or raise."""
-        try:
-            return self.sys_resolution.get_issue_by_id(request.match_info["issue"])
-        except ResolutionNotFound:
-            raise APINotFound("The supplied UUID is not a valid issue") from None
+        return self.sys_resolution.get_issue_by_id(request.match_info["issue"])
 
     def _extract_suggestion(self, request: web.Request) -> Suggestion:
         """Extract suggestion from request or raise."""
-        try:
-            return self.sys_resolution.get_suggestion_by_id(
-                request.match_info["suggestion"]
-            )
-        except ResolutionNotFound:
-            raise APINotFound("The supplied UUID is not a valid suggestion") from None
+        return self.sys_resolution.get_suggestion_by_id(
+            request.match_info["suggestion"]
+        )
 
     def _extract_check(self, request: web.Request) -> CheckBase:
         """Extract check from request or raise."""
-        try:
-            return self.sys_resolution.check.get(request.match_info["check"])
-        except ResolutionNotFound:
-            raise APINotFound("The supplied check slug is not available") from None
+        return self.sys_resolution.check.get(request.match_info["check"])
 
     def _generate_suggestion_information(self, suggestion: Suggestion):
         """Generate suggestion information for response."""
