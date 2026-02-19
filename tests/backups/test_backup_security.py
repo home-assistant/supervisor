@@ -5,6 +5,7 @@ from pathlib import Path
 import tarfile
 
 import pytest
+from securetar import SecureTarFile
 
 from supervisor.backups.backup import Backup
 from supervisor.coresys import CoreSys
@@ -153,3 +154,17 @@ async def test_backup_open_rejects_path_traversal(coresys: CoreSys, tmp_path: Pa
     with pytest.raises(BackupInvalidError):
         async with backup.open(None):
             pass
+
+
+async def test_homeassistant_restore_rejects_path_traversal(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test that Home Assistant restore raises BackupInvalidError for path traversal."""
+    tar_path = tmp_supervisor_data / "homeassistant.tar.gz"
+    traversal_info = tarfile.TarInfo(name="../../etc/passwd")
+    traversal_info.size = 9
+    _create_tar_gz(tar_path, [traversal_info], {"../../etc/passwd": b"malicious"})
+
+    tar_file = SecureTarFile(tar_path, "r", gzip=True)
+    with pytest.raises(BackupInvalidError):
+        await coresys.homeassistant.restore(tar_file)
