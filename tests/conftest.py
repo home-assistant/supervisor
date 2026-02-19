@@ -247,6 +247,7 @@ async def docker() -> DockerAPI:
             MagicMock(create_task=asyncio.get_running_loop().create_task)
         ).post_init()
         docker_obj.config._data = {"registries": {}}
+        docker_obj.coresys.plugins.dns.search_domains = []
         await docker_obj.load()
 
         # Mock manifest fetcher to return None (falls back to count-based progress)

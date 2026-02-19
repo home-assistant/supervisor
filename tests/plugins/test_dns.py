@@ -100,6 +100,7 @@ async def test_reset(coresys: CoreSys):
     """Test reset returns dns plugin to defaults."""
     coresys.plugins.dns.servers = ["dns://1.1.1.1", "dns://8.8.8.8"]
     coresys.plugins.dns.fallback = False
+    coresys.plugins.dns.search_domains = ["example.com"]
     coresys.plugins.dns._loop = True  # pylint: disable=protected-access
     assert len(coresys.apps.installed) == 0
 
@@ -110,6 +111,7 @@ async def test_reset(coresys: CoreSys):
         await coresys.plugins.dns.reset()
 
         assert coresys.plugins.dns.servers == []
+        assert coresys.plugins.dns.search_domains == []
         assert coresys.plugins.dns.fallback is True
         assert coresys.plugins.dns._loop is False  # pylint: disable=protected-access
         unlink.assert_called_once()
@@ -499,3 +501,54 @@ async def test_dns_restart_triggers_connectivity_check(coresys: CoreSys):
 
         # Verify sleep was not called for other containers
         mock_sleep.assert_not_called()
+
+
+async def test_write_resolv_default_search_domain(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    container,
+):
+    """Test resolv.conf uses DNS_SUFFIX when no search_domains are configured."""
+    assert coresys.plugins.dns.search_domains == []
+
+    written: list[str] = []
+
+    def capture_write(data: str) -> None:
+        written.append(data)
+
+    with (
+        patch.object(DockerDNS, "attach"),
+        patch.object(DockerDNS, "is_running", return_value=True),
+        patch("supervisor.plugins.dns.Path.write_text", side_effect=capture_write),
+    ):
+        await coresys.plugins.dns.load()
+
+    assert written
+    assert "search local.hass.io" in written[-1]
+
+
+async def test_write_resolv_custom_search_domains(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    container,
+):
+    """Test resolv.conf uses configured search_domains when set."""
+    coresys.plugins.dns.search_domains = ["example.com", "local.hass.io"]
+
+    written: list[str] = []
+
+    def capture_write(data: str) -> None:
+        written.append(data)
+
+    with (
+        patch.object(DockerDNS, "attach"),
+        patch.object(DockerDNS, "is_running", return_value=True),
+        patch("supervisor.plugins.dns.Path.write_text", side_effect=capture_write),
+    ):
+        await coresys.plugins.dns.load()
+
+    assert written
+    assert "search example.com local.hass.io" in written[-1]
+    assert "search local.hass.io" not in written[-1].replace(
+        "search example.com local.hass.io", ""
+    )
