@@ -964,6 +964,30 @@ class ResolutionFixupJobError(ResolutionFixupError, JobException):
     """Raise on job error."""
 
 
+class ResolutionIssueNotFound(ResolutionNotFound, APINotFound):
+    """Raise if issue does not exist."""
+
+    error_key = "resolution_issue_not_found_error"
+    message_template = "Issue {uuid} does not exist in resolution manager"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, uuid: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"uuid": uuid}
+        super().__init__(None, logger)
+
+
+class ResolutionSuggestionNotFound(ResolutionNotFound, APINotFound):
+    """Raise if suggestion does not exist."""
+
+    error_key = "resolution_suggestion_not_found_error"
+    message_template = "Suggestion {uuid} does not exist in resolution manager"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, uuid: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"uuid": uuid}
+        super().__init__(None, logger)
+
+
 # Store
 
 

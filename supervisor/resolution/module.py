@@ -7,7 +7,11 @@ import attr
 
 from ..bus import EventListener
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import ResolutionError, ResolutionNotFound
+from ..exceptions import (
+    ResolutionError,
+    ResolutionIssueNotFound,
+    ResolutionSuggestionNotFound,
+)
 from ..homeassistant.const import WSEvent
 from ..utils.common import FileConfiguration
 from .check import ResolutionCheck
@@ -165,21 +169,37 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             ]
         }
 
-    def get_suggestion(self, uuid: str) -> Suggestion:
+    def get_suggestion_by_id(self, uuid: str) -> Suggestion:
         """Return suggestion with uuid."""
         for suggestion in self._suggestions:
             if suggestion.uuid != uuid:
                 continue
             return suggestion
-        raise ResolutionNotFound()
+        raise ResolutionSuggestionNotFound(uuid=uuid)
 
-    def get_issue(self, uuid: str) -> Issue:
+    def get_suggestion_if_present(self, suggestion: Suggestion) -> Suggestion | None:
+        """Get suggestion matching provided one if it exists in resolution manager."""
+        for s in self._suggestions:
+            if s != suggestion:
+                continue
+            return s
+        return None
+
+    def get_issue_by_id(self, uuid: str) -> Issue:
         """Return issue with uuid."""
         for issue in self._issues:
             if issue.uuid != uuid:
                 continue
             return issue
-        raise ResolutionNotFound()
+        raise ResolutionIssueNotFound(uuid=uuid)
+
+    def get_issue_if_present(self, issue: Issue) -> Issue | None:
+        """Get issue matching provided one if it exists in resolution manager."""
+        for i in self._issues:
+            if i != issue:
+                continue
+            return i
+        return None
 
     def create_issue(
         self,
@@ -234,20 +254,13 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     async def apply_suggestion(self, suggestion: Suggestion) -> None:
         """Apply suggested action."""
-        if suggestion not in self._suggestions:
-            raise ResolutionError(
-                f"Suggestion {suggestion.uuid} is not valid", _LOGGER.warning
-            )
-
+        suggestion = self.get_suggestion_by_id(suggestion.uuid)
         await self.fixup.apply_fixup(suggestion)
         await self.healthcheck()
 
     def dismiss_suggestion(self, suggestion: Suggestion) -> None:
         """Dismiss suggested action."""
-        if suggestion not in self._suggestions:
-            raise ResolutionError(
-                f"The UUID {suggestion.uuid} is not valid suggestion", _LOGGER.warning
-            )
+        suggestion = self.get_suggestion_by_id(suggestion.uuid)
         self._suggestions.remove(suggestion)
 
         # Remove event listeners if present
@@ -263,10 +276,7 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
     def dismiss_issue(self, issue: Issue) -> None:
         """Dismiss suggested action."""
-        if issue not in self._issues:
-            raise ResolutionError(
-                f"The UUID {issue.uuid} is not a valid issue", _LOGGER.warning
-            )
+        issue = self.get_issue_by_id(issue.uuid)
         self._issues.remove(issue)
 
         # Event on issue removal

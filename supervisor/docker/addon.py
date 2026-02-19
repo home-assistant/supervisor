@@ -874,11 +874,12 @@ class DockerAddon(DockerInterface):
         await super().stop(remove_container)
 
         # If there is a device access issue and the container is removed, clear it
-        if (
-            remove_container
-            and self.addon.device_access_missing_issue in self.sys_resolution.issues
+        if remove_container and (
+            issue := self.sys_resolution.get_issue_if_present(
+                self.addon.device_access_missing_issue
+            )
         ):
-            self.sys_resolution.dismiss_issue(self.addon.device_access_missing_issue)
+            self.sys_resolution.dismiss_issue(issue)
 
     @Job(
         name="docker_addon_hardware_events",
