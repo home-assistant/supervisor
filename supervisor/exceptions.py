@@ -964,11 +964,25 @@ class ResolutionFixupJobError(ResolutionFixupError, JobException):
     """Raise on job error."""
 
 
-class ResolutionIssueNotFound(ResolutionNotFound, APINotFound):
+class ResolutionCheckNotFound(ResolutionNotFound, APINotFound):  # pylint: disable=too-many-ancestors
+    """Raise if check does not exist."""
+
+    error_key = "resolution_check_not_found_error"
+    message_template = "Check '{check}' does not exist"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, check: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"check": check}
+        super().__init__(None, logger)
+
+
+class ResolutionIssueNotFound(ResolutionNotFound, APINotFound):  # pylint: disable=too-many-ancestors
     """Raise if issue does not exist."""
 
     error_key = "resolution_issue_not_found_error"
-    message_template = "Issue {uuid} does not exist in resolution manager"
+    message_template = "Issue {uuid} does not exist"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, uuid: str) -> None:
         """Initialize exception."""
@@ -976,11 +990,11 @@ class ResolutionIssueNotFound(ResolutionNotFound, APINotFound):
         super().__init__(None, logger)
 
 
-class ResolutionSuggestionNotFound(ResolutionNotFound, APINotFound):
+class ResolutionSuggestionNotFound(ResolutionNotFound, APINotFound):  # pylint: disable=too-many-ancestors
     """Raise if suggestion does not exist."""
 
     error_key = "resolution_suggestion_not_found_error"
-    message_template = "Suggestion {uuid} does not exist in resolution manager"
+    message_template = "Suggestion {uuid} does not exist"
 
     def __init__(self, logger: Callable[..., None] | None = None, *, uuid: str) -> None:
         """Initialize exception."""

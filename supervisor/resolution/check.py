@@ -6,7 +6,7 @@ from typing import Any
 
 from ..const import ATTR_CHECKS
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import ResolutionNotFound
+from ..exceptions import ResolutionCheckNotFound
 from ..utils.sentry import async_capture_exception
 from .checks.base import CheckBase
 from .validate import get_valid_modules
@@ -50,7 +50,7 @@ class ResolutionCheck(CoreSysAttributes):
         if slug in self._checks:
             return self._checks[slug]
 
-        raise ResolutionNotFound(f"Check with slug {slug} not found!")
+        raise ResolutionCheckNotFound(check=slug)
 
     async def check_system(self) -> None:
         """Check the system."""

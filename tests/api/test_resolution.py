@@ -1,5 +1,6 @@
 """Test Resolution API."""
 
+from http import HTTPStatus
 from unittest.mock import AsyncMock
 
 from aiohttp.test_utils import TestClient
@@ -46,7 +47,7 @@ async def test_api_resolution_base(coresys: CoreSys, api_client: TestClient):
 async def test_api_resolution_dismiss_suggestion(
     coresys: CoreSys, api_client: TestClient
 ):
-    """Test resolution manager suggestion apply api."""
+    """Test resolution manager dismiss suggestion api."""
     coresys.resolution.add_suggestion(
         clear_backup := Suggestion(SuggestionType.CLEAR_FULL_BACKUP, ContextType.SYSTEM)
     )
@@ -88,6 +89,17 @@ async def test_api_resolution_apply_suggestion(
         await coresys.resolution.apply_suggestion(clear_backup)
 
 
+@pytest.mark.parametrize("method", ["delete", "post"])
+async def test_api_resolution_suggestion_fail(api_client: TestClient, method: str):
+    """Test resolution manager error for suggestion not found."""
+    resp = await api_client.request(method, "/resolution/suggestion/abc123")
+    assert resp.status == HTTPStatus.NOT_FOUND
+    result = await resp.json()
+    assert result["message"] == "Suggestion abc123 does not exist"
+    assert result["error_key"] == "resolution_suggestion_not_found_error"
+    assert result["extra_fields"] == {"uuid": "abc123"}
+
+
 @pytest.mark.asyncio
 async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client: TestClient):
     """Test resolution manager issue apply api."""
@@ -98,6 +110,16 @@ async def test_api_resolution_dismiss_issue(coresys: CoreSys, api_client: TestCl
     assert coresys.resolution.issues[-1].type == IssueType.UPDATE_FAILED
     await api_client.delete(f"/resolution/issue/{updated_failed.uuid}")
     assert updated_failed not in coresys.resolution.issues
+
+
+async def test_api_resolution_issue_fail(api_client: TestClient):
+    """Test resolution manager error for issue not found."""
+    resp = await api_client.delete("/resolution/issue/abc123")
+    assert resp.status == HTTPStatus.NOT_FOUND
+    result = await resp.json()
+    assert result["message"] == "Issue abc123 does not exist"
+    assert result["error_key"] == "resolution_issue_not_found_error"
+    assert result["extra_fields"] == {"uuid": "abc123"}
 
 
 @pytest.mark.asyncio
@@ -211,6 +233,8 @@ async def test_suggestion_not_found(api_client: TestClient, method: str, url: st
 async def test_check_not_found(api_client: TestClient, method: str, url: str):
     """Test check not found error."""
     resp = await api_client.request(method, url)
-    assert resp.status == 404
+    assert resp.status == HTTPStatus.NOT_FOUND
     body = await resp.json()
-    assert body["message"] == "The supplied check slug is not available"
+    assert body["message"] == "Check 'bad' does not exist"
+    assert body["error_key"] == "resolution_check_not_found_error"
+    assert body["extra_fields"] == {"check": "bad"}
