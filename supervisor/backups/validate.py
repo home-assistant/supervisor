@@ -24,6 +24,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
@@ -34,7 +35,6 @@ from ..const import (
     FOLDER_SHARE,
     FOLDER_SSL,
 )
-from ..mounts.const import ATTR_MOUNTS
 from ..store.validate import repositories
 from ..validate import SCHEMA_DOCKER_CONFIG, version_tag
 
@@ -135,8 +135,8 @@ SCHEMA_BACKUP = vol.Schema(
         ),
         vol.Optional(ATTR_REPOSITORIES, default=list): repositories,
         vol.Optional(ATTR_EXTRA, default=dict): dict,
-        # Mounts data is stored in encrypted mounts.tar, this is just a flag
-        vol.Optional(ATTR_MOUNTS, default=False): vol.Boolean(),
+        # Supervisor config is stored in encrypted supervisor.tar, this is just a flag
+        vol.Optional(ATTR_SUPERVISOR, default=False): vol.Boolean(),
     },
     extra=vol.ALLOW_EXTRA,
 )

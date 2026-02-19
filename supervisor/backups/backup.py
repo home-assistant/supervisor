@@ -39,6 +39,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
@@ -214,9 +215,9 @@ class Backup(JobGroup):
         self._data[ATTR_DOCKER] = value
 
     @property
-    def has_mounts(self) -> bool:
-        """Return True if backup contains mount configurations."""
-        return self._data.get(ATTR_MOUNTS, False)
+    def has_supervisor_config(self) -> bool:
+        """Return True if backup contains supervisor configuration data."""
+        return self._data.get(ATTR_SUPERVISOR, False)
 
     @property
     def location(self) -> str | None:
@@ -931,9 +932,9 @@ class Backup(JobGroup):
             set(self.repositories), issue_on_error=True, replace=replace
         )
 
-    @Job(name="backup_store_mounts", cleanup=False)
-    async def store_mounts(self) -> None:
-        """Store mount configurations into backup as encrypted tar."""
+    @Job(name="backup_store_supervisor_config", cleanup=False)
+    async def store_supervisor_config(self) -> None:
+        """Store supervisor configuration into backup as encrypted tar."""
         if not self._outer_secure_tarfile:
             raise RuntimeError(
                 "Cannot backup components without initializing backup tar"
@@ -954,11 +955,11 @@ class Backup(JobGroup):
         }
 
         outer_secure_tarfile = self._outer_secure_tarfile
-        tar_name = f"mounts.tar{'.gz' if self.compressed else ''}"
+        tar_name = f"supervisor.tar{'.gz' if self.compressed else ''}"
 
         def _save() -> None:
-            """Save mounts data to tar file."""
-            _LOGGER.info("Backing up mount configurations")
+            """Save supervisor config data to tar file."""
+            _LOGGER.info("Backing up supervisor configuration")
 
             # Create JSON data
             mounts_json = json.dumps(mounts_data).encode("utf-8")
@@ -973,34 +974,38 @@ class Backup(JobGroup):
                 tarinfo.size = len(mounts_json)
                 tar_file.addfile(tarinfo, io.BytesIO(mounts_json))
 
-            _LOGGER.info("Backup mount configurations done")
+            _LOGGER.info("Backup supervisor configuration done")
 
         try:
             await self.sys_run_in_executor(_save)
-            self._data[ATTR_MOUNTS] = True
+            self._data[ATTR_SUPERVISOR] = True
         except (tarfile.TarError, OSError) as err:
-            raise BackupError(f"Can't write mounts tarfile: {err!s}") from err
+            raise BackupError(
+                f"Can't write supervisor config tarfile: {err!s}"
+            ) from err
 
-    @Job(name="backup_restore_mounts", cleanup=False)
-    async def restore_mounts(self) -> tuple[bool, list[asyncio.Task]]:
-        """Restore mount configurations from backup.
+    @Job(name="backup_restore_supervisor_config", cleanup=False)
+    async def restore_supervisor_config(self) -> tuple[bool, list[asyncio.Task]]:
+        """Restore supervisor configuration from backup.
 
         Returns tuple of (success, list of mount activation tasks).
         The tasks should be awaited after the restore is complete to activate mounts.
         """
-        if not self.has_mounts:
+        if not self.has_supervisor_config:
             return (True, [])
 
         if not self._tmp:
             raise RuntimeError("Cannot restore components without opening backup tar")
 
-        tar_name = Path(self._tmp.name, f"mounts.tar{'.gz' if self.compressed else ''}")
+        tar_name = Path(
+            self._tmp.name, f"supervisor.tar{'.gz' if self.compressed else ''}"
+        )
 
         # Extract and parse mounts data
         def _load_mounts_data() -> dict[str, Any] | None:
             """Load mounts data from tar file."""
             if not tar_name.exists():
-                _LOGGER.warning("Mounts tar file not found in backup")
+                _LOGGER.warning("Supervisor tar file not found in backup")
                 return None
 
             with SecureTarFile(
@@ -1016,7 +1021,7 @@ class Backup(JobGroup):
                     if file_obj:
                         return json.loads(file_obj.read().decode("utf-8"))
                 except KeyError:
-                    _LOGGER.warning("mounts.json not found in mounts tar")
+                    _LOGGER.warning("mounts.json not found in supervisor tar")
                     return None
 
             return None
@@ -1028,10 +1033,10 @@ class Backup(JobGroup):
                 self.sys_resolution.add_unhealthy_reason(
                     UnhealthyReason.OSERROR_BAD_MESSAGE
                 )
-            _LOGGER.warning("Failed to read mounts tar from backup: %s", err)
+            _LOGGER.warning("Failed to read supervisor tar from backup: %s", err)
             return (False, [])
         except (tarfile.TarError, json.JSONDecodeError) as err:
-            _LOGGER.warning("Failed to read mounts data from backup: %s", err)
+            _LOGGER.warning("Failed to read supervisor config from backup: %s", err)
             return (False, [])
 
         if not mounts_data:
@@ -1041,7 +1046,7 @@ class Backup(JobGroup):
         try:
             mounts_data = SCHEMA_MOUNTS_CONFIG(mounts_data)
         except vol.Invalid as err:
-            _LOGGER.warning("Invalid mounts data in backup: %s", err)
+            _LOGGER.warning("Invalid mounts data in supervisor config: %s", err)
             return (False, [])
 
         success = True

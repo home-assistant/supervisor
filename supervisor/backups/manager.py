@@ -549,9 +549,9 @@ class BackupManager(FileConfiguration, JobGroup):
                     self._change_stage(BackupJobStage.FOLDERS, backup)
                     await backup.store_folders(folder_list)
 
-                # Backup mount configurations
-                self._change_stage(BackupJobStage.MOUNTS, backup)
-                await backup.store_mounts()
+                # Backup supervisor configuration (mounts, etc.)
+                self._change_stage(BackupJobStage.SUPERVISOR_CONFIG, backup)
+                await backup.store_supervisor_config()
 
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
@@ -754,11 +754,14 @@ class BackupManager(FileConfiguration, JobGroup):
                     )
                     success = success and restore_success
 
-                # Restore mount configurations
+                # Restore supervisor configuration (mounts, etc.)
                 mount_tasks: list[asyncio.Task] = []
-                if backup.has_mounts:
-                    self._change_stage(RestoreJobStage.MOUNTS, backup)
-                    mount_success, mount_tasks = await backup.restore_mounts()
+                if backup.has_supervisor_config:
+                    self._change_stage(RestoreJobStage.SUPERVISOR_CONFIG, backup)
+                    (
+                        mount_success,
+                        mount_tasks,
+                    ) = await backup.restore_supervisor_config()
                     success = success and mount_success
 
                 # Wait for Home Assistant Core update/downgrade
