@@ -1,4 +1,6 @@
-search local.hass.io
+{% if search_domains %}
+search {{ search_domains | join(' ') }}
+{% endif %}
 {% for server in servers %}
 nameserver {{ server }}
 {% endfor %}

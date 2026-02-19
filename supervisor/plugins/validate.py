@@ -2,7 +2,13 @@
 
 import voluptuous as vol
 
-from ..const import ATTR_ACCESS_TOKEN, ATTR_IMAGE, ATTR_SERVERS, ATTR_VERSION
+from ..const import (
+    ATTR_ACCESS_TOKEN,
+    ATTR_IMAGE,
+    ATTR_SEARCH_DOMAINS,
+    ATTR_SERVERS,
+    ATTR_VERSION,
+)
 from ..validate import dns_server_list, docker_image, token, version_tag
 from .const import ATTR_FALLBACK
 
@@ -13,6 +19,9 @@ SCHEMA_DNS_CONFIG = vol.Schema(
         vol.Optional(ATTR_IMAGE): docker_image,
         vol.Optional(ATTR_SERVERS, default=list): dns_server_list,
         vol.Optional(ATTR_FALLBACK, default=True): vol.Boolean(),
+        vol.Optional(ATTR_SEARCH_DOMAINS, default=list): [
+            vol.All(str, vol.Length(min=1))
+        ],
     },
     extra=vol.REMOVE_EXTRA,
 )
