@@ -190,11 +190,10 @@ class Addon(AddonModel):
             self._startup_event.set()
 
         # Dismiss boot failed issue if present and we started
-        if (
-            new_state == AddonState.STARTED
-            and self.boot_failed_issue in self.sys_resolution.issues
+        if new_state == AddonState.STARTED and (
+            issue := self.sys_resolution.get_issue_if_present(self.boot_failed_issue)
         ):
-            self.sys_resolution.dismiss_issue(self.boot_failed_issue)
+            self.sys_resolution.dismiss_issue(issue)
 
         # Dismiss device access missing issue if present and we stopped
         if (
@@ -362,11 +361,10 @@ class Addon(AddonModel):
         self.persist[ATTR_BOOT] = value
 
         # Dismiss boot failed issue if present and boot at start disabled
-        if (
-            value == AddonBoot.MANUAL
-            and self._boot_failed_issue in self.sys_resolution.issues
+        if value == AddonBoot.MANUAL and (
+            issue := self.sys_resolution.get_issue_if_present(self._boot_failed_issue)
         ):
-            self.sys_resolution.dismiss_issue(self._boot_failed_issue)
+            self.sys_resolution.dismiss_issue(issue)
 
     @property
     def auto_update(self) -> bool:
