@@ -23,7 +23,7 @@ from blockbuster import BlockBuster, BlockBusterFunction
 from dbus_fast import BusType
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
-from securetar import SecureTarFile
+from securetar import SecureTarArchive
 
 from supervisor import config as su_config
 from supervisor.addons.addon import Addon
@@ -848,7 +848,7 @@ async def backups(
     for i in range(request.param if hasattr(request, "param") else 5):
         slug = f"sn{i + 1}"
         temp_tar = Path(tmp_path, f"{slug}.tar")
-        with SecureTarFile(temp_tar, "w"):
+        with SecureTarArchive(temp_tar, "w"):
             pass
         backup = Backup(coresys, temp_tar, slug, None)
         backup._data = {  # pylint: disable=protected-access

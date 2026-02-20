@@ -12,7 +12,7 @@ import aiodocker
 from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
-from securetar import SecureTarFile
+from securetar import SecureTarArchive, SecureTarFile
 
 from supervisor.addons.addon import Addon
 from supervisor.addons.const import AddonBackupMode
@@ -436,8 +436,11 @@ async def test_backup(
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
-    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
-    assert await install_addon_ssh.backup(tarfile) is None
+    archive = SecureTarArchive(coresys.config.path_tmp / "test.tar", "w")
+    archive.open()
+    tar_file = archive.create_tar("./test.tar.gz")
+    assert await install_addon_ssh.backup(tar_file) is None
+    archive.close()
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
@@ -457,8 +460,11 @@ async def test_backup_no_config(
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
-    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
-    assert await install_addon_ssh.backup(tarfile) is None
+    archive = SecureTarArchive(coresys.config.path_tmp / "test.tar", "w")
+    archive.open()
+    tar_file = archive.create_tar("./test.tar.gz")
+    assert await install_addon_ssh.backup(tar_file) is None
+    archive.close()
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
@@ -473,14 +479,17 @@ async def test_backup_with_pre_post_command(
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
-    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    archive = SecureTarArchive(coresys.config.path_tmp / "test.tar", "w")
+    archive.open()
+    tar_file = archive.create_tar("./test.tar.gz")
     with (
         patch.object(Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")),
         patch.object(
             Addon, "backup_post", new=PropertyMock(return_value="backup_post")
         ),
     ):
-        assert await install_addon_ssh.backup(tarfile) is None
+        assert await install_addon_ssh.backup(tar_file) is None
+    archive.close()
 
     assert container.exec.call_count == 2
     assert container.exec.call_args_list[0].args[0] == "backup_pre"
@@ -543,15 +552,18 @@ async def test_backup_with_pre_command_error(
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
-    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    archive = SecureTarArchive(coresys.config.path_tmp / "test.tar", "w")
+    archive.open()
+    tar_file = archive.create_tar("./test.tar.gz")
     with (
         patch.object(DockerAddon, "is_running", return_value=True),
         patch.object(Addon, "backup_pre", new=PropertyMock(return_value="backup_pre")),
         pytest.raises(exc_type_raised),
     ):
-        assert await install_addon_ssh.backup(tarfile) is None
+        assert await install_addon_ssh.backup(tar_file) is None
 
-    assert not tarfile.path.exists()
+    assert not tar_file.path.exists()
+    archive.close()
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
@@ -568,7 +580,9 @@ async def test_backup_cold_mode(
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
-    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    archive = SecureTarArchive(coresys.config.path_tmp / "test.tar", "w")
+    archive.open()
+    tar_file = archive.create_tar("./test.tar.gz")
     with (
         patch.object(
             AddonModel,
@@ -579,7 +593,8 @@ async def test_backup_cold_mode(
             DockerAddon, "is_running", side_effect=[status == "running", False, False]
         ),
     ):
-        start_task = await install_addon_ssh.backup(tarfile)
+        start_task = await install_addon_ssh.backup(tar_file)
+    archive.close()
 
     assert bool(start_task) is (status == "running")
 
@@ -607,7 +622,9 @@ async def test_backup_cold_mode_with_watchdog(
 
     # Patching out the normal end of backup process leaves the container in a stopped state
     # Watchdog should still not try to restart it though, it should remain this way
-    tarfile = SecureTarFile(coresys.config.path_tmp / "test.tar.gz", "w")
+    archive = SecureTarArchive(coresys.config.path_tmp / "test.tar", "w")
+    archive.open()
+    tar_file = archive.create_tar("./test.tar.gz")
     with (
         patch.object(Addon, "start") as start,
         patch.object(Addon, "restart") as restart,
@@ -619,10 +636,11 @@ async def test_backup_cold_mode_with_watchdog(
             new=PropertyMock(return_value=AddonBackupMode.COLD),
         ),
     ):
-        await install_addon_ssh.backup(tarfile)
+        await install_addon_ssh.backup(tar_file)
         await asyncio.sleep(0)
         start.assert_not_called()
         restart.assert_not_called()
+    archive.close()
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
@@ -635,7 +653,7 @@ async def test_restore(coresys: CoreSys, install_addon_ssh: Addon, status: str) 
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
-    tarfile = SecureTarFile(get_fixture_path(f"backup_local_ssh_{status}.tar.gz"), "r")
+    tarfile = SecureTarFile(get_fixture_path(f"backup_local_ssh_{status}.tar.gz"))
     with patch.object(DockerAddon, "is_running", return_value=False):
         start_task = await coresys.addons.restore(TEST_ADDON_SLUG, tarfile)
 
@@ -655,7 +673,7 @@ async def test_restore_while_running(
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
-    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"))
     with (
         patch.object(DockerAddon, "is_running", return_value=True),
         patch.object(Ingress, "update_hass_panel"),
@@ -688,7 +706,7 @@ async def test_restore_while_running_with_watchdog(
 
     # We restore a stopped backup so restore will not restart it
     # Watchdog will see it stop and should not attempt reanimation either
-    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"), "r")
+    tarfile = SecureTarFile(get_fixture_path("backup_local_ssh_stopped.tar.gz"))
     with (
         patch.object(Addon, "start") as start,
         patch.object(Addon, "restart") as restart,
