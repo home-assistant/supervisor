@@ -306,7 +306,7 @@ async def test_store_supervisor_config_with_mounts(coresys: CoreSys, tmp_path: P
             "share": "backup_share",
         },
     )
-    coresys.mounts._mounts[mount.name] = mount  # noqa: SLF001
+    coresys.mounts._mounts[mount.name] = mount  # noqa: SLF001  # pylint: disable=protected-access
 
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)

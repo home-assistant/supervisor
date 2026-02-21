@@ -705,7 +705,15 @@ async def test_full_backup_to_mount(
     # Remove marker file and restore. Confirm it comes back
     marker.unlink()
 
-    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+    with (
+        patch.object(DockerHomeAssistant, "is_running", return_value=True),
+        patch.object(
+            Backup,
+            "restore_supervisor_config",
+            new_callable=AsyncMock,
+            return_value=(True, []),
+        ),
+    ):
         await coresys.backups.do_restore_full(backup)
 
     assert marker.exists()
@@ -761,7 +769,15 @@ async def test_partial_backup_to_mount(
         # Remove marker file and restore. Confirm it comes back
         marker.unlink()
 
-        with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+        with (
+            patch.object(DockerHomeAssistant, "is_running", return_value=True),
+            patch.object(
+                Backup,
+                "restore_supervisor_config",
+                new_callable=AsyncMock,
+                return_value=(True, []),
+            ),
+        ):
             await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
     assert marker.exists()
