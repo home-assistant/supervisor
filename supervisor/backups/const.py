@@ -27,6 +27,7 @@ class BackupJobStage(StrEnum):
     FINISHING_FILE = "finishing_file"
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
+    SUPERVISOR_CONFIG = "supervisor_config"
     COPY_ADDITONAL_LOCATIONS = "copy_additional_locations"
     AWAIT_ADDON_RESTARTS = "await_addon_restarts"
 
@@ -40,4 +41,5 @@ class RestoreJobStage(StrEnum):
     AWAIT_HOME_ASSISTANT_RESTART = "await_home_assistant_restart"
     FOLDERS = "folders"
     HOME_ASSISTANT = "home_assistant"
+    SUPERVISOR_CONFIG = "supervisor_config"
     REMOVE_DELTA_ADDONS = "remove_delta_addons"

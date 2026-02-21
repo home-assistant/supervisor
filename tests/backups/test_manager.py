@@ -702,7 +702,15 @@ async def test_full_backup_to_mount(coresys: CoreSys):
     # Remove marker file and restore. Confirm it comes back
     marker.unlink()
 
-    with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+    with (
+        patch.object(DockerHomeAssistant, "is_running", return_value=True),
+        patch.object(
+            Backup,
+            "restore_supervisor_config",
+            new_callable=AsyncMock,
+            return_value=(True, []),
+        ),
+    ):
         await coresys.backups.do_restore_full(backup)
 
     assert marker.exists()
@@ -758,7 +766,15 @@ async def test_partial_backup_to_mount(coresys: CoreSys):
         # Remove marker file and restore. Confirm it comes back
         marker.unlink()
 
-        with patch.object(DockerHomeAssistant, "is_running", return_value=True):
+        with (
+            patch.object(DockerHomeAssistant, "is_running", return_value=True),
+            patch.object(
+                Backup,
+                "restore_supervisor_config",
+                new_callable=AsyncMock,
+                return_value=(True, []),
+            ),
+        ):
             await coresys.backups.do_restore_partial(backup, homeassistant=True)
 
     assert marker.exists()
@@ -1151,6 +1167,9 @@ async def test_backup_progress(
         _make_backup_message_for_assert(reference=full_backup.slug, stage="addons"),
         _make_backup_message_for_assert(reference=full_backup.slug, stage="folders"),
         _make_backup_message_for_assert(
+            reference=full_backup.slug, stage="supervisor_config"
+        ),
+        _make_backup_message_for_assert(
             reference=full_backup.slug, stage="finishing_file"
         ),
         _make_backup_message_for_assert(
@@ -1194,6 +1213,11 @@ async def test_backup_progress(
         ),
         _make_backup_message_for_assert(
             action="partial_backup", reference=partial_backup.slug, stage="folders"
+        ),
+        _make_backup_message_for_assert(
+            action="partial_backup",
+            reference=partial_backup.slug,
+            stage="supervisor_config",
         ),
         _make_backup_message_for_assert(
             action="partial_backup",

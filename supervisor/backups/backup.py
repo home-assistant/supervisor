@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
+import errno
 import io
 import json
 import logging
@@ -38,6 +39,7 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
+    ATTR_SUPERVISOR,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
@@ -55,6 +57,10 @@ from ..exceptions import (
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
+from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, ATTR_MOUNTS
+from ..mounts.mount import Mount
+from ..mounts.validate import SCHEMA_MOUNTS_CONFIG
+from ..resolution.const import UnhealthyReason
 from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
@@ -207,6 +213,11 @@ class Backup(JobGroup):
     def docker(self, value: dict[str, Any]) -> None:
         """Set the Docker config data."""
         self._data[ATTR_DOCKER] = value
+
+    @property
+    def has_supervisor_config(self) -> bool:
+        """Return True if backup contains supervisor configuration data."""
+        return self._data.get(ATTR_SUPERVISOR, False)
 
     @property
     def location(self) -> str | None:
@@ -920,3 +931,152 @@ class Backup(JobGroup):
         return self.sys_store.update_repositories(
             set(self.repositories), issue_on_error=True, replace=replace
         )
+
+    @Job(name="backup_store_supervisor_config", cleanup=False)
+    async def store_supervisor_config(self) -> None:
+        """Store supervisor configuration into backup as encrypted tar."""
+        if not self._outer_secure_tarfile:
+            raise RuntimeError(
+                "Cannot backup components without initializing backup tar"
+            )
+
+        if not self.sys_mounts.mounts:
+            return
+
+        mounts_data = {
+            ATTR_DEFAULT_BACKUP_MOUNT: (
+                self.sys_mounts.default_backup_mount.name
+                if self.sys_mounts.default_backup_mount
+                else None
+            ),
+            ATTR_MOUNTS: [
+                mount.to_dict(skip_secrets=False) for mount in self.sys_mounts.mounts
+            ],
+        }
+
+        outer_secure_tarfile = self._outer_secure_tarfile
+        tar_name = f"supervisor.tar{'.gz' if self.compressed else ''}"
+
+        def _save() -> None:
+            """Save supervisor config data to tar file."""
+            _LOGGER.info("Backing up supervisor configuration")
+
+            # Create JSON data
+            mounts_json = json.dumps(mounts_data).encode("utf-8")
+
+            with outer_secure_tarfile.create_inner_tar(
+                f"./{tar_name}",
+                gzip=self.compressed,
+                password=self._password,
+            ) as tar_file:
+                # Add mounts.json to tar
+                tarinfo = tarfile.TarInfo(name="mounts.json")
+                tarinfo.size = len(mounts_json)
+                tar_file.addfile(tarinfo, io.BytesIO(mounts_json))
+
+            _LOGGER.info("Backup supervisor configuration done")
+
+        try:
+            await self.sys_run_in_executor(_save)
+            self._data[ATTR_SUPERVISOR] = True
+        except (tarfile.TarError, OSError) as err:
+            raise BackupError(
+                f"Can't write supervisor config tarfile: {err!s}"
+            ) from err
+
+    @Job(name="backup_restore_supervisor_config", cleanup=False)
+    async def restore_supervisor_config(self) -> tuple[bool, list[asyncio.Task]]:
+        """Restore supervisor configuration from backup.
+
+        Returns tuple of (success, list of mount activation tasks).
+        The tasks should be awaited after the restore is complete to activate mounts.
+        """
+        if not self.has_supervisor_config:
+            return (True, [])
+
+        if not self._tmp:
+            raise RuntimeError("Cannot restore components without opening backup tar")
+
+        tar_name = Path(
+            self._tmp.name, f"supervisor.tar{'.gz' if self.compressed else ''}"
+        )
+
+        # Extract and parse mounts data
+        def _load_mounts_data() -> dict[str, Any] | None:
+            """Load mounts data from tar file."""
+            if not tar_name.exists():
+                _LOGGER.warning("Supervisor tar file not found in backup")
+                return None
+
+            with SecureTarFile(
+                tar_name,
+                "r",
+                gzip=self.compressed,
+                bufsize=BUF_SIZE,
+                password=self._password,
+            ) as tar_file:
+                try:
+                    member = tar_file.getmember("mounts.json")
+                    file_obj = tar_file.extractfile(member)
+                    if file_obj:
+                        return json.loads(file_obj.read().decode("utf-8"))
+                except KeyError:
+                    _LOGGER.warning("mounts.json not found in supervisor tar")
+                    return None
+
+            return None
+
+        try:
+            mounts_data = await self.sys_run_in_executor(_load_mounts_data)
+        except OSError as err:
+            if err.errno == errno.EBADMSG:
+                self.sys_resolution.add_unhealthy_reason(
+                    UnhealthyReason.OSERROR_BAD_MESSAGE
+                )
+            _LOGGER.warning("Failed to read supervisor tar from backup: %s", err)
+            return (False, [])
+        except (tarfile.TarError, json.JSONDecodeError) as err:
+            _LOGGER.warning("Failed to read supervisor config from backup: %s", err)
+            return (False, [])
+
+        if not mounts_data:
+            return (True, [])
+
+        # Validate mounts data against schema
+        try:
+            mounts_data = SCHEMA_MOUNTS_CONFIG(mounts_data)
+        except vol.Invalid as err:
+            _LOGGER.warning("Invalid mounts data in supervisor config: %s", err)
+            return (False, [])
+
+        success = True
+        mount_tasks: list[asyncio.Task] = []
+
+        # Restore each mount configuration
+        for mount_data in mounts_data.get(ATTR_MOUNTS, []):
+            mount_name = mount_data[ATTR_NAME]
+
+            try:
+                mount = Mount.from_dict(self.coresys, mount_data)
+                mount_tasks.append(await self.sys_mounts.restore_mount(mount))
+                _LOGGER.info("Restored mount configuration: %s", mount_name)
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.warning("Failed to restore mount %s: %s", mount_name, err)
+                success = False
+
+        # Restore default backup mount if not already set
+        default_mount_name = mounts_data.get(ATTR_DEFAULT_BACKUP_MOUNT)
+        if (
+            default_mount_name
+            and default_mount_name in self.sys_mounts
+            and self.sys_mounts.default_backup_mount is None
+        ):
+            self.sys_mounts.default_backup_mount = self.sys_mounts.get(
+                default_mount_name
+            )
+            _LOGGER.info("Restored default backup mount: %s", default_mount_name)
+
+        # Save mount configuration to disk
+        await self.sys_mounts.save_data()
+
+        return (success, mount_tasks)

@@ -549,6 +549,10 @@ class BackupManager(FileConfiguration, JobGroup):
                     self._change_stage(BackupJobStage.FOLDERS, backup)
                     await backup.store_folders(folder_list)
 
+                # Backup supervisor configuration (mounts, etc.)
+                self._change_stage(BackupJobStage.SUPERVISOR_CONFIG, backup)
+                await backup.store_supervisor_config()
+
                 self._change_stage(BackupJobStage.FINISHING_FILE, backup)
 
         except BackupError as err:
@@ -750,6 +754,16 @@ class BackupManager(FileConfiguration, JobGroup):
                     )
                     success = success and restore_success
 
+                # Restore supervisor configuration (mounts, etc.)
+                mount_tasks: list[asyncio.Task] = []
+                if backup.has_supervisor_config:
+                    self._change_stage(RestoreJobStage.SUPERVISOR_CONFIG, backup)
+                    (
+                        mount_success,
+                        mount_tasks,
+                    ) = await backup.restore_supervisor_config()
+                    success = success and mount_success
+
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:
                     await task_hass
@@ -769,6 +783,14 @@ class BackupManager(FileConfiguration, JobGroup):
                     await asyncio.gather(*addon_start_tasks, return_exceptions=True)
                 ):
                     return False
+
+            # Wait for mount activations (failures don't affect restore success
+            # since config was already saved)
+            if mount_tasks:
+                results = await asyncio.gather(*mount_tasks, return_exceptions=True)
+                for result in results:
+                    if isinstance(result, Exception):
+                        _LOGGER.warning("Mount activation error: %s", result)
 
             return success
         finally:

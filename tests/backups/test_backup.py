@@ -22,6 +22,7 @@ from supervisor.exceptions import (
     BackupPermissionError,
 )
 from supervisor.jobs import JobSchedulerOptions
+from supervisor.mounts.mount import Mount
 
 from tests.common import get_fixture_path
 
@@ -273,3 +274,60 @@ async def test_validate_backup(
         expected_exception,
     ):
         await enc_backup.validate_backup(None)
+
+
+async def test_store_supervisor_config_no_mounts(coresys: CoreSys, tmp_path: Path):
+    """Test storing supervisor config when no mounts configured."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # Initially no supervisor config flag
+    assert backup.has_supervisor_config is False
+
+    # Create backup context to enable store_supervisor_config
+    async with backup.create():
+        # Store config (should do nothing when no mounts configured)
+        await backup.store_supervisor_config()
+
+    # has_supervisor_config should still be False since no mounts were configured
+    assert backup.has_supervisor_config is False
+
+
+async def test_store_supervisor_config_with_mounts(coresys: CoreSys, tmp_path: Path):
+    """Test storing supervisor config when mounts are configured."""
+    # Add a test mount directly to manager state (avoids needing dbus)
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test_backup_share",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "192.168.1.100",
+            "share": "backup_share",
+        },
+    )
+    coresys.mounts._mounts[mount.name] = mount  # noqa: SLF001  # pylint: disable=protected-access
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # Create backup context and store supervisor config
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+    # Verify has_supervisor_config flag is set
+    assert backup.has_supervisor_config is True
+
+
+async def test_restore_supervisor_config_empty(coresys: CoreSys, tmp_path: Path):
+    """Test restoring supervisor config when backup has no config data."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # No supervisor config in backup
+    assert backup.has_supervisor_config is False
+
+    # Restore should succeed with nothing to do and return empty task list
+    success, tasks = await backup.restore_supervisor_config()
+    assert success is True
+    assert tasks == []

@@ -319,3 +319,45 @@ class MountManager(FileConfiguration, CoreSysAttributes):
             mount.to_dict(skip_secrets=False) for mount in self.mounts
         ]
         await super().save_data()
+
+    async def restore_mount(self, mount: Mount) -> asyncio.Task:
+        """Restore a mount from backup.
+
+        Adds mount to internal state without activating it.
+        Returns an asyncio.Task for activating the mount in the background.
+        If a mount with the same name exists, it is replaced.
+        """
+        if mount.name in self._mounts:
+            _LOGGER.info(
+                "Mount '%s' already exists, replacing with backup config", mount.name
+            )
+            # Unmount existing if it's bound
+            if mount.name in self._bound_mounts:
+                await self._bound_mounts[mount.name].bind_mount.unmount()
+                del self._bound_mounts[mount.name]
+
+            old_mount = self._mounts[mount.name]
+            await old_mount.unmount()
+
+        self._mounts[mount.name] = mount
+        return self.sys_create_task(self._activate_restored_mount(mount))
+
+    async def _activate_restored_mount(self, mount: Mount) -> None:
+        """Activate a restored mount. Logs errors but doesn't raise."""
+        try:
+            _LOGGER.info("Activating restored mount: %s", mount.name)
+            await mount.load()
+
+            if mount.usage == MountUsage.MEDIA:
+                await self._bind_media(mount)
+            elif mount.usage == MountUsage.SHARE:
+                await self._bind_share(mount)
+
+            _LOGGER.info("Mount %s activated successfully", mount.name)
+        except MountError as err:
+            _LOGGER.warning(
+                "Failed to activate mount %s (config was restored, "
+                "mount may come online later): %s",
+                mount.name,
+                err,
+            )
