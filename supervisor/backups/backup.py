@@ -58,7 +58,7 @@ from ..utils import remove_folder
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
 from ..utils.sentinel import DEFAULT
-from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, BackupType
+from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, SECURETAR_CREATE_VERSION, BackupType
 from .validate import SCHEMA_BACKUP
 
 IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
@@ -450,7 +450,7 @@ class Backup(JobGroup):
                 self.tarfile,
                 "w",
                 bufsize=BUF_SIZE,
-                create_version=2,
+                create_version=SECURETAR_CREATE_VERSION,
                 password=self._password,
             )
             try:
