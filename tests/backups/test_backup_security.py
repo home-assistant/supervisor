@@ -7,6 +7,7 @@ import tarfile
 import pytest
 from securetar import SecureTarFile
 
+from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import BackupInvalidError
@@ -168,3 +169,91 @@ async def test_homeassistant_restore_rejects_path_traversal(
     tar_file = SecureTarFile(tar_path, "r", gzip=True)
     with pytest.raises(BackupInvalidError):
         await coresys.homeassistant.restore(tar_file)
+
+
+async def test_addon_restore_rejects_path_traversal(
+    coresys: CoreSys, install_addon_ssh: Addon, tmp_supervisor_data: Path
+):
+    """Test that add-on restore raises BackupInvalidError for path traversal."""
+    tar_path = tmp_supervisor_data / "addon.tar.gz"
+    traversal_info = tarfile.TarInfo(name="../../etc/passwd")
+    traversal_info.size = 9
+    _create_tar_gz(tar_path, [traversal_info], {"../../etc/passwd": b"malicious"})
+
+    tar_file = SecureTarFile(tar_path, "r", gzip=True)
+    with pytest.raises(BackupInvalidError):
+        await install_addon_ssh.restore(tar_file)
+
+
+async def test_addon_restore_rejects_symlink_escape(
+    coresys: CoreSys, install_addon_ssh: Addon, tmp_supervisor_data: Path
+):
+    """Test that add-on restore raises BackupInvalidError for symlink escape."""
+    link_info = tarfile.TarInfo(name="escape")
+    link_info.type = tarfile.SYMTYPE
+    link_info.linkname = "../outside"
+    file_info = tarfile.TarInfo(name="escape/evil.py")
+    file_info.size = 9
+
+    tar_path = tmp_supervisor_data / "addon.tar.gz"
+    _create_tar_gz(
+        tar_path,
+        [link_info, file_info],
+        {"escape/evil.py": b"malicious"},
+    )
+
+    tar_file = SecureTarFile(tar_path, "r", gzip=True)
+    with pytest.raises(BackupInvalidError):
+        await install_addon_ssh.restore(tar_file)
+
+
+async def test_folder_restore_rejects_path_traversal(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test that folder restore raises BackupInvalidError for path traversal."""
+    traversal_info = tarfile.TarInfo(name="../../etc/passwd")
+    traversal_info.size = 9
+
+    # Create backup with a malicious share folder tar inside
+    backup_tar_path = tmp_supervisor_data / "backup.tar"
+    with tarfile.open(backup_tar_path, "w:") as outer_tar:
+        # Create a malicious share.tar.gz and add it to the backup
+        share_tar_path = tmp_supervisor_data / "share.tar.gz"
+        _create_tar_gz(
+            share_tar_path, [traversal_info], {"../../etc/passwd": b"malicious"}
+        )
+        outer_tar.add(share_tar_path, arcname="./share.tar.gz")
+
+    backup = Backup(coresys, backup_tar_path, "test", None)
+    backup._data["compressed"] = True
+    async with backup.open(None):
+        with pytest.raises(BackupInvalidError):
+            await backup._folder_restore("share")
+
+
+async def test_folder_restore_rejects_symlink_escape(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test that folder restore raises BackupInvalidError for symlink escape."""
+    link_info = tarfile.TarInfo(name="escape")
+    link_info.type = tarfile.SYMTYPE
+    link_info.linkname = "../outside"
+    file_info = tarfile.TarInfo(name="escape/evil.py")
+    file_info.size = 9
+
+    # Create backup with a malicious share folder tar inside
+    backup_tar_path = tmp_supervisor_data / "backup.tar"
+    with tarfile.open(backup_tar_path, "w:") as outer_tar:
+        share_tar_path = tmp_supervisor_data / "share.tar.gz"
+        _create_tar_gz(
+            share_tar_path,
+            [link_info, file_info],
+            {"escape/evil.py": b"malicious"},
+        )
+        outer_tar.add(share_tar_path, arcname="./share.tar.gz")
+
+    backup = Backup(coresys, backup_tar_path, "test", None)
+    backup._data["compressed"] = True
+    async with backup.open(None):
+        with pytest.raises(BackupInvalidError):
+            await backup._folder_restore("share")
