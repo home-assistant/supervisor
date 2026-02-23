@@ -17,7 +17,13 @@ import time
 from typing import Any, Self, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-from securetar import AddFileError, SecureTarArchive, SecureTarFile, atomic_contents_add
+from securetar import (
+    AddFileError,
+    SecureTarArchive,
+    SecureTarFile,
+    SecureTarReadError,
+    atomic_contents_add,
+)
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -369,7 +375,7 @@ class Backup(JobGroup):
                     ):
                         # If we can read the tar file, the password is correct
                         return
-                except tarfile.ReadError as ex:
+                except (tarfile.ReadError, SecureTarReadError) as ex:
                     raise BackupInvalidError(
                         f"Invalid password for backup {self.slug}", _LOGGER.error
                     ) from ex
