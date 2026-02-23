@@ -479,7 +479,7 @@ class Backup(JobGroup):
         try:
             yield
         finally:
-            await self._create_cleanup(outer_secure_tarfile)
+            await self._create_finalize(outer_secure_tarfile)
             size_bytes = await self.sys_run_in_executor(_close_outer_tarfile)
             self._locations[self.location].size_bytes = size_bytes
             self._outer_secure_tarfile = None
@@ -539,11 +539,11 @@ class Backup(JobGroup):
             if self._tmp:
                 await self.sys_run_in_executor(self._tmp.cleanup)
 
-    async def _create_cleanup(self, outer_archive: SecureTarArchive) -> None:
-        """Cleanup after backup creation.
+    async def _create_finalize(self, outer_archive: SecureTarArchive) -> None:
+        """Finialize backup creation.
 
-        Separate method to be called from create to ensure
-        that cleanup is always performed, even if an exception is raised.
+        Separate method to be called from create to ensure that the backup is
+        finalized.
         """
         # validate data
         try:
