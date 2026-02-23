@@ -91,8 +91,8 @@ availability.
 
 ### Python Requirements
 
-- **Compatibility**: Python 3.13+
-- **Language Features**: Use modern Python features:
+  - **Compatibility**: Python 3.14+
+  - **Language Features**: Use modern Python features:
   - Type hints with `typing` module
   - f-strings (preferred over `%` or `.format()`)
   - Dataclasses and enum classes

@@ -33,7 +33,7 @@ on:
       - setup.py
 
 env:
-  DEFAULT_PYTHON: "3.13"
+  DEFAULT_PYTHON: "3.14"
   COSIGN_VERSION: "v2.5.3"
   CRANE_VERSION: "v0.20.7"
   CRANE_SHA256: "8ef3564d264e6b5ca93f7b7f5652704c4dd29d33935aff6947dd5adefd05953e"
