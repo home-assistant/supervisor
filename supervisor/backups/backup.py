@@ -17,12 +17,7 @@ import time
 from typing import Any, Self, cast
 
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-from securetar import (
-    AddFileError,
-    SecureTarArchive,
-    SecureTarFile,
-    atomic_contents_add,
-)
+from securetar import AddFileError, SecureTarArchive, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
