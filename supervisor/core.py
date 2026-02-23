@@ -337,6 +337,7 @@ class Core(CoreSysAttributes):
                         self.sys_create_task(coro)
                         for coro in (
                             self.sys_websession.close(),
+                            self.sys_homeassistant.api.close(),
                             self.sys_ingress.unload(),
                             self.sys_hardware.unload(),
                             self.sys_dbus.unload(),
