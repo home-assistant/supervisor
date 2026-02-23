@@ -13,10 +13,12 @@ from ..homeassistant.const import LANDINGPAGE
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job
 from .const import (
+    ENV_CORE_API_SOCKET,
     ENV_DUPLICATE_LOG_FILE,
     ENV_TIME,
     ENV_TOKEN,
     ENV_TOKEN_OLD,
+    MOUNT_CORE_RUN,
     MOUNT_DBUS,
     MOUNT_DEV,
     MOUNT_MACHINE_ID,
@@ -136,6 +138,8 @@ class DockerHomeAssistant(DockerInterface):
                             propagation=PropagationMode.RSLAVE
                         ),
                     ),
+                    # Supervisor <-> Core communication socket
+                    MOUNT_CORE_RUN,
                     # Configuration audio
                     DockerMount(
                         type=MountType.BIND,
@@ -180,6 +184,8 @@ class DockerHomeAssistant(DockerInterface):
         }
         if restore_job_id:
             environment[ENV_RESTORE_JOB_ID] = restore_job_id
+        if self.sys_homeassistant.api.use_unix_socket:
+            environment[ENV_CORE_API_SOCKET] = "/run/supervisor/core.sock"
         if self.sys_homeassistant.duplicate_log_file:
             environment[ENV_DUPLICATE_LOG_FILE] = "1"
         await self._run(
