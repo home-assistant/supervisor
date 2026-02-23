@@ -9,6 +9,7 @@ from securetar import SecureTarFile
 
 from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup
+from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import BackupInvalidError
 
@@ -210,14 +211,13 @@ async def test_addon_restore_rejects_symlink_escape(
 async def test_folder_restore_rejects_path_traversal(
     coresys: CoreSys, tmp_supervisor_data: Path
 ):
-    """Test that folder restore raises BackupInvalidError for path traversal."""
+    """Test that folder restore rejects path traversal in backup tar."""
     traversal_info = tarfile.TarInfo(name="../../etc/passwd")
     traversal_info.size = 9
 
     # Create backup with a malicious share folder tar inside
     backup_tar_path = tmp_supervisor_data / "backup.tar"
     with tarfile.open(backup_tar_path, "w:") as outer_tar:
-        # Create a malicious share.tar.gz and add it to the backup
         share_tar_path = tmp_supervisor_data / "share.tar.gz"
         _create_tar_gz(
             share_tar_path, [traversal_info], {"../../etc/passwd": b"malicious"}
@@ -225,16 +225,15 @@ async def test_folder_restore_rejects_path_traversal(
         outer_tar.add(share_tar_path, arcname="./share.tar.gz")
 
     backup = Backup(coresys, backup_tar_path, "test", None)
-    backup._data["compressed"] = True
+    backup.new("test", "2025-01-01", BackupType.PARTIAL, compressed=True)
     async with backup.open(None):
-        with pytest.raises(BackupInvalidError):
-            await backup._folder_restore("share")
+        assert await backup.restore_folders(["share"]) is False
 
 
 async def test_folder_restore_rejects_symlink_escape(
     coresys: CoreSys, tmp_supervisor_data: Path
 ):
-    """Test that folder restore raises BackupInvalidError for symlink escape."""
+    """Test that folder restore rejects symlink escape in backup tar."""
     link_info = tarfile.TarInfo(name="escape")
     link_info.type = tarfile.SYMTYPE
     link_info.linkname = "../outside"
@@ -253,7 +252,6 @@ async def test_folder_restore_rejects_symlink_escape(
         outer_tar.add(share_tar_path, arcname="./share.tar.gz")
 
     backup = Backup(coresys, backup_tar_path, "test", None)
-    backup._data["compressed"] = True
+    backup.new("test", "2025-01-01", BackupType.PARTIAL, compressed=True)
     async with backup.open(None):
-        with pytest.raises(BackupInvalidError):
-            await backup._folder_restore("share")
+        assert await backup.restore_folders(["share"]) is False
