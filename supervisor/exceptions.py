@@ -46,7 +46,7 @@ class HassioNotSupportedError(HassioError):
 # API
 
 
-class APIError(HassioError, RuntimeError):
+class APIError(HassioError):
     """API errors."""
 
     status = 400
