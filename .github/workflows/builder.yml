@@ -106,7 +106,7 @@ jobs:
           - runs-on: ubuntu-24.04-arm
             arch: aarch64
     env:
-      WHEELS_ABI: cp313
+      WHEELS_ABI: cp314
       WHEELS_TAG: musllinux_1_2
       WHEELS_APK_DEPS: "libffi-dev;openssl-dev;yaml-dev"
       WHEELS_SKIP_BINARY: aiohttp
