@@ -34,6 +34,8 @@ from supervisor.exceptions import (
 )
 from supervisor.hardware.helper import HwHelper
 from supervisor.ingress import Ingress
+from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.data import Issue
 from supervisor.utils.dt import utcnow
 
 from .test_manager import BOOT_FAIL_ISSUE, BOOT_FAIL_SUGGESTIONS
@@ -994,16 +996,40 @@ async def test_addon_manual_only_boot(install_addon_example: Addon):
     assert install_addon_example.boot == "manual"
 
 
-async def test_addon_start_dismisses_boot_fail(
-    coresys: CoreSys, install_addon_ssh: Addon
+@pytest.mark.parametrize(
+    ("initial_state", "target_state", "issue", "suggestions"),
+    [
+        (
+            AddonState.ERROR,
+            AddonState.STARTED,
+            BOOT_FAIL_ISSUE,
+            [suggestion.type for suggestion in BOOT_FAIL_SUGGESTIONS],
+        ),
+        (
+            AddonState.STARTED,
+            AddonState.STOPPED,
+            Issue(
+                IssueType.DEVICE_ACCESS_MISSING,
+                ContextType.ADDON,
+                reference=TEST_ADDON_SLUG,
+            ),
+            [SuggestionType.EXECUTE_RESTART],
+        ),
+    ],
+)
+async def test_addon_state_dismisses_issue(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    initial_state: AddonState,
+    target_state: AddonState,
+    issue: Issue,
+    suggestions: list[SuggestionType],
 ):
-    """Test a successful start dismisses the boot fail issue."""
-    install_addon_ssh.state = AddonState.ERROR
-    coresys.resolution.add_issue(
-        BOOT_FAIL_ISSUE, [suggestion.type for suggestion in BOOT_FAIL_SUGGESTIONS]
-    )
+    """Test an addon state change dismisses the issues."""
+    install_addon_ssh.state = initial_state
+    coresys.resolution.add_issue(issue, suggestions)
 
-    install_addon_ssh.state = AddonState.STARTED
+    install_addon_ssh.state = target_state
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
 

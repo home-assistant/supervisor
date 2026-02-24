@@ -197,11 +197,12 @@ class Addon(AddonModel):
             self.sys_resolution.dismiss_issue(issue)
 
         # Dismiss device access missing issue if present and we stopped
-        if (
-            new_state == AddonState.STOPPED
-            and self.device_access_missing_issue in self.sys_resolution.issues
+        if new_state == AddonState.STOPPED and (
+            issue := self.sys_resolution.get_issue_if_present(
+                self.device_access_missing_issue
+            )
         ):
-            self.sys_resolution.dismiss_issue(self.device_access_missing_issue)
+            self.sys_resolution.dismiss_issue(issue)
 
         self.sys_homeassistant.websocket.supervisor_event_custom(
             WSEvent.ADDON,
