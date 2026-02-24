@@ -8,7 +8,7 @@ import tarfile
 from unittest.mock import MagicMock, patch
 
 import pytest
-from securetar import AddFileError, SecureTarReadError
+from securetar import AddFileError, InvalidPasswordError, SecureTarReadError
 
 from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup, BackupLocation
@@ -242,6 +242,13 @@ async def test_consolidate_failure(coresys: CoreSys, tmp_path: Path):
                 BackupInvalidError, match="Invalid password for backup 93b462f8"
             ),
         ),  # Invalid password (securetar >= 2026.2.0 raises SecureTarReadError)
+        (
+            None,
+            InvalidPasswordError,
+            pytest.raises(
+                BackupInvalidError, match="Invalid password for backup 93b462f8"
+            ),
+        ),  # Invalid password (securetar >= 2026.2.0 with v3 backup raises InvalidPasswordError)
     ],
 )
 async def test_validate_backup(

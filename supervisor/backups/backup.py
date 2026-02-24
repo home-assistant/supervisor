@@ -19,6 +19,7 @@ from typing import Any, Self, cast
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from securetar import (
     AddFileError,
+    InvalidPasswordError,
     SecureTarArchive,
     SecureTarFile,
     SecureTarReadError,
@@ -375,7 +376,11 @@ class Backup(JobGroup):
                     ):
                         # If we can read the tar file, the password is correct
                         return
-                except (tarfile.ReadError, SecureTarReadError) as ex:
+                except (
+                    tarfile.ReadError,
+                    SecureTarReadError,
+                    InvalidPasswordError,
+                ) as ex:
                     raise BackupInvalidError(
                         f"Invalid password for backup {self.slug}", _LOGGER.error
                     ) from ex
