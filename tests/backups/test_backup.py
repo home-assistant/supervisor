@@ -260,7 +260,7 @@ async def test_validate_backup(
 ):
     """Parameterized test for validate_backup.
 
-    Note thaht it is paramount that BackupInvalidError is raised for invalid password
+    Note that it is paramount that BackupInvalidError is raised for invalid password
     cases, as this is used by the Core to determine if a backup password is invalid
     and offer a input field to the user to input the correct password.
     """

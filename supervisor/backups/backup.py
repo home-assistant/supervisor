@@ -551,7 +551,7 @@ class Backup(JobGroup):
                 await self.sys_run_in_executor(self._tmp.cleanup)
 
     async def _create_finalize(self, outer_archive: SecureTarArchive) -> None:
-        """Finialize backup creation.
+        """Finalize backup creation.
 
         Separate method to be called from create to ensure that the backup is
         finalized.
