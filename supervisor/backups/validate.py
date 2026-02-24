@@ -14,7 +14,6 @@ from ..const import (
     ATTR_CRYPTO,
     ATTR_DATE,
     ATTR_DAYS_UNTIL_STALE,
-    ATTR_DOCKER,
     ATTR_EXCLUDE_DATABASE,
     ATTR_EXTRA,
     ATTR_FOLDERS,
@@ -35,7 +34,7 @@ from ..const import (
     FOLDER_SSL,
 )
 from ..store.validate import repositories
-from ..validate import SCHEMA_DOCKER_CONFIG, version_tag
+from ..validate import version_tag
 
 ALL_FOLDERS = [
     FOLDER_SHARE,
@@ -114,7 +113,6 @@ SCHEMA_BACKUP = vol.Schema(
                 )
             ),
         ),
-        vol.Optional(ATTR_DOCKER, default=dict): SCHEMA_DOCKER_CONFIG,
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(
             v1_folderlist, [vol.In(ALL_FOLDERS)], vol.Unique()
         ),

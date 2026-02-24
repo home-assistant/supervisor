@@ -199,16 +199,6 @@ class Backup(JobGroup):
         return self._data[ATTR_EXTRA]
 
     @property
-    def docker(self) -> dict[str, Any]:
-        """Return backup Docker config data."""
-        return self._data.get(ATTR_DOCKER, {})
-
-    @docker.setter
-    def docker(self, value: dict[str, Any]) -> None:
-        """Set the Docker config data."""
-        self._data[ATTR_DOCKER] = value
-
-    @property
     def location(self) -> str | None:
         """Return the location of the backup."""
         return self.locations[0]
