@@ -205,7 +205,7 @@ jobs:
 
       # home-assistant/builder doesn't support sha pinning
       - name: Build supervisor
-        uses: home-assistant/builder@2025.11.0
+        uses: home-assistant/builder@2026.02.1
         with:
           image: ${{ matrix.arch }}
           args: |
@@ -259,7 +259,7 @@ jobs:
       # home-assistant/builder doesn't support sha pinning
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2025.11.0
+        uses: home-assistant/builder@2026.02.1
         with:
           args: |
             --test \
