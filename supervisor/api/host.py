@@ -219,8 +219,6 @@ class APIHost(CoreSysAttributes):
             params[PARAM_SYSLOG_IDENTIFIER] = request.match_info[IDENTIFIER]
         else:
             params[PARAM_SYSLOG_IDENTIFIER] = self.sys_host.logs.default_identifiers
-            # host logs should be always verbose, no matter what Accept header is used
-            log_formatter = LogFormatter.VERBOSE
 
         if BOOTID in request.match_info:
             params[PARAM_BOOT_ID] = await self._get_boot_id(request.match_info[BOOTID])

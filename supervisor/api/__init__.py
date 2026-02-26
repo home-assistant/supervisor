@@ -193,10 +193,13 @@ class RestAPI(CoreSysAttributes):
         self.webapp.add_routes(
             [
                 web.get("/host/info", api_host.info),
-                web.get("/host/logs", api_host.advanced_logs),
+                web.get(
+                    "/host/logs",
+                    partial(api_host.advanced_logs, default_verbose=True),
+                ),
                 web.get(
                     "/host/logs/follow",
-                    partial(api_host.advanced_logs, follow=True),
+                    partial(api_host.advanced_logs, follow=True, default_verbose=True),
                 ),
                 web.get("/host/logs/identifiers", api_host.list_identifiers),
                 web.get("/host/logs/identifiers/{identifier}", api_host.advanced_logs),
@@ -205,10 +208,13 @@ class RestAPI(CoreSysAttributes):
                     partial(api_host.advanced_logs, follow=True),
                 ),
                 web.get("/host/logs/boots", api_host.list_boots),
-                web.get("/host/logs/boots/{bootid}", api_host.advanced_logs),
+                web.get(
+                    "/host/logs/boots/{bootid}",
+                    partial(api_host.advanced_logs, default_verbose=True),
+                ),
                 web.get(
                     "/host/logs/boots/{bootid}/follow",
-                    partial(api_host.advanced_logs, follow=True),
+                    partial(api_host.advanced_logs, follow=True, default_verbose=True),
                 ),
                 web.get(
                     "/host/logs/boots/{bootid}/identifiers/{identifier}",
