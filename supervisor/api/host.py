@@ -240,7 +240,9 @@ class APIHost(CoreSysAttributes):
                     f"Cannot determine CONTAINER_LOG_EPOCH of {identifier}, latest logs not available."
                 ) from err
 
-        if ACCEPT in request.headers and request.headers[ACCEPT] not in [
+        accept_header = request.headers.get(ACCEPT)
+
+        if accept_header and accept_header not in [
             CONTENT_TYPE_TEXT,
             CONTENT_TYPE_X_LOG,
             "*/*",
@@ -250,7 +252,7 @@ class APIHost(CoreSysAttributes):
                 "supported for now."
             )
 
-        if "verbose" in request.query or request.headers[ACCEPT] == CONTENT_TYPE_X_LOG:
+        if "verbose" in request.query or accept_header == CONTENT_TYPE_X_LOG:
             log_formatter = LogFormatter.VERBOSE
 
         if "no_colors" in request.query:
