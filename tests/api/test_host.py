@@ -374,6 +374,11 @@ async def test_advanced_logs_formatters(
     await api_client.get("/host/logs/identifiers/test", headers=headers)
     journal_logs_reader.assert_called_once_with(ANY, LogFormatter.VERBOSE, False)
 
+    journal_logs_reader.reset_mock()
+
+    await api_client.get("/host/logs/identifiers/test", skip_auto_headers={"Accept"})
+    journal_logs_reader.assert_called_once_with(ANY, LogFormatter.PLAIN, False)
+
 
 async def test_advanced_logs_errors(coresys: CoreSys, api_client: TestClient):
     """Test advanced logging API errors."""
