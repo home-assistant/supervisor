@@ -6,6 +6,7 @@ from aiohttp.test_utils import TestClient
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
+from supervisor.host.const import LogFormatter
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.resolved import Resolved as ResolvedService
@@ -67,4 +68,4 @@ async def test_options(api_client: TestClient, coresys: CoreSys):
 
 async def test_api_dns_logs(advanced_logs_tester):
     """Test dns logs."""
-    await advanced_logs_tester("/dns", "hassio_dns")
+    await advanced_logs_tester("/dns", "hassio_dns", LogFormatter.VERBOSE)

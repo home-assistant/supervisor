@@ -129,14 +129,23 @@ class RestAPI(CoreSysAttributes):
 
         await self.start()
 
-    def _register_advanced_logs(self, path: str, syslog_identifier: str):
+    def _register_advanced_logs(
+        self,
+        path: str,
+        syslog_identifier: str,
+        default_verbose: bool = False,
+    ):
         """Register logs endpoint for a given path, returning logs for single syslog identifier."""
 
         self.webapp.add_routes(
             [
                 web.get(
                     f"{path}/logs",
-                    partial(self._api_host.advanced_logs, identifier=syslog_identifier),
+                    partial(
+                        self._api_host.advanced_logs,
+                        identifier=syslog_identifier,
+                        default_verbose=default_verbose,
+                    ),
                 ),
                 web.get(
                     f"{path}/logs/follow",
@@ -144,6 +153,7 @@ class RestAPI(CoreSysAttributes):
                         self._api_host.advanced_logs,
                         identifier=syslog_identifier,
                         follow=True,
+                        default_verbose=default_verbose,
                     ),
                 ),
                 web.get(
@@ -153,11 +163,16 @@ class RestAPI(CoreSysAttributes):
                         identifier=syslog_identifier,
                         latest=True,
                         no_colors=True,
+                        default_verbose=default_verbose,
                     ),
                 ),
                 web.get(
                     f"{path}/logs/boots/{{bootid}}",
-                    partial(self._api_host.advanced_logs, identifier=syslog_identifier),
+                    partial(
+                        self._api_host.advanced_logs,
+                        identifier=syslog_identifier,
+                        default_verbose=default_verbose,
+                    ),
                 ),
                 web.get(
                     f"{path}/logs/boots/{{bootid}}/follow",
@@ -165,6 +180,7 @@ class RestAPI(CoreSysAttributes):
                         self._api_host.advanced_logs,
                         identifier=syslog_identifier,
                         follow=True,
+                        default_verbose=default_verbose,
                     ),
                 ),
             ]
@@ -335,7 +351,9 @@ class RestAPI(CoreSysAttributes):
                 web.post("/multicast/restart", api_multicast.restart),
             ]
         )
-        self._register_advanced_logs("/multicast", "hassio_multicast")
+        self._register_advanced_logs(
+            "/multicast", "hassio_multicast", default_verbose=True
+        )
 
     def _register_hardware(self) -> None:
         """Register hardware functions."""
@@ -695,7 +713,7 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
-        self._register_advanced_logs("/dns", "hassio_dns")
+        self._register_advanced_logs("/dns", "hassio_dns", default_verbose=True)
 
     def _register_audio(self) -> None:
         """Register Audio functions."""
@@ -718,7 +736,7 @@ class RestAPI(CoreSysAttributes):
             ]
         )
 
-        self._register_advanced_logs("/audio", "hassio_audio")
+        self._register_advanced_logs("/audio", "hassio_audio", default_verbose=True)
 
     def _register_mounts(self) -> None:
         """Register mounts endpoints."""
