@@ -91,14 +91,8 @@ class PluginManager(CoreSysAttributes):
             # Check if need an update
             if not plugin.need_update:
                 continue
-
-            _LOGGER.info(
-                "Plugin %s is not up-to-date, latest version %s, updating",
-                plugin.slug,
-                plugin.latest_version,
-            )
             try:
-                await plugin.update()
+                await plugin.auto_update()
             except HassioError as ex:
                 _LOGGER.error(
                     "Can't update %s to %s: %s",

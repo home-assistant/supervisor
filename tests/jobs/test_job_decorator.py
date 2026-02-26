@@ -6,6 +6,7 @@ from unittest.mock import ANY, AsyncMock, Mock, PropertyMock, patch
 from uuid import uuid4
 
 from aiohttp.client_exceptions import ClientError
+from awesomeversion import AwesomeVersion
 import pytest
 import time_machine
 
@@ -25,6 +26,7 @@ from supervisor.jobs.decorator import Job, JobCondition
 from supervisor.jobs.job_group import JobGroup
 from supervisor.os.manager import OSManager
 from supervisor.plugins.audio import PluginAudio
+from supervisor.plugins.dns import PluginDns
 from supervisor.resolution.const import UnhealthyReason, UnsupportedReason
 from supervisor.supervisor import Supervisor
 from supervisor.utils.dt import utcnow
@@ -526,6 +528,39 @@ async def test_plugins_updated(coresys: CoreSys):
 
         coresys.jobs.ignore_conditions = [JobCondition.PLUGINS_UPDATED]
         assert await test.execute()
+
+
+async def test_plugins_updated_skips_runtime_pinned_plugin(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture
+):
+    """Test PLUGINS_UPDATED skips runtime pinned plugins."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(
+            name="test_plugins_updated_skips_runtime_pinned_plugin_execute",
+            conditions=[JobCondition.PLUGINS_UPDATED],
+        )
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    coresys.plugins.dns._runtime_update_pin = AwesomeVersion("2025.08.0")
+
+    with (
+        patch.object(PluginDns, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(PluginDns, "update") as update,
+    ):
+        assert await test.execute()
+
+    update.assert_not_called()
+    assert "Skipping auto-update of dns plugin due to runtime pin" in caplog.text
 
 
 async def test_auto_update(coresys: CoreSys):

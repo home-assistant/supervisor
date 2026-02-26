@@ -450,23 +450,26 @@ class Job(CoreSysAttributes):
                 f"'{method_name}' blocked from execution, unsupported system architecture"
             )
 
-        if JobCondition.PLUGINS_UPDATED in used_conditions and (
-            out_of_date := [
+        if JobCondition.PLUGINS_UPDATED in used_conditions:
+            out_of_date = [
                 plugin
                 for plugin in coresys.sys_plugins.all_plugins
                 if plugin.need_update
             ]
-        ):
-            errors = await asyncio.gather(
-                *[plugin.update() for plugin in out_of_date], return_exceptions=True
-            )
-
-            if update_failures := [
-                out_of_date[i].slug for i in range(len(errors)) if errors[i] is not None
-            ]:
-                raise JobConditionException(
-                    f"'{method_name}' blocked from execution, was unable to update plugin(s) {', '.join(update_failures)} and all plugins must be up to date first"
+            if out_of_date:
+                errors = await asyncio.gather(
+                    *[plugin.auto_update() for plugin in out_of_date],
+                    return_exceptions=True,
                 )
+
+                if update_failures := [
+                    out_of_date[i].slug
+                    for i in range(len(errors))
+                    if errors[i] is not None
+                ]:
+                    raise JobConditionException(
+                        f"'{method_name}' blocked from execution, was unable to update plugin(s) {', '.join(update_failures)} and all plugins must be up to date first"
+                    )
 
         if (
             JobCondition.MOUNT_AVAILABLE in used_conditions
