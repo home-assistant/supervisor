@@ -304,21 +304,38 @@ class DeviceType(DBusIntEnum):
     UNKNOWN = 0
     ETHERNET = 1
     WIRELESS = 2
+    UNUSED1 = 3
+    UNUSED2 = 4
     BLUETOOTH = 5
+    OLPC_MESH = 6
+    WIMAX = 7
     MODEM = 8
+    INFINIBAND = 9
+    BOND = 10
     VLAN = 11
+    ADSL = 12
     BRIDGE = 13
     GENERIC = 14
+    TEAM = 15
     TUN = 16
     IP_TUNNEL = 17
     MAC_VLAN = 18
     VXLAN = 19
     VETH = 20
+    MACSEC = 21
     DUMMY = 22
     PPP = 23
+    OVS_INTERFACE = 24
+    OVS_PORT = 25
+    OVS_BRIDGE = 26
+    WPAN = 27
+    LOWPAN6 = 28
     WIREGUARD = 29
     WIFI_P2P = 30
+    VRF = 31
     LOOPBACK = 32
+    HSR = 33
+    IPVLAN = 34
 
 
 class WirelessMethodType(DBusIntEnum):
