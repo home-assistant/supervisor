@@ -305,10 +305,17 @@ class DeviceType(DBusIntEnum):
     ETHERNET = 1
     WIRELESS = 2
     BLUETOOTH = 5
+    MODEM = 8
     VLAN = 11
     BRIDGE = 13
+    GENERIC = 14
     TUN = 16
+    IP_TUNNEL = 17
+    MAC_VLAN = 18
+    VXLAN = 19
     VETH = 20
+    DUMMY = 22
+    PPP = 23
     WIREGUARD = 29
     WIFI_P2P = 30
     LOOPBACK = 32
