@@ -8,12 +8,11 @@ from typing import Any
 from dbus_fast.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
-from ..utils.dt import get_time_zone, utc_from_timestamp
+from ..utils.dt import get_time_zone
 from .const import (
     DBUS_ATTR_LOCAL_RTC,
     DBUS_ATTR_NTP,
     DBUS_ATTR_NTPSYNCHRONIZED,
-    DBUS_ATTR_TIMEUSEC,
     DBUS_ATTR_TIMEZONE,
     DBUS_IFACE_TIMEDATE,
     DBUS_NAME_TIMEDATE,
@@ -64,12 +63,6 @@ class TimeDate(DBusInterfaceProxy):
     def ntp_synchronized(self) -> bool:
         """Return if NTP is synchronized."""
         return self.properties[DBUS_ATTR_NTPSYNCHRONIZED]
-
-    @property
-    @dbus_property
-    def dt_utc(self) -> datetime:
-        """Return the system UTC time."""
-        return utc_from_timestamp(self.properties[DBUS_ATTR_TIMEUSEC] / 1000000)
 
     @property
     def timezone_tzinfo(self) -> tzinfo | None:

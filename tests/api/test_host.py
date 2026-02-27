@@ -1,10 +1,12 @@
 """Test Host API."""
 
 from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
 from unittest.mock import ANY, MagicMock, patch
 
 from aiohttp.test_utils import TestClient
 import pytest
+import time_machine
 
 from supervisor.coresys import CoreSys
 from supervisor.dbus.resolved import Resolved
@@ -39,14 +41,17 @@ async def fixture_coresys_disk_info(coresys: CoreSys) -> AsyncGenerator[CoreSys]
 async def test_api_host_info(api_client: TestClient, coresys_disk_info: CoreSys):
     """Test host info api."""
     coresys = coresys_disk_info
+    dt_utc = datetime(2026, 2, 17, 1, 23, 45, 678901, tzinfo=UTC)
 
     await coresys.dbus.agent.connect(coresys.dbus.bus)
     await coresys.dbus.agent.update()
 
-    resp = await api_client.get("/host/info")
-    result = await resp.json()
+    with time_machine.travel(dt_utc, tick=False):
+        resp = await api_client.get("/host/info")
+        result = await resp.json()
 
     assert result["data"]["apparmor_version"] == "2.13.2"
+    assert result["data"]["dt_utc"] == "2026-02-17T01:23:45.678901+00:00"
 
 
 async def test_api_host_features(
