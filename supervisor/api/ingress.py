@@ -180,7 +180,7 @@ class APIIngress(CoreSysAttributes):
             req_protocols = []
 
         ws_server = web.WebSocketResponse(
-            protocols=req_protocols, autoclose=False, autoping=False
+            protocols=req_protocols, autoclose=False, autoping=False, max_msg_size=0
         )
         await ws_server.prepare(request)
 
@@ -201,6 +201,7 @@ class APIIngress(CoreSysAttributes):
                 protocols=req_protocols,
                 autoclose=False,
                 autoping=False,
+                max_msg_size=0,
             ) as ws_client:
                 # Proxy requests
                 await asyncio.wait(
