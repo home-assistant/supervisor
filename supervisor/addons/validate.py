@@ -9,7 +9,7 @@ import uuid
 import voluptuous as vol
 
 from ..const import (
-    ARCH_ALL,
+    ARCH_ALL_COMPAT,
     ATTR_ACCESS_TOKEN,
     ATTR_ADVANCED,
     ATTR_APPARMOR,
@@ -341,7 +341,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Required(ATTR_VERSION): version_tag,
         vol.Required(ATTR_SLUG): vol.Match(RE_SLUG_FIELD),
         vol.Required(ATTR_DESCRIPTON): str,
-        vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
+        vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL_COMPAT)],
         vol.Optional(ATTR_MACHINE): vol.All([vol.Match(RE_MACHINE)], vol.Unique()),
         vol.Optional(ATTR_URL): vol.Url(),
         vol.Optional(ATTR_STARTUP, default=AddonStartup.APPLICATION): vol.Coerce(
@@ -454,7 +454,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_BUILD_FROM, default=dict): vol.Any(
             vol.Match(RE_DOCKER_IMAGE_BUILD),
-            vol.Schema({vol.In(ARCH_ALL): vol.Match(RE_DOCKER_IMAGE_BUILD)}),
+            vol.Schema({vol.In(ARCH_ALL_COMPAT): vol.Match(RE_DOCKER_IMAGE_BUILD)}),
         ),
         vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
         vol.Optional(ATTR_ARGS, default=dict): vol.Schema({str: str}),

@@ -187,6 +187,22 @@ def test_valid_basic_build():
     vd.SCHEMA_BUILD_CONFIG(config)
 
 
+def test_valid_legacy_arch_values_for_migration():
+    """Validate legacy arch values are accepted for migration compatibility."""
+    config = load_json_fixture("basic-addon-config.json")
+    config["arch"] = ["armv7", "amd64"]
+
+    assert vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_valid_legacy_build_from_keys_for_migration():
+    """Validate legacy build_from keys are accepted for migration compatibility."""
+    config = load_json_fixture("basic-build-config.json")
+    config["build_from"]["i386"] = "mycustom/legacy-base:latest"
+
+    assert vd.SCHEMA_BUILD_CONFIG(config)
+
+
 async def test_valid_manifest_build():
     """Validate build config with manifest build from."""
     config = load_json_fixture("build-config-manifest.json")

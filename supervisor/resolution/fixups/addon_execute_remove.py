@@ -48,7 +48,7 @@ class FixupAddonExecuteRemove(FixupBase):
     @property
     def issues(self) -> list[IssueType]:
         """Return a IssueType enum list."""
-        return [IssueType.DETACHED_ADDON_REMOVED]
+        return [IssueType.DETACHED_ADDON_REMOVED, IssueType.DEPRECATED_ARCH_ADDON]
 
     @property
     def auto(self) -> bool:

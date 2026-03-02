@@ -12,6 +12,7 @@ from typing import Any
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ..const import (
+    ARCH_DEPRECATED,
     ATTR_ADVANCED,
     ATTR_APPARMOR,
     ATTR_ARCH,
@@ -94,6 +95,7 @@ from ..exceptions import (
     AddonNotSupportedError,
     AddonNotSupportedHomeAssistantVersionError,
     AddonNotSupportedMachineTypeError,
+    HassioArchNotFound,
 )
 from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
@@ -543,6 +545,16 @@ class AddonModel(JobGroup, ABC):
         return self.data[ATTR_ARCH]
 
     @property
+    def has_deprecated_arch(self) -> bool:
+        """Return True if add-on includes deprecated architectures."""
+        return any(arch in ARCH_DEPRECATED for arch in self.supported_arch)
+
+    @property
+    def has_supported_arch(self) -> bool:
+        """Return True if add-on supports any architecture on this system."""
+        return self.sys_arch.is_supported(self.supported_arch)
+
+    @property
     def supported_machine(self) -> list[str]:
         """Return list of supported machine."""
         return self.data.get(ATTR_MACHINE, [])
@@ -550,7 +562,10 @@ class AddonModel(JobGroup, ABC):
     @property
     def arch(self) -> CpuArch:
         """Return architecture to use for the addon's image."""
-        return self.sys_arch.match(self.data[ATTR_ARCH])
+        try:
+            return self.sys_arch.match(self.data[ATTR_ARCH])
+        except HassioArchNotFound:
+            return self.sys_arch.default
 
     @property
     def image(self) -> str | None:
@@ -718,7 +733,10 @@ class AddonModel(JobGroup, ABC):
         """Generate image name from data."""
         # Repository with Dockerhub images
         if ATTR_IMAGE in config:
-            arch = self.sys_arch.match(config[ATTR_ARCH])
+            try:
+                arch = self.sys_arch.match(config[ATTR_ARCH])
+            except HassioArchNotFound:
+                arch = self.sys_arch.default
             return config[ATTR_IMAGE].format(arch=arch)
 
         # local build

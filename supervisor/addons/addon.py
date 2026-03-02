@@ -89,7 +89,7 @@ from ..hardware.data import Device
 from ..homeassistant.const import WSEvent
 from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, UnhealthyReason
+from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..resolution.data import Issue
 from ..store.addon import AddonStore
 from ..utils import check_port
@@ -238,6 +238,17 @@ class Addon(AddonModel):
         )
 
         await self._check_ingress_port()
+
+        if self.has_deprecated_arch and not self.has_supported_arch:
+            self.sys_resolution.create_issue(
+                IssueType.DEPRECATED_ARCH_ADDON,
+                ContextType.ADDON,
+                reference=self.slug,
+                suggestions=[SuggestionType.EXECUTE_REMOVE],
+            )
+            with suppress(DockerError):
+                await self.instance.attach(version=self.version)
+            return
 
         default_image = self._image(self.data)
         try:
