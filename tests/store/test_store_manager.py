@@ -127,8 +127,8 @@ async def test_reload_fails_if_out_of_date(coresys: CoreSys):
     "config,log",
     [
         (
-            {"arch": ["i386"]},
-            "Add-on local_ssh not supported on this platform, supported architectures: i386",
+            {"arch": ["aarch64"]},
+            "Add-on local_ssh not supported on this platform, supported architectures: aarch64",
         ),
         (
             {"machine": ["odroid-n2"]},
@@ -186,8 +186,8 @@ async def test_update_unavailable_addon(
     "config,log",
     [
         (
-            {"arch": ["i386"]},
-            "Add-on local_ssh not supported on this platform, supported architectures: i386",
+            {"arch": ["aarch64"]},
+            "Add-on local_ssh not supported on this platform, supported architectures: aarch64",
         ),
         (
             {"machine": ["odroid-n2"]},

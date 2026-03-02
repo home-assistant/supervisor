@@ -382,13 +382,10 @@ PROVIDE_SERVICE = "provide"
 NEED_SERVICE = "need"
 WANT_SERVICE = "want"
 
-ARCH_ARMHF = "armhf"
-ARCH_ARMV7 = "armv7"
 ARCH_AARCH64 = "aarch64"
 ARCH_AMD64 = "amd64"
-ARCH_I386 = "i386"
 
-ARCH_ALL = [ARCH_ARMHF, ARCH_ARMV7, ARCH_AARCH64, ARCH_AMD64, ARCH_I386]
+ARCH_ALL = [ARCH_AARCH64, ARCH_AMD64]
 
 REPOSITORY_CORE = "core"
 REPOSITORY_LOCAL = "local"
@@ -530,10 +527,7 @@ class BusEvent(StrEnum):
 class CpuArch(StrEnum):
     """Supported CPU architectures."""
 
-    ARMV7 = "armv7"
-    ARMHF = "armhf"
     AARCH64 = "aarch64"
-    I386 = "i386"
     AMD64 = "amd64"
 
 

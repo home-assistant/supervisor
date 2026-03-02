@@ -202,19 +202,14 @@ def test_valid_machine():
         "intel-nuc",
         "odroid-c2",
         "odroid-n2",
-        "odroid-xu",
         "qemuarm-64",
-        "qemuarm",
         "qemux86-64",
-        "qemux86",
-        "raspberrypi",
-        "raspberrypi2",
         "raspberrypi3-64",
-        "raspberrypi3",
         "raspberrypi4-64",
-        "raspberrypi4",
         "raspberrypi5-64",
-        "tinker",
+        "yellow",
+        "green",
+        "generic-x86-64",
     ]
 
     assert vd.SCHEMA_ADDON_CONFIG(config)
@@ -223,35 +218,25 @@ def test_valid_machine():
         "!intel-nuc",
         "!odroid-c2",
         "!odroid-n2",
-        "!odroid-xu",
         "!qemuarm-64",
-        "!qemuarm",
         "!qemux86-64",
-        "!qemux86",
-        "!raspberrypi",
-        "!raspberrypi2",
         "!raspberrypi3-64",
-        "!raspberrypi3",
         "!raspberrypi4-64",
-        "!raspberrypi4",
         "!raspberrypi5-64",
-        "!tinker",
+        "!yellow",
+        "!green",
+        "!generic-x86-64",
     ]
 
     assert vd.SCHEMA_ADDON_CONFIG(config)
 
     config["machine"] = [
         "odroid-n2",
-        "!odroid-xu",
         "qemuarm-64",
-        "!qemuarm",
         "qemux86-64",
-        "qemux86",
-        "raspberrypi",
         "raspberrypi4-64",
-        "raspberrypi4",
         "raspberrypi5-64",
-        "!tinker",
+        "!green",
     ]
 
     assert vd.SCHEMA_ADDON_CONFIG(config)
@@ -263,9 +248,8 @@ def test_invalid_machine():
 
     config["machine"] = [
         "intel-nuc",
-        "raspberrypi3",
         "raspberrypi4-64",
-        "raspberrypi4",
+        "raspberrypi7-64",
         "tinkerxy",
     ]
 
