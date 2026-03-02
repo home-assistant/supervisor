@@ -69,3 +69,31 @@ async def test_load(
 
         assert attach.call_count == 10
         assert update.call_count == 5
+
+
+@pytest.mark.usefixtures("no_job_throttle")
+async def test_load_skip_update_auto_update_disabled(
+    coresys: CoreSys, mock_update_data: MockResponse, supervisor_internet: AsyncMock
+):
+    """Test plugin manager load skips updates when auto update is disabled."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    await coresys.updater.load()
+    await coresys.updater.reload()
+
+    coresys.updater.auto_update = False
+
+    with (
+        patch.object(DockerInterface, "attach") as attach,
+        patch.object(DockerInterface, "update") as update,
+        patch.object(Supervisor, "need_update", new=PropertyMock(return_value=False)),
+        patch.object(PluginBase, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(
+            PluginBase,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("1970-01-01")),
+        ),
+    ):
+        await coresys.plugins.load()
+
+        assert attach.call_count == 5
+        update.assert_not_called()
