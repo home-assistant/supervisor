@@ -508,8 +508,8 @@ async def coresys(
         "HostConfig": {"Privileged": True},
     }
     coresys_obj.arch._default_arch = CpuArch.AMD64
-    coresys_obj.arch._supported_arch = [CpuArch.AMD64, CpuArch.I386]
-    coresys_obj.arch._supported_set = {CpuArch.AMD64, CpuArch.I386}
+    coresys_obj.arch._supported_arch = [CpuArch.AMD64]
+    coresys_obj.arch._supported_set = {CpuArch.AMD64}
     coresys_obj._machine = "qemux86-64"
     coresys_obj._machine_id = uuid4()
 
