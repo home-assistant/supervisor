@@ -2,7 +2,7 @@
 
 import base64
 import json
-from pathlib import Path
+from pathlib import Path, PurePath
 from unittest.mock import PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
@@ -11,7 +11,7 @@ import pytest
 from supervisor.addons.addon import Addon
 from supervisor.addons.build import AddonBuild
 from supervisor.coresys import CoreSys
-from supervisor.docker.const import DOCKER_HUB
+from supervisor.docker.const import DOCKER_HUB, MountType
 from supervisor.exceptions import AddonBuildDockerfileMissingError
 
 from tests.common import is_in_list
@@ -31,7 +31,7 @@ async def test_platform_set(coresys: CoreSys, install_addon_ssh: Addon):
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            return_value=PurePath("/addon/path/on/host"),
         ),
     ):
         args = await coresys.run_in_executor(
@@ -55,7 +55,7 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_addon_ssh: Addon)
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            return_value=PurePath("/addon/path/on/host"),
         ),
     ):
         args = await coresys.run_in_executor(
@@ -83,7 +83,7 @@ async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_addon_ssh: A
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            return_value=PurePath("/addon/path/on/host"),
         ),
     ):
         args = await coresys.run_in_executor(
@@ -231,7 +231,7 @@ async def test_docker_args_with_config_path(coresys: CoreSys, install_addon_ssh:
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            side_effect=lambda p: f"/extern{p}",
+            side_effect=lambda p: PurePath(f"/extern{p}"),
         ),
     ):
         config_path = Path("/data/supervisor/tmp/config.json")
@@ -242,13 +242,14 @@ async def test_docker_args_with_config_path(coresys: CoreSys, install_addon_ssh:
             config_path,
         )
 
-    # Check that config is mounted
-    assert "/extern/data/supervisor/tmp/config.json" in args["volumes"]
-    assert (
-        args["volumes"]["/extern/data/supervisor/tmp/config.json"]["bind"]
-        == "/root/.docker/config.json"
+    # Check that config is mounted (3 mounts: docker socket, addon path, config)
+    assert len(args["mounts"]) == 3
+    config_mount = next(
+        m for m in args["mounts"] if m.target == "/root/.docker/config.json"
     )
-    assert args["volumes"]["/extern/data/supervisor/tmp/config.json"]["mode"] == "ro"
+    assert config_mount.source == "/extern/data/supervisor/tmp/config.json"
+    assert config_mount.read_only is True
+    assert config_mount.type == MountType.BIND
 
 
 async def test_docker_args_without_config_path(
@@ -267,7 +268,7 @@ async def test_docker_args_without_config_path(
         patch.object(
             type(coresys.config),
             "local_to_extern_path",
-            return_value="/addon/path/on/host",
+            return_value=PurePath("/addon/path/on/host"),
         ),
     ):
         args = await coresys.run_in_executor(
@@ -275,7 +276,7 @@ async def test_docker_args_without_config_path(
         )
 
     # Only docker socket and addon path should be mounted
-    assert len(args["volumes"]) == 2
+    assert len(args["mounts"]) == 2
     # Verify no docker config mount
-    for bind in args["volumes"].values():
-        assert bind["bind"] != "/root/.docker/config.json"
+    for mount in args["mounts"]:
+        assert mount.target != "/root/.docker/config.json"

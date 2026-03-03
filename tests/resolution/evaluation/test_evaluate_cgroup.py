@@ -1,6 +1,7 @@
 """Test evaluation base."""
 
-# pylint: disable=import-error
+# pylint: disable=import-error,protected-access
+from dataclasses import replace
 from unittest.mock import patch
 
 from supervisor.const import CoreState
@@ -19,17 +20,17 @@ async def test_evaluation(coresys: CoreSys):
 
     assert cgroup_version.reason not in coresys.resolution.unsupported
 
-    coresys.docker.info.cgroup = "unsupported"
+    coresys.docker._info = replace(coresys.docker.info, cgroup="unsupported")
     await cgroup_version()
     assert cgroup_version.reason in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
-    coresys.docker.info.cgroup = CGROUP_V2_VERSION
+    coresys.docker._info = replace(coresys.docker.info, cgroup=CGROUP_V2_VERSION)
     await cgroup_version()
     assert cgroup_version.reason not in coresys.resolution.unsupported
     coresys.resolution.unsupported.clear()
 
-    coresys.docker.info.cgroup = CGROUP_V1_VERSION
+    coresys.docker._info = replace(coresys.docker.info, cgroup=CGROUP_V1_VERSION)
     await cgroup_version()
     assert cgroup_version.reason not in coresys.resolution.unsupported
 
@@ -39,11 +40,11 @@ async def test_evaluation_os_available(coresys: CoreSys, os_available):
     cgroup_version = EvaluateCGroupVersion(coresys)
     await coresys.core.set_state(CoreState.SETUP)
 
-    coresys.docker.info.cgroup = CGROUP_V2_VERSION
+    coresys.docker._info = replace(coresys.docker.info, cgroup=CGROUP_V2_VERSION)
     await cgroup_version()
     assert cgroup_version.reason not in coresys.resolution.unsupported
 
-    coresys.docker.info.cgroup = CGROUP_V1_VERSION
+    coresys.docker._info = replace(coresys.docker.info, cgroup=CGROUP_V1_VERSION)
     await cgroup_version()
     assert cgroup_version.reason not in coresys.resolution.unsupported
 

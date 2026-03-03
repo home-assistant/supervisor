@@ -13,7 +13,10 @@ from typing import Final
 
 from awesomeversion import AwesomeVersion
 
-from ..const import ATTR_HOMEASSISTANT, BusEvent
+from supervisor.utils import remove_colors
+
+from ..bus import EventListener
+from ..const import ATTR_HOMEASSISTANT, BusEvent, CoreState
 from ..coresys import CoreSys
 from ..docker.const import ContainerState
 from ..docker.homeassistant import DockerHomeAssistant
@@ -33,7 +36,6 @@ from ..jobs.const import JOB_GROUP_HOME_ASSISTANT_CORE, JobConcurrency, JobThrot
 from ..jobs.decorator import Job, JobCondition
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType
-from ..utils import convert_to_ascii
 from ..utils.sentry import async_capture_exception
 from .const import (
     LANDINGPAGE,
@@ -74,6 +76,7 @@ class HomeAssistantCore(JobGroup):
         super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self._error_state: bool = False
+        self._watchdog_listener: EventListener | None = None
 
     @property
     def error_state(self) -> bool:
@@ -82,8 +85,11 @@ class HomeAssistantCore(JobGroup):
 
     async def load(self) -> None:
         """Prepare Home Assistant object."""
-        self.sys_bus.register_event(
+        self._watchdog_listener = self.sys_bus.register_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE, self.watchdog_container
+        )
+        self.sys_bus.register_event(
+            BusEvent.SUPERVISOR_STATE_CHANGE, self._supervisor_state_changed
         )
 
         try:
@@ -176,28 +182,53 @@ class HomeAssistantCore(JobGroup):
         concurrency=JobConcurrency.GROUP_REJECT,
     )
     async def install(self) -> None:
-        """Install a landing page."""
+        """Install Home Assistant Core."""
         _LOGGER.info("Home Assistant setup")
-        while True:
-            # read homeassistant tag and install it
-            if not self.sys_homeassistant.latest_version:
-                await self.sys_updater.reload()
+        stop_progress_log = asyncio.Event()
 
-            if to_version := self.sys_homeassistant.latest_version:
+        async def _periodic_progress_log() -> None:
+            """Log installation progress periodically for user visibility."""
+            while not stop_progress_log.is_set():
                 try:
-                    await self.instance.update(
-                        to_version,
-                        image=self.sys_updater.image_homeassistant,
-                    )
-                    self.sys_homeassistant.version = self.instance.version or to_version
-                    break
-                except (DockerError, JobException):
-                    pass
-                except Exception as err:  # pylint: disable=broad-except
-                    await async_capture_exception(err)
+                    await asyncio.wait_for(stop_progress_log.wait(), timeout=15)
+                except TimeoutError:
+                    if (job := self.instance.active_job) and job.progress:
+                        _LOGGER.info(
+                            "Downloading Home Assistant Core image, %d%%",
+                            int(job.progress),
+                        )
+                    else:
+                        _LOGGER.info("Home Assistant Core installation in progress")
 
-            _LOGGER.warning("Error on Home Assistant installation. Retrying in 30sec")
-            await asyncio.sleep(30)
+        progress_task = self.sys_create_task(_periodic_progress_log())
+        try:
+            while True:
+                # read homeassistant tag and install it
+                if not self.sys_homeassistant.latest_version:
+                    await self.sys_updater.reload()
+
+                if to_version := self.sys_homeassistant.latest_version:
+                    try:
+                        await self.instance.update(
+                            to_version,
+                            image=self.sys_updater.image_homeassistant,
+                        )
+                        self.sys_homeassistant.version = (
+                            self.instance.version or to_version
+                        )
+                        break
+                    except (DockerError, JobException):
+                        pass
+                    except Exception as err:  # pylint: disable=broad-except
+                        await async_capture_exception(err)
+
+                _LOGGER.warning(
+                    "Error on Home Assistant installation. Retrying in 30sec"
+                )
+                await asyncio.sleep(30)
+        finally:
+            stop_progress_log.set()
+            await progress_task
 
         _LOGGER.info("Home Assistant docker now installed")
         self.sys_homeassistant.set_image(self.sys_updater.image_homeassistant)
@@ -303,11 +334,17 @@ class HomeAssistantCore(JobGroup):
             except HomeAssistantError:
                 # The API stoped responding between the up checks an now
                 self._error_state = True
-                data = None
+                return
 
             # Verify that the frontend is loaded
-            if data and "frontend" not in data.get("components", []):
+            if "frontend" not in data.get("components", []):
                 _LOGGER.error("API responds but frontend is not loaded")
+                self._error_state = True
+            # Check that the frontend is actually accessible
+            elif not await self.sys_homeassistant.api.check_frontend_available():
+                _LOGGER.error(
+                    "Frontend component loaded but frontend is not accessible"
+                )
                 self._error_state = True
             else:
                 return
@@ -321,12 +358,12 @@ class HomeAssistantCore(JobGroup):
 
             # Make a copy of the current log file if it exists
             logfile = self.sys_config.path_homeassistant / "home-assistant.log"
-            if logfile.exists():
+            if await self.sys_run_in_executor(logfile.exists):
                 rollback_log = (
                     self.sys_config.path_homeassistant / "home-assistant-rollback.log"
                 )
 
-                shutil.copy(logfile, rollback_log)
+                await self.sys_run_in_executor(shutil.copy, logfile, rollback_log)
                 _LOGGER.info(
                     "A backup of the logfile is stored in /config/home-assistant-rollback.log"
                 )
@@ -421,13 +458,6 @@ class HomeAssistantCore(JobGroup):
             await self.instance.stop()
         await self.start()
 
-    def logs(self) -> Awaitable[bytes]:
-        """Get HomeAssistant docker logs.
-
-        Return a coroutine.
-        """
-        return self.instance.logs()
-
     async def stats(self) -> DockerStats:
         """Return stats of Home Assistant."""
         try:
@@ -458,7 +488,15 @@ class HomeAssistantCore(JobGroup):
         """Run Home Assistant config check."""
         try:
             result = await self.instance.execute_command(
-                "python3 -m homeassistant -c /config --script check_config"
+                [
+                    "python3",
+                    "-m",
+                    "homeassistant",
+                    "-c",
+                    "/config",
+                    "--script",
+                    "check_config",
+                ]
             )
         except DockerError as err:
             raise HomeAssistantError() from err
@@ -468,7 +506,7 @@ class HomeAssistantCore(JobGroup):
             raise HomeAssistantError("Fatal error on config check!", _LOGGER.error)
 
         # Convert output
-        log = convert_to_ascii(result.output)
+        log = remove_colors("\n".join(result.log))
         _LOGGER.debug("Result config check: %s", log.strip())
 
         # Parse output
@@ -549,6 +587,16 @@ class HomeAssistantCore(JobGroup):
 
         if event.state in [ContainerState.FAILED, ContainerState.UNHEALTHY]:
             await self._restart_after_problem(event.state)
+
+    async def _supervisor_state_changed(self, state: CoreState) -> None:
+        """Handle supervisor state changes to disable watchdog during shutdown."""
+        if state in (CoreState.SHUTDOWN, CoreState.STOPPING, CoreState.CLOSE):
+            if self._watchdog_listener:
+                _LOGGER.debug(
+                    "Unregistering Home Assistant watchdog due to system shutdown"
+                )
+                self.sys_bus.remove_listener(self._watchdog_listener)
+                self._watchdog_listener = None
 
     @Job(
         name="home_assistant_core_restart_after_problem",

@@ -2,8 +2,9 @@
 
 from ipaddress import IPv4Address
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+from aiodocker.containers import DockerContainer
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -12,12 +13,16 @@ from supervisor.docker.manager import DockerAPI
 
 
 @pytest.mark.usefixtures("path_extern")
-async def test_start(coresys: CoreSys, tmp_supervisor_data: Path, container: MagicMock):
+async def test_start(
+    coresys: CoreSys, tmp_supervisor_data: Path, container: DockerContainer
+):
     """Test starting dns plugin."""
     config_file = tmp_supervisor_data / "dns" / "coredns.json"
     assert not config_file.exists()
 
-    with patch.object(DockerAPI, "run", return_value=container.attrs) as run:
+    with patch.object(
+        DockerAPI, "run", return_value=container.show.return_value
+    ) as run:
         await coresys.plugins.dns.start()
 
         run.assert_called_once()

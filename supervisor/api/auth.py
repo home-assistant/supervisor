@@ -127,14 +127,14 @@ class APIAuth(CoreSysAttributes):
         return {
             ATTR_USERS: [
                 {
-                    ATTR_USERNAME: user[ATTR_USERNAME],
-                    ATTR_NAME: user[ATTR_NAME],
-                    ATTR_IS_OWNER: user[ATTR_IS_OWNER],
-                    ATTR_IS_ACTIVE: user[ATTR_IS_ACTIVE],
-                    ATTR_LOCAL_ONLY: user[ATTR_LOCAL_ONLY],
-                    ATTR_GROUP_IDS: user[ATTR_GROUP_IDS],
+                    ATTR_USERNAME: user.username,
+                    ATTR_NAME: user.name,
+                    ATTR_IS_OWNER: user.is_owner,
+                    ATTR_IS_ACTIVE: user.is_active,
+                    ATTR_LOCAL_ONLY: user.local_only,
+                    ATTR_GROUP_IDS: user.group_ids,
                 }
                 for user in await self.sys_auth.list_users()
-                if user[ATTR_USERNAME]
+                if user.username
             ]
         }

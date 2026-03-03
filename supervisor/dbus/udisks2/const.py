@@ -4,6 +4,8 @@ from enum import StrEnum
 
 from dbus_fast import Variant
 
+from ..enum import DBusStrEnum
+
 UDISKS2_DEFAULT_OPTIONS = {"auth.no_user_interaction": Variant("b", True)}
 
 
@@ -31,7 +33,7 @@ class FormatType(StrEnum):
     GPT = "gpt"
 
 
-class PartitionTableType(StrEnum):
+class PartitionTableType(DBusStrEnum):
     """Partition Table type."""
 
     DOS = "dos"

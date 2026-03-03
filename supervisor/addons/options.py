@@ -169,6 +169,10 @@ class AddonOptions(CoreSysAttributes):
         elif typ.startswith(_LIST):
             return vol.In(match.group("list").split("|"))(str(value))
         elif typ.startswith(_DEVICE):
+            if not isinstance(value, str):
+                raise vol.Invalid(
+                    f"Expected a string for option '{key}' in {self._name} ({self._slug})"
+                )
             try:
                 device = self.sys_hardware.get_by_path(Path(value))
             except HardwareNotFound:

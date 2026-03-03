@@ -97,12 +97,13 @@ async def test_api_send_del_discovery(
     assert resp.status == 200
     result = await resp.json()
     uuid = result["data"]["uuid"]
-    coresys.websession.post.assert_called_once()
+    coresys.websession.request.assert_called_once()
+    assert coresys.websession.request.call_args.args[0] == "post"
     assert (
-        coresys.websession.post.call_args.args[0]
+        coresys.websession.request.call_args.args[1]
         == f"http://172.30.32.1:8123/api/hassio_push/discovery/{uuid}"
     )
-    assert coresys.websession.post.call_args.kwargs["json"] == {
+    assert coresys.websession.request.call_args.kwargs["json"] == {
         "addon": TEST_ADDON_SLUG,
         "service": "test",
         "uuid": uuid,
@@ -113,15 +114,16 @@ async def test_api_send_del_discovery(
     assert message.service == "test"
     assert message.config == {}
 
-    coresys.websession.delete = MagicMock()
+    coresys.websession.request.reset_mock()
     resp = await api_client.delete(f"/discovery/{uuid}")
     assert resp.status == 200
-    coresys.websession.delete.assert_called_once()
+    coresys.websession.request.assert_called_once()
+    assert coresys.websession.request.call_args.args[0] == "delete"
     assert (
-        coresys.websession.delete.call_args.args[0]
+        coresys.websession.request.call_args.args[1]
         == f"http://172.30.32.1:8123/api/hassio_push/discovery/{uuid}"
     )
-    assert coresys.websession.delete.call_args.kwargs["json"] == {
+    assert coresys.websession.request.call_args.kwargs["json"] == {
         "addon": TEST_ADDON_SLUG,
         "service": "test",
         "uuid": uuid,

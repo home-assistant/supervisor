@@ -2,14 +2,15 @@
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.backups.manager import BackupManager
-from supervisor.const import CoreState
+from supervisor.const import DNS_SUFFIX, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.interface import DockerInterface
@@ -17,6 +18,8 @@ from supervisor.homeassistant.api import APIState, HomeAssistantAPI
 from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
+from supervisor.resolution.const import ContextType, IssueType
+from supervisor.resolution.data import Issue
 
 from tests.common import AsyncIterator, load_json_fixture
 
@@ -33,11 +36,12 @@ async def test_api_core_logs(
     )
 
 
-async def test_api_stats(api_client: TestClient, coresys: CoreSys):
+async def test_api_stats(api_client: TestClient, container: DockerContainer):
     """Test stats."""
-    coresys.docker.containers_legacy.get.return_value.status = "running"
-    coresys.docker.containers_legacy.get.return_value.stats.return_value = (
-        load_json_fixture("container_stats.json")
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
+    container.stats = AsyncMock(
+        return_value=[load_json_fixture("container_stats.json")]
     )
 
     resp = await api_client.get("/homeassistant/stats")
@@ -49,7 +53,7 @@ async def test_api_stats(api_client: TestClient, coresys: CoreSys):
     assert result["data"]["memory_percent"] == 1.49
 
 
-async def test_api_set_options(api_client: TestClient, coresys: CoreSys):
+async def test_api_set_options(api_client: TestClient):
     """Test setting options for homeassistant."""
     resp = await api_client.get("/homeassistant/info")
     assert resp.status == 200
@@ -103,9 +107,7 @@ async def test_api_set_image(api_client: TestClient, coresys: CoreSys):
 
 
 async def test_api_restart(
-    api_client: TestClient,
-    container: MagicMock,
-    tmp_supervisor_data: Path,
+    api_client: TestClient, container: DockerContainer, tmp_supervisor_data: Path
 ):
     """Test restarting homeassistant."""
     safe_mode_marker = tmp_supervisor_data / "homeassistant" / "safe-mode"
@@ -123,12 +125,12 @@ async def test_api_restart(
     assert safe_mode_marker.exists()
 
 
+@pytest.mark.usefixtures("path_extern")
 async def test_api_rebuild(
     api_client: TestClient,
     coresys: CoreSys,
-    container: MagicMock,
+    container: DockerContainer,
     tmp_supervisor_data: Path,
-    path_extern,
 ):
     """Test rebuilding homeassistant."""
     coresys.homeassistant.version = AwesomeVersion("2023.09.0")
@@ -137,23 +139,21 @@ async def test_api_rebuild(
     with patch.object(HomeAssistantCore, "_block_till_run"):
         await api_client.post("/homeassistant/rebuild")
 
-    assert container.remove.call_count == 2
-    coresys.docker.containers.create.return_value.start.assert_called_once()
+    assert container.delete.call_count == 2
+    container.start.assert_called_once()
     assert not safe_mode_marker.exists()
 
     with patch.object(HomeAssistantCore, "_block_till_run"):
         await api_client.post("/homeassistant/rebuild", json={"safe_mode": True})
 
-    assert container.remove.call_count == 4
-    assert coresys.docker.containers.create.return_value.start.call_count == 2
+    assert container.delete.call_count == 4
+    assert container.start.call_count == 2
     assert safe_mode_marker.exists()
 
 
 @pytest.mark.parametrize("action", ["rebuild", "restart", "stop", "update"])
 async def test_migration_blocks_stopping_core(
-    api_client: TestClient,
-    coresys: CoreSys,
-    action: str,
+    api_client: TestClient, coresys: CoreSys, action: str
 ):
     """Test that an offline db migration in progress stops users from stopping/restarting core."""
     coresys.homeassistant.api.get_api_state.return_value = APIState("NOT_RUNNING", True)
@@ -289,6 +289,7 @@ async def test_api_progress_updates_home_assistant_update(
         patch.object(
             HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
         ),
+        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=True),
     ):
         resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
 
@@ -305,6 +306,8 @@ async def test_api_progress_updates_home_assistant_update(
         and evt.args[0]["data"]["event"] == WSEvent.JOB
         and evt.args[0]["data"]["data"]["name"] == "home_assistant_core_update"
     ]
+    # Count-based progress: 2 layers need pulling (each worth 50%)
+    # Layers that already exist are excluded from progress calculation
     assert events[:5] == [
         {
             "stage": None,
@@ -318,34 +321,34 @@ async def test_api_progress_updates_home_assistant_update(
         },
         {
             "stage": None,
-            "progress": 0.1,
+            "progress": 9.2,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 1.7,
+            "progress": 25.6,
             "done": False,
         },
         {
             "stage": None,
-            "progress": 4.0,
+            "progress": 35.4,
             "done": False,
         },
     ]
     assert events[-5:] == [
         {
             "stage": None,
+            "progress": 95.5,
+            "done": False,
+        },
+        {
+            "stage": None,
+            "progress": 96.9,
+            "done": False,
+        },
+        {
+            "stage": None,
             "progress": 98.2,
-            "done": False,
-        },
-        {
-            "stage": None,
-            "progress": 98.3,
-            "done": False,
-        },
-        {
-            "stage": None,
-            "progress": 99.3,
             "done": False,
         },
         {
@@ -359,3 +362,152 @@ async def test_api_progress_updates_home_assistant_update(
             "done": True,
         },
     ]
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_config_check(
+    api_client: TestClient, coresys: CoreSys, container: DockerContainer
+):
+    """Test config check API."""
+    coresys.homeassistant.version = AwesomeVersion("2025.1.0")
+
+    result = await api_client.post("/core/check")
+    assert result.status == 200
+
+    coresys.docker.containers.create.assert_called_once_with(
+        {
+            "Image": "ghcr.io/home-assistant/qemux86-64-homeassistant:2025.1.0",
+            "Labels": {"supervisor_managed": ""},
+            "OpenStdin": False,
+            "StdinOnce": False,
+            "AttachStdin": False,
+            "AttachStdout": False,
+            "AttachStderr": False,
+            "HostConfig": {
+                "NetworkMode": "hassio",
+                "Init": True,
+                "Privileged": True,
+                "Mounts": [
+                    {
+                        "Type": "bind",
+                        "Source": "/mnt/data/supervisor/homeassistant",
+                        "Target": "/config",
+                        "ReadOnly": False,
+                    },
+                    {
+                        "Type": "bind",
+                        "Source": "/mnt/data/supervisor/ssl",
+                        "Target": "/ssl",
+                        "ReadOnly": True,
+                    },
+                    {
+                        "Type": "bind",
+                        "Source": "/mnt/data/supervisor/share",
+                        "Target": "/share",
+                        "ReadOnly": False,
+                    },
+                ],
+                "Dns": [str(coresys.docker.network.dns)],
+                "DnsSearch": [DNS_SUFFIX],
+                "DnsOptions": ["timeout:10"],
+            },
+            "Env": ["TZ=Etc/UTC"],
+            "Entrypoint": [],
+            "Cmd": [
+                "python3",
+                "-m",
+                "homeassistant",
+                "-c",
+                "/config",
+                "--script",
+                "check_config",
+            ],
+        },
+        name=None,
+    )
+    container.start.assert_called_once()
+
+
+@pytest.mark.usefixtures("path_extern")
+async def test_config_check_error(api_client: TestClient, container: DockerContainer):
+    """Test config check API strips color coding from log output on error."""
+    container.log.return_value = [
+        "\x1b[36mTest logs 1\x1b[0m",
+        "\x1b[36mTest logs 2\x1b[0m",
+    ]
+    container.wait.return_value = {"StatusCode": 1}
+
+    result = await api_client.post("/core/check")
+    assert result.status == 400
+    resp = await result.json()
+    assert resp["message"] == "Test logs 1\nTest logs 2"
+
+
+async def test_update_frontend_check_success(api_client: TestClient, coresys: CoreSys):
+    """Test that update succeeds when frontend check passes."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    with (
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(
+            HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
+        ),
+        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=True),
+    ):
+        resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
+
+    assert resp.status == 200
+
+
+async def test_update_frontend_check_fails_triggers_rollback(
+    api_client: TestClient,
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data: Path,
+):
+    """Test that update triggers rollback when frontend check fails."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    # Mock successful first update, failed frontend check, then successful rollback
+    update_call_count = 0
+
+    async def mock_update(*args, **kwargs):
+        nonlocal update_call_count
+        update_call_count += 1
+        if update_call_count == 1:
+            # First update succeeds
+            coresys.homeassistant.version = AwesomeVersion("2025.8.3")
+        elif update_call_count == 2:
+            # Rollback succeeds
+            coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    with (
+        patch.object(DockerInterface, "update", new=mock_update),
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(
+            HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
+        ),
+        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=False),
+    ):
+        resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
+
+    # Update should trigger rollback, which succeeds and returns 200
+    assert resp.status == 200
+    assert "Frontend component loaded but frontend is not accessible" in caplog.text
+    assert "HomeAssistant update failed -> rollback!" in caplog.text
+    # Should have called update twice (once for update, once for rollback)
+    assert update_call_count == 2
+    # An update_rollback issue should be created
+    assert (
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
+    )

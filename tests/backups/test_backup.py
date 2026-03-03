@@ -8,7 +8,7 @@ import tarfile
 from unittest.mock import MagicMock, patch
 
 import pytest
-from securetar import AddFileError
+from securetar import AddFileError, InvalidPasswordError, SecureTarReadError
 
 from supervisor.addons.addon import Addon
 from supervisor.backups.backup import Backup, BackupLocation
@@ -235,7 +235,21 @@ async def test_consolidate_failure(coresys: CoreSys, tmp_path: Path):
             pytest.raises(
                 BackupInvalidError, match="Invalid password for backup 93b462f8"
             ),
-        ),  # Invalid password
+        ),  # Invalid password (legacy securetar exception)
+        (
+            None,
+            SecureTarReadError,
+            pytest.raises(
+                BackupInvalidError, match="Invalid password for backup 93b462f8"
+            ),
+        ),  # Invalid password (securetar >= 2026.2.0 raises SecureTarReadError)
+        (
+            None,
+            InvalidPasswordError,
+            pytest.raises(
+                BackupInvalidError, match="Invalid password for backup 93b462f8"
+            ),
+        ),  # Invalid password (securetar >= 2026.2.0 with v3 backup raises InvalidPasswordError)
     ],
 )
 async def test_validate_backup(
@@ -245,7 +259,12 @@ async def test_validate_backup(
     securetar_side_effect: type[Exception] | None,
     expected_exception: AbstractContextManager,
 ):
-    """Parameterized test for validate_backup."""
+    """Parameterized test for validate_backup.
+
+    Note that it is paramount that BackupInvalidError is raised for invalid password
+    cases, as this is used by the Core to determine if a backup password is invalid
+    and offer a input field to the user to input the correct password.
+    """
     enc_tar = Path(copy(get_fixture_path("backup_example_enc.tar"), tmp_path))
     enc_backup = Backup(coresys, enc_tar, "test", None)
     await enc_backup.load()
@@ -274,6 +293,47 @@ async def test_validate_backup(
         expected_exception,
     ):
         await enc_backup.validate_backup(None)
+
+
+@pytest.mark.parametrize(
+    ("password", "expected_exception"),
+    [
+        ("supervisor", does_not_raise()),
+        (
+            "wrong_password",
+            pytest.raises(
+                BackupInvalidError, match="Invalid password for backup f92f0339"
+            ),
+        ),
+        (
+            None,
+            pytest.raises(
+                BackupInvalidError, match="Invalid password for backup f92f0339"
+            ),
+        ),
+    ],
+)
+async def test_validate_backup_v3(
+    coresys: CoreSys,
+    tmp_path: Path,
+    password: str | None,
+    expected_exception: AbstractContextManager,
+):
+    """Test validate_backup with a real SecureTar v3 encrypted backup.
+
+    SecureTar v3 uses Argon2id key derivation and raises InvalidPasswordError
+    on wrong passwords. It is paramount that BackupInvalidError is raised for
+    invalid password cases, as this is used by the Core to determine if a backup
+    password is invalid and offer a dialog to the user to input the correct
+    password.
+    """
+    v3_tar = Path(copy(get_fixture_path("backup_example_sec_v3.tar"), tmp_path))
+    v3_backup = Backup(coresys, v3_tar, "test", None)
+    await v3_backup.load()
+    v3_backup.set_password(password)
+
+    with expected_exception:
+        await v3_backup.validate_backup(None)
 
 
 async def test_store_supervisor_config_no_mounts(coresys: CoreSys, tmp_path: Path):

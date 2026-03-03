@@ -4,15 +4,16 @@ import asyncio
 from collections.abc import AsyncGenerator, Generator
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, call, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, call, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.addons.addon import Addon
 from supervisor.arch import CpuArchManager
 from supervisor.config import CoreConfig
-from supervisor.const import AddonBoot, AddonStartup, AddonState, BusEvent
+from supervisor.const import ATTR_INGRESS, AddonBoot, AddonStartup, AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
@@ -191,8 +192,9 @@ async def test_addon_shutdown_error(
     )
 
 
+@pytest.mark.usefixtures("websession")
 async def test_addon_uninstall_removes_discovery(
-    coresys: CoreSys, install_addon_ssh: Addon, websession: MagicMock
+    coresys: CoreSys, install_addon_ssh: Addon
 ):
     """Test discovery messages removed when addon uninstalled."""
     assert coresys.discovery.list_messages == []
@@ -208,12 +210,17 @@ async def test_addon_uninstall_removes_discovery(
 
     await coresys.addons.uninstall(TEST_ADDON_SLUG)
     await asyncio.sleep(0)
-    coresys.websession.delete.assert_called_once()
+
+    # Find the delete call among all request calls (send also uses request)
+    delete_calls = [
+        c for c in coresys.websession.request.call_args_list if c.args[0] == "delete"
+    ]
+    assert len(delete_calls) == 1
     assert (
-        coresys.websession.delete.call_args.args[0]
+        delete_calls[0].args[1]
         == f"http://172.30.32.1:8123/api/hassio_push/discovery/{message.uuid}"
     )
-    assert coresys.websession.delete.call_args.kwargs["json"] == {
+    assert delete_calls[0].kwargs["json"] == {
         "addon": TEST_ADDON_SLUG,
         "service": "mqtt",
         "uuid": message.uuid,
@@ -223,9 +230,8 @@ async def test_addon_uninstall_removes_discovery(
     assert coresys.discovery.list_messages == []
 
 
-async def test_load(
-    coresys: CoreSys, install_addon_ssh: Addon, caplog: pytest.LogCaptureFixture
-):
+@pytest.mark.usefixtures("install_addon_ssh")
+async def test_load(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test addon manager load."""
     caplog.clear()
 
@@ -241,13 +247,8 @@ async def test_load(
     assert "Found 1 installed add-ons" in caplog.text
 
 
-async def test_boot_waits_for_addons(
-    coresys: CoreSys,
-    install_addon_ssh: Addon,
-    container,
-    tmp_supervisor_data,
-    path_extern,
-):
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_boot_waits_for_addons(coresys: CoreSys, install_addon_ssh: Addon):
     """Test addon manager boot waits for addons."""
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
@@ -278,16 +279,16 @@ async def test_boot_waits_for_addons(
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_update(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     status: str,
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test addon update."""
-    container.status = status
+    container.show.return_value["State"]["Status"] = status
+    container.show.return_value["State"]["Running"] = status == "running"
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
     with patch(
@@ -308,16 +309,16 @@ async def test_update(
 
 
 @pytest.mark.parametrize("status", ["running", "stopped"])
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_rebuild(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     status: str,
-    tmp_supervisor_data,
-    path_extern,
 ):
     """Test addon rebuild."""
-    container.status = status
+    container.show.return_value["State"]["Status"] = status
+    container.show.return_value["State"]["Running"] = status == "running"
     install_addon_ssh.path_data.mkdir()
     await install_addon_ssh.load()
 
@@ -331,17 +332,16 @@ async def test_rebuild(
     assert bool(start_task) is (status == "running")
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_start_wait_cancel_on_uninstall(
     coresys: CoreSys,
     install_addon_ssh: Addon,
-    container: MagicMock,
+    container: DockerContainer,
     caplog: pytest.LogCaptureFixture,
-    tmp_supervisor_data,
-    path_extern,
 ) -> None:
     """Test the addon wait task is cancelled when addon is uninstalled."""
     install_addon_ssh.path_data.mkdir()
-    container.attrs["Config"] = {"Healthcheck": "exists"}
+    container.show.return_value["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
     await asyncio.sleep(0)
     assert install_addon_ssh.state == AddonState.STOPPED
@@ -458,10 +458,11 @@ async def test_store_data_changes_during_update(
 
 
 async def test_watchdog_runs_during_update(
-    coresys: CoreSys, install_addon_ssh: Addon, container: MagicMock
+    coresys: CoreSys, install_addon_ssh: Addon, container: DockerContainer
 ):
     """Test watchdog running during a long update."""
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     install_addon_ssh.watchdog = True
     coresys.store.data.addons["local_ssh"]["image"] = "test_image"
     coresys.store.data.addons["local_ssh"]["version"] = AwesomeVersion("1.1.1")
@@ -469,7 +470,8 @@ async def test_watchdog_runs_during_update(
 
     # Simulate stop firing the docker event for stopped container like it normally would
     async def mock_stop(*args, **kwargs):
-        container.status = "stopped"
+        container.show.return_value["State"]["Status"] = "stopped"
+        container.show.return_value["State"]["Running"] = False
         coresys.bus.fire_event(
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
@@ -524,6 +526,75 @@ async def test_shared_image_kept_on_uninstall(
     assert coresys.docker.images.delete.call_args_list[0] == call(latest, force=True)
     assert coresys.docker.images.delete.call_args_list[1] == call(image, force=True)
     assert not coresys.addons.get("local_example", local_only=True)
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_update_reloads_ingress_tokens(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: DockerContainer,
+):
+    """Test ingress tokens are reloaded when addon gains ingress on update."""
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    install_addon_ssh.path_data.mkdir()
+
+    # Simulate addon was installed without ingress
+    coresys.addons.data.system[install_addon_ssh.slug][ATTR_INGRESS] = False
+    await install_addon_ssh.load()
+    await coresys.ingress.reload()
+    assert install_addon_ssh.ingress_token not in coresys.ingress.tokens
+
+    # Update store to version with ingress enabled
+    with patch(
+        "supervisor.store.data.read_json_or_yaml_file",
+        return_value=load_json_fixture("addon-config-add-image.json"),
+    ):
+        await coresys.store.data.update()
+
+    assert install_addon_ssh.need_update is True
+
+    with (
+        patch.object(DockerInterface, "install"),
+        patch.object(DockerAddon, "is_running", return_value=False),
+    ):
+        await coresys.addons.update(TEST_ADDON_SLUG)
+
+    # Ingress token should now be registered
+    assert install_addon_ssh.with_ingress is True
+    assert install_addon_ssh.ingress_token in coresys.ingress.tokens
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
+async def test_rebuild_reloads_ingress_tokens(
+    coresys: CoreSys,
+    install_addon_ssh: Addon,
+    container: DockerContainer,
+):
+    """Test ingress tokens are reloaded when addon gains ingress on rebuild."""
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    install_addon_ssh.path_data.mkdir()
+
+    # Simulate addon was installed without ingress
+    coresys.addons.data.system[install_addon_ssh.slug][ATTR_INGRESS] = False
+    await install_addon_ssh.load()
+    await coresys.ingress.reload()
+    assert install_addon_ssh.ingress_token not in coresys.ingress.tokens
+
+    # Re-enable ingress in system data (rebuild pulls fresh store data)
+    coresys.addons.data.system[install_addon_ssh.slug][ATTR_INGRESS] = True
+
+    with (
+        patch.object(DockerAddon, "_build"),
+        patch.object(DockerAddon, "is_running", return_value=False),
+        patch.object(Addon, "need_build", new=PropertyMock(return_value=True)),
+    ):
+        await coresys.addons.rebuild(TEST_ADDON_SLUG)
+
+    # Ingress token should now be registered
+    assert install_addon_ssh.with_ingress is True
+    assert install_addon_ssh.ingress_token in coresys.ingress.tokens
 
 
 async def test_shared_image_kept_on_update(

@@ -50,7 +50,7 @@ async def test_load(
     assert coresys.homeassistant.secrets.secrets == {"hello": "world"}
 
     await coresys.core.set_state(CoreState.SETUP)
-    await coresys.homeassistant.websocket.async_send_message({"lorem": "ipsum"})
+    await coresys.homeassistant.websocket._async_send_command({"lorem": "ipsum"})
     ha_ws_client.async_send_command.assert_not_called()
 
     await coresys.core.set_state(CoreState.RUNNING)
@@ -58,12 +58,11 @@ async def test_load(
     assert ha_ws_client.async_send_command.call_args_list[0][0][0] == {"lorem": "ipsum"}
 
 
-async def test_get_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
-    """Test get users returning none does not fail."""
+async def test_list_users_none(coresys: CoreSys, ha_ws_client: AsyncMock):
+    """Test list users raises on unexpected None response from Core."""
     ha_ws_client.async_send_command.return_value = None
-    assert (
-        await coresys.homeassistant.get_users.__wrapped__(coresys.homeassistant) == []
-    )
+    with pytest.raises(TypeError):
+        await coresys.homeassistant.list_users()
 
 
 async def test_write_pulse_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
@@ -93,7 +92,7 @@ async def test_begin_backup_ws_error(coresys: CoreSys):
         HomeAssistantWSConnectionError("Connection was closed")
     )
     with (
-        patch.object(HomeAssistantWebSocket, "_can_send", return_value=True),
+        patch.object(HomeAssistantWebSocket, "_ensure_connected", return_value=None),
         pytest.raises(
             HomeAssistantBackupError,
             match="Preparing backup of Home Assistant Core failed. Failed to inform HA Core: Connection was closed.",
@@ -108,7 +107,7 @@ async def test_end_backup_ws_error(coresys: CoreSys, caplog: pytest.LogCaptureFi
     coresys.homeassistant.websocket._client.async_send_command.side_effect = (
         HomeAssistantWSConnectionError("Connection was closed")
     )
-    with patch.object(HomeAssistantWebSocket, "_can_send", return_value=True):
+    with patch.object(HomeAssistantWebSocket, "_ensure_connected", return_value=None):
         await coresys.homeassistant.end_backup()
 
     assert (

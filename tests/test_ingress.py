@@ -1,10 +1,11 @@
 """Test ingress."""
 
 from datetime import timedelta
+import json
 from pathlib import Path
 from unittest.mock import ANY, patch
 
-from supervisor.const import IngressSessionData, IngressSessionDataUser
+from supervisor.const import HomeAssistantUser, IngressSessionData
 from supervisor.coresys import CoreSys
 from supervisor.ingress import Ingress
 from supervisor.utils.dt import utc_from_timestamp
@@ -34,7 +35,7 @@ def test_session_handling(coresys: CoreSys):
 def test_session_handling_with_session_data(coresys: CoreSys):
     """Create and test session."""
     session = coresys.ingress.create_session(
-        IngressSessionData(IngressSessionDataUser("some-id"))
+        IngressSessionData(HomeAssistantUser("some-id"))
     )
 
     assert session
@@ -76,7 +77,7 @@ async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
     with patch("supervisor.ingress.FILE_HASSIO_INGRESS", new=config_file):
         ingress = await Ingress(coresys).load_config()
         session = ingress.create_session(
-            IngressSessionData(IngressSessionDataUser("123", "Test", "test"))
+            IngressSessionData(HomeAssistantUser("123", name="Test", username="test"))
         )
         await ingress.save_data()
 
@@ -87,10 +88,45 @@ async def test_ingress_save_data(coresys: CoreSys, tmp_supervisor_data: Path):
     assert await coresys.run_in_executor(get_config) == {
         "session": {session: ANY},
         "session_data": {
-            session: {"user": {"id": "123", "displayname": "Test", "username": "test"}}
+            session: {"user": {"id": "123", "name": "Test", "username": "test"}}
         },
         "ports": {},
     }
+
+
+async def test_ingress_load_legacy_displayname(
+    coresys: CoreSys, tmp_supervisor_data: Path
+):
+    """Test loading session data with legacy 'displayname' key."""
+    config_file = tmp_supervisor_data / "ingress.json"
+    session_token = "a" * 128
+
+    config_file.write_text(
+        json.dumps(
+            {
+                "session": {session_token: 9999999999.0},
+                "session_data": {
+                    session_token: {
+                        "user": {
+                            "id": "456",
+                            "displayname": "Legacy Name",
+                            "username": "legacy",
+                        }
+                    }
+                },
+                "ports": {},
+            }
+        )
+    )
+
+    with patch("supervisor.ingress.FILE_HASSIO_INGRESS", new=config_file):
+        ingress = await Ingress(coresys).load_config()
+
+    session_data = ingress.get_session_data(session_token)
+    assert session_data is not None
+    assert session_data.user.id == "456"
+    assert session_data.user.name == "Legacy Name"
+    assert session_data.user.username == "legacy"
 
 
 async def test_ingress_reload_ignore_none_data(coresys: CoreSys):

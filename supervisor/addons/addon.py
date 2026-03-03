@@ -15,12 +15,12 @@ import secrets
 import shutil
 import tarfile
 from tempfile import TemporaryDirectory
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
 from deepmerge import Merger
-from securetar import AddFileError, atomic_contents_add, secure_path
+from securetar import AddFileError, SecureTarFile, atomic_contents_add
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
@@ -61,6 +61,7 @@ from ..const import (
 from ..coresys import CoreSys
 from ..docker.addon import DockerAddon
 from ..docker.const import ContainerState
+from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
 from ..docker.stats import DockerStats
 from ..exceptions import (
@@ -70,13 +71,16 @@ from ..exceptions import (
     AddonNotRunningError,
     AddonNotSupportedError,
     AddonNotSupportedWriteStdinError,
+    AddonPortConflict,
     AddonPrePostBackupCommandReturnedError,
     AddonsError,
     AddonsJobError,
     AddonUnknownError,
+    BackupInvalidError,
     BackupRestoreUnknownError,
     ConfigurationFileError,
     DockerBuildError,
+    DockerContainerPortConflict,
     DockerError,
     HostAppArmorError,
     StoreAddonNotFoundError,
@@ -187,18 +191,18 @@ class Addon(AddonModel):
             self._startup_event.set()
 
         # Dismiss boot failed issue if present and we started
-        if (
-            new_state == AddonState.STARTED
-            and self.boot_failed_issue in self.sys_resolution.issues
+        if new_state == AddonState.STARTED and (
+            issue := self.sys_resolution.get_issue_if_present(self.boot_failed_issue)
         ):
-            self.sys_resolution.dismiss_issue(self.boot_failed_issue)
+            self.sys_resolution.dismiss_issue(issue)
 
         # Dismiss device access missing issue if present and we stopped
-        if (
-            new_state == AddonState.STOPPED
-            and self.device_access_missing_issue in self.sys_resolution.issues
+        if new_state == AddonState.STOPPED and (
+            issue := self.sys_resolution.get_issue_if_present(
+                self.device_access_missing_issue
+            )
         ):
-            self.sys_resolution.dismiss_issue(self.device_access_missing_issue)
+            self.sys_resolution.dismiss_issue(issue)
 
         self.sys_homeassistant.websocket.supervisor_event_custom(
             WSEvent.ADDON,
@@ -359,11 +363,10 @@ class Addon(AddonModel):
         self.persist[ATTR_BOOT] = value
 
         # Dismiss boot failed issue if present and boot at start disabled
-        if (
-            value == AddonBoot.MANUAL
-            and self._boot_failed_issue in self.sys_resolution.issues
+        if value == AddonBoot.MANUAL and (
+            issue := self.sys_resolution.get_issue_if_present(self._boot_failed_issue)
         ):
-            self.sys_resolution.dismiss_issue(self._boot_failed_issue)
+            self.sys_resolution.dismiss_issue(issue)
 
     @property
     def auto_update(self) -> bool:
@@ -923,6 +926,10 @@ class Addon(AddonModel):
             await self.sys_addons.data.update(store)
             await self._check_ingress_port()
 
+            # Reload ingress tokens in case addon gained ingress support
+            if self.with_ingress:
+                await self.sys_ingress.reload()
+
             # Cleanup
             with suppress(DockerError):
                 await self.instance.cleanup(
@@ -976,6 +983,11 @@ class Addon(AddonModel):
                 await self.sys_addons.data.update(self.addon_store)
 
             await self._check_ingress_port()
+
+            # Reload ingress tokens in case addon gained ingress support
+            if self.with_ingress:
+                await self.sys_ingress.reload()
+
             _LOGGER.info("Add-on '%s' successfully rebuilt", self.slug)
 
         finally:
@@ -1140,6 +1152,12 @@ class Addon(AddonModel):
         self._startup_event.clear()
         try:
             await self.instance.run()
+        except DockerContainerPortConflict as err:
+            raise AddonPortConflict(
+                _LOGGER.error,
+                name=self.slug,
+                port=cast(dict[str, Any], err.extra_fields)["port"],
+            ) from err
         except DockerError as err:
             _LOGGER.error("Could not start container for addon %s: %s", self.slug, err)
             self.state = AddonState.ERROR
@@ -1175,13 +1193,6 @@ class Addon(AddonModel):
         with suppress(AddonsError):
             await self.stop()
         return await self.start()
-
-    def logs(self) -> Awaitable[bytes]:
-        """Return add-ons log output.
-
-        Return a coroutine.
-        """
-        return self.instance.logs()
 
     def is_running(self) -> Awaitable[bool]:
         """Return True if Docker container is running.
@@ -1226,10 +1237,11 @@ class Addon(AddonModel):
 
     async def _backup_command(self, command: str) -> None:
         try:
-            command_return = await self.instance.run_inside(command)
+            command_return: ExecReturn = await self.instance.run_inside(command)
             if command_return.exit_code != 0:
                 _LOGGER.debug(
-                    "Pre-/Post backup command failed with: %s", command_return.output
+                    "Pre-/Post backup command failed with: %s",
+                    command_return.output.decode("utf-8", errors="replace"),
                 )
                 raise AddonPrePostBackupCommandReturnedError(
                     _LOGGER.error, addon=self.slug, exit_code=command_return.exit_code
@@ -1305,7 +1317,7 @@ class Addon(AddonModel):
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def backup(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
+    async def backup(self, tar_file: SecureTarFile) -> asyncio.Task | None:
         """Backup state of an add-on.
 
         Returns a Task that completes when addon has state 'started' (see start)
@@ -1313,64 +1325,58 @@ class Addon(AddonModel):
         """
 
         def _addon_backup(
-            store_image: bool,
             metadata: dict[str, Any],
             apparmor_profile: str | None,
             addon_config_used: bool,
+            temp_dir: TemporaryDirectory,
+            temp_path: Path,
         ):
             """Start the backup process."""
-            with TemporaryDirectory(dir=self.sys_config.path_tmp) as temp:
-                temp_path = Path(temp)
+            # Store local configs/state
+            try:
+                write_json_file(temp_path.joinpath("addon.json"), metadata)
+            except ConfigurationFileError as err:
+                _LOGGER.error("Can't save meta for %s: %s", self.slug, err)
+                raise BackupRestoreUnknownError() from err
 
-                # store local image
-                if store_image:
-                    try:
-                        self.instance.export_image(temp_path.joinpath("image.tar"))
-                    except DockerError as err:
-                        raise BackupRestoreUnknownError() from err
-
-                # Store local configs/state
+            # Store AppArmor Profile
+            if apparmor_profile:
+                profile_backup_file = temp_path.joinpath("apparmor.txt")
                 try:
-                    write_json_file(temp_path.joinpath("addon.json"), metadata)
-                except ConfigurationFileError as err:
-                    _LOGGER.error("Can't save meta for %s: %s", self.slug, err)
+                    self.sys_host.apparmor.backup_profile(
+                        apparmor_profile, profile_backup_file
+                    )
+                except HostAppArmorError as err:
+                    _LOGGER.error(
+                        "Can't backup AppArmor profile for %s: %s", self.slug, err
+                    )
                     raise BackupRestoreUnknownError() from err
 
-                # Store AppArmor Profile
-                if apparmor_profile:
-                    profile_backup_file = temp_path.joinpath("apparmor.txt")
-                    try:
-                        self.sys_host.apparmor.backup_profile(
-                            apparmor_profile, profile_backup_file
-                        )
-                    except HostAppArmorError as err:
-                        raise BackupRestoreUnknownError() from err
+            # Write tarfile
+            with tar_file as backup:
+                # Backup metadata
+                backup.add(temp_dir.name, arcname=".")
 
-                # Write tarfile
-                with tar_file as backup:
-                    # Backup metadata
-                    backup.add(temp, arcname=".")
+                # Backup data
+                atomic_contents_add(
+                    backup,
+                    self.path_data,
+                    file_filter=partial(
+                        self._is_excluded_by_filter, self.path_data, "data"
+                    ),
+                    arcname="data",
+                )
 
-                    # Backup data
+                # Backup config (if used and existing, restore handles this gracefully)
+                if addon_config_used and self.path_config.is_dir():
                     atomic_contents_add(
                         backup,
-                        self.path_data,
+                        self.path_config,
                         file_filter=partial(
-                            self._is_excluded_by_filter, self.path_data, "data"
+                            self._is_excluded_by_filter, self.path_config, "config"
                         ),
-                        arcname="data",
+                        arcname="config",
                     )
-
-                    # Backup config (if used and existing, restore handles this gracefully)
-                    if addon_config_used and self.path_config.is_dir():
-                        atomic_contents_add(
-                            backup,
-                            self.path_config,
-                            file_filter=partial(
-                                self._is_excluded_by_filter, self.path_config, "config"
-                            ),
-                            arcname="config",
-                        )
 
         wait_for_start: asyncio.Task | None = None
 
@@ -1385,22 +1391,35 @@ class Addon(AddonModel):
         )
 
         was_running = await self.begin_backup()
+        temp_dir = await self.sys_run_in_executor(
+            TemporaryDirectory, dir=self.sys_config.path_tmp
+        )
+        temp_path = Path(temp_dir.name)
+        _LOGGER.info("Building backup for add-on %s", self.slug)
         try:
-            _LOGGER.info("Building backup for add-on %s", self.slug)
+            # store local image
+            if self.need_build:
+                await self.instance.export_image(temp_path.joinpath("image.tar"))
+
             await self.sys_run_in_executor(
                 partial(
                     _addon_backup,
-                    store_image=self.need_build,
                     metadata=data,
                     apparmor_profile=apparmor_profile,
                     addon_config_used=self.addon_config_used,
+                    temp_dir=temp_dir,
+                    temp_path=temp_path,
                 )
             )
             _LOGGER.info("Finish backup for addon %s", self.slug)
+        except DockerError as err:
+            _LOGGER.error("Can't export image for addon %s: %s", self.slug, err)
+            raise BackupRestoreUnknownError() from err
         except (tarfile.TarError, OSError, AddFileError) as err:
             _LOGGER.error("Can't write backup tarfile for addon %s: %s", self.slug, err)
             raise BackupRestoreUnknownError() from err
         finally:
+            await self.sys_run_in_executor(temp_dir.cleanup)
             if was_running:
                 wait_for_start = await self.end_backup()
 
@@ -1411,7 +1430,7 @@ class Addon(AddonModel):
         on_condition=AddonsJobError,
         concurrency=JobConcurrency.GROUP_REJECT,
     )
-    async def restore(self, tar_file: tarfile.TarFile) -> asyncio.Task | None:
+    async def restore(self, tar_file: SecureTarFile) -> asyncio.Task | None:
         """Restore state of an add-on.
 
         Returns a Task that completes when addon has state 'started' (see start)
@@ -1425,10 +1444,11 @@ class Addon(AddonModel):
             tmp = TemporaryDirectory(dir=self.sys_config.path_tmp)
             try:
                 with tar_file as backup:
+                    # The tar filter rejects path traversal and absolute names,
+                    # aborting restore of malicious backups with such exploits.
                     backup.extractall(
                         path=tmp.name,
-                        members=secure_path(backup),
-                        filter="fully_trusted",
+                        filter="tar",
                     )
 
                 data = read_json_file(Path(tmp.name, "addon.json"))
@@ -1440,8 +1460,12 @@ class Addon(AddonModel):
 
         try:
             tmp, data = await self.sys_run_in_executor(_extract_tarfile)
+        except tarfile.FilterError as err:
+            raise BackupInvalidError(
+                f"Can't extract backup tarfile for {self.slug}: {err}",
+                _LOGGER.error,
+            ) from err
         except tarfile.TarError as err:
-            _LOGGER.error("Can't extract backup tarfile for %s: %s", self.slug, err)
             raise BackupRestoreUnknownError() from err
         except ConfigurationFileError as err:
             raise AddonUnknownError(addon=self.slug) from err

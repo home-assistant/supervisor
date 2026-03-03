@@ -25,15 +25,11 @@ async def test_timedate_info(
     """Test timedate properties."""
     timedate = TimeDate()
 
-    assert timedate.dt_utc is None
     assert timedate.ntp is None
 
     await timedate.connect(dbus_session_bus)
 
-    assert timedate.dt_utc == datetime(2021, 5, 19, 8, 36, 54, 405718, tzinfo=UTC)
     assert timedate.ntp is True
-
-    assert timedate.dt_utc.isoformat() == "2021-05-19T08:36:54.405718+00:00"
 
     timedate_service.emit_properties_changed({"NTP": False})
     await timedate_service.ping()

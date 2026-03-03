@@ -21,7 +21,13 @@ from ..utils.logging import AddonLoggerAdapter
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-FORWARD_HEADERS = ("X-Speech-Content",)
+FORWARD_HEADERS = (
+    "X-Speech-Content",
+    "Accept",
+    "Last-Event-ID",
+    "Mcp-Session-Id",
+    "MCP-Protocol-Version",
+)
 HEADER_HA_ACCESS = "X-Ha-Access"
 
 # Maximum message size for websocket messages from Home Assistant.
@@ -34,6 +40,38 @@ MAX_MESSAGE_SIZE_FROM_CORE = 64 * 1024 * 1024
 
 class APIProxy(CoreSysAttributes):
     """API Proxy for Home Assistant."""
+
+    async def _stream_client_response(
+        self,
+        request: web.Request,
+        client: aiohttp.ClientResponse,
+        *,
+        content_type: str,
+        headers_to_copy: tuple[str, ...] = (),
+    ) -> web.StreamResponse:
+        """Stream an upstream aiohttp response to the caller.
+
+        Used for event streams (e.g. Home Assistant /api/stream) and for SSE endpoints
+        such as MCP (text/event-stream).
+        """
+        response = web.StreamResponse(status=client.status)
+        response.content_type = content_type
+
+        for header in headers_to_copy:
+            if header in client.headers:
+                response.headers[header] = client.headers[header]
+
+        response.headers["X-Accel-Buffering"] = "no"
+
+        try:
+            await response.prepare(request)
+            async for data in client.content:
+                await response.write(data)
+        except (aiohttp.ClientError, aiohttp.ClientPayloadError):
+            # Client disconnected or upstream closed
+            pass
+
+        return response
 
     def _check_access(self, request: web.Request):
         """Check the Supervisor token."""
@@ -95,16 +133,11 @@ class APIProxy(CoreSysAttributes):
 
         _LOGGER.info("Home Assistant EventStream start")
         async with self._api_client(request, "stream", timeout=None) as client:
-            response = web.StreamResponse()
-            response.content_type = request.headers.get(CONTENT_TYPE, "")
-            try:
-                response.headers["X-Accel-Buffering"] = "no"
-                await response.prepare(request)
-                async for data in client.content:
-                    await response.write(data)
-
-            except (aiohttp.ClientError, aiohttp.ClientPayloadError):
-                pass
+            response = await self._stream_client_response(
+                request,
+                client,
+                content_type=request.headers.get(CONTENT_TYPE, ""),
+            )
 
             _LOGGER.info("Home Assistant EventStream close")
             return response
@@ -118,10 +151,31 @@ class APIProxy(CoreSysAttributes):
         # Normal request
         path = request.match_info.get("path", "")
         async with self._api_client(request, path) as client:
+            # Check if this is a streaming response (e.g., MCP SSE endpoints)
+            if client.content_type == "text/event-stream":
+                return await self._stream_client_response(
+                    request,
+                    client,
+                    content_type=client.content_type,
+                    headers_to_copy=(
+                        "Cache-Control",
+                        "Mcp-Session-Id",
+                    ),
+                )
+
+            # Non-streaming response
             data = await client.read()
-            return web.Response(
+            response = web.Response(
                 body=data, status=client.status, content_type=client.content_type
             )
+            # Copy selected headers from the upstream response
+            for header in (
+                "Cache-Control",
+                "Mcp-Session-Id",
+            ):
+                if header in client.headers:
+                    response.headers[header] = client.headers[header]
+            return response
 
     async def _websocket_client(self) -> ClientWebSocketResponse:
         """Initialize a WebSocket API connection."""

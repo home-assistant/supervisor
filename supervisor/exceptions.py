@@ -3,6 +3,8 @@
 from collections.abc import Callable, Mapping
 from typing import Any
 
+from .const import OBSERVER_PORT
+
 MESSAGE_CHECK_SUPERVISOR_LOGS = (
     "Check supervisor logs for details (check with '{logs_command}')"
 )
@@ -44,7 +46,7 @@ class HassioNotSupportedError(HassioError):
 # API
 
 
-class APIError(HassioError, RuntimeError):
+class APIError(HassioError):
     """API errors."""
 
     status = 400
@@ -289,6 +291,18 @@ class ObserverJobError(ObserverError, PluginJobError):
     """Raise on job error with observer plugin."""
 
 
+class ObserverPortConflict(ObserverError, APIError):
+    """Raise if observer cannot start due to a port conflict."""
+
+    error_key = "observer_port_conflict"
+    message_template = "Cannot start {observer} because port {port} is already in use"
+    extra_fields = {"observer": "observer", "port": OBSERVER_PORT}
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger)
+
+
 # Multicast
 
 
@@ -390,6 +404,20 @@ class AddonNotRunningError(AddonsError, APIError):
     ) -> None:
         """Initialize exception."""
         self.extra_fields = {"addon": addon}
+        super().__init__(None, logger)
+
+
+class AddonPortConflict(AddonsError, APIError):
+    """Raise if addon cannot start due to a port conflict."""
+
+    error_key = "addon_port_conflict"
+    message_template = "Cannot start addon {name} because port {port} is already in use"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, name: str, port: int
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"name": name, "port": port}
         super().__init__(None, logger)
 
 
@@ -590,18 +618,6 @@ class AuthListUsersError(AuthError, APIUnknownSupervisorError):
 
     error_key = "auth_list_users_error"
     message_template = "Can't request listing users on Home Assistant"
-
-
-class AuthListUsersNoneResponseError(AuthError, APIInternalServerError):
-    """Auth error if listing users returned invalid None response."""
-
-    error_key = "auth_list_users_none_response_error"
-    message_template = "Home Assistant returned invalid response of `{none}` instead of a list of users. Check Home Assistant logs for details (check with `{logs_command}`)"
-    extra_fields = {"none": "None", "logs_command": "ha core logs"}
-
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Initialize exception."""
-        super().__init__(None, logger)
 
 
 class AuthInvalidNonStringValueError(AuthError, APIUnauthorized):
@@ -855,10 +871,6 @@ class DockerNotFound(DockerError):
     """Docker object don't Exists."""
 
 
-class DockerLogOutOfOrder(DockerError):
-    """Raise when log from docker action was out of order."""
-
-
 class DockerNoSpaceOnDevice(DockerError):
     """Raise if a docker pull fails due to available space."""
 
@@ -868,6 +880,22 @@ class DockerNoSpaceOnDevice(DockerError):
     def __init__(self, logger: Callable[..., None] | None = None) -> None:
         """Raise & log."""
         super().__init__(None, logger=logger)
+
+
+class DockerContainerPortConflict(DockerError, APIError):
+    """Raise if docker cannot start a container due to a port conflict."""
+
+    error_key = "docker_container_port_conflict"
+    message_template = (
+        "Cannot start container {name} because port {port} is already in use"
+    )
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, name: str, port: int
+    ) -> None:
+        """Raise & log."""
+        self.extra_fields = {"name": name, "port": port}
+        super().__init__(None, logger)
 
 
 class DockerHubRateLimitExceeded(DockerError, APITooManyRequests):
@@ -934,6 +962,44 @@ class ResolutionFixupError(HassioError):
 
 class ResolutionFixupJobError(ResolutionFixupError, JobException):
     """Raise on job error."""
+
+
+class ResolutionCheckNotFound(ResolutionNotFound, APINotFound):  # pylint: disable=too-many-ancestors
+    """Raise if check does not exist."""
+
+    error_key = "resolution_check_not_found_error"
+    message_template = "Check '{check}' does not exist"
+
+    def __init__(
+        self, logger: Callable[..., None] | None = None, *, check: str
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"check": check}
+        super().__init__(None, logger)
+
+
+class ResolutionIssueNotFound(ResolutionNotFound, APINotFound):  # pylint: disable=too-many-ancestors
+    """Raise if issue does not exist."""
+
+    error_key = "resolution_issue_not_found_error"
+    message_template = "Issue {uuid} does not exist"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, uuid: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"uuid": uuid}
+        super().__init__(None, logger)
+
+
+class ResolutionSuggestionNotFound(ResolutionNotFound, APINotFound):  # pylint: disable=too-many-ancestors
+    """Raise if suggestion does not exist."""
+
+    error_key = "resolution_suggestion_not_found_error"
+    message_template = "Suggestion {uuid} does not exist"
+
+    def __init__(self, logger: Callable[..., None] | None = None, *, uuid: str) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"uuid": uuid}
+        super().__init__(None, logger)
 
 
 # Store

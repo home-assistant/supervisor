@@ -121,10 +121,15 @@ async def test_not_started(coresys):
     assert "versions" in filtered["contexts"]
     assert "docker" in filtered["contexts"]["versions"]
     assert "supervisor" in filtered["contexts"]["versions"]
+    assert "docker" in filtered["contexts"]
+    assert "storage_driver" in filtered["contexts"]["docker"]
     assert "host" in filtered["contexts"]
     assert "machine" in filtered["contexts"]["host"]
     assert filtered["contexts"]["versions"]["docker"] == coresys.docker.info.version
     assert filtered["contexts"]["versions"]["supervisor"] == coresys.supervisor.version
+    assert (
+        filtered["contexts"]["docker"]["storage_driver"] == coresys.docker.info.storage
+    )
     assert filtered["contexts"]["host"]["machine"] == coresys.machine
 
 
@@ -141,6 +146,9 @@ async def test_defaults(coresys):
     assert filtered["contexts"]["host"]["machine"] == "qemux86-64"
     assert filtered["contexts"]["versions"]["supervisor"] == AwesomeVersion(
         SUPERVISOR_VERSION
+    )
+    assert (
+        filtered["contexts"]["docker"]["storage_driver"] == coresys.docker.info.storage
     )
     assert filtered["user"]["id"] == coresys.machine_id
 

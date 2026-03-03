@@ -85,7 +85,7 @@ class CpuArchManager(CoreSysAttributes):
         """Return best match for this CPU/Platform."""
         for self_arch in self.supported:
             if self_arch in arch_list:
-                return self_arch
+                return CpuArch(self_arch)
         raise HassioArchNotFound()
 
     def detect_cpu(self) -> CpuArch:

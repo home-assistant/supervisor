@@ -6,6 +6,7 @@ from typing import Literal
 from ..mounts.mount import Mount
 
 BUF_SIZE = 2**20 * 4  # 4MB
+SECURETAR_CREATE_VERSION = 2
 DEFAULT_FREEZE_TIMEOUT = 600
 LOCATION_CLOUD_BACKUP = ".cloud_backup"
 

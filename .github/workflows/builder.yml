@@ -72,7 +72,7 @@ jobs:
 
       - name: Get changed files
         id: changed_files
-        if: github.event_name != 'release'
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
         uses: masesgroup/retrieve-changed-files@491e80760c0e28d36ca6240a27b1ccb8e1402c13 # v3.0.0
 
       - name: Check if requirements files changed
@@ -81,6 +81,9 @@ jobs:
           # No wheels build necessary for releases
           if [[ "${{ github.event_name }}" == "release" ]]; then
             echo "build_wheels=false" >> "$GITHUB_OUTPUT"
+          # Always build wheels for manual dispatches
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "build_wheels=true" >> "$GITHUB_OUTPUT"
           elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|build\.yaml|\.github/workflows/builder\.yml) ]]; then
             echo "build_wheels=true" >> "$GITHUB_OUTPUT"
           else
@@ -152,7 +155,7 @@ jobs:
 
       - name: Upload local wheels artifact
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: wheels-${{ matrix.arch }}
           path: wheels
@@ -190,7 +193,7 @@ jobs:
 
       - name: Login to GitHub Container Registry
         if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -202,7 +205,7 @@ jobs:
 
       # home-assistant/builder doesn't support sha pinning
       - name: Build supervisor
-        uses: home-assistant/builder@2025.11.0
+        uses: home-assistant/builder@2026.02.1
         with:
           image: ${{ matrix.arch }}
           args: |
@@ -248,7 +251,7 @@ jobs:
 
       - name: Download local wheels artifact
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
         with:
           name: wheels-amd64
           path: wheels
@@ -256,7 +259,7 @@ jobs:
       # home-assistant/builder doesn't support sha pinning
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2025.11.0
+        uses: home-assistant/builder@2026.02.1
         with:
           args: |
             --test \
@@ -293,7 +296,11 @@ jobs:
       - &wait_for_supervisor
         name: Wait for Supervisor to come up
         run: |
-          SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.IPAddress}}' hassio_supervisor)
+          until SUPERVISOR=$(docker inspect --format='{{.NetworkSettings.Networks.hassio.IPAddress}}' hassio_supervisor 2>/dev/null) && \
+                [ -n "$SUPERVISOR" ] && [ "$SUPERVISOR" != "<no value>" ]; do
+            echo "Waiting for network configuration..."
+            sleep 1
+          done
           echo "Waiting for Supervisor API at http://${SUPERVISOR}/supervisor/ping"
           timeout=300
           elapsed=0
@@ -320,6 +327,35 @@ jobs:
           docker logs --tail 50 hassio_supervisor
           exit 1
 
+      # Wait for Core to come up so subsequent steps (backup, addon install) succeed.
+      # On first startup, Supervisor installs Core via the "home_assistant_core_install"
+      # job (which pulls the image and then starts Core). Jobs with cleanup=True are
+      # removed from the jobs list once done, so we poll until it's gone.
+      - name: Wait for Core to be started
+        run: |
+          echo "Waiting for Home Assistant Core to be installed and started..."
+          timeout=300
+          elapsed=0
+
+          while [ $elapsed -lt $timeout ]; do
+            jobs=$(docker exec hassio_cli ha jobs info --no-progress --raw-json | jq -r '.data.jobs[] | select(.name == "home_assistant_core_install" and .done == false) | .name' 2>/dev/null)
+            if [ -z "$jobs" ]; then
+              echo "Home Assistant Core install/start complete (took ${elapsed}s)"
+              exit 0
+            fi
+
+            if [ $((elapsed % 15)) -eq 0 ]; then
+              echo "Core still installing... (${elapsed}s/${timeout}s)"
+            fi
+
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+
+          echo "ERROR: Home Assistant Core failed to install/start within ${timeout}s"
+          docker logs --tail 50 hassio_supervisor
+          exit 1
+
       - name: Check the Supervisor
         run: |
           echo "Checking supervisor info"
@@ -334,28 +370,28 @@ jobs:
             exit 1
           fi
 
-      - name: Check the Store / Addon
+      - name: Check the Store / App
         run: |
-          echo "Install Core SSH Add-on"
-          test=$(docker exec hassio_cli ha addons install core_ssh --no-progress --raw-json | jq -r '.result')
+          echo "Install Core SSH app"
+          test=$(docker exec hassio_cli ha apps install core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           # Make sure it actually installed
-          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
+          test=$(docker exec hassio_cli ha apps info core_ssh --no-progress --raw-json | jq -r '.data.version')
           if [[ "$test" == "null" ]]; then
             exit 1
           fi
 
-          echo "Start Core SSH Add-on"
-          test=$(docker exec hassio_cli ha addons start core_ssh --no-progress --raw-json | jq -r '.result')
+          echo "Start Core SSH app"
+          test=$(docker exec hassio_cli ha apps start core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           # Make sure its state is started
-          test="$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.state')"
+          test="$(docker exec hassio_cli ha apps info core_ssh --no-progress --raw-json | jq -r '.data.state')"
           if [ "$test" != "started" ]; then
             exit 1
           fi
@@ -369,9 +405,9 @@ jobs:
           fi
           echo "slug=$(echo $test | jq -r '.data.slug')" >> "$GITHUB_OUTPUT"
 
-      - name: Uninstall SSH add-on
+      - name: Uninstall SSH app
         run: |
-          test=$(docker exec hassio_cli ha addons uninstall core_ssh --no-progress --raw-json | jq -r '.result')
+          test=$(docker exec hassio_cli ha apps uninstall core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
@@ -385,21 +421,21 @@ jobs:
 
       - *wait_for_supervisor
 
-      - name: Restore SSH add-on from backup
+      - name: Restore SSH app from backup
         run: |
-          test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --addons core_ssh --no-progress --raw-json | jq -r '.result')
+          test=$(docker exec hassio_cli ha backups restore ${{ steps.backup.outputs.slug }} --app core_ssh --no-progress --raw-json | jq -r '.result')
           if [ "$test" != "ok" ]; then
             exit 1
           fi
 
           # Make sure it actually installed
-          test=$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.version')
+          test=$(docker exec hassio_cli ha apps info core_ssh --no-progress --raw-json | jq -r '.data.version')
           if [[ "$test" == "null" ]]; then
             exit 1
           fi
 
           # Make sure its state is started
-          test="$(docker exec hassio_cli ha addons info core_ssh --no-progress --raw-json | jq -r '.data.state')"
+          test="$(docker exec hassio_cli ha apps info core_ssh --no-progress --raw-json | jq -r '.data.state')"
           if [ "$test" != "started" ]; then
             exit 1
           fi
@@ -432,7 +468,7 @@ jobs:
       FROZEN_VERSION: "2025.11.5"
     steps:
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}

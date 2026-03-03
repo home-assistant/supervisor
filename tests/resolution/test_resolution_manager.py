@@ -312,7 +312,7 @@ async def test_resolution_apply_suggestion_multiple_copies(coresys: CoreSys):
 async def test_events_on_unsupported_changed(coresys: CoreSys):
     """Test events fired when unsupported changes."""
     with patch.object(
-        type(coresys.homeassistant.websocket), "async_send_message"
+        type(coresys.homeassistant.websocket), "_async_send_command"
     ) as send_message:
         # Marking system as unsupported tells HA
         assert coresys.resolution.unsupported == []
@@ -376,7 +376,7 @@ async def test_events_on_unsupported_changed(coresys: CoreSys):
 async def test_events_on_unhealthy_changed(coresys: CoreSys):
     """Test events fired when unhealthy changes."""
     with patch.object(
-        type(coresys.homeassistant.websocket), "async_send_message"
+        type(coresys.homeassistant.websocket), "_async_send_command"
     ) as send_message:
         # Marking system as unhealthy tells HA
         assert coresys.resolution.unhealthy == []
@@ -415,7 +415,7 @@ async def test_events_on_unhealthy_changed(coresys: CoreSys):
 async def test_dismiss_issue_removes_orphaned_suggestions(coresys: CoreSys):
     """Test dismissing an issue also removes any suggestions which have been orphaned."""
     with patch.object(
-        type(coresys.homeassistant.websocket), "async_send_message"
+        type(coresys.homeassistant.websocket), "_async_send_command"
     ) as send_message:
         coresys.resolution.create_issue(
             IssueType.MOUNT_FAILED,

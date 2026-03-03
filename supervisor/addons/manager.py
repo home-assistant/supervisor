@@ -4,10 +4,10 @@ import asyncio
 from collections.abc import Awaitable
 from contextlib import suppress
 import logging
-import tarfile
 from typing import Self, Union
 
 from attr import evolve
+from securetar import SecureTarFile
 
 from ..const import AddonBoot, AddonStartup, AddonState
 from ..coresys import CoreSys, CoreSysAttributes
@@ -334,9 +334,7 @@ class AddonManager(CoreSysAttributes):
         ],
         on_condition=AddonsJobError,
     )
-    async def restore(
-        self, slug: str, tar_file: tarfile.TarFile
-    ) -> asyncio.Task | None:
+    async def restore(self, slug: str, tar_file: SecureTarFile) -> asyncio.Task | None:
         """Restore state of an add-on.
 
         Returns a Task that completes when addon has state 'started' (see addon.start)

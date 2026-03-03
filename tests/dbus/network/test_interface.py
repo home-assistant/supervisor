@@ -197,7 +197,8 @@ async def test_unknown_device_type(
     device_eth0_service.emit_properties_changed({"DeviceType": 1000})
     await device_eth0_service.ping()
 
-    # Should return UNKNOWN instead of crashing
-    assert interface.type == DeviceType.UNKNOWN
+    # Should preserve the actual value as a pseudo-member instead of crashing
+    assert isinstance(interface.type, DeviceType)
+    assert interface.type == 1000
     # Wireless should be None since it's not a wireless device
     assert interface.wireless is None

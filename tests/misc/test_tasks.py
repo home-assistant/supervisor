@@ -1,10 +1,10 @@
 """Test scheduled tasks."""
 
 from collections.abc import AsyncGenerator
-from pathlib import Path
 from shutil import copy
-from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, Mock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
 
@@ -25,12 +25,13 @@ from tests.common import MockResponse, get_fixture_path
 
 @pytest.fixture(name="tasks")
 async def fixture_tasks(
-    coresys: CoreSys, container: MagicMock
+    coresys: CoreSys, container: DockerContainer
 ) -> AsyncGenerator[Tasks]:
     """Return task manager."""
     coresys.homeassistant.watchdog = True
     coresys.homeassistant.version = AwesomeVersion("2023.12.0")
-    container.status = "running"
+    container.show.return_value["State"]["Status"] = "running"
+    container.show.return_value["State"]["Running"] = True
     yield Tasks(coresys)
 
 
@@ -102,10 +103,11 @@ async def test_watchdog_homeassistant_api_landing_page(tasks: Tasks, coresys: Co
 
 
 async def test_watchdog_homeassistant_api_not_running(
-    tasks: Tasks, container: MagicMock
+    tasks: Tasks, container: DockerContainer
 ):
     """Test watchdog of homeassistant api does not monitor when home assistant not running."""
-    container.status = "stopped"
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
 
     with (
         patch.object(HomeAssistantAPI, "check_api_state", return_value=False),
@@ -171,12 +173,9 @@ async def test_watchdog_homeassistant_api_reanimation_limit(
         rebuild.assert_not_called()
 
 
-@pytest.mark.usefixtures("no_job_throttle")
+@pytest.mark.usefixtures("no_job_throttle", "supervisor_internet")
 async def test_reload_updater_triggers_supervisor_update(
-    tasks: Tasks,
-    coresys: CoreSys,
-    mock_update_data: MockResponse,
-    supervisor_internet: AsyncMock,
+    tasks: Tasks, coresys: CoreSys, mock_update_data: MockResponse
 ):
     """Test an updater reload triggers a supervisor update if there is one."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -205,10 +204,8 @@ async def test_reload_updater_triggers_supervisor_update(
         update.assert_called_once()
 
 
-@pytest.mark.usefixtures("path_extern")
-async def test_core_backup_cleanup(
-    tasks: Tasks, coresys: CoreSys, tmp_supervisor_data: Path
-):
+@pytest.mark.usefixtures("path_extern", "tmp_supervisor_data")
+async def test_core_backup_cleanup(tasks: Tasks, coresys: CoreSys):
     """Test core backup task cleans up old backup files."""
     await coresys.core.set_state(CoreState.RUNNING)
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
@@ -232,10 +229,10 @@ async def test_core_backup_cleanup(
     assert not old_tar.exists()
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data")
 async def test_update_addons_auto_update_success(
     tasks: Tasks,
     coresys: CoreSys,
-    tmp_supervisor_data: Path,
     ha_ws_client: AsyncMock,
     install_addon_example: Addon,
 ):

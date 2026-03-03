@@ -941,7 +941,7 @@ async def test_group_throttle_rate_limit(coresys: CoreSys, error: JobException |
 
     start = utcnow()
 
-    with time_machine.travel(start):
+    with time_machine.travel(start, tick=False):
         await asyncio.gather(
             *[test1.execute(), test1.execute(), test2.execute(), test2.execute()]
         )

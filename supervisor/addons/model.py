@@ -725,4 +725,4 @@ class AddonModel(JobGroup, ABC):
             return config[ATTR_IMAGE].format(arch=arch)
 
         # local build
-        return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default}-addon-{config[ATTR_SLUG]}"
+        return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default!s}-addon-{config[ATTR_SLUG]}"

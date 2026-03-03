@@ -1,7 +1,7 @@
 """Info control for host."""
 
 import asyncio
-from datetime import datetime, tzinfo
+from datetime import UTC, datetime, tzinfo
 import logging
 
 from ..coresys import CoreSysAttributes
@@ -78,9 +78,9 @@ class InfoCenter(CoreSysAttributes):
         return self.sys_dbus.timedate.timezone_tzinfo
 
     @property
-    def dt_utc(self) -> datetime | None:
+    def dt_utc(self) -> datetime:
         """Return host UTC time."""
-        return self.sys_dbus.timedate.dt_utc
+        return datetime.now(UTC)
 
     @property
     def use_rtc(self) -> bool | None:

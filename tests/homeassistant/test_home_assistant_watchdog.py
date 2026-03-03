@@ -1,11 +1,12 @@
 """Test Home Assistant watchdog."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
+from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 
-from supervisor.const import BusEvent
+from supervisor.const import BusEvent, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
@@ -147,11 +148,12 @@ async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> N
 
 
 async def test_home_assistant_watchdog_skip_on_load(
-    coresys: CoreSys, container: MagicMock
+    coresys: CoreSys, container: DockerContainer
 ) -> None:
     """Test home assistant watchdog skips a crash event on load."""
-    container.status = "stopped"
-    container.attrs["State"]["ExitCode"] = 1
+    container.show.return_value["State"]["Status"] = "stopped"
+    container.show.return_value["State"]["Running"] = False
+    container.show.return_value["State"]["ExitCode"] = 1
     coresys.homeassistant.core.watchdog = True
 
     events = AsyncMock()
@@ -173,3 +175,73 @@ async def test_home_assistant_watchdog_skip_on_load(
         events.assert_not_called()
         restart.assert_not_called()
         start.assert_not_called()
+
+
+async def test_home_assistant_watchdog_unregisters_on_shutdown(
+    coresys: CoreSys,
+) -> None:
+    """Test home assistant watchdog unregisters when entering shutdown states."""
+    coresys.homeassistant.version = AwesomeVersion("2022.7.3")
+    with (
+        patch(
+            "supervisor.docker.interface.DockerInterface.version",
+            new=PropertyMock(return_value=AwesomeVersion("2022.7.3")),
+        ),
+        patch.object(type(coresys.homeassistant.core.instance), "attach"),
+    ):
+        await coresys.homeassistant.core.load()
+
+    coresys.homeassistant.core.watchdog = True
+
+    # Verify watchdog listener is registered
+    assert coresys.homeassistant.core._watchdog_listener is not None
+    watchdog_listener = coresys.homeassistant.core._watchdog_listener
+
+    with (
+        patch.object(type(coresys.homeassistant.core), "restart") as restart,
+        patch.object(type(coresys.homeassistant.core), "start") as start,
+        patch.object(
+            type(coresys.homeassistant.core.instance),
+            "current_state",
+            return_value=ContainerState.FAILED,
+        ),
+    ):
+        # Watchdog should respond to events before shutdown
+        coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name="homeassistant",
+                state=ContainerState.FAILED,
+                id="abc123",
+                time=1,
+            ),
+        )
+        await asyncio.sleep(0)
+        start.assert_called_once()
+        start.reset_mock()
+
+        # Test each shutdown state
+        for shutdown_state in (CoreState.SHUTDOWN, CoreState.STOPPING, CoreState.CLOSE):
+            # Reload to reset listener
+            coresys.homeassistant.core._watchdog_listener = watchdog_listener
+
+            # Fire shutdown state change
+            coresys.bus.fire_event(BusEvent.SUPERVISOR_STATE_CHANGE, shutdown_state)
+            await asyncio.sleep(0)
+
+            # Verify watchdog listener is unregistered
+            assert coresys.homeassistant.core._watchdog_listener is None
+
+            # Watchdog should not respond to events after shutdown
+            coresys.bus.fire_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                DockerContainerStateEvent(
+                    name="homeassistant",
+                    state=ContainerState.FAILED,
+                    id="abc123",
+                    time=1,
+                ),
+            )
+            await asyncio.sleep(0)
+            start.assert_not_called()
+            restart.assert_not_called()

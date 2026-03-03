@@ -248,7 +248,7 @@ class Supervisor(CoreSysAttributes):
         """Return True if a task is in progress."""
         return self.instance.in_progress
 
-    def logs(self) -> Awaitable[bytes]:
+    def logs(self) -> Awaitable[list[str]]:
         """Get Supervisor docker logs.
 
         Return Coroutine.

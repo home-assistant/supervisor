@@ -628,9 +628,17 @@ class CoreSys:
             context = callback(context)
         return context
 
-    def create_task(self, coroutine: Coroutine) -> asyncio.Task:
+    def create_task(
+        self, coroutine: Coroutine, *, eager_start: bool | None = None
+    ) -> asyncio.Task:
         """Create an async task."""
-        return self.loop.create_task(coroutine, context=self._create_context())
+        # eager_start kwarg works but wasn't added for mypy visibility until 3.14
+        # can remove the type ignore then
+        return self.loop.create_task(
+            coroutine,
+            context=self._create_context(),
+            eager_start=eager_start,  # type: ignore
+        )
 
     def call_later(
         self,
@@ -847,9 +855,11 @@ class CoreSysAttributes:
         """Add a job to the executor pool."""
         return self.coresys.run_in_executor(funct, *args, **kwargs)
 
-    def sys_create_task(self, coroutine: Coroutine) -> asyncio.Task:
+    def sys_create_task(
+        self, coroutine: Coroutine, *, eager_start: bool | None = None
+    ) -> asyncio.Task:
         """Create an async task."""
-        return self.coresys.create_task(coroutine)
+        return self.coresys.create_task(coroutine, eager_start=eager_start)
 
     def sys_call_later(
         self,

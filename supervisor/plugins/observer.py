@@ -15,9 +15,11 @@ from ..docker.const import ContainerState
 from ..docker.observer import DockerObserver
 from ..docker.stats import DockerStats
 from ..exceptions import (
+    DockerContainerPortConflict,
     DockerError,
     ObserverError,
     ObserverJobError,
+    ObserverPortConflict,
     ObserverUpdateError,
     PluginError,
 )
@@ -87,6 +89,8 @@ class PluginObserver(PluginBase):
         _LOGGER.info("Starting observer plugin")
         try:
             await self.instance.run()
+        except DockerContainerPortConflict as err:
+            raise ObserverPortConflict(_LOGGER.error) from err
         except DockerError as err:
             _LOGGER.error("Can't start observer plugin")
             raise ObserverError() from err
