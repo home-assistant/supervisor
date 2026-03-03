@@ -279,7 +279,7 @@ async def test_api_progress_updates_home_assistant_update(
     logs = load_json_fixture("docker_pull_image_log.json")
     coresys.docker.images.pull.return_value = AsyncIterator(logs)
     coresys.homeassistant.version = AwesomeVersion("2025.8.0")
-    coresys.homeassistant.core._core_config = {"components": ["frontend"]}
+    coresys.homeassistant.core._cached_core_config = {"components": ["frontend"]}  # noqa: SLF001  # pylint: disable=protected-access
 
     with (
         patch.object(
@@ -445,7 +445,7 @@ async def test_update_frontend_check_success(api_client: TestClient, coresys: Co
     """Test that update succeeds when frontend check passes."""
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2025.8.0")
-    coresys.homeassistant.core._core_config = {"components": ["frontend"]}
+    coresys.homeassistant.core._cached_core_config = {"components": ["frontend"]}  # noqa: SLF001  # pylint: disable=protected-access
 
     with (
         patch.object(
@@ -483,7 +483,7 @@ async def test_update_frontend_check_fails_triggers_rollback(
             # Rollback succeeds
             coresys.homeassistant.version = AwesomeVersion("2025.8.0")
 
-    coresys.homeassistant.core._core_config = {"components": ["frontend"]}
+    coresys.homeassistant.core._cached_core_config = {"components": ["frontend"]}  # noqa: SLF001  # pylint: disable=protected-access
 
     with (
         patch.object(DockerInterface, "update", new=mock_update),

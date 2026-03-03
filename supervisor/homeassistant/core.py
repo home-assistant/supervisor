@@ -77,7 +77,7 @@ class HomeAssistantCore(JobGroup):
         super().__init__(coresys, JOB_GROUP_HOME_ASSISTANT_CORE)
         self.instance: DockerHomeAssistant = DockerHomeAssistant(coresys)
         self._error_state: bool = False
-        self._core_config: dict[str, Any] | None = None
+        self._cached_core_config: dict[str, Any] | None = None
         self._watchdog_listener: EventListener | None = None
 
     @property
@@ -86,9 +86,13 @@ class HomeAssistantCore(JobGroup):
         return self._error_state
 
     @property
-    def core_config(self) -> dict[str, Any] | None:
-        """Return cached Core config or None if not available."""
-        return self._core_config
+    def cached_core_config(self) -> dict[str, Any] | None:
+        """Return Core config captured when Core reached RUNNING state.
+
+        This is a snapshot from startup and does not reflect integrations
+        loaded at runtime (e.g. a user installing an integration after boot).
+        """
+        return self._cached_core_config
 
     async def ensure_started(self) -> None:
         """Ensure Home Assistant Core is running and setup is complete.
@@ -347,7 +351,7 @@ class HomeAssistantCore(JobGroup):
             await _update(to_version)
 
         if not self.error_state and rollback:
-            config = self._core_config
+            config = self.cached_core_config
 
             # Verify that the frontend is loaded
             if config is None:
@@ -432,7 +436,7 @@ class HomeAssistantCore(JobGroup):
     )
     async def stop(self, *, remove_container: bool = False) -> None:
         """Stop Home Assistant Docker."""
-        self._core_config = None
+        self._cached_core_config = None
         try:
             return await self.instance.stop(remove_container=remove_container)
         except DockerError as err:
@@ -543,7 +547,7 @@ class HomeAssistantCore(JobGroup):
             return
         _LOGGER.info("Wait until Home Assistant is ready")
 
-        self._core_config = None
+        self._cached_core_config = None
 
         deadline = datetime.now() + STARTUP_API_RESPONSE_TIMEOUT
         last_state = None
@@ -570,7 +574,7 @@ class HomeAssistantCore(JobGroup):
                     _LOGGER.info("Detect a running Home Assistant instance")
                     self._error_state = False
                     with suppress(HomeAssistantAPIError):
-                        self._core_config = (
+                        self._cached_core_config = (
                             await self.sys_homeassistant.api.get_config()
                         )
                     return

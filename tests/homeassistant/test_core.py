@@ -472,7 +472,7 @@ async def test_api_check_success(
 
     assert coresys.homeassistant.api.get_api_state.call_count == 1
     assert "Detect a running Home Assistant instance" in caplog.text
-    assert coresys.homeassistant.core.core_config == {"components": ["frontend"]}
+    assert coresys.homeassistant.core.cached_core_config == {"components": ["frontend"]}
 
 
 async def test_api_check_database_migration(
@@ -511,7 +511,7 @@ async def test_api_check_database_migration(
 
     assert coresys.homeassistant.api.get_api_state.call_count == 51
     assert "Detect a running Home Assistant instance" in caplog.text
-    assert coresys.homeassistant.core.core_config == {"components": ["frontend"]}
+    assert coresys.homeassistant.core.cached_core_config == {"components": ["frontend"]}
 
 
 async def test_api_check_timeout_clears_core_config(
@@ -524,7 +524,7 @@ async def test_api_check_timeout_clears_core_config(
     coresys.homeassistant.api.get_api_state.return_value = None
 
     # Seed the cache so we can verify it gets cleared
-    coresys.homeassistant.core._core_config = {"components": ["frontend"]}
+    coresys.homeassistant.core._cached_core_config = {"components": ["frontend"]}  # noqa: SLF001  # pylint: disable=protected-access
 
     async def mock_instance_start(*_):
         container.show.return_value["State"]["Status"] = "running"
@@ -545,7 +545,7 @@ async def test_api_check_timeout_clears_core_config(
         ):
             await coresys.homeassistant.core.start()
 
-    assert coresys.homeassistant.core.core_config is None
+    assert coresys.homeassistant.core.cached_core_config is None
 
 
 async def test_stop_clears_core_config(coresys: CoreSys, container: DockerContainer):
@@ -554,12 +554,12 @@ async def test_stop_clears_core_config(coresys: CoreSys, container: DockerContai
     container.show.return_value["State"]["Running"] = True
 
     # Seed the cache
-    coresys.homeassistant.core._core_config = {"components": ["frontend", "usb"]}
-    assert coresys.homeassistant.core.core_config is not None
+    coresys.homeassistant.core._cached_core_config = {"components": ["frontend", "usb"]}  # noqa: SLF001  # pylint: disable=protected-access
+    assert coresys.homeassistant.core.cached_core_config is not None
 
     await coresys.homeassistant.core.stop()
 
-    assert coresys.homeassistant.core.core_config is None
+    assert coresys.homeassistant.core.cached_core_config is None
 
 
 async def test_core_loads_wrong_image_for_machine(

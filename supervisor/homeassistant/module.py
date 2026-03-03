@@ -358,7 +358,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         ):
             return
 
-        if not (config := self.core.core_config):
+        if not (config := self.core.cached_core_config):
             _LOGGER.debug("Core config not available, skipping hardware event")
             return
 
