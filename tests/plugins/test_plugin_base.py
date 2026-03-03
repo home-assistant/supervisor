@@ -392,3 +392,53 @@ async def test_default_image_fallback(coresys: CoreSys, plugin: PluginBase):
     """Test default image falls back to hard-coded constant if we fail to fetch version file."""
     assert getattr(coresys.updater, f"image_{plugin.slug}") is None
     assert plugin.default_image == f"ghcr.io/home-assistant/amd64-hassio-{plugin.slug}"
+
+
+async def test_runtime_pin_set_on_specific_manual_update(coresys: CoreSys):
+    """Test plugin update pins runtime when specific version is requested."""
+    plugin = coresys.plugins.cli
+    plugin.version = AwesomeVersion("2025.01.0")
+    plugin._runtime_update_pin = None
+
+    with (
+        patch.object(
+            type(plugin),
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.03.0")),
+        ),
+        patch.object(type(plugin.instance), "update") as update,
+        patch.object(type(plugin.instance), "cleanup"),
+        patch.object(type(plugin), "start"),
+        patch.object(type(plugin), "save_data"),
+    ):
+        await PluginBase.update(plugin, "2025.02.0")
+
+    update.assert_called_once_with(
+        AwesomeVersion("2025.02.0"), image=plugin.default_image
+    )
+    assert plugin._runtime_update_pin == AwesomeVersion("2025.02.0")
+
+
+async def test_runtime_pin_set_on_update_to_latest(coresys: CoreSys):
+    """Test plugin update pins runtime when targeting latest version explicitly."""
+    plugin = coresys.plugins.cli
+    plugin.version = AwesomeVersion("2025.01.0")
+    plugin._runtime_update_pin = AwesomeVersion("2025.00.0")
+
+    with (
+        patch.object(
+            type(plugin),
+            "latest_version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.03.0")),
+        ),
+        patch.object(type(plugin.instance), "update") as update,
+        patch.object(type(plugin.instance), "cleanup"),
+        patch.object(type(plugin), "start"),
+        patch.object(type(plugin), "save_data"),
+    ):
+        await PluginBase.update(plugin, "2025.03.0")
+
+    update.assert_called_once_with(
+        AwesomeVersion("2025.03.0"), image=plugin.default_image
+    )
+    assert plugin._runtime_update_pin == AwesomeVersion("2025.03.0")

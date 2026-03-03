@@ -267,61 +267,27 @@ class Tasks(CoreSysAttributes):
     @Job(name="tasks_update_cli", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_cli(self):
         """Check and run update of cli."""
-        if not self.sys_plugins.cli.need_update:
-            return
-
-        _LOGGER.info(
-            "Found new cli version %s, updating", self.sys_plugins.cli.latest_version
-        )
-        await self.sys_plugins.cli.update()
+        await self.sys_plugins.cli.auto_update()
 
     @Job(name="tasks_update_dns", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_dns(self):
         """Check and run update of CoreDNS plugin."""
-        if not self.sys_plugins.dns.need_update:
-            return
-
-        _LOGGER.info(
-            "Found new CoreDNS plugin version %s, updating",
-            self.sys_plugins.dns.latest_version,
-        )
-        await self.sys_plugins.dns.update()
+        await self.sys_plugins.dns.auto_update()
 
     @Job(name="tasks_update_audio", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_audio(self):
         """Check and run update of PulseAudio plugin."""
-        if not self.sys_plugins.audio.need_update:
-            return
-
-        _LOGGER.info(
-            "Found new PulseAudio plugin version %s, updating",
-            self.sys_plugins.audio.latest_version,
-        )
-        await self.sys_plugins.audio.update()
+        await self.sys_plugins.audio.auto_update()
 
     @Job(name="tasks_update_observer", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_observer(self):
         """Check and run update of Observer plugin."""
-        if not self.sys_plugins.observer.need_update:
-            return
-
-        _LOGGER.info(
-            "Found new Observer plugin version %s, updating",
-            self.sys_plugins.observer.latest_version,
-        )
-        await self.sys_plugins.observer.update()
+        await self.sys_plugins.observer.auto_update()
 
     @Job(name="tasks_update_multicast", conditions=PLUGIN_AUTO_UPDATE_CONDITIONS)
     async def _update_multicast(self):
         """Check and run update of multicast."""
-        if not self.sys_plugins.multicast.need_update:
-            return
-
-        _LOGGER.info(
-            "Found new Multicast version %s, updating",
-            self.sys_plugins.multicast.latest_version,
-        )
-        await self.sys_plugins.multicast.update()
+        await self.sys_plugins.multicast.auto_update()
 
     async def _watchdog_observer_application(self):
         """Check running state of application and rebuild if they is not response."""

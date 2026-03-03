@@ -16,6 +16,7 @@ from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.const import LANDINGPAGE
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.misc.tasks import Tasks
+from supervisor.plugins.dns import PluginDns
 from supervisor.supervisor import Supervisor
 
 from tests.common import MockResponse, get_fixture_path
@@ -178,7 +179,7 @@ async def test_reload_updater_triggers_supervisor_update(
     tasks: Tasks, coresys: CoreSys, mock_update_data: MockResponse
 ):
     """Test an updater reload triggers a supervisor update if there is one."""
-    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.hardware.disk.get_disk_free_space = lambda path: 5000
     await coresys.core.set_state(CoreState.RUNNING)
 
     with (
@@ -208,7 +209,7 @@ async def test_reload_updater_triggers_supervisor_update(
 async def test_core_backup_cleanup(tasks: Tasks, coresys: CoreSys):
     """Test core backup task cleans up old backup files."""
     await coresys.core.set_state(CoreState.RUNNING)
-    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.hardware.disk.get_disk_free_space = lambda path: 5000
 
     # Put an old and new backup in folder
     copy(get_fixture_path("backup_example.tar"), coresys.config.path_core_backup)
@@ -261,3 +262,24 @@ async def test_update_addons_auto_update_success(
                 "backup": True,
             }
         )
+
+
+@pytest.mark.usefixtures("no_job_throttle", "supervisor_internet")
+async def test_update_dns_skips_when_runtime_pinned(
+    tasks: Tasks,
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test that DNS auto update is skipped when runtime pin is set."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda path: 5000
+    coresys.plugins.dns._runtime_update_pin = AwesomeVersion("2025.08.0")
+
+    with (
+        patch.object(PluginDns, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(PluginDns, "update") as update,
+    ):
+        await tasks._update_dns()
+
+    update.assert_not_called()
+    assert "Skipping auto-update of dns plugin due to runtime pin" in caplog.text

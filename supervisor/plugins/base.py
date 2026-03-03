@@ -27,6 +27,11 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
     slug: str
     instance: DockerInterface
 
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize plugin base state."""
+        super().__init__(*args, **kwargs)
+        self._runtime_update_pin: AwesomeVersion | None = None
+
     @property
     def version(self) -> AwesomeVersion | None:
         """Return current version of the plugin."""
@@ -202,6 +207,24 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
         self.image = self.default_image
         await self.save_data()
 
+    async def auto_update(self) -> None:
+        """Automatically update system plugin if needed."""
+        if not self.need_update:
+            return
+
+        if self._runtime_update_pin is not None:
+            _LOGGER.warning(
+                "Skipping auto-update of %s plugin due to runtime pin", self.slug
+            )
+            return
+
+        _LOGGER.info(
+            "Plugin %s is not up-to-date, latest version %s, updating",
+            self.slug,
+            self.latest_version,
+        )
+        await self.update()
+
     async def update(self, version: str | None = None) -> None:
         """Update system plugin."""
         to_version = AwesomeVersion(version) if version else self.latest_version
@@ -211,15 +234,24 @@ class PluginBase(ABC, FileConfiguration, CoreSysAttributes):
                 _LOGGER.error,
             )
 
+        # Pin to particular version until next Supervisor restart if user passed it
+        # explicitly. This is useful for regression testing etc.
+        pin_after_update: AwesomeVersion | None = to_version if version else None
+
         old_image = self.image
 
         if to_version == self.version:
             _LOGGER.warning(
                 "Version %s is already installed for %s", to_version, self.slug
             )
+            self._runtime_update_pin = pin_after_update
             return
 
-        await self.instance.update(to_version, image=self.default_image)
+        try:
+            await self.instance.update(to_version, image=self.default_image)
+        finally:
+            self._runtime_update_pin = pin_after_update
+
         self.version = self.instance.version or to_version
         self.image = self.default_image
         await self.save_data()
