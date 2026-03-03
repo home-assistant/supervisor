@@ -550,10 +550,7 @@ class AddonModel(JobGroup, ABC):
     @property
     def arch(self) -> CpuArch:
         """Return architecture to use for the addon's image."""
-        if ATTR_IMAGE in self.data:
-            return self.sys_arch.match(self.data[ATTR_ARCH])
-
-        return self.sys_arch.default
+        return self.sys_arch.match(self.data[ATTR_ARCH])
 
     @property
     def image(self) -> str | None:
@@ -725,4 +722,5 @@ class AddonModel(JobGroup, ABC):
             return config[ATTR_IMAGE].format(arch=arch)
 
         # local build
-        return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default!s}-addon-{config[ATTR_SLUG]}"
+        arch = self.sys_arch.match(config[ATTR_ARCH])
+        return f"{config[ATTR_REPOSITORY]}/{arch!s}-addon-{config[ATTR_SLUG]}"
