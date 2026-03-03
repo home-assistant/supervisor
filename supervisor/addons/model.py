@@ -582,10 +582,7 @@ class AddonModel(JobGroup, ABC):
     @property
     def arch(self) -> CpuArch:
         """Return architecture to use for the addon's image."""
-        try:
-            return self.sys_arch.match(self.data[ATTR_ARCH])
-        except HassioArchNotFound:
-            return self.sys_arch.default
+        return self.sys_arch.match(self.data[ATTR_ARCH])
 
     @property
     def image(self) -> str | None:
