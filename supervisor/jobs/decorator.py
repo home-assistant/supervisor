@@ -458,10 +458,9 @@ class Job(CoreSysAttributes):
             ]
         ):
             if not coresys.sys_updater.auto_update:
-                _LOGGER.debug(
-                    "Skipping plugin auto-updates because Supervisor auto-update is disabled"
+                raise JobConditionException(
+                    f"'{method_name}' blocked from execution, plugin(s) {', '.join(plugin.slug for plugin in out_of_date)} are not up to date and auto-update is disabled"
                 )
-                return
 
             errors = await asyncio.gather(
                 *[plugin.update() for plugin in out_of_date], return_exceptions=True
