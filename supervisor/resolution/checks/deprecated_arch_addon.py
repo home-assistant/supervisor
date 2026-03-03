@@ -1,4 +1,4 @@
-"""Helpers to check for add-ons with deprecated architectures."""
+"""Helpers to check for add-ons using deprecated compatibility entries."""
 
 from ...const import AddonStage, CoreState
 from ...coresys import CoreSys
@@ -20,7 +20,9 @@ class CheckDeprecatedArchAddon(CheckBase):
             if addon.stage == AddonStage.DEPRECATED:
                 continue
 
-            if addon.has_deprecated_arch and not addon.has_supported_arch:
+            if (addon.has_deprecated_arch and not addon.has_supported_arch) or (
+                addon.has_deprecated_machine and not addon.has_supported_machine
+            ):
                 self.sys_resolution.create_issue(
                     IssueType.DEPRECATED_ARCH_ADDON,
                     ContextType.ADDON,
@@ -37,8 +39,10 @@ class CheckDeprecatedArchAddon(CheckBase):
         return (
             addon is not None
             and addon.stage != AddonStage.DEPRECATED
-            and addon.has_deprecated_arch
-            and not addon.has_supported_arch
+            and (
+                (addon.has_deprecated_arch and not addon.has_supported_arch)
+                or (addon.has_deprecated_machine and not addon.has_supported_machine)
+            )
         )
 
     @property

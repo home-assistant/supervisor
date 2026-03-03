@@ -79,6 +79,7 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
+    MACHINE_DEPRECATED,
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
@@ -553,6 +554,25 @@ class AddonModel(JobGroup, ABC):
     def has_supported_arch(self) -> bool:
         """Return True if add-on supports any architecture on this system."""
         return self.sys_arch.is_supported(self.supported_arch)
+
+    @property
+    def has_deprecated_machine(self) -> bool:
+        """Return True if add-on includes deprecated machine entries."""
+        return any(
+            machine.lstrip("!") in MACHINE_DEPRECATED
+            for machine in self.supported_machine
+        )
+
+    @property
+    def has_supported_machine(self) -> bool:
+        """Return True if add-on supports this machine."""
+        if not (machine_types := self.supported_machine):
+            return True
+
+        return (
+            f"!{self.sys_machine}" not in machine_types
+            and self.sys_machine in machine_types
+        )
 
     @property
     def supported_machine(self) -> list[str]:

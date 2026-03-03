@@ -203,6 +203,26 @@ def test_valid_legacy_build_from_keys_for_migration():
     assert vd.SCHEMA_BUILD_CONFIG(config)
 
 
+def test_warn_legacy_arch_values(caplog: pytest.LogCaptureFixture):
+    """Warn when deprecated architecture values are present."""
+    config = load_json_fixture("basic-addon-config.json")
+    config["arch"] = ["armv7", "amd64"]
+
+    vd.SCHEMA_ADDON_CONFIG(config)
+
+    assert "Add-on config 'arch' uses deprecated values" in caplog.text
+
+
+def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
+    """Warn when deprecated machine values are present."""
+    config = load_json_fixture("basic-addon-config.json")
+    config["machine"] = ["qemux86"]
+
+    vd.SCHEMA_ADDON_CONFIG(config)
+
+    assert "Add-on config 'machine' uses deprecated values" in caplog.text
+
+
 async def test_valid_manifest_build():
     """Validate build config with manifest build from."""
     config = load_json_fixture("build-config-manifest.json")
@@ -216,13 +236,23 @@ def test_valid_machine():
 
     config["machine"] = [
         "intel-nuc",
+        "khadas-vim3",
+        "generic-aarch64",
         "odroid-c2",
         "odroid-n2",
+        "odroid-xu",
+        "qemuarm",
         "qemuarm-64",
+        "qemux86",
         "qemux86-64",
+        "raspberrypi",
+        "raspberrypi2",
+        "raspberrypi3",
         "raspberrypi3-64",
+        "raspberrypi4",
         "raspberrypi4-64",
         "raspberrypi5-64",
+        "tinker",
         "yellow",
         "green",
         "generic-x86-64",
@@ -232,13 +262,23 @@ def test_valid_machine():
 
     config["machine"] = [
         "!intel-nuc",
+        "!khadas-vim3",
+        "!generic-aarch64",
         "!odroid-c2",
         "!odroid-n2",
+        "!odroid-xu",
+        "!qemuarm",
         "!qemuarm-64",
+        "!qemux86",
         "!qemux86-64",
+        "!raspberrypi",
+        "!raspberrypi2",
+        "!raspberrypi3",
         "!raspberrypi3-64",
+        "!raspberrypi4",
         "!raspberrypi4-64",
         "!raspberrypi5-64",
+        "!tinker",
         "!yellow",
         "!green",
         "!generic-x86-64",
@@ -248,11 +288,16 @@ def test_valid_machine():
 
     config["machine"] = [
         "odroid-n2",
+        "odroid-xu",
+        "qemuarm",
         "qemuarm-64",
+        "qemux86",
         "qemux86-64",
+        "raspberrypi",
+        "raspberrypi4",
         "raspberrypi4-64",
         "raspberrypi5-64",
-        "!green",
+        "!tinker",
     ]
 
     assert vd.SCHEMA_ADDON_CONFIG(config)
@@ -266,7 +311,7 @@ def test_invalid_machine():
         "intel-nuc",
         "raspberrypi4-64",
         "raspberrypi7-64",
-        "tinkerxy",
+        "generic-armv7",
     ]
 
     with pytest.raises(vol.Invalid):

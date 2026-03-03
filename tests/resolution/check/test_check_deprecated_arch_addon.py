@@ -50,6 +50,34 @@ async def test_check_ignores_mixed_supported_arch(
     assert len(coresys.resolution.issues) == 0
 
 
+async def test_check_deprecated_machine(coresys: CoreSys, install_addon_ssh: Addon):
+    """Test check for installed add-ons using deprecated machine entries."""
+    deprecated_arch_addon = CheckDeprecatedArchAddon(coresys)
+    await coresys.core.set_state(CoreState.SETUP)
+
+    install_addon_ssh.data["machine"] = ["raspberrypi3"]
+
+    await deprecated_arch_addon()
+
+    assert len(coresys.resolution.issues) == 1
+    assert coresys.resolution.issues[0].type is IssueType.DEPRECATED_ARCH_ADDON
+    assert coresys.resolution.suggestions[0].type is SuggestionType.EXECUTE_REMOVE
+
+
+async def test_check_ignores_mixed_supported_machine(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test check does not create issue when current machine is still supported."""
+    deprecated_arch_addon = CheckDeprecatedArchAddon(coresys)
+    await coresys.core.set_state(CoreState.SETUP)
+
+    install_addon_ssh.data["machine"] = ["raspberrypi3", install_addon_ssh.sys_machine]
+
+    await deprecated_arch_addon()
+
+    assert len(coresys.resolution.issues) == 0
+
+
 async def test_check_ignores_stage_deprecated(
     coresys: CoreSys, install_addon_ssh: Addon
 ):
@@ -83,6 +111,21 @@ async def test_approve(coresys: CoreSys, install_addon_ssh: Addon):
     )
 
     install_addon_ssh.data["arch"] = ["armv7", "amd64"]
+
+    assert (
+        await deprecated_arch_addon.approve_check(reference=install_addon_ssh.slug)
+        is False
+    )
+
+    install_addon_ssh.data["arch"] = ["amd64"]
+    install_addon_ssh.data["machine"] = ["raspberrypi3"]
+
+    assert (
+        await deprecated_arch_addon.approve_check(reference=install_addon_ssh.slug)
+        is True
+    )
+
+    install_addon_ssh.data["machine"] = ["raspberrypi3", install_addon_ssh.sys_machine]
 
     assert (
         await deprecated_arch_addon.approve_check(reference=install_addon_ssh.slug)

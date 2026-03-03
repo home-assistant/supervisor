@@ -10,6 +10,7 @@ import voluptuous as vol
 
 from ..const import (
     ARCH_ALL_COMPAT,
+    ARCH_DEPRECATED,
     ATTR_ACCESS_TOKEN,
     ATTR_ADVANCED,
     ATTR_APPARMOR,
@@ -97,6 +98,7 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
+    MACHINE_DEPRECATED,
     ROLE_ALL,
     ROLE_DEFAULT,
     AddonBoot,
@@ -156,18 +158,28 @@ SCHEMA_ELEMENT = vol.Schema(
 RE_MACHINE = re.compile(
     r"^!?(?:"
     r"|intel-nuc"
+    r"|khadas-vim3"
+    r"|generic-aarch64"
     r"|generic-x86-64"
     r"|odroid-c2"
     r"|odroid-c4"
     r"|odroid-m1"
     r"|odroid-n2"
+    r"|odroid-xu"
     r"|qemuarm-64"
+    r"|qemuarm"
     r"|qemux86-64"
+    r"|qemux86"
+    r"|raspberrypi"
+    r"|raspberrypi2"
     r"|raspberrypi3-64"
+    r"|raspberrypi3"
     r"|raspberrypi4-64"
+    r"|raspberrypi4"
     r"|raspberrypi5-64"
     r"|yellow"
     r"|green"
+    r"|tinker"
     r")$"
 )
 
@@ -196,6 +208,26 @@ def _warn_addon_config(config: dict[str, Any]):
     ):
         _LOGGER.warning(
             "Add-on which only support COLD backups trying to use post/pre commands. Please report this to the maintainer of %s",
+            name,
+        )
+
+    if deprecated_arches := [
+        arch for arch in config.get(ATTR_ARCH, []) if arch in ARCH_DEPRECATED
+    ]:
+        _LOGGER.warning(
+            "Add-on config 'arch' uses deprecated values %s. Please report this to the maintainer of %s",
+            deprecated_arches,
+            name,
+        )
+
+    if deprecated_machines := [
+        machine
+        for machine in config.get(ATTR_MACHINE, [])
+        if machine.lstrip("!") in MACHINE_DEPRECATED
+    ]:
+        _LOGGER.warning(
+            "Add-on config 'machine' uses deprecated values %s. Please report this to the maintainer of %s",
+            deprecated_machines,
             name,
         )
 

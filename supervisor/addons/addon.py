@@ -239,7 +239,9 @@ class Addon(AddonModel):
 
         await self._check_ingress_port()
 
-        if self.has_deprecated_arch and not self.has_supported_arch:
+        if (self.has_deprecated_arch and not self.has_supported_arch) or (
+            self.has_deprecated_machine and not self.has_supported_machine
+        ):
             self.sys_resolution.create_issue(
                 IssueType.DEPRECATED_ARCH_ADDON,
                 ContextType.ADDON,
