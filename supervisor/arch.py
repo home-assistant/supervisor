@@ -64,11 +64,12 @@ class CpuArchManager(CoreSysAttributes):
         if not self.sys_machine or self.sys_machine not in arch_data:
             _LOGGER.warning("Can't detect the machine type!")
             self._default_arch = native_support
-            self._supported_arch.append(self.default)
+            self._supported_arch = [self.default]
+            self._supported_set = {self.default}
             return
 
         # Use configs from arch.json
-        self._supported_arch.extend(CpuArch(a) for a in arch_data[self.sys_machine])
+        self._supported_arch = [CpuArch(a) for a in arch_data[self.sys_machine]]
         self._default_arch = self.supported[0]
 
         # Make sure native support is in supported list
