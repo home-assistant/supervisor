@@ -9,6 +9,15 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantAPIError
+from supervisor.homeassistant.api import HomeAssistantAPI
+
+
+@pytest.fixture(autouse=True)
+def _restore_get_config(coresys: CoreSys) -> None:
+    """Restore real get_config replaced by global mock in conftest."""
+    coresys.homeassistant.api.get_config = HomeAssistantAPI.get_config.__get__(
+        coresys.homeassistant.api
+    )
 
 
 async def test_check_frontend_available_success(coresys: CoreSys):

@@ -240,6 +240,7 @@ class Core(CoreSysAttributes):
             # HomeAssistant is already running, only Supervisor restarted
             if await self.sys_hardware.helper.last_boot() == self.sys_config.last_boot:
                 _LOGGER.info("Detected Supervisor restart")
+                await self.sys_homeassistant.core.ensure_started()
                 return
 
             # reset register services / discovery
