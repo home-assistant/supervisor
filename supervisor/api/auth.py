@@ -49,7 +49,10 @@ class APIAuth(CoreSysAttributes):
 
         Return a coroutine.
         """
-        auth = BasicAuth.decode(request.headers[AUTHORIZATION])
+        try:
+            auth = BasicAuth.decode(request.headers[AUTHORIZATION])
+        except ValueError as err:
+            raise HTTPUnauthorized(headers=REALM_HEADER) from err
         return self.sys_auth.check_login(addon, auth.login, auth.password)
 
     def _process_dict(
