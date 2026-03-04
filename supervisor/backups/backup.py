@@ -59,6 +59,7 @@ from ..exceptions import (
     BackupFileNotFoundError,
     BackupInvalidError,
     BackupPermissionError,
+    MountError,
 )
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
@@ -974,7 +975,7 @@ class Backup(JobGroup):
             # Create JSON data
             mounts_json = json.dumps(mounts_data).encode("utf-8")
 
-            with outer_secure_tarfile.create_inner_tar(
+            with outer_secure_tarfile.create_tar(
                 f"./{tar_name}",
                 gzip=self.compressed,
                 password=self._password,
@@ -1015,12 +1016,11 @@ class Backup(JobGroup):
         def _load_mounts_data() -> dict[str, Any] | None:
             """Load mounts data from tar file."""
             if not tar_name.exists():
-                _LOGGER.warning("Supervisor tar file not found in backup")
+                _LOGGER.info("Supervisor tar file not found in backup")
                 return None
 
             with SecureTarFile(
                 tar_name,
-                "r",
                 gzip=self.compressed,
                 bufsize=BUF_SIZE,
                 password=self._password,
@@ -1070,7 +1070,7 @@ class Backup(JobGroup):
                 mount = Mount.from_dict(self.coresys, mount_data)
                 mount_tasks.append(await self.sys_mounts.restore_mount(mount))
                 _LOGGER.info("Restored mount configuration: %s", mount_name)
-            except Exception as err:  # pylint: disable=broad-except
+            except (MountError, vol.Invalid, KeyError, OSError) as err:
                 _LOGGER.warning("Failed to restore mount %s: %s", mount_name, err)
                 success = False
 
