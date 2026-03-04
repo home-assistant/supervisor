@@ -341,16 +341,10 @@ async def test_store_supervisor_config_no_mounts(coresys: CoreSys, tmp_path: Pat
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
 
-    # Initially no supervisor config flag
-    assert backup.has_supervisor_config is False
-
     # Create backup context to enable store_supervisor_config
     async with backup.create():
         # Store config (should do nothing when no mounts configured)
         await backup.store_supervisor_config()
-
-    # has_supervisor_config should still be False since no mounts were configured
-    assert backup.has_supervisor_config is False
 
 
 async def test_store_supervisor_config_with_mounts(coresys: CoreSys, tmp_path: Path):
@@ -375,17 +369,11 @@ async def test_store_supervisor_config_with_mounts(coresys: CoreSys, tmp_path: P
     async with backup.create():
         await backup.store_supervisor_config()
 
-    # Verify has_supervisor_config flag is set
-    assert backup.has_supervisor_config is True
 
-
-async def test_restore_supervisor_config_empty(coresys: CoreSys, tmp_path: Path):
-    """Test restoring supervisor config when backup has no config data."""
+async def test_restore_supervisor_config_no_tar(coresys: CoreSys, tmp_path: Path):
+    """Test restoring supervisor config when backup has no supervisor tar."""
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
-
-    # No supervisor config in backup
-    assert backup.has_supervisor_config is False
 
     # Restore should succeed with nothing to do and return empty task list
     success, tasks = await backup.restore_supervisor_config()

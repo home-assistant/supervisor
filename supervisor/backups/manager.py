@@ -755,14 +755,12 @@ class BackupManager(FileConfiguration, JobGroup):
                     success = success and restore_success
 
                 # Restore supervisor configuration (mounts, etc.)
-                mount_tasks: list[asyncio.Task] = []
-                if backup.has_supervisor_config:
-                    self._change_stage(RestoreJobStage.SUPERVISOR_CONFIG, backup)
-                    (
-                        mount_success,
-                        mount_tasks,
-                    ) = await backup.restore_supervisor_config()
-                    success = success and mount_success
+                self._change_stage(RestoreJobStage.SUPERVISOR_CONFIG, backup)
+                (
+                    mount_success,
+                    mount_tasks,
+                ) = await backup.restore_supervisor_config()
+                success = success and mount_success
 
                 # Wait for Home Assistant Core update/downgrade
                 if task_hass:

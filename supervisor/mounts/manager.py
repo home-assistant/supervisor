@@ -344,6 +344,13 @@ class MountManager(FileConfiguration, CoreSysAttributes):
 
     async def _activate_restored_mount(self, mount: Mount) -> None:
         """Activate a restored mount. Logs errors but doesn't raise."""
+        if HostFeature.MOUNT not in self.sys_host.features:
+            _LOGGER.warning(
+                "Cannot activate mount %s, mounting not supported on system",
+                mount.name,
+            )
+            return
+
         try:
             _LOGGER.info("Activating restored mount: %s", mount.name)
             await mount.load()

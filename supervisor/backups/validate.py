@@ -23,7 +23,6 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
-    ATTR_SUPERVISOR,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
@@ -133,8 +132,6 @@ SCHEMA_BACKUP = vol.Schema(
         ),
         vol.Optional(ATTR_REPOSITORIES, default=list): repositories,
         vol.Optional(ATTR_EXTRA, default=dict): dict,
-        # Supervisor config is stored in encrypted supervisor.tar, this is just a flag
-        vol.Optional(ATTR_SUPERVISOR, default=False): vol.Boolean(),
     },
     extra=vol.ALLOW_EXTRA,
 )

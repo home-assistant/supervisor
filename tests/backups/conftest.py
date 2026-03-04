@@ -32,7 +32,6 @@ def fixture_backup_mock():
         backup_instance.restore_repositories = AsyncMock(return_value=None)
         backup_instance.restore_supervisor_config = AsyncMock(return_value=(True, []))
         backup_instance.remove_delta_addons = AsyncMock(return_value=True)
-        backup_instance.has_supervisor_config = False
 
         yield backup_mock
 

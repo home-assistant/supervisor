@@ -45,7 +45,6 @@ from ..const import (
     ATTR_REPOSITORIES,
     ATTR_SIZE,
     ATTR_SLUG,
-    ATTR_SUPERVISOR,
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
@@ -210,11 +209,6 @@ class Backup(JobGroup):
     def extra(self) -> dict:
         """Get extra metadata added by client."""
         return self._data[ATTR_EXTRA]
-
-    @property
-    def has_supervisor_config(self) -> bool:
-        """Return True if backup contains supervisor configuration data."""
-        return self._data.get(ATTR_SUPERVISOR, False)
 
     @property
     def location(self) -> str | None:
@@ -988,7 +982,6 @@ class Backup(JobGroup):
 
         try:
             await self.sys_run_in_executor(_save)
-            self._data[ATTR_SUPERVISOR] = True
         except (tarfile.TarError, OSError) as err:
             raise BackupError(
                 f"Can't write supervisor config tarfile: {err!s}"
@@ -1001,9 +994,6 @@ class Backup(JobGroup):
         Returns tuple of (success, list of mount activation tasks).
         The tasks should be awaited after the restore is complete to activate mounts.
         """
-        if not self.has_supervisor_config:
-            return (True, [])
-
         if not self._tmp:
             raise RuntimeError("Cannot restore components without opening backup tar")
 
