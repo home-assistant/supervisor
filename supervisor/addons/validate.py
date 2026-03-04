@@ -244,6 +244,8 @@ def _migrate_addon_config(protocol=False):
     """Migrate addon config."""
 
     def _migrate(config: dict[str, Any]):
+        if not isinstance(config, dict):
+            raise vol.Invalid("Add-on config must be a dictionary!")
         name = config.get(ATTR_NAME)
         if not name:
             raise vol.Invalid("Invalid Add-on config!")
