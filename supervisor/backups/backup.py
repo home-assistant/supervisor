@@ -978,7 +978,6 @@ class Backup(JobGroup):
             with outer_secure_tarfile.create_tar(
                 f"./{tar_name}",
                 gzip=self.compressed,
-                password=self._password,
             ) as tar_file:
                 # Add mounts.json to tar
                 tarinfo = tarfile.TarInfo(name="mounts.json")
