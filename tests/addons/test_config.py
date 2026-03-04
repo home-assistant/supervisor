@@ -223,6 +223,16 @@ def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
     assert "Add-on config 'machine' uses deprecated values" in caplog.text
 
 
+def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
+    """Warn when deprecated advanced field is present."""
+    config = load_json_fixture("basic-addon-config.json")
+    config["advanced"] = True
+
+    vd.SCHEMA_ADDON_CONFIG(config)
+
+    assert "uses deprecated 'advanced' field in config" in caplog.text
+
+
 async def test_valid_manifest_build():
     """Validate build config with manifest build from."""
     config = load_json_fixture("build-config-manifest.json")
