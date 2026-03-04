@@ -532,3 +532,12 @@ def test_ulimits_invalid_values():
     config["ulimits"] = {"nofile": {}}
     with pytest.raises(vol.Invalid):
         vd.SCHEMA_ADDON_CONFIG(config)
+
+
+def test_non_dict_config_raises_invalid():
+    """Test that a non-dict config raises vol.Invalid, not AttributeError."""
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG("not a dict")
+
+    with pytest.raises(vol.Invalid):
+        vd.SCHEMA_ADDON_CONFIG(["list", "not", "dict"])
