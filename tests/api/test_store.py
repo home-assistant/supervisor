@@ -587,12 +587,12 @@ async def test_api_store_addons_addon_availability_success(
 @pytest.mark.parametrize(
     ("supported_architectures", "api_action", "api_method", "installed"),
     [
-        (["i386"], "availability", "get", False),
-        (["i386", "aarch64"], "availability", "get", False),
-        (["i386"], "install", "post", False),
-        (["i386", "aarch64"], "install", "post", False),
-        (["i386"], "update", "post", True),
-        (["i386", "aarch64"], "update", "post", True),
+        (["aarch64"], "availability", "get", False),
+        (["aarch64", "fooarch"], "availability", "get", False),
+        (["aarch64"], "install", "post", False),
+        (["aarch64", "fooarch"], "install", "post", False),
+        (["aarch64"], "update", "post", True),
+        (["aarch64", "fooarch"], "update", "post", True),
     ],
 )
 async def test_api_store_addons_addon_availability_arch_not_supported(

@@ -5,11 +5,8 @@ slug: example
 description: Example add-on
 url: "https://github.com/home-assistant/addons-example/tree/main/example"
 arch:
-  - armhf
-  - armv7
   - aarch64
   - amd64
-  - i386
 init: false
 map:
   - share:rw

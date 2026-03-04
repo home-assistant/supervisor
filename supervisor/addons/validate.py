@@ -9,7 +9,8 @@ import uuid
 import voluptuous as vol
 
 from ..const import (
-    ARCH_ALL,
+    ARCH_ALL_COMPAT,
+    ARCH_DEPRECATED,
     ATTR_ACCESS_TOKEN,
     ATTR_ADVANCED,
     ATTR_APPARMOR,
@@ -97,6 +98,7 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
+    MACHINE_DEPRECATED,
     ROLE_ALL,
     ROLE_DEFAULT,
     AddonBoot,
@@ -156,6 +158,8 @@ SCHEMA_ELEMENT = vol.Schema(
 RE_MACHINE = re.compile(
     r"^!?(?:"
     r"|intel-nuc"
+    r"|khadas-vim3"
+    r"|generic-aarch64"
     r"|generic-x86-64"
     r"|odroid-c2"
     r"|odroid-c4"
@@ -204,6 +208,26 @@ def _warn_addon_config(config: dict[str, Any]):
     ):
         _LOGGER.warning(
             "Add-on which only support COLD backups trying to use post/pre commands. Please report this to the maintainer of %s",
+            name,
+        )
+
+    if deprecated_arches := [
+        arch for arch in config.get(ATTR_ARCH, []) if arch in ARCH_DEPRECATED
+    ]:
+        _LOGGER.warning(
+            "Add-on config 'arch' uses deprecated values %s. Please report this to the maintainer of %s",
+            deprecated_arches,
+            name,
+        )
+
+    if deprecated_machines := [
+        machine
+        for machine in config.get(ATTR_MACHINE, [])
+        if machine.lstrip("!") in MACHINE_DEPRECATED
+    ]:
+        _LOGGER.warning(
+            "Add-on config 'machine' uses deprecated values %s. Please report this to the maintainer of %s",
+            deprecated_machines,
             name,
         )
 
@@ -349,7 +373,7 @@ _SCHEMA_ADDON_CONFIG = vol.Schema(
         vol.Required(ATTR_VERSION): version_tag,
         vol.Required(ATTR_SLUG): vol.Match(RE_SLUG_FIELD),
         vol.Required(ATTR_DESCRIPTON): str,
-        vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL)],
+        vol.Required(ATTR_ARCH): [vol.In(ARCH_ALL_COMPAT)],
         vol.Optional(ATTR_MACHINE): vol.All([vol.Match(RE_MACHINE)], vol.Unique()),
         vol.Optional(ATTR_URL): vol.Url(),
         vol.Optional(ATTR_STARTUP, default=AddonStartup.APPLICATION): vol.Coerce(
@@ -462,7 +486,7 @@ SCHEMA_BUILD_CONFIG = vol.Schema(
     {
         vol.Optional(ATTR_BUILD_FROM, default=dict): vol.Any(
             vol.Match(RE_DOCKER_IMAGE_BUILD),
-            vol.Schema({vol.In(ARCH_ALL): vol.Match(RE_DOCKER_IMAGE_BUILD)}),
+            vol.Schema({vol.In(ARCH_ALL_COMPAT): vol.Match(RE_DOCKER_IMAGE_BUILD)}),
         ),
         vol.Optional(ATTR_SQUASH, default=False): vol.Boolean(),
         vol.Optional(ATTR_ARGS, default=dict): vol.Schema({str: str}),

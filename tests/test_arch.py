@@ -16,7 +16,7 @@ def mock_detect_cpu_fixture():
 
 
 async def test_machine_not_exits(coresys, sys_machine, sys_supervisor):
-    """Test arch for raspberrypi."""
+    """Test fallback when machine is missing."""
     sys_machine.return_value = None
     sys_supervisor.arch = "amd64"
     await coresys.arch.load()
@@ -26,7 +26,7 @@ async def test_machine_not_exits(coresys, sys_machine, sys_supervisor):
 
 
 async def test_machine_not_exits_in_db(coresys, sys_machine, sys_supervisor):
-    """Test arch for raspberrypi."""
+    """Test fallback when machine is unknown."""
     sys_machine.return_value = "jedi-master-knight"
     sys_supervisor.arch = "amd64"
     await coresys.arch.load()
@@ -36,7 +36,7 @@ async def test_machine_not_exits_in_db(coresys, sys_machine, sys_supervisor):
 
 
 async def test_supervisor_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for raspberrypi."""
+    """Test supervisor architecture property."""
     sys_machine.return_value = None
     sys_supervisor.arch = "amd64"
     assert coresys.arch.supervisor == "amd64"
@@ -46,36 +46,6 @@ async def test_supervisor_arch(coresys, sys_machine, sys_supervisor):
     assert coresys.arch.supervisor == "amd64"
 
 
-async def test_raspberrypi_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for raspberrypi."""
-    sys_machine.return_value = "raspberrypi"
-    sys_supervisor.arch = "armhf"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "armhf"
-    assert coresys.arch.supported == [CpuArch.ARMHF]
-
-
-async def test_raspberrypi2_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for raspberrypi2."""
-    sys_machine.return_value = "raspberrypi2"
-    sys_supervisor.arch = "armv7"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "armv7"
-    assert coresys.arch.supported == [CpuArch.ARMV7, CpuArch.ARMHF]
-
-
-async def test_raspberrypi3_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for raspberrypi3."""
-    sys_machine.return_value = "raspberrypi3"
-    sys_supervisor.arch = "armv7"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "armv7"
-    assert coresys.arch.supported == [CpuArch.ARMV7, CpuArch.ARMHF]
-
-
 async def test_raspberrypi3_64_arch(coresys, sys_machine, sys_supervisor):
     """Test arch for raspberrypi3_64."""
     sys_machine.return_value = "raspberrypi3-64"
@@ -83,17 +53,7 @@ async def test_raspberrypi3_64_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
-
-
-async def test_raspberrypi4_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for raspberrypi4."""
-    sys_machine.return_value = "raspberrypi4"
-    sys_supervisor.arch = "armv7"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "armv7"
-    assert coresys.arch.supported == [CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
 
 
 async def test_raspberrypi4_64_arch(coresys, sys_machine, sys_supervisor):
@@ -103,7 +63,7 @@ async def test_raspberrypi4_64_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
 
 
 async def test_raspberrypi5_64_arch(coresys, sys_machine, sys_supervisor):
@@ -113,7 +73,7 @@ async def test_raspberrypi5_64_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
 
 
 async def test_yellow_arch(coresys, sys_machine, sys_supervisor):
@@ -123,11 +83,11 @@ async def test_yellow_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
     assert coresys.arch.is_supported(["aarch64"]) is True
-    assert coresys.arch.is_supported(["armv7"]) is True
-    assert coresys.arch.is_supported(["armhf"]) is True
-    assert coresys.arch.is_supported(["x86_64", "i386"]) is False
+    assert coresys.arch.is_supported(["fooarch"]) is False
+    assert coresys.arch.is_supported(["bararch"]) is False
+    assert coresys.arch.is_supported(["x86_64"]) is False
 
 
 async def test_green_arch(coresys, sys_machine, sys_supervisor):
@@ -137,17 +97,7 @@ async def test_green_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
-
-
-async def test_tinker_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for tinker."""
-    sys_machine.return_value = "tinker"
-    sys_supervisor.arch = "armv7"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "armv7"
-    assert coresys.arch.supported == [CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
 
 
 async def test_odroid_c2_arch(coresys, sys_machine, sys_supervisor):
@@ -157,7 +107,7 @@ async def test_odroid_c2_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
 
 
 async def test_odroid_c4_arch(coresys, sys_machine, sys_supervisor):
@@ -167,7 +117,7 @@ async def test_odroid_c4_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
 
 
 async def test_odroid_m1_arch(coresys, sys_machine, sys_supervisor):
@@ -177,7 +127,7 @@ async def test_odroid_m1_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
 
 
 async def test_odroid_n2_arch(coresys, sys_machine, sys_supervisor):
@@ -187,17 +137,7 @@ async def test_odroid_n2_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "aarch64"
-    assert coresys.arch.supported == [CpuArch.AARCH64, CpuArch.ARMV7, CpuArch.ARMHF]
-
-
-async def test_odroid_xu_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for odroid-xu."""
-    sys_machine.return_value = "odroid-xu"
-    sys_supervisor.arch = "armv7"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "armv7"
-    assert coresys.arch.supported == [CpuArch.ARMV7, CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AARCH64]
 
 
 async def test_intel_nuc_arch(coresys, sys_machine, sys_supervisor):
@@ -207,17 +147,7 @@ async def test_intel_nuc_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "amd64"
-    assert coresys.arch.supported == [CpuArch.AMD64, CpuArch.I386]
-
-
-async def test_qemux86_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for qemux86."""
-    sys_machine.return_value = "qemux86"
-    sys_supervisor.arch = "i386"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "i386"
-    assert coresys.arch.supported == [CpuArch.I386]
+    assert coresys.arch.supported == [CpuArch.AMD64]
 
 
 async def test_qemux86_64_arch(coresys, sys_machine, sys_supervisor):
@@ -227,17 +157,7 @@ async def test_qemux86_64_arch(coresys, sys_machine, sys_supervisor):
     await coresys.arch.load()
 
     assert coresys.arch.default == "amd64"
-    assert coresys.arch.supported == [CpuArch.AMD64, CpuArch.I386]
-
-
-async def test_qemuarm_arch(coresys, sys_machine, sys_supervisor):
-    """Test arch for qemuarm."""
-    sys_machine.return_value = "qemuarm"
-    sys_supervisor.arch = "armhf"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "armhf"
-    assert coresys.arch.supported == [CpuArch.ARMHF]
+    assert coresys.arch.supported == [CpuArch.AMD64]
 
 
 async def test_qemuarm_64_arch(coresys, sys_machine, sys_supervisor):
@@ -248,16 +168,3 @@ async def test_qemuarm_64_arch(coresys, sys_machine, sys_supervisor):
 
     assert coresys.arch.default == "aarch64"
     assert coresys.arch.supported == [CpuArch.AARCH64]
-
-
-async def test_qemuarm_arch_native_armv7(
-    coresys, sys_machine, mock_detect_cpu, sys_supervisor
-):
-    """Test arch for qemuarm."""
-    sys_machine.return_value = "qemuarm"
-    sys_supervisor.arch = "armhf"
-    mock_detect_cpu.return_value = "armv7l"
-    await coresys.arch.load()
-
-    assert coresys.arch.default == "armhf"
-    assert coresys.arch.supported == [CpuArch.ARMHF, CpuArch.ARMV7]

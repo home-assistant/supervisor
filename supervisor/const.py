@@ -388,7 +388,20 @@ ARCH_AARCH64 = "aarch64"
 ARCH_AMD64 = "amd64"
 ARCH_I386 = "i386"
 
-ARCH_ALL = [ARCH_ARMHF, ARCH_ARMV7, ARCH_AARCH64, ARCH_AMD64, ARCH_I386]
+ARCH_ALL = [ARCH_AARCH64, ARCH_AMD64]
+ARCH_DEPRECATED = [ARCH_ARMHF, ARCH_ARMV7, ARCH_I386]
+ARCH_ALL_COMPAT = ARCH_ALL + ARCH_DEPRECATED
+
+MACHINE_DEPRECATED = [
+    "odroid-xu",
+    "qemuarm",
+    "qemux86",
+    "raspberrypi",
+    "raspberrypi2",
+    "raspberrypi3",
+    "raspberrypi4",
+    "tinker",
+]
 
 REPOSITORY_CORE = "core"
 REPOSITORY_LOCAL = "local"
@@ -530,10 +543,7 @@ class BusEvent(StrEnum):
 class CpuArch(StrEnum):
     """Supported CPU architectures."""
 
-    ARMV7 = "armv7"
-    ARMHF = "armhf"
     AARCH64 = "aarch64"
-    I386 = "i386"
     AMD64 = "amd64"
 
 

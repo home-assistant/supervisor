@@ -81,6 +81,7 @@ class IssueType(StrEnum):
     CORRUPT_REPOSITORY = "corrupt_repository"
     CORRUPT_FILESYSTEM = "corrupt_filesystem"
     DEPRECATED_ADDON = "deprecated_addon"
+    DEPRECATED_ARCH_ADDON = "deprecated_arch_addon"
     DETACHED_ADDON_MISSING = "detached_addon_missing"
     DETACHED_ADDON_REMOVED = "detached_addon_removed"
     DEVICE_ACCESS_MISSING = "device_access_missing"

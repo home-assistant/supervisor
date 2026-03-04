@@ -31,7 +31,7 @@ class EvaluateSystemArchitecture(EvaluateBase):
 
     async def evaluate(self):
         """Run evaluation."""
-        return self.sys_host.info.sys_arch.supervisor in {
+        return self.sys_supervisor.arch in {
             "i386",
             "armhf",
             "armv7",
