@@ -84,7 +84,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
     def base_image(self) -> str:
         """Return base image for this add-on."""
         if not self._data[ATTR_BUILD_FROM]:
-            return f"ghcr.io/home-assistant/{self.sys_arch.default!s}-base:latest"
+            return f"ghcr.io/home-assistant/{self.arch!s}-base:latest"
 
         if isinstance(self._data[ATTR_BUILD_FROM], str):
             return self._data[ATTR_BUILD_FROM]
@@ -220,7 +220,7 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         build_args = {
             "BUILD_FROM": self.base_image,
             "BUILD_VERSION": version,
-            "BUILD_ARCH": self.sys_arch.default,
+            "BUILD_ARCH": self.arch,
             **self.additional_args,
         }
 
