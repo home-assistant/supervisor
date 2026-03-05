@@ -59,7 +59,7 @@ class Mount(CoreSysAttributes, ABC):
         )
 
     @classmethod
-    def from_dict(cls, coresys: CoreSys, data: MountData) -> "Mount":
+    def from_dict(cls, coresys: CoreSys, data: MountData) -> Mount:
         """Make dictionary into mount object."""
         if cls not in [Mount, NetworkMount]:
             return cls(coresys, data)
@@ -562,7 +562,7 @@ class BindMount(Mount):
         usage: MountUsage | None = None,
         where: PurePath | None = None,
         read_only: bool = False,
-    ) -> "BindMount":
+    ) -> BindMount:
         """Create a new bind mount instance."""
         return BindMount(
             coresys,

@@ -29,7 +29,7 @@ class TestInterface(DBusServiceMock):
     object_path = DBUS_OBJECT_BASE
 
     @method(name="Test")
-    def test(self, _: "b") -> None:  # noqa: F821
+    def test(self, _: b) -> None:  # noqa: F821
         """Do Test method."""
 
     @signal(name="Test")

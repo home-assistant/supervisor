@@ -22,31 +22,31 @@ class Green(DBusServiceMock):
     interface = "io.hass.os.Boards.Green"
 
     @dbus_property()
-    def ActivityLED(self) -> "b":
+    def ActivityLED(self) -> b:
         """Get Activity LED."""
         return True
 
     @ActivityLED.setter
-    def ActivityLED(self, value: "b"):
+    def ActivityLED(self, value: b):
         """Set Activity LED."""
         self.emit_properties_changed({"ActivityLED": value})
 
     @dbus_property()
-    def PowerLED(self) -> "b":
+    def PowerLED(self) -> b:
         """Get Power LED."""
         return True
 
     @PowerLED.setter
-    def PowerLED(self, value: "b"):
+    def PowerLED(self, value: b):
         """Set Power LED."""
         self.emit_properties_changed({"PowerLED": value})
 
     @dbus_property()
-    def UserLED(self) -> "b":
+    def UserLED(self) -> b:
         """Get User LED."""
         return True
 
     @UserLED.setter
-    def UserLED(self, value: "b"):
+    def UserLED(self, value: b):
         """Set User LED."""
         self.emit_properties_changed({"UserLED": value})

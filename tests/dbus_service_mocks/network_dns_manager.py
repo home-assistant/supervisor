@@ -23,12 +23,12 @@ class DnsManager(DBusServiceMock):
     object_path = "/org/freedesktop/NetworkManager/DnsManager"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Mode(self) -> "s":
+    def Mode(self) -> s:
         """Get Mode."""
         return "default"
 
     @dbus_property(access=PropertyAccess.READ)
-    def RcManager(self) -> "s":
+    def RcManager(self) -> s:
         """Get RcManager."""
         return "file"
 

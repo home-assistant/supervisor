@@ -22,17 +22,17 @@ class Loop(DBusServiceMock):
     object_path = "/org/freedesktop/UDisks2/block_devices/loop0"
 
     @dbus_property(access=PropertyAccess.READ)
-    def BackingFile(self) -> "ay":
+    def BackingFile(self) -> ay:
         """Get BackingFile."""
         return b""
 
     @dbus_property(access=PropertyAccess.READ)
-    def Autoclear(self) -> "b":
+    def Autoclear(self) -> b:
         """Get Autoclear."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def SetupByUID(self) -> "u":
+    def SetupByUID(self) -> u:
         """Get SetupByUID."""
         return 0
 
@@ -41,5 +41,5 @@ class Loop(DBusServiceMock):
         """Do Delete method."""
 
     @dbus_method()
-    def SetAutoClear(self, value: "b", options: "a{sv}") -> None:
+    def SetAutoClear(self, value: b, options: "a{sv}") -> None:
         """Do SetAutoClear method."""

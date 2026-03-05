@@ -23,7 +23,7 @@ class IP4Config(DBusServiceMock):
     object_path = "/org/freedesktop/NetworkManager/IP4Config/1"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Addresses(self) -> "aau":
+    def Addresses(self) -> aau:
         """Get Addresses."""
         return [[2499979456, 24, 16951488]]
 
@@ -33,12 +33,12 @@ class IP4Config(DBusServiceMock):
         return [{"address": Variant("s", "192.168.2.148"), "prefix": Variant("u", 24)}]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Gateway(self) -> "s":
+    def Gateway(self) -> s:
         """Get Gateway."""
         return "192.168.2.1"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Routes(self) -> "aau":
+    def Routes(self) -> aau:
         """Get Routes."""
         return [[174272, 24, 0, 100], [65193, 16, 0, 1000]]
 
@@ -70,7 +70,7 @@ class IP4Config(DBusServiceMock):
         return [{"address": Variant("s", "192.168.2.2")}]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Nameservers(self) -> "au":
+    def Nameservers(self) -> au:
         """Get Nameservers."""
         return [16951488]
 
@@ -90,7 +90,7 @@ class IP4Config(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def DnsPriority(self) -> "i":
+    def DnsPriority(self) -> i:
         """Get DnsPriority."""
         return 100
 
@@ -100,6 +100,6 @@ class IP4Config(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def WinsServers(self) -> "au":
+    def WinsServers(self) -> au:
         """Get WinsServers."""
         return []

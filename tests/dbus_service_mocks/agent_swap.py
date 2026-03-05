@@ -22,21 +22,21 @@ class Swap(DBusServiceMock):
     interface = "io.hass.os.Config.Swap"
 
     @dbus_property()
-    def SwapSize(self) -> "s":
+    def SwapSize(self) -> s:
         """Get swap size."""
         return "1M"
 
     @SwapSize.setter
-    def SwapSize(self, value: "s"):
+    def SwapSize(self, value: s):
         """Set swap size."""
         self.emit_properties_changed({"SwapSize": value})
 
     @dbus_property()
-    def Swappiness(self) -> "i":
+    def Swappiness(self) -> i:
         """Get swappiness."""
         return 1
 
     @Swappiness.setter
-    def Swappiness(self, value: "i"):
+    def Swappiness(self, value: i):
         """Set swappiness."""
         self.emit_properties_changed({"Swappiness": value})

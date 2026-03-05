@@ -22,16 +22,16 @@ class AppArmor(DBusServiceMock):
     interface = "io.hass.os.AppArmor"
 
     @dbus_property(access=PropertyAccess.READ)
-    def ParserVersion(self) -> "s":
+    def ParserVersion(self) -> s:
         """Get ParserVersion."""
         return "2.13.2"
 
     @dbus_method()
-    def LoadProfile(self, arg_0: "s", arg_1: "s") -> "b":
+    def LoadProfile(self, arg_0: s, arg_1: s) -> b:
         """Load profile."""
         return True
 
     @dbus_method()
-    def UnloadProfile(self, arg_0: "s", arg_1: "s") -> "b":
+    def UnloadProfile(self, arg_0: s, arg_1: s) -> b:
         """Unload profile."""
         return True

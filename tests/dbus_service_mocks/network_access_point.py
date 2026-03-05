@@ -75,51 +75,51 @@ class AccessPoint(DBusServiceMock):
         self.fixture: AccessPointFixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> "u":
+    def Flags(self) -> u:
         """Get Flags."""
         return self.fixture.Flags
 
     @dbus_property(access=PropertyAccess.READ)
-    def WpaFlags(self) -> "u":
+    def WpaFlags(self) -> u:
         """Get WpaFlags."""
         return self.fixture.WpaFlags
 
     @dbus_property(access=PropertyAccess.READ)
-    def RsnFlags(self) -> "u":
+    def RsnFlags(self) -> u:
         """Get RsnFlags."""
         return self.fixture.RsnFlags
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ssid(self) -> "ay":
+    def Ssid(self) -> ay:
         """Get Ssid."""
         return self.fixture.Ssid
 
     @dbus_property(access=PropertyAccess.READ)
-    def Frequency(self) -> "u":
+    def Frequency(self) -> u:
         """Get Frequency."""
         return self.fixture.Frequency
 
     @dbus_property(access=PropertyAccess.READ)
-    def HwAddress(self) -> "s":
+    def HwAddress(self) -> s:
         """Get HwAddress."""
         return self.fixture.HwAddress
 
     @dbus_property(access=PropertyAccess.READ)
-    def Mode(self) -> "u":
+    def Mode(self) -> u:
         """Get Mode."""
         return self.fixture.Mode
 
     @dbus_property(access=PropertyAccess.READ)
-    def MaxBitrate(self) -> "u":
+    def MaxBitrate(self) -> u:
         """Get MaxBitrate."""
         return self.fixture.MaxBitrate
 
     @dbus_property(access=PropertyAccess.READ)
-    def Strength(self) -> "y":
+    def Strength(self) -> y:
         """Get Strength."""
         return self.fixture.Strength
 
     @dbus_property(access=PropertyAccess.READ)
-    def LastSeen(self) -> "i":
+    def LastSeen(self) -> i:
         """Get LastSeen."""
         return self.fixture.LastSeen

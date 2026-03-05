@@ -26,27 +26,27 @@ class DeviceWireless(DBusServiceMock):
     ]
 
     @dbus_property(access=PropertyAccess.READ)
-    def HwAddress(self) -> "s":
+    def HwAddress(self) -> s:
         """Get HwAddress."""
         return "EA:3C:50:4C:B8:82"
 
     @dbus_property(access=PropertyAccess.READ)
-    def PermHwAddress(self) -> "s":
+    def PermHwAddress(self) -> s:
         """Get PermHwAddress."""
         return "DC:A6:32:02:BA:21"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Mode(self) -> "u":
+    def Mode(self) -> u:
         """Get Mode."""
         return 2
 
     @dbus_property(access=PropertyAccess.READ)
-    def Bitrate(self) -> "u":
+    def Bitrate(self) -> u:
         """Get Bitrate."""
         return 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def AccessPoints(self) -> "ao":
+    def AccessPoints(self) -> ao:
         """Get AccessPoints."""
         return [
             "/org/freedesktop/NetworkManager/AccessPoint/41533",
@@ -61,37 +61,37 @@ class DeviceWireless(DBusServiceMock):
         ]
 
     @dbus_property(access=PropertyAccess.READ)
-    def ActiveAccessPoint(self) -> "o":
+    def ActiveAccessPoint(self) -> o:
         """Get ActiveAccessPoint."""
         return "/"
 
     @dbus_property(access=PropertyAccess.READ)
-    def WirelessCapabilities(self) -> "u":
+    def WirelessCapabilities(self) -> u:
         """Get WirelessCapabilities."""
         return 2047
 
     @dbus_property(access=PropertyAccess.READ)
-    def LastScan(self) -> "x":
+    def LastScan(self) -> x:
         """Get LastScan."""
         return 1343924585
 
     @signal()
-    def AccessPointAdded(self) -> "o":
+    def AccessPointAdded(self) -> o:
         """Signal AccessPointAdded."""
         return "/org/freedesktop/NetworkManager/AccessPoint/43100"
 
     @signal()
-    def AccessPointRemoved(self) -> "o":
+    def AccessPointRemoved(self) -> o:
         """Signal AccessPointRemoved."""
         return "/org/freedesktop/NetworkManager/AccessPoint/43100"
 
     @dbus_method()
-    def GetAccessPoints(self) -> "ao":
+    def GetAccessPoints(self) -> ao:
         """Do GetAccessPoints method."""
         return self.GetAllAccessPoints()
 
     @dbus_method()
-    def GetAllAccessPoints(self) -> "ao":
+    def GetAllAccessPoints(self) -> ao:
         """Do GetAllAccessPoints method."""
         return self.all_access_points
 

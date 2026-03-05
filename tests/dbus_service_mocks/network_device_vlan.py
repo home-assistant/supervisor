@@ -30,21 +30,21 @@ class DeviceVlan(DBusServiceMock):
         self.fixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def HwAddress(self) -> "s":
+    def HwAddress(self) -> s:
         """Get HwAddress."""
         return self.fixture.HwAddress
 
     @dbus_property(access=PropertyAccess.READ)
-    def Carrier(self) -> "b":
+    def Carrier(self) -> b:
         """Get Carrier."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def Parent(self) -> "o":
+    def Parent(self) -> o:
         """Get Parent."""
         return self.fixture.Parent
 
     @dbus_property(access=PropertyAccess.READ)
-    def VlanId(self) -> "u":
+    def VlanId(self) -> u:
         """Get VlanId."""
         return self.fixture.VlanId

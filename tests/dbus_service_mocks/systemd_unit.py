@@ -28,7 +28,7 @@ class SystemdUnit(DBusServiceMock):
         self.object_path = object_path
 
     @dbus_property(access=PropertyAccess.READ)
-    def Id(self) -> "s":
+    def Id(self) -> s:
         """Get Id."""
         return "tmp-yellow.mount"
 
@@ -38,7 +38,7 @@ class SystemdUnit(DBusServiceMock):
         return ["tmp-yellow.mount"]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Following(self) -> "s":
+    def Following(self) -> s:
         """Get Following."""
         return ""
 
@@ -201,44 +201,44 @@ class SystemdUnit(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def Description(self) -> "s":
+    def Description(self) -> s:
         """Get Description."""
         return "/tmp/yellow"  # noqa: S108
 
     @dbus_property(access=PropertyAccess.READ)
-    def AccessSELinuxContext(self) -> "s":
+    def AccessSELinuxContext(self) -> s:
         """Get AccessSELinuxContext."""
         return ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def LoadState(self) -> "s":
+    def LoadState(self) -> s:
         """Get LoadState."""
         return "loaded"
 
     @dbus_property(access=PropertyAccess.READ)
-    def ActiveState(self) -> "s":
+    def ActiveState(self) -> s:
         """Get ActiveState."""
         if isinstance(self.active_state, list):
             return self.active_state.pop(0)
         return self.active_state
 
     @dbus_property(access=PropertyAccess.READ)
-    def FreezerState(self) -> "s":
+    def FreezerState(self) -> s:
         """Get FreezerState."""
         return "running"
 
     @dbus_property(access=PropertyAccess.READ)
-    def SubState(self) -> "s":
+    def SubState(self) -> s:
         """Get SubState."""
         return "mounted"
 
     @dbus_property(access=PropertyAccess.READ)
-    def FragmentPath(self) -> "s":
+    def FragmentPath(self) -> s:
         """Get FragmentPath."""
         return "/run/systemd/transient/tmp-yellow.mount"
 
     @dbus_property(access=PropertyAccess.READ)
-    def SourcePath(self) -> "s":
+    def SourcePath(self) -> s:
         """Get SourcePath."""
         return ""
 
@@ -248,82 +248,82 @@ class SystemdUnit(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def UnitFileState(self) -> "s":
+    def UnitFileState(self) -> s:
         """Get UnitFileState."""
         return "transient"
 
     @dbus_property(access=PropertyAccess.READ)
-    def UnitFilePreset(self) -> "s":
+    def UnitFilePreset(self) -> s:
         """Get UnitFilePreset."""
         return "enabled"
 
     @dbus_property(access=PropertyAccess.READ)
-    def StateChangeTimestamp(self) -> "t":
+    def StateChangeTimestamp(self) -> t:
         """Get StateChangeTimestamp."""
         return 1682012447583854
 
     @dbus_property(access=PropertyAccess.READ)
-    def StateChangeTimestampMonotonic(self) -> "t":
+    def StateChangeTimestampMonotonic(self) -> t:
         """Get StateChangeTimestampMonotonic."""
         return 411597359174
 
     @dbus_property(access=PropertyAccess.READ)
-    def InactiveExitTimestamp(self) -> "t":
+    def InactiveExitTimestamp(self) -> t:
         """Get InactiveExitTimestamp."""
         return 1682010434373271
 
     @dbus_property(access=PropertyAccess.READ)
-    def InactiveExitTimestampMonotonic(self) -> "t":
+    def InactiveExitTimestampMonotonic(self) -> t:
         """Get InactiveExitTimestampMonotonic."""
         return 409584148592
 
     @dbus_property(access=PropertyAccess.READ)
-    def ActiveEnterTimestamp(self) -> "t":
+    def ActiveEnterTimestamp(self) -> t:
         """Get ActiveEnterTimestamp."""
         return 1682010434467137
 
     @dbus_property(access=PropertyAccess.READ)
-    def ActiveEnterTimestampMonotonic(self) -> "t":
+    def ActiveEnterTimestampMonotonic(self) -> t:
         """Get ActiveEnterTimestampMonotonic."""
         return 409584242457
 
     @dbus_property(access=PropertyAccess.READ)
-    def ActiveExitTimestamp(self) -> "t":
+    def ActiveExitTimestamp(self) -> t:
         """Get ActiveExitTimestamp."""
         return 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def ActiveExitTimestampMonotonic(self) -> "t":
+    def ActiveExitTimestampMonotonic(self) -> t:
         """Get ActiveExitTimestampMonotonic."""
         return 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def InactiveEnterTimestamp(self) -> "t":
+    def InactiveEnterTimestamp(self) -> t:
         """Get InactiveEnterTimestamp."""
         return 1682010285903114
 
     @dbus_property(access=PropertyAccess.READ)
-    def InactiveEnterTimestampMonotonic(self) -> "t":
+    def InactiveEnterTimestampMonotonic(self) -> t:
         """Get InactiveEnterTimestampMonotonic."""
         return 409435678436
 
     @dbus_property(access=PropertyAccess.READ)
-    def CanStart(self) -> "b":
+    def CanStart(self) -> b:
         """Get CanStart."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def CanStop(self) -> "b":
+    def CanStop(self) -> b:
         """Get CanStop."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def CanReload(self) -> "b":
+    def CanReload(self) -> b:
         """Get CanReload."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def CanIsolate(self) -> "b":
+    def CanIsolate(self) -> b:
         """Get CanIsolate."""
         return False
 
@@ -333,57 +333,57 @@ class SystemdUnit(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def CanFreeze(self) -> "b":
+    def CanFreeze(self) -> b:
         """Get CanFreeze."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def Job(self) -> "(uo)":
+    def Job(self) -> uo:
         """Get Job."""
         return (0, "/")
 
     @dbus_property(access=PropertyAccess.READ)
-    def StopWhenUnneeded(self) -> "b":
+    def StopWhenUnneeded(self) -> b:
         """Get StopWhenUnneeded."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def RefuseManualStart(self) -> "b":
+    def RefuseManualStart(self) -> b:
         """Get RefuseManualStart."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def RefuseManualStop(self) -> "b":
+    def RefuseManualStop(self) -> b:
         """Get RefuseManualStop."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def AllowIsolate(self) -> "b":
+    def AllowIsolate(self) -> b:
         """Get AllowIsolate."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def DefaultDependencies(self) -> "b":
+    def DefaultDependencies(self) -> b:
         """Get DefaultDependencies."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def OnSuccessJobMode(self) -> "s":
+    def OnSuccessJobMode(self) -> s:
         """Get OnSuccessJobMode."""
         return "fail"
 
     @dbus_property(access=PropertyAccess.READ)
-    def OnFailureJobMode(self) -> "s":
+    def OnFailureJobMode(self) -> s:
         """Get OnFailureJobMode."""
         return "replace"
 
     @dbus_property(access=PropertyAccess.READ)
-    def IgnoreOnIsolate(self) -> "b":
+    def IgnoreOnIsolate(self) -> b:
         """Get IgnoreOnIsolate."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def NeedDaemonReload(self) -> "b":
+    def NeedDaemonReload(self) -> b:
         """Get NeedDaemonReload."""
         return False
 
@@ -393,122 +393,122 @@ class SystemdUnit(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def JobTimeoutUSec(self) -> "t":
+    def JobTimeoutUSec(self) -> t:
         """Get JobTimeoutUSec."""
         return 18446744073709551615
 
     @dbus_property(access=PropertyAccess.READ)
-    def JobRunningTimeoutUSec(self) -> "t":
+    def JobRunningTimeoutUSec(self) -> t:
         """Get JobRunningTimeoutUSec."""
         return 18446744073709551615
 
     @dbus_property(access=PropertyAccess.READ)
-    def JobTimeoutAction(self) -> "s":
+    def JobTimeoutAction(self) -> s:
         """Get JobTimeoutAction."""
         return "none"
 
     @dbus_property(access=PropertyAccess.READ)
-    def JobTimeoutRebootArgument(self) -> "s":
+    def JobTimeoutRebootArgument(self) -> s:
         """Get JobTimeoutRebootArgument."""
         return ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def ConditionResult(self) -> "b":
+    def ConditionResult(self) -> b:
         """Get ConditionResult."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def AssertResult(self) -> "b":
+    def AssertResult(self) -> b:
         """Get AssertResult."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def ConditionTimestamp(self) -> "t":
+    def ConditionTimestamp(self) -> t:
         """Get ConditionTimestamp."""
         return 1682010434333557
 
     @dbus_property(access=PropertyAccess.READ)
-    def ConditionTimestampMonotonic(self) -> "t":
+    def ConditionTimestampMonotonic(self) -> t:
         """Get ConditionTimestampMonotonic."""
         return 409584108878
 
     @dbus_property(access=PropertyAccess.READ)
-    def AssertTimestamp(self) -> "t":
+    def AssertTimestamp(self) -> t:
         """Get AssertTimestamp."""
         return 1682010434333562
 
     @dbus_property(access=PropertyAccess.READ)
-    def AssertTimestampMonotonic(self) -> "t":
+    def AssertTimestampMonotonic(self) -> t:
         """Get AssertTimestampMonotonic."""
         return 409584108882
 
     @dbus_property(access=PropertyAccess.READ)
-    def Conditions(self) -> "a(sbbsi)":
+    def Conditions(self) -> a(sbbsi):
         """Get Conditions."""
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def Asserts(self) -> "a(sbbsi)":
+    def Asserts(self) -> a(sbbsi):
         """Get Asserts."""
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def LoadError(self) -> "(ss)":
+    def LoadError(self) -> ss:
         """Get LoadError."""
         return ("", "")
 
     @dbus_property(access=PropertyAccess.READ)
-    def Transient(self) -> "b":
+    def Transient(self) -> b:
         """Get Transient."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def Perpetual(self) -> "b":
+    def Perpetual(self) -> b:
         """Get Perpetual."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def StartLimitIntervalUSec(self) -> "t":
+    def StartLimitIntervalUSec(self) -> t:
         """Get StartLimitIntervalUSec."""
         return 10000000
 
     @dbus_property(access=PropertyAccess.READ)
-    def StartLimitBurst(self) -> "u":
+    def StartLimitBurst(self) -> u:
         """Get StartLimitBurst."""
         return 5
 
     @dbus_property(access=PropertyAccess.READ)
-    def StartLimitAction(self) -> "s":
+    def StartLimitAction(self) -> s:
         """Get StartLimitAction."""
         return "none"
 
     @dbus_property(access=PropertyAccess.READ)
-    def FailureAction(self) -> "s":
+    def FailureAction(self) -> s:
         """Get FailureAction."""
         return "none"
 
     @dbus_property(access=PropertyAccess.READ)
-    def FailureActionExitStatus(self) -> "i":
+    def FailureActionExitStatus(self) -> i:
         """Get FailureActionExitStatus."""
         return -1
 
     @dbus_property(access=PropertyAccess.READ)
-    def SuccessAction(self) -> "s":
+    def SuccessAction(self) -> s:
         """Get SuccessAction."""
         return "none"
 
     @dbus_property(access=PropertyAccess.READ)
-    def SuccessActionExitStatus(self) -> "i":
+    def SuccessActionExitStatus(self) -> i:
         """Get SuccessActionExitStatus."""
         return -1
 
     @dbus_property(access=PropertyAccess.READ)
-    def RebootArgument(self) -> "s":
+    def RebootArgument(self) -> s:
         """Get RebootArgument."""
         return ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def InvocationID(self) -> "ay":
+    def InvocationID(self) -> ay:
         """Get InvocationID."""
         return bytes(
             [
@@ -532,7 +532,7 @@ class SystemdUnit(DBusServiceMock):
         )
 
     @dbus_property(access=PropertyAccess.READ)
-    def CollectMode(self) -> "s":
+    def CollectMode(self) -> s:
         """Get CollectMode."""
         return "inactive"
 
@@ -542,6 +542,6 @@ class SystemdUnit(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def ActivationDetails(self) -> "a(ss)":
+    def ActivationDetails(self) -> a(ss):
         """Get ActivationDetails."""
         return []

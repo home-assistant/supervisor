@@ -36,6 +36,6 @@ class UDisks2(DBusServiceMock):
         return [object_path, interfaces_and_properties]
 
     @signal()
-    def InterfacesRemoved(self, object_path: str, interfaces: list[str]) -> "oas":
+    def InterfacesRemoved(self, object_path: str, interfaces: list[str]) -> oas:
         """Signal interfaces removed."""
         return [object_path, interfaces]

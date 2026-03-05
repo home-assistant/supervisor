@@ -23,6 +23,6 @@ class Boards(DBusServiceMock):
     board = "Yellow"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Board(self) -> "s":
+    def Board(self) -> s:
         """Get Board."""
         return self.board

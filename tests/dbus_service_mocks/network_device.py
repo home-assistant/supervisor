@@ -285,137 +285,137 @@ class Device(DBusServiceMock):
         self.fixture: DeviceFixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Udi(self) -> "s":
+    def Udi(self) -> s:
         """Get Udi."""
         return self.fixture.Udi
 
     @dbus_property(access=PropertyAccess.READ)
-    def Path(self) -> "s":
+    def Path(self) -> s:
         """Get Path."""
         return self.fixture.Path
 
     @dbus_property(access=PropertyAccess.READ)
-    def Interface(self) -> "s":
+    def Interface(self) -> s:
         """Get Interface."""
         return self.fixture.Interface
 
     @dbus_property(access=PropertyAccess.READ)
-    def IpInterface(self) -> "s":
+    def IpInterface(self) -> s:
         """Get IpInterface."""
         return self.fixture.IpInterface
 
     @dbus_property(access=PropertyAccess.READ)
-    def Driver(self) -> "s":
+    def Driver(self) -> s:
         """Get Driver."""
         return self.fixture.Driver
 
     @dbus_property(access=PropertyAccess.READ)
-    def DriverVersion(self) -> "s":
+    def DriverVersion(self) -> s:
         """Get DriverVersion."""
         return self.fixture.DriverVersion
 
     @dbus_property(access=PropertyAccess.READ)
-    def FirmwareVersion(self) -> "s":
+    def FirmwareVersion(self) -> s:
         """Get FirmwareVersion."""
         return self.fixture.FirmwareVersion
 
     @dbus_property(access=PropertyAccess.READ)
-    def Capabilities(self) -> "u":
+    def Capabilities(self) -> u:
         """Get Capabilities."""
         return self.fixture.Capabilities
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ip4Address(self) -> "u":
+    def Ip4Address(self) -> u:
         """Get Ip4Address."""
         return self.fixture.Ip4Address
 
     @dbus_property(access=PropertyAccess.READ)
-    def State(self) -> "u":
+    def State(self) -> u:
         """Get State."""
         return self.fixture.State
 
     @dbus_property(access=PropertyAccess.READ)
-    def StateReason(self) -> "(uu)":
+    def StateReason(self) -> uu:
         """Get StateReason."""
         return self.fixture.StateReason
 
     @dbus_property(access=PropertyAccess.READ)
-    def ActiveConnection(self) -> "o":
+    def ActiveConnection(self) -> o:
         """Get ActiveConnection."""
         return self.fixture.ActiveConnection
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ip4Config(self) -> "o":
+    def Ip4Config(self) -> o:
         """Get Ip4Config."""
         return self.fixture.Ip4Config
 
     @dbus_property(access=PropertyAccess.READ)
-    def Dhcp4Config(self) -> "o":
+    def Dhcp4Config(self) -> o:
         """Get Dhcp4Config."""
         return self.fixture.Dhcp4Config
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ip6Config(self) -> "o":
+    def Ip6Config(self) -> o:
         """Get Ip6Config."""
         return self.fixture.Ip6Config
 
     @dbus_property(access=PropertyAccess.READ)
-    def Dhcp6Config(self) -> "o":
+    def Dhcp6Config(self) -> o:
         """Get Dhcp6Config."""
         return self.fixture.Dhcp6Config
 
     @dbus_property()
-    def Managed(self) -> "b":
+    def Managed(self) -> b:
         """Get Managed."""
         return self.fixture.Managed
 
     @Managed.setter
-    def Managed(self, value: "b"):
+    def Managed(self, value: b):
         """Set Managed."""
         self.emit_properties_changed({"Managed": value})
 
     @dbus_property()
-    def Autoconnect(self) -> "b":
+    def Autoconnect(self) -> b:
         """Get Autoconnect."""
         return self.fixture.Autoconnect
 
     @Autoconnect.setter
-    def Autoconnect(self, value: "b"):
+    def Autoconnect(self, value: b):
         """Set Autoconnect."""
         self.emit_properties_changed({"Autoconnect": value})
 
     @dbus_property(access=PropertyAccess.READ)
-    def FirmwareMissing(self) -> "b":
+    def FirmwareMissing(self) -> b:
         """Get FirmwareMissing."""
         return self.fixture.FirmwareMissing
 
     @dbus_property(access=PropertyAccess.READ)
-    def NmPluginMissing(self) -> "b":
+    def NmPluginMissing(self) -> b:
         """Get NmPluginMissing."""
         return self.fixture.NmPluginMissing
 
     @dbus_property(access=PropertyAccess.READ)
-    def DeviceType(self) -> "u":
+    def DeviceType(self) -> u:
         """Get DeviceType."""
         return self.fixture.DeviceType
 
     @dbus_property(access=PropertyAccess.READ)
-    def AvailableConnections(self) -> "ao":
+    def AvailableConnections(self) -> ao:
         """Get AvailableConnections."""
         return self.fixture.AvailableConnections
 
     @dbus_property(access=PropertyAccess.READ)
-    def PhysicalPortId(self) -> "s":
+    def PhysicalPortId(self) -> s:
         """Get PhysicalPortId."""
         return self.fixture.PhysicalPortId
 
     @dbus_property(access=PropertyAccess.READ)
-    def Mtu(self) -> "u":
+    def Mtu(self) -> u:
         """Get Mtu."""
         return self.fixture.Mtu
 
     @dbus_property(access=PropertyAccess.READ)
-    def Metered(self) -> "u":
+    def Metered(self) -> u:
         """Get Metered."""
         return self.fixture.Metered
 
@@ -425,46 +425,46 @@ class Device(DBusServiceMock):
         return self.fixture.LldpNeighbors
 
     @dbus_property(access=PropertyAccess.READ)
-    def Real(self) -> "b":
+    def Real(self) -> b:
         """Get Real."""
         return self.fixture.Real
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ip4Connectivity(self) -> "u":
+    def Ip4Connectivity(self) -> u:
         """Get Ip4Connectivity."""
         return self.fixture.Ip4Connectivity
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ip6Connectivity(self) -> "u":
+    def Ip6Connectivity(self) -> u:
         """Get Ip6Connectivity."""
         return self.fixture.Ip6Connectivity
 
     @dbus_property(access=PropertyAccess.READ)
-    def InterfaceFlags(self) -> "u":
+    def InterfaceFlags(self) -> u:
         """Get InterfaceFlags."""
         return self.fixture.InterfaceFlags
 
     @dbus_property(access=PropertyAccess.READ)
-    def HwAddress(self) -> "s":
+    def HwAddress(self) -> s:
         """Get HwAddress."""
         return self.fixture.HwAddress
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ports(self) -> "ao":
+    def Ports(self) -> ao:
         """Get Ports."""
         return self.fixture.Ports
 
     @signal()
-    def StateChanged(self) -> "uuu":
+    def StateChanged(self) -> uuu:
         """Signal StateChanged."""
         return [120, 100, 1]
 
     @dbus_method()
-    def Reapply(self, connection: "a{sa{sv}}", version_id: "t", flags: "u") -> None:
+    def Reapply(self, connection: "a{sa{sv}}", version_id: t, flags: u) -> None:
         """Do Reapply method."""
 
     @dbus_method()
-    def GetAppliedConnection(self, flags: "u") -> "a{sa{sv}}t":
+    def GetAppliedConnection(self, flags: u) -> "a{sa{sv}}t":
         """Do GetAppliedConnection method."""
         return [{}, 0]
 

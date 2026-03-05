@@ -52,37 +52,37 @@ class NVMeController(DBusServiceMock):
             self.smart_get_attributes_response.pop(key, None)
 
     @dbus_property(access=PropertyAccess.READ)
-    def State(self) -> "s":
+    def State(self) -> s:
         """Get State."""
         return "live"
 
     @dbus_property(access=PropertyAccess.READ)
-    def ControllerID(self) -> "q":
+    def ControllerID(self) -> q:
         """Get ControllerID."""
         return 4
 
     @dbus_property(access=PropertyAccess.READ)
-    def SubsystemNQN(self) -> "ay":
+    def SubsystemNQN(self) -> ay:
         """Get SubsystemNQN."""
         return b"nqn.2014.08.org.nvmexpress:144d144dS4J4NM0RB05961P     Samsung SSD 970 EVO Plus 2TB"
 
     @dbus_property(access=PropertyAccess.READ)
-    def FGUID(self) -> "s":
+    def FGUID(self) -> s:
         """Get FGUID."""
         return ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def NVMeRevision(self) -> "s":
+    def NVMeRevision(self) -> s:
         """Get NVMeRevision."""
         return "1.3"
 
     @dbus_property(access=PropertyAccess.READ)
-    def UnallocatedCapacity(self) -> "t":
+    def UnallocatedCapacity(self) -> t:
         """Get UnallocatedCapacity."""
         return 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def SmartUpdated(self) -> "t":
+    def SmartUpdated(self) -> t:
         """Get SmartUpdated."""
         return 1753906112
 
@@ -92,32 +92,32 @@ class NVMeController(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def SmartPowerOnHours(self) -> "t":
+    def SmartPowerOnHours(self) -> t:
         """Get SmartPowerOnHours."""
         return 3208
 
     @dbus_property(access=PropertyAccess.READ)
-    def SmartTemperature(self) -> "q":
+    def SmartTemperature(self) -> q:
         """Get SmartTemperature."""
         return 311
 
     @dbus_property(access=PropertyAccess.READ)
-    def SmartSelftestStatus(self) -> "s":
+    def SmartSelftestStatus(self) -> s:
         """Get SmartSelftestStatus."""
         return "success"
 
     @dbus_property(access=PropertyAccess.READ)
-    def SmartSelftestPercentRemaining(self) -> "i":
+    def SmartSelftestPercentRemaining(self) -> i:
         """Get SmartSelftestPercentRemaining."""
         return -1
 
     @dbus_property(access=PropertyAccess.READ)
-    def SanitizeStatus(self) -> "s":
+    def SanitizeStatus(self) -> s:
         """Get SanitizeStatus."""
         return ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def SanitizePercentRemaining(self) -> "i":
+    def SanitizePercentRemaining(self) -> i:
         """Get SanitizePercentRemaining."""
         return -1
 
@@ -131,7 +131,7 @@ class NVMeController(DBusServiceMock):
         return self.smart_get_attributes_response
 
     @dbus_method()
-    def SmartSelftestStart(self, type_: "s", options: "a{sv}") -> None:
+    def SmartSelftestStart(self, type_: s, options: "a{sv}") -> None:
         """Do SmartSelftestStart."""
 
     @dbus_method()
@@ -139,5 +139,5 @@ class NVMeController(DBusServiceMock):
         """Do SmartSelftestAbort."""
 
     @dbus_method()
-    def SanitizeStart(self, action: "s", options: "a{sv}") -> None:
+    def SanitizeStart(self, action: s, options: "a{sv}") -> None:
         """Do SanitizeStart."""

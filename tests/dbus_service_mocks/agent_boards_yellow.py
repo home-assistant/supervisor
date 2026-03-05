@@ -22,31 +22,31 @@ class Yellow(DBusServiceMock):
     interface = "io.hass.os.Boards.Yellow"
 
     @dbus_property()
-    def HeartbeatLED(self) -> "b":
+    def HeartbeatLED(self) -> b:
         """Get Heartbeat LED."""
         return True
 
     @HeartbeatLED.setter
-    def HeartbeatLED(self, value: "b"):
+    def HeartbeatLED(self, value: b):
         """Set Heartbeat LED."""
         self.emit_properties_changed({"HeartbeatLED": value})
 
     @dbus_property()
-    def PowerLED(self) -> "b":
+    def PowerLED(self) -> b:
         """Get Power LED."""
         return True
 
     @PowerLED.setter
-    def PowerLED(self, value: "b"):
+    def PowerLED(self, value: b):
         """Set Power LED."""
         self.emit_properties_changed({"PowerLED": value})
 
     @dbus_property()
-    def DiskLED(self) -> "b":
+    def DiskLED(self) -> b:
         """Get Disk LED."""
         return True
 
     @DiskLED.setter
-    def DiskLED(self, value: "b"):
+    def DiskLED(self, value: b):
         """Set Disk LED."""
         self.emit_properties_changed({"DiskLED": value})

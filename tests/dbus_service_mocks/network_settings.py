@@ -22,70 +22,70 @@ class Settings(DBusServiceMock):
     object_path = "/org/freedesktop/NetworkManager/Settings"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Connections(self) -> "ao":
+    def Connections(self) -> ao:
         """Get Connections."""
         return ["/org/freedesktop/NetworkManager/Settings/1"]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Hostname(self) -> "s":
+    def Hostname(self) -> s:
         """Get Hostname."""
         return "homeassistant"
 
     @dbus_property(access=PropertyAccess.READ)
-    def CanModify(self) -> "b":
+    def CanModify(self) -> b:
         """Get CanModify."""
         return True
 
     @signal()
-    def NewConnection(self) -> "o":
+    def NewConnection(self) -> o:
         """Signal NewConnection."""
         return "/org/freedesktop/NetworkManager/Settings/1"
 
     @signal()
-    def ConnectionRemoved(self) -> "o":
+    def ConnectionRemoved(self) -> o:
         """Signal ConnectionRemoved."""
         return "/org/freedesktop/NetworkManager/Settings/1"
 
     @dbus_method()
-    def ListConnections(self) -> "ao":
+    def ListConnections(self) -> ao:
         """Do ListConnections method."""
         return self.Connections()
 
     @dbus_method()
-    def GetConnectionByUuid(self, uuid: "s") -> "o":
+    def GetConnectionByUuid(self, uuid: s) -> o:
         """Do GetConnectionByUuid method."""
         return "/org/freedesktop/NetworkManager/Settings/1"
 
     @dbus_method()
-    def AddConnection(self, connection: "a{sa{sv}}") -> "o":
+    def AddConnection(self, connection: "a{sa{sv}}") -> o:
         """Do AddConnection method."""
         self.NewConnection()
         return "/org/freedesktop/NetworkManager/Settings/1"
 
     @dbus_method()
-    def AddConnectionUnsaved(self, connection: "a{sa{sv}}") -> "o":
+    def AddConnectionUnsaved(self, connection: "a{sa{sv}}") -> o:
         """Do AddConnectionUnsaved method."""
         return "/org/freedesktop/NetworkManager/Settings/1"
 
     @dbus_method()
     def AddConnection2(
-        self, settings: "a{sa{sv}}", flags: "u", args: "a{sv}"
+        self, settings: "a{sa{sv}}", flags: u, args: "a{sv}"
     ) -> "oa{sv}":
         """Do AddConnection2 method."""
         self.NewConnection()
         return ["/org/freedesktop/NetworkManager/Settings/1", {}]
 
     @dbus_method()
-    def LoadConnections(self, filenames: "as") -> "bas":
+    def LoadConnections(self, filenames: "as") -> bas:
         """Do LoadConnections method."""
         self.NewConnection()
         return [True, []]
 
     @dbus_method()
-    def ReloadConnections(self) -> "b":
+    def ReloadConnections(self) -> b:
         """Do ReloadConnections method."""
         return True
 
     @dbus_method()
-    def SaveHostname(self, hostname: "s") -> None:
+    def SaveHostname(self, hostname: s) -> None:
         """Do SaveHostname method."""

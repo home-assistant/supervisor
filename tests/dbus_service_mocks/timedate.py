@@ -22,56 +22,56 @@ class TimeDate(DBusServiceMock):
     interface = "org.freedesktop.timedate1"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Timezone(self) -> "s":
+    def Timezone(self) -> s:
         """Get Timezone."""
         return "Etc/UTC"
 
     @dbus_property(access=PropertyAccess.READ)
-    def LocalRTC(self) -> "b":
+    def LocalRTC(self) -> b:
         """Get LocalRTC."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def CanNTP(self) -> "b":
+    def CanNTP(self) -> b:
         """Get CanNTP."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def NTP(self) -> "b":
+    def NTP(self) -> b:
         """Get NTP."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def NTPSynchronized(self) -> "b":
+    def NTPSynchronized(self) -> b:
         """Get NTPSynchronized."""
         return True
 
     @dbus_property(access=PropertyAccess.READ)
-    def TimeUSec(self) -> "t":
+    def TimeUSec(self) -> t:
         """Get TimeUSec."""
         return 1621413414405718
 
     @dbus_property(access=PropertyAccess.READ)
-    def RTCTimeUSec(self) -> "t":
+    def RTCTimeUSec(self) -> t:
         """Get RTCTimeUSec."""
         return 1621413415000000
 
     @dbus_method()
-    def SetTime(self, usec_utc: "x", relative: "b", interactive: "b") -> None:
+    def SetTime(self, usec_utc: x, relative: b, interactive: b) -> None:
         """Set time."""
 
     @dbus_method()
-    def SetTimezone(self, timezone: "s", interactive: "b") -> None:
+    def SetTimezone(self, timezone: s, interactive: b) -> None:
         """Set timezone."""
         self.emit_properties_changed({"Timezone": timezone})
 
     @dbus_method()
-    def SetLocalRTC(self, local_rtc: "b", fix_system: "b", interactive: "b") -> None:
+    def SetLocalRTC(self, local_rtc: b, fix_system: b, interactive: b) -> None:
         """Set local RTC."""
         self.emit_properties_changed({"LocalRTC": local_rtc})
 
     @dbus_method()
-    def SetNTP(self, use_ntp: "b", interactive: "b") -> None:
+    def SetNTP(self, use_ntp: b, interactive: b) -> None:
         """Set NTP."""
         self.emit_properties_changed({"NTP": use_ntp})
 
