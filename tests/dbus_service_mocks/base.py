@@ -20,7 +20,7 @@ class DBusServiceMock(ServiceInterface):
         """Initialize dbus service mock."""
         super().__init__(self.interface)
 
-    def export(self, bus: MessageBus) -> DBusServiceMock:
+    def export(self, bus: MessageBus) -> "DBusServiceMock":
         """Export object onto bus."""
         self.bus = bus
         bus.export(self.object_path, self)

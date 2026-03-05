@@ -41,7 +41,7 @@ class UDisks2Manager(DBusServiceMock):
         ]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Version(self) -> s:
+    def Version(self) -> "s":
         """Get Version."""
         return "2.9.2"
 
@@ -56,53 +56,53 @@ class UDisks2Manager(DBusServiceMock):
         return ["luks1", "luks2"]
 
     @dbus_property(access=PropertyAccess.READ)
-    def DefaultEncryptionType(self) -> s:
+    def DefaultEncryptionType(self) -> "s":
         """Get DefaultEncryptionType."""
         return "luks1"
 
     @dbus_method()
-    def CanFormat(self, type_: s) -> bs:
+    def CanFormat(self, type_: "s") -> "(bs)":
         """Do CanFormat method."""
         return [False, "mkfs.ntfs"]
 
     @dbus_method()
-    def CanResize(self, type_: s) -> bts:
+    def CanResize(self, type_: "s") -> "(bts)":
         """Do CanResize method."""
         return [False, 6, "ntfsresize"]
 
     @dbus_method()
-    def CanCheck(self, type_: s) -> bs:
+    def CanCheck(self, type_: "s") -> "(bs)":
         """Do CanCheck method."""
         return [False, "ntfsfix"]
 
     @dbus_method()
-    def CanRepair(self, type_: s) -> bs:
+    def CanRepair(self, type_: "s") -> "(bs)":
         """Do CanRepair method."""
         return [False, "ntfsfix"]
 
     @dbus_method()
-    def LoopSetup(self, fd: h, options: "a{sv}") -> o:
+    def LoopSetup(self, fd: "h", options: "a{sv}") -> "o":
         """Do LoopSetup method."""
         return "/org/freedesktop/UDisks2/block_devices/loop0"
 
     @dbus_method()
     def MDRaidCreate(
-        self, blocks: ao, level: s, name: s, chunk: t, options: "a{sv}"
-    ) -> o:
+        self, blocks: "ao", level: "s", name: "s", chunk: "t", options: "a{sv}"
+    ) -> "o":
         """Do MDRaidCreate method."""
         return "/org/freedesktop/UDisks2/block_devices/sdb"
 
     @dbus_method()
-    def EnableModule(self, name: s, enable: b) -> None:
+    def EnableModule(self, name: "s", enable: "b") -> None:
         """Do EnableModule method."""
 
     @dbus_method()
-    def GetBlockDevices(self, options: "a{sv}") -> ao:
+    def GetBlockDevices(self, options: "a{sv}") -> "ao":
         """Do GetBlockDevices method."""
         return self.block_devices
 
     @dbus_method()
-    def ResolveDevice(self, devspec: "a{sv}", options: "a{sv}") -> ao:
+    def ResolveDevice(self, devspec: "a{sv}", options: "a{sv}") -> "ao":
         """Do ResolveDevice method."""
         if len(self.resolved_devices) > 0 and isinstance(
             self.resolved_devices[0], list

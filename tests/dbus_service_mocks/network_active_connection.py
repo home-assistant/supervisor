@@ -79,86 +79,86 @@ class ActiveConnection(DBusServiceMock):
         self.fixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Connection(self) -> o:
+    def Connection(self) -> "o":
         """Get Connection."""
         return self.fixture.connection
 
     @dbus_property(access=PropertyAccess.READ)
-    def SpecificObject(self) -> o:
+    def SpecificObject(self) -> "o":
         """Get SpecificObject."""
         return self.fixture.specific_object
 
     @dbus_property(access=PropertyAccess.READ)
-    def Id(self) -> s:
+    def Id(self) -> "s":
         """Get Id."""
         return self.fixture.id
 
     @dbus_property(access=PropertyAccess.READ)
-    def Uuid(self) -> s:
+    def Uuid(self) -> "s":
         """Get Uuid."""
         return self.fixture.uuid
 
     @dbus_property(access=PropertyAccess.READ)
-    def Type(self) -> s:
+    def Type(self) -> "s":
         """Get Type."""
         return self.fixture.type
 
     @dbus_property(access=PropertyAccess.READ)
-    def Devices(self) -> ao:
+    def Devices(self) -> "ao":
         """Get Devices."""
         return self.fixture.devices
 
     @dbus_property(access=PropertyAccess.READ)
-    def State(self) -> u:
+    def State(self) -> "u":
         """Get State."""
         return self.fixture.state
 
     @dbus_property(access=PropertyAccess.READ)
-    def StateFlags(self) -> u:
+    def StateFlags(self) -> "u":
         """Get StateFlags."""
         return self.fixture.state_flags
 
     @dbus_property(access=PropertyAccess.READ)
-    def Default(self) -> b:
+    def Default(self) -> "b":
         """Get Default."""
         return self.fixture.default
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ip4Config(self) -> o:
+    def Ip4Config(self) -> "o":
         """Get Ip4Config."""
         return self.fixture.ip4_config
 
     @dbus_property(access=PropertyAccess.READ)
-    def Dhcp4Config(self) -> o:
+    def Dhcp4Config(self) -> "o":
         """Get Dhcp4Config."""
         return self.fixture.dhcp4_config
 
     @dbus_property(access=PropertyAccess.READ)
-    def Default6(self) -> b:
+    def Default6(self) -> "b":
         """Get Default6."""
         return self.fixture.default6
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ip6Config(self) -> o:
+    def Ip6Config(self) -> "o":
         """Get Ip6Config."""
         return self.fixture.ip6_config
 
     @dbus_property(access=PropertyAccess.READ)
-    def Dhcp6Config(self) -> o:
+    def Dhcp6Config(self) -> "o":
         """Get Dhcp6Config."""
         return self.fixture.dhcp6_config
 
     @dbus_property(access=PropertyAccess.READ)
-    def Vpn(self) -> b:
+    def Vpn(self) -> "b":
         """Get Vpn."""
         return self.fixture.vpn
 
     @dbus_property(access=PropertyAccess.READ)
-    def Master(self) -> o:
+    def Master(self) -> "o":
         """Get Master."""
         return self.fixture.master
 
     @signal()
-    def StateChanged(self) -> uu:
+    def StateChanged(self) -> "uu":
         """Signal StateChanged."""
         return [2, 0]

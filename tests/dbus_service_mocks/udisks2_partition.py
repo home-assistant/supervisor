@@ -111,69 +111,69 @@ class Partition(DBusServiceMock):
         self.fixture: PartitionFixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Number(self) -> u:
+    def Number(self) -> "u":
         """Get Number."""
         return self.fixture.Number
 
     @dbus_property(access=PropertyAccess.READ)
-    def Type(self) -> s:
+    def Type(self) -> "s":
         """Get Type."""
         return self.fixture.Type
 
     @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> t:
+    def Flags(self) -> "t":
         """Get Flags."""
         return self.fixture.Flags
 
     @dbus_property(access=PropertyAccess.READ)
-    def Offset(self) -> t:
+    def Offset(self) -> "t":
         """Get Offset."""
         return self.fixture.Offset
 
     @dbus_property(access=PropertyAccess.READ)
-    def Size(self) -> t:
+    def Size(self) -> "t":
         """Get Size."""
         return self.fixture.Size
 
     @dbus_property(access=PropertyAccess.READ)
-    def Name(self) -> s:
+    def Name(self) -> "s":
         """Get Name."""
         return self.fixture.Name
 
     @dbus_property(access=PropertyAccess.READ)
-    def UUID(self) -> s:
+    def UUID(self) -> "s":
         """Get UUID."""
         return self.fixture.UUID
 
     @dbus_property(access=PropertyAccess.READ)
-    def Table(self) -> o:
+    def Table(self) -> "o":
         """Get Table."""
         return self.fixture.Table
 
     @dbus_property(access=PropertyAccess.READ)
-    def IsContainer(self) -> b:
+    def IsContainer(self) -> "b":
         """Get IsContainer."""
         return self.fixture.IsContainer
 
     @dbus_property(access=PropertyAccess.READ)
-    def IsContained(self) -> b:
+    def IsContained(self) -> "b":
         """Get IsContained."""
         return self.fixture.IsContained
 
     @dbus_method()
-    def SetType(self, type_: s, options: "a{sv}") -> None:
+    def SetType(self, type_: "s", options: "a{sv}") -> None:
         """Do SetType method."""
 
     @dbus_method()
-    def SetName(self, name: s, options: "a{sv}") -> None:
+    def SetName(self, name: "s", options: "a{sv}") -> None:
         """Do SetName method."""
 
     @dbus_method()
-    def SetFlags(self, flags: t, options: "a{sv}") -> None:
+    def SetFlags(self, flags: "t", options: "a{sv}") -> None:
         """Do SetFlags method."""
 
     @dbus_method()
-    def Resize(self, size: t, options: "a{sv}") -> None:
+    def Resize(self, size: "t", options: "a{sv}") -> None:
         """Do Resize method."""
 
     @dbus_method()

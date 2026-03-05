@@ -23,7 +23,7 @@ class IP6Config(DBusServiceMock):
     object_path = "/org/freedesktop/NetworkManager/IP6Config/1"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Addresses(self) -> a(ayuay):
+    def Addresses(self) -> "a(ayuay)":
         """Get Addresses."""
         return [
             [
@@ -129,12 +129,12 @@ class IP6Config(DBusServiceMock):
         ]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Gateway(self) -> s:
+    def Gateway(self) -> "s":
         """Get Gateway."""
         return "fe80::da58:d7ff:fe00:9c69"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Routes(self) -> a(ayuayu):
+    def Routes(self) -> "a(ayuayu)":
         """Get Routes."""
         return [
             [
@@ -300,7 +300,7 @@ class IP6Config(DBusServiceMock):
         ]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Nameservers(self) -> aay:
+    def Nameservers(self) -> "aay":
         """Get Nameservers."""
         return [
             bytes(
@@ -361,6 +361,6 @@ class IP6Config(DBusServiceMock):
         return []
 
     @dbus_property(access=PropertyAccess.READ)
-    def DnsPriority(self) -> i:
+    def DnsPriority(self) -> "i":
         """Get DnsPriority."""
         return 100

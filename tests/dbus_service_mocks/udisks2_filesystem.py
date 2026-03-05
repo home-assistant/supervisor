@@ -74,21 +74,21 @@ class Filesystem(DBusServiceMock):
         self.fixture: FilesystemFixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def MountPoints(self) -> aay:
+    def MountPoints(self) -> "aay":
         """Get MountPoints."""
         return self.fixture.MountPoints
 
     @dbus_property(access=PropertyAccess.READ)
-    def Size(self) -> t:
+    def Size(self) -> "t":
         """Get Size."""
         return self.fixture.Size
 
     @dbus_method(track_obj_path=True)
-    def SetLabel(self, label: s, options: "a{sv}") -> None:
+    def SetLabel(self, label: "s", options: "a{sv}") -> None:
         """Do SetLabel method."""
 
     @dbus_method()
-    def Mount(self, options: "a{sv}") -> s:
+    def Mount(self, options: "a{sv}") -> "s":
         """Do Mount method."""
         return "/run/media/dev/hassos_data"
 
@@ -97,16 +97,16 @@ class Filesystem(DBusServiceMock):
         """Do Unmount method."""
 
     @dbus_method()
-    def Resize(self, size: t, options: "a{sv}") -> None:
+    def Resize(self, size: "t", options: "a{sv}") -> None:
         """Do Resize method."""
 
     @dbus_method()
-    def Check(self, options: "a{sv}") -> b:
+    def Check(self, options: "a{sv}") -> "b":
         """Do Check method."""
         return True
 
     @dbus_method()
-    def Repair(self, options: "a{sv}") -> b:
+    def Repair(self, options: "a{sv}") -> "b":
         """Do Repair method."""
         return True
 

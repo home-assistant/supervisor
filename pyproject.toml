@@ -368,7 +368,7 @@ split-on-trailing-comma = false
 [tool.ruff.lint.per-file-ignores]
 
 # DBus Service Mocks must use typing and names understood by dbus-fast
-"tests/dbus_service_mocks/*.py" = ["F722", "F821", "N815"]
+"tests/dbus_service_mocks/*.py" = ["F722", "F821", "N815", "UP037"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 25

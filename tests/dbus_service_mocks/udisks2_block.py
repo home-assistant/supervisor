@@ -455,77 +455,77 @@ class Block(DBusServiceMock):
         self.fixture: BlockFixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Device(self) -> ay:
+    def Device(self) -> "ay":
         """Get Device."""
         return self.fixture.Device
 
     @dbus_property(access=PropertyAccess.READ)
-    def PreferredDevice(self) -> ay:
+    def PreferredDevice(self) -> "ay":
         """Get PreferredDevice."""
         return self.fixture.PreferredDevice
 
     @dbus_property(access=PropertyAccess.READ)
-    def Symlinks(self) -> aay:
+    def Symlinks(self) -> "aay":
         """Get Symlinks."""
         return self.fixture.Symlinks
 
     @dbus_property(access=PropertyAccess.READ)
-    def DeviceNumber(self) -> t:
+    def DeviceNumber(self) -> "t":
         """Get DeviceNumber."""
         return self.fixture.DeviceNumber
 
     @dbus_property(access=PropertyAccess.READ)
-    def Id(self) -> s:
+    def Id(self) -> "s":
         """Get Id."""
         return self.fixture.Id
 
     @dbus_property(access=PropertyAccess.READ)
-    def Size(self) -> t:
+    def Size(self) -> "t":
         """Get Size."""
         return self.fixture.Size
 
     @dbus_property(access=PropertyAccess.READ)
-    def ReadOnly(self) -> b:
+    def ReadOnly(self) -> "b":
         """Get ReadOnly."""
         return self.fixture.ReadOnly
 
     @dbus_property(access=PropertyAccess.READ)
-    def Drive(self) -> o:
+    def Drive(self) -> "o":
         """Get Drive."""
         return self.fixture.Drive
 
     @dbus_property(access=PropertyAccess.READ)
-    def MDRaid(self) -> o:
+    def MDRaid(self) -> "o":
         """Get MDRaid."""
         return self.fixture.MDRaid
 
     @dbus_property(access=PropertyAccess.READ)
-    def MDRaidMember(self) -> o:
+    def MDRaidMember(self) -> "o":
         """Get MDRaidMember."""
         return self.fixture.MDRaidMember
 
     @dbus_property(access=PropertyAccess.READ)
-    def IdUsage(self) -> s:
+    def IdUsage(self) -> "s":
         """Get IdUsage."""
         return self.fixture.IdUsage
 
     @dbus_property(access=PropertyAccess.READ)
-    def IdType(self) -> s:
+    def IdType(self) -> "s":
         """Get IdType."""
         return self.fixture.IdType
 
     @dbus_property(access=PropertyAccess.READ)
-    def IdVersion(self) -> s:
+    def IdVersion(self) -> "s":
         """Get IdVersion."""
         return self.fixture.IdVersion
 
     @dbus_property(access=PropertyAccess.READ)
-    def IdLabel(self) -> s:
+    def IdLabel(self) -> "s":
         """Get IdLabel."""
         return self.fixture.IdLabel
 
     @dbus_property(access=PropertyAccess.READ)
-    def IdUUID(self) -> s:
+    def IdUUID(self) -> "s":
         """Get IdUUID."""
         return self.fixture.IdUUID
 
@@ -535,42 +535,42 @@ class Block(DBusServiceMock):
         return self.fixture.Configuration
 
     @dbus_property(access=PropertyAccess.READ)
-    def CryptoBackingDevice(self) -> o:
+    def CryptoBackingDevice(self) -> "o":
         """Get CryptoBackingDevice."""
         return self.fixture.CryptoBackingDevice
 
     @dbus_property(access=PropertyAccess.READ)
-    def HintPartitionable(self) -> b:
+    def HintPartitionable(self) -> "b":
         """Get HintPartitionable."""
         return self.fixture.HintPartitionable
 
     @dbus_property(access=PropertyAccess.READ)
-    def HintSystem(self) -> b:
+    def HintSystem(self) -> "b":
         """Get HintSystem."""
         return self.fixture.HintSystem
 
     @dbus_property(access=PropertyAccess.READ)
-    def HintIgnore(self) -> b:
+    def HintIgnore(self) -> "b":
         """Get HintIgnore."""
         return self.fixture.HintIgnore
 
     @dbus_property(access=PropertyAccess.READ)
-    def HintAuto(self) -> b:
+    def HintAuto(self) -> "b":
         """Get HintAuto."""
         return self.fixture.HintAuto
 
     @dbus_property(access=PropertyAccess.READ)
-    def HintName(self) -> s:
+    def HintName(self) -> "s":
         """Get HintName."""
         return self.fixture.HintName
 
     @dbus_property(access=PropertyAccess.READ)
-    def HintIconName(self) -> s:
+    def HintIconName(self) -> "s":
         """Get HintIconName."""
         return self.fixture.HintIconName
 
     @dbus_property(access=PropertyAccess.READ)
-    def HintSymbolicIconName(self) -> s:
+    def HintSymbolicIconName(self) -> "s":
         """Get HintSymbolicIconName."""
         return self.fixture.HintSymbolicIconName
 
@@ -599,26 +599,26 @@ class Block(DBusServiceMock):
         return []
 
     @dbus_method()
-    def Format(self, type_: s, options: "a{sv}") -> None:
+    def Format(self, type_: "s", options: "a{sv}") -> None:
         """Do Format method."""
 
     @dbus_method()
-    def OpenForBackup(self, options: "a{sv}") -> h:
+    def OpenForBackup(self, options: "a{sv}") -> "h":
         """Do OpenForBackup method."""
         return 100
 
     @dbus_method()
-    def OpenForRestore(self, options: "a{sv}") -> h:
+    def OpenForRestore(self, options: "a{sv}") -> "h":
         """Do OpenForRestore method."""
         return 101
 
     @dbus_method()
-    def OpenForBenchmark(self, options: "a{sv}") -> h:
+    def OpenForBenchmark(self, options: "a{sv}") -> "h":
         """Do OpenForBenchmark method."""
         return 102
 
     @dbus_method()
-    def OpenDevice(self, mode: s, options: "a{sv}") -> h:
+    def OpenDevice(self, mode: "s", options: "a{sv}") -> "h":
         """Do OpenDevice method."""
         return 103
 

@@ -63,32 +63,32 @@ class PartitionTable(DBusServiceMock):
         self.fixture: PartitionTableFixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Partitions(self) -> ao:
+    def Partitions(self) -> "ao":
         """Get Partitions."""
         return self.fixture.Partitions
 
     @dbus_property(access=PropertyAccess.READ)
-    def Type(self) -> s:
+    def Type(self) -> "s":
         """Get Type."""
         return self.fixture.Type
 
     @dbus_method()
     def CreatePartition(
-        self, offset: t, size: t, type_: s, name: s, options: "a{sv}"
-    ) -> o:
+        self, offset: "t", size: "t", type_: "s", name: "s", options: "a{sv}"
+    ) -> "o":
         """Do CreatePartition method."""
         return self.new_partition
 
     @dbus_method()
     def CreatePartitionAndFormat(
         self,
-        offset: t,
-        size: t,
-        type_: s,
-        name: s,
+        offset: "t",
+        size: "t",
+        type_: "s",
+        name: "s",
         options: "a{sv}",
-        format_type_: s,
+        format_type_: "s",
         format_options: "a{sv}",
-    ) -> o:
+    ) -> "o":
         """Do CreatePartitionAndFormat method."""
         return self.new_partition

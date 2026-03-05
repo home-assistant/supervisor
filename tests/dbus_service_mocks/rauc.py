@@ -152,57 +152,57 @@ class Rauc(DBusServiceMock):
     response_get_slot_status = SLOT_STATUS_FIXTURE
 
     @dbus_property(access=PropertyAccess.READ)
-    def Operation(self) -> s:
+    def Operation(self) -> "s":
         """Return operation."""
         return "idle"
 
     @dbus_property(access=PropertyAccess.READ)
-    def LastError(self) -> s:
+    def LastError(self) -> "s":
         """Return last error."""
         return ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def Progress(self) -> isi:
+    def Progress(self) -> "(isi)":
         """Return progress."""
         return [0, "", 0]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Compatible(self) -> s:
+    def Compatible(self) -> "s":
         """Return compatible."""
         return "haos-odroid-n2"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Variant(self) -> s:
+    def Variant(self) -> "s":
         """Return variant."""
         return ""
 
     @dbus_property(access=PropertyAccess.READ)
-    def BootSlot(self) -> s:
+    def BootSlot(self) -> "s":
         """Return boot slot."""
         return "B"
 
     @signal()
-    def Completed(self) -> i:
+    def Completed(self) -> "i":
         """Signal completed."""
         return 0
 
     @dbus_method()
-    def Install(self, source: s):
+    def Install(self, source: "s"):
         """Install source."""
         self.Completed()
 
     @dbus_method()
-    def InstallBundle(self, source: s, arg: "a{sv}"):
+    def InstallBundle(self, source: "s", arg: "a{sv}"):
         """Install source bundle."""
         self.Completed()
 
     @dbus_method()
-    def Mark(self, state: s, slot_identifier: s) -> ss:
+    def Mark(self, state: "s", slot_identifier: "s") -> "ss":
         """Mark slot."""
         return self.response_mark
 
     @dbus_method()
-    def GetPrimary(self) -> s:
+    def GetPrimary(self) -> "s":
         """Get primary slot."""
         return "kernel.0"
 

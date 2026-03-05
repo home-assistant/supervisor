@@ -28,12 +28,12 @@ class TestInterface(DBusServiceMock):
         self.object_path = object_path
 
     @signal(name="TestSignal")
-    def test_signal(self, value: str) -> s:  # noqa: F821
+    def test_signal(self, value: str) -> "s":  # noqa: F821, UP037
         """Send test signal."""
         return value
 
     @dbus_property(access=PropertyAccess.READ, name="TestProp")
-    def test_prop(self) -> u:  # noqa: F821
+    def test_prop(self) -> "u":  # noqa: F821, UP037
         """Get test property."""
         return 4
 

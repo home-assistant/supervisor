@@ -20,6 +20,6 @@ class CGroup(DBusServiceMock):
     interface = "io.hass.os.CGroup"
 
     @dbus_method()
-    def AddDevicesAllowed(self, arg_0: s, arg_1: s) -> b:
+    def AddDevicesAllowed(self, arg_0: "s", arg_1: "s") -> "b":
         """Load profile."""
         return True

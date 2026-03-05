@@ -226,32 +226,32 @@ class Drive(DBusServiceMock):
         self.fixture: DriveFixture = FIXTURES[object_path]
 
     @dbus_property(access=PropertyAccess.READ)
-    def Vendor(self) -> s:
+    def Vendor(self) -> "s":
         """Get Vendor."""
         return self.fixture.Vendor
 
     @dbus_property(access=PropertyAccess.READ)
-    def Model(self) -> s:
+    def Model(self) -> "s":
         """Get Model."""
         return self.fixture.Model
 
     @dbus_property(access=PropertyAccess.READ)
-    def Revision(self) -> s:
+    def Revision(self) -> "s":
         """Get Revision."""
         return self.fixture.Revision
 
     @dbus_property(access=PropertyAccess.READ)
-    def Serial(self) -> s:
+    def Serial(self) -> "s":
         """Get Serial."""
         return self.fixture.Serial
 
     @dbus_property(access=PropertyAccess.READ)
-    def WWN(self) -> s:
+    def WWN(self) -> "s":
         """Get WWN."""
         return self.fixture.WWN
 
     @dbus_property(access=PropertyAccess.READ)
-    def Id(self) -> s:
+    def Id(self) -> "s":
         """Get Id."""
         return self.fixture.Id
 
@@ -261,7 +261,7 @@ class Drive(DBusServiceMock):
         return self.fixture.Configuration
 
     @dbus_property(access=PropertyAccess.READ)
-    def Media(self) -> s:
+    def Media(self) -> "s":
         """Get Media."""
         return self.fixture.Media
 
@@ -271,102 +271,102 @@ class Drive(DBusServiceMock):
         return self.fixture.MediaCompatibility
 
     @dbus_property(access=PropertyAccess.READ)
-    def MediaRemovable(self) -> b:
+    def MediaRemovable(self) -> "b":
         """Get MediaRemovable."""
         return self.fixture.MediaRemovable
 
     @dbus_property(access=PropertyAccess.READ)
-    def MediaAvailable(self) -> b:
+    def MediaAvailable(self) -> "b":
         """Get MediaAvailable."""
         return self.fixture.MediaAvailable
 
     @dbus_property(access=PropertyAccess.READ)
-    def MediaChangeDetected(self) -> b:
+    def MediaChangeDetected(self) -> "b":
         """Get MediaChangeDetected."""
         return self.fixture.MediaChangeDetected
 
     @dbus_property(access=PropertyAccess.READ)
-    def Size(self) -> t:
+    def Size(self) -> "t":
         """Get Size."""
         return self.fixture.Size
 
     @dbus_property(access=PropertyAccess.READ)
-    def TimeDetected(self) -> t:
+    def TimeDetected(self) -> "t":
         """Get TimeDetected."""
         return self.fixture.TimeDetected
 
     @dbus_property(access=PropertyAccess.READ)
-    def TimeMediaDetected(self) -> t:
+    def TimeMediaDetected(self) -> "t":
         """Get TimeMediaDetected."""
         return self.fixture.TimeMediaDetected
 
     @dbus_property(access=PropertyAccess.READ)
-    def Optical(self) -> b:
+    def Optical(self) -> "b":
         """Get Optical."""
         return self.fixture.Optical
 
     @dbus_property(access=PropertyAccess.READ)
-    def OpticalBlank(self) -> b:
+    def OpticalBlank(self) -> "b":
         """Get OpticalBlank."""
         return self.fixture.OpticalBlank
 
     @dbus_property(access=PropertyAccess.READ)
-    def OpticalNumTracks(self) -> u:
+    def OpticalNumTracks(self) -> "u":
         """Get OpticalNumTracks."""
         return self.fixture.OpticalNumTracks
 
     @dbus_property(access=PropertyAccess.READ)
-    def OpticalNumAudioTracks(self) -> u:
+    def OpticalNumAudioTracks(self) -> "u":
         """Get OpticalNumAudioTracks."""
         return self.fixture.OpticalNumAudioTracks
 
     @dbus_property(access=PropertyAccess.READ)
-    def OpticalNumDataTracks(self) -> u:
+    def OpticalNumDataTracks(self) -> "u":
         """Get OpticalNumDataTracks."""
         return self.fixture.OpticalNumDataTracks
 
     @dbus_property(access=PropertyAccess.READ)
-    def OpticalNumSessions(self) -> u:
+    def OpticalNumSessions(self) -> "u":
         """Get OpticalNumSessions."""
         return self.fixture.OpticalNumSessions
 
     @dbus_property(access=PropertyAccess.READ)
-    def RotationRate(self) -> i:
+    def RotationRate(self) -> "i":
         """Get RotationRate."""
         return self.fixture.RotationRate
 
     @dbus_property(access=PropertyAccess.READ)
-    def ConnectionBus(self) -> s:
+    def ConnectionBus(self) -> "s":
         """Get ConnectionBus."""
         return self.fixture.ConnectionBus
 
     @dbus_property(access=PropertyAccess.READ)
-    def Seat(self) -> s:
+    def Seat(self) -> "s":
         """Get Seat."""
         return self.fixture.Seat
 
     @dbus_property(access=PropertyAccess.READ)
-    def Removable(self) -> b:
+    def Removable(self) -> "b":
         """Get Removable."""
         return self.fixture.Removable
 
     @dbus_property(access=PropertyAccess.READ)
-    def Ejectable(self) -> b:
+    def Ejectable(self) -> "b":
         """Get Ejectable."""
         return self.fixture.Ejectable
 
     @dbus_property(access=PropertyAccess.READ)
-    def SortKey(self) -> s:
+    def SortKey(self) -> "s":
         """Get SortKey."""
         return self.fixture.SortKey
 
     @dbus_property(access=PropertyAccess.READ)
-    def CanPowerOff(self) -> b:
+    def CanPowerOff(self) -> "b":
         """Get CanPowerOff."""
         return self.fixture.CanPowerOff
 
     @dbus_property(access=PropertyAccess.READ)
-    def SiblingId(self) -> s:
+    def SiblingId(self) -> "s":
         """Get SiblingId."""
         return self.fixture.SiblingId
 

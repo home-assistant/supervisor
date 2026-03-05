@@ -24,14 +24,14 @@ class System(DBusServiceMock):
     response_migrate_docker_storage_driver: None | DBusError = None
 
     @dbus_method()
-    def ScheduleWipeDevice(self) -> b:
+    def ScheduleWipeDevice(self) -> "b":
         """Schedule wipe device."""
         if isinstance(self.response_schedule_wipe_device, DBusError):
             raise self.response_schedule_wipe_device  # pylint: disable=raising-bad-type
         return self.response_schedule_wipe_device
 
     @dbus_method()
-    def MigrateDockerStorageDriver(self, backend: s) -> None:
+    def MigrateDockerStorageDriver(self, backend: "s") -> None:
         """Migrate Docker storage driver."""
         if isinstance(self.response_migrate_docker_storage_driver, DBusError):
             raise self.response_migrate_docker_storage_driver  # pylint: disable=raising-bad-type

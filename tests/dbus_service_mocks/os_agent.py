@@ -22,16 +22,16 @@ class OSAgent(DBusServiceMock):
     interface = "io.hass.os"
 
     @dbus_property(access=PropertyAccess.READ)
-    def Version(self) -> s:
+    def Version(self) -> "s":
         """Get Version."""
         return "1.1.0"
 
     @dbus_property()
-    def Diagnostics(self) -> b:
+    def Diagnostics(self) -> "b":
         """Get Diagnostics."""
         return True
 
     @Diagnostics.setter
-    def Diagnostics(self, value: b):
+    def Diagnostics(self, value: "b"):
         """Set Diagnostics."""
         self.emit_properties_changed({"Diagnostics": value})

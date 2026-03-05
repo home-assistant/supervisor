@@ -189,17 +189,17 @@ class ConnectionSettings(DBusServiceMock):
         self.settings = deepcopy(SETTINGS_FIXTURES[object_path])
 
     @dbus_property(access=PropertyAccess.READ)
-    def Unsaved(self) -> b:
+    def Unsaved(self) -> "b":
         """Get Unsaved."""
         return False
 
     @dbus_property(access=PropertyAccess.READ)
-    def Flags(self) -> u:
+    def Flags(self) -> "u":
         """Get Flags."""
         return 0
 
     @dbus_property(access=PropertyAccess.READ)
-    def Filename(self) -> s:
+    def Filename(self) -> "s":
         """Get Unsaved."""
         return "/etc/NetworkManager/system-connections/Supervisor eth0.nmconnection"
 
@@ -289,7 +289,7 @@ class ConnectionSettings(DBusServiceMock):
         return self.settings
 
     @dbus_method()
-    def GetSecrets(self, setting_name: s) -> "a{sa{sv}}":
+    def GetSecrets(self, setting_name: "s") -> "a{sa{sv}}":
         """Do GetSecrets method."""
         return self.GetSettings()
 
@@ -303,7 +303,7 @@ class ConnectionSettings(DBusServiceMock):
         self.Updated()
 
     @dbus_method()
-    def Update2(self, settings: "a{sa{sv}}", flags: u, args: "a{sv}") -> "a{sv}":
+    def Update2(self, settings: "a{sa{sv}}", flags: "u", args: "a{sv}") -> "a{sv}":
         """Do Update2 method."""
         self.Update(settings)
         return {}
