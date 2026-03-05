@@ -51,7 +51,7 @@ class UDisks2Drive(DBusInterfaceProxy):
         await self._reload_interfaces()
 
     @staticmethod
-    async def new(object_path: str, bus: MessageBus) -> "UDisks2Drive":
+    async def new(object_path: str, bus: MessageBus) -> UDisks2Drive:
         """Create and connect object."""
         obj = UDisks2Drive(object_path)
         await obj.connect(bus)
