@@ -189,8 +189,8 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             with suppress(asyncio.TimeoutError, aiohttp.ClientError):
                 await self.sys_homeassistant.api.ensure_access_token()
             client = await WSClient.connect_with_auth(
-                self.sys_websession,
-                self.sys_homeassistant.ws_url,
+                self.sys_homeassistant.api._session,
+                self.sys_homeassistant.api._ws_url,
                 cast(str, self.sys_homeassistant.api.access_token),
             )
 
