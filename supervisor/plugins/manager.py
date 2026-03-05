@@ -86,6 +86,13 @@ class PluginManager(CoreSysAttributes):
         if self.sys_supervisor.need_update:
             return
 
+        # Skip plugin auto-updates if auto updates are disabled
+        if not self.sys_updater.auto_update:
+            _LOGGER.debug(
+                "Skipping plugin auto-updates because Supervisor auto-update is disabled"
+            )
+            return
+
         # Check requirements
         for plugin in self.all_plugins:
             # Check if need an update
