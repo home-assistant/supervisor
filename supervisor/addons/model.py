@@ -13,7 +13,6 @@ from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ..const import (
     ARCH_DEPRECATED,
-    ATTR_ADVANCED,
     ATTR_APPARMOR,
     ATTR_ARCH,
     ATTR_AUDIO,
@@ -255,8 +254,10 @@ class AddonModel(JobGroup, ABC):
 
     @property
     def advanced(self) -> bool:
-        """Return advanced mode of add-on."""
-        return self.data[ATTR_ADVANCED]
+        """Return False; advanced mode is deprecated and no longer supported."""
+        # Deprecated since Supervisor 2026.03.0; always returns False and can be
+        # removed once that version is the minimum supported.
+        return False
 
     @property
     def stage(self) -> AddonStage:

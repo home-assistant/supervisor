@@ -18,7 +18,7 @@ from supervisor.addons.addon import Addon
 from supervisor.addons.const import AddonBackupMode
 from supervisor.addons.model import AddonModel
 from supervisor.config import CoreConfig
-from supervisor.const import AddonBoot, AddonState, BusEvent
+from supervisor.const import ATTR_ADVANCED, AddonBoot, AddonState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.addon import DockerAddon
 from supervisor.docker.const import ContainerState
@@ -832,6 +832,14 @@ def test_auto_update_available(install_addon_example: Addon):
         Addon, "version", new=PropertyMock(return_value=AwesomeVersion("test"))
     ):
         assert install_addon_example.auto_update_available is False
+
+
+@pytest.mark.usefixtures("coresys")
+def test_advanced_flag_ignored(install_addon_example: Addon):
+    """Ensure advanced flag in config is ignored."""
+    install_addon_example.data[ATTR_ADVANCED] = True
+
+    assert install_addon_example.advanced is False
 
 
 async def test_paths_cache(coresys: CoreSys, install_addon_ssh: Addon):
