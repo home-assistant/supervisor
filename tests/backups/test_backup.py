@@ -310,6 +310,12 @@ async def test_validate_backup(
                 BackupInvalidError, match="Invalid password for backup f92f0339"
             ),
         ),
+        (
+            "",
+            pytest.raises(
+                BackupInvalidError, match="Invalid password for backup f92f0339"
+            ),
+        ),
     ],
 )
 async def test_validate_backup_v3(
