@@ -320,7 +320,8 @@ class Backup(JobGroup):
         # Add defaults
         self._data = SCHEMA_BACKUP(self._data)
 
-        # Set password
+        # Set password - intentionally using truthiness check so that empty
+        # string is treated as no password, consistent with set_password().
         if password:
             self._password = password
             self._data[ATTR_PROTECTED] = True
