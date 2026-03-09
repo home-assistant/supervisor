@@ -192,6 +192,15 @@ def _warn_addon_config(config: dict[str, Any]):
     if not name:
         raise vol.Invalid("Invalid Add-on config!")
 
+    if ATTR_ADVANCED in config:
+        # Deprecated since Supervisor 2026.03.0; this field is ignored and the
+        # warning can be removed once that version is the minimum supported.
+        _LOGGER.warning(
+            "Add-on '%s' uses deprecated 'advanced' field in config. "
+            "This field is ignored by the Supervisor. Please report this to the maintainer.",
+            name,
+        )
+
     if config.get(ATTR_FULL_ACCESS, False) and (
         config.get(ATTR_DEVICES)
         or config.get(ATTR_UART)

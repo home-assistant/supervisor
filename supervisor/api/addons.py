@@ -187,7 +187,7 @@ class APIAddons(CoreSysAttributes):
                 ATTR_NAME: addon.name,
                 ATTR_SLUG: addon.slug,
                 ATTR_DESCRIPTON: addon.description,
-                ATTR_ADVANCED: addon.advanced,
+                ATTR_ADVANCED: addon.advanced,  # Deprecated 2026.03
                 ATTR_STAGE: addon.stage,
                 ATTR_VERSION: addon.version,
                 ATTR_VERSION_LATEST: addon.latest_version,
@@ -224,7 +224,7 @@ class APIAddons(CoreSysAttributes):
             ATTR_DNS: addon.dns,
             ATTR_DESCRIPTON: addon.description,
             ATTR_LONG_DESCRIPTION: await addon.long_description(),
-            ATTR_ADVANCED: addon.advanced,
+            ATTR_ADVANCED: addon.advanced,  # Deprecated 2026.03
             ATTR_STAGE: addon.stage,
             ATTR_REPOSITORY: addon.repository,
             ATTR_VERSION_LATEST: addon.latest_version,
