@@ -335,9 +335,8 @@ class Backup(JobGroup):
         """Set the password for an existing backup.
 
         Treat empty string as None to stay consistent with backup creation
-        which also uses a truthiness check and to work around a securetar
-        2026.2.0 bug where empty string password sets encrypted=True but fails
-        to derive a key, leading to an AttributeError on restore.
+        and Supervisor behavior before #6402, independent of SecureTar
+        behavior in this regard.
         """
         self._password = password or None
 
