@@ -15,6 +15,7 @@ from ..hardware.data import Device
 from .apparmor import AppArmorControl
 from .const import HostFeature
 from .control import SystemControl
+from .firewall import FirewallManager
 from .info import InfoCenter
 from .logs import LogsControl
 from .network import NetworkManager
@@ -33,6 +34,7 @@ class HostManager(CoreSysAttributes):
 
         self._apparmor: AppArmorControl = AppArmorControl(coresys)
         self._control: SystemControl = SystemControl(coresys)
+        self._firewall: FirewallManager = FirewallManager(coresys)
         self._info: InfoCenter = InfoCenter(coresys)
         self._services: ServiceManager = ServiceManager(coresys)
         self._network: NetworkManager = NetworkManager(coresys)
@@ -53,6 +55,11 @@ class HostManager(CoreSysAttributes):
     def control(self) -> SystemControl:
         """Return host control handler."""
         return self._control
+
+    @property
+    def firewall(self) -> FirewallManager:
+        """Return host firewall handler."""
+        return self._firewall
 
     @property
     def info(self) -> InfoCenter:
@@ -167,6 +174,9 @@ class HostManager(CoreSysAttributes):
                 await self.logs.load()
 
             await self.network.load()
+
+        # Apply firewall rules to protect the Docker gateway from external access
+        await self.firewall.apply_gateway_protection()
 
         # Register for events
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
