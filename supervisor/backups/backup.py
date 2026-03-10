@@ -320,7 +320,8 @@ class Backup(JobGroup):
         # Add defaults
         self._data = SCHEMA_BACKUP(self._data)
 
-        # Set password
+        # Set password - intentionally using truthiness check so that empty
+        # string is treated as no password, consistent with set_password().
         if password:
             self._password = password
             self._data[ATTR_PROTECTED] = True
@@ -331,8 +332,13 @@ class Backup(JobGroup):
             self._data[ATTR_COMPRESSED] = False
 
     def set_password(self, password: str | None) -> None:
-        """Set the password for an existing backup."""
-        self._password = password
+        """Set the password for an existing backup.
+
+        Treat empty string as None to stay consistent with backup creation
+        and Supervisor behavior before #6402, independent of SecureTar
+        behavior in this regard.
+        """
+        self._password = password or None
 
     async def validate_backup(self, location: str | None) -> None:
         """Validate backup.
