@@ -193,10 +193,13 @@ class HomeAssistantAPI(CoreSysAttributes):
         if content_type is not None:
             headers[hdrs.CONTENT_TYPE] = content_type
 
+        use_unix = self.use_unix_socket
+
         for _ in (1, 2):
             try:
-                await self.ensure_access_token()
-                headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
+                if not use_unix:
+                    await self.ensure_access_token()
+                    headers[hdrs.AUTHORIZATION] = f"Bearer {self.access_token}"
                 async with self._session.request(
                     method,
                     url,
@@ -207,8 +210,8 @@ class HomeAssistantAPI(CoreSysAttributes):
                     params=params,
                     ssl=False,
                 ) as resp:
-                    # Access token expired
-                    if resp.status == 401:
+                    # Access token expired (only relevant for TCP)
+                    if resp.status == 401 and not use_unix:
                         self.access_token = None
                         continue
                     yield resp
