@@ -140,16 +140,28 @@ class WSClient:
 
     @classmethod
     async def connect_with_auth(
-        cls, session: aiohttp.ClientSession, url: str, token: str
+        cls,
+        session: aiohttp.ClientSession,
+        url: str,
+        token: str | None,
     ) -> WSClient:
-        """Create an authenticated websocket client."""
+        """Create an authenticated websocket client.
+
+        When token is None (Unix socket), Core sends auth_ok immediately
+        without requiring an auth exchange.
+        """
         try:
             client = await session.ws_connect(url, ssl=False)
         except aiohttp.client_exceptions.ClientConnectorError:
             raise HomeAssistantWSConnectionError("Can't connect") from None
 
-        hello_message = await client.receive_json()
+        first_message = await client.receive_json()
 
+        if first_message[ATTR_TYPE] == "auth_ok":
+            # Unix socket: Core already authenticated us
+            return cls(AwesomeVersion(first_message["ha_version"]), client)
+
+        # TCP: auth_required → send token → auth_ok
         await client.send_json(
             {ATTR_TYPE: WSType.AUTH, ATTR_ACCESS_TOKEN: token}, dumps=json_dumps
         )
@@ -159,7 +171,7 @@ class WSClient:
         if auth_ok_message[ATTR_TYPE] != "auth_ok":
             raise HomeAssistantAPIError("AUTH NOT OK")
 
-        return cls(AwesomeVersion(hello_message["ha_version"]), client)
+        return cls(AwesomeVersion(first_message["ha_version"]), client)
 
 
 class HomeAssistantWebSocket(CoreSysAttributes):
@@ -186,12 +198,14 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             if self._client is not None and self._client.connected:
                 return self._client
 
-            with suppress(asyncio.TimeoutError, aiohttp.ClientError):
-                await self.sys_homeassistant.api.ensure_access_token()
+            api = self.sys_homeassistant.api
+            if not api.use_unix_socket:
+                with suppress(asyncio.TimeoutError, aiohttp.ClientError):
+                    await api.ensure_access_token()
             client = await WSClient.connect_with_auth(
-                self.sys_homeassistant.api._session,
-                self.sys_homeassistant.api._ws_url,
-                cast(str, self.sys_homeassistant.api.access_token),
+                api._session,
+                api._ws_url,
+                None if api.use_unix_socket else cast(str, api.access_token),
             )
 
             self.sys_create_task(client.start_listener())
