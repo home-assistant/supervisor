@@ -27,7 +27,6 @@ from .const import (
 from .data import HealthChanged, Issue, Suggestion, SupportedChanged
 from .evaluate import ResolutionEvaluation
 from .fixup import ResolutionFixup
-from .notify import ResolutionNotify
 from .validate import SCHEMA_RESOLUTION_CONFIG
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -44,7 +43,6 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self._evaluate = ResolutionEvaluation(coresys)
         self._check = ResolutionCheck(coresys)
         self._fixup = ResolutionFixup(coresys)
-        self._notify = ResolutionNotify(coresys)
 
         self._suggestions: list[Suggestion] = []
         self._issues: list[Issue] = []
@@ -84,11 +82,6 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
     def fixup(self) -> ResolutionFixup:
         """Return the ResolutionFixup class."""
         return self._fixup
-
-    @property
-    def notify(self) -> ResolutionNotify:
-        """Return the ResolutionNotify class."""
-        return self._notify
 
     @property
     def issues(self) -> list[Issue]:
@@ -248,9 +241,6 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         # Run autofix if possible
         await self.fixup.run_autofix()
-
-        # Create notification for any known issues
-        await self.notify.issue_notifications()
 
     async def apply_suggestion(self, suggestion: Suggestion) -> None:
         """Apply suggested action."""
