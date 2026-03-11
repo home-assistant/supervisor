@@ -58,14 +58,22 @@ from ..exceptions import (
     BackupInvalidError,
     BackupPermissionError,
 )
+from ..homeassistant.const import LANDINGPAGE
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
-from ..utils import remove_folder
+from ..utils import remove_folder, version_is_new_enough
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
 from ..utils.sentinel import DEFAULT
-from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, SECURETAR_CREATE_VERSION, BackupType
+from .const import (
+    BUF_SIZE,
+    CORE_SECURETAR_V3_MIN_VERSION,
+    LOCATION_CLOUD_BACKUP,
+    SECURETAR_CREATE_VERSION,
+    SECURETAR_V3_CREATE_VERSION,
+    BackupType,
+)
 from .validate import SCHEMA_BACKUP
 
 IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
@@ -444,6 +452,15 @@ class Backup(JobGroup):
     @asynccontextmanager
     async def create(self) -> AsyncGenerator[None]:
         """Create new backup file."""
+        core_version = self.sys_homeassistant.version
+        if (
+            core_version is not None
+            and core_version != LANDINGPAGE
+            and version_is_new_enough(core_version, CORE_SECURETAR_V3_MIN_VERSION)
+        ):
+            securetar_version = SECURETAR_V3_CREATE_VERSION
+        else:
+            securetar_version = SECURETAR_CREATE_VERSION
 
         def _open_outer_tarfile() -> SecureTarArchive:
             """Create and open outer tarfile."""
@@ -457,7 +474,7 @@ class Backup(JobGroup):
                 self.tarfile,
                 "w",
                 bufsize=BUF_SIZE,
-                create_version=SECURETAR_CREATE_VERSION,
+                create_version=securetar_version,
                 password=self._password,
             )
             try:
