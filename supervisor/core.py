@@ -16,6 +16,7 @@ from .const import (
     CoreState,
 )
 from .coresys import CoreSys, CoreSysAttributes
+from .dbus.const import StopUnitMode
 from .exceptions import (
     HassioError,
     HomeAssistantCrashError,
@@ -423,11 +424,27 @@ class Core(CoreSysAttributes):
         await self.sys_host.control.set_timezone(timezone)
 
         # Calculate if system time is out of sync
-        delta = data.dt_utc - utcnow()
-        if delta <= timedelta(days=3) or self.sys_host.info.dt_synchronized:
+        delta = abs(data.dt_utc - utcnow())
+        if delta <= timedelta(hours=1) or self.sys_host.info.dt_synchronized:
             return
 
-        _LOGGER.warning("System time/date shift over more than 3 days found!")
+        _LOGGER.warning("System time/date shift over more than 1 hour detected!")
+
+        if self.sys_host.info.use_ntp:
+            # Stop timesyncd if NTP is enabled, as set_time is blocked while it runs.
+            _LOGGER.info("Stopping systemd-timesyncd to allow manual time adjustment")
+            await self.sys_dbus.systemd.stop_unit(
+                "systemd-timesyncd.service", StopUnitMode.REPLACE
+            )
+            # Keep service disabled and create a repair issue
+            self.sys_resolution.create_issue(
+                IssueType.NTP_SYNC_FAILED,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.ENABLE_NTP],
+            )
+            # We need to wait a bit for the service to stop.
+            await asyncio.sleep(1)
+
         await self.sys_host.control.set_datetime(data.dt_utc)
         await self.sys_supervisor.check_connectivity()
 
