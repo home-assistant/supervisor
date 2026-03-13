@@ -363,7 +363,6 @@ async def test_start_wait_resolved_on_uninstall_in_startup(
     assert install_addon_ssh.state == AddonState.STARTUP
 
     await coresys.addons.uninstall(TEST_ADDON_SLUG)
-    await asyncio.sleep(0.01)
     assert start_task.done()
     assert start_task.exception() is None
 
