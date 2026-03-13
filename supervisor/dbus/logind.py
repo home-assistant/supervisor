@@ -5,7 +5,12 @@ import logging
 from dbus_fast.aio.message_bus import MessageBus
 
 from ..exceptions import DBusError, DBusInterfaceError, DBusServiceUnkownError
-from .const import DBUS_NAME_LOGIND, DBUS_OBJECT_LOGIND
+from ..utils.dbus import DBusSignalWrapper
+from .const import (
+    DBUS_NAME_LOGIND,
+    DBUS_OBJECT_LOGIND,
+    DBUS_SIGNAL_LOGIND_PREPARE_FOR_SHUTDOWN,
+)
 from .interface import DBusInterface
 from .utils import dbus_connected
 
@@ -29,7 +34,7 @@ class Logind(DBusInterface):
             await super().connect(bus)
         except DBusError:
             _LOGGER.warning("Can't connect to systemd-logind")
-        except (DBusServiceUnkownError, DBusInterfaceError):
+        except DBusServiceUnkownError, DBusInterfaceError:
             _LOGGER.warning("No systemd-logind support on the host.")
 
     @dbus_connected
@@ -41,3 +46,13 @@ class Logind(DBusInterface):
     async def power_off(self) -> None:
         """Power off host computer."""
         await self.connected_dbus.Manager.call("power_off", False)
+
+    @dbus_connected
+    async def inhibit(self, what: str, who: str, why: str, mode: str) -> int:
+        """Take an inhibitor lock. Returns a file descriptor."""
+        return await self.connected_dbus.Manager.call("inhibit", what, who, why, mode)
+
+    @dbus_connected
+    def prepare_for_shutdown(self) -> DBusSignalWrapper:
+        """Return a signal wrapper for PrepareForShutdown signal."""
+        return self.connected_dbus.signal(DBUS_SIGNAL_LOGIND_PREPARE_FOR_SHUTDOWN)

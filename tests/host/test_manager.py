@@ -1,16 +1,27 @@
 """Test host manager."""
 
-from unittest.mock import patch
+import asyncio
+from unittest.mock import AsyncMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import MulticastProtocolEnabled
 
 from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.logind import Logind as LogindService
 from tests.dbus_service_mocks.rauc import Rauc as RaucService
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+
+
+@pytest.fixture(name="logind_service")
+async def fixture_logind_service(
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> LogindService:
+    """Return logind service mock."""
+    yield all_dbus_services["logind"]
 
 
 @pytest.fixture(name="systemd_service")
@@ -71,3 +82,49 @@ async def test_reload_os(
     await coresys.host.reload()
 
     assert rauc_service.GetSlotStatus.calls == [()]
+
+
+async def test_host_shutdown_on_prepare_for_shutdown_signal(
+    coresys: CoreSys, logind_service: LogindService
+):
+    """Test graceful shutdown when PrepareForShutdown signal is received."""
+    shutdown_called = asyncio.Event()
+
+    async def mock_shutdown(**kwargs):
+        shutdown_called.set()
+
+    await coresys.host.load()
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    # Give the monitor task time to start and register the signal listener
+    # (needs multiple yields for inhibit D-Bus call + AddMatch call)
+    await asyncio.sleep(0.1)
+
+    with patch.object(coresys.core, "shutdown", side_effect=mock_shutdown):
+        # Emit PrepareForShutdown(true) signal as if host is shutting down
+        logind_service.PrepareForShutdown()
+        await logind_service.ping()
+
+        async with asyncio.timeout(2):
+            await shutdown_called.wait()
+
+
+async def test_host_shutdown_signal_ignored_when_not_running(
+    coresys: CoreSys, logind_service: LogindService
+):
+    """Test PrepareForShutdown is ignored if Supervisor already shutting down."""
+    await coresys.host.load()
+    await coresys.core.set_state(CoreState.SHUTDOWN)
+
+    # Give the monitor task time to start and register the signal listener
+    await asyncio.sleep(0.1)
+
+    with patch.object(
+        coresys.core, "shutdown", new_callable=AsyncMock
+    ) as mock_shutdown:
+        logind_service.PrepareForShutdown()
+        await logind_service.ping()
+        # Give the monitor task time to process the signal
+        await asyncio.sleep(0.1)
+
+        mock_shutdown.assert_not_called()
