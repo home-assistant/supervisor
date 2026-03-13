@@ -9,7 +9,7 @@ from typing import Self
 
 from awesomeversion import AwesomeVersion
 
-from ..const import BusEvent, CoreState
+from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import (
     DBusError,
@@ -232,14 +232,6 @@ class HostManager(CoreSysAttributes):
                     active = msg[0]
                     if not active:
                         continue
-
-                    # Only handle if Supervisor didn't initiate the shutdown
-                    if self.sys_core.state != CoreState.RUNNING:
-                        _LOGGER.debug(
-                            "PrepareForShutdown received but already in state %s",
-                            self.sys_core.state,
-                        )
-                        break
 
                     _LOGGER.info(
                         "Host shutdown/reboot detected, gracefully stopping services"

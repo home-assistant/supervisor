@@ -1,7 +1,7 @@
 """Test host manager."""
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -109,22 +109,25 @@ async def test_host_shutdown_on_prepare_for_shutdown_signal(
             await shutdown_called.wait()
 
 
-async def test_host_shutdown_signal_ignored_when_not_running(
+async def test_host_shutdown_signal_reentrant(
     coresys: CoreSys, logind_service: LogindService
 ):
-    """Test PrepareForShutdown is ignored if Supervisor already shutting down."""
+    """Test PrepareForShutdown during in-progress shutdown awaits same shutdown."""
+    shutdown_called = asyncio.Event()
+
+    async def mock_shutdown(**kwargs):
+        shutdown_called.set()
+
     await coresys.host.load()
     await coresys.core.set_state(CoreState.SHUTDOWN)
 
     # Give the monitor task time to start and register the signal listener
     await asyncio.sleep(0.1)
 
-    with patch.object(
-        coresys.core, "shutdown", new_callable=AsyncMock
-    ) as mock_shutdown:
+    with patch.object(coresys.core, "shutdown", side_effect=mock_shutdown):
         logind_service.PrepareForShutdown()
         await logind_service.ping()
-        # Give the monitor task time to process the signal
-        await asyncio.sleep(0.1)
 
-        mock_shutdown.assert_not_called()
+        # shutdown() is called reentrantly - it awaits the in-progress shutdown
+        async with asyncio.timeout(2):
+            await shutdown_called.wait()
