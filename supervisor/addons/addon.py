@@ -1119,7 +1119,8 @@ class Addon(AddonModel):
         except asyncio.CancelledError as err:
             _LOGGER.info("Wait for addon startup task cancelled due to: %s", err)
         finally:
-            self._wait_for_startup_task = None
+            if self._wait_for_startup_task is asyncio.current_task():
+                self._wait_for_startup_task = None
 
     @Job(
         name="addon_start",
