@@ -362,6 +362,9 @@ class Core(CoreSysAttributes):
             await self._shutdown_event.wait()
             return
 
+        # Reset event for this shutdown cycle (supports repeated use, e.g. backup restore)
+        self._shutdown_event.clear()
+
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
             await self.set_state(CoreState.SHUTDOWN)
