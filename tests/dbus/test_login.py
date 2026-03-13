@@ -1,6 +1,8 @@
 """Test login dbus interface."""
 
 # pylint: disable=import-error
+import os
+
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
@@ -43,6 +45,39 @@ async def test_power_off(logind_service: LogindService, dbus_session_bus: Messag
 
     assert await logind.power_off() is None
     assert logind_service.PowerOff.calls == [(False,)]
+
+
+async def test_inhibit(logind_service: LogindService, dbus_session_bus: MessageBus):
+    """Test taking an inhibitor lock."""
+    logind_service.Inhibit.calls.clear()
+    logind = Logind()
+
+    with pytest.raises(DBusNotConnectedError):
+        await logind.inhibit("shutdown", "test", "testing", "delay")
+
+    await logind.connect(dbus_session_bus)
+
+    fd = await logind.inhibit("shutdown", "Test", "Testing inhibit", "delay")
+    assert logind_service.Inhibit.calls == [
+        ("shutdown", "Test", "Testing inhibit", "delay")
+    ]
+    if fd is not None:
+        os.close(fd)
+
+
+async def test_prepare_for_shutdown_signal(
+    logind_service: LogindService, dbus_session_bus: MessageBus
+):
+    """Test PrepareForShutdown signal."""
+    logind = Logind()
+    await logind.connect(dbus_session_bus)
+
+    async with logind.prepare_for_shutdown() as signal:
+        logind_service.PrepareForShutdown()
+        await logind_service.ping()
+
+        msg = await signal.wait_for_signal()
+        assert msg == [True]
 
 
 async def test_dbus_logind_connect_error(
