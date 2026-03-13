@@ -146,9 +146,8 @@ def get_latest_mtime(directory: Path) -> tuple[float, Path]:
             if mtime > latest_mtime:
                 latest_mtime = mtime
                 latest_path = path
-        except FileNotFoundError:
-            # File might disappear between listing and stat. Parent
-            # directory modification date will flag such a change.
+        except OSError:
+            _LOGGER.debug("Could not stat %s, skipping", path)
             continue
     return latest_mtime, latest_path
 
