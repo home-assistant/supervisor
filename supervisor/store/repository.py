@@ -219,11 +219,18 @@ class RepositoryLocal(RepositoryBuiltin):
         super().__init__(coresys, BuiltinRepository.LOCAL.value, local_path, slug)
         self._latest_mtime: float | None = None
 
+    async def _get_latest_mtime(self) -> tuple[float, Path]:
+        """Get latest modification time of repository."""
+        try:
+            return await self.sys_run_in_executor(get_latest_mtime, self.local_path)
+        except OSError as err:
+            self.coresys.resolution.check_oserror(err)
+            _LOGGER.error("Can't check local repository for modifications: %s", err)
+            raise StoreRepositoryUnknownError(repo=self.slug) from err
+
     async def load(self) -> None:
         """Load addon repository."""
-        self._latest_mtime, _ = await self.sys_run_in_executor(
-            get_latest_mtime, self.local_path
-        )
+        self._latest_mtime, _ = await self._get_latest_mtime()
 
     async def update(self) -> bool:
         """Update add-on repository.
@@ -231,9 +238,8 @@ class RepositoryLocal(RepositoryBuiltin):
         Returns True if the repository was updated.
         """
         # Check local modifications
-        latest_mtime, modified_path = await self.sys_run_in_executor(
-            get_latest_mtime, self.local_path
-        )
+        latest_mtime, modified_path = await self._get_latest_mtime()
+
         if self._latest_mtime != latest_mtime:
             _LOGGER.debug(
                 "Local modifications detected in %s repository: %s",
