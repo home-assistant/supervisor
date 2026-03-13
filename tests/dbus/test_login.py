@@ -1,6 +1,8 @@
 """Test login dbus interface."""
 
 # pylint: disable=import-error
+import os
+
 from dbus_fast.aio.message_bus import MessageBus
 import pytest
 
@@ -55,10 +57,12 @@ async def test_inhibit(logind_service: LogindService, dbus_session_bus: MessageB
 
     await logind.connect(dbus_session_bus)
 
-    await logind.inhibit("shutdown", "Test", "Testing inhibit", "delay")
+    fd = await logind.inhibit("shutdown", "Test", "Testing inhibit", "delay")
     assert logind_service.Inhibit.calls == [
         ("shutdown", "Test", "Testing inhibit", "delay")
     ]
+    if fd is not None:
+        os.close(fd)
 
 
 async def test_prepare_for_shutdown_signal(
