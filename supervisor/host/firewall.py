@@ -94,16 +94,16 @@ class FirewallManager(CoreSysAttributes):
 
         return entries
 
-    async def apply_gateway_protection(self) -> None:
-        """Apply iptables rules to protect the Docker gateway from external access."""
+    async def _apply_gateway_protection(self) -> bool:
+        """Apply iptables rules to protect the Docker gateway from external access.
+
+        Returns True if the rules were successfully applied.
+        """
         if not self.sys_dbus.systemd.is_connected:
             _LOGGER.error(
                 "Systemd not available, cannot apply gateway firewall protection"
             )
-            self.sys_resolution.add_unsupported_reason(
-                UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED
-            )
-            return
+            return False
 
         # Clean up any previous failed unit
         with suppress(DBusError):
@@ -123,10 +123,7 @@ class FirewallManager(CoreSysAttributes):
             )
         except DBusError as err:
             _LOGGER.error("Failed to apply gateway firewall protection: %s", err)
-            self.sys_resolution.add_unsupported_reason(
-                UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED
-            )
-            return
+            return False
 
         # Wait for the oneshot unit to finish and verify it succeeded
         try:
@@ -147,18 +144,21 @@ class FirewallManager(CoreSysAttributes):
             _LOGGER.error(
                 "Failed waiting for gateway firewall unit to complete: %s", err
             )
-            self.sys_resolution.add_unsupported_reason(
-                UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED
-            )
-            return
+            return False
 
         if state == UnitActiveState.FAILED:
             _LOGGER.error(
                 "Gateway firewall unit failed, iptables rules may not be applied"
             )
+            return False
+
+        return True
+
+    async def apply_gateway_protection(self) -> None:
+        """Apply gateway firewall protection, marking unsupported on failure."""
+        if await self._apply_gateway_protection():
+            _LOGGER.info("Gateway firewall protection applied")
+        else:
             self.sys_resolution.add_unsupported_reason(
                 UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED
             )
-            return
-
-        _LOGGER.info("Gateway firewall protection applied")
