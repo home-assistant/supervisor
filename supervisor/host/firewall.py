@@ -2,6 +2,7 @@
 
 from contextlib import suppress
 import logging
+from typing import NamedTuple
 
 from dbus_fast import Variant
 
@@ -13,9 +14,17 @@ from ..exceptions import DBusError
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 FIREWALL_SERVICE = "supervisor-firewall-gateway.service"
-SHELL_CMD = "/bin/sh"
+BIN_SH = "/bin/sh"
 IPTABLES_CMD = "/usr/sbin/iptables"
 IP6TABLES_CMD = "/usr/sbin/ip6tables"
+
+
+class ExecStartEntry(NamedTuple):
+    """Systemd ExecStart entry for D-Bus StartTransientUnit (type signature 'sasb')."""
+
+    binary: str
+    argv: list[str]
+    ignore_failure: bool
 
 
 class FirewallManager(CoreSysAttributes):
@@ -32,7 +41,7 @@ class FirewallManager(CoreSysAttributes):
         self.coresys: CoreSys = coresys
 
     @staticmethod
-    def _build_exec_start() -> list[tuple[str, list[str], bool]]:
+    def _build_exec_start() -> list[ExecStartEntry]:
         """Build ExecStart entries for gateway protection rules.
 
         Each entry uses shell check-or-insert logic for idempotency.
@@ -44,40 +53,40 @@ class FirewallManager(CoreSysAttributes):
         gateway_ipv6 = str(DOCKER_IPV6_NETWORK_MASK[1])
         bridge = DOCKER_NETWORK
 
-        entries: list[tuple[str, list[str], bool]] = []
+        entries: list[ExecStartEntry] = []
         for cmd, gateway in (
             (IPTABLES_CMD, gateway_ipv4),
             (IP6TABLES_CMD, gateway_ipv6),
         ):
             # DROP packets to gateway from non-bridge, non-loopback interfaces
             entries.append(
-                (
-                    SHELL_CMD,
-                    [
-                        SHELL_CMD,
+                ExecStartEntry(
+                    binary=BIN_SH,
+                    argv=[
+                        BIN_SH,
                         "-c",
                         f"{cmd} -t raw -C PREROUTING ! -i {bridge} -d {gateway}"
                         f" -j DROP 2>/dev/null"
                         f" || {cmd} -t raw -I PREROUTING ! -i {bridge} -d {gateway}"
                         f" -j DROP",
                     ],
-                    False,
+                    ignore_failure=False,
                 )
             )
 
             # ACCEPT loopback traffic to gateway (inserted last, ends up first)
             entries.append(
-                (
-                    SHELL_CMD,
-                    [
-                        SHELL_CMD,
+                ExecStartEntry(
+                    binary=BIN_SH,
+                    argv=[
+                        BIN_SH,
                         "-c",
                         f"{cmd} -t raw -C PREROUTING -i lo -d {gateway}"
                         f" -j ACCEPT 2>/dev/null"
                         f" || {cmd} -t raw -I PREROUTING -i lo -d {gateway}"
                         f" -j ACCEPT",
                     ],
-                    False,
+                    ignore_failure=False,
                 )
             )
 

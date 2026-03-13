@@ -4,19 +4,21 @@ from unittest.mock import patch
 
 import pytest
 
-from supervisor.const import DOCKER_IPV4_NETWORK_MASK, DOCKER_IPV6_NETWORK_MASK
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import StartUnitMode
 from supervisor.host.firewall import (
+    BIN_SH,
     FIREWALL_SERVICE,
     IP6TABLES_CMD,
     IPTABLES_CMD,
-    SHELL_CMD,
     FirewallManager,
 )
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+
+GATEWAY_IPV4 = "172.30.32.1"
+GATEWAY_IPV6 = "fd0c:ac1e:2100::1"
 
 
 @pytest.fixture(name="systemd_service")
@@ -46,63 +48,56 @@ async def test_apply_gateway_protection_exec_start_rules(coresys: CoreSys):
     """Test correct iptables rules are generated."""
     entries = FirewallManager._build_exec_start()
 
-    gateway_ipv4 = str(DOCKER_IPV4_NETWORK_MASK[1])
-    gateway_ipv6 = str(DOCKER_IPV6_NETWORK_MASK[1])
-
     # 4 entries: 2 per IP version (DROP + ACCEPT)
     assert len(entries) == 4
 
     # IPv4 DROP rule
-    binary, argv, ignore = entries[0]
-    assert binary == SHELL_CMD
-    assert (
-        f"{IPTABLES_CMD} -t raw -C PREROUTING ! -i hassio -d {gateway_ipv4} -j DROP"
-        in argv[2]
-    )
-    assert (
-        f"{IPTABLES_CMD} -t raw -I PREROUTING ! -i hassio -d {gateway_ipv4} -j DROP"
-        in argv[2]
-    )
-    assert ignore is False
+    assert entries[0].binary == BIN_SH
+    assert entries[0].argv == [
+        BIN_SH,
+        "-c",
+        f"{IPTABLES_CMD} -t raw -C PREROUTING ! -i hassio -d {GATEWAY_IPV4}"
+        f" -j DROP 2>/dev/null"
+        f" || {IPTABLES_CMD} -t raw -I PREROUTING ! -i hassio -d {GATEWAY_IPV4}"
+        f" -j DROP",
+    ]
+    assert entries[0].ignore_failure is False
 
     # IPv4 ACCEPT rule
-    binary, argv, ignore = entries[1]
-    assert binary == SHELL_CMD
-    assert (
-        f"{IPTABLES_CMD} -t raw -C PREROUTING -i lo -d {gateway_ipv4} -j ACCEPT"
-        in argv[2]
-    )
-    assert (
-        f"{IPTABLES_CMD} -t raw -I PREROUTING -i lo -d {gateway_ipv4} -j ACCEPT"
-        in argv[2]
-    )
-    assert ignore is False
+    assert entries[1].binary == BIN_SH
+    assert entries[1].argv == [
+        BIN_SH,
+        "-c",
+        f"{IPTABLES_CMD} -t raw -C PREROUTING -i lo -d {GATEWAY_IPV4}"
+        f" -j ACCEPT 2>/dev/null"
+        f" || {IPTABLES_CMD} -t raw -I PREROUTING -i lo -d {GATEWAY_IPV4}"
+        f" -j ACCEPT",
+    ]
+    assert entries[1].ignore_failure is False
 
     # IPv6 DROP rule
-    binary, argv, ignore = entries[2]
-    assert binary == SHELL_CMD
-    assert (
-        f"{IP6TABLES_CMD} -t raw -C PREROUTING ! -i hassio -d {gateway_ipv6} -j DROP"
-        in argv[2]
-    )
-    assert (
-        f"{IP6TABLES_CMD} -t raw -I PREROUTING ! -i hassio -d {gateway_ipv6} -j DROP"
-        in argv[2]
-    )
-    assert ignore is False
+    assert entries[2].binary == BIN_SH
+    assert entries[2].argv == [
+        BIN_SH,
+        "-c",
+        f"{IP6TABLES_CMD} -t raw -C PREROUTING ! -i hassio -d {GATEWAY_IPV6}"
+        f" -j DROP 2>/dev/null"
+        f" || {IP6TABLES_CMD} -t raw -I PREROUTING ! -i hassio -d {GATEWAY_IPV6}"
+        f" -j DROP",
+    ]
+    assert entries[2].ignore_failure is False
 
     # IPv6 ACCEPT rule
-    binary, argv, ignore = entries[3]
-    assert binary == SHELL_CMD
-    assert (
-        f"{IP6TABLES_CMD} -t raw -C PREROUTING -i lo -d {gateway_ipv6} -j ACCEPT"
-        in argv[2]
-    )
-    assert (
-        f"{IP6TABLES_CMD} -t raw -I PREROUTING -i lo -d {gateway_ipv6} -j ACCEPT"
-        in argv[2]
-    )
-    assert ignore is False
+    assert entries[3].binary == BIN_SH
+    assert entries[3].argv == [
+        BIN_SH,
+        "-c",
+        f"{IP6TABLES_CMD} -t raw -C PREROUTING -i lo -d {GATEWAY_IPV6}"
+        f" -j ACCEPT 2>/dev/null"
+        f" || {IP6TABLES_CMD} -t raw -I PREROUTING -i lo -d {GATEWAY_IPV6}"
+        f" -j ACCEPT",
+    ]
+    assert entries[3].ignore_failure is False
 
 
 async def test_apply_gateway_protection_systemd_not_connected(
