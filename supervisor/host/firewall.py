@@ -2,13 +2,13 @@
 
 from contextlib import suppress
 import logging
-from typing import NamedTuple
 
 from dbus_fast import Variant
 
 from ..const import DOCKER_IPV4_NETWORK_MASK, DOCKER_IPV6_NETWORK_MASK, DOCKER_NETWORK
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import StartUnitMode
+from ..dbus.systemd import ExecStartEntry
 from ..exceptions import DBusError
 from ..resolution.const import UnsupportedReason
 
@@ -18,14 +18,6 @@ FIREWALL_SERVICE = "supervisor-firewall-gateway.service"
 BIN_SH = "/bin/sh"
 IPTABLES_CMD = "/usr/sbin/iptables"
 IP6TABLES_CMD = "/usr/sbin/ip6tables"
-
-
-class ExecStartEntry(NamedTuple):
-    """Systemd ExecStart entry for D-Bus StartTransientUnit (type signature 'sasb')."""
-
-    binary: str
-    argv: list[str]
-    ignore_failure: bool
 
 
 class FirewallManager(CoreSysAttributes):
