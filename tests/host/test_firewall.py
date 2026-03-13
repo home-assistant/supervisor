@@ -1,5 +1,6 @@
 """Test host firewall manager."""
 
+import asyncio
 from unittest.mock import patch
 
 from dbus_fast import DBusError, ErrorType
@@ -18,6 +19,7 @@ from supervisor.resolution.const import UnsupportedReason
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
 
 GATEWAY_IPV4 = "172.30.32.1"
 GATEWAY_IPV6 = "fd0c:ac1e:2100::1"
@@ -31,12 +33,23 @@ async def fixture_systemd_service(
     yield all_dbus_services["systemd"]
 
 
+@pytest.fixture(name="systemd_unit_service")
+async def fixture_systemd_unit_service(
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
+) -> SystemdUnitService:
+    """Return systemd unit service mock."""
+    yield all_dbus_services["systemd_unit"]
+
+
 async def test_apply_gateway_protection(
-    coresys: CoreSys, systemd_service: SystemdService
+    coresys: CoreSys,
+    systemd_service: SystemdService,
+    systemd_unit_service: SystemdUnitService,
 ):
     """Test gateway protection rules are applied."""
     systemd_service.StartTransientUnit.calls.clear()
     systemd_service.ResetFailedUnit.calls.clear()
+    systemd_unit_service.active_state = "inactive"
 
     await coresys.host.firewall.apply_gateway_protection()
 
@@ -141,10 +154,13 @@ async def test_apply_gateway_protection_dbus_error(
 
 
 async def test_apply_gateway_protection_resets_failed_unit(
-    coresys: CoreSys, systemd_service: SystemdService
+    coresys: CoreSys,
+    systemd_service: SystemdService,
+    systemd_unit_service: SystemdUnitService,
 ):
     """Test that previous failed unit is reset before applying."""
     systemd_service.ResetFailedUnit.calls.clear()
+    systemd_unit_service.active_state = "inactive"
 
     await coresys.host.firewall.apply_gateway_protection()
 
@@ -153,10 +169,13 @@ async def test_apply_gateway_protection_resets_failed_unit(
 
 
 async def test_apply_gateway_protection_properties(
-    coresys: CoreSys, systemd_service: SystemdService
+    coresys: CoreSys,
+    systemd_service: SystemdService,
+    systemd_unit_service: SystemdUnitService,
 ):
     """Test transient unit has correct properties."""
     systemd_service.StartTransientUnit.calls.clear()
+    systemd_unit_service.active_state = "inactive"
 
     await coresys.host.firewall.apply_gateway_protection()
 
@@ -167,3 +186,36 @@ async def test_apply_gateway_protection_properties(
     assert properties["Type"].value == "oneshot"
     assert properties["ExecStart"].signature == "a(sasb)"
     assert len(properties["ExecStart"].value) == 4
+
+
+async def test_apply_gateway_protection_unit_failed(
+    coresys: CoreSys,
+    systemd_service: SystemdService,
+    systemd_unit_service: SystemdUnitService,
+):
+    """Test unsupported reason added when firewall unit fails."""
+    systemd_unit_service.active_state = "failed"
+
+    await coresys.host.firewall.apply_gateway_protection()
+
+    assert (
+        UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED in coresys.resolution.unsupported
+    )
+
+
+async def test_apply_gateway_protection_unit_failed_via_signal(
+    coresys: CoreSys,
+    systemd_service: SystemdService,
+    systemd_unit_service: SystemdUnitService,
+):
+    """Test failure detected via property change signal when unit is still activating."""
+    systemd_unit_service.active_state = "activating"
+
+    task = asyncio.create_task(coresys.host.firewall.apply_gateway_protection())
+    await asyncio.sleep(0.1)
+    systemd_unit_service.emit_properties_changed({"ActiveState": "failed"})
+    await task
+
+    assert (
+        UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED in coresys.resolution.unsupported
+    )
