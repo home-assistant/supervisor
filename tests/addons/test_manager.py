@@ -333,13 +333,12 @@ async def test_rebuild(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
-async def test_start_wait_cancel_on_uninstall(
+async def test_start_wait_resolved_on_uninstall_in_startup(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: DockerContainer,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Test the addon wait task is cancelled when addon is uninstalled."""
+    """Test uninstall resolves the startup wait task when addon is in STARTUP state."""
     install_addon_ssh.path_data.mkdir()
     container.show.return_value["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
@@ -363,11 +362,9 @@ async def test_start_wait_cancel_on_uninstall(
     assert not start_task.done()
     assert install_addon_ssh.state == AddonState.STARTUP
 
-    caplog.clear()
     await coresys.addons.uninstall(TEST_ADDON_SLUG)
-    await asyncio.sleep(0.01)
     assert start_task.done()
-    assert "Wait for addon startup task cancelled" in caplog.text
+    assert start_task.exception() is None
 
 
 async def test_repository_file_missing(
