@@ -1,4 +1,4 @@
-"""Firewall management to protect Supervisor network gateway."""
+"""Firewall rules for the Supervisor network gateway."""
 
 import asyncio
 from contextlib import suppress
@@ -44,7 +44,7 @@ class FirewallManager(CoreSysAttributes):
 
     @staticmethod
     def _build_exec_start() -> list[ExecStartEntry]:
-        """Build ExecStart entries for gateway protection rules.
+        """Build ExecStart entries for gateway firewall rules.
 
         Each entry uses shell check-or-insert logic for idempotency.
         We insert DROP first, then ACCEPT, using -I (insert at top).
@@ -94,15 +94,13 @@ class FirewallManager(CoreSysAttributes):
 
         return entries
 
-    async def _apply_gateway_protection(self) -> bool:
-        """Apply iptables rules to protect the Docker gateway from external access.
+    async def _apply_gateway_firewall_rules(self) -> bool:
+        """Apply iptables rules to restrict access to the Docker gateway.
 
         Returns True if the rules were successfully applied.
         """
         if not self.sys_dbus.systemd.is_connected:
-            _LOGGER.error(
-                "Systemd not available, cannot apply gateway firewall protection"
-            )
+            _LOGGER.error("Systemd not available, cannot apply gateway firewall rules")
             return False
 
         # Clean up any previous failed unit
@@ -110,7 +108,7 @@ class FirewallManager(CoreSysAttributes):
             await self.sys_dbus.systemd.reset_failed_unit(FIREWALL_SERVICE)
 
         properties: list[tuple[str, Variant]] = [
-            ("Description", Variant("s", "Supervisor gateway firewall protection")),
+            ("Description", Variant("s", "Supervisor gateway firewall rules")),
             ("Type", Variant("s", "oneshot")),
             ("ExecStart", Variant("a(sasb)", self._build_exec_start())),
         ]
@@ -122,7 +120,7 @@ class FirewallManager(CoreSysAttributes):
                 properties,
             )
         except DBusError as err:
-            _LOGGER.error("Failed to apply gateway firewall protection: %s", err)
+            _LOGGER.error("Failed to apply gateway firewall rules: %s", err)
             return False
 
         # Wait for the oneshot unit to finish and verify it succeeded
@@ -154,10 +152,10 @@ class FirewallManager(CoreSysAttributes):
 
         return True
 
-    async def apply_gateway_protection(self) -> None:
-        """Apply gateway firewall protection, marking unsupported on failure."""
-        if await self._apply_gateway_protection():
-            _LOGGER.info("Gateway firewall protection applied")
+    async def apply_gateway_firewall_rules(self) -> None:
+        """Apply gateway firewall rules, marking unsupported on failure."""
+        if await self._apply_gateway_firewall_rules():
+            _LOGGER.info("Gateway firewall rules applied")
         else:
             self.sys_resolution.add_unsupported_reason(
                 UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED

@@ -175,8 +175,8 @@ class HostManager(CoreSysAttributes):
 
             await self.network.load()
 
-        # Apply firewall rules to protect the Docker gateway from external access
-        await self.firewall.apply_gateway_protection()
+        # Apply firewall rules to restrict access to the Docker gateway
+        await self.firewall.apply_gateway_firewall_rules()
 
         # Register for events
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)

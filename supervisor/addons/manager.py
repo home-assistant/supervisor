@@ -117,7 +117,7 @@ class AddonManager(CoreSysAttributes):
             ):
                 _LOGGER.warning(
                     "Skipping boot of add-on %s because gateway firewall"
-                    " protection is not active",
+                    " rules are not active",
                     addon.slug,
                 )
                 continue
