@@ -1136,7 +1136,10 @@ class Addon(AddonModel):
         """
         if await self.instance.is_running():
             _LOGGER.warning("%s is already running!", self.slug)
-            self._wait_for_startup_task = self.sys_create_task(self._wait_for_startup())
+            if not self._wait_for_startup_task or self._wait_for_startup_task.done():
+                self._wait_for_startup_task = self.sys_create_task(
+                    self._wait_for_startup()
+                )
             return self._wait_for_startup_task
 
         # Access Token
