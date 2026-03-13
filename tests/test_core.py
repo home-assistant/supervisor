@@ -12,8 +12,12 @@ from supervisor.coresys import CoreSys
 from supervisor.exceptions import WhoamiSSLError
 from supervisor.host.control import SystemControl
 from supervisor.host.info import InfoCenter
+from supervisor.resolution.const import IssueType, SuggestionType
 from supervisor.supervisor import Supervisor
 from supervisor.utils.whoami import WhoamiData
+
+from tests.dbus_service_mocks.base import DBusServiceMock
+from tests.dbus_service_mocks.systemd import Systemd as SystemdService
 
 
 @pytest.mark.parametrize("run_supervisor_state", ["test_file"], indirect=True)
@@ -70,11 +74,16 @@ async def test_adjust_system_datetime_without_ssl(
 
 
 async def test_adjust_system_datetime_if_time_behind(
-    coresys: CoreSys, websession: MagicMock
+    coresys: CoreSys,
+    websession: MagicMock,
+    all_dbus_services: dict[str, DBusServiceMock | dict[str, DBusServiceMock]],
 ):
-    """Test _adjust_system_datetime method when current time is ahead more than 3 days."""
+    """Test _adjust_system_datetime method when current time is ahead more than 1 hour."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.StopUnit.calls.clear()
+
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC) + datetime.timedelta(
-        days=4
+        hours=1, minutes=1
     )
     with (
         patch(
@@ -87,6 +96,7 @@ async def test_adjust_system_datetime_if_time_behind(
         patch.object(
             InfoCenter, "dt_synchronized", new=PropertyMock(return_value=False)
         ),
+        patch.object(InfoCenter, "use_ntp", new=PropertyMock(return_value=True)),
         patch.object(Supervisor, "check_connectivity") as mock_check_connectivity,
     ):
         await coresys.core._adjust_system_datetime()
@@ -94,6 +104,21 @@ async def test_adjust_system_datetime_if_time_behind(
         mock_set_datetime.assert_called_once()
         mock_check_connectivity.assert_called_once()
         mock_set_timezone.assert_called_once_with("Europe/Zurich")
+
+        # Verify timesyncd was stopped before setting time
+        assert systemd_service.StopUnit.calls == [
+            ("systemd-timesyncd.service", "replace")
+        ]
+
+        # Verify issue was created
+        assert any(
+            issue.type == IssueType.NTP_SYNC_FAILED
+            for issue in coresys.resolution.issues
+        )
+        assert any(
+            suggestion.type == SuggestionType.ENABLE_NTP
+            for suggestion in coresys.resolution.suggestions
+        )
 
 
 async def test_adjust_system_datetime_sync_timezone_to_host(
