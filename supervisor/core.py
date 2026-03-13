@@ -42,6 +42,7 @@ class Core(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._state: CoreState = CoreState.INITIALIZE
         self.exit_code: int = 0
+        self._shutdown_event: asyncio.Event = asyncio.Event()
 
     @property
     def state(self) -> CoreState:
@@ -353,28 +354,39 @@ class Core(CoreSysAttributes):
         self.sys_loop.stop()
 
     async def shutdown(self, *, remove_homeassistant_container: bool = False) -> None:
-        """Shutdown all running containers in correct order."""
+        """Shutdown all running containers in correct order.
+
+        Reentrant: if a shutdown is already in progress, subsequent calls
+        await completion of the existing shutdown rather than starting a second one.
+        """
+        if self.state in (CoreState.SHUTDOWN, CoreState.STOPPING, CoreState.CLOSE):
+            await self._shutdown_event.wait()
+            return
+
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
             await self.set_state(CoreState.SHUTDOWN)
 
-        # Shutdown Application Add-ons, using Home Assistant API
-        await self.sys_addons.shutdown(AddonStartup.APPLICATION)
+        try:
+            # Shutdown Application Add-ons, using Home Assistant API
+            await self.sys_addons.shutdown(AddonStartup.APPLICATION)
 
-        # Close Home Assistant
-        with suppress(HassioError):
-            await self.sys_homeassistant.core.stop(
-                remove_container=remove_homeassistant_container
-            )
+            # Close Home Assistant
+            with suppress(HassioError):
+                await self.sys_homeassistant.core.stop(
+                    remove_container=remove_homeassistant_container
+                )
 
-        # Shutdown System Add-ons
-        await self.sys_addons.shutdown(AddonStartup.SERVICES)
-        await self.sys_addons.shutdown(AddonStartup.SYSTEM)
-        await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
+            # Shutdown System Add-ons
+            await self.sys_addons.shutdown(AddonStartup.SERVICES)
+            await self.sys_addons.shutdown(AddonStartup.SYSTEM)
+            await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
 
-        # Shutdown all Plugins
-        if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
-            await self.sys_plugins.shutdown()
+            # Shutdown all Plugins
+            if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
+                await self.sys_plugins.shutdown()
+        finally:
+            self._shutdown_event.set()
 
     async def _update_last_boot(self) -> None:
         """Update last boot time."""
