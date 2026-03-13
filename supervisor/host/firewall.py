@@ -10,6 +10,7 @@ from ..const import DOCKER_IPV4_NETWORK_MASK, DOCKER_IPV6_NETWORK_MASK, DOCKER_N
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import StartUnitMode
 from ..exceptions import DBusError
+from ..resolution.const import UnsupportedReason
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -95,8 +96,11 @@ class FirewallManager(CoreSysAttributes):
     async def apply_gateway_protection(self) -> None:
         """Apply iptables rules to protect the Docker gateway from external access."""
         if not self.sys_dbus.systemd.is_connected:
-            _LOGGER.warning(
+            _LOGGER.error(
                 "Systemd not available, cannot apply gateway firewall protection"
+            )
+            self.sys_resolution.add_unsupported_reason(
+                UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED
             )
             return
 
@@ -117,7 +121,10 @@ class FirewallManager(CoreSysAttributes):
                 properties,
             )
         except DBusError as err:
-            _LOGGER.warning("Failed to apply gateway firewall protection: %s", err)
+            _LOGGER.error("Failed to apply gateway firewall protection: %s", err)
+            self.sys_resolution.add_unsupported_reason(
+                UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED
+            )
             return
 
         _LOGGER.info("Gateway firewall protection applied")

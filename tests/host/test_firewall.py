@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+from dbus_fast import DBusError, ErrorType
 import pytest
 
 from supervisor.coresys import CoreSys
@@ -13,6 +14,7 @@ from supervisor.host.firewall import (
     IPTABLES_CMD,
     FirewallManager,
 )
+from supervisor.resolution.const import UnsupportedReason
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
@@ -38,6 +40,10 @@ async def test_apply_gateway_protection(
 
     await coresys.host.firewall.apply_gateway_protection()
 
+    assert (
+        UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED
+        not in coresys.resolution.unsupported
+    )
     assert len(systemd_service.StartTransientUnit.calls) == 1
     call = systemd_service.StartTransientUnit.calls[0]
     assert call[0] == FIREWALL_SERVICE
@@ -103,7 +109,7 @@ async def test_apply_gateway_protection_exec_start_rules(coresys: CoreSys):
 async def test_apply_gateway_protection_systemd_not_connected(
     coresys: CoreSys, systemd_service: SystemdService
 ):
-    """Test graceful handling when systemd is not available."""
+    """Test unsupported reason added when systemd is not available."""
     systemd_service.StartTransientUnit.calls.clear()
 
     with patch.object(
@@ -113,7 +119,25 @@ async def test_apply_gateway_protection_systemd_not_connected(
     ):
         await coresys.host.firewall.apply_gateway_protection()
 
+    assert (
+        UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED in coresys.resolution.unsupported
+    )
     assert len(systemd_service.StartTransientUnit.calls) == 0
+
+
+async def test_apply_gateway_protection_dbus_error(
+    coresys: CoreSys, systemd_service: SystemdService
+):
+    """Test unsupported reason added when transient unit fails."""
+    systemd_service.response_start_transient_unit = DBusError(
+        ErrorType.SERVICE_ERROR, "test error"
+    )
+
+    await coresys.host.firewall.apply_gateway_protection()
+
+    assert (
+        UnsupportedReason.DOCKER_GATEWAY_UNPROTECTED in coresys.resolution.unsupported
+    )
 
 
 async def test_apply_gateway_protection_resets_failed_unit(
