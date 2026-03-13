@@ -151,7 +151,7 @@ class Addon(AddonModel):
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
-        self._startup_task: asyncio.Task | None = None
+        self._wait_for_startup_task: asyncio.Task | None = None
         self._boot_failed_issue = Issue(
             IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug
         )
@@ -760,11 +760,11 @@ class Addon(AddonModel):
     )
     async def unload(self) -> None:
         """Unload add-on and remove data."""
-        if self._startup_task:
-            # If we were waiting on startup, cancel that and let the task finish before proceeding
-            self._startup_task.cancel(f"Removing add-on {self.name} from system")
-            with suppress(asyncio.CancelledError):
-                await self._startup_task
+        # Wait for startup wait task to complete before removing data.
+        # The container remove/state change resolves _startup_event; this
+        # ensures _wait_for_startup finishes before we touch addon data.
+        if self._wait_for_startup_task:
+            await self._wait_for_startup_task
 
         for listener in self._listeners:
             self.sys_bus.remove_listener(listener)
@@ -1109,8 +1109,7 @@ class Addon(AddonModel):
     async def _wait_for_startup(self) -> None:
         """Wait for startup event to be set with timeout."""
         try:
-            self._startup_task = self.sys_create_task(self._startup_event.wait())
-            await asyncio.wait_for(self._startup_task, STARTUP_TIMEOUT)
+            await asyncio.wait_for(self._startup_event.wait(), STARTUP_TIMEOUT)
         except TimeoutError:
             _LOGGER.warning(
                 "Timeout while waiting for addon %s to start, took more than %s seconds",
@@ -1120,7 +1119,7 @@ class Addon(AddonModel):
         except asyncio.CancelledError as err:
             _LOGGER.info("Wait for addon startup task cancelled due to: %s", err)
         finally:
-            self._startup_task = None
+            self._wait_for_startup_task = None
 
     @Job(
         name="addon_start",
@@ -1136,7 +1135,8 @@ class Addon(AddonModel):
         """
         if await self.instance.is_running():
             _LOGGER.warning("%s is already running!", self.slug)
-            return self.sys_create_task(self._wait_for_startup())
+            self._wait_for_startup_task = self.sys_create_task(self._wait_for_startup())
+            return self._wait_for_startup_task
 
         # Access Token
         self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
@@ -1176,7 +1176,8 @@ class Addon(AddonModel):
             self.state = AddonState.ERROR
             raise AddonUnknownError(addon=self.slug) from err
 
-        return self.sys_create_task(self._wait_for_startup())
+        self._wait_for_startup_task = self.sys_create_task(self._wait_for_startup())
+        return self._wait_for_startup_task
 
     @Job(
         name="addon_stop",
