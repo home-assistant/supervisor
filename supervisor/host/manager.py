@@ -11,7 +11,13 @@ from awesomeversion import AwesomeVersion
 
 from ..const import BusEvent, CoreState
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import DBusError, HassioError, HostLogError, PulseAudioError
+from ..exceptions import (
+    DBusError,
+    DBusNotConnectedError,
+    HassioError,
+    HostLogError,
+    PulseAudioError,
+)
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from .apparmor import AppArmorControl
@@ -195,7 +201,7 @@ class HostManager(CoreSysAttributes):
             self._shutdown_monitor_task.cancel()
             with suppress(asyncio.CancelledError):
                 await self._shutdown_monitor_task
-            self._shutdown_monitor_task = None
+        self._shutdown_monitor_task = None
 
     async def _monitor_host_shutdown(self) -> None:
         """Monitor for host shutdown via logind PrepareForShutdown signal.
@@ -211,7 +217,7 @@ class HostManager(CoreSysAttributes):
                 "Gracefully stopping running services",
                 "delay",
             )
-        except DBusError as err:
+        except (DBusError, DBusNotConnectedError) as err:
             _LOGGER.warning(
                 "Could not take shutdown inhibitor lock from logind: %s", err
             )
@@ -240,7 +246,7 @@ class HostManager(CoreSysAttributes):
                     )
                     await self.sys_core.shutdown()
                     break
-        except (DBusError, OSError) as err:
+        except (DBusError, DBusNotConnectedError, OSError) as err:
             _LOGGER.warning("Error monitoring host shutdown signal: %s", err)
         finally:
             if isinstance(inhibit_fd, int):
