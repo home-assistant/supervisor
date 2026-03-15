@@ -58,14 +58,22 @@ from ..exceptions import (
     BackupInvalidError,
     BackupPermissionError,
 )
+from ..homeassistant.const import LANDINGPAGE
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
-from ..utils import remove_folder
+from ..utils import remove_folder, version_is_new_enough
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
 from ..utils.sentinel import DEFAULT
-from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, SECURETAR_CREATE_VERSION, BackupType
+from .const import (
+    BUF_SIZE,
+    CORE_SECURETAR_V3_MIN_VERSION,
+    LOCATION_CLOUD_BACKUP,
+    SECURETAR_CREATE_VERSION,
+    SECURETAR_V3_CREATE_VERSION,
+    BackupType,
+)
 from .validate import SCHEMA_BACKUP
 
 IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
@@ -320,7 +328,8 @@ class Backup(JobGroup):
         # Add defaults
         self._data = SCHEMA_BACKUP(self._data)
 
-        # Set password
+        # Set password - intentionally using truthiness check so that empty
+        # string is treated as no password, consistent with set_password().
         if password:
             self._password = password
             self._data[ATTR_PROTECTED] = True
@@ -331,8 +340,13 @@ class Backup(JobGroup):
             self._data[ATTR_COMPRESSED] = False
 
     def set_password(self, password: str | None) -> None:
-        """Set the password for an existing backup."""
-        self._password = password
+        """Set the password for an existing backup.
+
+        Treat empty string as None to stay consistent with backup creation
+        and Supervisor behavior before #6402, independent of SecureTar
+        behavior in this regard.
+        """
+        self._password = password or None
 
     async def validate_backup(self, location: str | None) -> None:
         """Validate backup.
@@ -438,6 +452,15 @@ class Backup(JobGroup):
     @asynccontextmanager
     async def create(self) -> AsyncGenerator[None]:
         """Create new backup file."""
+        core_version = self.sys_homeassistant.version
+        if (
+            core_version is not None
+            and core_version != LANDINGPAGE
+            and version_is_new_enough(core_version, CORE_SECURETAR_V3_MIN_VERSION)
+        ):
+            securetar_version = SECURETAR_V3_CREATE_VERSION
+        else:
+            securetar_version = SECURETAR_CREATE_VERSION
 
         def _open_outer_tarfile() -> SecureTarArchive:
             """Create and open outer tarfile."""
@@ -451,7 +474,7 @@ class Backup(JobGroup):
                 self.tarfile,
                 "w",
                 bufsize=BUF_SIZE,
-                create_version=SECURETAR_CREATE_VERSION,
+                create_version=securetar_version,
                 password=self._password,
             )
             try:

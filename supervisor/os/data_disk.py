@@ -57,7 +57,7 @@ class Disk:
     @staticmethod
     def from_udisks2_drive(
         drive: UDisks2Drive, drive_block_device: UDisks2Block
-    ) -> "Disk":
+    ) -> Disk:
         """Convert UDisks2Drive into a Disk object."""
         return Disk(
             vendor=drive.vendor,

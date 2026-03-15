@@ -16,6 +16,7 @@ DEFAULT_LOG_RANGE_FOLLOW = "entries=:-99:18446744073709551615"
 async def _common_test_api_advanced_logs(
     path_prefix: str,
     syslog_identifier: str,
+    formatter: LogFormatter,
     api_client: TestClient,
     journald_logs: MagicMock,
     coresys: CoreSys,
@@ -32,7 +33,7 @@ async def _common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.PLAIN, False)
+    journal_logs_reader.assert_called_with(ANY, formatter, False)
 
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()
@@ -46,7 +47,7 @@ async def _common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.PLAIN, True)
+    journal_logs_reader.assert_called_with(ANY, formatter, True)
 
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()
@@ -60,7 +61,7 @@ async def _common_test_api_advanced_logs(
         range_header=DEFAULT_LOG_RANGE_FOLLOW,
         accept=LogFormat.JOURNAL,
     )
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.PLAIN, False)
+    journal_logs_reader.assert_called_with(ANY, formatter, False)
 
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()
@@ -86,7 +87,7 @@ async def _common_test_api_advanced_logs(
     assert logs_call[1]["params"]["SYSLOG_IDENTIFIER"] == syslog_identifier
     assert logs_call[1]["params"]["CONTAINER_LOG_EPOCH"] == "12345"
     assert logs_call[1]["range_header"] == "entries=:0:18446744073709551615"
-    journal_logs_reader.assert_called_with(ANY, LogFormatter.PLAIN, True)
+    journal_logs_reader.assert_called_with(ANY, formatter, True)
 
     journald_logs.reset_mock()
     journal_logs_reader.reset_mock()
@@ -125,7 +126,7 @@ async def advanced_logs_tester(
     coresys: CoreSys,
     os_available,
     journal_logs_reader: MagicMock,
-) -> Callable[[str, str], Awaitable[None]]:
+) -> Callable[..., Awaitable[None]]:
     """Fixture that returns a function to test advanced logs endpoints.
 
     This allows tests to avoid explicitly passing all the required fixtures.
@@ -135,10 +136,15 @@ async def advanced_logs_tester(
             await advanced_logs_tester("/path/prefix", "syslog_identifier")
     """
 
-    async def test_logs(path_prefix: str, syslog_identifier: str):
+    async def test_logs(
+        path_prefix: str,
+        syslog_identifier: str,
+        formatter: LogFormatter = LogFormatter.PLAIN,
+    ):
         await _common_test_api_advanced_logs(
             path_prefix,
             syslog_identifier,
+            formatter,
             api_client,
             journald_logs,
             coresys,

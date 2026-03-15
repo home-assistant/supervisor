@@ -14,11 +14,8 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 ARCH_JSON: Path = Path(__file__).parent.joinpath("data/arch.json")
 
 MAP_CPU: dict[str, CpuArch] = {
-    "armv7": CpuArch.ARMV7,
-    "armv6": CpuArch.ARMHF,
     "armv8": CpuArch.AARCH64,
     "aarch64": CpuArch.AARCH64,
-    "i686": CpuArch.I386,
     "x86_64": CpuArch.AMD64,
 }
 
@@ -64,11 +61,12 @@ class CpuArchManager(CoreSysAttributes):
         if not self.sys_machine or self.sys_machine not in arch_data:
             _LOGGER.warning("Can't detect the machine type!")
             self._default_arch = native_support
-            self._supported_arch.append(self.default)
+            self._supported_arch = [self.default]
+            self._supported_set = {self.default}
             return
 
         # Use configs from arch.json
-        self._supported_arch.extend(CpuArch(a) for a in arch_data[self.sys_machine])
+        self._supported_arch = [CpuArch(a) for a in arch_data[self.sys_machine]]
         self._default_arch = self.supported[0]
 
         # Make sure native support is in supported list

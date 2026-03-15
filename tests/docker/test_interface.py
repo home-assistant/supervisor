@@ -34,10 +34,7 @@ from tests.common import AsyncIterator, load_json_fixture
 @pytest.mark.parametrize(
     "cpu_arch, platform",
     [
-        (CpuArch.ARMV7, "linux/arm/v7"),
-        (CpuArch.ARMHF, "linux/arm/v6"),
         (CpuArch.AARCH64, "linux/arm64"),
-        (CpuArch.I386, "linux/386"),
         (CpuArch.AMD64, "linux/amd64"),
     ],
 )
@@ -63,14 +60,14 @@ async def test_docker_image_default_platform(
     coresys.docker.images.inspect.return_value = {"Id": "test:1.2.3"}
     with (
         patch.object(
-            type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
+            type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
         ),
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
             "test",
             tag="1.2.3",
-            platform="linux/386",
+            platform="linux/amd64",
             auth=None,
             stream=True,
             timeout=None,
@@ -349,14 +346,14 @@ async def test_install_fires_progress_events(
 
     with (
         patch.object(
-            type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
+            type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
         ),
     ):
         await test_docker_interface.install(AwesomeVersion("1.2.3"), "test")
         coresys.docker.images.pull.assert_called_once_with(
             "test",
             tag="1.2.3",
-            platform="linux/386",
+            platform="linux/amd64",
             auth=None,
             stream=True,
             timeout=None,
@@ -567,7 +564,7 @@ async def test_install_progress_handles_download_restart(
 
     with (
         patch.object(
-            type(coresys.supervisor), "arch", PropertyMock(return_value="i386")
+            type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
         ),
     ):
         # Schedule job so we can listen for the end. Then we can assert against the WS mock
@@ -805,7 +802,7 @@ async def test_install_progress_containerd_snapshot(
         async def mock_install(self) -> None:
             """Mock install."""
             await super().install(
-                AwesomeVersion("1.2.3"), image="test", arch=CpuArch.I386
+                AwesomeVersion("1.2.3"), image="test", arch=CpuArch.AMD64
             )
 
     # Fixture emulates log as received when using containerd snapshotter
@@ -814,12 +811,12 @@ async def test_install_progress_containerd_snapshot(
     coresys.docker.images.pull.return_value = AsyncIterator(logs)
     test_docker_interface = TestDockerInterface(coresys)
 
-    with patch.object(Supervisor, "arch", PropertyMock(return_value="i386")):
+    with patch.object(Supervisor, "arch", PropertyMock(return_value="amd64")):
         await test_docker_interface.mock_install()
         coresys.docker.images.pull.assert_called_once_with(
             "test",
             tag="1.2.3",
-            platform="linux/386",
+            platform="linux/amd64",
             auth=None,
             stream=True,
             timeout=None,

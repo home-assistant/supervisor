@@ -50,10 +50,7 @@ from .stats import DockerStats
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 MAP_ARCH: dict[CpuArch, str] = {
-    CpuArch.ARMV7: "linux/arm/v7",
-    CpuArch.ARMHF: "linux/arm/v6",
     CpuArch.AARCH64: "linux/arm64",
-    CpuArch.I386: "linux/386",
     CpuArch.AMD64: "linux/amd64",
 }
 

@@ -72,7 +72,7 @@ class UDisks2Block(DBusInterfaceProxy):
     @staticmethod
     async def new(
         object_path: str, bus: MessageBus, *, sync_properties: bool = True
-    ) -> "UDisks2Block":
+    ) -> UDisks2Block:
         """Create and connect object."""
         obj = UDisks2Block(object_path, sync_properties=sync_properties)
         await obj.connect(bus)

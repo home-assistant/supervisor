@@ -208,9 +208,10 @@ class APIHost(CoreSysAttributes):
         follow: bool = False,
         latest: bool = False,
         no_colors: bool = False,
+        default_verbose: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs."""
-        log_formatter = LogFormatter.PLAIN
+        log_formatter = LogFormatter.VERBOSE if default_verbose else LogFormatter.PLAIN
         params: dict[str, Any] = {}
         if identifier:
             params[PARAM_SYSLOG_IDENTIFIER] = identifier
@@ -218,8 +219,6 @@ class APIHost(CoreSysAttributes):
             params[PARAM_SYSLOG_IDENTIFIER] = request.match_info[IDENTIFIER]
         else:
             params[PARAM_SYSLOG_IDENTIFIER] = self.sys_host.logs.default_identifiers
-            # host logs should be always verbose, no matter what Accept header is used
-            log_formatter = LogFormatter.VERBOSE
 
         if BOOTID in request.match_info:
             params[PARAM_BOOT_ID] = await self._get_boot_id(request.match_info[BOOTID])
@@ -328,10 +327,11 @@ class APIHost(CoreSysAttributes):
         follow: bool = False,
         latest: bool = False,
         no_colors: bool = False,
+        default_verbose: bool = False,
     ) -> web.StreamResponse:
         """Return systemd-journald logs. Wrapped as standard API handler."""
         return await self.advanced_logs_handler(
-            request, identifier, follow, latest, no_colors
+            request, identifier, follow, latest, no_colors, default_verbose
         )
 
     @api_process

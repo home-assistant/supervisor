@@ -12,7 +12,7 @@ from typing import Any
 from awesomeversion import AwesomeVersion, AwesomeVersionException
 
 from ..const import (
-    ATTR_ADVANCED,
+    ARCH_DEPRECATED,
     ATTR_APPARMOR,
     ATTR_ARCH,
     ATTR_AUDIO,
@@ -78,6 +78,7 @@ from ..const import (
     ATTR_VIDEO,
     ATTR_WATCHDOG,
     ATTR_WEBUI,
+    MACHINE_DEPRECATED,
     SECURITY_DEFAULT,
     SECURITY_DISABLE,
     SECURITY_PROFILE,
@@ -94,6 +95,7 @@ from ..exceptions import (
     AddonNotSupportedError,
     AddonNotSupportedHomeAssistantVersionError,
     AddonNotSupportedMachineTypeError,
+    HassioArchNotFound,
 )
 from ..jobs.const import JOB_GROUP_ADDON
 from ..jobs.job_group import JobGroup
@@ -252,8 +254,10 @@ class AddonModel(JobGroup, ABC):
 
     @property
     def advanced(self) -> bool:
-        """Return advanced mode of add-on."""
-        return self.data[ATTR_ADVANCED]
+        """Return False; advanced mode is deprecated and no longer supported."""
+        # Deprecated since Supervisor 2026.03.0; always returns False and can be
+        # removed once that version is the minimum supported.
+        return False
 
     @property
     def stage(self) -> AddonStage:
@@ -543,6 +547,35 @@ class AddonModel(JobGroup, ABC):
         return self.data[ATTR_ARCH]
 
     @property
+    def has_deprecated_arch(self) -> bool:
+        """Return True if add-on includes deprecated architectures."""
+        return any(arch in ARCH_DEPRECATED for arch in self.supported_arch)
+
+    @property
+    def has_supported_arch(self) -> bool:
+        """Return True if add-on supports any architecture on this system."""
+        return self.sys_arch.is_supported(self.supported_arch)
+
+    @property
+    def has_deprecated_machine(self) -> bool:
+        """Return True if add-on includes deprecated machine entries."""
+        return any(
+            machine.lstrip("!") in MACHINE_DEPRECATED
+            for machine in self.supported_machine
+        )
+
+    @property
+    def has_supported_machine(self) -> bool:
+        """Return True if add-on supports this machine."""
+        if not (machine_types := self.supported_machine):
+            return True
+
+        return (
+            f"!{self.sys_machine}" not in machine_types
+            and self.sys_machine in machine_types
+        )
+
+    @property
     def supported_machine(self) -> list[str]:
         """Return list of supported machine."""
         return self.data.get(ATTR_MACHINE, [])
@@ -550,10 +583,7 @@ class AddonModel(JobGroup, ABC):
     @property
     def arch(self) -> CpuArch:
         """Return architecture to use for the addon's image."""
-        if ATTR_IMAGE in self.data:
-            return self.sys_arch.match(self.data[ATTR_ARCH])
-
-        return self.sys_arch.default
+        return self.sys_arch.match(self.data[ATTR_ARCH])
 
     @property
     def image(self) -> str | None:
@@ -721,8 +751,12 @@ class AddonModel(JobGroup, ABC):
         """Generate image name from data."""
         # Repository with Dockerhub images
         if ATTR_IMAGE in config:
-            arch = self.sys_arch.match(config[ATTR_ARCH])
+            try:
+                arch = self.sys_arch.match(config[ATTR_ARCH])
+            except HassioArchNotFound:
+                arch = self.sys_arch.default
             return config[ATTR_IMAGE].format(arch=arch)
 
         # local build
-        return f"{config[ATTR_REPOSITORY]}/{self.sys_arch.default!s}-addon-{config[ATTR_SLUG]}"
+        arch = self.sys_arch.match(config[ATTR_ARCH])
+        return f"{config[ATTR_REPOSITORY]}/{arch!s}-addon-{config[ATTR_SLUG]}"

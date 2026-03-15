@@ -32,7 +32,7 @@ class DBusStrEnum(StrEnum):
     """StrEnum that tolerates unknown values from D-Bus."""
 
     @classmethod
-    def _missing_(cls, value: object) -> "DBusStrEnum | None":
+    def _missing_(cls, value: object) -> DBusStrEnum | None:
         if not isinstance(value, str):
             return None
         _report_unknown_value(cls, value)
@@ -46,7 +46,7 @@ class DBusIntEnum(IntEnum):
     """IntEnum that tolerates unknown values from D-Bus."""
 
     @classmethod
-    def _missing_(cls, value: object) -> "DBusIntEnum | None":
+    def _missing_(cls, value: object) -> DBusIntEnum | None:
         if not isinstance(value, int):
             return None
         _report_unknown_value(cls, value)

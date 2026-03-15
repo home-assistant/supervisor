@@ -52,7 +52,7 @@ class SlotStatus:
     parent: str | None = None
 
     @classmethod
-    def from_dict(cls, data: SlotStatusDataType) -> "SlotStatus":
+    def from_dict(cls, data: SlotStatusDataType) -> SlotStatus:
         """Create SlotStatus from dictionary."""
         return cls(
             class_=data["class"],
