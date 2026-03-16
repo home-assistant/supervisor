@@ -43,6 +43,7 @@ class Core(CoreSysAttributes):
         self._state: CoreState = CoreState.INITIALIZE
         self.exit_code: int = 0
         self._shutdown_event: asyncio.Event = asyncio.Event()
+        self._startup_complete: asyncio.Event = asyncio.Event()
 
     @property
     def state(self) -> CoreState:
@@ -82,6 +83,9 @@ class Core(CoreSysAttributes):
 
         self._state = new_state
         await self._write_run_state()
+
+        if self._state == CoreState.RUNNING:
+            self._startup_complete.set()
 
         # Don't attempt to notify anyone on CLOSE as we're about to stop the event loop
         if self._state != CoreState.CLOSE:
@@ -361,6 +365,12 @@ class Core(CoreSysAttributes):
         Reentrant: if a shutdown is already in progress, subsequent calls
         await completion of the existing shutdown rather than starting a second one.
         """
+        if self.state in STARTING_STATES:
+            _LOGGER.debug(
+                "Shutdown requested while Supervisor is still starting up, waiting for startup to complete"
+            )
+            await self._startup_complete.wait()
+
         # Supervisor is already tearing down, no point running shutdown
         if self.state in (CoreState.STOPPING, CoreState.CLOSE):
             _LOGGER.warning("Ignoring shutdown request, Supervisor is already stopping")
