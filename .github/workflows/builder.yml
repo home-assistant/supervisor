@@ -73,7 +73,7 @@ jobs:
       - name: Get changed files
         id: changed_files
         if: github.event_name == 'pull_request' || github.event_name == 'push'
-        uses: masesgroup/retrieve-changed-files@491e80760c0e28d36ca6240a27b1ccb8e1402c13 # v3.0.0
+        uses: masesgroup/retrieve-changed-files@45a8b3b496d2d6037cbd553e8a3450989b9384a2 # v4.0.0
 
       - name: Check if requirements files changed
         id: requirements
