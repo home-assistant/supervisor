@@ -1,7 +1,8 @@
 """Test host manager."""
 
 import asyncio
-from unittest.mock import patch
+import os
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 from awesomeversion import AwesomeVersion
 import pytest
@@ -9,6 +10,7 @@ import pytest
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.dbus.const import MulticastProtocolEnabled
+from supervisor.exceptions import DBusError
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.logind import Logind as LogindService
@@ -131,3 +133,97 @@ async def test_host_shutdown_signal_reentrant(
         # shutdown() is called reentrantly - it awaits the in-progress shutdown
         async with asyncio.timeout(2):
             await shutdown_called.wait()
+
+
+async def test_host_unload_cancels_monitor_task(
+    coresys: CoreSys, logind_service: LogindService
+):
+    """Test unload cancels the shutdown monitor task."""
+    await coresys.host.load()
+    await asyncio.sleep(0.1)
+
+    assert coresys.host._shutdown_monitor_task is not None
+    assert not coresys.host._shutdown_monitor_task.done()
+
+    await coresys.host.unload()
+
+    assert coresys.host._shutdown_monitor_task is None
+
+
+async def test_host_unload_no_monitor_task(coresys: CoreSys):
+    """Test unload when no monitor task was started."""
+    # Don't call load(), so no monitor task exists
+    assert coresys.host._shutdown_monitor_task is None
+    await coresys.host.unload()
+    assert coresys.host._shutdown_monitor_task is None
+
+
+async def test_monitor_inhibit_lock_failure(
+    coresys: CoreSys,
+    logind_service: LogindService,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test monitor task logs warning when inhibit lock fails."""
+    with patch.object(
+        coresys.dbus.logind, "inhibit", side_effect=DBusError("test error")
+    ):
+        await coresys.host.load()
+        await asyncio.sleep(0.1)
+
+    assert "Could not take shutdown inhibitor lock from logind" in caplog.text
+
+
+async def test_monitor_dbus_error_during_signal_wait(
+    coresys: CoreSys,
+    logind_service: LogindService,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test monitor task handles D-Bus errors during signal monitoring."""
+    with patch.object(
+        coresys.dbus.logind,
+        "prepare_for_shutdown",
+        side_effect=DBusError("connection lost"),
+    ):
+        await coresys.host.load()
+        await asyncio.sleep(0.1)
+
+    assert "Error monitoring host shutdown signal" in caplog.text
+
+
+async def test_inhibitor_lock_released_after_shutdown(
+    coresys: CoreSys,
+    logind_service: LogindService,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test that the inhibitor lock FD is closed after shutdown completes."""
+    # Mock inhibit to return a real FD (session bus doesn't negotiate unix FDs)
+    r_fd, w_fd = os.pipe()
+    os.close(w_fd)
+
+    with patch.object(
+        coresys.dbus.logind, "inhibit", new_callable=AsyncMock, return_value=r_fd
+    ):
+        await coresys.host.load()
+        await asyncio.sleep(0.1)
+
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(coresys.core, "shutdown", new_callable=AsyncMock):
+        logind_service.PrepareForShutdown()
+        await logind_service.ping()
+        await asyncio.sleep(0.2)
+
+    assert "Shutdown inhibitor lock released" in caplog.text
+
+
+async def test_no_monitor_task_without_logind(coresys: CoreSys):
+    """Test no monitor task is started when logind is not connected."""
+    with patch.object(
+        type(coresys.dbus.logind),
+        "is_connected",
+        new_callable=PropertyMock,
+        return_value=False,
+    ):
+        await coresys.host.load()
+
+    assert coresys.host._shutdown_monitor_task is None

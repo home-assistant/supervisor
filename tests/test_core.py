@@ -1,6 +1,7 @@
 """Testing handling with CoreState."""
 
 # pylint: disable=W0212
+import asyncio
 import datetime
 import errno
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -146,3 +147,67 @@ async def test_write_state_failure(
 
     assert "Can't update the Supervisor state" in caplog.text
     assert coresys.core.state == CoreState.RUNNING
+
+
+async def test_shutdown_reentrant_waits(coresys: CoreSys):
+    """Test that concurrent shutdown calls wait for the first to complete."""
+    call_count = 0
+    shutdown_started = asyncio.Event()
+    proceed = asyncio.Event()
+
+    original_shutdown = coresys.addons.shutdown
+
+    async def slow_addon_shutdown(startup):
+        nonlocal call_count
+        call_count += 1
+        shutdown_started.set()
+        await proceed.wait()
+        return await original_shutdown(startup)
+
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    with patch.object(coresys.addons, "shutdown", side_effect=slow_addon_shutdown):
+        # Start first shutdown
+        task1 = asyncio.create_task(coresys.core.shutdown())
+        await shutdown_started.wait()
+
+        # Second call should wait, not start a new shutdown
+        task2 = asyncio.create_task(coresys.core.shutdown())
+        await asyncio.sleep(0.05)
+
+        # Let the shutdown proceed
+        proceed.set()
+
+        await asyncio.gather(task1, task2)
+
+    # Addon shutdown was only called by the first shutdown (4 startup levels)
+    assert call_count == 4
+    assert coresys.core._shutdown_event.is_set()
+
+
+async def test_shutdown_event_reset_between_cycles(coresys: CoreSys):
+    """Test that shutdown event is reset for repeated shutdown cycles (e.g. backup restore)."""
+    await coresys.core.set_state(CoreState.FREEZE)
+
+    # First shutdown cycle
+    await coresys.core.shutdown()
+    assert coresys.core._shutdown_event.is_set()
+
+    # Simulate backup restore returning to RUNNING
+    await coresys.core.set_state(CoreState.RUNNING)
+
+    # Second shutdown cycle should work (event was cleared)
+    second_entered = False
+
+    original_shutdown = coresys.addons.shutdown
+
+    async def track_addon_shutdown(startup):
+        nonlocal second_entered
+        second_entered = True
+        return await original_shutdown(startup)
+
+    with patch.object(coresys.addons, "shutdown", side_effect=track_addon_shutdown):
+        await coresys.core.shutdown()
+
+    assert second_entered
+    assert coresys.core._shutdown_event.is_set()
