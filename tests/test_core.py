@@ -211,3 +211,19 @@ async def test_shutdown_event_reset_between_cycles(coresys: CoreSys):
 
     assert second_entered
     assert coresys.core._shutdown_event.is_set()
+
+
+@pytest.mark.parametrize(
+    "state", [CoreState.STOPPING, CoreState.CLOSE], ids=["stopping", "close"]
+)
+async def test_shutdown_ignored_during_stop(
+    coresys: CoreSys, caplog: pytest.LogCaptureFixture, state: CoreState
+):
+    """Test that shutdown is ignored when Supervisor is already stopping."""
+    await coresys.core.set_state(state)
+
+    with patch.object(coresys.addons, "shutdown") as mock_addon_shutdown:
+        await coresys.core.shutdown()
+
+    mock_addon_shutdown.assert_not_called()
+    assert "Ignoring shutdown request, Supervisor is already stopping" in caplog.text

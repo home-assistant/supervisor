@@ -315,6 +315,9 @@ class Core(CoreSysAttributes):
         # don't process scheduler anymore
         await self.set_state(CoreState.STOPPING)
 
+        # Cancel shutdown monitor task before tearing down infrastructure
+        await self.sys_host.unload()
+
         # Stage 1
         try:
             async with asyncio.timeout(10):
@@ -341,7 +344,6 @@ class Core(CoreSysAttributes):
                             self.sys_websession.close(),
                             self.sys_ingress.unload(),
                             self.sys_hardware.unload(),
-                            self.sys_host.unload(),
                             self.sys_dbus.unload(),
                         )
                     ]
@@ -359,7 +361,13 @@ class Core(CoreSysAttributes):
         Reentrant: if a shutdown is already in progress, subsequent calls
         await completion of the existing shutdown rather than starting a second one.
         """
-        if self.state in (CoreState.SHUTDOWN, CoreState.STOPPING, CoreState.CLOSE):
+        # Supervisor is already tearing down, no point running shutdown
+        if self.state in (CoreState.STOPPING, CoreState.CLOSE):
+            _LOGGER.warning("Ignoring shutdown request, Supervisor is already stopping")
+            return
+
+        # Another shutdown is in progress, wait for it to complete
+        if self.state == CoreState.SHUTDOWN:
             await self._shutdown_event.wait()
             return
 
