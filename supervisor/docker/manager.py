@@ -6,7 +6,6 @@ import asyncio
 from collections.abc import Mapping
 from contextlib import suppress
 from dataclasses import dataclass
-import errno
 from http import HTTPStatus
 from io import BufferedReader, BufferedWriter
 from ipaddress import IPv4Address
@@ -47,7 +46,6 @@ from ..exceptions import (
     DockerNotFound,
     DockerRequestError,
 )
-from ..resolution.const import UnhealthyReason
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
 from .const import (
@@ -1015,10 +1013,7 @@ class DockerAPI(CoreSysAttributes):
                 f"Can't import image from tar: {err}", _LOGGER.error
             ) from err
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             raise DockerError(
                 f"Can't read tar file {tar_file}: {err}", _LOGGER.error
             ) from err
@@ -1071,10 +1066,7 @@ class DockerAPI(CoreSysAttributes):
                 f"Can't fetch image {image}:{version}: {err}", _LOGGER.error
             ) from err
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             raise DockerError(
                 f"Can't write tar file {tar_file}: {err}", _LOGGER.error
             ) from err

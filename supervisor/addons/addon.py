@@ -5,7 +5,6 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from copy import deepcopy
 from datetime import datetime
-import errno
 from functools import partial
 from ipaddress import IPv4Address
 import logging
@@ -89,7 +88,7 @@ from ..hardware.data import Device
 from ..homeassistant.const import WSEvent
 from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..resolution.data import Issue
 from ..store.addon import AddonStore
 from ..utils import check_port
@@ -1027,10 +1026,7 @@ class Addon(AddonModel):
         try:
             await self.sys_run_in_executor(write_pulse_config)
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             _LOGGER.error(
                 "Add-on %s can't write pulse/client.config: %s", self.slug, err
             )

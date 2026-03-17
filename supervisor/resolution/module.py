@@ -1,5 +1,6 @@
 """Supervisor resolution center."""
 
+import errno
 import logging
 from typing import Any
 
@@ -152,6 +153,19 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
                 WSEvent.HEALTH_CHANGED,
                 attr.asdict(HealthChanged(False, self.unhealthy)),
             )
+
+    _OSERROR_UNHEALTHY_REASONS: dict[int, UnhealthyReason] = {
+        errno.EBADMSG: UnhealthyReason.OSERROR_BAD_MESSAGE,
+    }
+
+    def check_oserror(self, err: OSError) -> None:
+        """Check OSError for known filesystem issues and mark system unhealthy.
+
+        Must only be used on OSErrors that are caused by file operation on a
+        local path.
+        """
+        if err.errno in self._OSERROR_UNHEALTHY_REASONS:
+            self.add_unhealthy_reason(self._OSERROR_UNHEALTHY_REASONS[err.errno])
 
     def _make_issue_message(self, issue: Issue) -> dict[str, Any]:
         """Make issue into message for core."""
