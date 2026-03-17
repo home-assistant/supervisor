@@ -1,7 +1,6 @@
 """Init file for Supervisor add-on Git."""
 
 import asyncio
-import errno
 import functools as ft
 import logging
 from pathlib import Path
@@ -13,7 +12,7 @@ from ..const import ATTR_BRANCH, ATTR_URL
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import StoreGitCloneError, StoreGitError, StoreJobError
 from ..jobs.decorator import Job, JobCondition
-from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils import directory_missing_or_empty, remove_folder
 from .validate import RE_REPOSITORY
 
@@ -112,10 +111,7 @@ class GitRepo(CoreSysAttributes):
                 try:
                     await self.sys_run_in_executor(move_clone)
                 except OSError as err:
-                    if err.errno == errno.EBADMSG:
-                        self.sys_resolution.add_unhealthy_reason(
-                            UnhealthyReason.OSERROR_BAD_MESSAGE
-                        )
+                    self.sys_resolution.check_oserror(err)
                     raise StoreGitCloneError(
                         f"Can't move clone due to: {err!s}", _LOGGER.error
                     ) from err
