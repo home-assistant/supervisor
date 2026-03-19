@@ -22,7 +22,7 @@ from ..exceptions import (
 from ..jobs import ChildJobSyncFilter
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
-from ..resolution.const import ContextType, IssueType, SuggestionType
+from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
 from ..store.addon import AddonStore
 from ..utils.sentry import async_capture_exception
 from .addon import Addon
@@ -109,6 +109,17 @@ class AddonManager(CoreSysAttributes):
         tasks: list[Addon] = []
         for addon in self.installed:
             if addon.boot != AddonBoot.AUTO or addon.startup != stage:
+                continue
+            if (
+                addon.host_network
+                and UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED
+                in self.sys_resolution.unhealthy
+            ):
+                _LOGGER.warning(
+                    "Skipping boot of add-on %s because gateway firewall"
+                    " rules are not active",
+                    addon.slug,
+                )
                 continue
             tasks.append(addon)
 
