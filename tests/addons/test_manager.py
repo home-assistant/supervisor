@@ -27,7 +27,12 @@ from supervisor.exceptions import (
     DockerNotFound,
 )
 from supervisor.plugins.dns import PluginDns
-from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+)
 from supervisor.resolution.data import Issue, Suggestion
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import RepositoryLocal
@@ -126,6 +131,41 @@ async def test_image_added_removed_on_update(
         await coresys.addons.update(TEST_ADDON_SLUG)
         build.assert_called_once_with(AwesomeVersion("11.0.0"), "local/amd64-addon-ssh")
         install.assert_not_called()
+
+
+async def test_addon_boot_skip_host_network_gateway_unprotected(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test host network add-ons are skipped when gateway is unprotected."""
+    install_addon_ssh.boot = AddonBoot.AUTO
+    coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED)
+    with (
+        patch.object(
+            type(install_addon_ssh), "host_network", new=PropertyMock(return_value=True)
+        ),
+        patch.object(Addon, "start") as start,
+    ):
+        await coresys.addons.boot(AddonStartup.APPLICATION)
+        start.assert_not_called()
+
+
+async def test_addon_boot_host_network_gateway_protected(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test host network add-ons boot normally when gateway is protected."""
+    install_addon_ssh.boot = AddonBoot.AUTO
+    assert (
+        UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED not in coresys.resolution.unhealthy
+    )
+    with (
+        patch.object(
+            type(install_addon_ssh), "host_network", new=PropertyMock(return_value=True)
+        ),
+        patch.object(Addon, "start", return_value=asyncio.Future()) as start,
+    ):
+        start.return_value.set_result(None)
+        await coresys.addons.boot(AddonStartup.APPLICATION)
+        start.assert_called_once()
 
 
 @pytest.mark.parametrize("err", [DockerAPIError, DockerNotFound])

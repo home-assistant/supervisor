@@ -65,6 +65,7 @@ class UnhealthyReason(StrEnum):
     """Reasons for unsupported status."""
 
     DOCKER = "docker"
+    DOCKER_GATEWAY_UNPROTECTED = "docker_gateway_unprotected"
     DUPLICATE_OS_INSTALLATION = "duplicate_os_installation"
     OSERROR_BAD_MESSAGE = "oserror_bad_message"
     PRIVILEGED = "privileged"
