@@ -473,6 +473,18 @@ async def fixture_all_dbus_services(
     )
 
 
+@pytest.fixture(autouse=True)
+def _mock_firewall():
+    """Mock out firewall rules by default to avoid dbus signal timeouts."""
+    patcher = patch(
+        "supervisor.host.firewall.FirewallManager.apply_gateway_firewall_rules",
+        new_callable=AsyncMock,
+    )
+    patcher.start()
+    yield patcher
+    patcher.stop()
+
+
 @pytest.fixture
 async def coresys(
     docker: DockerAPI,

@@ -2,6 +2,7 @@
 
 from functools import wraps
 import logging
+from typing import NamedTuple
 
 from dbus_fast import Variant
 from dbus_fast.aio.message_bus import MessageBus
@@ -34,6 +35,14 @@ from .interface import DBusInterface, DBusInterfaceProxy, dbus_property
 from .utils import dbus_connected
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+class ExecStartEntry(NamedTuple):
+    """Systemd ExecStart entry for transient units (D-Bus type signature 'sasb')."""
+
+    binary: str
+    argv: list[str]
+    ignore_failure: bool
 
 
 def systemd_errors(func):
