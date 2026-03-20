@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import errno
 from io import BufferedWriter
 import logging
 from pathlib import Path
@@ -50,7 +49,6 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound
 from ..mounts.const import MountUsage
-from ..resolution.const import UnhealthyReason
 from .const import (
     ATTR_ADDITIONAL_LOCATIONS,
     ATTR_BACKGROUND,
@@ -518,13 +516,8 @@ class APIBackups(CoreSysAttributes):
                 )
             )
         except OSError as err:
-            if err.errno == errno.EBADMSG and location in {
-                LOCATION_CLOUD_BACKUP,
-                None,
-            }:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            if location in {LOCATION_CLOUD_BACKUP, None}:
+                self.sys_resolution.check_oserror(err)
             _LOGGER.error("Can't write new backup file: %s", err)
             return False
 

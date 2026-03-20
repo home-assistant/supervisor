@@ -1,7 +1,6 @@
 """Home Assistant control object."""
 
 import asyncio
-import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path, PurePath
@@ -47,7 +46,6 @@ from ..exceptions import (
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from ..jobs.decorator import Job
-from ..resolution.const import UnhealthyReason
 from ..utils import remove_folder, remove_folder_with_excludes
 from ..utils.common import FileConfiguration
 from ..utils.json import read_json_file, write_json_file
@@ -340,10 +338,7 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         try:
             await self.sys_run_in_executor(write_pulse_config)
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             _LOGGER.error("Home Assistant can't write pulse/client.config: %s", err)
         else:
             _LOGGER.info("Update pulse/client.config: %s", self.path_pulse)
