@@ -42,6 +42,8 @@ class Core(CoreSysAttributes):
         self.coresys: CoreSys = coresys
         self._state: CoreState = CoreState.INITIALIZE
         self.exit_code: int = 0
+        self._shutdown_event: asyncio.Event = asyncio.Event()
+        self._startup_complete: asyncio.Event = asyncio.Event()
 
     @property
     def state(self) -> CoreState:
@@ -81,6 +83,9 @@ class Core(CoreSysAttributes):
 
         self._state = new_state
         await self._write_run_state()
+
+        if self._state == CoreState.RUNNING:
+            self._startup_complete.set()
 
         # Don't attempt to notify anyone on CLOSE as we're about to stop the event loop
         if self._state != CoreState.CLOSE:
@@ -314,6 +319,9 @@ class Core(CoreSysAttributes):
         # don't process scheduler anymore
         await self.set_state(CoreState.STOPPING)
 
+        # Cancel shutdown monitor task before tearing down infrastructure
+        await self.sys_host.unload()
+
         # Stage 1
         try:
             async with asyncio.timeout(10):
@@ -352,28 +360,54 @@ class Core(CoreSysAttributes):
         self.sys_loop.stop()
 
     async def shutdown(self, *, remove_homeassistant_container: bool = False) -> None:
-        """Shutdown all running containers in correct order."""
+        """Shutdown all running containers in correct order.
+
+        Reentrant: if a shutdown is already in progress, subsequent calls
+        await completion of the existing shutdown rather than starting a second one.
+        """
+        if self.state in STARTING_STATES:
+            _LOGGER.debug(
+                "Shutdown requested while Supervisor is still starting up, waiting for startup to complete"
+            )
+            await self._startup_complete.wait()
+
+        # Supervisor is already tearing down, no point running shutdown
+        if self.state in (CoreState.STOPPING, CoreState.CLOSE):
+            _LOGGER.warning("Ignoring shutdown request, Supervisor is already stopping")
+            return
+
+        # Another shutdown is in progress, wait for it to complete
+        if self.state == CoreState.SHUTDOWN:
+            await self._shutdown_event.wait()
+            return
+
+        # Reset event for this shutdown cycle (supports repeated use, e.g. backup restore)
+        self._shutdown_event.clear()
+
         # don't process scheduler anymore
         if self.state == CoreState.RUNNING:
             await self.set_state(CoreState.SHUTDOWN)
 
-        # Shutdown Application Add-ons, using Home Assistant API
-        await self.sys_addons.shutdown(AddonStartup.APPLICATION)
+        try:
+            # Shutdown Application Add-ons, using Home Assistant API
+            await self.sys_addons.shutdown(AddonStartup.APPLICATION)
 
-        # Close Home Assistant
-        with suppress(HassioError):
-            await self.sys_homeassistant.core.stop(
-                remove_container=remove_homeassistant_container
-            )
+            # Close Home Assistant
+            with suppress(HassioError):
+                await self.sys_homeassistant.core.stop(
+                    remove_container=remove_homeassistant_container
+                )
 
-        # Shutdown System Add-ons
-        await self.sys_addons.shutdown(AddonStartup.SERVICES)
-        await self.sys_addons.shutdown(AddonStartup.SYSTEM)
-        await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
+            # Shutdown System Add-ons
+            await self.sys_addons.shutdown(AddonStartup.SERVICES)
+            await self.sys_addons.shutdown(AddonStartup.SYSTEM)
+            await self.sys_addons.shutdown(AddonStartup.INITIALIZE)
 
-        # Shutdown all Plugins
-        if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
-            await self.sys_plugins.shutdown()
+            # Shutdown all Plugins
+            if self.state in (CoreState.STOPPING, CoreState.SHUTDOWN):
+                await self.sys_plugins.shutdown()
+        finally:
+            self._shutdown_event.set()
 
     async def _update_last_boot(self) -> None:
         """Update last boot time."""

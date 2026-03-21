@@ -1,15 +1,23 @@
 """Host function like audio, D-Bus or systemd."""
 
+import asyncio
 from contextlib import suppress
 from functools import lru_cache
 import logging
+import os
 from typing import Self
 
 from awesomeversion import AwesomeVersion
 
 from ..const import BusEvent
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import HassioError, HostLogError, PulseAudioError
+from ..exceptions import (
+    DBusError,
+    DBusNotConnectedError,
+    HassioError,
+    HostLogError,
+    PulseAudioError,
+)
 from ..hardware.const import PolicyGroup
 from ..hardware.data import Device
 from .apparmor import AppArmorControl
@@ -40,6 +48,7 @@ class HostManager(CoreSysAttributes):
         self._network: NetworkManager = NetworkManager(coresys)
         self._sound: SoundControl = SoundControl(coresys)
         self._logs: LogsControl = LogsControl(coresys)
+        self._shutdown_monitor_task: asyncio.Task | None = None
 
     async def post_init(self) -> Self:
         """Post init actions that must occur in event loop."""
@@ -189,6 +198,63 @@ class HostManager(CoreSysAttributes):
             await self.apparmor.load()
         except HassioError as err:
             _LOGGER.warning("Loading host AppArmor on start failed: %s", err)
+
+        # Start monitoring for host shutdown signals (ACPI power button, etc.)
+        if self.sys_dbus.logind.is_connected:
+            self._shutdown_monitor_task = self.sys_create_task(
+                self._monitor_host_shutdown()
+            )
+
+    async def unload(self) -> None:
+        """Shutdown host manager and cancel background tasks."""
+        if self._shutdown_monitor_task and not self._shutdown_monitor_task.done():
+            self._shutdown_monitor_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._shutdown_monitor_task
+        self._shutdown_monitor_task = None
+
+    async def _monitor_host_shutdown(self) -> None:
+        """Monitor for host shutdown via logind PrepareForShutdown signal.
+
+        Takes an inhibitor lock to delay shutdown while we gracefully stop
+        all running services. When PrepareForShutdown fires, runs the graceful
+        shutdown sequence and then releases the lock so the host can proceed.
+        """
+        try:
+            inhibit_fd: int = await self.sys_dbus.logind.inhibit(
+                "shutdown",
+                "Home Assistant Supervisor",
+                "Gracefully stopping running services",
+                "delay",
+            )
+        except (DBusError, DBusNotConnectedError) as err:
+            _LOGGER.warning(
+                "Could not take shutdown inhibitor lock from logind: %s", err
+            )
+            return
+
+        _LOGGER.info("Shutdown inhibitor lock acquired from logind")
+
+        try:
+            async with self.sys_dbus.logind.prepare_for_shutdown() as signal:
+                while True:
+                    msg = await signal.wait_for_signal()
+                    active = msg[0]
+                    if not active:
+                        continue
+
+                    _LOGGER.info(
+                        "Host shutdown/reboot detected, gracefully stopping services"
+                    )
+                    await self.sys_core.shutdown()
+                    break
+        except (DBusError, DBusNotConnectedError, OSError) as err:
+            _LOGGER.warning("Error monitoring host shutdown signal: %s", err)
+        finally:
+            if isinstance(inhibit_fd, int):
+                with suppress(OSError):
+                    await self.sys_run_in_executor(os.close, inhibit_fd)
+                    _LOGGER.info("Shutdown inhibitor lock released")
 
     async def _hardware_events(self, device: Device) -> None:
         """Process hardware requests."""

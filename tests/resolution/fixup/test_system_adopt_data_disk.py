@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from dbus_fast import DBusError, ErrorType, Variant
 import pytest
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
@@ -98,6 +99,7 @@ async def test_fixup(
         ["/org/freedesktop/UDisks2/block_devices/mmcblk1p3"],
     ]
 
+    await coresys.core.set_state(CoreState.RUNNING)
     await system_adopt_data_disk()
 
     assert mmcblk1p3_filesystem_service.SetLabel.calls == [
@@ -176,6 +178,7 @@ async def test_fixup_reboot_failed(
         ["/org/freedesktop/UDisks2/block_devices/mmcblk1p3"],
     ]
 
+    await coresys.core.set_state(CoreState.RUNNING)
     await system_adopt_data_disk()
 
     assert mmcblk1p3_filesystem_service.SetLabel.calls == [
@@ -228,6 +231,7 @@ async def test_fixup_disabled_data_disk(
         ["/org/freedesktop/UDisks2/block_devices/mmcblk1p3"],
     ]
 
+    await coresys.core.set_state(CoreState.RUNNING)
     await system_adopt_data_disk()
 
     assert mmcblk1p3_filesystem_service.SetLabel.calls == [
