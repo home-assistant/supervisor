@@ -179,10 +179,10 @@ class APIProxy(CoreSysAttributes):
 
     async def _websocket_client(self) -> ClientWebSocketResponse:
         """Initialize a WebSocket API connection."""
-        url = f"{self.sys_homeassistant.api_url}/api/websocket"
+        url = f"{self.sys_homeassistant.api._api_url}/api/websocket"
 
         try:
-            client = await self.sys_websession.ws_connect(
+            client = await self.sys_homeassistant.api._session.ws_connect(
                 url, heartbeat=30, ssl=False, max_msg_size=MAX_MESSAGE_SIZE_FROM_CORE
             )
 
