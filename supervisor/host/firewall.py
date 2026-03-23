@@ -153,6 +153,10 @@ class FirewallManager(CoreSysAttributes):
 
     async def apply_gateway_firewall_rules(self) -> None:
         """Apply gateway firewall rules, marking unsupported on failure."""
+        if self.sys_dev:
+            _LOGGER.info("Skipping gateway firewall rules in development mode")
+            return
+
         if await self._apply_gateway_firewall_rules():
             _LOGGER.info("Gateway firewall rules applied")
         else:

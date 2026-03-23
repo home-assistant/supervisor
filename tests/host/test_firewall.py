@@ -1,6 +1,7 @@
 """Test host firewall manager."""
 
 import asyncio
+import os
 from unittest.mock import patch
 
 from dbus_fast import DBusError, ErrorType
@@ -68,6 +69,25 @@ async def test_apply_gateway_firewall_rules(
     call = systemd_service.StartTransientUnit.calls[0]
     assert call[0] == FIREWALL_SERVICE
     assert call[1] == StartUnitMode.REPLACE
+
+
+async def test_apply_gateway_firewall_rules_dev_mode(
+    coresys: CoreSys,
+    systemd_service: SystemdService,
+):
+    """Test gateway firewall rules are skipped in development mode."""
+    with patch.dict(os.environ, {"SUPERVISOR_DEV": "1"}):
+        systemd_service.StartTransientUnit.calls.clear()
+        systemd_service.ResetFailedUnit.calls.clear()
+
+        await coresys.host.firewall.apply_gateway_firewall_rules()
+
+        assert (
+            UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED
+            not in coresys.resolution.unhealthy
+        )
+        assert len(systemd_service.StartTransientUnit.calls) == 0
+        assert len(systemd_service.ResetFailedUnit.calls) == 0
 
 
 async def test_apply_gateway_firewall_rules_exec_start_rules(coresys: CoreSys):
