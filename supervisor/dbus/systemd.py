@@ -112,6 +112,12 @@ class Systemd(DBusInterfaceProxy):
                 "No systemd support on the host. Host control has been disabled."
             )
 
+        if self.is_connected:
+            try:
+                await self.connected_dbus.Manager.call("subscribe")
+            except DBusError:
+                _LOGGER.warning("Could not subscribe to systemd signals")
+
     @property
     @dbus_property
     def startup_time(self) -> float:

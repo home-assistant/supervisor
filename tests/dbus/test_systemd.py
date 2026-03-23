@@ -32,6 +32,18 @@ async def test_dbus_systemd_info(dbus_session_bus: MessageBus):
     assert systemd.startup_time == 45.304696
 
 
+async def test_subscribe_on_connect(
+    systemd_service: SystemdService, dbus_session_bus: MessageBus
+):
+    """Test that Subscribe is called on connect to enable signal emission."""
+    systemd_service.Subscribe.calls.clear()
+    systemd = Systemd()
+
+    await systemd.connect(dbus_session_bus)
+
+    assert systemd_service.Subscribe.calls == [()]
+
+
 async def test_reboot(systemd_service: SystemdService, dbus_session_bus: MessageBus):
     """Test reboot."""
     systemd_service.Reboot.calls.clear()
