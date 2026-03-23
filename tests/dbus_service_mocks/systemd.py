@@ -657,6 +657,10 @@ class Systemd(DBusServiceMock):
         """Power off host computer."""
 
     @dbus_method()
+    def Subscribe(self) -> None:
+        """Subscribe to systemd signals."""
+
+    @dbus_method()
     def StartUnit(self, name: "s", mode: "s") -> "o":
         """Start a service unit."""
         if self.mock_systemd_unit:
