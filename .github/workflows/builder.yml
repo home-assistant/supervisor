@@ -27,7 +27,6 @@ on:
     paths:
       - "rootfs/**"
       - "supervisor/**"
-      - build.yaml
       - Dockerfile
       - requirements.txt
       - setup.py
@@ -84,7 +83,7 @@ jobs:
           # Always build wheels for manual dispatches
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "build_wheels=true" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|build\.yaml|\.github/workflows/builder\.yml) ]]; then
+          elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|\.github/workflows/builder\.yml) ]]; then
             echo "build_wheels=true" >> "$GITHUB_OUTPUT"
           else
             echo "build_wheels=false" >> "$GITHUB_OUTPUT"
@@ -191,32 +190,23 @@ jobs:
         run: |
           cosign sign-blob --yes rootfs/supervisor.sha256 --bundle rootfs/supervisor.sha256.sig
 
-      - name: Login to GitHub Container Registry
-        if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set build arguments
-        if: needs.init.outputs.publish == 'false'
-        run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
-
-      # home-assistant/builder doesn't support sha pinning
       - name: Build supervisor
-        uses: home-assistant/builder@2026.02.1
+        uses: home-assistant/builder/actions/build-image@62a1597b84b3461abad9816d9cd92862a2b542c3 # 2026.03.2
         with:
-          image: ${{ matrix.arch }}
-          args: |
-            $BUILD_ARGS \
-            --${{ matrix.arch }} \
-            --target /data \
-            --cosign \
-            --generic ${{ needs.init.outputs.version }}
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          cosign-base-identity: 'https://github.com/home-assistant/docker-base/.*'
+          cosign-base-verify: ghcr.io/home-assistant/base-python:3.14-alpine3.22
+          image: ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
+          push: ${{ needs.init.outputs.publish == 'true' }}
+          version: ${{ needs.init.outputs.version }}
 
   version:
     name: Update version
+    if: github.repository_owner == 'home-assistant'
     needs: ["init", "run_supervisor", "retag_deprecated"]
     runs-on: ubuntu-latest
     steps:
@@ -256,17 +246,19 @@ jobs:
           name: wheels-amd64
           path: wheels
 
-      # home-assistant/builder doesn't support sha pinning
+      # Build the Supervisor for non-publish runs (e.g. PRs)
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2026.02.1
+        uses: home-assistant/builder/actions/build-image@62a1597b84b3461abad9816d9cd92862a2b542c3 # 2026.03.2
         with:
-          args: |
-            --test \
-            --amd64 \
-            --target /data \
-            --generic runner
+          arch: amd64
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image: ghcr.io/home-assistant/amd64-hassio-supervisor
+          image-tags: runner
+          load: true
+          version: runner
 
+      # Pull the Supervisor for publish runs to test the published image
       - name: Pull Supervisor
         if: needs.init.outputs.publish == 'true'
         run: |

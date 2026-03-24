@@ -1,4 +1,4 @@
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.22-2026.03.1
 FROM ${BUILD_FROM}
 
 ENV \
@@ -48,3 +48,12 @@ RUN \
 
 WORKDIR /
 COPY rootfs /
+
+LABEL \
+    io.hass.type="supervisor" \
+    org.opencontainers.image.title="Home Assistant Supervisor" \
+    org.opencontainers.image.description="Container-based system for managing Home Assistant Core installation" \
+    org.opencontainers.image.authors="The Home Assistant Authors" \
+    org.opencontainers.image.url="https://www.home-assistant.io/" \
+    org.opencontainers.image.documentation="https://www.home-assistant.io/docs/" \
+    org.opencontainers.image.licenses="Apache License 2.0"
