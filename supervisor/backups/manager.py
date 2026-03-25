@@ -210,13 +210,11 @@ class BackupManager(FileConfiguration, JobGroup):
         try:
             return await self.sys_run_in_executor(find_backups)
         except OSError as err:
-            if err.errno == errno.EBADMSG and path in {
+            if path in {
                 self.sys_config.path_backup,
                 self.sys_config.path_core_backup,
             }:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+                self.sys_resolution.check_oserror(err)
             _LOGGER.error("Could not list backups from %s: %s", path.as_posix(), err)
 
         return []
@@ -365,13 +363,8 @@ class BackupManager(FileConfiguration, JobGroup):
                 ) from err
             except OSError as err:
                 msg = f"Could delete backup at {backup_tarfile.as_posix()}: {err!s}"
-                if err.errno == errno.EBADMSG and location in {
-                    None,
-                    LOCATION_CLOUD_BACKUP,
-                }:
-                    self.sys_resolution.add_unhealthy_reason(
-                        UnhealthyReason.OSERROR_BAD_MESSAGE
-                    )
+                if location in {None, LOCATION_CLOUD_BACKUP}:
+                    self.sys_resolution.check_oserror(err)
                 raise BackupError(msg, _LOGGER.error) from err
 
         # If backup has been removed from all locations, remove it from cache
@@ -403,12 +396,10 @@ class BackupManager(FileConfiguration, JobGroup):
             return (location_name, Path(path))
         except OSError as err:
             msg = f"Could not copy backup to {location_name} due to: {err!s}"
-
-            if err.errno == errno.EBADMSG and location in {
-                LOCATION_CLOUD_BACKUP,
-                None,
-            }:
-                raise BackupDataDiskBadMessageError(msg, _LOGGER.error) from err
+            if location in {LOCATION_CLOUD_BACKUP, None}:
+                self.sys_resolution.check_oserror(err)
+                if err.errno == errno.EBADMSG:
+                    raise BackupDataDiskBadMessageError(msg, _LOGGER.error) from err
             raise BackupError(msg, _LOGGER.error) from err
 
     @Job(name="backup_copy_to_additional_locations", cleanup=False)
@@ -468,10 +459,8 @@ class BackupManager(FileConfiguration, JobGroup):
         try:
             await self.sys_run_in_executor(backup.tarfile.rename, tar_file)
         except OSError as err:
-            if err.errno == errno.EBADMSG and location in {LOCATION_CLOUD_BACKUP, None}:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            if location in {LOCATION_CLOUD_BACKUP, None}:
+                self.sys_resolution.check_oserror(err)
             _LOGGER.error("Can't move backup file to storage: %s", err)
             return None
 

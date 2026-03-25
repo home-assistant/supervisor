@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from contextlib import suppress
-import errno
 import logging
 from pathlib import Path
 import shutil
@@ -12,7 +11,7 @@ from awesomeversion import AwesomeVersion
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import DBusError, HostAppArmorError
-from ..resolution.const import UnhealthyReason, UnsupportedReason
+from ..resolution.const import UnsupportedReason
 from ..utils.apparmor import validate_profile
 from .const import HostFeature
 
@@ -89,10 +88,7 @@ class AppArmorControl(CoreSysAttributes):
         try:
             await self.sys_run_in_executor(shutil.copyfile, profile_file, dest_profile)
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             raise HostAppArmorError(
                 f"Can't copy {profile_file}: {err}", _LOGGER.error
             ) from err
@@ -116,10 +112,7 @@ class AppArmorControl(CoreSysAttributes):
         try:
             await self.sys_run_in_executor(profile_file.unlink)
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             raise HostAppArmorError(
                 f"Can't remove profile: {err}", _LOGGER.error
             ) from err
@@ -134,10 +127,7 @@ class AppArmorControl(CoreSysAttributes):
         try:
             shutil.copy(profile_file, backup_file)
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             raise HostAppArmorError(
                 f"Can't backup profile {profile_name}: {err}", _LOGGER.error
             ) from err
