@@ -153,7 +153,7 @@ class Interface:
         )
 
     @staticmethod
-    def from_dbus_interface(inet: NetworkInterface) -> "Interface":
+    def from_dbus_interface(inet: NetworkInterface) -> Interface:
         """Coerce a dbus interface into normal Interface."""
         if inet.settings and inet.settings.ipv4:
             ipv4_setting = IpSetting(

@@ -84,7 +84,7 @@ async def test_os_update_path(
     supervisor_internet: AsyncMock,
 ):
     """Test OS upgrade path across major versions."""
-    coresys.os._board = "rpi4"  # pylint: disable=protected-access
+    coresys.os._board = "rpi4-64"  # pylint: disable=protected-access
     coresys.os._version = AwesomeVersion(version)  # pylint: disable=protected-access
     await coresys.updater.fetch_data()
 
@@ -147,7 +147,7 @@ async def test_load_calls_reload_when_os_board_without_version(
 ) -> None:
     """Test load calls reload when OS board exists but no version_hassos_unrestricted."""
     # Set up OS board but no version data
-    coresys.os._board = "rpi4"  # pylint: disable=protected-access
+    coresys.os._board = "rpi4-64"  # pylint: disable=protected-access
     coresys.security.force = True
 
     # Mock reload to verify it gets called
@@ -162,7 +162,7 @@ async def test_load_skips_reload_when_os_board_with_version(
 ) -> None:
     """Test load skips reload when OS board exists and version_hassos_unrestricted is set."""
     # Set up OS board and version data
-    coresys.os._board = "rpi4"  # pylint: disable=protected-access
+    coresys.os._board = "rpi4-64"  # pylint: disable=protected-access
     coresys.security.force = True
 
     # Pre-populate version_hassos_unrestricted by setting it directly on the data dict

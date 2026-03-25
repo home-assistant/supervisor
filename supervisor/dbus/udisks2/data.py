@@ -46,7 +46,7 @@ class DeviceSpecification:
     partlabel: str | None = None
 
     @staticmethod
-    def from_dict(data: DeviceSpecificationDataType) -> "DeviceSpecification":
+    def from_dict(data: DeviceSpecificationDataType) -> DeviceSpecification:
         """Create DeviceSpecification from dict."""
         return DeviceSpecification(
             path=Path(data["path"]) if "path" in data else None,
@@ -108,7 +108,7 @@ class FormatOptions:
     auth_no_user_interaction: bool | None = None
 
     @staticmethod
-    def from_dict(data: FormatOptionsDataType) -> "FormatOptions":
+    def from_dict(data: FormatOptionsDataType) -> FormatOptions:
         """Create FormatOptions from dict."""
         return FormatOptions(
             label=data.get("label"),
@@ -182,7 +182,7 @@ class MountOptions:
     auth_no_user_interaction: bool | None = None
 
     @staticmethod
-    def from_dict(data: MountOptionsDataType) -> "MountOptions":
+    def from_dict(data: MountOptionsDataType) -> MountOptions:
         """Create MountOptions from dict."""
         return MountOptions(
             fstype=data.get("fstype"),
@@ -226,7 +226,7 @@ class UnmountOptions:
     auth_no_user_interaction: bool | None = None
 
     @staticmethod
-    def from_dict(data: UnmountOptionsDataType) -> "UnmountOptions":
+    def from_dict(data: UnmountOptionsDataType) -> UnmountOptions:
         """Create MountOptions from dict."""
         return UnmountOptions(
             force=data.get("force"),
@@ -268,7 +268,7 @@ class CreatePartitionOptions:
     auth_no_user_interaction: bool | None = None
 
     @staticmethod
-    def from_dict(data: CreatePartitionOptionsDataType) -> "CreatePartitionOptions":
+    def from_dict(data: CreatePartitionOptionsDataType) -> CreatePartitionOptions:
         """Create CreatePartitionOptions from dict."""
         return CreatePartitionOptions(
             partition_type=data.get("partition-type"),
@@ -310,7 +310,7 @@ class DeletePartitionOptions:
     auth_no_user_interaction: bool | None = None
 
     @staticmethod
-    def from_dict(data: DeletePartitionOptionsDataType) -> "DeletePartitionOptions":
+    def from_dict(data: DeletePartitionOptionsDataType) -> DeletePartitionOptions:
         """Create DeletePartitionOptions from dict."""
         return DeletePartitionOptions(
             tear_down=data.get("tear-down"),

@@ -1310,6 +1310,11 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="full_restore",
             reference=full_backup.slug,
+            stage="supervisor_config",
+        ),
+        _make_backup_message_for_assert(
+            action="full_restore",
+            reference=full_backup.slug,
             stage="await_addon_restarts",
         ),
         _make_backup_message_for_assert(
@@ -1359,7 +1364,12 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="partial_restore",
             reference=folders_backup.slug,
-            stage="folders",
+            stage="supervisor_config",
+        ),
+        _make_backup_message_for_assert(
+            action="partial_restore",
+            reference=folders_backup.slug,
+            stage="supervisor_config",
             done=True,
             progress=100,
         ),
@@ -1407,7 +1417,12 @@ async def test_restore_progress(
         _make_backup_message_for_assert(
             action="partial_restore",
             reference=addon_backup.slug,
-            stage="addons",
+            stage="supervisor_config",
+        ),
+        _make_backup_message_for_assert(
+            action="partial_restore",
+            reference=addon_backup.slug,
+            stage="supervisor_config",
             done=True,
             progress=100,
         ),

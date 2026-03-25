@@ -37,3 +37,31 @@ async def test_fixup(coresys: CoreSys, install_addon_ssh: Addon):
 
     assert len(coresys.resolution.suggestions) == 0
     assert len(coresys.resolution.issues) == 0
+
+
+async def test_fixup_deprecated_arch_addon(coresys: CoreSys, install_addon_ssh: Addon):
+    """Test fixup for deprecated arch add-on issue."""
+    addon_execute_remove = FixupAddonExecuteRemove(coresys)
+
+    coresys.resolution.add_suggestion(
+        Suggestion(
+            SuggestionType.EXECUTE_REMOVE,
+            ContextType.ADDON,
+            reference=install_addon_ssh.slug,
+        )
+    )
+    coresys.resolution.add_issue(
+        Issue(
+            IssueType.DEPRECATED_ARCH_ADDON,
+            ContextType.ADDON,
+            reference=install_addon_ssh.slug,
+        )
+    )
+
+    with patch.object(Addon, "uninstall") as uninstall:
+        await addon_execute_remove()
+
+        assert uninstall.called
+
+    assert len(coresys.resolution.suggestions) == 0
+    assert len(coresys.resolution.issues) == 0

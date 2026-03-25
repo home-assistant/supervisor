@@ -96,7 +96,7 @@ class UDisks2NVMeController(DBusInterfaceProxy):
         super().__init__()
 
     @staticmethod
-    async def new(object_path: str, bus: MessageBus) -> "UDisks2NVMeController":
+    async def new(object_path: str, bus: MessageBus) -> UDisks2NVMeController:
         """Create and connect object."""
         obj = UDisks2NVMeController(object_path)
         await obj.connect(bus)

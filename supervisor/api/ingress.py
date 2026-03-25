@@ -39,6 +39,8 @@ from .utils import api_process, api_validate, require_home_assistant
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+MAX_WEBSOCKET_MESSAGE_SIZE = 16 * 1024 * 1024  # 16 MiB
+
 VALIDATE_SESSION_DATA = vol.Schema({ATTR_SESSION: str})
 
 """Expected optional payload of create session request"""
@@ -180,7 +182,10 @@ class APIIngress(CoreSysAttributes):
             req_protocols = []
 
         ws_server = web.WebSocketResponse(
-            protocols=req_protocols, autoclose=False, autoping=False
+            protocols=req_protocols,
+            autoclose=False,
+            autoping=False,
+            max_msg_size=MAX_WEBSOCKET_MESSAGE_SIZE,
         )
         await ws_server.prepare(request)
 
@@ -201,6 +206,7 @@ class APIIngress(CoreSysAttributes):
                 protocols=req_protocols,
                 autoclose=False,
                 autoping=False,
+                max_msg_size=MAX_WEBSOCKET_MESSAGE_SIZE,
             ) as ws_client:
                 # Proxy requests
                 await asyncio.wait(

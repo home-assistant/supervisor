@@ -528,6 +528,35 @@ async def test_plugins_updated(coresys: CoreSys):
         assert await test.execute()
 
 
+async def test_plugins_updated_skips_update_when_auto_update_disabled(coresys: CoreSys):
+    """Test plugins updated condition blocks when auto update is disabled."""
+
+    class TestClass:
+        """Test class."""
+
+        def __init__(self, coresys: CoreSys):
+            """Initialize the test class."""
+            self.coresys = coresys
+
+        @Job(
+            name="test_plugins_updated_auto_update_disabled_execute",
+            conditions=[JobCondition.PLUGINS_UPDATED],
+        )
+        async def execute(self) -> bool:
+            """Execute the class method."""
+            return True
+
+    test = TestClass(coresys)
+    coresys.updater.auto_update = False
+
+    with (
+        patch.object(PluginAudio, "need_update", new=PropertyMock(return_value=True)),
+        patch.object(PluginAudio, "update") as update,
+    ):
+        assert not await test.execute()
+        update.assert_not_called()
+
+
 async def test_auto_update(coresys: CoreSys):
     """Test the auto update decorator."""
 

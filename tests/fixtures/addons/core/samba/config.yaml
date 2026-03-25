@@ -4,11 +4,8 @@ slug: samba
 description: Expose Home Assistant folders with SMB/CIFS
 url: "https://github.com/home-assistant/hassio-addons/tree/master/samba"
 arch:
-  - armhf
-  - armv7
   - aarch64
   - amd64
-  - i386
 startup: services
 init: false
 hassio_api: true

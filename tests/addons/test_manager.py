@@ -27,7 +27,12 @@ from supervisor.exceptions import (
     DockerNotFound,
 )
 from supervisor.plugins.dns import PluginDns
-from supervisor.resolution.const import ContextType, IssueType, SuggestionType
+from supervisor.resolution.const import (
+    ContextType,
+    IssueType,
+    SuggestionType,
+    UnhealthyReason,
+)
 from supervisor.resolution.data import Issue, Suggestion
 from supervisor.store.addon import AddonStore
 from supervisor.store.repository import RepositoryLocal
@@ -126,6 +131,41 @@ async def test_image_added_removed_on_update(
         await coresys.addons.update(TEST_ADDON_SLUG)
         build.assert_called_once_with(AwesomeVersion("11.0.0"), "local/amd64-addon-ssh")
         install.assert_not_called()
+
+
+async def test_addon_boot_skip_host_network_gateway_unprotected(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test host network add-ons are skipped when gateway is unprotected."""
+    install_addon_ssh.boot = AddonBoot.AUTO
+    coresys.resolution.add_unhealthy_reason(UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED)
+    with (
+        patch.object(
+            type(install_addon_ssh), "host_network", new=PropertyMock(return_value=True)
+        ),
+        patch.object(Addon, "start") as start,
+    ):
+        await coresys.addons.boot(AddonStartup.APPLICATION)
+        start.assert_not_called()
+
+
+async def test_addon_boot_host_network_gateway_protected(
+    coresys: CoreSys, install_addon_ssh: Addon
+):
+    """Test host network add-ons boot normally when gateway is protected."""
+    install_addon_ssh.boot = AddonBoot.AUTO
+    assert (
+        UnhealthyReason.DOCKER_GATEWAY_UNPROTECTED not in coresys.resolution.unhealthy
+    )
+    with (
+        patch.object(
+            type(install_addon_ssh), "host_network", new=PropertyMock(return_value=True)
+        ),
+        patch.object(Addon, "start", return_value=asyncio.Future()) as start,
+    ):
+        start.return_value.set_result(None)
+        await coresys.addons.boot(AddonStartup.APPLICATION)
+        start.assert_called_once()
 
 
 @pytest.mark.parametrize("err", [DockerAPIError, DockerNotFound])
@@ -333,13 +373,12 @@ async def test_rebuild(
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
-async def test_start_wait_cancel_on_uninstall(
+async def test_start_wait_resolved_on_uninstall_in_startup(
     coresys: CoreSys,
     install_addon_ssh: Addon,
     container: DockerContainer,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Test the addon wait task is cancelled when addon is uninstalled."""
+    """Test uninstall resolves the startup wait task when addon is in STARTUP state."""
     install_addon_ssh.path_data.mkdir()
     container.show.return_value["Config"] = {"Healthcheck": "exists"}
     await install_addon_ssh.load()
@@ -363,11 +402,9 @@ async def test_start_wait_cancel_on_uninstall(
     assert not start_task.done()
     assert install_addon_ssh.state == AddonState.STARTUP
 
-    caplog.clear()
     await coresys.addons.uninstall(TEST_ADDON_SLUG)
-    await asyncio.sleep(0.01)
     assert start_task.done()
-    assert "Wait for addon startup task cancelled" in caplog.text
+    assert start_task.exception() is None
 
 
 async def test_repository_file_missing(

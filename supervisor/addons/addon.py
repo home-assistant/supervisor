@@ -5,7 +5,6 @@ from collections.abc import Awaitable
 from contextlib import suppress
 from copy import deepcopy
 from datetime import datetime
-import errno
 from functools import partial
 from ipaddress import IPv4Address
 import logging
@@ -89,7 +88,7 @@ from ..hardware.data import Device
 from ..homeassistant.const import WSEvent
 from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, UnhealthyReason
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..resolution.data import Issue
 from ..store.addon import AddonStore
 from ..utils import check_port
@@ -151,7 +150,7 @@ class Addon(AddonModel):
         self._manual_stop: bool = False
         self._listeners: list[EventListener] = []
         self._startup_event = asyncio.Event()
-        self._startup_task: asyncio.Task | None = None
+        self._wait_for_startup_task: asyncio.Task | None = None
         self._boot_failed_issue = Issue(
             IssueType.BOOT_FAIL, ContextType.ADDON, reference=self.slug
         )
@@ -238,6 +237,19 @@ class Addon(AddonModel):
         )
 
         await self._check_ingress_port()
+
+        if (self.has_deprecated_arch and not self.has_supported_arch) or (
+            self.has_deprecated_machine and not self.has_supported_machine
+        ):
+            self.sys_resolution.create_issue(
+                IssueType.DEPRECATED_ARCH_ADDON,
+                ContextType.ADDON,
+                reference=self.slug,
+                suggestions=[SuggestionType.EXECUTE_REMOVE],
+            )
+            with suppress(DockerError):
+                await self.instance.attach(version=self.version)
+            return
 
         default_image = self._image(self.data)
         try:
@@ -747,11 +759,11 @@ class Addon(AddonModel):
     )
     async def unload(self) -> None:
         """Unload add-on and remove data."""
-        if self._startup_task:
-            # If we were waiting on startup, cancel that and let the task finish before proceeding
-            self._startup_task.cancel(f"Removing add-on {self.name} from system")
-            with suppress(asyncio.CancelledError):
-                await self._startup_task
+        # Wait for startup wait task to complete before removing data.
+        # The container remove/state change resolves _startup_event; this
+        # ensures _wait_for_startup finishes before we touch addon data.
+        if self._wait_for_startup_task:
+            await self._wait_for_startup_task
 
         for listener in self._listeners:
             self.sys_bus.remove_listener(listener)
@@ -1014,10 +1026,7 @@ class Addon(AddonModel):
         try:
             await self.sys_run_in_executor(write_pulse_config)
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             _LOGGER.error(
                 "Add-on %s can't write pulse/client.config: %s", self.slug, err
             )
@@ -1096,8 +1105,7 @@ class Addon(AddonModel):
     async def _wait_for_startup(self) -> None:
         """Wait for startup event to be set with timeout."""
         try:
-            self._startup_task = self.sys_create_task(self._startup_event.wait())
-            await asyncio.wait_for(self._startup_task, STARTUP_TIMEOUT)
+            await asyncio.wait_for(self._startup_event.wait(), STARTUP_TIMEOUT)
         except TimeoutError:
             _LOGGER.warning(
                 "Timeout while waiting for addon %s to start, took more than %s seconds",
@@ -1107,7 +1115,8 @@ class Addon(AddonModel):
         except asyncio.CancelledError as err:
             _LOGGER.info("Wait for addon startup task cancelled due to: %s", err)
         finally:
-            self._startup_task = None
+            if self._wait_for_startup_task is asyncio.current_task():
+                self._wait_for_startup_task = None
 
     @Job(
         name="addon_start",
@@ -1123,7 +1132,11 @@ class Addon(AddonModel):
         """
         if await self.instance.is_running():
             _LOGGER.warning("%s is already running!", self.slug)
-            return self.sys_create_task(self._wait_for_startup())
+            if not self._wait_for_startup_task or self._wait_for_startup_task.done():
+                self._wait_for_startup_task = self.sys_create_task(
+                    self._wait_for_startup()
+                )
+            return self._wait_for_startup_task
 
         # Access Token
         self.persist[ATTR_ACCESS_TOKEN] = secrets.token_hex(56)
@@ -1163,7 +1176,8 @@ class Addon(AddonModel):
             self.state = AddonState.ERROR
             raise AddonUnknownError(addon=self.slug) from err
 
-        return self.sys_create_task(self._wait_for_startup())
+        self._wait_for_startup_task = self.sys_create_task(self._wait_for_startup())
+        return self._wait_for_startup_task
 
     @Job(
         name="addon_stop",

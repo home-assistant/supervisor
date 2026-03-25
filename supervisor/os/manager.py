@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-import errno
 import logging
 from pathlib import Path, PurePath
 from typing import cast
@@ -23,7 +22,6 @@ from ..exceptions import (
 )
 from ..jobs.const import JobConcurrency, JobCondition
 from ..jobs.decorator import Job
-from ..resolution.const import UnhealthyReason
 from ..utils.sentry import async_capture_exception
 from .data_disk import DataDisk
 
@@ -52,7 +50,7 @@ class SlotStatus:
     parent: str | None = None
 
     @classmethod
-    def from_dict(cls, data: SlotStatusDataType) -> "SlotStatus":
+    def from_dict(cls, data: SlotStatusDataType) -> SlotStatus:
         """Create SlotStatus from dictionary."""
         return cls(
             class_=data["class"],
@@ -214,10 +212,7 @@ class OSManager(CoreSysAttributes):
             ) from err
 
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             raise HassOSUpdateError(
                 f"Can't write OTA file: {err!s}", _LOGGER.error
             ) from err

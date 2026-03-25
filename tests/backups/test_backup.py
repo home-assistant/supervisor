@@ -311,6 +311,12 @@ async def test_validate_backup(
                 BackupInvalidError, match="Invalid password for backup f92f0339"
             ),
         ),
+        (
+            "",
+            pytest.raises(
+                BackupInvalidError, match="Invalid password for backup f92f0339"
+            ),
+        ),
     ],
 )
 async def test_validate_backup_v3(
@@ -334,6 +340,48 @@ async def test_validate_backup_v3(
 
     with expected_exception:
         await v3_backup.validate_backup(None)
+
+
+@pytest.mark.parametrize(
+    ("password", "expect_protected"),
+    [
+        ("my_password", True),
+        (None, False),
+        ("", False),
+    ],
+)
+async def test_new_backup_empty_password_not_protected(
+    coresys: CoreSys,
+    tmp_path: Path,
+    password: str | None,
+    expect_protected: bool,
+):
+    """Test that empty string password is treated as no password on backup creation."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new(
+        "test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL, password=password
+    )
+    assert backup.protected is expect_protected
+
+
+@pytest.mark.parametrize(
+    ("password", "expected_password"),
+    [
+        ("my_password", "my_password"),
+        (None, None),
+        ("", None),
+    ],
+)
+def test_set_password_empty_string_is_none(
+    coresys: CoreSys,
+    tmp_path: Path,
+    password: str | None,
+    expected_password: str | None,
+):
+    """Test that set_password treats empty string as None."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.set_password(password)
+    assert backup._password == expected_password  # pylint: disable=protected-access
 
 
 async def test_store_supervisor_config_no_mounts(coresys: CoreSys, tmp_path: Path):
@@ -375,7 +423,12 @@ async def test_restore_supervisor_config_no_tar(coresys: CoreSys, tmp_path: Path
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
 
-    # Restore should succeed with nothing to do and return empty task list
-    success, tasks = await backup.restore_supervisor_config()
-    assert success is True
-    assert tasks == []
+    # Create the backup (no mounts configured, so no supervisor.tar inside)
+    async with backup.create():
+        pass
+
+    # Open and restore - should succeed with nothing to do
+    async with backup.open(None):
+        success, tasks = await backup.restore_supervisor_config()
+        assert success is True
+        assert tasks == []

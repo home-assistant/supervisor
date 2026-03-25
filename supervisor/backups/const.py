@@ -3,10 +3,14 @@
 from enum import StrEnum
 from typing import Literal
 
+from awesomeversion import AwesomeVersion
+
 from ..mounts.mount import Mount
 
 BUF_SIZE = 2**20 * 4  # 4MB
 SECURETAR_CREATE_VERSION = 2
+SECURETAR_V3_CREATE_VERSION = 3
+CORE_SECURETAR_V3_MIN_VERSION: AwesomeVersion = AwesomeVersion("2026.3.0")
 DEFAULT_FREEZE_TIMEOUT = 600
 LOCATION_CLOUD_BACKUP = ".cloud_backup"
 

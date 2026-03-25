@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import timedelta
-import errno
 import io
 import json
 import logging
@@ -60,18 +59,25 @@ from ..exceptions import (
     BackupPermissionError,
     MountError,
 )
+from ..homeassistant.const import LANDINGPAGE
 from ..jobs.const import JOB_GROUP_BACKUP
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..mounts.const import ATTR_DEFAULT_BACKUP_MOUNT, ATTR_MOUNTS
 from ..mounts.mount import Mount
 from ..mounts.validate import SCHEMA_MOUNTS_CONFIG
-from ..resolution.const import UnhealthyReason
-from ..utils import remove_folder
+from ..utils import remove_folder, version_is_new_enough
 from ..utils.dt import parse_datetime, utcnow
 from ..utils.json import json_bytes
 from ..utils.sentinel import DEFAULT
-from .const import BUF_SIZE, LOCATION_CLOUD_BACKUP, SECURETAR_CREATE_VERSION, BackupType
+from .const import (
+    BUF_SIZE,
+    CORE_SECURETAR_V3_MIN_VERSION,
+    LOCATION_CLOUD_BACKUP,
+    SECURETAR_CREATE_VERSION,
+    SECURETAR_V3_CREATE_VERSION,
+    BackupType,
+)
 from .validate import SCHEMA_BACKUP
 
 IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
@@ -326,7 +332,8 @@ class Backup(JobGroup):
         # Add defaults
         self._data = SCHEMA_BACKUP(self._data)
 
-        # Set password
+        # Set password - intentionally using truthiness check so that empty
+        # string is treated as no password, consistent with set_password().
         if password:
             self._password = password
             self._data[ATTR_PROTECTED] = True
@@ -337,8 +344,13 @@ class Backup(JobGroup):
             self._data[ATTR_COMPRESSED] = False
 
     def set_password(self, password: str | None) -> None:
-        """Set the password for an existing backup."""
-        self._password = password
+        """Set the password for an existing backup.
+
+        Treat empty string as None to stay consistent with backup creation
+        and Supervisor behavior before #6402, independent of SecureTar
+        behavior in this regard.
+        """
+        self._password = password or None
 
     async def validate_backup(self, location: str | None) -> None:
         """Validate backup.
@@ -444,6 +456,15 @@ class Backup(JobGroup):
     @asynccontextmanager
     async def create(self) -> AsyncGenerator[None]:
         """Create new backup file."""
+        core_version = self.sys_homeassistant.version
+        if (
+            core_version is not None
+            and core_version != LANDINGPAGE
+            and version_is_new_enough(core_version, CORE_SECURETAR_V3_MIN_VERSION)
+        ):
+            securetar_version = SECURETAR_V3_CREATE_VERSION
+        else:
+            securetar_version = SECURETAR_CREATE_VERSION
 
         def _open_outer_tarfile() -> SecureTarArchive:
             """Create and open outer tarfile."""
@@ -457,7 +478,7 @@ class Backup(JobGroup):
                 self.tarfile,
                 "w",
                 bufsize=BUF_SIZE,
-                create_version=SECURETAR_CREATE_VERSION,
+                create_version=securetar_version,
                 password=self._password,
             )
             try:
@@ -1028,10 +1049,7 @@ class Backup(JobGroup):
         try:
             mounts_data = await self.sys_run_in_executor(_load_mounts_data)
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             _LOGGER.warning("Failed to read supervisor tar from backup: %s", err)
             return (False, [])
         except (tarfile.TarError, json.JSONDecodeError) as err:

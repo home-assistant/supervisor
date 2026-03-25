@@ -27,13 +27,12 @@ on:
     paths:
       - "rootfs/**"
       - "supervisor/**"
-      - build.yaml
       - Dockerfile
       - requirements.txt
       - setup.py
 
 env:
-  DEFAULT_PYTHON: "3.13"
+  DEFAULT_PYTHON: "3.14.3"
   COSIGN_VERSION: "v2.5.3"
   CRANE_VERSION: "v0.20.7"
   CRANE_SHA256: "8ef3564d264e6b5ca93f7b7f5652704c4dd29d33935aff6947dd5adefd05953e"
@@ -73,7 +72,7 @@ jobs:
       - name: Get changed files
         id: changed_files
         if: github.event_name == 'pull_request' || github.event_name == 'push'
-        uses: masesgroup/retrieve-changed-files@491e80760c0e28d36ca6240a27b1ccb8e1402c13 # v3.0.0
+        uses: masesgroup/retrieve-changed-files@45a8b3b496d2d6037cbd553e8a3450989b9384a2 # v4.0.0
 
       - name: Check if requirements files changed
         id: requirements
@@ -84,7 +83,7 @@ jobs:
           # Always build wheels for manual dispatches
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "build_wheels=true" >> "$GITHUB_OUTPUT"
-          elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|build\.yaml|\.github/workflows/builder\.yml) ]]; then
+          elif [[ "${{ steps.changed_files.outputs.all }}" =~ (requirements\.txt|\.github/workflows/builder\.yml) ]]; then
             echo "build_wheels=true" >> "$GITHUB_OUTPUT"
           else
             echo "build_wheels=false" >> "$GITHUB_OUTPUT"
@@ -106,7 +105,7 @@ jobs:
           - runs-on: ubuntu-24.04-arm
             arch: aarch64
     env:
-      WHEELS_ABI: cp313
+      WHEELS_ABI: cp314
       WHEELS_TAG: musllinux_1_2
       WHEELS_APK_DEPS: "libffi-dev;openssl-dev;yaml-dev"
       WHEELS_SKIP_BINARY: aiohttp
@@ -175,7 +174,7 @@ jobs:
 
       - name: Install Cosign
         if: needs.init.outputs.publish == 'true'
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
         with:
           cosign-release: ${{ env.COSIGN_VERSION }}
 
@@ -191,32 +190,23 @@ jobs:
         run: |
           cosign sign-blob --yes rootfs/supervisor.sha256 --bundle rootfs/supervisor.sha256.sig
 
-      - name: Login to GitHub Container Registry
-        if: needs.init.outputs.publish == 'true'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set build arguments
-        if: needs.init.outputs.publish == 'false'
-        run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
-
-      # home-assistant/builder doesn't support sha pinning
       - name: Build supervisor
-        uses: home-assistant/builder@2026.02.1
+        uses: home-assistant/builder/actions/build-image@62a1597b84b3461abad9816d9cd92862a2b542c3 # 2026.03.2
         with:
-          image: ${{ matrix.arch }}
-          args: |
-            $BUILD_ARGS \
-            --${{ matrix.arch }} \
-            --target /data \
-            --cosign \
-            --generic ${{ needs.init.outputs.version }}
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          cosign-base-identity: 'https://github.com/home-assistant/docker-base/.*'
+          cosign-base-verify: ghcr.io/home-assistant/base-python:3.14-alpine3.22
+          image: ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
+          push: ${{ needs.init.outputs.publish == 'true' }}
+          version: ${{ needs.init.outputs.version }}
 
   version:
     name: Update version
+    if: github.repository_owner == 'home-assistant'
     needs: ["init", "run_supervisor", "retag_deprecated"]
     runs-on: ubuntu-latest
     steps:
@@ -251,22 +241,24 @@ jobs:
 
       - name: Download local wheels artifact
         if: needs.init.outputs.build_wheels == 'true' && needs.init.outputs.publish == 'false'
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: wheels-amd64
           path: wheels
 
-      # home-assistant/builder doesn't support sha pinning
+      # Build the Supervisor for non-publish runs (e.g. PRs)
       - name: Build the Supervisor
         if: needs.init.outputs.publish != 'true'
-        uses: home-assistant/builder@2026.02.1
+        uses: home-assistant/builder/actions/build-image@62a1597b84b3461abad9816d9cd92862a2b542c3 # 2026.03.2
         with:
-          args: |
-            --test \
-            --amd64 \
-            --target /data \
-            --generic runner
+          arch: amd64
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image: ghcr.io/home-assistant/amd64-hassio-supervisor
+          image-tags: runner
+          load: true
+          version: runner
 
+      # Pull the Supervisor for publish runs to test the published image
       - name: Pull Supervisor
         if: needs.init.outputs.publish == 'true'
         run: |
@@ -468,14 +460,14 @@ jobs:
       FROZEN_VERSION: "2025.11.5"
     steps:
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install Cosign
-        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
         with:
           cosign-release: ${{ env.COSIGN_VERSION }}
 

@@ -3,7 +3,6 @@
 from collections.abc import Awaitable
 from contextlib import suppress
 from datetime import timedelta
-import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
@@ -33,7 +32,7 @@ from .exceptions import (
 from .jobs import ChildJobSyncFilter
 from .jobs.const import JobCondition, JobThrottle
 from .jobs.decorator import Job
-from .resolution.const import ContextType, IssueType, UnhealthyReason
+from .resolution.const import ContextType, IssueType
 from .utils.sentry import async_capture_exception
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -162,10 +161,7 @@ class Supervisor(CoreSysAttributes):
             await self.sys_host.apparmor.load_profile("hassio-supervisor", profile_file)
 
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             raise SupervisorAppArmorError(
                 f"Can't write temporary profile: {err!s}", _LOGGER.error
             ) from err

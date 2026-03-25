@@ -5,7 +5,6 @@ Code: https://github.com/home-assistant/plugin-dns
 
 import asyncio
 from contextlib import suppress
-import errno
 from ipaddress import IPv4Address
 import logging
 from pathlib import Path
@@ -33,7 +32,7 @@ from ..exceptions import (
 )
 from ..jobs.const import JobThrottle
 from ..jobs.decorator import Job
-from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
+from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.json import write_json_file
 from ..utils.sentry import async_capture_exception
 from ..validate import dns_url
@@ -232,10 +231,7 @@ class PluginDns(PluginBase):
                 await self.sys_run_in_executor(RESOLV_TMPL.read_text, encoding="utf-8")
             )
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             _LOGGER.error("Can't read resolve.tmpl: %s", err)
 
         try:
@@ -243,10 +239,7 @@ class PluginDns(PluginBase):
                 await self.sys_run_in_executor(HOSTS_TMPL.read_text, encoding="utf-8")
             )
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             _LOGGER.error("Can't read hosts.tmpl: %s", err)
 
         await self._init_hosts()
@@ -448,10 +441,7 @@ class PluginDns(PluginBase):
                 self.hosts.write_text, data, encoding="utf-8"
             )
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             raise CoreDNSError(f"Can't update hosts: {err}", _LOGGER.error) from err
 
     async def add_host(
@@ -533,10 +523,7 @@ class PluginDns(PluginBase):
         try:
             await self.sys_run_in_executor(resolv_conf.write_text, data)
         except OSError as err:
-            if err.errno == errno.EBADMSG:
-                self.sys_resolution.add_unhealthy_reason(
-                    UnhealthyReason.OSERROR_BAD_MESSAGE
-                )
+            self.sys_resolution.check_oserror(err)
             _LOGGER.warning("Can't write/update %s: %s", resolv_conf, err)
             return
 

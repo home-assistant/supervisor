@@ -330,6 +330,18 @@ async def test_auth_basic_auth_failure(
     assert resp.status == 401
 
 
+@pytest.mark.parametrize("api_client", [TEST_ADDON_SLUG], indirect=True)
+async def test_auth_bearer_token_returns_401(
+    api_client: TestClient, install_addon_ssh: Addon
+):
+    """Test that a Bearer token in Authorization header returns 401, not 500."""
+    resp = await api_client.post(
+        "/auth", headers={"Authorization": "Bearer sometoken123"}
+    )
+    assert "Basic realm" in resp.headers[WWW_AUTHENTICATE]
+    assert resp.status == 401
+
+
 @pytest.mark.parametrize("api_client", ["local_example"], indirect=True)
 async def test_auth_addon_no_auth_access(
     api_client: TestClient, install_addon_example: Addon

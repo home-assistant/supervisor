@@ -16,6 +16,7 @@ from supervisor.homeassistant.api import HomeAssistantAPI
 from supervisor.homeassistant.const import LANDINGPAGE
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.misc.tasks import Tasks
+from supervisor.plugins.dns import PluginDns
 from supervisor.supervisor import Supervisor
 
 from tests.common import MockResponse, get_fixture_path
@@ -227,6 +228,20 @@ async def test_core_backup_cleanup(tasks: Tasks, coresys: CoreSys):
     assert not coresys.backups.get("7fed74c8")
     assert new_tar.exists()
     assert not old_tar.exists()
+
+
+@pytest.mark.usefixtures("no_job_throttle")
+async def test_update_dns_skipped_when_auto_update_disabled(
+    tasks: Tasks, coresys: CoreSys
+):
+    """Test plugin auto-update task is skipped when auto update is disabled."""
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.updater.auto_update = False
+
+    with patch.object(PluginDns, "update") as update:
+        await tasks._update_dns()
+        update.assert_not_called()
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data")
