@@ -22,7 +22,7 @@ from .const import LANDINGPAGE
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 CORE_UNIX_SOCKET_MIN_VERSION: AwesomeVersion = AwesomeVersion(
-    "2026.3.0.dev202602160311"
+    "2026.4.0.dev202603250907"
 )
 GET_CORE_STATE_MIN_VERSION: AwesomeVersion = AwesomeVersion("2023.8.0.dev20230720")
 
