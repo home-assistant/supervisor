@@ -859,10 +859,6 @@ class DockerAPIError(DockerError):
     """Docker API error."""
 
 
-class DockerRequestError(DockerError):
-    """Dockerd OS issues."""
-
-
 class DockerTrustError(DockerError):
     """Raise if images are not trusted."""
 

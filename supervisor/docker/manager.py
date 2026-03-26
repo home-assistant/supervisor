@@ -23,7 +23,6 @@ from aiodocker.stream import Stream
 from aiodocker.types import JSONObject
 from aiohttp import ClientTimeout, UnixConnector
 from awesomeversion import AwesomeVersion, AwesomeVersionCompareException
-import requests
 
 from ..const import (
     ATTR_ENABLE_IPV6,
@@ -44,7 +43,6 @@ from ..exceptions import (
     DockerError,
     DockerNoSpaceOnDevice,
     DockerNotFound,
-    DockerRequestError,
 )
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
@@ -589,12 +587,6 @@ class DockerAPI(CoreSysAttributes):
             raise DockerAPIError(
                 f"Can't start {name or container.id}: {err}", _LOGGER.error
             ) from err
-        except requests.RequestException as err:
-            raise DockerRequestError(
-                f"Dockerd connection issue for {name or container.id}: {err}",
-                _LOGGER.error,
-            ) from err
-
         return container
 
     async def run(
@@ -609,10 +601,6 @@ class DockerAPI(CoreSysAttributes):
         except aiodocker.DockerError as err:
             raise DockerAPIError(
                 f"Can't inspect started container {name}: {err}", _LOGGER.error
-            ) from err
-        except requests.RequestException as err:
-            raise DockerRequestError(
-                f"Dockerd connection issue for {name}: {err}", _LOGGER.error
             ) from err
 
         return container_attrs
@@ -992,7 +980,7 @@ class DockerAPI(CoreSysAttributes):
                 if err.status != HTTPStatus.NOT_FOUND:
                     raise
 
-        except (aiodocker.DockerError, requests.RequestException) as err:
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't remove image {image}: {err}", _LOGGER.warning
             ) from err
@@ -1041,7 +1029,7 @@ class DockerAPI(CoreSysAttributes):
 
         try:
             return await self.images.inspect(docker_image_list[0])
-        except (aiodocker.DockerError, requests.RequestException) as err:
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Could not inspect imported image due to: {err!s}", _LOGGER.error
             ) from err
@@ -1095,7 +1083,7 @@ class DockerAPI(CoreSysAttributes):
                         f"{current_image} not found for cleanup", _LOGGER.warning
                     ) from None
                 raise
-        except (aiodocker.DockerError, requests.RequestException) as err:
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Can't get {current_image} for cleanup", _LOGGER.warning
             ) from err
@@ -1129,7 +1117,7 @@ class DockerAPI(CoreSysAttributes):
             images_list = await self.images.list(
                 filters=json.dumps({"reference": image_names})
             )
-        except (aiodocker.DockerError, requests.RequestException) as err:
+        except aiodocker.DockerError as err:
             raise DockerError(
                 f"Corrupt docker overlayfs found: {err}", _LOGGER.warning
             ) from err
@@ -1138,6 +1126,6 @@ class DockerAPI(CoreSysAttributes):
             if docker_image["Id"] in keep:
                 continue
 
-            with suppress(aiodocker.DockerError, requests.RequestException):
+            with suppress(aiodocker.DockerError):
                 _LOGGER.info("Cleanup images: %s", docker_image["RepoTags"])
                 await self.images.delete(docker_image["Id"], force=True)
