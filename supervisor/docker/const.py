@@ -89,6 +89,7 @@ class MountBindOptions:
 
     propagation: PropagationMode | None = None
     read_only_non_recursive: bool | None = None
+    create_mountpoint: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """To dictionary representation."""
@@ -97,6 +98,8 @@ class MountBindOptions:
             out["Propagation"] = self.propagation.value
         if self.read_only_non_recursive is not None:
             out["ReadOnlyNonRecursive"] = self.read_only_non_recursive
+        if self.create_mountpoint is not None:
+            out["CreateMountpoint"] = self.create_mountpoint
         return out
 
 
@@ -140,6 +143,7 @@ class Ulimit:
         }
 
 
+ENV_CORE_API_SOCKET = "SUPERVISOR_CORE_API_SOCKET"
 ENV_DUPLICATE_LOG_FILE = "HA_DUPLICATE_LOG_FILE"
 ENV_TIME = "TZ"
 ENV_TOKEN = "SUPERVISOR_TOKEN"
@@ -168,6 +172,12 @@ MOUNT_MACHINE_ID = DockerMount(
     source=MACHINE_ID.as_posix(),
     target=MACHINE_ID.as_posix(),
     read_only=True,
+)
+MOUNT_CORE_RUN = DockerMount(
+    type=MountType.BIND,
+    source="/run/supervisor",
+    target="/run/supervisor",
+    read_only=False,
 )
 MOUNT_UDEV = DockerMount(
     type=MountType.BIND, source="/run/udev", target="/run/udev", read_only=True
