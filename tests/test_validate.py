@@ -25,14 +25,23 @@ IMAGE_NAME_GOOD = [
     "homeassistant/amd64-homeassistant",
     "ttl.sh/homeassistant",
     "myreg.local:8080/homeassistant",
+    "localhost/myimage",
+    "localhost:5000/myimage",
+    "127.0.0.1/myimage",
+    "127.0.0.1:5000/org/myimage",
+    "[::1]:5000/myimage",
+    "dockeruser/nice-app-1.2",
+    "ghcr.io/blakeblackshear/frigate",
 ]
 IMAGE_NAME_BAD = [
     "ghcr.io/home-assistant/homeassistant:123",
+    "ghcr.io/blakeblackshear/frigate:stable-rocm",
     ".ghcr.io/home-assistant/homeassistant",
     "HOMEASSISTANT/homeassistant",
     "homeassistant/HOMEASSISTANT",
     "homeassistant/_homeassistant",
     "homeassistant/-homeassistant",
+    "GHCR.IO/home-assistant/homeassistant",
 ]
 
 

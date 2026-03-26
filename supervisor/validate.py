@@ -50,6 +50,7 @@ from .const import (
     LogLevel,
     UpdateChannel,
 )
+from .docker.utils import get_registry_from_image
 from .utils.validate import validate_timezone
 
 # Move to store.validate when addons_repository config removed
@@ -60,9 +61,46 @@ RE_REGISTRY = re.compile(r"^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$")
 # pylint: disable=invalid-name
 network_port = vol.All(vol.Coerce(int), vol.Range(min=1, max=65535))
 wait_boot = vol.All(vol.Coerce(int), vol.Range(min=1, max=60))
-docker_image = vol.Match(
-    r"^([a-z0-9][a-z0-9.\-]*(:[0-9]+)?/)*?([a-z0-9{][a-z0-9.\-_{}]*/)*?([a-z0-9{][a-z0-9.\-_{}]*)$"
-)
+# Path component pattern for Docker image names (supports {arch}/{machine} templates)
+_RE_IMAGE_PATH_COMPONENT = re.compile(r"^[a-z0-9{][a-z0-9.\-_{}]*$")
+
+
+def docker_image(image: str) -> str:
+    """Validate a Docker image name without tag.
+
+    Tags are not allowed as the version/tag is managed separately.
+    Uses IMAGE_REGISTRY_REGEX from docker.utils for robust registry detection.
+    """
+    if not isinstance(image, str) or not image:
+        raise vol.Invalid(f"Expected a non-empty string for docker image, got: {image}")
+
+    # Extract registry if present (handles domains, IPv4/IPv6, ports, localhost)
+    registry = get_registry_from_image(image)
+    if registry:
+        # Registry must be lowercase
+        if registry != registry.lower():
+            raise vol.Invalid(f"Docker image registry must be lowercase: {image}")
+        path = image[len(registry) + 1 :]  # Remove "registry/" prefix
+    else:
+        path = image
+
+    # Tags are not allowed - version is managed separately by the add-on system
+    if ":" in path:
+        raise vol.Invalid(f"Docker image must not contain a tag: {image}")
+
+    if not path:
+        raise vol.Invalid(f"Docker image has no name: {image}")
+
+    # Validate each path component (org/name)
+    for component in path.split("/"):
+        if not _RE_IMAGE_PATH_COMPONENT.match(component):
+            raise vol.Invalid(
+                f"Invalid Docker image path component '{component}' in: {image}"
+            )
+
+    return image
+
+
 uuid_match = vol.Match(r"^[0-9a-f]{32}$")
 sha256 = vol.Match(r"^[0-9a-f]{64}$")
 token = vol.Match(r"^[0-9a-f]{32,256}$")
