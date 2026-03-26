@@ -22,6 +22,7 @@ from supervisor.exceptions import (
     BackupPermissionError,
 )
 from supervisor.jobs import JobSchedulerOptions
+from supervisor.mounts.mount import Mount
 
 from tests.common import get_fixture_path
 
@@ -381,3 +382,53 @@ def test_set_password_empty_string_is_none(
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.set_password(password)
     assert backup._password == expected_password  # pylint: disable=protected-access
+
+
+async def test_store_supervisor_config_no_mounts(coresys: CoreSys, tmp_path: Path):
+    """Test storing supervisor config when no mounts configured."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # Create backup context to enable store_supervisor_config
+    async with backup.create():
+        # Store config (should do nothing when no mounts configured)
+        await backup.store_supervisor_config()
+
+
+async def test_store_supervisor_config_with_mounts(coresys: CoreSys, tmp_path: Path):
+    """Test storing supervisor config when mounts are configured."""
+    # Add a test mount directly to manager state (avoids needing dbus)
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test_backup_share",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "192.168.1.100",
+            "share": "backup_share",
+        },
+    )
+    coresys.mounts._mounts[mount.name] = mount  # noqa: SLF001  # pylint: disable=protected-access
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # Create backup context and store supervisor config
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+
+async def test_restore_supervisor_config_no_tar(coresys: CoreSys, tmp_path: Path):
+    """Test restoring supervisor config when backup has no supervisor tar."""
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    # Create the backup (no mounts configured, so no supervisor.tar inside)
+    async with backup.create():
+        pass
+
+    # Open and restore - should succeed with nothing to do
+    async with backup.open(None):
+        success, tasks = await backup.restore_supervisor_config()
+        assert success is True
+        assert tasks == []
