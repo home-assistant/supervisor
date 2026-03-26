@@ -16,7 +16,6 @@ import aiodocker
 import aiohttp
 from awesomeversion import AwesomeVersion
 from awesomeversion.strategy import AwesomeVersionStrategy
-import requests
 
 from ..const import (
     ATTR_PASSWORD,
@@ -34,7 +33,6 @@ from ..exceptions import (
     DockerHubRateLimitExceeded,
     DockerJobError,
     DockerNotFound,
-    DockerRequestError,
 )
 from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
 from ..jobs.decorator import Job
@@ -328,7 +326,7 @@ class DockerInterface(JobGroup, ABC):
 
     async def exists(self) -> bool:
         """Return True if Docker image exists in local repository."""
-        with suppress(aiodocker.DockerError, requests.RequestException):
+        with suppress(aiodocker.DockerError):
             await self.sys_docker.images.inspect(f"{self.image}:{self.version!s}")
             return True
         return False
@@ -343,10 +341,6 @@ class DockerInterface(JobGroup, ABC):
                 return None
             raise DockerAPIError(
                 f"Docker API error occurred while getting container information: {err!s}"
-            ) from err
-        except requests.RequestException as err:
-            raise DockerRequestError(
-                f"Error communicating with Docker to get container information: {err!s}"
             ) from err
 
     async def is_running(self) -> bool:
@@ -368,7 +362,7 @@ class DockerInterface(JobGroup, ABC):
         self, version: AwesomeVersion, *, skip_state_event_if_down: bool = False
     ) -> None:
         """Attach to running Docker container."""
-        with suppress(aiodocker.DockerError, requests.RequestException):
+        with suppress(aiodocker.DockerError):
             docker_container = await self.sys_docker.containers.get(self.name)
             self._meta = await docker_container.show()
             self.sys_docker.monitor.watch_container(self._meta)
@@ -386,7 +380,7 @@ class DockerInterface(JobGroup, ABC):
                     ),
                 )
 
-        with suppress(aiodocker.DockerError, requests.RequestException):
+        with suppress(aiodocker.DockerError):
             if not self._meta and self.image:
                 self._meta = await self.sys_docker.images.inspect(
                     f"{self.image}:{version!s}"
@@ -489,7 +483,7 @@ class DockerInterface(JobGroup, ABC):
         if self.image == expected_image:
             try:
                 image = await self.sys_docker.images.inspect(image_name)
-            except (aiodocker.DockerError, requests.RequestException) as err:
+            except aiodocker.DockerError as err:
                 raise DockerError(
                     f"Could not get {image_name} for check due to: {err!s}",
                     _LOGGER.error,
@@ -611,10 +605,6 @@ class DockerInterface(JobGroup, ABC):
         except (aiodocker.DockerError, ValueError) as err:
             raise DockerNotFound(
                 f"No version found for {self.image}", _LOGGER.info
-            ) from err
-        except requests.RequestException as err:
-            raise DockerRequestError(
-                f"Communication issues with dockerd on Host: {err}", _LOGGER.warning
             ) from err
 
         _LOGGER.info("Found %s versions: %s", self.image, available_version)
