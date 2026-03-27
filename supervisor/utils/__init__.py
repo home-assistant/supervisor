@@ -1,6 +1,7 @@
 """Tools file for Supervisor."""
 
 import asyncio
+import errno
 from functools import lru_cache
 from ipaddress import IPv4Address
 import logging
@@ -146,10 +147,11 @@ def get_latest_mtime(directory: Path) -> tuple[float, Path]:
             if mtime > latest_mtime:
                 latest_mtime = mtime
                 latest_path = path
-        except FileNotFoundError:
-            # File might disappear between listing and stat. Parent
-            # directory modification date will flag such a change.
-            continue
+        except OSError as err:
+            if err.errno in (errno.ENOENT, errno.ELOOP):
+                _LOGGER.debug("Could not stat %s, skipping", path)
+                continue
+            raise
     return latest_mtime, latest_path
 
 
