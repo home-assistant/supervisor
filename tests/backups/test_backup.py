@@ -384,14 +384,16 @@ def test_set_password_empty_string_is_none(
     assert backup._password == expected_password  # pylint: disable=protected-access
 
 
-async def test_store_supervisor_config_no_mounts(coresys: CoreSys, tmp_path: Path):
-    """Test storing supervisor config when no mounts configured."""
+async def test_store_supervisor_config_nothing_to_backup(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test storing supervisor config when no mounts or registries configured."""
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
 
     # Create backup context to enable store_supervisor_config
     async with backup.create():
-        # Store config (should do nothing when no mounts configured)
+        # Store config (should do nothing when nothing to back up)
         await backup.store_supervisor_config()
 
 
@@ -418,12 +420,55 @@ async def test_store_supervisor_config_with_mounts(coresys: CoreSys, tmp_path: P
         await backup.store_supervisor_config()
 
 
+async def test_store_supervisor_config_with_registries(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test storing supervisor config when docker registries are configured."""
+    coresys.docker.config.registries["ghcr.io"] = {
+        "username": "user",
+        "password": "secret",
+    }
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+
+async def test_store_supervisor_config_with_mounts_and_registries(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test storing supervisor config with both mounts and registries."""
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test_share",
+            "usage": "backup",
+            "type": "cifs",
+            "server": "192.168.1.100",
+            "share": "backup_share",
+        },
+    )
+    coresys.mounts._mounts[mount.name] = mount  # noqa: SLF001  # pylint: disable=protected-access
+    coresys.docker.config.registries["ghcr.io"] = {
+        "username": "user",
+        "password": "secret",
+    }
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+
 async def test_restore_supervisor_config_no_tar(coresys: CoreSys, tmp_path: Path):
     """Test restoring supervisor config when backup has no supervisor tar."""
     backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
     backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
 
-    # Create the backup (no mounts configured, so no supervisor.tar inside)
+    # Create the backup (no mounts or registries, so no supervisor.tar inside)
     async with backup.create():
         pass
 
@@ -432,3 +477,76 @@ async def test_restore_supervisor_config_no_tar(coresys: CoreSys, tmp_path: Path
         success, tasks = await backup.restore_supervisor_config()
         assert success is True
         assert tasks == []
+
+
+async def test_restore_supervisor_config_with_registries(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test restoring docker registries from supervisor config in backup."""
+    # Configure registries and create a backup
+    coresys.docker.config.registries["ghcr.io"] = {
+        "username": "user",
+        "password": "secret",
+    }
+    coresys.docker.config.registries["docker.io"] = {
+        "username": "docker_user",
+        "password": "docker_pass",
+    }
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+    # Clear registries
+    coresys.docker.config.registries.clear()
+    assert not coresys.docker.config.registries
+
+    # Restore from backup
+    async with backup.open(None):
+        success, tasks = await backup.restore_supervisor_config()
+        assert success is True
+        assert tasks == []
+
+    # Verify registries were restored
+    assert "ghcr.io" in coresys.docker.config.registries
+    assert coresys.docker.config.registries["ghcr.io"]["username"] == "user"
+    assert coresys.docker.config.registries["ghcr.io"]["password"] == "secret"
+    assert "docker.io" in coresys.docker.config.registries
+    assert coresys.docker.config.registries["docker.io"]["username"] == "docker_user"
+
+
+async def test_restore_supervisor_config_registries_merge(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test that restored registries merge with existing ones."""
+    # Set up a registry that will be in the backup
+    coresys.docker.config.registries["ghcr.io"] = {
+        "username": "ghcr_user",
+        "password": "ghcr_pass",
+    }
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+    # Clear backup registry, add a different one
+    coresys.docker.config.registries.clear()
+    coresys.docker.config.registries["docker.io"] = {
+        "username": "hub_user",
+        "password": "hub_pass",
+    }
+
+    # Restore - should merge backup registries with existing
+    async with backup.open(None):
+        success, tasks = await backup.restore_supervisor_config()
+        assert success is True
+        assert tasks == []
+
+    # Both registries should exist
+    assert "ghcr.io" in coresys.docker.config.registries
+    assert "docker.io" in coresys.docker.config.registries
+    assert coresys.docker.config.registries["ghcr.io"]["username"] == "ghcr_user"
