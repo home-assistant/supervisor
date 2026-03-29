@@ -38,7 +38,7 @@ RE_SCHEMA_ELEMENT = re.compile(
     r"|str(?:\((?P<s_min>\d+)?,(?P<s_max>\d+)?\))?"
     r"|password(?:\((?P<p_min>\d+)?,(?P<p_max>\d+)?\))?"
     r"|int(?:\((?P<i_min>-?\d+)?,(?P<i_max>-?\d+)?\))?"
-    r"|float(?:\((?P<f_min>-?[\d\.]+)?,(?P<f_max>-?[\d\.]+)?\))?"
+    r"|float(?:\((?P<f_min>-?\d*\.?\d+)?,(?P<f_max>-?\d*\.?\d+)?\))?"
     r"|match\((?P<match>.*)\)"
     r"|list\((?P<list>.+)\)"
     r")\??$"
