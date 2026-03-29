@@ -45,6 +45,38 @@ def test_simple_schema(coresys):
         )({"name": "Pascal", "fires": True})
 
 
+def test_simple_schema_integers(coresys):
+    """Test with simple schema."""
+    assert AddonOptions(
+        coresys,
+        {"name": "str", "password": "password", "pos": "int(0,10)", "neg": "int(-5,0)"},
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )({"name": "Pascal", "password": "1234", "pos": 5, "neg": "-4"})
+
+
+def test_simple_schema_floats(coresys):
+    assert AddonOptions(
+        coresys,
+        {
+            "name": "str",
+            "password": "password",
+            "pos": "float(0.0,10.5)",
+            "neg": "float(-5.0,-.5)",
+        },
+        MOCK_ADDON_NAME,
+        MOCK_ADDON_SLUG,
+    )({"name": "Pascal", "password": "1234", "pos": 5.0, "neg": "-4.0"})
+
+    with pytest.raises(vol.error.Invalid):
+        assert AddonOptions(
+            coresys,
+            {"name": "str", "password": "password", "float": "float(-1.0,-.)"},
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "Pascal", "password": "1234", "float": "0.0"})
+
+
 def test_complex_schema_list(coresys):
     """Test with complex list schema."""
     assert AddonOptions(
