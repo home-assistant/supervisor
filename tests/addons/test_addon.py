@@ -30,6 +30,7 @@ from supervisor.exceptions import (
     AddonsJobError,
     AddonUnknownError,
     AudioUpdateError,
+    DockerRegistryAuthError,
     HassioError,
 )
 from supervisor.hardware.helper import HwHelper
@@ -755,6 +756,67 @@ async def test_local_example_install(coresys: CoreSys, tmp_supervisor_data: Path
         install.assert_called_once()
 
     assert data_dir.is_dir()
+
+
+@pytest.mark.usefixtures("test_repository", "tmp_supervisor_data")
+async def test_addon_install_auth_failure(coresys: CoreSys):
+    """Test addon install raises DockerRegistryAuthError on 401 with credentials."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    # Configure bad registry credentials
+    coresys.docker.config._data["registries"] = {  # pylint: disable=protected-access
+        "docker.io": {"username": "baduser", "password": "badpass"}
+    }
+
+    with (
+        patch.object(
+            DockerAddon,
+            "install",
+            side_effect=DockerRegistryAuthError(registry="docker.io"),
+        ),
+        pytest.raises(DockerRegistryAuthError),
+    ):
+        await coresys.addons.install("local_example")
+
+    # Verify addon data was cleaned up
+    assert "local_example" not in coresys.addons.local
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_addon_update_auth_failure(
+    coresys: CoreSys, install_addon_example: Addon
+):
+    """Test addon update raises DockerRegistryAuthError on 401 with credentials."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with (
+        patch.object(
+            DockerAddon,
+            "update",
+            side_effect=DockerRegistryAuthError(registry="docker.io"),
+        ),
+        pytest.raises(DockerRegistryAuthError),
+    ):
+        await install_addon_example.update()
+
+
+@pytest.mark.usefixtures("tmp_supervisor_data")
+async def test_addon_rebuild_auth_failure(
+    coresys: CoreSys, install_addon_example: Addon
+):
+    """Test addon rebuild raises DockerRegistryAuthError on 401 with credentials."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    with (
+        patch.object(DockerAddon, "remove"),
+        patch.object(
+            DockerAddon,
+            "install",
+            side_effect=DockerRegistryAuthError(registry="docker.io"),
+        ),
+        pytest.raises(DockerRegistryAuthError),
+    ):
+        await install_addon_example.rebuild()
 
 
 @pytest.mark.usefixtures("coresys", "path_extern")
