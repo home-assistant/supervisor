@@ -123,7 +123,7 @@ class DBusManager(CoreSysAttributes):
 
         try:
             self._bus = connected_bus = await MessageBus(
-                bus_type=BusType.SYSTEM
+                bus_type=BusType.SYSTEM, negotiate_unix_fd=True
             ).connect()
         except Exception as err:
             raise DBusFatalError(

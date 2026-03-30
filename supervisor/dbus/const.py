@@ -48,6 +48,9 @@ DBUS_IFACE_UDISKS2_MANAGER = "org.freedesktop.UDisks2.Manager"
 DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED = (
     "org.freedesktop.NetworkManager.Connection.Active.StateChanged"
 )
+DBUS_SIGNAL_LOGIND_PREPARE_FOR_SHUTDOWN = (
+    "org.freedesktop.login1.Manager.PrepareForShutdown"
+)
 DBUS_SIGNAL_PROPERTIES_CHANGED = "org.freedesktop.DBus.Properties.PropertiesChanged"
 DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED = "de.pengutronix.rauc.Installer.Completed"
 

@@ -271,6 +271,7 @@ async def test_datadisk_migrate_between_external_renames(
     all_dbus_services["os_agent"].emit_properties_changed({"Version": "1.5.0"})
     await all_dbus_services["os_agent"].ping()
 
+    await coresys.core.set_state(CoreState.RUNNING)
     await coresys.os.datadisk.migrate_disk("Generic-Flash-Disk-61BCDDB6")
 
     assert datadisk_service.MarkDataMove.calls == [()]

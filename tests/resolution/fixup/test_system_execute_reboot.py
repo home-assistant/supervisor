@@ -1,5 +1,6 @@
 """Test fixup system reboot."""
 
+from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
@@ -25,6 +26,7 @@ async def test_fixup(
     )
     coresys.resolution.add_issue(Issue(IssueType.REBOOT_REQUIRED, ContextType.SYSTEM))
 
+    await coresys.core.set_state(CoreState.RUNNING)
     await system_execute_reboot()
 
     assert logind_service.Reboot.calls == [(False,)]
