@@ -71,7 +71,7 @@ def docker_image(image: str) -> str:
     Tags are not allowed as the version/tag is managed separately.
     Uses IMAGE_REGISTRY_REGEX from docker.utils for robust registry detection.
     """
-    if not isinstance(image, str) or not image:
+    if not image or not isinstance(image, str):
         raise vol.Invalid(f"Expected a non-empty string for docker image, got: {image}")
 
     # Extract registry if present (handles domains, IPv4/IPv6, ports, localhost)
@@ -84,12 +84,12 @@ def docker_image(image: str) -> str:
     else:
         path = image
 
+    if not path:
+        raise vol.Invalid(f"Docker image has no name: {image}")
+
     # Tags are not allowed - version is managed separately by the add-on system
     if ":" in path:
         raise vol.Invalid(f"Docker image must not contain a tag: {image}")
-
-    if not path:
-        raise vol.Invalid(f"Docker image has no name: {image}")
 
     # Validate each path component (org/name)
     for component in path.split("/"):
