@@ -4,8 +4,11 @@ coverage:
   status:
     project:
       default:
-        target: 40
-        threshold: 0.09
+        target: auto
+        threshold: 1
+    patch:
+      default:
+        target: 80
 comment: false
 github_checks:
     annotations: false
