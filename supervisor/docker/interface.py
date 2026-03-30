@@ -182,18 +182,31 @@ class DockerInterface(JobGroup, ABC):
         """Healthcheck of instance if it has one."""
         return self.meta_config.get("Healthcheck")
 
-    def _get_credentials(self, image: str) -> dict:
-        """Return a dictionary with credentials for docker login."""
+    def _get_credentials(self, image: str) -> tuple[dict, str]:
+        """Return credentials for docker login and the qualified image name.
+
+        Returns a tuple of (credentials_dict, qualified_image) where the image
+        is prefixed with the registry when needed. This ensures aiodocker sets
+        the correct ServerAddress in the X-Registry-Auth header, which Docker's
+        containerd image store requires to match the actual registry host.
+        """
         credentials = {}
         registry = self.sys_docker.config.get_registry_for_image(image)
+        qualified_image = image
 
         if registry:
             stored = self.sys_docker.config.registries[registry]
             credentials[ATTR_USERNAME] = stored[ATTR_USERNAME]
             credentials[ATTR_PASSWORD] = stored[ATTR_PASSWORD]
-            # Don't include registry for Docker Hub (both official and legacy)
-            if registry not in (DOCKER_HUB, DOCKER_HUB_LEGACY):
-                credentials[ATTR_REGISTRY] = registry
+            credentials[ATTR_REGISTRY] = registry
+
+            # For Docker Hub images, the image name typically lacks a registry
+            # prefix (e.g. "homeassistant/foo" instead of "docker.io/homeassistant/foo").
+            # aiodocker derives ServerAddress from image.partition("/"), so without
+            # the prefix it would use the namespace ("homeassistant") as ServerAddress,
+            # which Docker's containerd resolver rejects as a host mismatch.
+            if registry in (DOCKER_HUB, DOCKER_HUB_LEGACY):
+                qualified_image = f"{DOCKER_HUB}/{image}"
 
             _LOGGER.debug(
                 "Logging in to %s as %s",
@@ -201,7 +214,7 @@ class DockerInterface(JobGroup, ABC):
                 stored[ATTR_USERNAME],
             )
 
-        return credentials
+        return credentials, qualified_image
 
     @Job(
         name="docker_interface_install",
@@ -288,15 +301,15 @@ class DockerInterface(JobGroup, ABC):
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
         try:
             # Get credentials for private registries to pass to aiodocker
-            credentials = self._get_credentials(image) or None
+            credentials, pull_image_name = self._get_credentials(image)
 
             # Pull new image, passing credentials to aiodocker
             docker_image = await self.sys_docker.pull_image(
                 current_job.uuid,
-                image,
+                pull_image_name,
                 str(version),
                 platform=platform,
-                auth=credentials,
+                auth=credentials or None,
             )
 
             # Tag latest
