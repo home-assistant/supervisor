@@ -984,7 +984,7 @@ class Backup(JobGroup):
             ],
         }
 
-        docker_data = {ATTR_REGISTRIES: dict(registries)}
+        docker_data = {ATTR_REGISTRIES: registries}
 
         outer_secure_tarfile = self._outer_secure_tarfile
         tar_name = f"supervisor.tar{'.gz' if self.compressed else ''}"

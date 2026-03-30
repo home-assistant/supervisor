@@ -224,7 +224,7 @@ class DockerConfig(FileConfiguration):
     @property
     def registries(self) -> dict[str, Any]:
         """Return credentials for docker registries."""
-        return self._data.get(ATTR_REGISTRIES, {})
+        return self._data[ATTR_REGISTRIES]
 
     def get_registry_for_image(self, image: str) -> str | None:
         """Return the registry name if credentials are available for the image.
