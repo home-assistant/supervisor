@@ -46,7 +46,7 @@ def test_simple_schema(coresys):
 
 
 def test_simple_schema_integers(coresys):
-    """Test with simple schema."""
+    """Test integer limits."""
     assert AddonOptions(
         coresys,
         {"name": "str", "password": "password", "pos": "int(0,10)", "neg": "int(-5,0)"},
@@ -56,6 +56,7 @@ def test_simple_schema_integers(coresys):
 
 
 def test_simple_schema_floats(coresys):
+    """Test float limits."""
     assert AddonOptions(
         coresys,
         {
