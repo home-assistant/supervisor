@@ -16,6 +16,7 @@ from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     AddonsError,
+    BackupError,
     BackupFileExistError,
     BackupFileNotFoundError,
     BackupInvalidError,
@@ -550,3 +551,88 @@ async def test_restore_supervisor_config_registries_merge(
     assert "ghcr.io" in coresys.docker.config.registries
     assert "docker.io" in coresys.docker.config.registries
     assert coresys.docker.config.registries["ghcr.io"]["username"] == "ghcr_user"
+
+
+async def test_restore_supervisor_config_invalid_docker_data(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test restore with invalid docker.json reports failure but doesn't crash."""
+    # Create a backup with valid registries
+    coresys.docker.config.registries["ghcr.io"] = {
+        "username": "user",
+        "password": "secret",
+    }
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+    # Patch the executor to return invalid docker data
+    original_run = coresys.run_in_executor
+
+    async def _patched_run(func, *args, **kwargs):
+        result = await original_run(func, *args, **kwargs)
+        if isinstance(result, tuple) and len(result) == 2:
+            # Return mounts_data unchanged, but corrupt docker_data
+            return (result[0], {"registries": {"bad": "not_a_valid_registry"}})
+        return result
+
+    coresys.docker.config.registries.clear()
+
+    async with backup.open(None):
+        with patch.object(coresys, "run_in_executor", side_effect=_patched_run):
+            success, tasks = await backup.restore_supervisor_config()
+            assert success is False
+            assert tasks == []
+
+    # No registries should have been restored
+    assert not coresys.docker.config.registries
+
+
+async def test_store_supervisor_config_tar_error(coresys: CoreSys, tmp_path: Path):
+    """Test store_supervisor_config handles tar errors."""
+    coresys.docker.config.registries["ghcr.io"] = {
+        "username": "user",
+        "password": "secret",
+    }
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    async with backup.create():
+        with (
+            patch.object(
+                coresys, "run_in_executor", side_effect=tarfile.TarError("test error")
+            ),
+            pytest.raises(BackupError, match="Can't write supervisor config tarfile"),
+        ):
+            await backup.store_supervisor_config()
+
+
+async def test_restore_supervisor_config_tar_read_error(
+    coresys: CoreSys, tmp_path: Path
+):
+    """Test restore handles tar read errors gracefully."""
+    # Create a backup with registries so supervisor.tar exists
+    coresys.docker.config.registries["ghcr.io"] = {
+        "username": "user",
+        "password": "secret",
+    }
+
+    backup = Backup(coresys, tmp_path / "my_backup.tar", "test", None)
+    backup.new("test", "2023-07-21T21:05:00.000000+00:00", BackupType.FULL)
+
+    async with backup.create():
+        await backup.store_supervisor_config()
+
+    async with backup.open(None):
+        with patch.object(
+            coresys,
+            "run_in_executor",
+            side_effect=tarfile.TarError("corrupted tar"),
+        ):
+            success, tasks = await backup.restore_supervisor_config()
+            assert success is False
+            assert tasks == []
