@@ -22,6 +22,7 @@ from supervisor.exceptions import (
     DockerError,
     DockerNoSpaceOnDevice,
     DockerNotFound,
+    DockerRegistryAuthError,
 )
 from supervisor.homeassistant.const import WSEvent, WSType
 from supervisor.jobs import ChildJobSyncFilter, JobSchedulerOptions, SupervisorJob
@@ -127,6 +128,61 @@ async def test_private_registry_credentials_passed_to_pull(
         stream=True,
         timeout=None,
     )
+
+
+async def test_pull_401_with_credentials_raises_auth_error(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+):
+    """Test that a 401 during pull with credentials raises DockerRegistryAuthError."""
+    image = "homeassistant/amd64-supervisor"
+
+    # Configure registry credentials
+    coresys.docker.config._data["registries"] = {  # pylint: disable=protected-access
+        "docker.io": {"username": "baduser", "password": "badpass"}
+    }
+
+    # Make pull raise 401
+    coresys.docker.images.pull.side_effect = aiodocker.DockerError(
+        HTTPStatus.UNAUTHORIZED,
+        {"message": "unauthorized: incorrect username or password"},
+    )
+
+    with (
+        patch.object(
+            type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
+        ),
+        pytest.raises(DockerRegistryAuthError, match="docker.io"),
+    ):
+        await test_docker_interface.install(
+            AwesomeVersion("1.2.3"), image, arch=CpuArch.AMD64
+        )
+
+
+async def test_pull_401_without_credentials_raises_docker_error(
+    coresys: CoreSys,
+    test_docker_interface: DockerInterface,
+):
+    """Test that a 401 during pull without credentials raises generic DockerError."""
+    image = "homeassistant/amd64-supervisor"
+
+    # No registry credentials configured
+
+    # Make pull raise 401
+    coresys.docker.images.pull.side_effect = aiodocker.DockerError(
+        HTTPStatus.UNAUTHORIZED,
+        {"message": "unauthorized: incorrect username or password"},
+    )
+
+    with (
+        patch.object(
+            type(coresys.supervisor), "arch", PropertyMock(return_value="amd64")
+        ),
+        pytest.raises(DockerError, match="Can't install"),
+    ):
+        await test_docker_interface.install(
+            AwesomeVersion("1.2.3"), image, arch=CpuArch.AMD64
+        )
 
 
 @pytest.mark.parametrize(

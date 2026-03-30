@@ -33,6 +33,7 @@ from ..exceptions import (
     DockerHubRateLimitExceeded,
     DockerJobError,
     DockerNotFound,
+    DockerRegistryAuthError,
 )
 from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
 from ..jobs.decorator import Job
@@ -328,6 +329,10 @@ class DockerInterface(JobGroup, ABC):
                     suggestions=[SuggestionType.REGISTRY_LOGIN],
                 )
                 raise DockerHubRateLimitExceeded(_LOGGER.error) from err
+            if err.status == HTTPStatus.UNAUTHORIZED and credentials:
+                raise DockerRegistryAuthError(
+                    _LOGGER.error, registry=credentials[ATTR_REGISTRY]
+                ) from err
             await async_capture_exception(err)
             raise DockerError(
                 f"Can't install {image}:{version!s}: {err}", _LOGGER.error
