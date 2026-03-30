@@ -81,6 +81,7 @@ from ..exceptions import (
     DockerBuildError,
     DockerContainerPortConflict,
     DockerError,
+    DockerRegistryAuthError,
     HostAppArmorError,
     StoreAddonNotFoundError,
 )
@@ -821,6 +822,9 @@ class Addon(AddonModel):
             _LOGGER.error("Could not build image for addon %s: %s", self.slug, err)
             await self.sys_addons.data.uninstall(self)
             raise AddonBuildFailedUnknownError(addon=self.slug) from err
+        except DockerRegistryAuthError:
+            await self.sys_addons.data.uninstall(self)
+            raise
         except DockerError as err:
             _LOGGER.error("Could not pull image to update addon %s: %s", self.slug, err)
             await self.sys_addons.data.uninstall(self)
@@ -925,6 +929,8 @@ class Addon(AddonModel):
         except DockerBuildError as err:
             _LOGGER.error("Could not build image for addon %s: %s", self.slug, err)
             raise AddonBuildFailedUnknownError(addon=self.slug) from err
+        except DockerRegistryAuthError:
+            raise
         except DockerError as err:
             _LOGGER.error("Could not pull image to update addon %s: %s", self.slug, err)
             raise AddonUnknownError(addon=self.slug) from err
@@ -985,6 +991,8 @@ class Addon(AddonModel):
             except DockerBuildError as err:
                 _LOGGER.error("Could not build image for addon %s: %s", self.slug, err)
                 raise AddonBuildFailedUnknownError(addon=self.slug) from err
+            except DockerRegistryAuthError:
+                raise
             except DockerError as err:
                 _LOGGER.error(
                     "Could not pull image to update addon %s: %s", self.slug, err
