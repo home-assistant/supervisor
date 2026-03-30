@@ -14,7 +14,7 @@ from supervisor.addons.manager import Addon
 from supervisor.const import BusEvent, CoreState, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState
-from supervisor.docker.interface import DOCKER_HUB, DockerInterface
+from supervisor.docker.interface import DOCKER_HUB, DOCKER_HUB_LEGACY, DockerInterface
 from supervisor.docker.manager import PullLogEntry, PullProgressDetail
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import (
@@ -105,12 +105,22 @@ async def test_private_registry_credentials_passed_to_pull(
         )
 
     # Verify credentials were passed to aiodocker
-    expected_auth = {"username": "testuser", "password": "testpass"}
-    if registry_key != DOCKER_HUB:
-        expected_auth["registry"] = registry_key
+    expected_auth = {
+        "username": "testuser",
+        "password": "testpass",
+        "registry": registry_key,
+    }
+
+    # For Docker Hub, image should be prefixed with docker.io/ so aiodocker
+    # sets the correct ServerAddress in X-Registry-Auth
+    expected_image = (
+        f"{DOCKER_HUB}/{image}"
+        if registry_key in (DOCKER_HUB, DOCKER_HUB_LEGACY)
+        else image
+    )
 
     coresys.docker.images.pull.assert_called_once_with(
-        image,
+        expected_image,
         tag="1.2.3",
         platform="linux/amd64",
         auth=expected_auth,
