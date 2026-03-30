@@ -54,6 +54,19 @@ def test_simple_schema_integers(coresys):
         MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "pos": 5, "neg": "-4"})
 
+    with pytest.raises(vol.error.Invalid):
+        assert AddonOptions(
+            coresys,
+            {
+                "name": "str",
+                "password": "password",
+                "pos": "int(0,10)",
+                "neg": "int(-5,0)",
+            },
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "Pascal", "password": "1234", "pos": 11, "neg": "-6"})
+
 
 def test_simple_schema_floats(coresys):
     """Test float limits."""
@@ -68,6 +81,19 @@ def test_simple_schema_floats(coresys):
         MOCK_ADDON_NAME,
         MOCK_ADDON_SLUG,
     )({"name": "Pascal", "password": "1234", "pos": 5.0, "neg": "-4.0"})
+
+    with pytest.raises(vol.error.Invalid):
+        assert AddonOptions(
+            coresys,
+            {
+                "name": "str",
+                "password": "password",
+                "pos": "float(0.0,10.5)",
+                "neg": "float(-5.0,-.5)",
+            },
+            MOCK_ADDON_NAME,
+            MOCK_ADDON_SLUG,
+        )({"name": "Pascal", "password": "1234", "pos": 11.0, "neg": "-6.0"})
 
     with pytest.raises(vol.error.Invalid):
         assert AddonOptions(
