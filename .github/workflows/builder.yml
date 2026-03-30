@@ -204,7 +204,7 @@ jobs:
   version:
     name: Update version
     if: github.repository_owner == 'home-assistant'
-    needs: ["init", "run_supervisor", "retag_deprecated"]
+    needs: ["init", "run_supervisor"]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repository
@@ -439,50 +439,3 @@ jobs:
       - name: Get supervisor logs on failiure
         if: ${{ cancelled() || failure() }}
         run: docker logs hassio_supervisor
-
-  retag_deprecated:
-    needs: ["build", "init"]
-    name: Re-tag deprecated ${{ matrix.arch }} images
-    if: needs.init.outputs.publish == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      packages: write
-    strategy:
-      matrix:
-        arch: ["armhf", "armv7", "i386"]
-    env:
-      # Last available release for deprecated architectures
-      FROZEN_VERSION: "2025.11.5"
-    steps:
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4.0.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
-        with:
-          cosign-release: ${{ env.COSIGN_VERSION }}
-
-      - name: Install crane
-        run: |
-          curl -sLO https://github.com/google/go-containerregistry/releases/download/${{ env.CRANE_VERSION }}/go-containerregistry_Linux_x86_64.tar.gz
-          echo "${{ env.CRANE_SHA256 }}  go-containerregistry_Linux_x86_64.tar.gz" | sha256sum -c -
-          tar xzf go-containerregistry_Linux_x86_64.tar.gz crane
-          sudo mv crane /usr/local/bin/
-
-      - name: Re-tag deprecated image with updated version label
-        run: |
-          crane auth login ghcr.io -u ${{ github.repository_owner }} -p ${{ secrets.GITHUB_TOKEN }}
-          crane mutate \
-            --label io.hass.version=${{ needs.init.outputs.version }} \
-            --tag ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }} \
-            ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor:${{ env.FROZEN_VERSION }}
-
-      - name: Sign image with Cosign
-        run: |
-          cosign sign --yes ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor:${{ needs.init.outputs.version }}
