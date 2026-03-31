@@ -195,11 +195,10 @@ async def test_api_store_repair_repository_git_error(
     assert result["error_key"] == "store_repository_unknown_error"
     assert result["extra_fields"] == {
         "repo": test_repository.slug,
-        "logs_command": "ha supervisor logs",
     }
     assert (
         result["message"]
-        == f"An unknown error occurred with addon repository {test_repository.slug}. Check supervisor logs for details (check with 'ha supervisor logs')"
+        == f"An unknown error occurred with addon repository {test_repository.slug}. Check supervisor logs for details"
     )
 
 

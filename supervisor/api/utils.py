@@ -148,7 +148,7 @@ def api_return_error(
         if check_exception_chain(error, DockerAPIError):
             message = format_message(message)
     if not message:
-        message = "Unknown error, see Supervisor logs (check with 'ha supervisor logs')"
+        message = "Unknown error, see supervisor"
 
     match error_type:
         case const.CONTENT_TYPE_TEXT:

@@ -443,10 +443,10 @@ async def test_supervisor_api_stats_failure(
     body = await resp.json()
     assert (
         body["message"]
-        == "An unknown error occurred with Supervisor. Check supervisor logs for details (check with 'ha supervisor logs')"
+        == "An unknown error occurred with Supervisor. Check supervisor logs for details"
     )
     assert body["error_key"] == "supervisor_unknown_error"
-    assert body["extra_fields"] == {"logs_command": "ha supervisor logs"}
+    assert "extra_fields" not in body
     assert (
         "Could not inspect container 'hassio_supervisor': [500] {'message': 'fail'}"
         in caplog.text

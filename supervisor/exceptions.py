@@ -5,11 +5,6 @@ from typing import Any
 
 from .const import OBSERVER_PORT
 
-MESSAGE_CHECK_SUPERVISOR_LOGS = (
-    "Check supervisor logs for details (check with '{logs_command}')"
-)
-EXTRA_FIELDS_LOGS_COMMAND = {"logs_command": "ha supervisor logs"}
-
 
 class HassioError(Exception):
     """Root exception."""
@@ -125,9 +120,8 @@ class APIUnknownSupervisorError(APIError):
     ) -> None:
         """Initialize exception."""
         self.message_template = (
-            f"{self.message_template}. {MESSAGE_CHECK_SUPERVISOR_LOGS}"
+            f"{self.message_template}. Check supervisor logs for details"
         )
-        self.extra_fields = (self.extra_fields or {}) | EXTRA_FIELDS_LOGS_COMMAND
         super().__init__(None, logger, job_id=job_id)
 
 
