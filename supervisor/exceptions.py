@@ -120,7 +120,7 @@ class APIUnknownSupervisorError(APIError):
     ) -> None:
         """Initialize exception."""
         self.message_template = (
-            f"{self.message_template}. Check supervisor logs for details"
+            f"{self.message_template}. Check Supervisor logs for details"
         )
         super().__init__(None, logger, job_id=job_id)
 

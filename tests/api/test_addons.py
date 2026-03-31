@@ -599,7 +599,7 @@ async def test_addon_start_options_error(
         body = await resp.json()
         assert (
             body["message"]
-            == "An unknown error occurred with addon local_example. Check supervisor logs for details"
+            == "An unknown error occurred with addon local_example. Check Supervisor logs for details"
         )
         assert body["error_key"] == "addon_unknown_error"
         assert body["extra_fields"] == {
@@ -681,7 +681,7 @@ async def test_addon_rebuild_fails_error(api_client: TestClient, coresys: CoreSy
     body = await resp.json()
     assert (
         body["message"]
-        == "An unknown error occurred while trying to build the image for addon local_ssh. Check supervisor logs for details"
+        == "An unknown error occurred while trying to build the image for addon local_ssh. Check Supervisor logs for details"
     )
     assert body["error_key"] == "addon_build_failed_unknown_error"
     assert body["extra_fields"] == {

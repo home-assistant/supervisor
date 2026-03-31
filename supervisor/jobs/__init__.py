@@ -98,7 +98,7 @@ class SupervisorJobError:
     """Representation of an error occurring during a supervisor job."""
 
     type_: type[HassioError] = HassioError
-    message: str = "Unknown error, see supervisor logs"
+    message: str = "Unknown error, see Supervisor logs"
     stage: str | None = None
     error_key: str | None = None
     extra_fields: dict[str, Any] | None = None

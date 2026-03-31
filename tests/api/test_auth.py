@@ -182,7 +182,7 @@ async def test_list_users_ws_error(
     result = await resp.json()
     assert result == {
         "result": "error",
-        "message": "Can't request listing users on Home Assistant. Check supervisor logs for details",
+        "message": "Can't request listing users on Home Assistant. Check Supervisor logs for details",
         "error_key": "auth_list_users_error",
     }
     assert "Can't request listing users on Home Assistant: fail" in caplog.text
@@ -373,7 +373,7 @@ async def test_auth_backend_login_failure(api_client: TestClient):
     body = await resp.json()
     assert (
         body["message"]
-        == "Unable to validate authentication details with Home Assistant. Check supervisor logs for details"
+        == "Unable to validate authentication details with Home Assistant. Check Supervisor logs for details"
     )
     assert body["error_key"] == "auth_home_assistant_api_validation_error"
     assert "extra_fields" not in body

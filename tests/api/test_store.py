@@ -198,7 +198,7 @@ async def test_api_store_repair_repository_git_error(
     }
     assert (
         result["message"]
-        == f"An unknown error occurred with addon repository {test_repository.slug}. Check supervisor logs for details"
+        == f"An unknown error occurred with addon repository {test_repository.slug}. Check Supervisor logs for details"
     )
 
 

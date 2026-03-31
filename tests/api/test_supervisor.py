@@ -443,7 +443,7 @@ async def test_supervisor_api_stats_failure(
     body = await resp.json()
     assert (
         body["message"]
-        == "An unknown error occurred with Supervisor. Check supervisor logs for details"
+        == "An unknown error occurred with Supervisor. Check Supervisor logs for details"
     )
     assert body["error_key"] == "supervisor_unknown_error"
     assert "extra_fields" not in body
