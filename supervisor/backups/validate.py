@@ -11,7 +11,6 @@ from ..backups.const import BackupType
 from ..const import (
     ATTR_ADDONS,
     ATTR_COMPRESSED,
-    ATTR_CRYPTO,
     ATTR_DATE,
     ATTR_DAYS_UNTIL_STALE,
     ATTR_EXCLUDE_DATABASE,
@@ -26,7 +25,6 @@ from ..const import (
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
-    CRYPTO_AES128,
     FOLDER_ADDONS,
     FOLDER_HOMEASSISTANT,
     FOLDER_MEDIA,
@@ -97,7 +95,7 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Optional(ATTR_PROTECTED, default=False): vol.All(
             v1_protected, vol.Boolean()
         ),
-        vol.Optional(ATTR_CRYPTO, default=None): vol.Maybe(CRYPTO_AES128),
+        vol.Remove("crypto"): vol.Maybe("aes128"),
         vol.Optional(ATTR_HOMEASSISTANT, default=None): vol.All(
             v1_homeassistant,
             vol.Maybe(

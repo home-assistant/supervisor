@@ -32,7 +32,6 @@ from ..addons.manager import Addon
 from ..const import (
     ATTR_ADDONS,
     ATTR_COMPRESSED,
-    ATTR_CRYPTO,
     ATTR_DATE,
     ATTR_DOCKER,
     ATTR_EXCLUDE_DATABASE,
@@ -48,7 +47,6 @@ from ..const import (
     ATTR_SUPERVISOR_VERSION,
     ATTR_TYPE,
     ATTR_VERSION,
-    CRYPTO_AES128,
 )
 from ..coresys import CoreSys
 from ..exceptions import (
@@ -82,7 +80,7 @@ from .const import (
 )
 from .validate import SCHEMA_BACKUP
 
-IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_CRYPTO, ATTR_DOCKER}
+IGNORED_COMPARISON_FIELDS = {ATTR_PROTECTED, ATTR_DOCKER}
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -339,7 +337,6 @@ class Backup(JobGroup):
         if password:
             self._password = password
             self._data[ATTR_PROTECTED] = True
-            self._data[ATTR_CRYPTO] = CRYPTO_AES128
             self._locations[self.location].protected = True
 
         if not compressed:
