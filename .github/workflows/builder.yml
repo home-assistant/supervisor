@@ -201,6 +201,25 @@ jobs:
           push: ${{ needs.init.outputs.publish == 'true' }}
           version: ${{ needs.init.outputs.version }}
 
+  manifest:
+    name: Publish multi-arch manifest
+    needs: ["init", "build"]
+    if: needs.init.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish multi-arch manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@62a1597b84b3461abad9816d9cd92862a2b542c3 # 2026.03.2
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: |
+            ${{ needs.init.outputs.version }}
+            latest
+
   version:
     name: Update version
     if: github.repository_owner == 'home-assistant'
