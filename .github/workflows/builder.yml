@@ -25,6 +25,7 @@ on:
   push:
     branches: ["main"]
     paths:
+      - ".github/workflows/builder.yml"
       - "rootfs/**"
       - "supervisor/**"
       - Dockerfile
