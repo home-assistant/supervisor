@@ -38,6 +38,7 @@ env:
   CRANE_SHA256: "8ef3564d264e6b5ca93f7b7f5652704c4dd29d33935aff6947dd5adefd05953e"
   BUILD_NAME: supervisor
   BUILD_TYPE: supervisor
+  IMAGE_NAME: hassio-supervisor
   ARCHITECTURES: '["amd64", "aarch64"]'
 
 concurrency:
@@ -49,11 +50,11 @@ jobs:
     name: Initialize build
     runs-on: ubuntu-latest
     outputs:
-      architectures: ${{ env.ARCHITECTURES }}
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
       publish: ${{ steps.version.outputs.publish }}
       build_wheels: ${{ steps.requirements.outputs.build_wheels }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -86,21 +87,23 @@ jobs:
             echo "build_wheels=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Get build matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@62a1597b84b3461abad9816d9cd92862a2b542c3 # 2026.03.2
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+
   build:
     name: Build ${{ matrix.arch }} supervisor
     needs: init
-    runs-on: ${{ matrix.runs-on }}
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
       id-token: write
       packages: write
     strategy:
-      matrix:
-        arch: ${{ fromJson(needs.init.outputs.architectures) }}
-        include:
-          - runs-on: ubuntu-24.04
-          - runs-on: ubuntu-24.04-arm
-            arch: aarch64
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
     env:
       WHEELS_ABI: cp314
       WHEELS_TAG: musllinux_1_2
@@ -194,7 +197,7 @@ jobs:
           container-registry-password: ${{ secrets.GITHUB_TOKEN }}
           cosign-base-identity: 'https://github.com/home-assistant/docker-base/.*'
           cosign-base-verify: ghcr.io/home-assistant/base-python:3.14-alpine3.22
-          image: ghcr.io/home-assistant/${{ matrix.arch }}-hassio-supervisor
+          image: ${{ matrix.image }}
           image-tags: |
             ${{ needs.init.outputs.version }}
             latest
