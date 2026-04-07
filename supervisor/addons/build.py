@@ -7,9 +7,10 @@ from functools import cached_property
 import json
 import logging
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from awesomeversion import AwesomeVersion
+import voluptuous as vol
 
 from ..const import (
     ATTR_ARGS,
@@ -38,7 +39,7 @@ from ..exceptions import (
     ConfigurationFileError,
     HassioArchNotFound,
 )
-from ..utils.common import FileConfiguration, find_one_filetype
+from ..utils.common import find_one_filetype, read_json_or_yaml_file
 from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
@@ -47,48 +48,72 @@ if TYPE_CHECKING:
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class AddonBuild(FileConfiguration, CoreSysAttributes):
+class AddonBuild(CoreSysAttributes):
     """Handle build options for add-ons."""
 
-    def __init__(self, coresys: CoreSys, addon: AnyAddon) -> None:
+    def __init__(self, coresys: CoreSys, addon: AnyAddon, data: dict[str, Any]) -> None:
         """Initialize Supervisor add-on builder."""
         self.coresys: CoreSys = coresys
         self.addon = addon
-        self._has_build_file: bool = False
+        self._build_config: dict[str, Any] = data
 
-        # Search for build file later in executor
-        super().__init__(None, SCHEMA_BUILD_CONFIG)
+    @classmethod
+    async def create(cls, coresys: CoreSys, addon: AnyAddon) -> Self:
+        """Create an AddonBuild by reading the build configuration from disk."""
+        data = await coresys.run_in_executor(cls._read_build_config, addon)
 
-    @property
-    def has_build_file(self) -> bool:
-        """Return True if a build configuration file was found on disk."""
-        return self._has_build_file
+        if data:
+            _LOGGER.warning(
+                "App %s uses build.yaml which is deprecated. "
+                "Move build parameters into the Dockerfile directly.",
+                addon.slug,
+            )
 
-    def _get_build_file(self) -> Path:
-        """Get build file.
+            if data[ATTR_SQUASH]:
+                _LOGGER.warning(
+                    "Ignoring squash build option for %s as Docker BuildKit"
+                    " does not support it.",
+                    addon.slug,
+                )
+
+        return cls(coresys, addon, data or {})
+
+    @staticmethod
+    def _read_build_config(addon: AnyAddon) -> dict[str, Any] | None:
+        """Find and read the build configuration file.
 
         Must be run in executor.
         """
         try:
-            result = find_one_filetype(
-                self.addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
+            build_file = find_one_filetype(
+                addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
             )
-            self._has_build_file = True
-            return result
         except ConfigurationFileError:
-            self._has_build_file = False
-            return self.addon.path_location / "build.json"
+            # No build config file found, assuming modernized build
+            return None
 
-    async def read_data(self) -> None:
-        """Load data from file."""
-        if not self._file:
-            self._file = await self.sys_run_in_executor(self._get_build_file)
+        try:
+            raw = read_json_or_yaml_file(build_file)
+            build_config = SCHEMA_BUILD_CONFIG(raw)
+        except ConfigurationFileError as ex:
+            _LOGGER.exception(
+                "Error reading %s build config (%s), using defaults",
+                addon.slug,
+                ex,
+            )
+            build_config = SCHEMA_BUILD_CONFIG({})
+        except vol.Invalid as ex:
+            _LOGGER.warning(
+                "Error parsing %s build config (%s), using defaults", addon.slug, ex
+            )
+            build_config = SCHEMA_BUILD_CONFIG({})
 
-        await super().read_data()
+        # Default base image is passed in BUILD_FROM only when build.yaml is used
+        # (this is legacy behavior - without build config, Dockerfile should specify it)
+        if not build_config[ATTR_BUILD_FROM]:
+            build_config[ATTR_BUILD_FROM] = "ghcr.io/home-assistant/base:latest"
 
-    async def save_data(self):
-        """Ignore save function."""
-        raise RuntimeError()
+        return build_config
 
     @cached_property
     def arch(self) -> CpuArch:
@@ -98,35 +123,30 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
     @property
     def base_image(self) -> str | None:
         """Return base image for this add-on, or None to use Dockerfile default."""
-        if not self._data[ATTR_BUILD_FROM]:
-            if self._has_build_file:
-                return "ghcr.io/home-assistant/base:latest"
+        # No build config (otherwise default is coerced when reading the config)
+        if not self._build_config.get(ATTR_BUILD_FROM):
             return None
 
-        if isinstance(self._data[ATTR_BUILD_FROM], str):
-            return self._data[ATTR_BUILD_FROM]
+        # Single base image in build config
+        if isinstance(self._build_config[ATTR_BUILD_FROM], str):
+            return self._build_config[ATTR_BUILD_FROM]
 
-        # Evaluate correct base image
-        if self.arch not in self._data[ATTR_BUILD_FROM]:
+        # Dict - per-arch base images in build config
+        if self.arch not in self._build_config[ATTR_BUILD_FROM]:
             raise HassioArchNotFound(
                 f"Add-on {self.addon.slug} is not supported on {self.arch}"
             )
-        return self._data[ATTR_BUILD_FROM][self.arch]
-
-    @property
-    def squash(self) -> bool:
-        """Return True or False if squash is active."""
-        return self._data[ATTR_SQUASH]
+        return self._build_config[ATTR_BUILD_FROM][self.arch]
 
     @property
     def additional_args(self) -> dict[str, str]:
         """Return additional Docker build arguments."""
-        return self._data[ATTR_ARGS]
+        return self._build_config.get(ATTR_ARGS, {})
 
     @property
     def additional_labels(self) -> dict[str, str]:
         """Return additional Docker labels."""
-        return self._data[ATTR_LABELS]
+        return self._build_config.get(ATTR_LABELS, {})
 
     def get_dockerfile(self) -> Path:
         """Return Dockerfile path.

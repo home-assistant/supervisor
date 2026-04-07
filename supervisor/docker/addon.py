@@ -680,23 +680,11 @@ class DockerAddon(DockerInterface):
 
     async def _build(self, version: AwesomeVersion, image: str | None = None) -> None:
         """Build a Docker container."""
-        build_env = await AddonBuild(self.coresys, self.addon).load_config()
+        build_env = await AddonBuild.create(self.coresys, self.addon)
         # Check if the build environment is valid, raises if not
         await build_env.is_valid()
 
-        if build_env.has_build_file:
-            _LOGGER.warning(
-                "App %s uses build.yaml which is deprecated. "
-                "Move build parameters into the Dockerfile directly.",
-                self.addon.slug,
-            )
-
         _LOGGER.info("Starting build for %s:%s", self.image, version)
-        if build_env.squash:
-            _LOGGER.warning(
-                "Ignoring squash build option for %s as Docker BuildKit does not support it.",
-                self.addon.slug,
-            )
 
         addon_image_tag = f"{image or self.addon.image}:{version!s}"
 
