@@ -98,6 +98,8 @@ availability.
   - Dataclasses and enum classes
   - Async/await patterns
   - Pattern matching where appropriate
+  - Parenthesis-free `except` clauses with comma-separated exceptions
+    (e.g., `except KeyError, TypeError:`) — available since Python 3.14
 
 ### Code Quality Standards
 
