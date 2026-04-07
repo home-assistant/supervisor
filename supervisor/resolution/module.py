@@ -47,8 +47,8 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
 
         self._suggestions: list[Suggestion] = []
         self._issues: list[Issue] = []
-        self._unsupported: list[UnsupportedReason] = []
-        self._unhealthy: list[UnhealthyReason] = []
+        self._unsupported: set[UnsupportedReason] = set()
+        self._unhealthy: set[UnhealthyReason] = set()
 
         # Map suggestion UUID to event listeners (list)
         self._suggestion_listeners: dict[str, list[EventListener]] = {}
@@ -127,32 +127,34 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
             )
 
     @property
-    def unsupported(self) -> list[UnsupportedReason]:
-        """Return a list of unsupported reasons."""
+    def unsupported(self) -> set[UnsupportedReason]:
+        """Return a set of unsupported reasons."""
         return self._unsupported
 
     def add_unsupported_reason(self, reason: UnsupportedReason) -> None:
         """Add a reason for unsupported."""
-        if reason not in self._unsupported:
-            self._unsupported.append(reason)
-            self.sys_homeassistant.websocket.supervisor_event(
-                WSEvent.SUPPORTED_CHANGED,
-                attr.asdict(SupportedChanged(False, self.unsupported)),
-            )
+        if reason in self._unsupported:
+            return
+        self._unsupported.add(reason)
+        self.sys_homeassistant.websocket.supervisor_event(
+            WSEvent.SUPPORTED_CHANGED,
+            attr.asdict(SupportedChanged(False, sorted(self.unsupported))),
+        )
 
     @property
-    def unhealthy(self) -> list[UnhealthyReason]:
-        """Return a list of unhealthy reasons."""
+    def unhealthy(self) -> set[UnhealthyReason]:
+        """Return a set of unhealthy reasons."""
         return self._unhealthy
 
     def add_unhealthy_reason(self, reason: UnhealthyReason) -> None:
         """Add a reason for unhealthy."""
-        if reason not in self._unhealthy:
-            self._unhealthy.append(reason)
-            self.sys_homeassistant.websocket.supervisor_event(
-                WSEvent.HEALTH_CHANGED,
-                attr.asdict(HealthChanged(False, self.unhealthy)),
-            )
+        if reason in self._unhealthy:
+            return
+        self._unhealthy.add(reason)
+        self.sys_homeassistant.websocket.supervisor_event(
+            WSEvent.HEALTH_CHANGED,
+            attr.asdict(HealthChanged(False, sorted(self.unhealthy))),
+        )
 
     _OSERROR_UNHEALTHY_REASONS: dict[int, UnhealthyReason] = {
         errno.EBADMSG: UnhealthyReason.OSERROR_BAD_MESSAGE,
@@ -301,7 +303,9 @@ class ResolutionManager(FileConfiguration, CoreSysAttributes):
         self.sys_homeassistant.websocket.supervisor_event(
             WSEvent.SUPPORTED_CHANGED,
             attr.asdict(
-                SupportedChanged(self.sys_core.supported, self.unsupported or None)
+                SupportedChanged(
+                    self.sys_core.supported, sorted(self.unsupported) or None
+                )
             ),
         )
 

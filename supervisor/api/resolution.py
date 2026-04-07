@@ -59,8 +59,8 @@ class APIResoulution(CoreSysAttributes):
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return resolution information."""
         return {
-            ATTR_UNSUPPORTED: self.sys_resolution.unsupported,
-            ATTR_UNHEALTHY: self.sys_resolution.unhealthy,
+            ATTR_UNSUPPORTED: sorted(self.sys_resolution.unsupported),
+            ATTR_UNHEALTHY: sorted(self.sys_resolution.unhealthy),
             ATTR_SUGGESTIONS: [
                 self._generate_suggestion_information(suggestion)
                 for suggestion in self.sys_resolution.suggestions

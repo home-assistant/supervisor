@@ -201,7 +201,7 @@ async def test_fetch_data_no_update_when_os_unsupported(
     coresys.websession.head = AsyncMock()
 
     # Mark OS as unsupported by adding UnsupportedReason.OS_VERSION
-    coresys.resolution.unsupported.append(UnsupportedReason.OS_VERSION)
+    coresys.resolution.unsupported.add(UnsupportedReason.OS_VERSION)
 
     # Attempt to fetch data should fail due to OS_SUPPORTED condition
     with pytest.raises(
