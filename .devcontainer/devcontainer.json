@@ -1,6 +1,8 @@
 {
   "name": "Supervisor dev",
-  "image": "ghcr.io/home-assistant/devcontainer:3-supervisor",
+  "image": "ghcr.io/home-assistant/devcontainer:4-supervisor",
+  "overrideCommand": false,
+  "remoteUser": "vscode",
   "containerEnv": {
     "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}"
   },
@@ -46,6 +48,8 @@
   },
   "mounts": [
     "type=volume,target=/var/lib/docker",
-    "type=volume,target=/mnt/supervisor"
+    "type=volume,target=/var/lib/containerd",
+    "type=volume,target=/mnt/supervisor",
+    "type=tmpfs,target=/tmp"
   ]
 }

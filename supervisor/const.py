@@ -65,11 +65,15 @@ DOCKER_CPU_RUNTIME_ALLOCATION = int(DOCKER_CPU_RUNTIME_TOTAL / 5)
 DNS_SUFFIX = "local.hass.io"
 
 LABEL_ARCH = "io.hass.arch"
+LABEL_DESCRIPTION = "io.hass.description"
 LABEL_MACHINE = "io.hass.machine"
+LABEL_NAME = "io.hass.name"
 LABEL_TYPE = "io.hass.type"
+LABEL_URL = "io.hass.url"
 LABEL_VERSION = "io.hass.version"
 
-META_ADDON = "addon"
+META_ADDON = "addon"  # legacy label for app
+META_APP = "app"
 META_HOMEASSISTANT = "homeassistant"
 META_SUPERVISOR = "supervisor"
 

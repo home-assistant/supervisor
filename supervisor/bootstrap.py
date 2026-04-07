@@ -7,6 +7,7 @@ from importlib import import_module
 import logging
 import os
 import signal
+import threading
 import warnings
 
 from colorlog import ColoredFormatter
@@ -235,6 +236,11 @@ def warning_handler(message, category, filename, lineno, file=None, line=None):
     """Warning handler which logs warnings using the logging module."""
     _LOGGER.warning("%s:%s: %s: %s", filename, lineno, category.__name__, message)
     if isinstance(message, Exception):
+        # Don't capture warnings originating from Sentry SDK threads to
+        # avoid a feedback loop: sending an event can trigger urllib3
+        # warnings which would be captured and sent as new events.
+        if threading.current_thread().name.startswith("sentry-sdk."):
+            return
         capture_exception(message)
 
 

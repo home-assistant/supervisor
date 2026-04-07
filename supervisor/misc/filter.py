@@ -123,7 +123,7 @@ def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
                     attr.asdict(suggestion)
                     for suggestion in coresys.resolution.suggestions
                 ],
-                "unhealthy": coresys.resolution.unhealthy,
+                "unhealthy": sorted(coresys.resolution.unhealthy),
             },
             "store": {
                 "repositories": coresys.store.repository_urls,

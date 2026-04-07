@@ -239,7 +239,7 @@ async def test_unhealthy_on_report(coresys):
         event = filter_data(coresys, SAMPLE_EVENT, {})
 
     assert "issues" in event["contexts"]["resolution"]
-    assert event["contexts"]["resolution"]["unhealthy"][-1] == UnhealthyReason.DOCKER
+    assert UnhealthyReason.DOCKER in event["contexts"]["resolution"]["unhealthy"]
 
 
 async def test_images_report(coresys):

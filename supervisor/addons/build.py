@@ -7,9 +7,10 @@ from functools import cached_property
 import json
 import logging
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from awesomeversion import AwesomeVersion
+import voluptuous as vol
 
 from ..const import (
     ATTR_ARGS,
@@ -19,7 +20,13 @@ from ..const import (
     ATTR_SQUASH,
     ATTR_USERNAME,
     FILE_SUFFIX_CONFIGURATION,
-    META_ADDON,
+    LABEL_ARCH,
+    LABEL_DESCRIPTION,
+    LABEL_NAME,
+    LABEL_TYPE,
+    LABEL_URL,
+    LABEL_VERSION,
+    META_APP,
     SOCKET_DOCKER,
     CpuArch,
 )
@@ -32,7 +39,7 @@ from ..exceptions import (
     ConfigurationFileError,
     HassioArchNotFound,
 )
-from ..utils.common import FileConfiguration, find_one_filetype
+from ..utils.common import find_one_filetype, read_json_or_yaml_file
 from .validate import SCHEMA_BUILD_CONFIG
 
 if TYPE_CHECKING:
@@ -41,39 +48,72 @@ if TYPE_CHECKING:
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class AddonBuild(FileConfiguration, CoreSysAttributes):
+class AddonBuild(CoreSysAttributes):
     """Handle build options for add-ons."""
 
-    def __init__(self, coresys: CoreSys, addon: AnyAddon) -> None:
+    def __init__(self, coresys: CoreSys, addon: AnyAddon, data: dict[str, Any]) -> None:
         """Initialize Supervisor add-on builder."""
         self.coresys: CoreSys = coresys
         self.addon = addon
+        self._build_config: dict[str, Any] = data
 
-        # Search for build file later in executor
-        super().__init__(None, SCHEMA_BUILD_CONFIG)
+    @classmethod
+    async def create(cls, coresys: CoreSys, addon: AnyAddon) -> Self:
+        """Create an AddonBuild by reading the build configuration from disk."""
+        data = await coresys.run_in_executor(cls._read_build_config, addon)
 
-    def _get_build_file(self) -> Path:
-        """Get build file.
+        if data:
+            _LOGGER.warning(
+                "App %s uses build.yaml which is deprecated. "
+                "Move build parameters into the Dockerfile directly.",
+                addon.slug,
+            )
+
+            if data[ATTR_SQUASH]:
+                _LOGGER.warning(
+                    "Ignoring squash build option for %s as Docker BuildKit"
+                    " does not support it.",
+                    addon.slug,
+                )
+
+        return cls(coresys, addon, data or {})
+
+    @staticmethod
+    def _read_build_config(addon: AnyAddon) -> dict[str, Any] | None:
+        """Find and read the build configuration file.
 
         Must be run in executor.
         """
         try:
-            return find_one_filetype(
-                self.addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
+            build_file = find_one_filetype(
+                addon.path_location, "build", FILE_SUFFIX_CONFIGURATION
             )
         except ConfigurationFileError:
-            return self.addon.path_location / "build.json"
+            # No build config file found, assuming modernized build
+            return None
 
-    async def read_data(self) -> None:
-        """Load data from file."""
-        if not self._file:
-            self._file = await self.sys_run_in_executor(self._get_build_file)
+        try:
+            raw = read_json_or_yaml_file(build_file)
+            build_config = SCHEMA_BUILD_CONFIG(raw)
+        except ConfigurationFileError as ex:
+            _LOGGER.exception(
+                "Error reading %s build config (%s), using defaults",
+                addon.slug,
+                ex,
+            )
+            build_config = SCHEMA_BUILD_CONFIG({})
+        except vol.Invalid as ex:
+            _LOGGER.warning(
+                "Error parsing %s build config (%s), using defaults", addon.slug, ex
+            )
+            build_config = SCHEMA_BUILD_CONFIG({})
 
-        await super().read_data()
+        # Default base image is passed in BUILD_FROM only when build.yaml is used
+        # (this is legacy behavior - without build config, Dockerfile should specify it)
+        if not build_config[ATTR_BUILD_FROM]:
+            build_config[ATTR_BUILD_FROM] = "ghcr.io/home-assistant/base:latest"
 
-    async def save_data(self):
-        """Ignore save function."""
-        raise RuntimeError()
+        return build_config
 
     @cached_property
     def arch(self) -> CpuArch:
@@ -81,35 +121,32 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         return self.sys_arch.match([self.addon.arch])
 
     @property
-    def base_image(self) -> str:
-        """Return base image for this add-on."""
-        if not self._data[ATTR_BUILD_FROM]:
-            return f"ghcr.io/home-assistant/{self.arch!s}-base:latest"
+    def base_image(self) -> str | None:
+        """Return base image for this add-on, or None to use Dockerfile default."""
+        # No build config (otherwise default is coerced when reading the config)
+        if not self._build_config.get(ATTR_BUILD_FROM):
+            return None
 
-        if isinstance(self._data[ATTR_BUILD_FROM], str):
-            return self._data[ATTR_BUILD_FROM]
+        # Single base image in build config
+        if isinstance(self._build_config[ATTR_BUILD_FROM], str):
+            return self._build_config[ATTR_BUILD_FROM]
 
-        # Evaluate correct base image
-        if self.arch not in self._data[ATTR_BUILD_FROM]:
+        # Dict - per-arch base images in build config
+        if self.arch not in self._build_config[ATTR_BUILD_FROM]:
             raise HassioArchNotFound(
                 f"App {self.addon.slug} is not supported on {self.arch}"
             )
-        return self._data[ATTR_BUILD_FROM][self.arch]
-
-    @property
-    def squash(self) -> bool:
-        """Return True or False if squash is active."""
-        return self._data[ATTR_SQUASH]
+        return self._build_config[ATTR_BUILD_FROM][self.arch]
 
     @property
     def additional_args(self) -> dict[str, str]:
         """Return additional Docker build arguments."""
-        return self._data[ATTR_ARGS]
+        return self._build_config.get(ATTR_ARGS, {})
 
     @property
     def additional_labels(self) -> dict[str, str]:
         """Return additional Docker labels."""
-        return self._data[ATTR_LABELS]
+        return self._build_config.get(ATTR_LABELS, {})
 
     def get_dockerfile(self) -> Path:
         """Return Dockerfile path.
@@ -144,43 +181,33 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
                 system_arch_list=[arch.value for arch in self.sys_arch.supported],
             ) from None
 
+    def _registry_key(self, registry: str) -> str:
+        """Return the Docker config.json key for a registry."""
+        if registry in (DOCKER_HUB, DOCKER_HUB_LEGACY):
+            return "https://index.docker.io/v1/"
+        return registry
+
+    def _registry_auth(self, registry: str) -> str:
+        """Return base64-encoded auth string for a registry."""
+        stored = self.sys_docker.config.registries[registry]
+        return base64.b64encode(
+            f"{stored[ATTR_USERNAME]}:{stored[ATTR_PASSWORD]}".encode()
+        ).decode()
+
     def get_docker_config_json(self) -> str | None:
-        """Generate Docker config.json content with registry credentials for base image.
+        """Generate Docker config.json content with all configured registry credentials.
 
-        Returns a JSON string with registry credentials for the base image's registry,
-        or None if no matching registry is configured.
-
-        Raises:
-            HassioArchNotFound: If the add-on is not supported on the current architecture.
-
+        Returns a JSON string with registry credentials, or None if no registries
+        are configured.
         """
-        # Early return before accessing base_image to avoid unnecessary arch lookup
         if not self.sys_docker.config.registries:
             return None
 
-        registry = self.sys_docker.config.get_registry_for_image(self.base_image)
-        if not registry:
-            return None
-
-        stored = self.sys_docker.config.registries[registry]
-        username = stored[ATTR_USERNAME]
-        password = stored[ATTR_PASSWORD]
-
-        # Docker config.json uses base64-encoded "username:password" for auth
-        auth_string = base64.b64encode(f"{username}:{password}".encode()).decode()
-
-        # Use the actual registry URL for the key
-        # Docker Hub uses "https://index.docker.io/v1/" as the key
-        # Support both docker.io (official) and hub.docker.com (legacy)
-        registry_key = (
-            "https://index.docker.io/v1/"
-            if registry in (DOCKER_HUB, DOCKER_HUB_LEGACY)
-            else registry
-        )
-
-        config = {"auths": {registry_key: {"auth": auth_string}}}
-
-        return json.dumps(config)
+        auths = {
+            self._registry_key(registry): {"auth": self._registry_auth(registry)}
+            for registry in self.sys_docker.config.registries
+        }
+        return json.dumps({"auths": auths})
 
     def get_docker_args(
         self, version: AwesomeVersion, image_tag: str, docker_config_path: Path | None
@@ -203,26 +230,34 @@ class AddonBuild(FileConfiguration, CoreSysAttributes):
         ]
 
         labels = {
-            "io.hass.version": version,
-            "io.hass.arch": self.arch,
-            "io.hass.type": META_ADDON,
-            "io.hass.name": self._fix_label("name"),
-            "io.hass.description": self._fix_label("description"),
+            LABEL_VERSION: version,
+            LABEL_ARCH: self.arch,
+            LABEL_TYPE: META_APP,
             **self.additional_labels,
         }
 
+        # Set name only if non-empty, could have been set in Dockerfile
+        if name := self._fix_label("name"):
+            labels[LABEL_NAME] = name
+
+        # Set description only if non-empty, could have been set in Dockerfile
+        if description := self._fix_label("description"):
+            labels[LABEL_DESCRIPTION] = description
+
         if self.addon.url:
-            labels["io.hass.url"] = self.addon.url
+            labels[LABEL_URL] = self.addon.url
 
         for key, value in labels.items():
             build_cmd.extend(["--label", f"{key}={value}"])
 
         build_args = {
-            "BUILD_FROM": self.base_image,
             "BUILD_VERSION": version,
             "BUILD_ARCH": self.arch,
             **self.additional_args,
         }
+
+        if self.base_image is not None:
+            build_args["BUILD_FROM"] = self.base_image
 
         for key, value in build_args.items():
             build_cmd.extend(["--build-arg", f"{key}={value}"])
