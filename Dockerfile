@@ -40,9 +40,11 @@ RUN \
         ${LOCAL_WHEELS:+--find-links $LOCAL_WHEELS}
 
 # Install Home Assistant Supervisor
+ARG BUILD_VERSION="9999.09.9.dev9999"
 COPY . supervisor
 RUN \
-    uv pip install --no-cache -e ./supervisor \
+    sed -i "s/^SUPERVISOR_VERSION =.*/SUPERVISOR_VERSION = \"${BUILD_VERSION}\"/g" /usr/src/supervisor/supervisor/const.py \
+    && uv pip install --no-cache -e ./supervisor \
     && python3 -m compileall ./supervisor/supervisor
 
 
