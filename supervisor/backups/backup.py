@@ -666,16 +666,18 @@ class Backup(JobGroup):
             raise RuntimeError("Cannot restore components without opening backup tar")
 
         tar_name = f"{addon_slug}.tar{'.gz' if self.compressed else ''}"
+        tar_path = Path(self._tmp.name, tar_name)
+
+        # Verify the backup exists before trying to restore it
+        if not await self.sys_run_in_executor(tar_path.exists):
+            raise BackupError(f"Can't find backup {addon_slug}", _LOGGER.error)
+
         addon_file = SecureTarFile(
-            Path(self._tmp.name, tar_name),
+            tar_path,
             gzip=self.compressed,
             bufsize=BUF_SIZE,
             password=self._password,
         )
-
-        # If exists inside backup
-        if not await self.sys_run_in_executor(addon_file.path.exists):
-            raise BackupError(f"Can't find backup {addon_slug}", _LOGGER.error)
 
         # Perform a restore
         try:
