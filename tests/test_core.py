@@ -1,6 +1,7 @@
 """Testing handling with CoreState."""
 
 # pylint: disable=W0212
+import asyncio
 import datetime
 import errno
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
@@ -18,6 +19,7 @@ from supervisor.utils.whoami import WhoamiData
 
 from tests.dbus_service_mocks.base import DBusServiceMock
 from tests.dbus_service_mocks.systemd import Systemd as SystemdService
+from tests.dbus_service_mocks.systemd_unit import SystemdUnit as SystemdUnitService
 
 
 @pytest.mark.parametrize("run_supervisor_state", ["test_file"], indirect=True)
@@ -81,6 +83,8 @@ async def test_adjust_system_datetime_if_time_behind(
     """Test _adjust_system_datetime method when current time is ahead more than 1 hour."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.StopUnit.calls.clear()
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_unit_service.active_state = "active"
 
     utc_ts = datetime.datetime.now().replace(tzinfo=datetime.UTC) + datetime.timedelta(
         hours=1, minutes=1
@@ -99,7 +103,13 @@ async def test_adjust_system_datetime_if_time_behind(
         patch.object(InfoCenter, "use_ntp", new=PropertyMock(return_value=True)),
         patch.object(Supervisor, "check_connectivity") as mock_check_connectivity,
     ):
-        await coresys.core._adjust_system_datetime()
+        # Start the time adjustment which will wait for timesyncd to stop
+        task = asyncio.create_task(coresys.core._adjust_system_datetime())
+        await asyncio.sleep(0.1)
+        # Simulate timesyncd stopping via D-Bus signal
+        systemd_unit_service.emit_properties_changed({"ActiveState": "inactive"})
+        await task
+
         mock_retrieve_whoami.assert_called_once()
         mock_set_datetime.assert_called_once()
         mock_check_connectivity.assert_called_once()
