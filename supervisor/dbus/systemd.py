@@ -16,6 +16,7 @@ from ..exceptions import (
 )
 from ..utils.dbus import DBusSignalWrapper
 from .const import (
+    DBUS_ATTR_ACTIVE_STATE,
     DBUS_ATTR_FINISH_TIMESTAMP,
     DBUS_ATTR_FIRMWARE_TIMESTAMP_MONOTONIC,
     DBUS_ATTR_KERNEL_TIMESTAMP_MONOTONIC,
@@ -24,6 +25,7 @@ from .const import (
     DBUS_ATTR_VIRTUALIZATION,
     DBUS_ERR_SYSTEMD_NO_SUCH_UNIT,
     DBUS_IFACE_SYSTEMD_MANAGER,
+    DBUS_IFACE_SYSTEMD_UNIT,
     DBUS_NAME_SYSTEMD,
     DBUS_OBJECT_SYSTEMD,
     DBUS_SIGNAL_PROPERTIES_CHANGED,
@@ -85,6 +87,25 @@ class SystemdUnit(DBusInterface):
     def properties_changed(self) -> DBusSignalWrapper:
         """Return signal wrapper for properties changed."""
         return self.connected_dbus.signal(DBUS_SIGNAL_PROPERTIES_CHANGED)
+
+    @dbus_connected
+    async def wait_for_active_state(
+        self, target_states: set[UnitActiveState]
+    ) -> UnitActiveState:
+        """Wait for unit to reach one of the target active states.
+
+        Caller must handle TimeoutError if a timeout is desired.
+        """
+        async with self.properties_changed() as signal:
+            state = await self.get_active_state()
+            while state not in target_states:
+                interface, changed, _ = await signal.wait_for_signal()
+                if (
+                    interface == DBUS_IFACE_SYSTEMD_UNIT
+                    and DBUS_ATTR_ACTIVE_STATE in changed
+                ):
+                    state = UnitActiveState(changed[DBUS_ATTR_ACTIVE_STATE].value)
+        return state
 
 
 class Systemd(DBusInterfaceProxy):

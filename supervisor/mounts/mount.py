@@ -12,12 +12,10 @@ from voluptuous import Coerce
 
 from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
-    DBUS_ATTR_ACTIVE_STATE,
     DBUS_ATTR_DESCRIPTION,
     DBUS_ATTR_OPTIONS,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_WHAT,
-    DBUS_IFACE_SYSTEMD_UNIT,
     StartUnitMode,
     StopUnitMode,
     UnitActiveState,
@@ -179,7 +177,7 @@ class Mount(CoreSysAttributes, ABC):
             await self.mount()
             return
 
-        await self._update_state_await(unit, not_state=UnitActiveState.ACTIVATING)
+        await self._update_state_await(unit)
 
         # If mount is not available, try to reload it
         if not await self.is_mounted():
@@ -225,29 +223,20 @@ class Mount(CoreSysAttributes, ABC):
     async def _update_state_await(
         self,
         unit: SystemdUnit,
-        expected_states: list[UnitActiveState] | None = None,
-        not_state: UnitActiveState = UnitActiveState.ACTIVATING,
+        expected_states: set[UnitActiveState] | None = None,
     ) -> None:
-        """Update state info about mount from dbus. Wait for one of expected_states to appear or state to change from not_state."""
+        """Update state info about mount from dbus. Wait for one of expected_states to appear."""
+        if expected_states is None:
+            expected_states = {
+                UnitActiveState.ACTIVE,
+                UnitActiveState.FAILED,
+                UnitActiveState.INACTIVE,
+            }
         try:
-            async with asyncio.timeout(30), unit.properties_changed() as signal:
-                await self._update_state(unit)
-                while (
-                    expected_states
-                    and self.state not in expected_states
-                    or not expected_states
-                    and self.state == not_state
-                ):
-                    prop_change_signal = await signal.wait_for_signal()
-                    if (
-                        prop_change_signal[0] == DBUS_IFACE_SYSTEMD_UNIT
-                        and DBUS_ATTR_ACTIVE_STATE in prop_change_signal[1]
-                    ):
-                        self._state = prop_change_signal[1][
-                            DBUS_ATTR_ACTIVE_STATE
-                        ].value
-
+            async with asyncio.timeout(30):
+                self._state = await unit.wait_for_active_state(expected_states)
         except TimeoutError:
+            await self._update_state(unit)
             _LOGGER.warning(
                 "Mount %s still in state %s after waiting for 30 seconds to complete",
                 self.name,
@@ -300,7 +289,7 @@ class Mount(CoreSysAttributes, ABC):
             ) from err
 
         if unit := await self._update_unit():
-            await self._update_state_await(unit, not_state=UnitActiveState.ACTIVATING)
+            await self._update_state_await(unit)
 
         if not await self.is_mounted():
             raise MountActivationError(
@@ -320,7 +309,7 @@ class Mount(CoreSysAttributes, ABC):
                 await self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL)
 
             await self._update_state_await(
-                unit, [UnitActiveState.INACTIVE, UnitActiveState.FAILED]
+                unit, {UnitActiveState.INACTIVE, UnitActiveState.FAILED}
             )
 
             if self.state == UnitActiveState.FAILED:
@@ -349,9 +338,7 @@ class Mount(CoreSysAttributes, ABC):
             await self._restart()
         else:
             if unit := await self._update_unit():
-                await self._update_state_await(
-                    unit, not_state=UnitActiveState.ACTIVATING
-                )
+                await self._update_state_await(unit)
 
             if not await self.is_mounted():
                 _LOGGER.info(
@@ -380,7 +367,7 @@ class Mount(CoreSysAttributes, ABC):
             ) from err
 
         if unit := await self._update_unit():
-            await self._update_state_await(unit, not_state=UnitActiveState.ACTIVATING)
+            await self._update_state_await(unit)
 
         if not await self.is_mounted():
             raise MountActivationError(

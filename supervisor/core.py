@@ -16,12 +16,7 @@ from .const import (
     CoreState,
 )
 from .coresys import CoreSys, CoreSysAttributes
-from .dbus.const import (
-    DBUS_ATTR_ACTIVE_STATE,
-    DBUS_IFACE_SYSTEMD_UNIT,
-    StopUnitMode,
-    UnitActiveState,
-)
+from .dbus.const import StopUnitMode, UnitActiveState
 from .exceptions import (
     HassioError,
     HomeAssistantCrashError,
@@ -444,25 +439,13 @@ class Core(CoreSysAttributes):
                 "systemd-timesyncd.service"
             )
             try:
-                async with (
-                    asyncio.timeout(10),
-                    timesync_unit.properties_changed() as signal,
-                ):
+                async with asyncio.timeout(10):
                     await self.sys_dbus.systemd.stop_unit(
                         "systemd-timesyncd.service", StopUnitMode.REPLACE
                     )
-                    while (
-                        await timesync_unit.get_active_state()
-                        != UnitActiveState.INACTIVE
-                    ):
-                        prop_change = await signal.wait_for_signal()
-                        if (
-                            prop_change[0] == DBUS_IFACE_SYSTEMD_UNIT
-                            and DBUS_ATTR_ACTIVE_STATE in prop_change[1]
-                            and prop_change[1][DBUS_ATTR_ACTIVE_STATE].value
-                            == UnitActiveState.INACTIVE
-                        ):
-                            break
+                    await timesync_unit.wait_for_active_state(
+                        {UnitActiveState.INACTIVE}
+                    )
             except TimeoutError:
                 _LOGGER.warning(
                     "Timeout waiting for systemd-timesyncd to stop, "

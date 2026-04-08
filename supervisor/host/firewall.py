@@ -8,12 +8,7 @@ from dbus_fast import Variant
 
 from ..const import DOCKER_IPV4_NETWORK_MASK, DOCKER_IPV6_NETWORK_MASK, DOCKER_NETWORK
 from ..coresys import CoreSys, CoreSysAttributes
-from ..dbus.const import (
-    DBUS_ATTR_ACTIVE_STATE,
-    DBUS_IFACE_SYSTEMD_UNIT,
-    StartUnitMode,
-    UnitActiveState,
-)
+from ..dbus.const import StartUnitMode, UnitActiveState
 from ..dbus.systemd import ExecStartEntry
 from ..exceptions import DBusError
 from ..resolution.const import UnhealthyReason
@@ -125,18 +120,8 @@ class FirewallManager(CoreSysAttributes):
         # Wait for the oneshot unit to finish and verify it succeeded
         try:
             unit = await self.sys_dbus.systemd.get_unit(FIREWALL_SERVICE)
-            async with (
-                asyncio.timeout(FIREWALL_UNIT_TIMEOUT),
-                unit.properties_changed() as signal,
-            ):
-                state = await unit.get_active_state()
-                while state not in TERMINAL_STATES:
-                    props = await signal.wait_for_signal()
-                    if (
-                        props[0] == DBUS_IFACE_SYSTEMD_UNIT
-                        and DBUS_ATTR_ACTIVE_STATE in props[1]
-                    ):
-                        state = UnitActiveState(props[1][DBUS_ATTR_ACTIVE_STATE].value)
+            async with asyncio.timeout(FIREWALL_UNIT_TIMEOUT):
+                state = await unit.wait_for_active_state(TERMINAL_STATES)
         except (DBusError, TimeoutError) as err:
             _LOGGER.error(
                 "Failed waiting for gateway firewall unit to complete: %s", err
