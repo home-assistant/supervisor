@@ -193,6 +193,13 @@ async def docker() -> DockerAPI:
         )
         docker_network.show.return_value = network_inspect
 
+        def create_network_mock(params):
+            mock = MagicMock(spec=DockerNetwork)
+            mock.show.return_value = params | {"Containers": {}}
+            return mock
+
+        docker_networks.create.side_effect = create_network_mock
+
         # Events mocking
         docker_events.channel = channel = Channel()
         docker_events.subscribe.return_value = ChannelSubscriber(channel)

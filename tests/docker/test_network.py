@@ -30,11 +30,43 @@ from supervisor.docker.network import (
         "create_expected",
     ),
     [
-        (None, None, [OBSERVER_DOCKER_NAME, SUPERVISOR_DOCKER_NAME], False, True, True),
-        (None, None, [OBSERVER_DOCKER_NAME, SUPERVISOR_DOCKER_NAME], True, False, True),
-        (None, None, ["test_container"], False, True, False),
-        (None, None, [], False, True, True),
-        (
+        pytest.param(
+            None,
+            None,
+            [OBSERVER_DOCKER_NAME, SUPERVISOR_DOCKER_NAME],
+            False,
+            True,
+            True,
+            id="ipv6_off-enable-system_only-recreated",
+        ),
+        pytest.param(
+            None,
+            None,
+            [OBSERVER_DOCKER_NAME, SUPERVISOR_DOCKER_NAME],
+            True,
+            False,
+            True,
+            id="ipv6_on-disable-system_only-recreated",
+        ),
+        pytest.param(
+            None,
+            None,
+            ["test_container"],
+            False,
+            True,
+            False,
+            id="ipv6_off-enable-user_running-blocked",
+        ),
+        pytest.param(
+            None,
+            None,
+            [],
+            False,
+            True,
+            True,
+            id="ipv6_off-enable-no_containers-recreated",
+        ),
+        pytest.param(
             None,
             aiodocker.DockerError(
                 HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -44,18 +76,65 @@ from supervisor.docker.network import (
             False,
             True,
             False,
+            id="ipv6_off-enable-disconnect_error-blocked",
         ),
-        (
+        pytest.param(
             aiodocker.DockerError(
-                HTTPStatus.INTERNAL_SERVER_ERROR, {"message": "Simulated removal error"}
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                {"message": "Simulated removal error"},
             ),
             None,
             [],
             False,
             True,
             False,
+            id="ipv6_off-enable-delete_error-blocked",
         ),
-        (None, None, [], True, True, False),
+        pytest.param(
+            None,
+            None,
+            [],
+            True,
+            True,
+            False,
+            id="ipv6_on-enable-no_change",
+        ),
+        pytest.param(
+            None,
+            None,
+            [],
+            False,
+            None,
+            False,
+            id="ipv6_off-no_setting-no_change",
+        ),
+        pytest.param(
+            None,
+            None,
+            [],
+            True,
+            None,
+            False,
+            id="ipv6_on-no_setting-no_change",
+        ),
+        pytest.param(
+            None,
+            None,
+            [OBSERVER_DOCKER_NAME, SUPERVISOR_DOCKER_NAME],
+            False,
+            None,
+            False,
+            id="ipv6_off-no_setting-system_only-no_change",
+        ),
+        pytest.param(
+            None,
+            None,
+            ["test_container"],
+            False,
+            None,
+            False,
+            id="ipv6_off-no_setting-user_running-no_change",
+        ),
     ],
 )
 async def test_network_recreation(
@@ -68,6 +147,7 @@ async def test_network_recreation(
     create_expected: bool,
 ):
     """Test network recreation with IPv6 enabled/disabled."""
+    docker.docker.networks.reset_mock()
     docker.docker.networks.get.return_value = mock_network = MagicMock(
         spec=AiodockerNetwork, id="test123"
     )
@@ -77,13 +157,6 @@ async def test_network_recreation(
     }
     mock_network.delete.side_effect = delete_error
     mock_network.disconnect.side_effect = disconnect_error
-    docker.docker.networks.create.return_value = mock_new_network = MagicMock(
-        spec=AiodockerNetwork, id="test123"
-    )
-    mock_new_network.show.return_value = {
-        "Containers": {},
-        DOCKER_ENABLEIPV6: new_enable_ipv6,
-    }
 
     docker_network = await DockerNetwork(docker.docker).post_init(new_enable_ipv6)
     docker.docker.networks.get.assert_called_with(DOCKER_NETWORK)
@@ -95,21 +168,18 @@ async def test_network_recreation(
         assert docker_network.network_meta[DOCKER_ENABLEIPV6] is old_enable_ipv6
         docker.docker.networks.create.assert_not_called()
     else:
-        assert docker_network.network_meta[DOCKER_ENABLEIPV6] is new_enable_ipv6
-        docker.docker.networks.create.assert_called_once_with(
-            DOCKER_NETWORK_PARAMS | {DOCKER_ENABLEIPV6: new_enable_ipv6}
-        )
+        expected_params = DOCKER_NETWORK_PARAMS.copy()
+        if new_enable_ipv6 is not None:
+            expected_params[DOCKER_ENABLEIPV6] = new_enable_ipv6
+        docker.docker.networks.create.assert_called_once_with(expected_params)
 
 
 async def test_network_default_ipv6_for_new_installations(docker: DockerAPI):
     """Test that IPv6 is enabled by default when no user setting is provided (None)."""
+    docker.docker.networks.reset_mock()
     docker.docker.networks.get.side_effect = aiodocker.DockerError(
         HTTPStatus.NOT_FOUND, {"message": "Network not found"}
     )
-    docker.docker.networks.create.return_value = mock_network = MagicMock(
-        spec=AiodockerNetwork, id="test123"
-    )
-    mock_network.show.return_value = {"Containers": {}, DOCKER_ENABLEIPV6: True}
 
     # Pass None as enable_ipv6 to simulate no user setting
     docker_network = await DockerNetwork(docker.docker).post_init(None)
@@ -118,14 +188,13 @@ async def test_network_default_ipv6_for_new_installations(docker: DockerAPI):
     assert docker_network.network_meta
     assert docker_network.network_meta[DOCKER_ENABLEIPV6] is True
 
-    # Verify that create was called with IPv6 enabled by default
-    docker.docker.networks.create.assert_called_with(
-        DOCKER_NETWORK_PARAMS | {DOCKER_ENABLEIPV6: True}
-    )
+    # Verify that create was called with default params (IPv6 enabled)
+    docker.docker.networks.create.assert_called_with(DOCKER_NETWORK_PARAMS)
 
 
 async def test_network_mtu_recreation(docker: DockerAPI):
     """Test network recreation with different MTU settings."""
+    docker.docker.networks.reset_mock()
     docker.docker.networks.get.return_value = mock_network = MagicMock(
         spec=AiodockerNetwork, id="test123"
     )
@@ -133,14 +202,6 @@ async def test_network_mtu_recreation(docker: DockerAPI):
         DOCKER_ENABLEIPV6: False,
         "Containers": {},
         "Options": {"com.docker.network.driver.mtu": "1500"},
-    }
-    docker.docker.networks.create.return_value = mock_new_network = MagicMock(
-        spec=AiodockerNetwork, id="test123"
-    )
-    mock_new_network.show.return_value = {
-        DOCKER_ENABLEIPV6: True,
-        "Containers": {},
-        "Options": {"com.docker.network.driver.mtu": "1450"},
     }
 
     # Set new MTU to 1450
@@ -166,6 +227,7 @@ async def test_network_mtu_recreation(docker: DockerAPI):
 
 async def test_network_mtu_no_change(docker: DockerAPI):
     """Test that network is not recreated when MTU hasn't changed."""
+    docker.docker.networks.reset_mock()
     docker.docker.networks.get.return_value = mock_network = MagicMock(
         spec=AiodockerNetwork, id="test123"
     )
