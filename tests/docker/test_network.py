@@ -105,8 +105,8 @@ from supervisor.docker.network import (
             [],
             False,
             None,
-            False,
-            id="ipv6_off-no_setting-no_change",
+            True,
+            id="ipv6_off-no_setting-migrated",
         ),
         pytest.param(
             None,
@@ -123,8 +123,8 @@ from supervisor.docker.network import (
             [OBSERVER_DOCKER_NAME, SUPERVISOR_DOCKER_NAME],
             False,
             None,
-            False,
-            id="ipv6_off-no_setting-system_only-no_change",
+            True,
+            id="ipv6_off-no_setting-system_only-migrated",
         ),
         pytest.param(
             None,
@@ -133,7 +133,7 @@ from supervisor.docker.network import (
             False,
             None,
             False,
-            id="ipv6_off-no_setting-user_running-no_change",
+            id="ipv6_off-no_setting-user_running-blocked",
         ),
     ],
 )

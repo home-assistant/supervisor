@@ -85,10 +85,13 @@ class DockerNetwork:
         )
         current_mtu = int(current_mtu_str) if current_mtu_str is not None else None
 
-        # Check if we have explicitly provided settings that differ from what is set
+        # Check if settings differ from what is set. Use default if not explicitly set.
         changes = []
-        if enable_ipv6 is not None and current_ipv6 != enable_ipv6:
-            changes.append("IPv4/IPv6 Dual-Stack" if enable_ipv6 else "IPv4-Only")
+        effective_ipv6 = (
+            enable_ipv6 if enable_ipv6 is not None else DOCKER_ENABLE_IPV6_DEFAULT
+        )
+        if current_ipv6 != effective_ipv6:
+            changes.append("IPv4/IPv6 Dual-Stack" if effective_ipv6 else "IPv4-Only")
         if mtu is not None and current_mtu != mtu:
             changes.append(f"MTU {mtu}")
 
