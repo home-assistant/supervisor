@@ -213,7 +213,7 @@ class HomeAssistantAPI(CoreSysAttributes):
                 return await WSClient.connect_with_auth(
                     self.session, self.ws_url, self._access_token
                 )
-            except HomeAssistantAPIError:
+            except HomeAssistantAuthError:
                 self._access_token = None
                 if attempt == 2:
                     raise
