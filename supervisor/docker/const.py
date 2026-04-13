@@ -23,6 +23,9 @@ DOCKER_HUB_API = "registry-1.docker.io"
 # Legacy Docker Hub identifier for backward compatibility
 DOCKER_HUB_LEGACY = "hub.docker.com"
 
+# GitHub Container Registry identifier
+GITHUB_CONTAINER_REGISTRY = "ghcr.io"
+
 
 class Capabilities(StrEnum):
     """Linux Capabilities."""

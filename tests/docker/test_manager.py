@@ -19,8 +19,12 @@ from supervisor.docker.const import (
     MountBindOptions,
     MountType,
 )
-from supervisor.docker.manager import CommandReturn, DockerAPI
-from supervisor.exceptions import DockerError
+from supervisor.docker.manager import CommandReturn, DockerAPI, PullLogEntry
+from supervisor.exceptions import (
+    DockerError,
+    DockerNoSpaceOnDevice,
+    DockerRegistryRateLimitExceeded,
+)
 
 
 async def test_run_command_success(docker: DockerAPI, container: DockerContainer):
@@ -556,3 +560,39 @@ async def test_info(
     assert docker.info.logging == "example"
     assert docker.info.cgroup == "2"
     assert docker.info.support_cpu_realtime is rt_supported
+
+
+@pytest.mark.parametrize(
+    "error_message",
+    [
+        "toomanyrequests: retry-after: 1.265943ms, allowed: 44000/minute",
+        "error pulling image configuration: download failed after attempts=1: "
+        "toomanyrequests: retry-after: 358.998µs, allowed: 44000/minute",
+    ],
+)
+def test_pull_log_entry_exception_detects_rate_limit(error_message: str):
+    """Test PullLogEntry detects toomanyrequests in stream errors as rate limit.
+
+    The streaming pull protocol does not preserve HTTP status codes - rate
+    limit errors only surface as text. Cover both the bare and wrapped forms
+    seen in production Sentry data.
+    """
+    entry = PullLogEntry(job_id="x", error=error_message)
+    assert isinstance(entry.exception, DockerRegistryRateLimitExceeded)
+
+
+def test_pull_log_entry_exception_no_space_left():
+    """Test PullLogEntry returns DockerNoSpaceOnDevice for disk-full errors."""
+    entry = PullLogEntry(
+        job_id="x", error="failed to register layer: no space left on device"
+    )
+    assert isinstance(entry.exception, DockerNoSpaceOnDevice)
+
+
+def test_pull_log_entry_exception_generic_error():
+    """Test PullLogEntry returns plain DockerError for other errors."""
+    entry = PullLogEntry(job_id="x", error="something else broke")
+    err = entry.exception
+    assert isinstance(err, DockerError)
+    assert not isinstance(err, DockerRegistryRateLimitExceeded)
+    assert not isinstance(err, DockerNoSpaceOnDevice)

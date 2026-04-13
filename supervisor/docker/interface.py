@@ -34,17 +34,26 @@ from ..exceptions import (
     DockerJobError,
     DockerNotFound,
     DockerRegistryAuthError,
+    DockerRegistryRateLimitExceeded,
+    GithubContainerRegistryRateLimitExceeded,
 )
 from ..jobs.const import JOB_GROUP_DOCKER_INTERFACE, JobConcurrency
 from ..jobs.decorator import Job
 from ..jobs.job_group import JobGroup
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.sentry import async_capture_exception
-from .const import DOCKER_HUB, DOCKER_HUB_LEGACY, ContainerState, RestartPolicy
+from .const import (
+    DOCKER_HUB,
+    DOCKER_HUB_LEGACY,
+    GITHUB_CONTAINER_REGISTRY,
+    ContainerState,
+    RestartPolicy,
+)
 from .manager import CommandReturn, ExecReturn, PullLogEntry
 from .monitor import DockerContainerStateEvent
 from .pull_progress import ImagePullProgress
 from .stats import DockerStats
+from .utils import get_registry_from_image
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -222,6 +231,32 @@ class DockerInterface(JobGroup, ABC):
 
         return credentials, qualified_image
 
+    def _registry_rate_limit_exception(
+        self, image: str
+    ) -> DockerRegistryRateLimitExceeded:
+        """Create resolution issue and return typed exception for a rate limit.
+
+        The registry is derived from the image reference. Docker Hub and GHCR
+        each have their own issue type and exception subclass so users get
+        actionable guidance (e.g. registry login for Docker Hub). Unknown
+        registries fall back to a generic rate limit exception with no issue.
+        """
+        registry = get_registry_from_image(image)
+        if registry == GITHUB_CONTAINER_REGISTRY:
+            self.sys_resolution.create_issue(
+                IssueType.GITHUB_RATELIMIT,
+                ContextType.SYSTEM,
+            )
+            return GithubContainerRegistryRateLimitExceeded(_LOGGER.warning)
+        if registry is None or registry in (DOCKER_HUB, DOCKER_HUB_LEGACY):
+            self.sys_resolution.create_issue(
+                IssueType.DOCKER_RATELIMIT,
+                ContextType.SYSTEM,
+                suggestions=[SuggestionType.REGISTRY_LOGIN],
+            )
+            return DockerHubRateLimitExceeded(_LOGGER.warning)
+        return DockerRegistryRateLimitExceeded(_LOGGER.warning)
+
     @Job(
         name="docker_interface_install",
         on_condition=DockerJobError,
@@ -326,14 +361,25 @@ class DockerInterface(JobGroup, ABC):
                 await self.sys_docker.images.tag(
                     docker_image["Id"], image, tag="latest"
                 )
+        except DockerRegistryRateLimitExceeded as err:
+            # Rate limit surfaced via the streaming pull protocol (no HTTP
+            # status to key off of). Refine into a registry-specific exception
+            # now that we know which image was being pulled.
+            raise self._registry_rate_limit_exception(image) from err
         except aiodocker.DockerError as err:
-            if err.status == HTTPStatus.TOO_MANY_REQUESTS:
-                self.sys_resolution.create_issue(
-                    IssueType.DOCKER_RATELIMIT,
-                    ContextType.SYSTEM,
-                    suggestions=[SuggestionType.REGISTRY_LOGIN],
-                )
-                raise DockerHubRateLimitExceeded(_LOGGER.error) from err
+            # Pre-28.3.0 daemons wrap registry rate limits as HTTP 500
+            # instead of forwarding 429: api/server/httpstatus/status.go
+            # mapped cerrdefs.IsUnknown to 500. Fixed upstream by moby/moby
+            # commit 23fa0ae74a ("Cleanup http status error checks",
+            # first released in Docker 28.3.0). We still need to detect it
+            # for the large fleet on older daemons — match on the message
+            # body since the HTTP status is useless for that window.
+            message = str(err.message) if err.message else ""
+            if err.status == HTTPStatus.TOO_MANY_REQUESTS or (
+                err.status == HTTPStatus.INTERNAL_SERVER_ERROR
+                and "toomanyrequests" in message
+            ):
+                raise self._registry_rate_limit_exception(image) from err
             if err.status == HTTPStatus.UNAUTHORIZED and credentials:
                 raise DockerRegistryAuthError(
                     _LOGGER.error, registry=credentials[ATTR_REGISTRY]

@@ -7,6 +7,15 @@ import pytest
 from sentry_sdk.worker import BackgroundWorker
 
 from supervisor.bootstrap import initialize_coresys, warning_handler
+from supervisor.exceptions import (
+    APITooManyRequests,
+    DockerError,
+    DockerHubRateLimitExceeded,
+    DockerRegistryRateLimitExceeded,
+    GithubContainerRegistryRateLimitExceeded,
+    SupervisorUpdateError,
+)
+from supervisor.utils.sentry import async_capture_exception, capture_exception
 
 
 @pytest.mark.usefixtures("supervisor_name", "docker")
@@ -55,3 +64,78 @@ def test_warning_handler_captures_on_main_thread():
         warning = UserWarning("test")
         warning_handler(warning, UserWarning, "test.py", 1, None, None)
         mock_capture.assert_called_once_with(warning)
+
+
+@pytest.mark.parametrize(
+    "exception",
+    [
+        APITooManyRequests(),
+        DockerRegistryRateLimitExceeded(),
+        DockerHubRateLimitExceeded(),
+        GithubContainerRegistryRateLimitExceeded(),
+    ],
+)
+def test_capture_exception_skips_rate_limits(exception: BaseException):
+    """Test rate limit errors are not sent to Sentry.
+
+    Container registry rate limits are expected transient failures, not bugs.
+    Previously they generated thousands of issues during throttling incidents.
+    """
+    with (
+        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.capture_exception") as mock_capture,
+    ):
+        capture_exception(exception)
+        mock_capture.assert_not_called()
+
+
+def test_capture_exception_skips_wrapped_rate_limit():
+    """Test rate limit errors wrapped in another exception are also skipped.
+
+    Callers like supervisor.update() wrap DockerHubRateLimitExceeded in
+    SupervisorUpdateError. The filter must walk the __cause__ chain.
+    """
+    cause = DockerHubRateLimitExceeded()
+    wrapped = SupervisorUpdateError("Update failed")
+    wrapped.__cause__ = cause
+
+    with (
+        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.capture_exception") as mock_capture,
+    ):
+        capture_exception(wrapped)
+        mock_capture.assert_not_called()
+
+
+def test_capture_exception_sends_other_errors():
+    """Test non-rate-limit errors are still sent to Sentry."""
+    err = DockerError("something broke")
+
+    with (
+        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.capture_exception") as mock_capture,
+    ):
+        capture_exception(err)
+        mock_capture.assert_called_once_with(err)
+
+
+async def test_async_capture_exception_skips_rate_limits():
+    """Test async variant also filters rate limits."""
+    with (
+        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.capture_exception") as mock_capture,
+    ):
+        await async_capture_exception(DockerHubRateLimitExceeded())
+        mock_capture.assert_not_called()
+
+
+async def test_async_capture_exception_sends_other_errors():
+    """Test async variant still sends non-rate-limit errors."""
+    err = DockerError("something broke")
+
+    with (
+        patch("supervisor.utils.sentry.sentry_sdk.is_initialized", return_value=True),
+        patch("supervisor.utils.sentry.sentry_sdk.capture_exception") as mock_capture,
+    ):
+        await async_capture_exception(err)
+        mock_capture.assert_called_once_with(err)

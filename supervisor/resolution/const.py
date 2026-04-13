@@ -96,6 +96,7 @@ class IssueType(StrEnum):
     DOCKER_RATELIMIT = "docker_ratelimit"
     FATAL_ERROR = "fatal_error"
     FREE_SPACE = "free_space"
+    GITHUB_RATELIMIT = "github_ratelimit"
     IPV4_CONNECTION_PROBLEM = "ipv4_connection_problem"
     MISSING_IMAGE = "missing_image"
     MOUNT_FAILED = "mount_failed"

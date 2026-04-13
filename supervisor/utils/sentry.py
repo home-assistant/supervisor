@@ -17,6 +17,7 @@ from sentry_sdk.scrubber import DEFAULT_DENYLIST, EventScrubber
 
 from ..const import SUPERVISOR_VERSION
 from ..coresys import CoreSys
+from ..exceptions import APITooManyRequests
 from ..misc.filter import filter_data
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -59,11 +60,27 @@ def init_sentry(coresys: CoreSys) -> None:
         )
 
 
+def _is_rate_limit(err: BaseException | None) -> bool:
+    """Return True if exception (or its cause chain) is a rate limit error.
+
+    Rate limit errors are expected transient failures against container
+    registries (Docker Hub, GHCR), not bugs. Previously these produced huge
+    amounts of Sentry noise during registry throttling incidents.
+    """
+    while err is not None:
+        if isinstance(err, APITooManyRequests):
+            return True
+        err = err.__cause__
+    return False
+
+
 def capture_exception(err: BaseException) -> None:
     """Capture an exception and send to sentry.
 
     Must be called in executor.
     """
+    if _is_rate_limit(err):
+        return
     if sentry_sdk.is_initialized():
         sentry_sdk.capture_exception(err)
 
@@ -73,6 +90,8 @@ async def async_capture_exception(err: BaseException) -> None:
 
     Safe to call in event loop.
     """
+    if _is_rate_limit(err):
+        return
     if sentry_sdk.is_initialized():
         await asyncio.get_running_loop().run_in_executor(
             None, sentry_sdk.capture_exception, err

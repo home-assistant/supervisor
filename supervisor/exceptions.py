@@ -895,8 +895,19 @@ class DockerRegistryAuthError(DockerError, APIError):
         super().__init__(None, logger=logger)
 
 
-class DockerHubRateLimitExceeded(DockerError, APITooManyRequests):
-    """Raise for docker hub rate limit exceeded error."""
+class DockerRegistryRateLimitExceeded(DockerError, APITooManyRequests):
+    """Raise when a container registry rate limits requests."""
+
+    error_key = "container_registry_rate_limit_exceeded"
+    message_template = "Container registry rate limit exceeded"
+
+    def __init__(self, logger: Callable[..., None] | None = None) -> None:
+        """Raise & log."""
+        super().__init__(None, logger=logger)
+
+
+class DockerHubRateLimitExceeded(DockerRegistryRateLimitExceeded):
+    """Raise for Docker Hub rate limit exceeded error."""
 
     error_key = "dockerhub_rate_limit_exceeded"
     message_template = (
@@ -907,9 +918,15 @@ class DockerHubRateLimitExceeded(DockerError, APITooManyRequests):
         "dockerhub_rate_limit_url": "https://www.home-assistant.io/more-info/dockerhub-rate-limit"
     }
 
-    def __init__(self, logger: Callable[..., None] | None = None) -> None:
-        """Raise & log."""
-        super().__init__(None, logger=logger)
+
+class GithubContainerRegistryRateLimitExceeded(DockerRegistryRateLimitExceeded):
+    """Raise for GitHub Container Registry rate limit exceeded error."""
+
+    error_key = "ghcr_rate_limit_exceeded"
+    message_template = (
+        "GitHub Container Registry rate limited the request. "
+        "This is typically transient; the update will be retried."
+    )
 
 
 class DockerJobError(DockerError, JobException):

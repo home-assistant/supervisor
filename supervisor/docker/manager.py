@@ -43,6 +43,7 @@ from ..exceptions import (
     DockerError,
     DockerNoSpaceOnDevice,
     DockerNotFound,
+    DockerRegistryRateLimitExceeded,
 )
 from ..utils.common import FileConfiguration
 from ..validate import SCHEMA_DOCKER_CONFIG
@@ -191,6 +192,12 @@ class PullLogEntry:
             raise RuntimeError("No error to convert to exception!")
         if self.error.endswith("no space left on device"):
             return DockerNoSpaceOnDevice(_LOGGER.error)
+        if "toomanyrequests" in self.error:
+            # Registry rate limit. The streaming pull protocol doesn't carry
+            # HTTP status codes, so the error only surfaces as a text message
+            # here. Install() refines this into a Docker Hub / GHCR specific
+            # exception based on the image being pulled.
+            return DockerRegistryRateLimitExceeded(_LOGGER.warning)
         return DockerError(self.error, _LOGGER.error)
 
 
