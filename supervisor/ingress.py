@@ -191,7 +191,7 @@ class Ingress(FileConfiguration, CoreSysAttributes):
             return
 
         # Update UI
-        method = "post" if addon.ingress_panel else "delete"
+        method = "post" if app.ingress_panel else "delete"
         try:
             async with self.sys_homeassistant.api.make_request(
                 method, f"api/hassio_push/panel/{app.slug}"
