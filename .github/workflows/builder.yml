@@ -284,10 +284,9 @@ jobs:
             --privileged \
             --security-opt seccomp=unconfined \
             --security-opt apparmor=unconfined \
-            -v /run/docker.sock:/run/docker.sock:rw \
-            -v /run/dbus:/run/dbus:ro \
-            -v /run/supervisor:/run/os:rw \
-            -v /tmp/supervisor/data:/data:rw,slave \
+            -v /run/docker.sock:/run/docker.sock \
+            -v /run/dbus:/run/dbus \
+            -v /tmp/supervisor/data:/data \
             -v /etc/machine-id:/etc/machine-id:ro \
             -e SUPERVISOR_SHARE="/tmp/supervisor/data" \
             -e SUPERVISOR_NAME=hassio_supervisor \

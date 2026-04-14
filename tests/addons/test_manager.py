@@ -246,7 +246,7 @@ async def test_addon_uninstall_removes_discovery(
     assert message.service == "mqtt"
     assert coresys.discovery.list_messages == [message]
 
-    coresys.homeassistant.api._ensure_access_token = AsyncMock()  # pylint: disable=protected-access
+    coresys.homeassistant.api.ensure_access_token = AsyncMock()
 
     await coresys.addons.uninstall(TEST_ADDON_SLUG)
     await asyncio.sleep(0)

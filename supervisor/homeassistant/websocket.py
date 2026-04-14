@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 import logging
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import aiohttp
 from aiohttp.http_websocket import WSMsgType
@@ -44,14 +45,14 @@ class WSClient:
     ):
         """Initialise the WS client."""
         self.ha_version = ha_version
-        self.client = client
+        self._client = client
         self._message_id: int = 0
         self._futures: dict[int, asyncio.Future[T]] = {}  # type: ignore
 
     @property
     def connected(self) -> bool:
         """Return if we're currently connected."""
-        return self.client is not None and not self.client.closed
+        return self._client is not None and not self._client.closed
 
     async def close(self) -> None:
         """Close down the client."""
@@ -61,8 +62,8 @@ class WSClient:
                     HomeAssistantWSConnectionError("Connection was closed")
                 )
 
-        if not self.client.closed:
-            await self.client.close()
+        if not self._client.closed:
+            await self._client.close()
 
     async def async_send_command(self, message: dict[str, Any]) -> T:
         """Send a websocket message, and return the response."""
@@ -71,7 +72,7 @@ class WSClient:
         self._futures[message["id"]] = asyncio.get_running_loop().create_future()
         _LOGGER.debug("Sending: %s", message)
         try:
-            await self.client.send_json(message, dumps=json_dumps)
+            await self._client.send_json(message, dumps=json_dumps)
         except ConnectionError as err:
             raise HomeAssistantWSConnectionError(str(err)) from err
 
@@ -96,7 +97,7 @@ class WSClient:
 
     async def _receive_json(self) -> None:
         """Receive json."""
-        msg = await self.client.receive()
+        msg = await self._client.receive()
         _LOGGER.debug("Received: %s", msg)
 
         if msg.type == WSMsgType.CLOSE:
@@ -138,105 +139,27 @@ class WSClient:
             )
 
     @classmethod
-    async def _ws_connect(
-        cls,
-        session: aiohttp.ClientSession,
-        url: str,
-        *,
-        max_msg_size: int = 4 * 1024 * 1024,
-    ) -> aiohttp.ClientWebSocketResponse:
-        """Open a raw WebSocket connection to Core."""
+    async def connect_with_auth(
+        cls, session: aiohttp.ClientSession, url: str, token: str
+    ) -> WSClient:
+        """Create an authenticated websocket client."""
         try:
-            return await session.ws_connect(url, ssl=False, max_msg_size=max_msg_size)
+            client = await session.ws_connect(url, ssl=False)
         except aiohttp.client_exceptions.ClientConnectorError:
             raise HomeAssistantWSConnectionError("Can't connect") from None
 
-    @classmethod
-    async def connect(
-        cls,
-        session: aiohttp.ClientSession,
-        url: str,
-        *,
-        max_msg_size: int = 4 * 1024 * 1024,
-    ) -> WSClient:
-        """Connect via Unix socket (no auth exchange).
+        hello_message = await client.receive_json()
 
-        Core authenticates the peer by the socket connection itself
-        and sends auth_ok immediately.
-        """
-        client = await cls._ws_connect(session, url, max_msg_size=max_msg_size)
-        try:
-            first_message = await client.receive_json()
+        await client.send_json(
+            {ATTR_TYPE: WSType.AUTH, ATTR_ACCESS_TOKEN: token}, dumps=json_dumps
+        )
 
-            if first_message[ATTR_TYPE] != "auth_ok":
-                raise HomeAssistantAPIError(
-                    f"Expected auth_ok on Unix socket, got {first_message[ATTR_TYPE]}"
-                )
+        auth_ok_message = await client.receive_json()
 
-            return cls(AwesomeVersion(first_message["ha_version"]), client)
-        except HomeAssistantAPIError:
-            await client.close()
-            raise
-        except (
-            KeyError,
-            ValueError,
-            TypeError,
-            aiohttp.ClientError,
-            TimeoutError,
-        ) as err:
-            await client.close()
-            raise HomeAssistantAPIError(
-                f"Unexpected error during WebSocket handshake: {err}"
-            ) from err
+        if auth_ok_message[ATTR_TYPE] != "auth_ok":
+            raise HomeAssistantAPIError("AUTH NOT OK")
 
-    @classmethod
-    async def connect_with_auth(
-        cls,
-        session: aiohttp.ClientSession,
-        url: str,
-        token: str,
-        *,
-        max_msg_size: int = 4 * 1024 * 1024,
-    ) -> WSClient:
-        """Connect via TCP with token authentication.
-
-        Expects auth_required from Core, sends the token, then expects auth_ok.
-        The auth_required message also carries ha_version.
-        """
-        client = await cls._ws_connect(session, url, max_msg_size=max_msg_size)
-        try:
-            # auth_required message also carries ha_version
-            first_message = await client.receive_json()
-
-            if first_message[ATTR_TYPE] != "auth_required":
-                raise HomeAssistantAPIError(
-                    f"Expected auth_required, got {first_message[ATTR_TYPE]}"
-                )
-
-            await client.send_json(
-                {ATTR_TYPE: WSType.AUTH, ATTR_ACCESS_TOKEN: token}, dumps=json_dumps
-            )
-
-            auth_ok_message = await client.receive_json()
-
-            if auth_ok_message[ATTR_TYPE] != "auth_ok":
-                raise HomeAssistantAPIError("AUTH NOT OK")
-
-            return cls(AwesomeVersion(first_message["ha_version"]), client)
-        except HomeAssistantAPIError:
-            await client.close()
-            raise
-        except (
-            KeyError,
-            ValueError,
-            TypeError,
-            aiohttp.ClientError,
-            TimeoutError,
-        ) as err:
-            await client.close()
-            raise HomeAssistantAPIError(
-                f"Unexpected error during WebSocket handshake: {err}"
-            ) from err
+        return cls(AwesomeVersion(hello_message["ha_version"]), client)
 
 
 class HomeAssistantWebSocket(CoreSysAttributes):
@@ -245,7 +168,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
     def __init__(self, coresys: CoreSys):
         """Initialize Home Assistant object."""
         self.coresys: CoreSys = coresys
-        self.client: WSClient | None = None
+        self._client: WSClient | None = None
         self._lock: asyncio.Lock = asyncio.Lock()
         self._queue: list[dict[str, Any]] = []
 
@@ -260,10 +183,16 @@ class HomeAssistantWebSocket(CoreSysAttributes):
     async def _get_ws_client(self) -> WSClient:
         """Return a websocket client."""
         async with self._lock:
-            if self.client is not None and self.client.connected:
-                return self.client
+            if self._client is not None and self._client.connected:
+                return self._client
 
-            client = await self.sys_homeassistant.api.connect_websocket()
+            with suppress(asyncio.TimeoutError, aiohttp.ClientError):
+                await self.sys_homeassistant.api.ensure_access_token()
+            client = await WSClient.connect_with_auth(
+                self.sys_websession,
+                self.sys_homeassistant.ws_url,
+                cast(str, self.sys_homeassistant.api.access_token),
+            )
 
             self.sys_create_task(client.start_listener())
             return client
@@ -279,7 +208,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 "WebSocket not available, system is shutting down"
             )
 
-        connected = self.client and self.client.connected
+        connected = self._client and self._client.connected
         # If we are already connected, we can avoid the check_api_state call
         # since it makes a new socket connection and we already have one.
         if not connected and not await self.sys_homeassistant.api.check_api_state():
@@ -287,8 +216,8 @@ class HomeAssistantWebSocket(CoreSysAttributes):
                 "Can't connect to Home Assistant Core WebSocket, the API is not reachable"
             )
 
-        if not self.client or not self.client.connected:
-            self.client = await self._get_ws_client()
+        if not self._client or not self._client.connected:
+            self._client = await self._get_ws_client()
 
     async def load(self) -> None:
         """Set up queue processor after startup completes."""
@@ -312,16 +241,16 @@ class HomeAssistantWebSocket(CoreSysAttributes):
             _LOGGER.debug("Can't send WebSocket command: %s", err)
             return
 
-        # _ensure_connected guarantees self.client is set
-        assert self.client
+        # _ensure_connected guarantees self._client is set
+        assert self._client
 
         try:
-            await self.client.async_send_command(message)
+            await self._client.async_send_command(message)
         except HomeAssistantWSConnectionError as err:
             _LOGGER.debug("Fire-and-forget WebSocket command failed: %s", err)
-            if self.client:
-                await self.client.close()
-            self.client = None
+            if self._client:
+                await self._client.close()
+            self._client = None
 
     async def async_send_command(self, message: dict[str, Any]) -> T:
         """Send a command and return the response.
@@ -329,14 +258,14 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         Raises HomeAssistantWSError on WebSocket connection or communication failure.
         """
         await self._ensure_connected()
-        # _ensure_connected guarantees self.client is set
-        assert self.client
+        # _ensure_connected guarantees self._client is set
+        assert self._client
         try:
-            return await self.client.async_send_command(message)
+            return await self._client.async_send_command(message)
         except HomeAssistantWSConnectionError:
-            if self.client:
-                await self.client.close()
-            self.client = None
+            if self._client:
+                await self._client.close()
+            self._client = None
             raise
 
     def send_command(self, message: dict[str, Any]) -> None:

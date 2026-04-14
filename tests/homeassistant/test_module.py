@@ -87,7 +87,8 @@ async def test_write_pulse_error(coresys: CoreSys, caplog: pytest.LogCaptureFixt
 
 async def test_begin_backup_ws_error(coresys: CoreSys):
     """Test WS error when beginning backup."""
-    coresys.homeassistant.websocket.client.async_send_command.side_effect = (
+    # pylint: disable-next=protected-access
+    coresys.homeassistant.websocket._client.async_send_command.side_effect = (
         HomeAssistantWSConnectionError("Connection was closed")
     )
     with (
@@ -102,7 +103,8 @@ async def test_begin_backup_ws_error(coresys: CoreSys):
 
 async def test_end_backup_ws_error(coresys: CoreSys, caplog: pytest.LogCaptureFixture):
     """Test WS error when ending backup."""
-    coresys.homeassistant.websocket.client.async_send_command.side_effect = (
+    # pylint: disable-next=protected-access
+    coresys.homeassistant.websocket._client.async_send_command.side_effect = (
         HomeAssistantWSConnectionError("Connection was closed")
     )
     with patch.object(HomeAssistantWebSocket, "_ensure_connected", return_value=None):

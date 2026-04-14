@@ -116,11 +116,6 @@ class DockerInterface(JobGroup, ABC):
         """Return name of Docker container."""
 
     @property
-    def attached(self) -> bool:
-        """Return True if container/image metadata has been loaded."""
-        return self._meta is not None
-
-    @property
     def meta_config(self) -> dict[str, Any]:
         """Return meta data of configuration for container/image."""
         if not self._meta:
