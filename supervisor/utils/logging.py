@@ -13,7 +13,7 @@ class AppLoggerAdapter(logging.LoggerAdapter):
 
     def process(self, msg, kwargs):
         """Process the logging message by prepending the app name."""
-        return f"[{self.extra['addon_name']}] {msg}", kwargs
+        return f"[{self.extra['app_name']}] {msg}", kwargs
 
 
 class SupervisorQueueHandler(logging.handlers.QueueHandler):
