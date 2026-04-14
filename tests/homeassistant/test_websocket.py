@@ -2,16 +2,14 @@
 
 # pylint: disable=import-error
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
-import aiohttp
 import pytest
 
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import HomeAssistantAPIError, HomeAssistantWSConnectionError
+from supervisor.exceptions import HomeAssistantWSConnectionError
 from supervisor.homeassistant.const import WSEvent, WSType
-from supervisor.homeassistant.websocket import WSClient
 
 
 async def test_send_command(coresys: CoreSys, ha_ws_client: AsyncMock):
@@ -108,153 +106,3 @@ async def test_send_command_during_shutdown(coresys: CoreSys, ha_ws_client: Asyn
         await coresys.homeassistant.websocket.async_send_command({"type": "test"})
 
     ha_ws_client.async_send_command.assert_not_called()
-
-
-# --- WSClient ---
-
-
-def _mock_ws_client(messages: list[dict]) -> MagicMock:
-    """Create a mock aiohttp WebSocket client that returns messages in sequence."""
-    client = AsyncMock(spec=aiohttp.ClientWebSocketResponse)
-    client.receive_json = AsyncMock(side_effect=messages)
-    client.send_json = AsyncMock()
-    client.close = AsyncMock()
-    client.closed = False
-    return client
-
-
-async def test_ws_connect_error():
-    """Test _ws_connect wraps ClientConnectorError."""
-    session = AsyncMock()
-    session.ws_connect = AsyncMock(
-        side_effect=aiohttp.ClientConnectorError(
-            MagicMock(), OSError("Connection refused")
-        )
-    )
-
-    with pytest.raises(HomeAssistantWSConnectionError, match="Can't connect"):
-        await WSClient._ws_connect(session, "ws://localhost/api/websocket")
-
-
-async def test_connect_unix_success():
-    """Test WSClient.connect succeeds with auth_ok."""
-    session = AsyncMock()
-    ws = _mock_ws_client([{"type": "auth_ok", "ha_version": "2026.4.0"}])
-    session.ws_connect = AsyncMock(return_value=ws)
-
-    client = await WSClient.connect(session, "ws://localhost/api/websocket")
-    assert client.ha_version == "2026.4.0"
-    assert client.connected is True
-    ws.close.assert_not_called()
-
-
-async def test_connect_unix_unexpected_message():
-    """Test WSClient.connect raises and closes on unexpected message."""
-    session = AsyncMock()
-    ws = _mock_ws_client([{"type": "auth_required", "ha_version": "2026.4.0"}])
-    session.ws_connect = AsyncMock(return_value=ws)
-
-    with pytest.raises(HomeAssistantAPIError, match="Expected auth_ok"):
-        await WSClient.connect(session, "ws://localhost/api/websocket")
-    ws.close.assert_called_once()
-
-
-async def test_connect_unix_bad_json():
-    """Test WSClient.connect wraps ValueError from bad JSON."""
-    session = AsyncMock()
-    ws = AsyncMock(spec=aiohttp.ClientWebSocketResponse)
-    ws.receive_json = AsyncMock(side_effect=ValueError("bad json"))
-    ws.close = AsyncMock()
-    session.ws_connect = AsyncMock(return_value=ws)
-
-    with pytest.raises(HomeAssistantAPIError, match="Unexpected error"):
-        await WSClient.connect(session, "ws://localhost/api/websocket")
-    ws.close.assert_called_once()
-
-
-async def test_connect_with_auth_success():
-    """Test WSClient.connect_with_auth succeeds with auth handshake."""
-    session = AsyncMock()
-    ws = _mock_ws_client(
-        [
-            {"type": "auth_required", "ha_version": "2026.4.0"},
-            {"type": "auth_ok", "ha_version": "2026.4.0"},
-        ]
-    )
-    session.ws_connect = AsyncMock(return_value=ws)
-
-    client = await WSClient.connect_with_auth(
-        session, "ws://localhost/api/websocket", "test_token"
-    )
-    assert client.ha_version == "2026.4.0"
-    ws.send_json.assert_called_once()
-    ws.close.assert_not_called()
-
-
-async def test_connect_with_auth_unexpected_first_message():
-    """Test connect_with_auth raises on unexpected first message."""
-    session = AsyncMock()
-    ws = _mock_ws_client([{"type": "auth_ok", "ha_version": "2026.4.0"}])
-    session.ws_connect = AsyncMock(return_value=ws)
-
-    with pytest.raises(HomeAssistantAPIError, match="Expected auth_required"):
-        await WSClient.connect_with_auth(
-            session, "ws://localhost/api/websocket", "test_token"
-        )
-    ws.close.assert_called_once()
-
-
-async def test_connect_with_auth_rejected():
-    """Test connect_with_auth raises on auth rejection."""
-    session = AsyncMock()
-    ws = _mock_ws_client(
-        [
-            {"type": "auth_required", "ha_version": "2026.4.0"},
-            {"type": "auth_invalid", "message": "Invalid password"},
-        ]
-    )
-    session.ws_connect = AsyncMock(return_value=ws)
-
-    with pytest.raises(HomeAssistantAPIError, match="AUTH NOT OK"):
-        await WSClient.connect_with_auth(
-            session, "ws://localhost/api/websocket", "bad_token"
-        )
-    ws.close.assert_called_once()
-
-
-async def test_connect_with_auth_missing_key():
-    """Test connect_with_auth wraps KeyError from missing keys."""
-    session = AsyncMock()
-    ws = _mock_ws_client([{"no_type_key": "oops"}])
-    session.ws_connect = AsyncMock(return_value=ws)
-
-    with pytest.raises(HomeAssistantAPIError, match="Unexpected error"):
-        await WSClient.connect_with_auth(
-            session, "ws://localhost/api/websocket", "token"
-        )
-    ws.close.assert_called_once()
-
-
-async def test_ws_client_close():
-    """Test WSClient.close cancels pending futures and closes connection."""
-    ws = AsyncMock(spec=aiohttp.ClientWebSocketResponse)
-    ws.closed = False
-    ws.close = AsyncMock()
-
-    client = WSClient.__new__(WSClient)
-    client.ha_version = "2026.4.0"
-    client.client = ws
-    client._message_id = 0
-    client._futures = {}
-
-    # Add a pending future
-    loop = asyncio.get_running_loop()
-    future = loop.create_future()
-    client._futures[1] = future
-
-    await client.close()
-
-    assert future.done()
-    with pytest.raises(HomeAssistantWSConnectionError):
-        future.result()
-    ws.close.assert_called_once()

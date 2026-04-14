@@ -318,10 +318,6 @@ class HomeAssistant(FileConfiguration, CoreSysAttributes):
         )
 
         # Register for events
-        self.sys_bus.register_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            self._api.container_state_changed,
-        )
         self.sys_bus.register_event(BusEvent.HARDWARE_NEW_DEVICE, self._hardware_events)
         self.sys_bus.register_event(
             BusEvent.HARDWARE_REMOVE_DEVICE, self._hardware_events

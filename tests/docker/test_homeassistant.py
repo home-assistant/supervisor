@@ -9,7 +9,6 @@ import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import (
-    MOUNT_CORE_RUN,
     DockerMount,
     MountBindOptions,
     MountType,
@@ -25,7 +24,7 @@ from . import DEV_MOUNT
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_homeassistant_start(coresys: CoreSys, container: DockerContainer):
     """Test starting homeassistant."""
-    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
+    coresys.homeassistant.version = AwesomeVersion("2023.8.1")
 
     with (
         patch.object(DockerAPI, "run", return_value=container.show.return_value) as run,
@@ -52,7 +51,7 @@ async def test_homeassistant_start(coresys: CoreSys, container: DockerContainer)
             "TZ": ANY,
             "SUPERVISOR_TOKEN": ANY,
             "HASSIO_TOKEN": ANY,
-            "SUPERVISOR_CORE_API_SOCKET": "/run/supervisor/core.sock",
+            # no "HA_DUPLICATE_LOG_FILE"
         }
         assert run.call_args.kwargs["mounts"] == [
             DEV_MOUNT,
@@ -118,7 +117,6 @@ async def test_homeassistant_start(coresys: CoreSys, container: DockerContainer)
                 target="/etc/machine-id",
                 read_only=True,
             ),
-            MOUNT_CORE_RUN,
         ]
         assert "volumes" not in run.call_args.kwargs
 
@@ -144,28 +142,6 @@ async def test_homeassistant_start_with_duplicate_log_file(
         env = run.call_args.kwargs["environment"]
         assert "HA_DUPLICATE_LOG_FILE" in env
         assert env["HA_DUPLICATE_LOG_FILE"] == "1"
-
-
-@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
-async def test_homeassistant_start_with_unix_socket(
-    coresys: CoreSys, container: DockerContainer
-):
-    """Test starting homeassistant with unix socket env var for supported version."""
-    coresys.homeassistant.version = AwesomeVersion("2026.4.0")
-
-    with (
-        patch.object(DockerAPI, "run", return_value=container.show.return_value) as run,
-        patch.object(
-            DockerHomeAssistant, "is_running", side_effect=[False, False, True]
-        ),
-        patch("supervisor.homeassistant.core.asyncio.sleep"),
-    ):
-        await coresys.homeassistant.core.start()
-
-        run.assert_called_once()
-        env = run.call_args.kwargs["environment"]
-        assert "SUPERVISOR_CORE_API_SOCKET" in env
-        assert env["SUPERVISOR_CORE_API_SOCKET"] == "/run/supervisor/core.sock"
 
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")

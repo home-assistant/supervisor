@@ -185,8 +185,13 @@ class Ingress(FileConfiguration, CoreSysAttributes):
         await self.save_data()
 
     async def update_hass_panel(self, app: App):
-        """Update the ingress panel registration in Home Assistant."""
-        method = "post" if app.ingress_panel else "delete"
+        """Return True if Home Assistant up and running."""
+        if not await self.sys_homeassistant.core.is_running():
+            _LOGGER.debug("Ignoring panel update on Core")
+            return
+
+        # Update UI
+        method = "post" if addon.ingress_panel else "delete"
         try:
             async with self.sys_homeassistant.api.make_request(
                 method, f"api/hassio_push/panel/{app.slug}"

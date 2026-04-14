@@ -88,7 +88,7 @@ async def test_password_reset(
     websession: MagicMock,
 ):
     """Test password reset api."""
-    coresys.homeassistant.api._access_token = "abc123"  # pylint: disable=protected-access
+    coresys.homeassistant.api.access_token = "abc123"
     # pylint: disable-next=protected-access
     coresys.homeassistant.api._access_token_expires = datetime.now(tz=UTC) + timedelta(
         days=1
@@ -124,7 +124,7 @@ async def test_failed_password_reset(
     expected_log: str,
 ):
     """Test failed password reset."""
-    coresys.homeassistant.api._access_token = "abc123"  # pylint: disable=protected-access
+    coresys.homeassistant.api.access_token = "abc123"
     # pylint: disable-next=protected-access
     coresys.homeassistant.api._access_token_expires = datetime.now(tz=UTC) + timedelta(
         days=1

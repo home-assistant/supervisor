@@ -563,11 +563,11 @@ async def coresys(
         Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )
 
-    # Home Assistant Core API
+    # WebSocket
     coresys_obj.homeassistant.api.get_api_state = AsyncMock(
         return_value=APIState("RUNNING", False)
     )
-    coresys_obj.homeassistant._websocket.client = AsyncMock(
+    coresys_obj.homeassistant._websocket._client = AsyncMock(
         ha_version=AwesomeVersion("2021.2.4")
     )
 
@@ -587,7 +587,7 @@ async def ha_ws_client(coresys: CoreSys) -> AsyncMock:
     # Set Supervisor Core state to RUNNING, otherwise WS events won't be delivered
     await coresys.core.set_state(CoreState.RUNNING)
     await asyncio.sleep(0)
-    client = coresys.homeassistant.websocket.client
+    client = coresys.homeassistant.websocket._client
     client.async_send_command.reset_mock()
     return client
 
@@ -714,13 +714,8 @@ def supervisor_internet(coresys: CoreSys) -> Generator[AsyncMock]:
 
 @pytest.fixture
 def websession(coresys: CoreSys) -> Generator[MagicMock]:
-    """Fixture for global aiohttp SessionClient.
-
-    Also mocks Core container is_running to return True so that
-    make_request doesn't bail before reaching the websession.
-    """
+    """Fixture for global aiohttp SessionClient."""
     coresys._websession = MagicMock(spec_set=ClientSession)
-    coresys.homeassistant.core.instance.is_running = AsyncMock(return_value=True)
     yield coresys._websession
 
 
