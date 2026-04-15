@@ -199,7 +199,7 @@ class CoreConfig(FileConfiguration):
 
     @property
     def feature_flags(self) -> dict[FeatureFlag, bool]:
-        """Return current state of all experimental feature flags."""
+        """Return current state of explicitly configured experimental feature flags."""
         return self._data.get(ATTR_FEATURE_FLAGS, {})
 
     def set_feature_flag(self, feature: FeatureFlag, enabled: bool) -> None:
