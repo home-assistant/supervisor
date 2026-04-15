@@ -9,7 +9,7 @@ import voluptuous as vol
 
 from ..backups.const import BackupType
 from ..const import (
-    ATTR_APPS,
+    ATTR_ADDONS,
     ATTR_COMPRESSED,
     ATTR_DATE,
     ATTR_DAYS_UNTIL_STALE,
@@ -114,7 +114,7 @@ SCHEMA_BACKUP = vol.Schema(
         vol.Optional(ATTR_FOLDERS, default=list): vol.All(
             v1_folderlist, [vol.In(ALL_FOLDERS)], vol.Unique()
         ),
-        vol.Optional(ATTR_APPS, default=list): vol.All(
+        vol.Optional(ATTR_ADDONS, default=list): vol.All(
             [
                 vol.Schema(
                     {

@@ -13,6 +13,7 @@ from ..addons.utils import rating_security
 from ..api.const import ATTR_SIGNED
 from ..api.utils import api_process, api_process_raw, api_validate
 from ..const import (
+    ATTR_ADDONS,
     ATTR_ADVANCED,
     ATTR_APPARMOR,
     ATTR_APPS,
@@ -190,6 +191,17 @@ class APIStore(CoreSysAttributes):
             ATTR_MAINTAINER: repository.maintainer,
         }
 
+    async def _all_store_apps_info(self) -> list[dict[str, Any]]:
+        """Return gathered info for all apps in the store."""
+        return list(
+            await asyncio.gather(
+                *[
+                    self._generate_app_information(self.sys_apps.store[app])
+                    for app in self.sys_apps.store
+                ]
+            )
+        )
+
     @api_process
     async def reload(self, request: web.Request) -> None:
         """Reload all app data from store."""
@@ -197,14 +209,20 @@ class APIStore(CoreSysAttributes):
 
     @api_process
     async def store_info(self, request: web.Request) -> dict[str, Any]:
-        """Return store information."""
+        """Return store information (v2: uses "apps" key)."""
         return {
-            ATTR_APPS: await asyncio.gather(
-                *[
-                    self._generate_app_information(self.sys_apps.store[app])
-                    for app in self.sys_apps.store
-                ]
-            ),
+            ATTR_APPS: await self._all_store_apps_info(),
+            ATTR_REPOSITORIES: [
+                self._generate_repository_information(repository)
+                for repository in self.sys_store.all
+            ],
+        }
+
+    @api_process
+    async def store_info_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return store information (v1: uses "addons" key)."""
+        return {
+            ATTR_ADDONS: await self._all_store_apps_info(),
             ATTR_REPOSITORIES: [
                 self._generate_repository_information(repository)
                 for repository in self.sys_store.all
@@ -213,15 +231,13 @@ class APIStore(CoreSysAttributes):
 
     @api_process
     async def apps_list(self, request: web.Request) -> dict[str, Any]:
-        """Return all store apps."""
-        return {
-            ATTR_APPS: await asyncio.gather(
-                *[
-                    self._generate_app_information(self.sys_apps.store[app])
-                    for app in self.sys_apps.store
-                ]
-            )
-        }
+        """Return all store apps (v2: uses "apps" key)."""
+        return {ATTR_APPS: await self._all_store_apps_info()}
+
+    @api_process
+    async def apps_list_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return all store apps (v1: uses "addons" key)."""
+        return {ATTR_ADDONS: await self._all_store_apps_info()}
 
     @api_process
     async def apps_app_install(self, request: web.Request) -> dict[str, str] | None:

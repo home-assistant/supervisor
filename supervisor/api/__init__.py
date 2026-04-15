@@ -8,7 +8,8 @@ from typing import Any
 
 from aiohttp import hdrs, web
 
-from ..const import SUPERVISOR_DOCKER_NAME, AppState
+from ..addons.addon import App
+from ..const import SUPERVISOR_DOCKER_NAME, AppState, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import APIAppNotInstalled, HostNotSupportedError
 from ..utils.sentry import async_capture_exception
@@ -76,6 +77,9 @@ class RestAPI(CoreSysAttributes):
                 "max_field_size": MAX_LINE_SIZE,
             },
         )
+        # v2 sub-app: no middleware of its own — parent webapp's middleware
+        # stack runs first for all requests including sub-app routes.
+        self.v2_app: web.Application = web.Application()
 
         # service stuff
         self._runner: web.AppRunner = web.AppRunner(self.webapp, shutdown_timeout=5)
@@ -84,6 +88,11 @@ class RestAPI(CoreSysAttributes):
         # share single host API handler for reuse in logging endpoints
         self._api_host: APIHost = APIHost()
         self._api_host.coresys = coresys
+
+        # handler instances shared between v1 and v2 registrations
+        self._api_apps: APIApps | None = None
+        self._api_backups: APIBackups | None = None
+        self._api_store: APIStore | None = None
 
     async def load(self) -> None:
         """Register REST API Calls."""
@@ -115,6 +124,14 @@ class RestAPI(CoreSysAttributes):
         self._register_services()
         self._register_store()
         self._register_supervisor()
+
+        # Register v2 routes before mounting the sub-app
+        # (add_subapp freezes the sub-app's router)
+        if self.sys_config.feature_flags.get(FeatureFlag.SUPERVISOR_V2_API, False):
+            self._register_v2_apps()
+            self._register_v2_backups()
+            self._register_v2_store()
+            self.webapp.add_subapp("/v2", self.v2_app)
 
         if static_resource_configs:
 
@@ -567,10 +584,11 @@ class RestAPI(CoreSysAttributes):
         """Register App functions."""
         api_apps = APIApps()
         api_apps.coresys = self.coresys
+        self._api_apps = api_apps
 
         self.webapp.add_routes(
             [
-                web.get("/addons", api_apps.list_apps),
+                web.get("/addons", api_apps.list_apps_v1),
                 web.post("/addons/{app}/uninstall", api_apps.uninstall),
                 web.post("/addons/{app}/start", api_apps.start),
                 web.post("/addons/{app}/stop", api_apps.stop),
@@ -619,7 +637,8 @@ class RestAPI(CoreSysAttributes):
         async def apps_app_info(request: web.Request) -> dict[str, Any]:
             """Route to store if info requested for not installed app."""
             try:
-                return await api_apps.info(request)
+                app: App = api_apps.get_app_for_request(request)
+                return await api_apps._info_data(app)
             except APIAppNotInstalled:
                 # Route to store/{app}/info but add missing fields
                 return dict(
@@ -629,6 +648,50 @@ class RestAPI(CoreSysAttributes):
                 )
 
         self.webapp.add_routes([web.get("/addons/{app}/info", apps_app_info)])
+
+    def _register_v2_apps(self) -> None:
+        """Register v2 app routes on the v2 sub-app (accessible as /v2/apps/...)."""
+        assert self._api_apps is not None
+        api_apps = self._api_apps
+
+        @api_process_raw(CONTENT_TYPE_TEXT, error_type=CONTENT_TYPE_TEXT)
+        async def get_app_logs_v2(request, *args, **kwargs):
+            app = api_apps.get_app_for_request(request)
+            kwargs["identifier"] = f"addon_{app.slug}"
+            return await self._api_host.advanced_logs(request, *args, **kwargs)
+
+        self.v2_app.add_routes(
+            [
+                web.get("/apps", api_apps.list_apps),
+                web.post("/apps/{app}/uninstall", api_apps.uninstall),
+                web.post("/apps/{app}/start", api_apps.start),
+                web.post("/apps/{app}/stop", api_apps.stop),
+                web.post("/apps/{app}/restart", api_apps.restart),
+                web.post("/apps/{app}/options", api_apps.options),
+                web.post("/apps/{app}/sys_options", api_apps.sys_options),
+                web.post("/apps/{app}/options/validate", api_apps.options_validate),
+                web.get("/apps/{app}/options/config", api_apps.options_config),
+                web.post("/apps/{app}/rebuild", api_apps.rebuild),
+                web.post("/apps/{app}/stdin", api_apps.stdin),
+                web.post("/apps/{app}/security", api_apps.security),
+                web.get("/apps/{app}/stats", api_apps.stats),
+                web.get("/apps/{app}/info", api_apps.info),
+                web.get("/apps/{app}/logs", get_app_logs_v2),
+                web.get(
+                    "/apps/{app}/logs/follow",
+                    partial(get_app_logs_v2, follow=True),
+                ),
+                web.get(
+                    "/apps/{app}/logs/latest",
+                    partial(get_app_logs_v2, latest=True, no_colors=True),
+                ),
+                web.get("/apps/{app}/logs/boots/{bootid}", get_app_logs_v2),
+                web.get(
+                    "/apps/{app}/logs/boots/{bootid}/follow",
+                    partial(get_app_logs_v2, follow=True),
+                ),
+            ]
+        )
 
     def _register_ingress(self) -> None:
         """Register Ingress functions."""
@@ -650,8 +713,36 @@ class RestAPI(CoreSysAttributes):
         """Register backups functions."""
         api_backups = APIBackups()
         api_backups.coresys = self.coresys
+        self._api_backups = api_backups
 
         self.webapp.add_routes(
+            [
+                web.get("/backups", api_backups.list_backups_v1),
+                web.get("/backups/info", api_backups.info_v1),
+                web.post("/backups/options", api_backups.options),
+                web.post("/backups/reload", api_backups.reload),
+                web.post("/backups/freeze", api_backups.freeze),
+                web.post("/backups/thaw", api_backups.thaw),
+                web.post("/backups/new/full", api_backups.backup_full),
+                web.post("/backups/new/partial", api_backups.backup_partial_v1),
+                web.post("/backups/new/upload", api_backups.upload),
+                web.get("/backups/{slug}/info", api_backups.backup_info_v1),
+                web.delete("/backups/{slug}", api_backups.remove),
+                web.post("/backups/{slug}/restore/full", api_backups.restore_full),
+                web.post(
+                    "/backups/{slug}/restore/partial",
+                    api_backups.restore_partial_v1,
+                ),
+                web.get("/backups/{slug}/download", api_backups.download),
+            ]
+        )
+
+    def _register_v2_backups(self) -> None:
+        """Register v2 backup routes on the v2 sub-app (accessible as /v2/backups/...)."""
+        assert self._api_backups is not None
+        api_backups = self._api_backups
+
+        self.v2_app.add_routes(
             [
                 web.get("/backups", api_backups.list_backups),
                 web.get("/backups/info", api_backups.info),
@@ -762,11 +853,12 @@ class RestAPI(CoreSysAttributes):
         """Register store endpoints."""
         api_store = APIStore()
         api_store.coresys = self.coresys
+        self._api_store = api_store
 
         self.webapp.add_routes(
             [
-                web.get("/store", api_store.store_info),
-                web.get("/store/addons", api_store.apps_list),
+                web.get("/store", api_store.store_info_v1),
+                web.get("/store/addons", api_store.apps_list_v1),
                 web.get("/store/addons/{app}", api_store.apps_app_info),
                 web.get("/store/addons/{app}/icon", api_store.apps_app_icon),
                 web.get("/store/addons/{app}/logo", api_store.apps_app_logo),
@@ -820,6 +912,56 @@ class RestAPI(CoreSysAttributes):
                 web.get(
                     "/addons/{app}/documentation",
                     api_store.apps_app_documentation,
+                ),
+            ]
+        )
+
+    def _register_v2_store(self) -> None:
+        """Register v2 store routes on the v2 sub-app (accessible as /v2/store/...)."""
+        assert self._api_store is not None
+        api_store = self._api_store
+
+        self.v2_app.add_routes(
+            [
+                web.get("/store", api_store.store_info),
+                web.get("/store/apps", api_store.apps_list),
+                web.get("/store/apps/{app}", api_store.apps_app_info),
+                web.get("/store/apps/{app}/icon", api_store.apps_app_icon),
+                web.get("/store/apps/{app}/logo", api_store.apps_app_logo),
+                web.get("/store/apps/{app}/changelog", api_store.apps_app_changelog),
+                web.get(
+                    "/store/apps/{app}/documentation",
+                    api_store.apps_app_documentation,
+                ),
+                web.get(
+                    "/store/apps/{app}/availability",
+                    api_store.apps_app_availability,
+                ),
+                web.post("/store/apps/{app}/install", api_store.apps_app_install),
+                web.post(
+                    "/store/apps/{app}/install/{version}",
+                    api_store.apps_app_install,
+                ),
+                web.post("/store/apps/{app}/update", api_store.apps_app_update),
+                web.post(
+                    "/store/apps/{app}/update/{version}",
+                    api_store.apps_app_update,
+                ),
+                # Must be below others since it has a wildcard in resource path
+                web.get("/store/apps/{app}/{version}", api_store.apps_app_info),
+                web.post("/store/reload", api_store.reload),
+                web.get("/store/repositories", api_store.repositories_list),
+                web.get(
+                    "/store/repositories/{repository}",
+                    api_store.repositories_repository_info,
+                ),
+                web.post("/store/repositories", api_store.add_repository),
+                web.delete(
+                    "/store/repositories/{repository}", api_store.remove_repository
+                ),
+                web.post(
+                    "/store/repositories/{repository}/repair",
+                    api_store.repositories_repository_repair,
                 ),
             ]
         )

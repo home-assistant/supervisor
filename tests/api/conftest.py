@@ -3,9 +3,12 @@
 from collections.abc import Awaitable, Callable
 from unittest.mock import ANY, AsyncMock, MagicMock
 
+from aiohttp import web
 from aiohttp.test_utils import TestClient
 import pytest
 
+from supervisor.api import RestAPI
+from supervisor.const import REQUEST_FROM, FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.host.const import LogFormat, LogFormatter
 
@@ -153,3 +156,75 @@ async def advanced_logs_tester(
         )
 
     return test_logs
+
+
+@pytest.fixture
+async def api_client_v2(aiohttp_client, coresys: CoreSys) -> TestClient:
+    """Fixture for RestAPI client with v2 API enabled."""
+    coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_V2_API, True)
+
+    @web.middleware
+    async def _security_middleware(request: web.Request, handler: web.RequestHandler):
+        request[REQUEST_FROM] = coresys.homeassistant
+        return await handler(request)
+
+    api = RestAPI(coresys)
+    api.webapp = web.Application(middlewares=[_security_middleware])
+    api.start = AsyncMock()
+    await api.load()
+    yield await aiohttp_client(api.webapp)
+
+
+@pytest.fixture(params=[pytest.param("", id="v1"), pytest.param("/v2", id="v2")])
+async def api_client_with_prefix(
+    request: pytest.FixtureRequest,
+    api_client: TestClient,
+    api_client_v2: TestClient,
+) -> tuple[TestClient, str]:
+    """Fixture providing (client, path_prefix) for both v1 and v2 API paths.
+
+    Use this for APIs whose behavior is identical between v1 and v2 to confirm
+    both versions work correctly.
+    """
+    if request.param == "":
+        return api_client, ""
+    return api_client_v2, "/v2"
+
+
+@pytest.fixture(
+    params=[pytest.param("/addons", id="v1"), pytest.param("/v2/apps", id="v2")]
+)
+async def app_api_client_with_root(
+    request: pytest.FixtureRequest,
+    api_client: TestClient,
+    api_client_v2: TestClient,
+) -> tuple[TestClient, str]:
+    """Fixture providing (client, path_root) for both v1 and v2 app management paths.
+
+    v1 root: /addons/{slug}/...
+    v2 root: /v2/apps/{slug}/...
+    """
+    root: str = request.param
+    client = api_client if root == "/addons" else api_client_v2
+    return client, root
+
+
+@pytest.fixture(
+    params=[
+        pytest.param("store/addons", id="v1"),
+        pytest.param("v2/store/apps", id="v2"),
+    ]
+)
+async def store_app_api_client_with_root(
+    request: pytest.FixtureRequest,
+    api_client: TestClient,
+    api_client_v2: TestClient,
+) -> tuple[TestClient, str]:
+    """Fixture providing (client, resource_root) for both v1 and v2 store app paths.
+
+    v1 root: store/addons/{slug}/...
+    v2 root: v2/store/apps/{slug}/...
+    """
+    resource: str = request.param
+    client = api_client_v2 if resource.startswith("v2/") else api_client
+    return client, resource

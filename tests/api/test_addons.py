@@ -36,14 +36,17 @@ def _create_test_event(name: str, state: ContainerState) -> DockerContainerState
     )
 
 
-async def test_apps_info(api_client: TestClient, install_app_ssh: App):
+async def test_apps_info(
+    app_api_client_with_root: tuple[TestClient, str], install_app_ssh: App
+):
     """Test getting app info."""
+    client, root = app_api_client_with_root
     install_app_ssh.state = AppState.STOPPED
     install_app_ssh.ingress_panel = True
     install_app_ssh.protected = True
     install_app_ssh.watchdog = False
 
-    resp = await api_client.get(f"/addons/{TEST_ADDON_SLUG}/info")
+    resp = await client.get(f"{root}/{TEST_ADDON_SLUG}/info")
     result = await resp.json()
     assert result["data"]["version_latest"] == "9.2.1"
     assert result["data"]["version"] == "9.2.1"
@@ -349,14 +352,17 @@ async def test_api_app_rebuild_force(
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_api_app_uninstall(
-    api_client: TestClient, coresys: CoreSys, install_app_example: App
+    app_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_example: App,
 ):
     """Test uninstall."""
+    client, root = app_api_client_with_root
     install_app_example.data["map"].append({"type": "addon_config", "read_only": False})
     install_app_example.path_config.mkdir()
     (test_file := install_app_example.path_config / "test.txt").touch()
 
-    resp = await api_client.post("/addons/local_example/uninstall")
+    resp = await client.post(f"{root}/local_example/uninstall")
     assert resp.status == 200
     assert not coresys.apps.get("local_example", local_only=True)
     assert test_file.exists()
@@ -364,15 +370,18 @@ async def test_api_app_uninstall(
 
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_api_app_uninstall_remove_config(
-    api_client: TestClient, coresys: CoreSys, install_app_example: App
+    app_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_example: App,
 ):
     """Test uninstall and remove config."""
+    client, root = app_api_client_with_root
     install_app_example.data["map"].append({"type": "addon_config", "read_only": False})
     (test_folder := install_app_example.path_config).mkdir()
     (install_app_example.path_config / "test.txt").touch()
 
-    resp = await api_client.post(
-        "/addons/local_example/uninstall", json={"remove_config": True}
+    resp = await client.post(
+        f"{root}/local_example/uninstall", json={"remove_config": True}
     )
     assert resp.status == 200
     assert not coresys.apps.get("local_example", local_only=True)
@@ -472,87 +481,99 @@ async def get_message(resp: ClientResponse, json_expected: bool) -> str:
 
 
 @pytest.mark.parametrize(
-    ("method", "url", "json_expected"),
+    ("method", "action", "json_expected"),
     [
-        ("get", "/addons/bad/info", True),
-        ("post", "/addons/bad/uninstall", True),
-        ("post", "/addons/bad/start", True),
-        ("post", "/addons/bad/stop", True),
-        ("post", "/addons/bad/restart", True),
-        ("post", "/addons/bad/options", True),
-        ("post", "/addons/bad/sys_options", True),
-        ("post", "/addons/bad/options/validate", True),
-        ("post", "/addons/bad/rebuild", True),
-        ("post", "/addons/bad/stdin", True),
-        ("post", "/addons/bad/security", True),
-        ("get", "/addons/bad/stats", True),
-        ("get", "/addons/bad/logs", False),
-        ("get", "/addons/bad/logs/follow", False),
-        ("get", "/addons/bad/logs/boots/1", False),
-        ("get", "/addons/bad/logs/boots/1/follow", False),
+        ("get", "bad/info", True),
+        ("post", "bad/uninstall", True),
+        ("post", "bad/start", True),
+        ("post", "bad/stop", True),
+        ("post", "bad/restart", True),
+        ("post", "bad/options", True),
+        ("post", "bad/sys_options", True),
+        ("post", "bad/options/validate", True),
+        ("post", "bad/rebuild", True),
+        ("post", "bad/stdin", True),
+        ("post", "bad/security", True),
+        ("get", "bad/stats", True),
+        ("get", "bad/logs", False),
+        ("get", "bad/logs/follow", False),
+        ("get", "bad/logs/boots/1", False),
+        ("get", "bad/logs/boots/1/follow", False),
     ],
 )
 async def test_app_not_found(
-    api_client: TestClient, method: str, url: str, json_expected: bool
+    app_api_client_with_root: tuple[TestClient, str],
+    method: str,
+    action: str,
+    json_expected: bool,
 ):
     """Test app not found error."""
-    resp = await api_client.request(method, url)
+    client, root = app_api_client_with_root
+    resp = await client.request(method, f"{root}/{action}")
     assert resp.status == 404
     assert await get_message(resp, json_expected) == "App bad does not exist"
 
 
 @pytest.mark.parametrize(
-    ("method", "url", "json_expected"),
+    ("method", "action", "json_expected"),
     [
-        ("post", "/addons/local_ssh/uninstall", True),
-        ("post", "/addons/local_ssh/start", True),
-        ("post", "/addons/local_ssh/stop", True),
-        ("post", "/addons/local_ssh/restart", True),
-        ("post", "/addons/local_ssh/options", True),
-        ("post", "/addons/local_ssh/sys_options", True),
-        ("post", "/addons/local_ssh/options/validate", True),
-        ("post", "/addons/local_ssh/rebuild", True),
-        ("post", "/addons/local_ssh/stdin", True),
-        ("post", "/addons/local_ssh/security", True),
-        ("get", "/addons/local_ssh/stats", True),
-        ("get", "/addons/local_ssh/logs", False),
-        ("get", "/addons/local_ssh/logs/follow", False),
-        ("get", "/addons/local_ssh/logs/boots/1", False),
-        ("get", "/addons/local_ssh/logs/boots/1/follow", False),
+        ("post", "local_ssh/uninstall", True),
+        ("post", "local_ssh/start", True),
+        ("post", "local_ssh/stop", True),
+        ("post", "local_ssh/restart", True),
+        ("post", "local_ssh/options", True),
+        ("post", "local_ssh/sys_options", True),
+        ("post", "local_ssh/options/validate", True),
+        ("post", "local_ssh/rebuild", True),
+        ("post", "local_ssh/stdin", True),
+        ("post", "local_ssh/security", True),
+        ("get", "local_ssh/stats", True),
+        ("get", "local_ssh/logs", False),
+        ("get", "local_ssh/logs/follow", False),
+        ("get", "local_ssh/logs/boots/1", False),
+        ("get", "local_ssh/logs/boots/1/follow", False),
     ],
 )
 @pytest.mark.usefixtures("test_repository")
 async def test_app_not_installed(
-    api_client: TestClient, method: str, url: str, json_expected: bool
+    app_api_client_with_root: tuple[TestClient, str],
+    method: str,
+    action: str,
+    json_expected: bool,
 ):
     """Test app not installed error."""
-    resp = await api_client.request(method, url)
+    client, root = app_api_client_with_root
+    resp = await client.request(method, f"{root}/{action}")
     assert resp.status == 400
     assert await get_message(resp, json_expected) == "App is not installed"
 
 
-async def test_app_set_options(api_client: TestClient, install_app_example: App):
+async def test_app_set_options(
+    app_api_client_with_root: tuple[TestClient, str], install_app_example: App
+):
     """Test setting options for an app."""
-    resp = await api_client.post(
-        "/addons/local_example/options", json={"options": {"message": "test"}}
+    client, root = app_api_client_with_root
+    resp = await client.post(
+        f"{root}/local_example/options", json={"options": {"message": "test"}}
     )
     assert resp.status == 200
     assert install_app_example.options == {"message": "test"}
 
 
-async def test_app_reset_options(api_client: TestClient, install_app_example: App):
+async def test_app_reset_options(
+    app_api_client_with_root: tuple[TestClient, str], install_app_example: App
+):
     """Test resetting options for an app to defaults.
 
     Fixes SUPERVISOR-171F.
     """
+    client, root = app_api_client_with_root
     # First set some custom options
     install_app_example.options = {"message": "custom"}
     assert install_app_example.persist["options"] == {"message": "custom"}
 
     # Reset to defaults by sending null
-    resp = await api_client.post(
-        "/addons/local_example/options", json={"options": None}
-    )
+    resp = await client.post(f"{root}/local_example/options", json={"options": None})
     assert resp.status == 200
 
     # Persisted options should be empty (meaning defaults will be used)
@@ -624,10 +645,13 @@ async def test_app_start_options_error(
 
 @pytest.mark.parametrize(("method", "action"), [("get", "stats"), ("post", "stdin")])
 @pytest.mark.usefixtures("install_app_example")
-async def test_app_not_running_error(api_client: TestClient, method: str, action: str):
+async def test_app_not_running_error(
+    app_api_client_with_root: tuple[TestClient, str], method: str, action: str
+):
     """Test app not running error for endpoints that require that."""
+    client, root = app_api_client_with_root
     with patch.object(App, "with_stdin", new=PropertyMock(return_value=True)):
-        resp = await api_client.request(method, f"/addons/local_example/{action}")
+        resp = await client.request(method, f"{root}/local_example/{action}")
 
     assert resp.status == 400
     body = await resp.json()
@@ -637,9 +661,12 @@ async def test_app_not_running_error(api_client: TestClient, method: str, action
 
 
 @pytest.mark.usefixtures("install_app_example")
-async def test_app_write_stdin_not_supported_error(api_client: TestClient):
+async def test_app_write_stdin_not_supported_error(
+    app_api_client_with_root: tuple[TestClient, str],
+):
     """Test error when trying to write stdin to app that does not support it."""
-    resp = await api_client.post("/addons/local_example/stdin")
+    client, root = app_api_client_with_root
+    resp = await client.post(f"{root}/local_example/stdin")
     assert resp.status == 400
     body = await resp.json()
     assert body["message"] == "App local_example does not support writing to stdin"
@@ -677,3 +704,17 @@ async def test_app_rebuild_fails_error(api_client: TestClient, coresys: CoreSys)
     assert body["extra_fields"] == {
         "addon": "local_ssh",
     }
+
+
+# ── V2 API tests ──────────────────────────────────────────────────────────────
+
+
+@pytest.mark.usefixtures("install_app_ssh")
+async def test_v2_list_apps_uses_apps_key(api_client_v2: TestClient):
+    """V2 GET /v2/apps returns 'apps' key (not 'addons')."""
+    resp = await api_client_v2.get("/v2/apps")
+    assert resp.status == 200
+    body = await resp.json()
+    assert "apps" in body["data"]
+    assert "addons" not in body["data"]
+    assert body["data"]["apps"][0]["slug"] == "local_ssh"

@@ -12,6 +12,7 @@ from voluptuous.humanize import humanize_error
 from ..addons.addon import App
 from ..addons.utils import rating_security
 from ..const import (
+    ATTR_ADDONS,
     ATTR_ADVANCED,
     ATTR_APPARMOR,
     ATTR_APPS,
@@ -179,10 +180,9 @@ class APIApps(CoreSysAttributes):
 
         return app
 
-    @api_process
-    async def list_apps(self, request: web.Request) -> dict[str, Any]:
-        """Return all apps or repositories."""
-        data_apps = [
+    def _list_apps_data(self) -> list[dict[str, Any]]:
+        """Build the list of installed app data dicts."""
+        return [
             {
                 ATTR_NAME: app.name,
                 ATTR_SLUG: app.slug,
@@ -206,18 +206,24 @@ class APIApps(CoreSysAttributes):
             for app in self.sys_apps.installed
         ]
 
-        return {ATTR_APPS: data_apps}
+    @api_process
+    async def list_apps(self, request: web.Request) -> dict[str, Any]:
+        """Return all installed apps (v2: uses "apps" key)."""
+        return {ATTR_APPS: self._list_apps_data()}
+
+    @api_process
+    async def list_apps_v1(self, request: web.Request) -> dict[str, Any]:
+        """Return all installed apps (v1: uses "addons" key)."""
+        return {ATTR_ADDONS: self._list_apps_data()}
 
     @api_process
     async def reload(self, request: web.Request) -> None:
         """Reload all app data from store."""
         await asyncio.shield(self.sys_store.reload())
 
-    async def info(self, request: web.Request) -> dict[str, Any]:
-        """Return app information."""
-        app: App = self.get_app_for_request(request)
-
-        data = {
+    async def _info_data(self, app: App) -> dict[str, Any]:
+        """Build and return app information dict (raises on invalid state)."""
+        return {
             ATTR_NAME: app.name,
             ATTR_SLUG: app.slug,
             ATTR_HOSTNAME: app.hostname,
@@ -293,7 +299,11 @@ class APIApps(CoreSysAttributes):
             ATTR_SYSTEM_MANAGED_CONFIG_ENTRY: app.system_managed_config_entry,
         }
 
-        return data
+    @api_process
+    async def info(self, request: web.Request) -> dict[str, Any]:
+        """Return app information."""
+        app: App = self.get_app_for_request(request)
+        return await self._info_data(app)
 
     @api_process
     async def options(self, request: web.Request) -> None:

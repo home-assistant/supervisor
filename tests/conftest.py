@@ -34,7 +34,7 @@ from supervisor.backups.const import BackupType
 from supervisor.backups.validate import ALL_FOLDERS
 from supervisor.bootstrap import initialize_coresys
 from supervisor.const import (
-    ATTR_APPS,
+    ATTR_ADDONS,
     ATTR_APPS_CUSTOM_LIST,
     ATTR_DATE,
     ATTR_EXCLUDE_DATABASE,
@@ -816,7 +816,7 @@ async def mock_full_backup(coresys: CoreSys, tmp_path) -> Backup:
     mock_backup.new("Test", utcnow().isoformat(), BackupType.FULL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
-    mock_backup._data[ATTR_APPS] = [
+    mock_backup._data[ATTR_ADDONS] = [
         {
             ATTR_SLUG: "local_ssh",
             ATTR_NAME: "SSH",
@@ -843,7 +843,7 @@ async def mock_partial_backup(coresys: CoreSys, tmp_path) -> Backup:
     mock_backup.new("Test", utcnow().isoformat(), BackupType.PARTIAL)
     mock_backup.repositories = ["https://github.com/awesome-developer/awesome-repo"]
     mock_backup.docker = {}
-    mock_backup._data[ATTR_APPS] = [
+    mock_backup._data[ATTR_ADDONS] = [
         {
             ATTR_SLUG: "local_ssh",
             ATTR_NAME: "SSH",

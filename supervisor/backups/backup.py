@@ -30,7 +30,7 @@ from voluptuous.humanize import humanize_error
 
 from ..addons.manager import App
 from ..const import (
-    ATTR_APPS,
+    ATTR_ADDONS,
     ATTR_COMPRESSED,
     ATTR_DATE,
     ATTR_DOCKER,
@@ -166,7 +166,7 @@ class Backup(JobGroup):
     @property
     def apps(self) -> list[dict[str, Any]]:
         """Return backup date."""
-        return self._data[ATTR_APPS]
+        return self._data[ATTR_ADDONS]
 
     @property
     def app_list(self) -> list[str]:
@@ -642,7 +642,7 @@ class Backup(JobGroup):
             raise BackupError(str(err)) from err
 
         # Store to config
-        self._data[ATTR_APPS].append(
+        self._data[ATTR_ADDONS].append(
             {
                 ATTR_SLUG: slug,
                 ATTR_NAME: curr_app.name,

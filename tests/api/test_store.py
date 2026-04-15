@@ -60,17 +60,23 @@ async def test_api_store_apps(api_client: TestClient, store_app: AppStore):
 
 
 @pytest.mark.asyncio
-async def test_api_store_apps_app(api_client: TestClient, store_app: AppStore):
+async def test_api_store_apps_app(
+    store_app_api_client_with_root: tuple[TestClient, str], store_app: AppStore
+):
     """Test /store/apps/{app} REST API."""
-    resp = await api_client.get(f"/store/addons/{store_app.slug}")
+    client, root = store_app_api_client_with_root
+    resp = await client.get(f"/{root}/{store_app.slug}")
     result = await resp.json()
     assert result["data"]["slug"] == store_app.slug
 
 
 @pytest.mark.asyncio
-async def test_api_store_apps_app_version(api_client: TestClient, store_app: AppStore):
+async def test_api_store_apps_app_version(
+    store_app_api_client_with_root: tuple[TestClient, str], store_app: AppStore
+):
     """Test /store/apps/{app}/{version} REST API."""
-    resp = await api_client.get(f"/store/addons/{store_app.slug}/1.0.0")
+    client, root = store_app_api_client_with_root
+    resp = await client.get(f"/{root}/{store_app.slug}/1.0.0")
     result = await resp.json()
     assert result["data"]["slug"] == store_app.slug
 
@@ -281,13 +287,27 @@ async def test_api_store_update_healthcheck(
 async def test_api_store_apps_no_changelog(
     api_client: TestClient, coresys: CoreSys, store_app: AppStore, resource: str
 ):
-    """Test /store/apps/{app}/changelog REST API.
+    """Test /store/apps/{app}/changelog REST API (v1 paths).
 
     Currently the frontend expects a valid body even in the error case. Make sure that is
     what the API returns.
     """
     assert store_app.with_changelog is False
     resp = await api_client.get(f"/{resource}/{store_app.slug}/changelog")
+    assert resp.status == 200
+    result = await resp.text()
+    assert result == "No changelog found for app test_store_addon!"
+
+
+async def test_api_store_apps_no_changelog_v2(
+    store_app_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    store_app: AppStore,
+):
+    """Test /store/apps/{app}/changelog REST API for both v1 and v2 store paths."""
+    client, root = store_app_api_client_with_root
+    assert store_app.with_changelog is False
+    resp = await client.get(f"/{root}/{store_app.slug}/changelog")
     assert resp.status == 200
     result = await resp.text()
     assert result == "No changelog found for app test_store_addon!"
@@ -301,7 +321,7 @@ async def test_api_detached_app_changelog(
     tmp_supervisor_data: Path,
     resource: str,
 ):
-    """Test /store/apps/{app}/changelog for an detached app.
+    """Test /store/apps/{app}/changelog for a detached app (v1 paths).
 
     Currently the frontend expects a valid body even in the error case. Make sure that is
     what the API returns.
@@ -321,17 +341,54 @@ async def test_api_detached_app_changelog(
     assert result == "App local_ssh does not exist in the store"
 
 
+async def test_api_detached_app_changelog_v2(
+    store_app_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_ssh: App,
+    tmp_supervisor_data: Path,
+):
+    """Test /store/apps/{app}/changelog for a detached app for both v1 and v2 store paths."""
+    client, root = store_app_api_client_with_root
+    (apps_dir := tmp_supervisor_data / "addons" / "local").mkdir()
+    with patch.object(
+        CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_dir)
+    ):
+        await coresys.store.load()
+
+    assert install_app_ssh.is_detached is True
+    assert install_app_ssh.with_changelog is False
+
+    resp = await client.get(f"/{root}/{install_app_ssh.slug}/changelog")
+    assert resp.status == 200
+    result = await resp.text()
+    assert result == "App local_ssh does not exist in the store"
+
+
 @pytest.mark.parametrize("resource", ["store/addons", "addons"])
 async def test_api_store_apps_no_documentation(
     api_client: TestClient, coresys: CoreSys, store_app: AppStore, resource: str
 ):
-    """Test /store/apps/{app}/documentation REST API.
+    """Test /store/apps/{app}/documentation REST API (v1 paths).
 
     Currently the frontend expects a valid body even in the error case. Make sure that is
     what the API returns.
     """
     assert store_app.with_documentation is False
     resp = await api_client.get(f"/{resource}/{store_app.slug}/documentation")
+    assert resp.status == 200
+    result = await resp.text()
+    assert result == "No documentation found for app test_store_addon!"
+
+
+async def test_api_store_apps_no_documentation_v2(
+    store_app_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    store_app: AppStore,
+):
+    """Test /store/apps/{app}/documentation REST API for both v1 and v2 store paths."""
+    client, root = store_app_api_client_with_root
+    assert store_app.with_documentation is False
+    resp = await client.get(f"/{root}/{store_app.slug}/documentation")
     assert resp.status == 200
     result = await resp.text()
     assert result == "No documentation found for app test_store_addon!"
@@ -345,7 +402,7 @@ async def test_api_detached_app_documentation(
     tmp_supervisor_data: Path,
     resource: str,
 ):
-    """Test /store/apps/{app}/changelog for an detached app.
+    """Test /store/apps/{app}/documentation for a detached app (v1 paths).
 
     Currently the frontend expects a valid body even in the error case. Make sure that is
     what the API returns.
@@ -365,29 +422,75 @@ async def test_api_detached_app_documentation(
     assert result == "App local_ssh does not exist in the store"
 
 
+async def test_api_detached_app_documentation_v2(
+    store_app_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    install_app_ssh: App,
+    tmp_supervisor_data: Path,
+):
+    """Test /store/apps/{app}/documentation for a detached app for both v1 and v2 store paths."""
+    client, root = store_app_api_client_with_root
+    (apps_dir := tmp_supervisor_data / "addons" / "local").mkdir()
+    with patch.object(
+        CoreConfig, "path_apps_local", new=PropertyMock(return_value=apps_dir)
+    ):
+        await coresys.store.load()
+
+    assert install_app_ssh.is_detached is True
+    assert install_app_ssh.with_documentation is False
+
+    resp = await client.get(f"/{root}/{install_app_ssh.slug}/documentation")
+    assert resp.status == 200
+    result = await resp.text()
+    assert result == "App local_ssh does not exist in the store"
+
+
+@pytest.mark.parametrize(
+    ("method", "action", "json_expected"),
+    [
+        ("get", "bad", True),
+        ("get", "bad/1", True),
+        ("get", "bad/icon", False),
+        ("get", "bad/logo", False),
+        ("post", "bad/install", True),
+        ("post", "bad/install/1", True),
+        ("post", "bad/update", True),
+        ("post", "bad/update/1", True),
+        ("get", "bad/availability", True),
+    ],
+)
+async def test_store_app_not_found(
+    store_app_api_client_with_root: tuple[TestClient, str],
+    method: str,
+    action: str,
+    json_expected: bool,
+):
+    """Test store app not found error for both v1 and v2 store paths."""
+    client, root = store_app_api_client_with_root
+    resp = await client.request(method, f"/{root}/{action}")
+    assert resp.status == 404
+    if json_expected:
+        body = await resp.json()
+        assert body["message"] == "App bad does not exist in the store"
+        assert body["error_key"] == "store_addon_not_found_error"
+        assert body["extra_fields"] == {"addon": "bad"}
+    else:
+        assert await resp.text() == "App bad does not exist in the store"
+
+
 @pytest.mark.parametrize(
     ("method", "url", "json_expected"),
     [
-        ("get", "/store/addons/bad", True),
-        ("get", "/store/addons/bad/1", True),
-        ("get", "/store/addons/bad/icon", False),
-        ("get", "/store/addons/bad/logo", False),
-        ("post", "/store/addons/bad/install", True),
-        ("post", "/store/addons/bad/install/1", True),
-        ("post", "/store/addons/bad/update", True),
-        ("post", "/store/addons/bad/update/1", True),
-        ("get", "/store/addons/bad/availability", True),
-        # Legacy paths
         ("get", "/addons/bad/icon", False),
         ("get", "/addons/bad/logo", False),
         ("post", "/addons/bad/install", True),
         ("post", "/addons/bad/update", True),
     ],
 )
-async def test_store_app_not_found(
+async def test_store_app_not_found_legacy_paths(
     api_client: TestClient, method: str, url: str, json_expected: bool
 ):
-    """Test store app not found error."""
+    """Test store app not found error for legacy /addons/ store paths."""
     resp = await api_client.request(method, url)
     assert resp.status == 404
     if json_expected:
@@ -886,3 +989,29 @@ async def test_api_progress_updates_app_install_update(
             "done": True,
         },
     ]
+
+
+# ── V2 API tests ──────────────────────────────────────────────────────────────
+
+
+async def test_v2_store_info_uses_apps_key(
+    api_client_v2: TestClient, coresys: CoreSys, store_app: App
+):
+    """V2 GET /v2/store returns 'apps' key (not 'addons')."""
+    resp = await api_client_v2.get("/v2/store")
+    assert resp.status == 200
+    result = await resp.json()
+    assert "apps" in result["data"]
+    assert "addons" not in result["data"]
+
+
+async def test_v2_store_apps_list_uses_apps_key(
+    api_client_v2: TestClient, coresys: CoreSys, store_app: App
+):
+    """V2 GET /v2/store/apps returns 'apps' key (not 'addons')."""
+    resp = await api_client_v2.get("/v2/store/apps")
+    assert resp.status == 200
+    result = await resp.json()
+    assert "apps" in result["data"]
+    assert "addons" not in result["data"]
+    assert result["data"]["apps"][-1]["slug"] == store_app.slug
