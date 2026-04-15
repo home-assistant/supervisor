@@ -466,8 +466,8 @@ async def test_api_supervisor_info_feature_flags(
 
     # All known feature flags should be present and default to False
     for feature in FeatureFlag:
-        assert feature in feature_flags
-        assert feature_flags[feature] is False
+        assert feature.value in feature_flags
+        assert feature_flags[feature.value] is False
 
 
 async def test_api_supervisor_options_feature_flags_enable(

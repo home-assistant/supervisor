@@ -110,7 +110,7 @@ class APISupervisor(CoreSysAttributes):
             ATTR_DETECT_BLOCKING_IO: BlockBusterManager.is_enabled(),
             ATTR_COUNTRY: self.sys_config.country,
             ATTR_FEATURE_FLAGS: {
-                feature: self.sys_config.feature_flags.get(feature, False)
+                feature.value: self.sys_config.feature_flags.get(feature, False)
                 for feature in FeatureFlag
             },
             # Depricated
