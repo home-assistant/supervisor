@@ -432,15 +432,15 @@ async def test_config_check(
 async def test_config_check_error(api_client: TestClient, container: DockerContainer):
     """Test config check API strips color coding from log output on error."""
     container.log.return_value = [
-        "\x1b[36mTest logs 1\x1b[0m",
-        "\x1b[36mTest logs 2\x1b[0m",
+        "\x1b[36mTest logs 1\x1b[0m\n",
+        "\x1b[36mTest logs 2\x1b[0m\n",
     ]
     container.wait.return_value = {"StatusCode": 1}
 
     result = await api_client.post("/core/check")
     assert result.status == 400
     resp = await result.json()
-    assert resp["message"] == "Test logs 1\nTest logs 2"
+    assert resp["message"] == "Test logs 1\nTest logs 2\n"
 
 
 async def test_update_frontend_check_success(api_client: TestClient, coresys: CoreSys):
