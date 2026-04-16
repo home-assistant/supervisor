@@ -1679,10 +1679,12 @@ async def test_v2_backup_partial_rejects_addons_key(
         "/v2/backups/new/partial",
         json={"addons": ["local_ssh"]},
     )
-    # "addons" is not a valid key in the v2 schema — request succeeds but
-    # addons are ignored (voluptuous strips extra keys by default).
-    # The important thing is it doesn't crash and uses "apps" key.
-    assert resp.status in (200, 400)
+
+    # "addons" key is rejected in v2
+    assert resp.status == 400
+    result = await resp.json()
+    assert result["result"] == "error"
+    assert "addons" in result["message"]
 
 
 async def test_v2_restore_partial_accepts_apps_key(

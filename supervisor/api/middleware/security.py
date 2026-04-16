@@ -37,7 +37,7 @@ _V1_FRONTEND_PATHS: Final = (
 )
 
 _V2_FRONTEND_PATHS: Final = (
-    r"|/v2/store/apps/" + RE_SLUG + r"/(logo|icon)"
+    r"|/store/apps/" + RE_SLUG + r"/(logo|icon)"
 )
 
 
@@ -245,10 +245,10 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
         ),
         ROLE_ADMIN: re.compile(r".*"),
     },
-    supervisor_frontend=re.compile(r"^(?:" + _V2_FRONTEND_PATHS + r")$"),
+    supervisor_frontend=re.compile(r"^/v2(?:" + _V2_FRONTEND_PATHS + r")$"),
     no_security_check=re.compile(
-        r"^(?:"
-        r"|/v2/ingress/[-_A-Za-z0-9]+/.*"
+        r"^/v2(?:"
+        r"|/ingress/[-_A-Za-z0-9]+/.*"
         + _V2_FRONTEND_PATHS
         + r")$"
     ),
@@ -339,7 +339,10 @@ class SecurityMiddleware(CoreSysAttributes):
             _LOGGER.debug("%s access from Home Assistant", request.path)
             request_from = self.sys_homeassistant
         elif patterns.core_only.match(request.path):
-            _LOGGER.warning("Attempted access to %s from client besides Home Assistant")
+            _LOGGER.warning(
+                "Attempted access to %s from client besides Home Assistant",
+                request.path,
+            )
             raise HTTPForbidden()
 
         # Host

@@ -165,7 +165,7 @@ class Backup(JobGroup):
 
     @property
     def apps(self) -> list[dict[str, Any]]:
-        """Return backup date."""
+        """Return the apps included in the backup."""
         return self._data[ATTR_ADDONS]
 
     @property
