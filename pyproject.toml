@@ -208,6 +208,9 @@ score = false
 
 [tool.pylint.TYPECHECK]
 ignored-modules = ["distutils"]
+# re.Pattern methods are C extension methods; pylint cannot detect them when
+# re.Pattern is used as a dataclass field type annotation (false positive).
+generated-members = ["re.Pattern.*"]
 
 [tool.pylint.FORMAT]
 expected-line-ending-format = "LF"

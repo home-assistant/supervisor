@@ -77,7 +77,7 @@ FILTERS: Final = re.compile(
     flags=re.IGNORECASE,
 )
 
-@dataclass(frozen=True)
+@dataclass(slots=True, frozen=True)
 class _AppSecurityPatterns:
     """All compiled regex patterns for app API access control, per API version."""
 
