@@ -158,8 +158,8 @@ async def advanced_logs_tester(
     return test_logs
 
 
-@pytest.fixture
-async def api_client_v2(aiohttp_client, coresys: CoreSys) -> TestClient:
+@pytest.fixture(name="api_client_v2")
+async def fixture_api_client_v2(aiohttp_client, coresys: CoreSys) -> TestClient:
     """Fixture for RestAPI client with v2 API enabled."""
     coresys.config.set_feature_flag(FeatureFlag.SUPERVISOR_V2_API, True)
 
@@ -175,8 +175,11 @@ async def api_client_v2(aiohttp_client, coresys: CoreSys) -> TestClient:
     yield await aiohttp_client(api.webapp)
 
 
-@pytest.fixture(params=[pytest.param("", id="v1"), pytest.param("/v2", id="v2")])
-async def api_client_with_prefix(
+@pytest.fixture(
+    name="api_client_with_prefix",
+    params=[pytest.param("", id="v1"), pytest.param("/v2", id="v2")],
+)
+async def fixture_api_client_with_prefix(
     request: pytest.FixtureRequest,
     api_client: TestClient,
     api_client_v2: TestClient,
@@ -192,9 +195,10 @@ async def api_client_with_prefix(
 
 
 @pytest.fixture(
-    params=[pytest.param("/addons", id="v1"), pytest.param("/v2/apps", id="v2")]
+    name="app_api_client_with_root",
+    params=[pytest.param("/addons", id="v1"), pytest.param("/v2/apps", id="v2")],
 )
-async def app_api_client_with_root(
+async def fixture_app_api_client_with_root(
     request: pytest.FixtureRequest,
     api_client: TestClient,
     api_client_v2: TestClient,
@@ -210,12 +214,13 @@ async def app_api_client_with_root(
 
 
 @pytest.fixture(
+    name="store_app_api_client_with_root",
     params=[
         pytest.param("store/addons", id="v1"),
         pytest.param("v2/store/apps", id="v2"),
-    ]
+    ],
 )
-async def store_app_api_client_with_root(
+async def fixture_store_app_api_client_with_root(
     request: pytest.FixtureRequest,
     api_client: TestClient,
     api_client_v2: TestClient,

@@ -132,7 +132,7 @@ SCHEMA_BACKUP_FULL = vol.Schema(
 )
 
 # V1 schema uses "addons" as the request body key (legacy API contract).
-SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
+SCHEMA_BACKUP_PARTIAL_V1 = SCHEMA_BACKUP_FULL.extend(
     {
         vol.Optional(ATTR_ADDONS): vol.Or(ALL_APPS_FLAG, vol.All([str], vol.Unique())),
         vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS,
@@ -141,7 +141,7 @@ SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
 )
 
 # V2 schema uses "apps" as the request body key.
-SCHEMA_BACKUP_PARTIAL_V2 = SCHEMA_BACKUP_FULL.extend(
+SCHEMA_BACKUP_PARTIAL = SCHEMA_BACKUP_FULL.extend(
     {
         vol.Optional(ATTR_APPS): vol.Or(ALL_APPS_FLAG, vol.All([str], vol.Unique())),
         vol.Optional(ATTR_FOLDERS): SCHEMA_FOLDERS,
@@ -400,7 +400,7 @@ class APIBackups(CoreSysAttributes):
     @api_process
     async def backup_partial(self, request: web.Request):
         """Create a partial backup (v2: accepts "apps" key in request body)."""
-        body = await api_validate(SCHEMA_BACKUP_PARTIAL_V2, request)
+        body = await api_validate(SCHEMA_BACKUP_PARTIAL, request)
         self._process_location_in_body(request, body)
 
         if body.get(ATTR_APPS) == ALL_APPS_FLAG:
@@ -412,7 +412,7 @@ class APIBackups(CoreSysAttributes):
     @api_process
     async def backup_partial_v1(self, request: web.Request):
         """Create a partial backup (v1: accepts "addons" key in request body)."""
-        body = await api_validate(SCHEMA_BACKUP_PARTIAL, request)
+        body = await api_validate(SCHEMA_BACKUP_PARTIAL_V1, request)
         self._process_location_in_body(request, body)
 
         if body.get(ATTR_ADDONS) == ALL_APPS_FLAG:

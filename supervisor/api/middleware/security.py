@@ -37,7 +37,6 @@ _V1_FRONTEND_PATHS: Final = (
 )
 
 _V2_FRONTEND_PATHS: Final = (
-    r"|/app/.*\.(?:js|gz|json|map|woff2)"
     r"|/v2/store/apps/" + RE_SLUG + r"/(logo|icon)"
 )
 
@@ -91,7 +90,7 @@ class _AppSecurityPatterns:
     role_access: dict[str, re.Pattern[str]]
 
     # Paths serving frontend assets (checked in core_proxy middleware)
-    core_frontend: re.Pattern[str]
+    supervisor_frontend: re.Pattern[str]
 
     # Paths that skip token validation entirely
     no_security_check: re.Pattern[str]
@@ -165,7 +164,7 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
         ),
         ROLE_ADMIN: re.compile(r".*"),
     },
-    core_frontend=re.compile(r"^(?:" + _V1_FRONTEND_PATHS + r")$"),
+    supervisor_frontend=re.compile(r"^(?:" + _V1_FRONTEND_PATHS + r")$"),
     no_security_check=re.compile(
         r"^(?:"
         r"|/homeassistant/api/.*"
@@ -219,7 +218,7 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
         ROLE_MANAGER: re.compile(
             r"^/v2(?:"
             r"|/.+/info"
-            r"|/apps(?:/" + RE_SLUG + r"/(?!security).+|/reload)?"
+            r"|/apps(?:/" + RE_SLUG + r"/(?!security).+)?"
             r"|/audio/.+"
             r"|/auth/cache"
             r"|/available_updates"
@@ -246,7 +245,7 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
         ),
         ROLE_ADMIN: re.compile(r".*"),
     },
-    core_frontend=re.compile(r"^(?:" + _V2_FRONTEND_PATHS + r")$"),
+    supervisor_frontend=re.compile(r"^(?:" + _V2_FRONTEND_PATHS + r")$"),
     no_security_check=re.compile(
         r"^(?:"
         r"|/v2/ingress/[-_A-Za-z0-9]+/.*"
@@ -423,7 +422,7 @@ class SecurityMiddleware(CoreSysAttributes):
 
         patterns = _get_app_security_patterns(request)
         if (
-            not patterns.core_frontend.match(request.path) and is_proxy_request
+            not patterns.supervisor_frontend.match(request.path) and is_proxy_request
         ) or ingress_request:
             raise HTTPBadRequest()
         return await handler(request)

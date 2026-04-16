@@ -221,7 +221,7 @@ class APIApps(CoreSysAttributes):
         """Reload all app data from store."""
         await asyncio.shield(self.sys_store.reload())
 
-    async def _info_data(self, app: App) -> dict[str, Any]:
+    async def info_data(self, app: App) -> dict[str, Any]:
         """Build and return app information dict (raises on invalid state)."""
         return {
             ATTR_NAME: app.name,
@@ -303,7 +303,7 @@ class APIApps(CoreSysAttributes):
     async def info(self, request: web.Request) -> dict[str, Any]:
         """Return app information."""
         app: App = self.get_app_for_request(request)
-        return await self._info_data(app)
+        return await self.info_data(app)
 
     @api_process
     async def options(self, request: web.Request) -> None:

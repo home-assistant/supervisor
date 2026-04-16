@@ -638,7 +638,7 @@ class RestAPI(CoreSysAttributes):
             """Route to store if info requested for not installed app."""
             try:
                 app: App = api_apps.get_app_for_request(request)
-                return await api_apps._info_data(app)
+                return await api_apps.info_data(app)
             except APIAppNotInstalled:
                 # Route to store/{app}/info but add missing fields
                 return dict(
