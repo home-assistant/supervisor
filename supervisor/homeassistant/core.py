@@ -506,7 +506,7 @@ class HomeAssistantCore(JobGroup):
             raise HomeAssistantError("Fatal error on config check!", _LOGGER.error)
 
         # Convert output
-        log = remove_colors("\n".join(result.log))
+        log = remove_colors("".join(result.log))
         _LOGGER.debug("Result config check: %s", log.strip())
 
         # Parse output
