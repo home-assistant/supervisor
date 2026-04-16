@@ -751,7 +751,7 @@ class DockerApp(DockerInterface):
             if temp_dir:
                 await self.sys_run_in_executor(temp_dir.cleanup)
 
-        logs = "\n".join(result.log)
+        logs = "".join(result.log)
         if result.exit_code != 0:
             raise DockerBuildError(
                 f"Docker build failed for {app_image_tag} (exit code {result.exit_code}). Build output:\n{logs}",
