@@ -101,7 +101,7 @@ SCHEMA_RESTORE_FULL = vol.Schema(
 )
 
 # V1 schemas use "addons" as the request body key (legacy API contract).
-SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
+SCHEMA_RESTORE_PARTIAL_V1 = SCHEMA_RESTORE_FULL.extend(
     {
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
         vol.Optional(ATTR_ADDONS): vol.All([str], vol.Unique()),
@@ -110,7 +110,7 @@ SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
 )
 
 # V2 schemas use "apps" as the request body key.
-SCHEMA_RESTORE_PARTIAL_V2 = SCHEMA_RESTORE_FULL.extend(
+SCHEMA_RESTORE_PARTIAL = SCHEMA_RESTORE_FULL.extend(
     {
         vol.Optional(ATTR_HOMEASSISTANT): vol.Boolean(),
         vol.Optional(ATTR_APPS): vol.All([str], vol.Unique()),
@@ -464,7 +464,7 @@ class APIBackups(CoreSysAttributes):
     async def restore_partial(self, request: web.Request):
         """Partial restore a backup (v2: accepts "apps" key in request body)."""
         backup = self._extract_slug(request)
-        body = await api_validate(SCHEMA_RESTORE_PARTIAL_V2, request)
+        body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
         self._validate_cloud_backup_location(
             request, body.get(ATTR_LOCATION, backup.location)
         )
@@ -475,7 +475,7 @@ class APIBackups(CoreSysAttributes):
     async def restore_partial_v1(self, request: web.Request):
         """Partial restore a backup (v1: accepts "addons" key in request body)."""
         backup = self._extract_slug(request)
-        body = await api_validate(SCHEMA_RESTORE_PARTIAL, request)
+        body = await api_validate(SCHEMA_RESTORE_PARTIAL_V1, request)
         self._validate_cloud_backup_location(
             request, body.get(ATTR_LOCATION, backup.location)
         )
