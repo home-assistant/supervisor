@@ -553,8 +553,8 @@ class CpuArch(StrEnum):
 class FeatureFlag(StrEnum):
     """Development features that can be toggled."""
 
-    UNIX_SOCKET_CORE_API = "unix_socket_core_api"
     SUPERVISOR_V2_API = "supervisor_v2_api"
+    UNIX_SOCKET_CORE_API = "unix_socket_core_api"
 
 
 @dataclass
