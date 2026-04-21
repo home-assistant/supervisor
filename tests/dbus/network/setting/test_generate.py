@@ -142,4 +142,4 @@ async def test_generate_from_wireless(network_manager: NetworkManager):
     )
     assert connection_payload["802-11-wireless"]["mode"].value == "infrastructure"
     assert connection_payload["802-11-wireless"]["ssid"].value == b"TestSSID"
-    assert "powersave" not in connection_payload["802-11-wireless"]
+    assert connection_payload["802-11-wireless"]["powersave"].value == 0
