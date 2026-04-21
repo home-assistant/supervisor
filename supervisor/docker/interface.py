@@ -234,19 +234,16 @@ class DockerInterface(JobGroup, ABC):
     def _registry_rate_limit_exception(
         self, image: str
     ) -> DockerRegistryRateLimitExceeded:
-        """Create resolution issue and return typed exception for a rate limit.
+        """Return typed rate-limit exception and maybe create a resolution issue.
 
-        The registry is derived from the image reference. Docker Hub and GHCR
-        each have their own issue type and exception subclass so users get
-        actionable guidance (e.g. registry login for Docker Hub). Unknown
-        registries fall back to a generic rate limit exception with no issue.
+        The registry is derived from the image reference. Docker Hub gets a
+        DOCKER_RATELIMIT resolution issue with a registry-login suggestion
+        (actionable - logging in lifts the unauthenticated quota). GHCR and
+        unknown registries only produce a typed exception and a log entry;
+        no resolution issue since there's nothing actionable for the user.
         """
         registry = get_registry_from_image(image)
         if registry == GITHUB_CONTAINER_REGISTRY:
-            self.sys_resolution.create_issue(
-                IssueType.GITHUB_RATELIMIT,
-                ContextType.SYSTEM,
-            )
             return GithubContainerRegistryRateLimitExceeded(_LOGGER.warning)
         if registry is None or registry in (DOCKER_HUB, DOCKER_HUB_LEGACY):
             self.sys_resolution.create_issue(

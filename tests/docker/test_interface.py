@@ -949,30 +949,46 @@ async def test_install_progress_containerd_snapshot(
 #      on all recent daemons when the rate limit hits during layer fetch)
 # All three should converge to a registry-aware exception + resolution issue.
 
+# Parameters: (image, expected_exception, expect_docker_ratelimit_issue)
+# Only Docker Hub produces a resolution issue since logging in lifts the
+# unauthenticated quota. GHCR has no actionable remediation so we just log +
+# raise a typed exception; no issue is created.
 _RATE_LIMIT_PARAMS = [
     (
         "homeassistant/amd64-supervisor",
-        IssueType.DOCKER_RATELIMIT,
         DockerHubRateLimitExceeded,
+        True,
     ),
     (
         "ghcr.io/home-assistant/amd64-hassio-supervisor",
-        IssueType.GITHUB_RATELIMIT,
         GithubContainerRegistryRateLimitExceeded,
+        False,
     ),
 ]
 
 
-@pytest.mark.parametrize("image,expected_issue,expected_exception", _RATE_LIMIT_PARAMS)
-async def test_install_pull_429_creates_registry_specific_issue(
+def _assert_docker_ratelimit_issue(coresys: CoreSys, expected: bool) -> None:
+    """Assert whether the DOCKER_RATELIMIT resolution issue was created."""
+    present = Issue(IssueType.DOCKER_RATELIMIT, ContextType.SYSTEM) in (
+        coresys.resolution.issues
+    )
+    assert present is expected
+
+
+@pytest.mark.parametrize("image,expected_exception,expect_issue", _RATE_LIMIT_PARAMS)
+async def test_install_pull_429_raises_registry_specific_exception(
     coresys: CoreSys,
     test_docker_interface: DockerInterface,
     capture_exception: Mock,
     image: str,
-    expected_issue: IssueType,
     expected_exception: type[Exception],
+    expect_issue: bool,
 ):
-    """Test HTTP 429 from pull is mapped to registry-specific issue/exception."""
+    """Test HTTP 429 from pull raises the right typed exception per registry.
+
+    Docker Hub also gets a DOCKER_RATELIMIT resolution issue (user can log
+    in to lift the quota). GHCR gets the typed exception only; no issue.
+    """
     coresys.docker.images.pull.side_effect = aiodocker.DockerError(
         HTTPStatus.TOO_MANY_REQUESTS, {"message": "ratelimit"}
     )
@@ -987,18 +1003,18 @@ async def test_install_pull_429_creates_registry_specific_issue(
             AwesomeVersion("1.2.3"), image, arch=CpuArch.AMD64
         )
 
-    assert Issue(expected_issue, ContextType.SYSTEM) in coresys.resolution.issues
+    _assert_docker_ratelimit_issue(coresys, expect_issue)
     capture_exception.assert_not_called()
 
 
-@pytest.mark.parametrize("image,expected_issue,expected_exception", _RATE_LIMIT_PARAMS)
+@pytest.mark.parametrize("image,expected_exception,expect_issue", _RATE_LIMIT_PARAMS)
 async def test_install_pull_500_with_toomanyrequests_body_treated_as_rate_limit(
     coresys: CoreSys,
     test_docker_interface: DockerInterface,
     capture_exception: Mock,
     image: str,
-    expected_issue: IssueType,
     expected_exception: type[Exception],
+    expect_issue: bool,
 ):
     """Test that 500 with toomanyrequests in body is treated as a rate limit.
 
@@ -1022,18 +1038,18 @@ async def test_install_pull_500_with_toomanyrequests_body_treated_as_rate_limit(
             AwesomeVersion("1.2.3"), image, arch=CpuArch.AMD64
         )
 
-    assert Issue(expected_issue, ContextType.SYSTEM) in coresys.resolution.issues
+    _assert_docker_ratelimit_issue(coresys, expect_issue)
     capture_exception.assert_not_called()
 
 
-@pytest.mark.parametrize("image,expected_issue,expected_exception", _RATE_LIMIT_PARAMS)
+@pytest.mark.parametrize("image,expected_exception,expect_issue", _RATE_LIMIT_PARAMS)
 async def test_install_streaming_pull_rate_limit(
     coresys: CoreSys,
     test_docker_interface: DockerInterface,
     capture_exception: Mock,
     image: str,
-    expected_issue: IssueType,
     expected_exception: type[Exception],
+    expect_issue: bool,
 ):
     """Test toomanyrequests in pull stream is treated as a rate limit.
 
@@ -1064,7 +1080,7 @@ async def test_install_streaming_pull_rate_limit(
             AwesomeVersion("1.2.3"), image, arch=CpuArch.AMD64
         )
 
-    assert Issue(expected_issue, ContextType.SYSTEM) in coresys.resolution.issues
+    _assert_docker_ratelimit_issue(coresys, expect_issue)
     capture_exception.assert_not_called()
 
 
@@ -1098,8 +1114,5 @@ async def test_install_unknown_registry_rate_limit_raises_generic_exception(
     # Generic base class only - not refined to either subclass
     assert not isinstance(exc_info.value, DockerHubRateLimitExceeded)
     assert not isinstance(exc_info.value, GithubContainerRegistryRateLimitExceeded)
-    assert not any(
-        issue.type in (IssueType.DOCKER_RATELIMIT, IssueType.GITHUB_RATELIMIT)
-        for issue in coresys.resolution.issues
-    )
+    _assert_docker_ratelimit_issue(coresys, False)
     capture_exception.assert_not_called()
