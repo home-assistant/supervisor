@@ -33,6 +33,11 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+# Maximum message size for WebSocket messages from Core. Matches the cap used
+# by the ingress proxy; Supervisor's own control channel never gets close to
+# this but shares the setting for simplicity. See issue #4392.
+MAX_MESSAGE_SIZE_FROM_CORE = 64 * 1024 * 1024
+
 
 class WSClient:
     """Home Assistant Websocket client."""
@@ -142,12 +147,12 @@ class WSClient:
         cls,
         session: aiohttp.ClientSession,
         url: str,
-        *,
-        max_msg_size: int = 4 * 1024 * 1024,
     ) -> aiohttp.ClientWebSocketResponse:
         """Open a raw WebSocket connection to Core."""
         try:
-            return await session.ws_connect(url, ssl=False, max_msg_size=max_msg_size)
+            return await session.ws_connect(
+                url, ssl=False, max_msg_size=MAX_MESSAGE_SIZE_FROM_CORE
+            )
         except aiohttp.client_exceptions.ClientConnectorError:
             raise HomeAssistantWSConnectionError("Can't connect") from None
 
@@ -156,15 +161,13 @@ class WSClient:
         cls,
         session: aiohttp.ClientSession,
         url: str,
-        *,
-        max_msg_size: int = 4 * 1024 * 1024,
     ) -> WSClient:
         """Connect via Unix socket (no auth exchange).
 
         Core authenticates the peer by the socket connection itself
         and sends auth_ok immediately.
         """
-        client = await cls._ws_connect(session, url, max_msg_size=max_msg_size)
+        client = await cls._ws_connect(session, url)
         try:
             first_message = await client.receive_json()
 
@@ -195,15 +198,13 @@ class WSClient:
         session: aiohttp.ClientSession,
         url: str,
         token: str,
-        *,
-        max_msg_size: int = 4 * 1024 * 1024,
     ) -> WSClient:
         """Connect via TCP with token authentication.
 
         Expects auth_required from Core, sends the token, then expects auth_ok.
         The auth_required message also carries ha_version.
         """
-        client = await cls._ws_connect(session, url, max_msg_size=max_msg_size)
+        client = await cls._ws_connect(session, url)
         try:
             # auth_required message also carries ha_version
             first_message = await client.receive_json()
