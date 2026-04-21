@@ -5,8 +5,20 @@ from unittest.mock import PropertyMock, patch
 from supervisor.dbus.network import NetworkManager
 from supervisor.dbus.network.interface import NetworkInterface
 from supervisor.dbus.network.setting.generate import get_connection_from_interface
-from supervisor.host.configuration import Ip6Setting, IpConfig, IpSetting, VlanConfig
-from supervisor.host.const import InterfaceMethod, InterfaceType, MulticastDnsMode
+from supervisor.host.configuration import (
+    Ip6Setting,
+    IpConfig,
+    IpSetting,
+    VlanConfig,
+    WifiConfig,
+)
+from supervisor.host.const import (
+    AuthMethod,
+    InterfaceMethod,
+    InterfaceType,
+    MulticastDnsMode,
+    WifiMode,
+)
 from supervisor.host.network import Interface
 
 from tests.const import TEST_INTERFACE_ETH_NAME
@@ -92,3 +104,42 @@ async def test_generate_from_vlan(network_manager: NetworkManager):
         connection_payload["vlan"]["parent"].value
         == "0c23631e-2118-355c-bbb0-8943229cb0d6"
     )
+
+
+async def test_generate_from_wireless(network_manager: NetworkManager):
+    """Test generate from a wireless interface."""
+    wireless_interface = Interface(
+        name="wlan0",
+        mac="",
+        path="",
+        enabled=True,
+        connected=True,
+        primary=False,
+        type=InterfaceType.WIRELESS,
+        ipv4=IpConfig([], None, [], None),
+        ipv4setting=IpSetting(InterfaceMethod.AUTO, [], None, None, []),
+        ipv6=IpConfig([], None, [], None),
+        ipv6setting=Ip6Setting(InterfaceMethod.AUTO, [], None, None, []),
+        wifi=WifiConfig(
+            mode=WifiMode.INFRASTRUCTURE,
+            ssid="TestSSID",
+            auth=AuthMethod.OPEN,
+            psk=None,
+            signal=None,
+        ),
+        vlan=None,
+        mdns=MulticastDnsMode.RESOLVE,
+        llmnr=MulticastDnsMode.OFF,
+    )
+
+    connection_payload = get_connection_from_interface(
+        wireless_interface, network_manager
+    )
+    assert connection_payload["connection"]["type"].value == "802-11-wireless"
+    assert (
+        connection_payload["802-11-wireless"]["assigned-mac-address"].value
+        == "preserve"
+    )
+    assert connection_payload["802-11-wireless"]["mode"].value == "infrastructure"
+    assert connection_payload["802-11-wireless"]["ssid"].value == b"TestSSID"
+    assert "powersave" not in connection_payload["802-11-wireless"]
