@@ -7,7 +7,12 @@ from awesomeversion import AwesomeVersion
 import pytest
 
 from supervisor.const import SUPERVISOR_VERSION, CoreState
-from supervisor.exceptions import AppConfigurationError
+from supervisor.exceptions import (
+    AppConfigurationError,
+    DockerHubRateLimitExceeded,
+    GithubContainerRegistryRateLimitExceeded,
+    SupervisorUpdateError,
+)
 from supervisor.misc.filter import filter_data
 from supervisor.resolution.const import (
     ContextType,
@@ -81,9 +86,26 @@ def sys_env(autouse=True):
         yield
 
 
-def test_ignored_exception(coresys):
-    """Test ignored exceptions."""
-    hint = {"exc_info": (None, AppConfigurationError(), None)}
+def _wrap(cause: BaseException, outer: BaseException) -> BaseException:
+    """Attach cause to outer exception (mimicking `raise outer from cause`)."""
+    outer.__cause__ = cause
+    return outer
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        AppConfigurationError(),
+        DockerHubRateLimitExceeded(),
+        GithubContainerRegistryRateLimitExceeded(),
+        # Rate limits are wrapped by supervisor.update() - filter should
+        # still drop them via the __cause__ chain walk.
+        _wrap(DockerHubRateLimitExceeded(), SupervisorUpdateError("update failed")),
+    ],
+)
+def test_ignored_exception(coresys, exc):
+    """Test exceptions that should not be sent to Sentry."""
+    hint = {"exc_info": (type(exc), exc, None)}
     assert filter_data(coresys, SAMPLE_EVENT, hint) is None
 
 

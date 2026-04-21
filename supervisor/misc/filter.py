@@ -1,6 +1,7 @@
 """Filter tools."""
 
 import ipaddress
+import logging
 import os
 import re
 from typing import cast
@@ -11,7 +12,9 @@ from sentry_sdk.types import Event, Hint
 
 from ..const import DOCKER_IPV4_NETWORK_MASK, HEADER_TOKEN, HEADER_TOKEN_OLD, CoreState
 from ..coresys import CoreSys
-from ..exceptions import AppConfigurationError
+from ..exceptions import APITooManyRequests, AppConfigurationError
+
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 RE_URL: re.Pattern = re.compile(r"(\w+:\/\/)(.*\.\w+)(.*)")
 
@@ -43,11 +46,21 @@ def sanitize_url(url: str) -> str:
 
 def filter_data(coresys: CoreSys, event: Event, hint: Hint) -> Event | None:
     """Filter event data before sending to sentry."""
-    # Ignore some  exceptions
+    # Ignore some exceptions. Walk the __cause__ chain because rate-limit
+    # errors are often wrapped (e.g. DockerHubRateLimitExceeded wrapped in
+    # SupervisorUpdateError by supervisor.update()).
     if "exc_info" in hint:
         _, exc_value, _ = hint["exc_info"]
-        if isinstance(exc_value, (AppConfigurationError)):
-            return None
+        err: BaseException | None = exc_value
+        while err is not None:
+            if isinstance(err, (AppConfigurationError, APITooManyRequests)):
+                _LOGGER.debug(
+                    "Skipping Sentry event for %s: %s",
+                    type(err).__name__,
+                    exc_value,
+                )
+                return None
+            err = err.__cause__
 
     # Ignore issue if system is not supported or diagnostics is disabled
     if not coresys.config.diagnostics or not coresys.core.supported or coresys.dev:
