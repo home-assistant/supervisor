@@ -332,22 +332,22 @@ class HomeAssistantCore(JobGroup):
             except HomeAssistantError:
                 # The API stopped responding between the update and now
                 self._error_state = True
-
-            # Verify that the frontend is loaded
-            if "frontend" not in data.get("components", []):
-                _LOGGER.error("API responds but frontend is not loaded")
-                self._error_state = True
-            # Check that the frontend is actually accessible
-            elif not await self.sys_homeassistant.api.check_frontend_available():
-                _LOGGER.error(
-                    "Frontend component loaded but frontend is not accessible"
-                )
-                self._error_state = True
             else:
-                # Health checks passed, clean up old image
-                with suppress(DockerError):
-                    await self.instance.cleanup(old_image=old_image)
-                return
+                # Verify that the frontend is loaded
+                if "frontend" not in data.get("components", []):
+                    _LOGGER.error("API responds but frontend is not loaded")
+                    self._error_state = True
+                # Check that the frontend is actually accessible
+                elif not await self.sys_homeassistant.api.check_frontend_available():
+                    _LOGGER.error(
+                        "Frontend component loaded but frontend is not accessible"
+                    )
+                    self._error_state = True
+                else:
+                    # Health checks passed, clean up old image
+                    with suppress(DockerError):
+                        await self.instance.cleanup(old_image=old_image)
+                    return
 
         # Update going wrong, revert it
         if self.error_state and rollback:

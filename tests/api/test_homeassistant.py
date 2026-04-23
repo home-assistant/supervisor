@@ -14,6 +14,7 @@ from supervisor.const import DNS_SUFFIX, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.interface import DockerInterface
+from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import APIState, HomeAssistantAPI
 from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.core import HomeAssistantCore
@@ -515,4 +516,49 @@ async def test_update_frontend_check_fails_triggers_rollback(
         Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
     )
     # Old image should not be cleaned up so rollback doesn't need to re-download
+    mock_cleanup.assert_not_called()
+
+
+async def test_update_get_config_error_triggers_rollback(
+    api_client: TestClient,
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data: Path,
+):
+    """Test that update triggers rollback when get_config raises HomeAssistantError."""
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    update_call_count = 0
+
+    async def mock_update(*args, **kwargs):
+        nonlocal update_call_count
+        update_call_count += 1
+        if update_call_count == 1:
+            coresys.homeassistant.version = AwesomeVersion("2025.8.3")
+        elif update_call_count == 2:
+            coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    with (
+        patch.object(DockerInterface, "update", new=mock_update),
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(HomeAssistantAPI, "get_config", side_effect=HomeAssistantError),
+        patch.object(
+            HomeAssistantAPI, "check_frontend_available", return_value=True
+        ) as mock_check_frontend,
+        patch.object(DockerInterface, "cleanup") as mock_cleanup,
+    ):
+        resp = await api_client.post("/core/update", json={"version": "2025.8.3"})
+
+    assert resp.status == 200
+    assert "HomeAssistant update failed -> rollback!" in caplog.text
+    assert update_call_count == 2
+    mock_check_frontend.assert_not_called()
+    assert (
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
+    )
     mock_cleanup.assert_not_called()
