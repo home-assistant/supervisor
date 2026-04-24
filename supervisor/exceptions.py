@@ -85,6 +85,12 @@ class APIGone(APIError):
     status = 410
 
 
+class APIConflict(APIError):
+    """API conflict error."""
+
+    status = 409
+
+
 class APITooManyRequests(APIError):
     """API too many requests error."""
 
@@ -667,6 +673,41 @@ class DiscoveryError(HassioError):
 
 class ServicesError(HassioError):
     """Services Errors."""
+
+
+class ServiceAlreadyProvidedError(ServicesError, APIConflict):
+    """Raise when a service is already provided by another app."""
+
+    error_key = "service_already_provided_error"
+    message_template = "The {service} service is already provided by {app}"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        service: str,
+        app: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"service": service, "app": app}
+        super().__init__(None, logger)
+
+
+class ServiceNotProvidedError(ServicesError, APINotFound):
+    """Raise when a service is not currently provided by any app."""
+
+    error_key = "service_not_provided_error"
+    message_template = "The {service} service is not currently provided by any app"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        service: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"service": service}
+        super().__init__(None, logger)
 
 
 # utils/dbus

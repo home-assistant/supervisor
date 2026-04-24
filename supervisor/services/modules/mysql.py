@@ -6,7 +6,7 @@ from typing import Any
 import voluptuous as vol
 
 from ...addons.addon import App
-from ...exceptions import ServicesError
+from ...exceptions import ServiceAlreadyProvidedError, ServiceNotProvidedError
 from ...validate import network_port
 from ..const import (
     ATTR_APP,
@@ -62,9 +62,10 @@ class MySQLService(ServiceInterface):
     async def set_service_data(self, app: App, data: dict[str, Any]) -> None:
         """Write the data into service object."""
         if self.enabled:
-            raise ServicesError(
-                f"There is already a MySQL service in use from {self._data[ATTR_APP]}",
+            raise ServiceAlreadyProvidedError(
                 _LOGGER.error,
+                service=SERVICE_MYSQL,
+                app=self._data[ATTR_APP],
             )
 
         self._data.update(data)
@@ -76,7 +77,7 @@ class MySQLService(ServiceInterface):
     async def del_service_data(self, app: App) -> None:
         """Remove the data from service object."""
         if not self.enabled:
-            raise ServicesError("Can't remove not exists services", _LOGGER.warning)
+            raise ServiceNotProvidedError(_LOGGER.warning, service=SERVICE_MYSQL)
 
         self._data.clear()
         await self.save()

@@ -6,7 +6,7 @@ from typing import Any
 import voluptuous as vol
 
 from ...addons.addon import App
-from ...exceptions import ServicesError
+from ...exceptions import ServiceAlreadyProvidedError, ServiceNotProvidedError
 from ...validate import network_port
 from ..const import (
     ATTR_APP,
@@ -68,9 +68,10 @@ class MQTTService(ServiceInterface):
     async def set_service_data(self, app: App, data: dict[str, Any]) -> None:
         """Write the data into service object."""
         if self.enabled:
-            raise ServicesError(
-                f"There is already a MQTT service in use from {self._data[ATTR_APP]}",
+            raise ServiceAlreadyProvidedError(
                 _LOGGER.error,
+                service=SERVICE_MQTT,
+                app=self._data[ATTR_APP],
             )
 
         self._data.update(data)
@@ -82,9 +83,7 @@ class MQTTService(ServiceInterface):
     async def del_service_data(self, app: App) -> None:
         """Remove the data from service object."""
         if not self.enabled:
-            raise ServicesError(
-                "Can't remove nonexistent service data", _LOGGER.warning
-            )
+            raise ServiceNotProvidedError(_LOGGER.warning, service=SERVICE_MQTT)
 
         self._data.clear()
         await self.save()
