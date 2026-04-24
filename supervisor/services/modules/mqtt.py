@@ -69,7 +69,7 @@ class MQTTService(ServiceInterface):
         """Write the data into service object."""
         if self.enabled:
             raise ServiceAlreadyProvidedError(
-                _LOGGER.error,
+                _LOGGER.debug,
                 service=SERVICE_MQTT,
                 app=self._data[ATTR_APP],
             )
@@ -83,7 +83,7 @@ class MQTTService(ServiceInterface):
     async def del_service_data(self, app: App) -> None:
         """Remove the data from service object."""
         if not self.enabled:
-            raise ServiceNotProvidedError(_LOGGER.warning, service=SERVICE_MQTT)
+            raise ServiceNotProvidedError(_LOGGER.debug, service=SERVICE_MQTT)
 
         self._data.clear()
         await self.save()

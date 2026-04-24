@@ -63,7 +63,7 @@ class MySQLService(ServiceInterface):
         """Write the data into service object."""
         if self.enabled:
             raise ServiceAlreadyProvidedError(
-                _LOGGER.error,
+                _LOGGER.debug,
                 service=SERVICE_MYSQL,
                 app=self._data[ATTR_APP],
             )
@@ -77,7 +77,7 @@ class MySQLService(ServiceInterface):
     async def del_service_data(self, app: App) -> None:
         """Remove the data from service object."""
         if not self.enabled:
-            raise ServiceNotProvidedError(_LOGGER.warning, service=SERVICE_MYSQL)
+            raise ServiceNotProvidedError(_LOGGER.debug, service=SERVICE_MYSQL)
 
         self._data.clear()
         await self.save()
