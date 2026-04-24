@@ -27,11 +27,10 @@ from ..const import (
     RESULT_OK,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..exceptions import APIError, DockerAPIError, HassioError
+from ..exceptions import APIError, HassioError
 from ..jobs import JobSchedulerOptions, SupervisorJob
-from ..utils import check_exception_chain, get_message_from_exception_chain
+from ..utils import get_message_from_exception_chain
 from ..utils.json import json_dumps, json_loads as json_loads_util
-from ..utils.log_format import format_message
 from ..utils.sentry import async_capture_exception
 from . import const
 
@@ -153,8 +152,6 @@ def api_return_error(
     """Return an API error message."""
     if error and not message:
         message = get_message_from_exception_chain(error)
-        if check_exception_chain(error, DockerAPIError):
-            message = format_message(message)
     if not message:
         message = "Unknown error, see Supervisor logs"
 

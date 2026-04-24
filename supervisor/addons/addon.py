@@ -728,7 +728,7 @@ class App(AppModel):
             ) as req:
                 if req.status < 300:
                     return True
-        except (TimeoutError, aiohttp.ClientError):
+        except TimeoutError, aiohttp.ClientError:
             pass
 
         return False
@@ -1621,6 +1621,11 @@ class App(AppModel):
                         await (await self.start())
                     else:
                         await (await self.restart())
+                except AppPortConflict as err:
+                    _LOGGER.warning(
+                        "Watchdog cannot restart app %s: %s", self.name, err
+                    )
+                    break
                 except AppsError as err:
                     attempts = attempts + 1
                     _LOGGER.error("Watchdog restart of app %s failed!", self.name)

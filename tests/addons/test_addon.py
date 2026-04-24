@@ -189,6 +189,35 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         start.assert_not_called()
 
 
+async def test_watchdog_port_conflict_does_not_retry(
+    coresys: CoreSys,
+    install_app_ssh: App,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Watchdog must not retry or capture when start fails with a port conflict."""
+    with patch.object(DockerApp, "attach"):
+        await install_app_ssh.load()
+
+    install_app_ssh.watchdog = True
+    install_app_ssh._manual_stop = False  # pylint: disable=protected-access
+
+    with (
+        patch.object(
+            App, "start", side_effect=AppPortConflict(name=TEST_ADDON_SLUG, port=2222)
+        ) as start,
+        patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
+        patch.object(DockerApp, "stop"),
+        patch("supervisor.addons.addon.async_capture_exception") as capture_exception,
+    ):
+        caplog.clear()
+        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED)
+        await asyncio.sleep(0)
+
+        start.assert_called_once()
+        capture_exception.assert_not_called()
+        assert f"Watchdog cannot restart app {install_app_ssh.name}" in caplog.text
+
+
 async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
     """Test app watchdog restarts app on stop if not manual."""
     with patch.object(DockerApp, "attach"):
@@ -1111,6 +1140,23 @@ async def test_app_disable_boot_dismisses_boot_fail(
     assert coresys.resolution.suggestions == []
 
 
+@pytest.mark.parametrize(
+    ("docker_message", "port"),
+    [
+        (
+            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:2222:172.30.33.4:22/tcp: address already in use",
+            2222,
+        ),
+        (
+            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): Bind for 0.0.0.0:2222 failed: port is already allocated",
+            2222,
+        ),
+        (
+            "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port 0.0.0.0:2222/tcp: address already in use",
+            2222,
+        ),
+    ],
+)
 @pytest.mark.usefixtures(
     "container", "mock_amd64_arch_supported", "path_extern", "tmp_supervisor_data"
 )
@@ -1118,12 +1164,13 @@ async def test_app_start_port_conflict_error(
     coresys: CoreSys,
     install_app_ssh: App,
     caplog: pytest.LogCaptureFixture,
+    docker_message: str,
+    port: int,
 ):
     """Test port conflict error when trying to start app."""
     install_app_ssh.data["image"] = "test/amd64-addon-ssh"
-    coresys.docker.containers.create.return_value.start.side_effect = aiodocker.DockerError(
-        HTTPStatus.INTERNAL_SERVER_ERROR,
-        "failed to set up container networking: driver failed programming external connectivity on endpoint addon_local_ssh (ea4d0fdaa72cf86f2c9199a04208e3eaf0c5a0d6fd34b3c7f4fab2daadb1f3a9): failed to bind host port for 0.0.0.0:2222:172.30.33.4:22/tcp: address already in use",
+    coresys.docker.containers.create.return_value.start.side_effect = (
+        aiodocker.DockerError(HTTPStatus.INTERNAL_SERVER_ERROR, docker_message)
     )
     await install_app_ssh.load()
 
@@ -1132,12 +1179,12 @@ async def test_app_start_port_conflict_error(
         patch.object(App, "write_options"),
         pytest.raises(
             AppPortConflict,
-            check=lambda exc: exc.extra_fields == {"name": "local_ssh", "port": 2222},
+            check=lambda exc: exc.extra_fields == {"name": "local_ssh", "port": port},
         ),
     ):
         await install_app_ssh.start()
 
     assert (
-        "Cannot start container addon_local_ssh because port 2222 is already in use"
+        f"Cannot start container addon_local_ssh because port {port} is already in use"
         in caplog.text
     )

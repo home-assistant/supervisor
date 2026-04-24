@@ -68,7 +68,9 @@ MIN_SUPPORTED_DOCKER: Final = AwesomeVersion("24.0.0")
 DOCKER_NETWORK_HOST: Final = "host"
 RE_IMPORT_IMAGE_STREAM = re.compile(r"(^Loaded image ID: |^Loaded image: )(.+)$")
 RE_PORT_CONFLICT_ERROR = re.compile(
-    r"^failed to set up container networking: .* failed to bind host port for 0.0.0.0:(\d+):\d+(?:\.\d+){3}:\d+\/\w+: address already in use$"
+    r"^failed to set up container networking: .*"
+    r"0\.0\.0\.0:(\d+).*"
+    r"(?:address already in use|port is already allocated)$"
 )
 
 
@@ -588,6 +590,11 @@ class DockerAPI(CoreSysAttributes):
             if err.status == HTTPStatus.INTERNAL_SERVER_ERROR and (
                 match := RE_PORT_CONFLICT_ERROR.match(err.message)
             ):
+                _LOGGER.debug(
+                    "Docker port conflict starting %s: %s",
+                    name or container.id,
+                    err.message,
+                )
                 raise DockerContainerPortConflict(
                     _LOGGER.error, name=name or container.id, port=int(match.group(1))
                 ) from err
