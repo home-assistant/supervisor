@@ -9,7 +9,6 @@ from urllib.parse import unquote
 
 from aiohttp.web import Request, StreamResponse, middleware
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPUnauthorized
-from awesomeversion import AwesomeVersion
 
 from ...addons.const import RE_SLUG
 from ...const import (
@@ -22,12 +21,9 @@ from ...const import (
     VALID_API_STATES,
 )
 from ...coresys import CoreSys, CoreSysAttributes
-from ...homeassistant.const import LANDINGPAGE
-from ...utils import version_is_new_enough
 from ..utils import api_return_error, extract_supervisor_token
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-_CORE_VERSION: Final = AwesomeVersion("2023.3.4")
 
 # fmt: off
 
@@ -88,9 +84,6 @@ class _AppSecurityPatterns:
 
     # Per-role allowed path patterns for installed apps
     role_access: dict[str, re.Pattern[str]]
-
-    # Paths serving frontend assets (checked in core_proxy middleware)
-    supervisor_frontend: re.Pattern[str]
 
     # Paths that skip token validation entirely
     no_security_check: re.Pattern[str]
@@ -164,7 +157,6 @@ _V1_PATTERNS: Final = _AppSecurityPatterns(
         ),
         ROLE_ADMIN: re.compile(r".*"),
     },
-    supervisor_frontend=re.compile(r"^(?:" + _V1_FRONTEND_PATHS + r")$"),
     no_security_check=re.compile(
         r"^(?:"
         r"|/homeassistant/api/.*"
@@ -244,7 +236,6 @@ _V2_PATTERNS: Final = _AppSecurityPatterns(
         ),
         ROLE_ADMIN: re.compile(r".*"),
     },
-    supervisor_frontend=re.compile(r"^/v2(?:" + _V2_FRONTEND_PATHS + r")$"),
     no_security_check=re.compile(
         r"^/v2(?:"
         r"|/ingress/[-_A-Za-z0-9]+/.*"
@@ -382,49 +373,3 @@ class SecurityMiddleware(CoreSysAttributes):
 
         _LOGGER.error("Invalid token for access %s", request.path)
         raise HTTPForbidden()
-
-    @middleware
-    async def core_proxy(
-        self, request: Request, handler: Callable[[Request], Awaitable[StreamResponse]]
-    ) -> StreamResponse:
-        """Validate user from Core API proxy."""
-        if (
-            request[REQUEST_FROM] != self.sys_homeassistant
-            or self.sys_homeassistant.version == LANDINGPAGE
-            or version_is_new_enough(self.sys_homeassistant.version, _CORE_VERSION)
-        ):
-            return await handler(request)
-
-        authorization_index: int | None = None
-        content_type_index: int | None = None
-        user_request: bool = False
-        admin_request: bool = False
-        ingress_request: bool = False
-
-        for idx, (key, value) in enumerate(request.raw_headers):
-            if key in (b"Authorization", b"X-Hassio-Key"):
-                authorization_index = idx
-            elif key == b"Content-Type":
-                content_type_index = idx
-            elif key == b"X-Hass-User-ID":
-                user_request = True
-            elif key == b"X-Hass-Is-Admin":
-                admin_request = value == b"1"
-            elif key == b"X-Ingress-Path":
-                ingress_request = True
-
-        if (user_request or admin_request) and not ingress_request:
-            return await handler(request)
-
-        is_proxy_request = (
-            authorization_index is not None
-            and content_type_index is not None
-            and content_type_index - authorization_index == 1
-        )
-
-        patterns = _get_app_security_patterns(request)
-        if (
-            not patterns.supervisor_frontend.match(request.path) and is_proxy_request
-        ) or ingress_request:
-            raise HTTPBadRequest()
-        return await handler(request)
