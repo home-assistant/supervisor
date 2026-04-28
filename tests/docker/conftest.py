@@ -6,8 +6,8 @@ from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
 
 
-class TestDockerInterface(DockerInterface):
-    """Test docker interface."""
+class FakeDockerInterface(DockerInterface):
+    """Fake docker interface for tests."""
 
     @property
     def name(self) -> str:
@@ -16,6 +16,6 @@ class TestDockerInterface(DockerInterface):
 
 
 @pytest.fixture
-def test_docker_interface(coresys: CoreSys) -> TestDockerInterface:
+def test_docker_interface(coresys: CoreSys) -> FakeDockerInterface:
     """Return test docker interface."""
-    return TestDockerInterface(coresys)
+    return FakeDockerInterface(coresys)

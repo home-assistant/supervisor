@@ -10,8 +10,8 @@ from supervisor.resolution.checks.addon_pwned import CheckAppPwned
 from supervisor.resolution.const import IssueType, SuggestionType
 
 
-class TestAddon:
-    """Test App."""
+class FakeApp:
+    """Fake App for tests."""
 
     slug = "my_test"
     pwned = set()
@@ -31,7 +31,7 @@ async def test_check(coresys: CoreSys):
     app_pwned = CheckAppPwned(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
-    app = TestAddon()
+    app = FakeApp()
     coresys.apps.local[app.slug] = app
 
     assert len(coresys.resolution.issues) == 0
@@ -63,7 +63,7 @@ async def test_approve(coresys: CoreSys, supervisor_internet):
     app_pwned = CheckAppPwned(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
-    app = TestAddon()
+    app = FakeApp()
     coresys.apps.local[app.slug] = app
     app.pwned.add("123456")
 
@@ -80,7 +80,7 @@ async def test_with_global_disable(coresys: CoreSys, caplog):
     app_pwned = CheckAppPwned(coresys)
     await coresys.core.set_state(CoreState.RUNNING)
 
-    app = TestAddon()
+    app = FakeApp()
     coresys.apps.local[app.slug] = app
 
     assert len(coresys.resolution.issues) == 0
