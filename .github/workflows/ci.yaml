@@ -380,7 +380,6 @@ jobs:
           . venv/bin/activate
           pytest \
             -qq \
-            --timeout=10 \
             --durations=10 \
             --cov supervisor \
             -o console_output_style=count \

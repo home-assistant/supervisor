@@ -230,6 +230,9 @@ log_format = "%(asctime)s.%(msecs)03d %(levelname)-8s %(threadName)s %(name)s:%(
 log_date_format = "%Y-%m-%d %H:%M:%S"
 asyncio_default_fixture_loop_scope = "function"
 asyncio_mode = "auto"
+# 10s default timeout per test; per-test overrides via
+# @pytest.mark.timeout(N).
+timeout = 10
 filterwarnings = [
   "error",
   "ignore:pkg_resources is deprecated as an API:DeprecationWarning:dirhash",
