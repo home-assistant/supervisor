@@ -11,7 +11,6 @@ from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
 
 
-@pytest.mark.asyncio
 async def test_api_docker_info(api_client_with_prefix: tuple[TestClient, str]):
     """Test docker info api."""
     api_client, prefix = api_client_with_prefix

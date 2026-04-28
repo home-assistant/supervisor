@@ -25,7 +25,6 @@ from supervisor.resolution.const import (
 from supervisor.resolution.data import Issue, Suggestion
 
 
-@pytest.mark.asyncio
 async def test_api_resolution_base(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):
@@ -46,7 +45,6 @@ async def test_api_resolution_base(
     assert result["data"][ATTR_ISSUES][-1]["type"] == IssueType.FREE_SPACE
 
 
-@pytest.mark.asyncio
 async def test_api_resolution_dismiss_suggestion(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):
@@ -61,7 +59,6 @@ async def test_api_resolution_dismiss_suggestion(
     assert clear_backup not in coresys.resolution.suggestions
 
 
-@pytest.mark.asyncio
 async def test_api_resolution_apply_suggestion(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):
@@ -94,7 +91,6 @@ async def test_api_resolution_apply_suggestion(
         await coresys.resolution.apply_suggestion(clear_backup)
 
 
-@pytest.mark.asyncio
 async def test_api_resolution_dismiss_issue(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):
@@ -109,7 +105,6 @@ async def test_api_resolution_dismiss_issue(
     assert updated_failed not in coresys.resolution.issues
 
 
-@pytest.mark.asyncio
 async def test_api_resolution_unhealthy(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):
@@ -122,7 +117,6 @@ async def test_api_resolution_unhealthy(
     assert result["data"][ATTR_UNHEALTHY][-1] == UnhealthyReason.DOCKER
 
 
-@pytest.mark.asyncio
 async def test_api_resolution_check_options(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):
@@ -142,7 +136,6 @@ async def test_api_resolution_check_options(
     assert free_space.enabled
 
 
-@pytest.mark.asyncio
 async def test_api_resolution_check_run(
     coresys: CoreSys, api_client_with_prefix: tuple[TestClient, str]
 ):

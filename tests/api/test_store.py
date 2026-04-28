@@ -33,7 +33,6 @@ from tests.const import TEST_ADDON_SLUG
 REPO_URL = "https://github.com/awesome-developer/awesome-repo"
 
 
-@pytest.mark.asyncio
 async def test_api_store(
     api_client: TestClient,
     store_app: AppStore,
@@ -50,7 +49,6 @@ async def test_api_store(
     assert f"App {store_app.slug} not supported on this platform" not in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_api_store_apps(api_client: TestClient, store_app: AppStore):
     """Test /store/apps REST API."""
     resp = await api_client.get("/store/addons")
@@ -59,7 +57,6 @@ async def test_api_store_apps(api_client: TestClient, store_app: AppStore):
     assert result["data"]["addons"][-1]["slug"] == store_app.slug
 
 
-@pytest.mark.asyncio
 async def test_api_store_apps_app(
     store_app_api_client_with_root: tuple[TestClient, str], store_app: AppStore
 ):
@@ -70,7 +67,6 @@ async def test_api_store_apps_app(
     assert result["data"]["slug"] == store_app.slug
 
 
-@pytest.mark.asyncio
 async def test_api_store_apps_app_version(
     store_app_api_client_with_root: tuple[TestClient, str], store_app: AppStore
 ):
@@ -81,7 +77,6 @@ async def test_api_store_apps_app_version(
     assert result["data"]["slug"] == store_app.slug
 
 
-@pytest.mark.asyncio
 async def test_api_store_repositories(
     api_client: TestClient, test_repository: Repository
 ):
@@ -92,7 +87,6 @@ async def test_api_store_repositories(
     assert result["data"][-1]["slug"] == test_repository.slug
 
 
-@pytest.mark.asyncio
 async def test_api_store_repositories_repository(
     api_client: TestClient, test_repository: Repository
 ):

@@ -3,12 +3,10 @@
 from unittest.mock import AsyncMock
 
 from aiohttp.test_utils import TestClient
-import pytest
 
 from supervisor.coresys import CoreSys
 
 
-@pytest.mark.asyncio
 async def test_api_security_options_force_security(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):
@@ -21,7 +19,6 @@ async def test_api_security_options_force_security(
     assert coresys.security.force
 
 
-@pytest.mark.asyncio
 async def test_api_security_options_pwned(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):
@@ -34,7 +31,6 @@ async def test_api_security_options_pwned(
     assert not coresys.security.pwned
 
 
-@pytest.mark.asyncio
 async def test_api_integrity_check(
     api_client_with_prefix: tuple[TestClient, str],
     coresys: CoreSys,

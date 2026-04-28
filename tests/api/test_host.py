@@ -39,7 +39,6 @@ async def fixture_coresys_disk_info(coresys: CoreSys) -> AsyncGenerator[CoreSys]
     yield coresys
 
 
-@pytest.mark.asyncio
 async def test_api_host_info(
     api_client_with_prefix: tuple[TestClient, str], coresys_disk_info: CoreSys
 ):

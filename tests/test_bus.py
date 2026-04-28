@@ -2,13 +2,10 @@
 
 import asyncio
 
-import pytest
-
 from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 
 
-@pytest.mark.asyncio
 async def test_bus_event(coresys: CoreSys) -> None:
     """Test bus events over the backend."""
     results = []
@@ -28,7 +25,6 @@ async def test_bus_event(coresys: CoreSys) -> None:
     assert results[-1] == "test"
 
 
-@pytest.mark.asyncio
 async def test_bus_event_not_called(coresys: CoreSys) -> None:
     """Test bus events over the backend."""
     results = []
@@ -44,7 +40,6 @@ async def test_bus_event_not_called(coresys: CoreSys) -> None:
     assert len(results) == 0
 
 
-@pytest.mark.asyncio
 async def test_bus_event_removed(coresys: CoreSys) -> None:
     """Test bus events over the backend and remove."""
     results = []

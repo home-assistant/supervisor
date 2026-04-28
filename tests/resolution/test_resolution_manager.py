@@ -34,7 +34,6 @@ def test_properies_unhealthy(coresys: CoreSys):
     assert not coresys.core.healthy
 
 
-@pytest.mark.asyncio
 async def test_resolution_dismiss_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
     coresys.resolution.add_suggestion(
@@ -49,7 +48,6 @@ async def test_resolution_dismiss_suggestion(coresys: CoreSys):
         coresys.resolution.dismiss_suggestion(clear_backup)
 
 
-@pytest.mark.asyncio
 async def test_resolution_apply_suggestion(coresys: CoreSys):
     """Test resolution manager suggestion apply api."""
     coresys.resolution.add_suggestion(
@@ -79,7 +77,6 @@ async def test_resolution_apply_suggestion(coresys: CoreSys):
         await coresys.resolution.apply_suggestion(clear_backup)
 
 
-@pytest.mark.asyncio
 async def test_resolution_dismiss_issue(coresys: CoreSys):
     """Test resolution manager issue apply api."""
     coresys.resolution.add_issue(
@@ -94,7 +91,6 @@ async def test_resolution_dismiss_issue(coresys: CoreSys):
         coresys.resolution.dismiss_issue(updated_failed)
 
 
-@pytest.mark.asyncio
 async def test_resolution_create_issue_suggestion(coresys: CoreSys):
     """Test resolution manager issue and suggestion."""
     coresys.resolution.create_issue(
@@ -112,7 +108,6 @@ async def test_resolution_create_issue_suggestion(coresys: CoreSys):
     assert coresys.resolution.suggestions[-1].context == ContextType.CORE
 
 
-@pytest.mark.asyncio
 async def test_resolution_dismiss_unsupported(coresys: CoreSys):
     """Test resolution manager dismiss unsupported reason."""
     coresys.resolution.add_unsupported_reason(UnsupportedReason.SOFTWARE)

@@ -3,13 +3,11 @@
 from pathlib import Path
 
 from aiohttp.test_utils import TestClient
-import pytest
 
 from supervisor.coresys import CoreSys
 from supervisor.hardware.data import Device
 
 
-@pytest.mark.asyncio
 async def test_api_hardware_info(api_client_with_prefix: tuple[TestClient, str]):
     """Test docker info api."""
     api_client, prefix = api_client_with_prefix
@@ -19,7 +17,6 @@ async def test_api_hardware_info(api_client_with_prefix: tuple[TestClient, str])
     assert result["result"] == "ok"
 
 
-@pytest.mark.asyncio
 async def test_api_hardware_info_device(
     api_client_with_prefix: tuple[TestClient, str], coresys: CoreSys
 ):

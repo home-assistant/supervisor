@@ -64,7 +64,6 @@ async def fixture_plugin_tokens(coresys: CoreSys) -> None:
     # pylint: enable=protected-access
 
 
-@pytest.mark.asyncio
 async def test_api_security_system_initialize(api_system: TestClient, coresys: CoreSys):
     """Test security."""
     await coresys.core.set_state(CoreState.INITIALIZE)
@@ -75,7 +74,6 @@ async def test_api_security_system_initialize(api_system: TestClient, coresys: C
     assert result["result"] == "error"
 
 
-@pytest.mark.asyncio
 async def test_api_security_system_setup(api_system: TestClient, coresys: CoreSys):
     """Test security."""
     await coresys.core.set_state(CoreState.SETUP)
@@ -86,7 +84,6 @@ async def test_api_security_system_setup(api_system: TestClient, coresys: CoreSy
     assert result["result"] == "error"
 
 
-@pytest.mark.asyncio
 async def test_api_security_system_running(api_system: TestClient, coresys: CoreSys):
     """Test security."""
     await coresys.core.set_state(CoreState.RUNNING)
@@ -95,7 +92,6 @@ async def test_api_security_system_running(api_system: TestClient, coresys: Core
     assert resp.status == 200
 
 
-@pytest.mark.asyncio
 async def test_api_security_system_startup(api_system: TestClient, coresys: CoreSys):
     """Test security."""
     await coresys.core.set_state(CoreState.STARTUP)
@@ -104,7 +100,6 @@ async def test_api_security_system_startup(api_system: TestClient, coresys: Core
     assert resp.status == 200
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("request_path", "request_params", "fail_on_query_string"),
     [

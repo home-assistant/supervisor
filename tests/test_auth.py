@@ -26,7 +26,6 @@ def mock_api_state_fixture(coresys):
     yield mock_api_state
 
 
-@pytest.mark.asyncio
 async def test_auth_request_with_backend(coresys, mock_auth_backend, mock_api_state):
     """Make simple auth request."""
 
@@ -38,7 +37,6 @@ async def test_auth_request_with_backend(coresys, mock_auth_backend, mock_api_st
     assert mock_auth_backend.called
 
 
-@pytest.mark.asyncio
 async def test_auth_request_without_backend(coresys, mock_auth_backend, mock_api_state):
     """Make simple auth without request."""
 
@@ -50,7 +48,6 @@ async def test_auth_request_without_backend(coresys, mock_auth_backend, mock_api
     assert not mock_auth_backend.called
 
 
-@pytest.mark.asyncio
 async def test_auth_request_without_backend_cache(
     coresys, mock_auth_backend, mock_api_state
 ):
@@ -66,7 +63,6 @@ async def test_auth_request_without_backend_cache(
     assert not mock_auth_backend.called
 
 
-@pytest.mark.asyncio
 async def test_auth_request_with_backend_cache_update(
     coresys, mock_auth_backend, mock_api_state
 ):

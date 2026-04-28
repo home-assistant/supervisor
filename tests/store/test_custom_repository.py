@@ -189,7 +189,6 @@ async def test_error_on_repository_with_git_error(
     assert len(coresys.resolution.suggestions) == 0
 
 
-@pytest.mark.asyncio
 async def test_preinstall_valid_repository(
     coresys: CoreSys, store_manager: StoreManager
 ):
