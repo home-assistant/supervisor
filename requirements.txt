@@ -14,7 +14,7 @@ debugpy==1.8.20
 deepmerge==2.0
 dirhash==0.5.0
 faust-cchardet==2.1.19
-gitpython==3.1.47
+gitpython==3.1.48
 jinja2==3.1.6
 log-rate-limit==1.4.2
 orjson==3.11.8
