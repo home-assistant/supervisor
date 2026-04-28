@@ -380,6 +380,8 @@ jobs:
           . venv/bin/activate
           pytest \
             -qq \
+            -n auto \
+            --dist=loadfile \
             --durations=10 \
             --cov supervisor \
             -o console_output_style=count \
