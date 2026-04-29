@@ -1187,8 +1187,21 @@ class BackupInvalidError(BackupError):
     """Raise if backup or password provided is invalid."""
 
 
-class BackupMountDownError(BackupError):
+class BackupMountDownError(BackupError, APIError):
     """Raise if mount specified for backup is down."""
+
+    error_key = "backup_mount_down"
+    message_template = "Backup mount '{mount}' is down"
+
+    def __init__(
+        self,
+        logger: Callable[..., None] | None = None,
+        *,
+        mount: str,
+    ) -> None:
+        """Initialize exception."""
+        self.extra_fields = {"mount": mount}
+        super().__init__(None, logger)
 
 
 class BackupDataDiskBadMessageError(BackupError):

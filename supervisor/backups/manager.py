@@ -150,10 +150,7 @@ class BackupManager(FileConfiguration, JobGroup):
             location not in (DEFAULT, LOCATION_CLOUD_BACKUP, None)
             and not await (location_mount := cast(Mount, location)).is_mounted()
         ):
-            raise BackupMountDownError(
-                f"{location_mount.name} is down, cannot back-up to it",
-                _LOGGER.error,
-            )
+            raise BackupMountDownError(mount=location_mount.name)
 
     def _get_location_name(
         self,
@@ -384,10 +381,7 @@ class BackupManager(FileConfiguration, JobGroup):
             elif location:
                 location_mount = cast(Mount, location)
                 if not location_mount.local_where.is_mount():
-                    raise BackupMountDownError(
-                        f"{location_mount.name} is down, cannot copy to it",
-                        _LOGGER.error,
-                    )
+                    raise BackupMountDownError(mount=location_mount.name)
                 destination = location_mount.local_where
             else:
                 destination = self.sys_config.path_backup

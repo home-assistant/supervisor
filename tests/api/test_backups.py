@@ -198,6 +198,44 @@ async def test_backup_to_default(api_client: TestClient, coresys: CoreSys):
     assert (mount_dir / f"{slug}.tar").exists()
 
 
+@pytest.mark.usefixtures(
+    "tmp_supervisor_data", "path_extern", "mount_propagation", "mock_is_mount"
+)
+async def test_backup_to_down_mount_returns_400(
+    api_client: TestClient, coresys: CoreSys, mock_is_mount: MagicMock
+):
+    """Backup to a down mount returns a structured 400 instead of an unexpected 400."""
+    await coresys.mounts.load()
+    (coresys.config.path_mounts / "backup_test").mkdir()
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "backup_test",
+            "type": "cifs",
+            "usage": "backup",
+            "server": "backup.local",
+            "share": "backups",
+        },
+    )
+    await coresys.mounts.create_mount(mount)
+    coresys.mounts.default_backup_mount = mount
+
+    mock_is_mount.return_value = False
+    await coresys.core.set_state(CoreState.RUNNING)
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+
+    resp = await api_client.post(
+        "/backups/new/full",
+        json={"name": "Mount test", "location": "backup_test"},
+    )
+    assert resp.status == 400
+    body = await resp.json()
+    assert body["result"] == "error"
+    assert body["message"] == "Backup mount 'backup_test' is down"
+    assert body["error_key"] == "backup_mount_down"
+    assert body["extra_fields"] == {"mount": "backup_test"}
+
+
 @pytest.mark.usefixtures("tmp_supervisor_data", "path_extern")
 async def test_api_freeze_thaw(
     api_client_with_prefix: tuple[TestClient, str],
