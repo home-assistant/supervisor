@@ -42,7 +42,10 @@ env:
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
-  cancel-in-progress: true
+  # Cancel in-progress runs only for PRs; queue runs on main so that wheels
+  # builds published from sequential merges don't clobber each other and leave
+  # downstream CI without the wheels for the latest requirements.txt.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   init:
