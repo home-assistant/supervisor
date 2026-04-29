@@ -188,7 +188,7 @@ def mocked_setup_loads(coresys: CoreSys):
     """Replace all load() calls in Core.setup() with AsyncMock."""
     with (
         patch.object(coresys, "init_websession", new=AsyncMock()),
-        patch.object(Supervisor, "check_connectivity", new=AsyncMock()),
+        patch.object(Supervisor, "check_and_update_connectivity", new=AsyncMock()),
         patch.object(coresys.core, "_adjust_system_datetime", new=AsyncMock()),
     ):
         patches = [
