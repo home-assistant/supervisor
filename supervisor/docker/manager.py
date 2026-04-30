@@ -485,11 +485,15 @@ class DockerAPI(CoreSysAttributes):
                 # Remove the file/directory if it exists e.g. as a leftover from unclean shutdown
                 # Note: Can be a directory if Docker auto-started container with restart policy
                 # before Supervisor could write the CID file
-                with suppress(OSError):
+                try:
                     if cidfile_path.is_dir():
                         cidfile_path.rmdir()
                     elif cidfile_path.is_file():
                         cidfile_path.unlink(missing_ok=True)
+                except OSError as err:
+                    _LOGGER.error(
+                        "Can't cleanup cidfile path %s: %s", cidfile_path, err
+                    )
 
                 # Create empty CID file before adding it to volumes to prevent Docker
                 # from creating it as a directory if container auto-starts
