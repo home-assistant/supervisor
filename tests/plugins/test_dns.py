@@ -18,6 +18,8 @@ from supervisor.plugins.dns import HostEntry, PluginDns
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 
+from tests.common import wait_for_task_by_name
+
 
 @pytest.fixture(name="docker_interface")
 async def fixture_docker_interface() -> tuple[AsyncMock, AsyncMock]:
@@ -267,11 +269,13 @@ async def test_notify_locals_changed_end_to_end_with_changes_and_running(
         patch.object(dns_plugin.instance, "is_running", return_value=True),
         patch.object(dns_plugin, "sys_call_later", new=mock_call_later),
     ):
-        # Call notify_locals_changed
+        # Call notify_locals_changed; this schedules a 0-delay timer
+        # whose callback creates the actual restart task. The helper
+        # polls a few iterations so the timer-spawned task can show up.
         dns_plugin.notify_locals_changed()
-
-        # Wait for the async task to complete
-        await asyncio.sleep(0.1)
+        await wait_for_task_by_name(
+            coresys, "PluginDns._restart_dns_after_locals_change"
+        )
 
         # Verify restart was called and cached locals were updated
         mock_restart.assert_called_once()
@@ -297,11 +301,13 @@ async def test_notify_locals_changed_end_to_end_with_changes_but_not_running(
         patch.object(dns_plugin.instance, "is_running", return_value=False),
         patch.object(dns_plugin, "sys_call_later", new=mock_call_later),
     ):
-        # Call notify_locals_changed
+        # Call notify_locals_changed; this schedules a 0-delay timer
+        # whose callback creates the actual restart task. The helper
+        # polls a few iterations so the timer-spawned task can show up.
         dns_plugin.notify_locals_changed()
-
-        # Wait for the async task to complete
-        await asyncio.sleep(0.1)
+        await wait_for_task_by_name(
+            coresys, "PluginDns._restart_dns_after_locals_change"
+        )
 
         # Verify restart was NOT called but cached locals were still updated
         mock_restart.assert_not_called()
@@ -322,11 +328,13 @@ async def test_notify_locals_changed_end_to_end_no_changes(
         patch.object(dns_plugin, "restart") as mock_restart,
         patch.object(dns_plugin, "sys_call_later", new=mock_call_later),
     ):
-        # Call notify_locals_changed
+        # Call notify_locals_changed; this schedules a 0-delay timer
+        # whose callback creates the actual restart task. The helper
+        # polls a few iterations so the timer-spawned task can show up.
         dns_plugin.notify_locals_changed()
-
-        # Wait for the async task to complete
-        await asyncio.sleep(0.1)
+        await wait_for_task_by_name(
+            coresys, "PluginDns._restart_dns_after_locals_change"
+        )
 
         # Verify restart was NOT called since no changes
         mock_restart.assert_not_called()
@@ -376,8 +384,11 @@ async def test_notify_locals_changed_debouncing_cancels_previous_timer(
         assert second_handle is not None
         assert first_handle != second_handle
 
-        # Wait for the async task to complete
-        await asyncio.sleep(0.1)
+        # Let the 0-delay timer fire and spawn the restart task; the
+        # helper polls a few iterations so it shows up.
+        await wait_for_task_by_name(
+            coresys, "PluginDns._restart_dns_after_locals_change"
+        )
 
         # Verify restart was called once for the final timer
         mock_restart.assert_called_once()

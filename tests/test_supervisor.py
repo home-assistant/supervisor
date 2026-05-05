@@ -21,7 +21,7 @@ from supervisor.host.apparmor import AppArmorControl
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 
-from tests.common import MockResponse
+from tests.common import MockResponse, wait_for_task_by_name
 
 
 @pytest.mark.parametrize(
@@ -199,9 +199,8 @@ async def test_request_connectivity_check_is_fire_and_forget(
     result = coresys.supervisor.request_connectivity_check(force=True)
     assert result is None
 
-    # Yield until the scheduled task has had a chance to complete.
-    for _ in range(5):
-        await asyncio.sleep(0)
+    # Wait for the scheduled background check to finish.
+    await wait_for_task_by_name(coresys, "Supervisor.check_and_update_connectivity")
 
     assert websession.head.call_count == 1
 

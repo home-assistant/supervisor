@@ -19,6 +19,53 @@ from supervisor.utils.yaml import read_yaml_file
 from .dbus_service_mocks.base import DBusServiceMock
 
 
+async def wait_for_task_by_name(
+    coresys, qualname_prefix: str, *, timeout: float = 10.0
+) -> None:
+    """Await any task whose coroutine qualname starts with prefix.
+
+    Looks at the per-test list of tasks captured by the ``coresys``
+    fixture's ``create_task`` interceptor — that includes tasks that
+    have already completed, which ``asyncio.all_tasks()`` would miss.
+    If no matching task is recorded yet, blocks on
+    ``coresys.test_new_task_event`` until one is created (e.g. by a
+    0-delay ``call_later`` callback that has yet to fire). Raises
+    ``LookupError`` if no matching task is recorded within ``timeout``
+    seconds — that's a test bug, the call site expects the task to be
+    scheduled.
+    """
+    deadline = asyncio.get_running_loop().time() + timeout
+    while True:
+        matched = [
+            t
+            for t in coresys.test_created_tasks
+            if t.get_coro().__qualname__.startswith(qualname_prefix)
+        ]
+        if matched:
+            # gather() is fine on already-done tasks (returns immediately)
+            # and propagates the first exception so the test fails on a
+            # real fire-and-forget error instead of silently passing.
+            await asyncio.gather(*matched)
+            return
+        # Clear before waiting so a task created between the check above
+        # and the wait below still wakes us.
+        coresys.test_new_task_event.clear()
+        remaining = deadline - asyncio.get_running_loop().time()
+        if remaining <= 0:
+            raise LookupError(
+                f"No task with qualname prefix {qualname_prefix!r} was created "
+                f"within {timeout}s"
+            )
+        try:
+            async with asyncio.timeout(remaining):
+                await coresys.test_new_task_event.wait()
+        except TimeoutError as err:
+            raise LookupError(
+                f"No task with qualname prefix {qualname_prefix!r} was created "
+                f"within {timeout}s"
+            ) from err
+
+
 def get_fixture_path(filename: str) -> Path:
     """Get path for fixture."""
     return Path(Path(__file__).parent.joinpath("fixtures"), filename)

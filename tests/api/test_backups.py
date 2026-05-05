@@ -31,7 +31,7 @@ from supervisor.jobs import SupervisorJob
 from supervisor.mounts.mount import Mount
 from supervisor.supervisor import Supervisor
 
-from tests.common import get_fixture_path
+from tests.common import get_fixture_path, wait_for_task_by_name
 from tests.const import TEST_ADDON_SLUG
 
 
@@ -1444,8 +1444,8 @@ async def test_missing_file_removes_location_from_cache(
     resp = await api_client.request(method, url_path, json=body)
     assert resp.status == 404
 
-    # Wait for reload task to complete and confirm location is removed
-    await asyncio.sleep(0.01)
+    # Wait for the reload task spawned by the API to complete
+    await wait_for_task_by_name(coresys, "BackupManager.reload")
     assert coresys.backups.get(slug).all_locations.keys() == {None}
 
 
@@ -1500,8 +1500,8 @@ async def test_missing_file_removes_backup_from_cache(
     resp = await api_client.request(method, url_path, json=body)
     assert resp.status == 404
 
-    # Wait for reload task to complete and confirm backup is removed
-    await asyncio.sleep(0.01)
+    # Wait for the reload task spawned by the API to complete
+    await wait_for_task_by_name(coresys, "BackupManager.reload")
     assert not coresys.backups.list_backups
 
 
@@ -1548,7 +1548,7 @@ async def test_immediate_list_after_missing_file_restore(
     assert len(result["data"]["backups"]) == 2
 
     event.set()
-    await asyncio.sleep(0.1)
+    await wait_for_task_by_name(coresys, "BackupManager.reload")
     resp = await api_client.get("/backups")
     assert resp.status == 200
     result = await resp.json()
