@@ -22,7 +22,7 @@ pulsectl==24.12.0
 pyudev==0.24.4
 PyYAML==6.0.3
 securetar==2026.4.1
-sentry-sdk==2.58.0
+sentry-sdk==2.59.0
 setuptools==82.0.1
 voluptuous==0.16.0
 dbus-fast==4.0.4
