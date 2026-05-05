@@ -310,7 +310,7 @@ class HomeAssistantWebSocket(CoreSysAttributes):
         try:
             await self._ensure_connected()
         except HomeAssistantWSError as err:
-            _LOGGER.warning("Can't send WebSocket command: %s", err)
+            _LOGGER.debug("Can't send WebSocket command: %s", err)
             return
 
         # _ensure_connected guarantees self.client is set
