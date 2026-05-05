@@ -225,7 +225,7 @@ async def test_api_store_update_healthcheck(
 
     async def container_events():
         nonlocal state_changes
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
 
         await install_app_ssh.container_state_changed(
             DockerContainerStateEvent(

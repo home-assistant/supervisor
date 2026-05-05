@@ -6,7 +6,7 @@ import errno
 from http import HTTPStatus
 from pathlib import Path, PurePath
 from typing import Any
-from unittest.mock import MagicMock, PropertyMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, call, patch
 
 import aiodocker
 from aiodocker.containers import DockerContainer
@@ -51,16 +51,18 @@ from tests.common import get_fixture_path, is_in_list
 from tests.const import TEST_ADDON_SLUG
 
 
-def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState):
-    """Fire a test event."""
-    coresys.bus.fire_event(
-        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-        DockerContainerStateEvent(
-            name=name,
-            state=state,
-            id="abc123",
-            time=1,
-        ),
+async def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState) -> None:
+    """Fire a test event and await the listener tasks the bus spawned."""
+    await asyncio.gather(
+        *coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name=name,
+                state=state,
+                id="abc123",
+                time=1,
+            ),
+        )
     )
 
 
@@ -125,25 +127,30 @@ async def test_app_state_listener(coresys: CoreSys, install_app_ssh: App) -> Non
     assert install_app_ssh.state == AppState.UNKNOWN
 
     with patch.object(App, "watchdog_container"):
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
         assert install_app_ssh.state == AppState.STARTED
 
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
         assert install_app_ssh.state == AppState.STOPPED
 
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.HEALTHY)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.HEALTHY
+        )
         assert install_app_ssh.state == AppState.STARTED
 
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
+        )
         assert install_app_ssh.state == AppState.ERROR
 
         # Test other apps are ignored
-        _fire_test_event(coresys, "addon_local_non_installed", ContainerState.RUNNING)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, "addon_local_non_installed", ContainerState.RUNNING
+        )
         assert install_app_ssh.state == AppState.ERROR
 
 
@@ -155,15 +162,20 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
     install_app_ssh.watchdog = True
     install_app_ssh._manual_stop = False  # pylint: disable=protected-access
 
+    # Watchdog does ``await (await self.start())`` because App.start returns
+    # an asyncio.Task. The mock must mirror that shape.
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
     with (
-        patch.object(App, "restart") as restart,
-        patch.object(App, "start") as start,
+        patch.object(App, "restart", AsyncMock(return_value=done_task)) as restart,
+        patch.object(App, "start", AsyncMock(return_value=done_task)) as start,
         patch.object(DockerApp, "current_state") as current_state,
     ):
         # Restart if it becomes unhealthy
         current_state.return_value = ContainerState.UNHEALTHY
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.UNHEALTHY
+        )
         restart.assert_called_once()
         start.assert_not_called()
 
@@ -172,8 +184,9 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
         # Rebuild if it failed
         current_state.return_value = ContainerState.FAILED
         with patch.object(DockerApp, "stop") as stop:
-            _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED)
-            await asyncio.sleep(0)
+            await _fire_test_event(
+                coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
+            )
             stop.assert_called_once_with(remove_container=True)
             restart.assert_not_called()
             start.assert_called_once()
@@ -182,15 +195,17 @@ async def test_app_watchdog(coresys: CoreSys, install_app_ssh: App) -> None:
 
         # Do not process event if container state has changed since fired
         current_state.return_value = ContainerState.HEALTHY
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
+        )
         restart.assert_not_called()
         start.assert_not_called()
 
         # Other apps ignored
         current_state.return_value = ContainerState.UNHEALTHY
-        _fire_test_event(coresys, "addon_local_non_installed", ContainerState.UNHEALTHY)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, "addon_local_non_installed", ContainerState.UNHEALTHY
+        )
         restart.assert_not_called()
         start.assert_not_called()
 
@@ -216,8 +231,9 @@ async def test_watchdog_port_conflict_does_not_retry(
         patch("supervisor.addons.addon.async_capture_exception") as capture_exception,
     ):
         caplog.clear()
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.FAILED
+        )
 
         start.assert_called_once()
         capture_exception.assert_not_called()
@@ -231,8 +247,12 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
 
     install_app_ssh.watchdog = True
 
+    # Watchdog does ``await (await self.restart())`` because App.restart
+    # returns an asyncio.Task; the mock must mirror that shape.
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
     with (
-        patch.object(App, "restart") as restart,
+        patch.object(App, "restart", AsyncMock(return_value=done_task)) as restart,
         patch.object(
             DockerApp,
             "current_state",
@@ -241,18 +261,22 @@ async def test_watchdog_on_stop(coresys: CoreSys, install_app_ssh: App) -> None:
         patch.object(DockerApp, "stop"),
     ):
         # Do not restart when app stopped by user
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
         await install_app_ssh.stop()
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
         restart.assert_not_called()
 
         # Do restart app if it stops and user didn't do it
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
-        await asyncio.sleep(0)
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING
+        )
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
         restart.assert_called_once()
 
 
@@ -279,8 +303,7 @@ async def test_listener_attached_on_install(coresys: CoreSys):
     # Normally this would be defaulted to False on start of the app but test skips that
     coresys.apps.get_local_only(TEST_ADDON_SLUG).watchdog = False
 
-    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
-    await asyncio.sleep(0)
+    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     assert coresys.apps.get(TEST_ADDON_SLUG).state == AppState.STARTED
 
 
@@ -297,8 +320,12 @@ async def test_watchdog_during_attach(
     store = coresys.apps.store[TEST_ADDON_SLUG]
     await coresys.apps.data.install(store)
 
+    # Watchdog does ``await (await self.restart())`` because App.restart
+    # returns an asyncio.Task; the mock must mirror that shape.
+    done_task = asyncio.get_running_loop().create_future()
+    done_task.set_result(None)
     with (
-        patch.object(App, "restart") as restart,
+        patch.object(App, "restart", AsyncMock(return_value=done_task)) as restart,
         patch.object(HwHelper, "last_boot", return_value=utcnow()),
         patch.object(DockerApp, "attach"),
         patch.object(
@@ -315,8 +342,9 @@ async def test_watchdog_during_attach(
         app.watchdog = True
 
         await app.load()
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
-        await asyncio.sleep(0)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
 
         assert restart.call_count == restart_count
 
@@ -386,7 +414,7 @@ async def test_start(coresys: CoreSys, install_app_ssh: App) -> None:
     start_task = await install_app_ssh.start()
     assert start_task
 
-    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     await start_task
     assert install_app_ssh.state == AppState.STARTED
 
@@ -409,14 +437,12 @@ async def test_start_wait_healthcheck(
     start_task = await install_app_ssh.start()
     assert start_task
 
-    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
-    await asyncio.sleep(0.01)
+    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
 
     assert not start_task.done()
     assert install_app_ssh.state == AppState.STARTUP
 
-    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", state)
-    await asyncio.sleep(0.01)
+    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", state)
 
     assert start_task.done()
     assert install_app_ssh.state == AppState.STARTED
@@ -455,7 +481,7 @@ async def test_restart(coresys: CoreSys, install_app_ssh: App) -> None:
     start_task = await install_app_ssh.restart()
     assert start_task
 
-    _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
+    await _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
     await start_task
     assert install_app_ssh.state == AppState.STARTED
 
@@ -654,7 +680,9 @@ async def test_backup_cold_mode_with_watchdog(
     async def mock_stop(*args, **kwargs):
         container.show.return_value["State"]["Status"] = "stopped"
         container.show.return_value["State"]["Running"] = False
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
 
     # Patching out the normal end of backup process leaves the container in a stopped state
     # Watchdog should still not try to restart it though, it should remain this way
@@ -738,7 +766,9 @@ async def test_restore_while_running_with_watchdog(
     async def mock_stop(*args, **kwargs):
         container.show.return_value["State"]["Status"] = "stopped"
         container.show.return_value["State"]["Running"] = False
-        _fire_test_event(coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED)
+        await _fire_test_event(
+            coresys, f"addon_{TEST_ADDON_SLUG}", ContainerState.STOPPED
+        )
 
     # We restore a stopped backup so restore will not restart it
     # Watchdog will see it stop and should not attempt reanimation either

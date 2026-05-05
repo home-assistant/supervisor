@@ -74,76 +74,81 @@ async def test_plugin_watchdog(coresys: CoreSys, plugin: PluginBase) -> None:
         patch.object(type(plugin.instance), "current_state") as current_state,
     ):
         current_state.return_value = ContainerState.UNHEALTHY
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=plugin.instance.name,
-                state=ContainerState.UNHEALTHY,
-                id="abc123",
-                time=1,
-            ),
+        await asyncio.gather(
+            *coresys.bus.fire_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                DockerContainerStateEvent(
+                    name=plugin.instance.name,
+                    state=ContainerState.UNHEALTHY,
+                    id="abc123",
+                    time=1,
+                ),
+            )
         )
-        await asyncio.sleep(0)
         rebuild.assert_called_once()
         start.assert_not_called()
 
         rebuild.reset_mock()
         current_state.return_value = ContainerState.FAILED
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=plugin.instance.name,
-                state=ContainerState.FAILED,
-                id="abc123",
-                time=1,
-            ),
+        await asyncio.gather(
+            *coresys.bus.fire_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                DockerContainerStateEvent(
+                    name=plugin.instance.name,
+                    state=ContainerState.FAILED,
+                    id="abc123",
+                    time=1,
+                ),
+            )
         )
-        await asyncio.sleep(0)
         rebuild.assert_called_once()
         start.assert_not_called()
 
         rebuild.reset_mock()
         # Stop should be ignored as it means an update or system shutdown, plugins don't stop otherwise
         current_state.return_value = ContainerState.STOPPED
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=plugin.instance.name,
-                state=ContainerState.STOPPED,
-                id="abc123",
-                time=1,
-            ),
+        await asyncio.gather(
+            *coresys.bus.fire_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                DockerContainerStateEvent(
+                    name=plugin.instance.name,
+                    state=ContainerState.STOPPED,
+                    id="abc123",
+                    time=1,
+                ),
+            )
         )
-        await asyncio.sleep(0)
         rebuild.assert_not_called()
         start.assert_not_called()
 
         # Do not process event if container state has changed since fired
         current_state.return_value = ContainerState.HEALTHY
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=plugin.instance.name,
-                state=ContainerState.FAILED,
-                id="abc123",
-                time=1,
-            ),
+        await asyncio.gather(
+            *coresys.bus.fire_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                DockerContainerStateEvent(
+                    name=plugin.instance.name,
+                    state=ContainerState.FAILED,
+                    id="abc123",
+                    time=1,
+                ),
+            )
         )
-        await asyncio.sleep(0)
         rebuild.assert_not_called()
         start.assert_not_called()
 
         # Other containers ignored
-        coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name="addon_local_other",
-                state=ContainerState.UNHEALTHY,
-                id="abc123",
-                time=1,
-            ),
+        await asyncio.gather(
+            *coresys.bus.fire_event(
+                BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+                DockerContainerStateEvent(
+                    name="addon_local_other",
+                    state=ContainerState.UNHEALTHY,
+                    id="abc123",
+                    time=1,
+                ),
+            )
         )
-        await asyncio.sleep(0)
         rebuild.assert_not_called()
         start.assert_not_called()
 

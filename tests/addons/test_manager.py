@@ -384,16 +384,17 @@ async def test_start_wait_resolved_on_uninstall_in_startup(
     start_task = await install_app_ssh.start()
     assert start_task
 
-    coresys.bus.fire_event(
-        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-        DockerContainerStateEvent(
-            name=f"addon_{TEST_ADDON_SLUG}",
-            state=ContainerState.RUNNING,
-            id="abc123",
-            time=1,
-        ),
+    await asyncio.gather(
+        *coresys.bus.fire_event(
+            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+            DockerContainerStateEvent(
+                name=f"addon_{TEST_ADDON_SLUG}",
+                state=ContainerState.RUNNING,
+                id="abc123",
+                time=1,
+            ),
+        )
     )
-    await asyncio.sleep(0.01)
 
     assert not start_task.done()
     assert install_app_ssh.state == AppState.STARTUP
@@ -525,6 +526,11 @@ async def test_watchdog_runs_during_update(
         patch.object(App, "restart") as restart,
     ):
         await coresys.apps.update("local_ssh")
+        # mock_update yielded once (sleep(0)), giving the watchdog task
+        # spawned by mock_stop time to run to completion within update's
+        # own awaits — so by the time we get here it's already done.
+        # A trailing sleep(0) defends against scheduling jitter without
+        # racing the assertion.
         await asyncio.sleep(0)
         start.assert_called_once()
         restart.assert_not_called()
