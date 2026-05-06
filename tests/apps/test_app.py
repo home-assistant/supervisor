@@ -17,7 +17,6 @@ from securetar import SecureTarArchive, SecureTarFile
 from supervisor.apps.app import App
 from supervisor.apps.const import AppBackupMode
 from supervisor.apps.model import AppModel
-from supervisor.config import CoreConfig
 from supervisor.const import ATTR_ADVANCED, AppBoot, AppState, BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.docker.app import DockerApp
@@ -1076,75 +1075,70 @@ async def test_app_loads_wrong_image(
 
 
 @pytest.mark.usefixtures("mock_amd64_arch_supported")
-async def test_app_loads_missing_image(coresys: CoreSys, install_app_ssh: App):
-    """Test app corrects a missing image on load."""
+async def test_app_loads_missing_image_build(coresys: CoreSys, install_app_ssh: App):
+    """Test build-required app surfaces a repair when image is missing on load."""
     coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
         HTTPStatus.NOT_FOUND, {"message": "missing"}
     )
 
-    with (
-        patch("pathlib.Path.is_file", return_value=True),
-        patch.object(
-            coresys.docker,
-            "run_command",
-            return_value=CommandReturn(0, ["Build successful"]),
-        ) as mock_run_command,
-        patch.object(
-            type(coresys.config),
-            "local_to_extern_path",
-            return_value=PurePath("/addon/path/on/host"),
-        ),
-    ):
+    with patch.object(
+        coresys.docker,
+        "run_command",
+        return_value=CommandReturn(0, ["Build successful"]),
+    ) as mock_run_command:
         await install_app_ssh.load()
 
-    mock_run_command.assert_called_once()
-    assert mock_run_command.call_args.args[0] == "docker"
-    assert mock_run_command.call_args.kwargs["tag"] == "1.0.0-cli"
-    command = mock_run_command.call_args.kwargs["command"]
-    assert is_in_list(
-        ["--platform", "linux/amd64"],
-        command,
+    # Build-required apps must not run a build during load. A repair is
+    # raised so the resolution autofix loop handles it off the critical path.
+    mock_run_command.assert_not_called()
+    issue = Issue(
+        IssueType.MISSING_IMAGE, ContextType.ADDON, reference=install_app_ssh.slug
     )
-    assert is_in_list(
-        ["--tag", "local/amd64-addon-ssh:9.2.1"],
-        command,
+    assert issue in coresys.resolution.issues
+    suggestions = coresys.resolution.suggestions_for_issue(issue)
+    assert any(s.type == SuggestionType.EXECUTE_REPAIR for s in suggestions)
+
+
+@pytest.mark.usefixtures("mock_amd64_arch_supported")
+async def test_app_loads_missing_image_pull(coresys: CoreSys, install_app_ssh: App):
+    """Test pullable app installs the missing image during load."""
+    install_app_ssh.data["image"] = "test/amd64-addon-ssh"
+    coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
+        HTTPStatus.NOT_FOUND, {"message": "missing"}
     )
-    assert install_app_ssh.image == "local/amd64-addon-ssh"
+
+    with patch.object(DockerAPI, "pull_image") as mock_pull_image:
+        await install_app_ssh.load()
+
+    mock_pull_image.assert_called_once()
+    issue = Issue(
+        IssueType.MISSING_IMAGE, ContextType.ADDON, reference=install_app_ssh.slug
+    )
+    assert issue not in coresys.resolution.issues
 
 
 @pytest.mark.usefixtures("container", "mock_amd64_arch_supported")
 async def test_app_load_succeeds_with_docker_errors(
     coresys: CoreSys, install_app_ssh: App, caplog: pytest.LogCaptureFixture
 ):
-    """Docker errors while building/pulling an image during load should not raise and fail setup."""
-    # Build env invalid failure
+    """Docker errors during load should not raise and fail setup."""
+    issue = Issue(
+        IssueType.MISSING_IMAGE, ContextType.ADDON, reference=install_app_ssh.slug
+    )
+
+    # Build-required app with missing image: repair issue raised, no exception
     coresys.docker.images.inspect.side_effect = aiodocker.DockerError(
         HTTPStatus.NOT_FOUND, {"message": "missing"}
     )
     caplog.clear()
     await install_app_ssh.load()
-    assert "Cannot build app 'local_ssh' because dockerfile is missing" in caplog.text
+    assert issue in coresys.resolution.issues
 
-    # Image build failure
-    caplog.clear()
-    with (
-        patch("pathlib.Path.is_file", return_value=True),
-        patch.object(
-            CoreConfig,
-            "local_to_extern_path",
-            return_value=PurePath("/addon/path/on/host"),
-        ),
-        patch.object(
-            DockerAPI, "run_command", return_value=CommandReturn(1, ["error"])
-        ),
-    ):
-        await install_app_ssh.load()
-    assert (
-        "Docker build failed for local/amd64-addon-ssh:9.2.1 (exit code 1). Build output:\nerror"
-        in caplog.text
-    )
-
-    # Image pull failure
+    # Pull-based app where check_image's internal install fails: addon left
+    # detached, no exception escapes to abort setup. The next load will hit
+    # DockerNotFound and trigger the proper repair path.
+    stored = coresys.resolution.get_issue_if_present(issue)
+    coresys.resolution.dismiss_issue(stored)
     install_app_ssh.data["image"] = "test/amd64-addon-ssh"
     caplog.clear()
     with patch.object(
@@ -1153,7 +1147,11 @@ async def test_app_load_succeeds_with_docker_errors(
         side_effect=aiodocker.DockerError(400, {"message": "error"}),
     ):
         await install_app_ssh.load()
-    assert "Can't install test/amd64-addon-ssh:9.2.1:" in caplog.text
+    assert "Docker error loading app local_ssh, leaving detached" in caplog.text
+    assert any(
+        "Docker error loading app local_ssh" in r.message and r.levelname == "CRITICAL"
+        for r in caplog.records
+    )
 
 
 @pytest.mark.usefixtures("coresys")

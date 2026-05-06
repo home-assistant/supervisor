@@ -3,6 +3,13 @@
 import logging
 
 from ...coresys import CoreSys
+from ...exceptions import (
+    DockerBuildError,
+    DockerNoSpaceOnDevice,
+    DockerRegistryAuthError,
+    DockerRegistryRateLimitExceeded,
+    ResolutionFixupError,
+)
 from ..const import ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
@@ -44,7 +51,21 @@ class FixupAppExecuteRepair(FixupBase):
 
         _LOGGER.info("Installing image for app %s", reference)
         self.attempts += 1
-        await app.instance.install(app.version)
+        try:
+            await app.instance.install(app.version)
+        except (
+            DockerBuildError,
+            DockerNoSpaceOnDevice,
+            DockerRegistryAuthError,
+            DockerRegistryRateLimitExceeded,
+        ) as err:
+            # These failures won't be resolved by an immediate retry (broken
+            # Dockerfile or unavailable base/builder image; disk full; bad
+            # credentials; registry rate limit). Surface as a fixup error so
+            # FixupBase swallows it without a Sentry event. The repair stays
+            # available for manual retry once the underlying cause is fixed.
+            _LOGGER.warning("Cannot repair app %s: %s", reference, err)
+            raise ResolutionFixupError() from err
 
     @property
     def suggestion(self) -> SuggestionType:
