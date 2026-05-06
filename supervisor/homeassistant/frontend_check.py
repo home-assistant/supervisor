@@ -10,6 +10,7 @@ component override masking websocket_api).
 
 from __future__ import annotations
 
+import asyncio
 from contextlib import suppress
 import logging
 
@@ -21,6 +22,7 @@ from ..coresys import CoreSys
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 _PROBE_TIMEOUT = aiohttp.ClientTimeout(total=30)
+_WS_HANDSHAKE_TIMEOUT = 30.0
 _WS_RECEIVE_TIMEOUT = 10.0
 
 
@@ -59,13 +61,16 @@ async def check_websocket(coresys: CoreSys) -> bool:
     url = coresys.homeassistant.ws_url
     ws: aiohttp.ClientWebSocketResponse | None = None
     try:
-        ws = await coresys.websession.ws_connect(url, ssl=False)
+        ws = await asyncio.wait_for(
+            coresys.websession.ws_connect(url, ssl=False),
+            timeout=_WS_HANDSHAKE_TIMEOUT,
+        )
         msg = await ws.receive(timeout=_WS_RECEIVE_TIMEOUT)
         if msg.type != aiohttp.WSMsgType.TEXT:
             _LOGGER.error("WebSocket handshake returned non-text message: %s", msg.type)
             return False
         data = msg.json()
-        if data.get("type") != "auth_required":
+        if not isinstance(data, dict) or data.get("type") != "auth_required":
             _LOGGER.error("WebSocket did not send auth_required, got: %s", data)
             return False
     except (aiohttp.ClientError, TimeoutError, ValueError) as err:

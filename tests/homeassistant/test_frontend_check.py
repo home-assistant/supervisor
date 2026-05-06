@@ -95,6 +95,17 @@ async def test_check_websocket_connect_error(coresys: CoreSys, websession: Magic
     assert await check_websocket(coresys) is False
 
 
+async def test_check_websocket_non_dict_payload(
+    coresys: CoreSys, websession: MagicMock
+):
+    """Websocket check returns False when payload is valid JSON but not an object."""
+    msg = MagicMock()
+    msg.type = aiohttp.WSMsgType.TEXT
+    msg.json.return_value = ["auth_required"]
+    websession.ws_connect = AsyncMock(return_value=_mock_ws(msg))
+    assert await check_websocket(coresys) is False
+
+
 # --- verify_frontend ---
 
 
