@@ -27,6 +27,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 CORE_UNIX_SOCKET_MIN_VERSION: AwesomeVersion = AwesomeVersion(
     "2026.4.0.dev202603250907"
 )
+CORE_UNIX_SOCKET_DEFAULT_VERSION: AwesomeVersion = AwesomeVersion("2026.5.1")
 GET_CORE_STATE_MIN_VERSION: AwesomeVersion = AwesomeVersion("2023.8.0.dev20230720")
 
 
@@ -56,15 +57,26 @@ class HomeAssistantAPI(CoreSysAttributes):
     def supports_unix_socket(self) -> bool:
         """Return True if the installed Core version supports Unix socket communication.
 
+        Enabled by default for Core >= CORE_UNIX_SOCKET_DEFAULT_VERSION; for
+        older versions down to CORE_UNIX_SOCKET_MIN_VERSION it is gated behind
+        the UNIX_SOCKET_CORE_API feature flag.
+
         Used to decide whether to configure the env var when starting Core.
         """
-        return (
-            self.sys_config.feature_flags.get(FeatureFlag.UNIX_SOCKET_CORE_API, False)
-            and self.sys_homeassistant.version is not None
-            and self.sys_homeassistant.version != LANDINGPAGE
-            and version_is_new_enough(
+        if (
+            self.sys_homeassistant.version is None
+            or self.sys_homeassistant.version == LANDINGPAGE
+            or not version_is_new_enough(
                 self.sys_homeassistant.version, CORE_UNIX_SOCKET_MIN_VERSION
             )
+        ):
+            return False
+        if version_is_new_enough(
+            self.sys_homeassistant.version, CORE_UNIX_SOCKET_DEFAULT_VERSION
+        ):
+            return True
+        return self.sys_config.feature_flags.get(
+            FeatureFlag.UNIX_SOCKET_CORE_API, False
         )
 
     @property
