@@ -47,22 +47,21 @@ from supervisor.utils.dt import utcnow
 
 from .test_manager import BOOT_FAIL_ISSUE, BOOT_FAIL_SUGGESTIONS
 
-from tests.common import get_fixture_path, is_in_list
+from tests.common import fire_bus_event, get_fixture_path, is_in_list
 from tests.const import TEST_ADDON_SLUG
 
 
 async def _fire_test_event(coresys: CoreSys, name: str, state: ContainerState) -> None:
     """Fire a test event and await the listener tasks the bus spawned."""
-    await asyncio.gather(
-        *coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=name,
-                state=state,
-                id="abc123",
-                time=1,
-            ),
-        )
+    await fire_bus_event(
+        coresys,
+        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+        DockerContainerStateEvent(
+            name=name,
+            state=state,
+            id="abc123",
+            time=1,
+        ),
     )
 
 

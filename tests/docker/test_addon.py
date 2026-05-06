@@ -1,6 +1,5 @@
 """Test docker app setup."""
 
-import asyncio
 from dataclasses import replace
 from http import HTTPStatus
 from ipaddress import IPv4Address
@@ -35,6 +34,8 @@ from supervisor.resolution.data import Issue, Suggestion
 
 from ..common import load_json_fixture
 from . import DEV_MOUNT
+
+from tests.common import fire_bus_event
 
 
 @pytest.fixture(name="addonsdata_system")
@@ -440,8 +441,10 @@ async def test_app_new_device(
     ):
         await install_app_ssh.start()
 
-        await asyncio.gather(
-            *coresys.bus.fire_event(BusEvent.HARDWARE_NEW_DEVICE, TEST_HW_DEVICE)
+        await fire_bus_event(
+            coresys,
+            BusEvent.HARDWARE_NEW_DEVICE,
+            TEST_HW_DEVICE,
         )
 
         add_devices.assert_called_once_with(123, "c 0:0 rwm")
@@ -466,8 +469,10 @@ async def test_app_new_device_no_haos(
     ):
         await install_app_ssh.start()
 
-        await asyncio.gather(
-            *coresys.bus.fire_event(BusEvent.HARDWARE_NEW_DEVICE, TEST_HW_DEVICE)
+        await fire_bus_event(
+            coresys,
+            BusEvent.HARDWARE_NEW_DEVICE,
+            TEST_HW_DEVICE,
         )
 
         add_devices.assert_not_called()

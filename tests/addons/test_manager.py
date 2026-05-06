@@ -39,7 +39,7 @@ from supervisor.store.repository import RepositoryLocal
 from supervisor.utils import check_exception_chain
 from supervisor.utils.common import write_json_file
 
-from tests.common import load_json_fixture
+from tests.common import fire_bus_event, load_json_fixture
 from tests.const import TEST_ADDON_SLUG
 
 BOOT_FAIL_ISSUE = Issue(
@@ -384,16 +384,15 @@ async def test_start_wait_resolved_on_uninstall_in_startup(
     start_task = await install_app_ssh.start()
     assert start_task
 
-    await asyncio.gather(
-        *coresys.bus.fire_event(
-            BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
-            DockerContainerStateEvent(
-                name=f"addon_{TEST_ADDON_SLUG}",
-                state=ContainerState.RUNNING,
-                id="abc123",
-                time=1,
-            ),
-        )
+    await fire_bus_event(
+        coresys,
+        BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
+        DockerContainerStateEvent(
+            name=f"addon_{TEST_ADDON_SLUG}",
+            state=ContainerState.RUNNING,
+            id="abc123",
+            time=1,
+        ),
     )
 
     assert not start_task.done()

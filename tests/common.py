@@ -12,11 +12,24 @@ from typing import Any, Self
 
 from dbus_fast.aio.message_bus import MessageBus
 
+from supervisor.const import BusEvent
+from supervisor.coresys import CoreSys
 from supervisor.jobs.decorator import Job
 from supervisor.resolution.validate import get_valid_modules
 from supervisor.utils.yaml import read_yaml_file
 
 from .dbus_service_mocks.base import DBusServiceMock
+
+
+async def fire_bus_event(coresys: CoreSys, event: BusEvent, data: Any) -> None:
+    """Fire a bus event and await its listener tasks.
+
+    ``Bus.fire_event`` is sync and returns the listener tasks it spawned.
+    Tests that drive a system under test by firing a bus event need to
+    wait for those listener tasks to finish before asserting; this helper
+    bundles the gather so call sites stay short.
+    """
+    await asyncio.gather(*coresys.bus.fire_event(event, data))
 
 
 def get_fixture_path(filename: str) -> Path:
