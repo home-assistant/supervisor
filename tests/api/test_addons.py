@@ -123,7 +123,7 @@ async def test_api_app_start_healthcheck(
 
     async def container_events():
         nonlocal state_changes
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
 
         await install_app_ssh.container_state_changed(
             _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)
@@ -162,7 +162,7 @@ async def test_api_app_restart_healthcheck(
 
     async def container_events():
         nonlocal state_changes
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
 
         await install_app_ssh.container_state_changed(
             _create_test_event(f"addon_{TEST_ADDON_SLUG}", ContainerState.RUNNING)

@@ -13,6 +13,8 @@ from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
 from supervisor.resolution.fixups.store_execute_reload import FixupStoreExecuteReload
 
+from tests.common import fire_bus_event
+
 
 async def test_fixup(coresys: CoreSys, supervisor_internet):
     """Test fixup."""
@@ -59,8 +61,8 @@ async def test_store_execute_reload_runs_on_connectivity_true(coresys: CoreSys):
 
     with patch.object(coresys.store, "reload") as mock_reload:
         # Fire event with connectivity True
-        coresys.supervisor._update_connectivity(True)  # pylint: disable=protected-access
-        await asyncio.sleep(0.1)
+        coresys.supervisor._connectivity = True  # pylint: disable=protected-access
+        await fire_bus_event(coresys, BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, True)
 
         mock_repository.load.assert_called_once()
         mock_reload.assert_awaited_once_with(mock_repository)
@@ -86,9 +88,9 @@ async def test_store_execute_reload_does_not_run_on_connectivity_false(
         suggestions=[SuggestionType.EXECUTE_RELOAD],
     )
 
-    # Fire event with connectivity True
-    coresys.supervisor._update_connectivity(False)  # pylint: disable=protected-access
-    await asyncio.sleep(0.1)
+    # Fire event with connectivity False
+    coresys.supervisor._connectivity = False  # pylint: disable=protected-access
+    await fire_bus_event(coresys, BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, False)
 
     mock_repository.load.assert_not_called()
 
@@ -117,14 +119,12 @@ async def test_store_execute_reload_dismiss_suggestion_removes_listener(
         FixupStoreExecuteReload, "process_fixup", side_effect=ResolutionFixupError
     ) as mock_fixup:
         # Fire event with issue there to trigger fixup
-        coresys.bus.fire_event(BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, True)
-        await asyncio.sleep(0.1)
+        await fire_bus_event(coresys, BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, True)
         mock_fixup.assert_called_once()
 
         # Remove issue and suggestion and re-fire to see listener is gone
         mock_fixup.reset_mock()
         coresys.resolution.dismiss_issue(issue)
 
-        coresys.bus.fire_event(BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, True)
-        await asyncio.sleep(0.1)
+        await fire_bus_event(coresys, BusEvent.SUPERVISOR_CONNECTIVITY_CHANGE, True)
         mock_fixup.assert_not_called()

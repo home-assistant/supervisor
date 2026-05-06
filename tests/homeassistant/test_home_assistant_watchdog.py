@@ -12,6 +12,8 @@ from supervisor.docker.const import ContainerState
 from supervisor.docker.monitor import DockerContainerStateEvent
 from supervisor.exceptions import HomeAssistantError
 
+from tests.common import fire_bus_event
+
 
 async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
     """Test homeassistant watchdog works correctly."""
@@ -35,7 +37,8 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
         ) as current_state,
     ):
         current_state.return_value = ContainerState.UNHEALTHY
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
                 name="homeassistant",
@@ -44,13 +47,13 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
                 time=1,
             ),
         )
-        await asyncio.sleep(0)
         restart.assert_called_once()
         start.assert_not_called()
 
         restart.reset_mock()
         current_state.return_value = ContainerState.FAILED
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
                 name="homeassistant",
@@ -59,14 +62,14 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
                 time=1,
             ),
         )
-        await asyncio.sleep(0)
         restart.assert_not_called()
         start.assert_called_once()
 
         start.reset_mock()
         # Do not process event if container state has changed since fired
         current_state.return_value = ContainerState.HEALTHY
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
                 name="homeassistant",
@@ -75,12 +78,12 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
                 time=1,
             ),
         )
-        await asyncio.sleep(0)
         restart.assert_not_called()
         start.assert_not_called()
 
         # Do not restart when home assistant stopped normally
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
                 name="homeassistant",
@@ -89,12 +92,12 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
                 time=1,
             ),
         )
-        await asyncio.sleep(0)
         restart.assert_not_called()
         start.assert_not_called()
 
         # Other containers ignored
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
                 name="addon_local_other",
@@ -103,7 +106,6 @@ async def test_home_assistant_watchdog(coresys: CoreSys) -> None:
                 time=1,
             ),
         )
-        await asyncio.sleep(0)
         restart.assert_not_called()
         start.assert_not_called()
 
@@ -133,7 +135,8 @@ async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> N
             return_value=ContainerState.FAILED,
         ),
     ):
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
                 name="homeassistant",
@@ -142,7 +145,6 @@ async def test_home_assistant_watchdog_rebuild_on_failure(coresys: CoreSys) -> N
                 time=1,
             ),
         )
-        await asyncio.sleep(0.1)
         start.assert_called_once()
         rebuild.assert_called_once()
 
@@ -207,7 +209,8 @@ async def test_home_assistant_watchdog_unregisters_on_shutdown(
         ),
     ):
         # Watchdog should respond to events before shutdown
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
             DockerContainerStateEvent(
                 name="homeassistant",
@@ -216,7 +219,6 @@ async def test_home_assistant_watchdog_unregisters_on_shutdown(
                 time=1,
             ),
         )
-        await asyncio.sleep(0)
         start.assert_called_once()
         start.reset_mock()
 
@@ -226,14 +228,18 @@ async def test_home_assistant_watchdog_unregisters_on_shutdown(
             coresys.homeassistant.core._watchdog_listener = watchdog_listener
 
             # Fire shutdown state change
-            coresys.bus.fire_event(BusEvent.SUPERVISOR_STATE_CHANGE, shutdown_state)
-            await asyncio.sleep(0)
+            await fire_bus_event(
+                coresys,
+                BusEvent.SUPERVISOR_STATE_CHANGE,
+                shutdown_state,
+            )
 
             # Verify watchdog listener is unregistered
             assert coresys.homeassistant.core._watchdog_listener is None
 
             # Watchdog should not respond to events after shutdown
-            coresys.bus.fire_event(
+            await fire_bus_event(
+                coresys,
                 BusEvent.DOCKER_CONTAINER_STATE_CHANGE,
                 DockerContainerStateEvent(
                     name="homeassistant",
@@ -242,6 +248,5 @@ async def test_home_assistant_watchdog_unregisters_on_shutdown(
                     time=1,
                 ),
             )
-            await asyncio.sleep(0)
             start.assert_not_called()
             restart.assert_not_called()

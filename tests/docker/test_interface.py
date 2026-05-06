@@ -431,7 +431,7 @@ async def test_install_fires_progress_events(
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
-    await asyncio.sleep(1)
+    await asyncio.sleep(0)
     assert events == [
         PullLogEntry(
             job_id=ANY,
@@ -894,7 +894,7 @@ async def test_install_progress_containerd_snapshot(
         )
         coresys.docker.images.inspect.assert_called_once_with("test:1.2.3")
 
-    await asyncio.sleep(1)
+    await asyncio.sleep(0)
 
     def job_event(progress: float, done: bool = False):
         return {

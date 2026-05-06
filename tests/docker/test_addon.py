@@ -1,12 +1,11 @@
 """Test docker app setup."""
 
-import asyncio
 from dataclasses import replace
 from http import HTTPStatus
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 
 import aiodocker
 import pytest
@@ -35,6 +34,8 @@ from supervisor.resolution.data import Issue, Suggestion
 
 from ..common import load_json_fixture
 from . import DEV_MOUNT
+
+from tests.common import fire_bus_event
 
 
 @pytest.fixture(name="addonsdata_system")
@@ -434,15 +435,17 @@ async def test_app_new_device(
     with (
         patch.object(App, "write_options"),
         patch.object(OSManager, "available", new=PropertyMock(return_value=is_os)),
-        patch.object(CGroup, "add_devices_allowed") as add_devices,
+        patch.object(
+            CGroup, "add_devices_allowed", new_callable=AsyncMock
+        ) as add_devices,
     ):
         await install_app_ssh.start()
 
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.HARDWARE_NEW_DEVICE,
             TEST_HW_DEVICE,
         )
-        await asyncio.sleep(0.01)
 
         add_devices.assert_called_once_with(123, "c 0:0 rwm")
 
@@ -460,15 +463,17 @@ async def test_app_new_device_no_haos(
     with (
         patch.object(App, "write_options"),
         patch.object(OSManager, "available", new=PropertyMock(return_value=False)),
-        patch.object(CGroup, "add_devices_allowed") as add_devices,
+        patch.object(
+            CGroup, "add_devices_allowed", new_callable=AsyncMock
+        ) as add_devices,
     ):
         await install_app_ssh.start()
 
-        coresys.bus.fire_event(
+        await fire_bus_event(
+            coresys,
             BusEvent.HARDWARE_NEW_DEVICE,
             TEST_HW_DEVICE,
         )
-        await asyncio.sleep(0.01)
 
         add_devices.assert_not_called()
 
