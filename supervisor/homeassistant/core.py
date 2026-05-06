@@ -45,6 +45,7 @@ from .const import (
     WATCHDOG_THROTTLE_MAX_CALLS,
     WATCHDOG_THROTTLE_PERIOD,
 )
+from .frontend_check import verify_frontend
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -333,17 +334,19 @@ class HomeAssistantCore(JobGroup):
                 # The API stopped responding between the update and now
                 self._error_state = True
             else:
-                # Verify that the frontend is loaded
-                if "frontend" not in data.get("components", []):
-                    _LOGGER.error("API responds but frontend is not loaded")
+                components = data.get("components", [])
+                # Verify that the integrations needed to serve the frontend
+                # are loaded
+                for required in ("http", "frontend", "websocket_api"):
+                    if required not in components:
+                        _LOGGER.error("API responds but %s is not loaded", required)
+                        self._error_state = True
+                # Probe the public HTTP/WS endpoints as an external client
+                # would, to catch cases where integrations are listed as
+                # loaded but the endpoints don't actually function.
+                if not self._error_state and not await verify_frontend(self.coresys):
                     self._error_state = True
-                # Check that the frontend is actually accessible
-                elif not await self.sys_homeassistant.api.check_frontend_available():
-                    _LOGGER.error(
-                        "Frontend component loaded but frontend is not accessible"
-                    )
-                    self._error_state = True
-                else:
+                if not self._error_state:
                     # Health checks passed, clean up old image
                     with suppress(DockerError):
                         await self.instance.cleanup(old_image=old_image)

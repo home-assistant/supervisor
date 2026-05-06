@@ -17,6 +17,7 @@ from supervisor.docker.interface import DockerInterface
 from supervisor.exceptions import HomeAssistantError
 from supervisor.homeassistant.api import APIState, HomeAssistantAPI
 from supervisor.homeassistant.const import WSEvent
+import supervisor.homeassistant.core as ha_core
 from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.resolution.const import ContextType, IssueType
@@ -315,9 +316,11 @@ async def test_api_progress_updates_home_assistant_update(
             new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
         ),
         patch.object(
-            HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
+            HomeAssistantAPI,
+            "get_config",
+            return_value={"components": ["http", "frontend", "websocket_api"]},
         ),
-        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=True),
+        patch.object(ha_core, "verify_frontend", AsyncMock(return_value=True)),
     ):
         resp = await api_client.post(f"{root}/update", json={"version": "2025.8.3"})
 
@@ -492,9 +495,11 @@ async def test_update_frontend_check_success(
             new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
         ),
         patch.object(
-            HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
+            HomeAssistantAPI,
+            "get_config",
+            return_value={"components": ["http", "frontend", "websocket_api"]},
         ),
-        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=True),
+        patch.object(ha_core, "verify_frontend", AsyncMock(return_value=True)),
         patch.object(DockerInterface, "cleanup") as mock_cleanup,
     ):
         resp = await api_client.post(f"{root}/update", json={"version": "2025.8.3"})
@@ -509,7 +514,7 @@ async def test_update_frontend_check_fails_triggers_rollback(
     caplog: pytest.LogCaptureFixture,
     tmp_supervisor_data: Path,
 ):
-    """Test that update triggers rollback when frontend check fails."""
+    """Test that update triggers rollback when health probes fail."""
     api_client, root = core_api_client_with_root
     coresys.hardware.disk.get_disk_free_space = lambda x: 5000
     coresys.homeassistant.version = AwesomeVersion("2025.8.0")
@@ -535,16 +540,17 @@ async def test_update_frontend_check_fails_triggers_rollback(
             new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
         ),
         patch.object(
-            HomeAssistantAPI, "get_config", return_value={"components": ["frontend"]}
+            HomeAssistantAPI,
+            "get_config",
+            return_value={"components": ["http", "frontend", "websocket_api"]},
         ),
-        patch.object(HomeAssistantAPI, "check_frontend_available", return_value=False),
+        patch.object(ha_core, "verify_frontend", AsyncMock(return_value=False)),
         patch.object(DockerInterface, "cleanup") as mock_cleanup,
     ):
         resp = await api_client.post(f"{root}/update", json={"version": "2025.8.3"})
 
     # Update should trigger rollback, which succeeds and returns 200
     assert resp.status == 200
-    assert "Frontend component loaded but frontend is not accessible" in caplog.text
     assert "HomeAssistant update failed -> rollback!" in caplog.text
     # Should have called update twice (once for update, once for rollback)
     assert update_call_count == 2
@@ -553,6 +559,57 @@ async def test_update_frontend_check_fails_triggers_rollback(
         Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
     )
     # Old image should not be cleaned up so rollback doesn't need to re-download
+    mock_cleanup.assert_not_called()
+
+
+async def test_update_websocket_api_missing_triggers_rollback(
+    core_api_client_with_root: tuple[TestClient, str],
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data: Path,
+):
+    """Test that update triggers rollback when websocket_api component is not loaded."""
+    api_client, root = core_api_client_with_root
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    update_call_count = 0
+
+    async def mock_update(*args, **kwargs):
+        nonlocal update_call_count
+        update_call_count += 1
+        if update_call_count == 1:
+            coresys.homeassistant.version = AwesomeVersion("2025.8.3")
+        elif update_call_count == 2:
+            coresys.homeassistant.version = AwesomeVersion("2025.8.0")
+
+    with (
+        patch.object(DockerInterface, "update", new=mock_update),
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2025.8.0")),
+        ),
+        patch.object(
+            HomeAssistantAPI,
+            "get_config",
+            return_value={"components": ["http", "frontend"]},
+        ),
+        patch.object(
+            ha_core, "verify_frontend", AsyncMock(return_value=True)
+        ) as mock_frontend_check,
+        patch.object(DockerInterface, "cleanup") as mock_cleanup,
+    ):
+        resp = await api_client.post(f"{root}/update", json={"version": "2025.8.3"})
+
+    assert resp.status == 200
+    assert "API responds but websocket_api is not loaded" in caplog.text
+    assert "HomeAssistant update failed -> rollback!" in caplog.text
+    assert update_call_count == 2
+    mock_frontend_check.assert_not_called()
+    assert (
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
+    )
     mock_cleanup.assert_not_called()
 
 
@@ -586,8 +643,8 @@ async def test_update_get_config_error_triggers_rollback(
         ),
         patch.object(HomeAssistantAPI, "get_config", side_effect=HomeAssistantError),
         patch.object(
-            HomeAssistantAPI, "check_frontend_available", return_value=True
-        ) as mock_check_frontend,
+            ha_core, "verify_frontend", AsyncMock(return_value=True)
+        ) as mock_frontend_check,
         patch.object(DockerInterface, "cleanup") as mock_cleanup,
     ):
         resp = await api_client.post(f"{root}/update", json={"version": "2025.8.3"})
@@ -595,7 +652,7 @@ async def test_update_get_config_error_triggers_rollback(
     assert resp.status == 200
     assert "HomeAssistant update failed -> rollback!" in caplog.text
     assert update_call_count == 2
-    mock_check_frontend.assert_not_called()
+    mock_frontend_check.assert_not_called()
     assert (
         Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
     )
