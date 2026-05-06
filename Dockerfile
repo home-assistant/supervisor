@@ -1,5 +1,5 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.14-alpine3.22-2026.04.0
-FROM ${BUILD_FROM}
+FROM ${BUILD_FROM} AS supervisor-base
 
 ENV \
     S6_SERVICES_GRACETIME=10000 \
@@ -7,8 +7,7 @@ ENV \
     CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 \
     UV_SYSTEM_PYTHON=true
 
-# Install base
-WORKDIR /usr/src
+# Install OS packages used both by build and final image
 RUN \
     set -x \
     && apk add --no-cache \
@@ -23,6 +22,14 @@ RUN \
         yaml \
     \
     && pip3 install uv==0.10.9
+
+#############################################
+# Install requirements and build Supervisor #
+#############################################
+
+FROM supervisor-base AS supervisor-build
+
+WORKDIR /usr/src
 
 # Install requirements
 RUN \
@@ -47,9 +54,17 @@ RUN \
     && uv pip install --no-cache -e ./supervisor \
     && python3 -m compileall ./supervisor/supervisor
 
-
-WORKDIR /
+# Copy the rest of rootfs files
 COPY rootfs /
+
+#########################
+# Final flattened image #
+#########################
+
+FROM supervisor-base
+
+# Copy everything from the build stage as a single layer
+COPY --from=supervisor-build / /
 
 LABEL \
     io.hass.type="supervisor" \
