@@ -151,7 +151,8 @@ class Mount(CoreSysAttributes, ABC):
                 return PurePath(PATH_MEDIA, self.name)
             case MountUsage.SHARE:
                 return PurePath(PATH_SHARE, self.name)
-        return None
+            case _:
+                return None
 
     @property
     def failed_issue(self) -> Issue:
