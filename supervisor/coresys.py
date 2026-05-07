@@ -632,12 +632,10 @@ class CoreSys:
         self, coroutine: Coroutine, *, eager_start: bool | None = None
     ) -> asyncio.Task:
         """Create an async task."""
-        # eager_start kwarg works but wasn't added for mypy visibility until 3.14
-        # can remove the type ignore then
         return self.loop.create_task(
             coroutine,
             context=self._create_context(),
-            eager_start=eager_start,  # type: ignore
+            eager_start=eager_start,
         )
 
     def call_later(
