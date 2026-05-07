@@ -105,6 +105,9 @@ async def test_get_config_api_error(coresys: CoreSys):
     [
         ("2026.4.0", True, True),
         ("2026.4.0", False, False),
+        ("2026.5.1", True, True),
+        ("2026.5.1", False, True),
+        ("2026.6.0", False, True),
         ("2024.1.0", True, False),
         (LANDINGPAGE, True, False),
     ],
