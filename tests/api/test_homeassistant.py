@@ -22,6 +22,7 @@ from supervisor.homeassistant.core import HomeAssistantCore
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
+from supervisor.updater import Updater
 
 from tests.common import AsyncIterator, load_json_fixture
 
@@ -489,6 +490,7 @@ async def test_update_frontend_check_success(
     coresys.homeassistant.version = AwesomeVersion("2025.8.0")
 
     with (
+        patch.object(DockerInterface, "is_running", AsyncMock(return_value=True)),
         patch.object(
             DockerHomeAssistant,
             "version",
@@ -534,6 +536,7 @@ async def test_update_frontend_check_fails_triggers_rollback(
 
     with (
         patch.object(DockerInterface, "update", new=mock_update),
+        patch.object(DockerInterface, "is_running", AsyncMock(return_value=True)),
         patch.object(
             DockerHomeAssistant,
             "version",
@@ -585,6 +588,7 @@ async def test_update_websocket_api_missing_triggers_rollback(
 
     with (
         patch.object(DockerInterface, "update", new=mock_update),
+        patch.object(DockerInterface, "is_running", AsyncMock(return_value=True)),
         patch.object(
             DockerHomeAssistant,
             "version",
@@ -636,6 +640,7 @@ async def test_update_get_config_error_triggers_rollback(
 
     with (
         patch.object(DockerInterface, "update", new=mock_update),
+        patch.object(DockerInterface, "is_running", AsyncMock(return_value=True)),
         patch.object(
             DockerHomeAssistant,
             "version",
@@ -657,3 +662,63 @@ async def test_update_get_config_error_triggers_rollback(
         Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE) in coresys.resolution.issues
     )
     mock_cleanup.assert_not_called()
+
+
+async def test_update_skips_health_check_when_core_not_running(
+    coresys: CoreSys,
+    caplog: pytest.LogCaptureFixture,
+    tmp_supervisor_data: Path,
+):
+    """Test that update skips health check and rollback when Core was stopped on entry.
+
+    Reproduces the backup-restore regression: the restore flow stops and
+    removes Core before calling core.update(); the post-update API check
+    must not fire because Core hasn't been started yet, otherwise it
+    triggers a spurious rollback that overwrites the restored image.
+    """
+    coresys.hardware.disk.get_disk_free_space = lambda x: 5000
+    coresys.homeassistant.version = AwesomeVersion("2026.5.0b0")
+    coresys.homeassistant.set_image("ghcr.io/home-assistant/qemux86-64-homeassistant")
+
+    update_call_count = 0
+
+    async def mock_update(*args, **kwargs):
+        nonlocal update_call_count
+        update_call_count += 1
+        coresys.homeassistant.version = AwesomeVersion("2026.4.4")
+
+    with (
+        patch.object(DockerInterface, "update", new=mock_update),
+        patch.object(DockerInterface, "is_running", AsyncMock(return_value=False)),
+        patch.object(DockerInterface, "exists", AsyncMock(return_value=False)),
+        patch.object(
+            Updater,
+            "image_homeassistant",
+            new=PropertyMock(
+                return_value="ghcr.io/home-assistant/qemux86-64-homeassistant"
+            ),
+        ),
+        patch.object(
+            DockerHomeAssistant,
+            "version",
+            new=PropertyMock(return_value=AwesomeVersion("2026.4.4")),
+        ),
+        patch.object(HomeAssistantAPI, "get_config") as mock_get_config,
+        patch.object(ha_core, "verify_frontend", AsyncMock()) as mock_frontend,
+        patch.object(DockerInterface, "cleanup") as mock_cleanup,
+    ):
+        await coresys.homeassistant.core.update(AwesomeVersion("2026.4.4"))
+
+    # Only one update call: no rollback fired.
+    assert update_call_count == 1
+    assert "HomeAssistant update failed -> rollback!" not in caplog.text
+    # Health check must not run when Core wasn't running on entry.
+    mock_get_config.assert_not_called()
+    mock_frontend.assert_not_called()
+    # Caller (restore flow) is responsible for cleanup later.
+    mock_cleanup.assert_not_called()
+    assert (
+        Issue(IssueType.UPDATE_ROLLBACK, ContextType.CORE)
+        not in coresys.resolution.issues
+    )
+    assert coresys.homeassistant.version == AwesomeVersion("2026.4.4")
