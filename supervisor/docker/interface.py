@@ -337,6 +337,7 @@ class DockerInterface(JobGroup, ABC):
         )
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
+        credentials: dict = {}
         try:
             # Get credentials for private registries to pass to aiodocker
             credentials, pull_image_name = self._get_credentials(image)
