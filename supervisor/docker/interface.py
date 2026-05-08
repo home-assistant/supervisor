@@ -332,16 +332,17 @@ class DockerInterface(JobGroup, ABC):
                 )
                 await async_capture_exception(err)
 
+        # Get credentials for private registries to pass to aiodocker.
+        # Done before registering the listener so a failure here does not
+        # leak a stale event listener.
+        credentials, pull_image_name = self._get_credentials(image)
+
         listener = self.sys_bus.register_event(
             BusEvent.DOCKER_IMAGE_PULL_UPDATE, process_pull_event
         )
 
         _LOGGER.info("Downloading docker image %s with tag %s.", image, version)
-        credentials: dict = {}
         try:
-            # Get credentials for private registries to pass to aiodocker
-            credentials, pull_image_name = self._get_credentials(image)
-
             # Pull new image, passing credentials to aiodocker
             docker_image = await self.sys_docker.pull_image(
                 current_job.uuid,
