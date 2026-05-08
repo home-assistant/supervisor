@@ -151,7 +151,7 @@ class Mount(CoreSysAttributes, ABC):
                 return PurePath(PATH_MEDIA, self.name)
             case MountUsage.SHARE:
                 return PurePath(PATH_SHARE, self.name)
-            case _:
+            case MountUsage.BACKUP | None:
                 return None
 
     @property
