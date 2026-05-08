@@ -1,6 +1,5 @@
 """Test OS API."""
 
-import asyncio
 from dataclasses import replace
 from pathlib import PosixPath
 from unittest.mock import patch
@@ -16,7 +15,7 @@ from supervisor.os.data_disk import Disk
 from supervisor.resolution.const import ContextType, IssueType
 from supervisor.resolution.data import Issue
 
-from tests.common import mock_dbus_services
+from tests.common import mock_dbus_services, wait_for
 from tests.dbus_service_mocks.agent_datadisk import DataDisk as DataDiskService
 from tests.dbus_service_mocks.agent_system import System as SystemService
 from tests.dbus_service_mocks.base import DBusServiceMock
@@ -357,11 +356,13 @@ async def test_multiple_datadisk_add_remove_signals(
         },
     )
     await udisks2_service.ping()
-    await asyncio.sleep(0.2)
-
-    assert (
-        Issue(IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sdb1")
-        in coresys.resolution.issues
+    await wait_for(
+        lambda: (
+            Issue(
+                IssueType.MULTIPLE_DATA_DISKS, ContextType.SYSTEM, reference="/dev/sdb1"
+            )
+            in coresys.resolution.issues
+        )
     )
 
     udisks2_service.InterfacesRemoved(
@@ -369,9 +370,7 @@ async def test_multiple_datadisk_add_remove_signals(
         ["org.freedesktop.UDisks2.Block", "org.freedesktop.UDisks2.Filesystem"],
     )
     await udisks2_service.ping()
-    await asyncio.sleep(0.2)
-
-    assert coresys.resolution.issues == []
+    await wait_for(lambda: coresys.resolution.issues == [])
 
 
 async def test_disabled_datadisk_add_remove_signals(
@@ -409,11 +408,13 @@ async def test_disabled_datadisk_add_remove_signals(
         },
     )
     await udisks2_service.ping()
-    await asyncio.sleep(0.2)
-
-    assert (
-        Issue(IssueType.DISABLED_DATA_DISK, ContextType.SYSTEM, reference="/dev/sdb1")
-        in coresys.resolution.issues
+    await wait_for(
+        lambda: (
+            Issue(
+                IssueType.DISABLED_DATA_DISK, ContextType.SYSTEM, reference="/dev/sdb1"
+            )
+            in coresys.resolution.issues
+        )
     )
 
     udisks2_service.InterfacesRemoved(
@@ -421,6 +422,4 @@ async def test_disabled_datadisk_add_remove_signals(
         ["org.freedesktop.UDisks2.Block", "org.freedesktop.UDisks2.Filesystem"],
     )
     await udisks2_service.ping()
-    await asyncio.sleep(0.2)
-
-    assert coresys.resolution.issues == []
+    await wait_for(lambda: coresys.resolution.issues == [])

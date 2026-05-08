@@ -1,7 +1,7 @@
 """Common test functions."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from functools import partial
 from importlib import import_module
@@ -30,6 +30,29 @@ async def fire_bus_event(coresys: CoreSys, event: BusEvent, data: Any) -> None:
     bundles the gather so call sites stay short.
     """
     await asyncio.gather(*coresys.bus.fire_event(event, data))
+
+
+async def wait_for(
+    predicate: Callable[[], bool],
+    *,
+    timeout: float = 5.0,
+    interval: float = 0.01,
+) -> None:
+    """Poll a synchronous predicate until truthy or the deadline elapses.
+
+    Useful when a test fires a D-Bus signal (or another out-of-band
+    trigger) and needs to observe state mutated by the resulting async
+    chain — e.g. a signal handler that schedules its own follow-up
+    tasks. Completes the moment the predicate is true, so the wait
+    costs only what's actually needed; this avoids the choice between a
+    fixed sleep that's fast on idle and racy under load and a fixed
+    sleep that's robust under load and wasteful on idle.
+    """
+    deadline = asyncio.get_running_loop().time() + timeout
+    while not predicate():
+        if asyncio.get_running_loop().time() >= deadline:
+            raise AssertionError(f"Predicate did not become true within {timeout}s")
+        await asyncio.sleep(interval)
 
 
 def get_fixture_path(filename: str) -> Path:
