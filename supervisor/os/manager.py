@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 from pathlib import Path, PurePath
-from typing import cast
 
 import aiohttp
 from awesomeversion import AwesomeVersion, AwesomeVersionException
@@ -58,8 +57,8 @@ class SlotStatus:
             device=PurePath(data["device"]),
             bundle_compatible=data.get("bundle.compatible"),
             sha256=data.get("sha256"),
-            size=cast(int | None, data.get("size")),
-            installed_count=cast(int | None, data.get("installed.count")),
+            size=data.get("size"),
+            installed_count=data.get("installed.count"),
             bundle_version=AwesomeVersion(data["bundle.version"])
             if "bundle.version" in data
             else None,
@@ -67,7 +66,7 @@ class SlotStatus:
             if "installed.timestamp" in data
             else None,
             status=data.get("status"),
-            activated_count=cast(int | None, data.get("activated.count")),
+            activated_count=data.get("activated.count"),
             activated_timestamp=datetime.fromisoformat(data["activated.timestamp"])
             if "activated.timestamp" in data
             else None,

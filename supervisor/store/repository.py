@@ -186,8 +186,7 @@ class RepositoryGit(Repository, ABC):
                 repository_file = Path(self._git.path / f"repository{filetype}")
                 if repository_file.exists():
                     break
-
-            if not repository_file.exists():
+            else:
                 return False
 
             # If valid?

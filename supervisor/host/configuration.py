@@ -267,7 +267,8 @@ class Interface:
                 return InterfaceMethod.AUTO
             case NMInterfaceMethod.MANUAL:
                 return InterfaceMethod.STATIC
-        return InterfaceMethod.DISABLED
+            case _:
+                return InterfaceMethod.DISABLED
 
     @staticmethod
     def _map_nm_addr_gen_mode(addr_gen_mode: int | None) -> InterfaceAddrGenMode:
@@ -333,7 +334,8 @@ class Interface:
                 return InterfaceType.WIRELESS
             case DeviceType.VLAN.value:
                 return InterfaceType.VLAN
-        raise ValueError(f"Invalid device type: {device_type}")
+            case _:
+                raise ValueError(f"Invalid device type: {device_type}")
 
     @staticmethod
     def _map_nm_wifi(inet: NetworkInterface) -> WifiConfig | None:

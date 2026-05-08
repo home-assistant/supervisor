@@ -331,7 +331,7 @@ jobs:
       - name: Run mypy
         run: |
           . venv/bin/activate
-          mypy --ignore-missing-imports supervisor
+          mypy supervisor
 
   pytest:
     runs-on: ubuntu-latest

@@ -73,26 +73,22 @@ class Scheduler(CoreSysAttributes):
 
     def _schedule_task(self, task: _Task) -> None:
         """Schedule a task on loop."""
-        if isinstance(task.interval, (int, float)):
-            task.next = self.sys_call_later(task.interval, self._run_task, task)
-        elif isinstance(task.interval, time):
-            today = datetime.combine(date.today(), task.interval)
-            tomorrow = datetime.combine(date.today() + timedelta(days=1), task.interval)
+        match task.interval:
+            case int() | float():
+                task.next = self.sys_call_later(task.interval, self._run_task, task)
+            case time():
+                today = datetime.combine(date.today(), task.interval)
+                tomorrow = datetime.combine(
+                    date.today() + timedelta(days=1), task.interval
+                )
 
-            # Check if we run it today or next day
-            if today > datetime.today():
-                calc = today
-            else:
-                calc = tomorrow
+                # Check if we run it today or next day
+                if today > datetime.today():
+                    calc = today
+                else:
+                    calc = tomorrow
 
-            task.next = self.sys_call_at(calc, self._run_task, task)
-        else:
-            _LOGGER.critical(
-                "Unknown interval %s (type: %s) for scheduler %s",
-                task.interval,
-                type(task.interval),
-                task.id,
-            )
+                task.next = self.sys_call_at(calc, self._run_task, task)
 
     async def shutdown(self, timeout=10) -> None:
         """Shutdown all task inside the scheduler."""
