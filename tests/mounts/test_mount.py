@@ -121,6 +121,7 @@ async def test_cifs_mount(
                 ("Type", Variant("s", "cifs")),
                 ("Description", Variant("s", "Supervisor cifs mount: test")),
                 ("What", Variant("s", "//test.local/camera")),
+                ("TimeoutUSec", Variant("t", 35000000)),
             ],
             [],
         )
@@ -181,6 +182,7 @@ async def test_cifs_mount_read_only(
                 ("Type", Variant("s", "cifs")),
                 ("Description", Variant("s", "Supervisor cifs mount: test")),
                 ("What", Variant("s", "//test.local/camera")),
+                ("TimeoutUSec", Variant("t", 35000000)),
             ],
             [],
         )
@@ -221,7 +223,7 @@ async def test_nfs_mount(
     assert mount.what == "test.local:/media/camera"
     assert mount.where == Path("/mnt/data/supervisor/mounts/test")
     assert mount.local_where == tmp_supervisor_data / "mounts" / "test"
-    assert mount.options == ["port=1234", "soft", "timeo=200"]
+    assert mount.options == ["port=1234", "soft", "timeo=100", "retrans=2"]
 
     assert not mount.local_where.exists()
     assert mount.to_dict() == mount_data
@@ -237,10 +239,11 @@ async def test_nfs_mount(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ("Options", Variant("s", "port=1234,soft,timeo=200")),
+                ("Options", Variant("s", "port=1234,soft,timeo=100,retrans=2")),
                 ("Type", Variant("s", "nfs")),
                 ("Description", Variant("s", "Supervisor nfs mount: test")),
                 ("What", Variant("s", "test.local:/media/camera")),
+                ("TimeoutUSec", Variant("t", 35000000)),
             ],
             [],
         )
@@ -283,10 +286,11 @@ async def test_nfs_mount_read_only(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ("Options", Variant("s", "ro,port=1234,soft,timeo=200")),
+                ("Options", Variant("s", "ro,port=1234,soft,timeo=100,retrans=2")),
                 ("Type", Variant("s", "nfs")),
                 ("Description", Variant("s", "Supervisor nfs mount: test")),
                 ("What", Variant("s", "test.local:/media/camera")),
+                ("TimeoutUSec", Variant("t", 35000000)),
             ],
             [],
         )
@@ -335,6 +339,7 @@ async def test_load(
                 ("Type", Variant("s", "cifs")),
                 ("Description", Variant("s", "Supervisor cifs mount: test")),
                 ("What", Variant("s", "//test.local/share")),
+                ("TimeoutUSec", Variant("t", 35000000)),
             ],
             [],
         )
@@ -593,6 +598,55 @@ async def test_reload_failure(
     assert len(systemd_service.GetUnit.calls) == 1
 
 
+@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mock_is_mount")
+async def test_reload_does_not_escalate_when_still_reloading(
+    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock]
+):
+    """If the reload helper is still pinned (unit stays RELOADING), do not call RestartUnit.
+
+    Issuing RestartUnit while a mount/umount syscall is stuck in the kernel can
+    wedge PID 1 long enough for the hardware watchdog to reset the host. See
+    issue #6827.
+    """
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
+    systemd_service.ReloadOrRestartUnit.calls.clear()
+    systemd_service.RestartUnit.calls.clear()
+    systemd_service.response_reload_or_restart_unit = (
+        "/org/freedesktop/systemd1/job/7624"
+    )
+    systemd_unit_service.active_state = "reloading"
+
+    mount = Mount.from_dict(
+        coresys,
+        {
+            "name": "test",
+            "usage": "media",
+            "type": "cifs",
+            "server": "test.local",
+            "share": "share",
+        },
+    )
+
+    # Simulate the state-await timing out without the unit leaving RELOADING:
+    # the helper is pinned in the kernel and systemd has not yet completed the
+    # reload job. The state-await is responsible for refreshing self._state in
+    # this case, so we mirror that here.
+    # pylint: disable=protected-access
+    async def _fake_update_state_await(self, unit, expected_states=None):
+        await self._update_state(unit)  # noqa: SLF001
+
+    with (
+        patch.object(Mount, "_update_state_await", _fake_update_state_await),
+        pytest.raises(MountActivationError),
+    ):
+        await mount.reload()
+
+    assert mount.state == UnitActiveState.RELOADING
+    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
+    assert systemd_service.RestartUnit.calls == []
+
+
 async def test_mount_local_where_invalid(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
@@ -736,10 +790,11 @@ async def test_mount_fails_if_down(
             "mnt-data-supervisor-mounts-test.mount",
             "fail",
             [
-                ("Options", Variant("s", "port=1234,soft,timeo=200")),
+                ("Options", Variant("s", "port=1234,soft,timeo=100,retrans=2")),
                 ("Type", Variant("s", "nfs")),
                 ("Description", Variant("s", "Supervisor nfs mount: test")),
                 ("What", Variant("s", "test.local:/media/camera")),
+                ("TimeoutUSec", Variant("t", 35000000)),
             ],
             [],
         )

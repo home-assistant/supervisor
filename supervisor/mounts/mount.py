@@ -14,6 +14,7 @@ from ..coresys import CoreSys, CoreSysAttributes
 from ..dbus.const import (
     DBUS_ATTR_DESCRIPTION,
     DBUS_ATTR_OPTIONS,
+    DBUS_ATTR_TIMEOUT_USEC,
     DBUS_ATTR_TYPE,
     DBUS_ATTR_WHAT,
     StartUnitMode,
@@ -36,6 +37,21 @@ from .const import MountCifsVersion, MountType, MountUsage
 from .validate import MountData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Three layered timeouts cooperate to keep the host alive when an NFS server
+# becomes unreachable while a `.mount` unit is being reloaded (see #6827):
+#
+#   NFS RPC timeout (timeo=100,retrans=2) ~30 s
+#     < systemd unit TimeoutSec (MOUNT_UNIT_TIMEOUT_USEC)  35 s
+#     < supervisor state-await (UPDATE_STATE_TIMEOUT)      40 s
+#
+# Ordering is what matters. The kernel RPC layer fails first so the mount
+# helper can exit; systemd then SIGTERMs anything that didn't and moves the
+# unit to `failed` before supervisor abandons its observation. Any later
+# restart then runs from `failed` (no in-flight helper, no pinned kernel
+# task) — the safe path.
+MOUNT_UNIT_TIMEOUT_USEC = 35 * 1_000_000
+UPDATE_STATE_TIMEOUT = 40
 
 COERCE_MOUNT_TYPE: Callable[[str], MountType] = Coerce(MountType)
 COERCE_MOUNT_USAGE: Callable[[str], MountUsage] = Coerce(MountUsage)
@@ -234,14 +250,15 @@ class Mount(CoreSysAttributes, ABC):
                 UnitActiveState.INACTIVE,
             }
         try:
-            async with asyncio.timeout(30):
+            async with asyncio.timeout(UPDATE_STATE_TIMEOUT):
                 self._state = await unit.wait_for_active_state(expected_states)
         except TimeoutError:
             await self._update_state(unit)
             _LOGGER.warning(
-                "Mount %s still in state %s after waiting for 30 seconds to complete",
+                "Mount %s still in state %s after waiting for %d seconds to complete",
                 self.name,
                 str(self.state).lower(),
+                UPDATE_STATE_TIMEOUT,
             )
 
     async def mount(self) -> None:
@@ -282,6 +299,10 @@ class Mount(CoreSysAttributes, ABC):
                 + [
                     (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
                     (DBUS_ATTR_WHAT, Variant("s", self.what)),
+                    (
+                        DBUS_ATTR_TIMEOUT_USEC,
+                        Variant("t", MOUNT_UNIT_TIMEOUT_USEC),
+                    ),
                 ],
             )
         except DBusError as err:
@@ -340,6 +361,24 @@ class Mount(CoreSysAttributes, ABC):
         else:
             if unit := await self._update_unit():
                 await self._update_state_await(unit)
+
+            # Safety net for #6827: with the layered timeouts above
+            # (RPC < TimeoutSec < state-await) the unit should always have
+            # left RELOADING by the time we get here. If it has not, the
+            # systemd-side cleanup did not complete in time; escalating to
+            # RestartUnit while a mount/umount helper is still pinned in the
+            # kernel is the destructive pattern that wedges PID 1, so refuse
+            # to escalate and surface the failure instead.
+            if self.state == UnitActiveState.RELOADING:
+                raise MountActivationError(
+                    f"Reloading {self.name} did not complete in time and the "
+                    f"unit is still in RELOADING. Refusing to escalate to a "
+                    f"restart while the mount helper may be pinned in the "
+                    f"kernel — this should not happen with the configured "
+                    f"unit timeout. Check host logs for the systemd unit "
+                    f"{self.unit_name} for details.",
+                    _LOGGER.critical,
+                )
 
             if not await self.is_mounted():
                 _LOGGER.info(
@@ -526,7 +565,7 @@ class NFSMount(NetworkMount):
     @property
     def options(self) -> list[str]:
         """Options to use to mount."""
-        return super().options + ["soft", "timeo=200"]
+        return super().options + ["soft", "timeo=100", "retrans=2"]
 
 
 class BindMount(Mount):

@@ -2,10 +2,7 @@
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from supervisor.coresys import CoreSys
-from supervisor.exceptions import MountActivationError
 from supervisor.mounts.mount import Mount
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue
@@ -88,8 +85,9 @@ async def test_fixup_error_after_reload(
         suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
     )
     mock_is_mount.return_value = False
-    with pytest.raises(MountActivationError):
-        await mount_execute_reload()
+    # Fixup catches the MountError and re-raises ResolutionFixupError, which
+    # FixupBase.__call__ swallows to skip issue cleanup. Caller sees no error.
+    await mount_execute_reload()
 
     # Since is_mount is false, issue remains
     assert (
