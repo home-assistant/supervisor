@@ -565,7 +565,7 @@ class NFSMount(NetworkMount):
     @property
     def options(self) -> list[str]:
         """Options to use to mount."""
-        return super().options + ["soft", "timeo=100", "retrans=2"]
+        return super().options + ["softerr", "timeo=100", "retrans=2"]
 
 
 class BindMount(Mount):
