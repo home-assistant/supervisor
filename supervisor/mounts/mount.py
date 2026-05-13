@@ -73,6 +73,13 @@ def _probe_network_mount(path: Path) -> bool:
 # task) — the safe path.
 MOUNT_UNIT_TIMEOUT_USEC = 35 * 1_000_000
 UPDATE_STATE_TIMEOUT = 40
+# Maximum time to wait for a systemd job (mount/unmount/reload/restart)
+# to leave the queue. Sized to cover RestartUnit = stop + start, each
+# bounded by MOUNT_UNIT_TIMEOUT_USEC (35 s), with headroom for systemd's
+# queue dispatch. A single-phase job (mount/unmount/reload) typically
+# completes within ~40 s; the larger budget is just so the RestartUnit
+# case doesn't time out one second before JobRemoved fires.
+SYSTEMD_JOB_TIMEOUT = 90
 
 COERCE_MOUNT_TYPE: Callable[[str], MountType] = Coerce(MountType)
 COERCE_MOUNT_USAGE: Callable[[str], MountUsage] = Coerce(MountUsage)
@@ -306,14 +313,14 @@ class Mount(CoreSysAttributes, ABC):
         async with self.sys_dbus.systemd.job_removed() as jobs:
             job_path = await dispatch
             try:
-                async with asyncio.timeout(UPDATE_STATE_TIMEOUT):
+                async with asyncio.timeout(SYSTEMD_JOB_TIMEOUT):
                     result = await jobs.wait_for_job(job_path)
             except TimeoutError:
                 _LOGGER.warning(
                     "Systemd %s job for mount %s did not complete within %d seconds",
                     op_name,
                     self.name,
-                    UPDATE_STATE_TIMEOUT,
+                    SYSTEMD_JOB_TIMEOUT,
                 )
                 return None
         _LOGGER.debug(
@@ -417,7 +424,7 @@ class Mount(CoreSysAttributes, ABC):
             return
 
         try:
-            await self._run_systemd_job(
+            result = await self._run_systemd_job(
                 "reload_or_restart_unit",
                 self.sys_dbus.systemd.reload_unit(self.unit_name, StartUnitMode.FAIL),
             )
@@ -456,13 +463,29 @@ class Mount(CoreSysAttributes, ABC):
                 _LOGGER.critical,
             )
 
-        if not await self.is_mounted():
+        # When systemd already reports the reload as failed (or timed
+        # out so we never saw JobRemoved), skip the post-reload probe
+        # and escalate directly. The probe on a dead NFS share can
+        # take 90+ seconds in the kernel-side reconnect churn that
+        # follows a killed mount helper — and it would just confirm
+        # what we already know. For CIFS, smb3_reconfigure is
+        # local-only and always returns "done" even against a dead
+        # server, so we still need the probe in the success branch.
+        if result == "done":
+            if await self.is_mounted():
+                self._dismiss_failed_issue()
+                return
             _LOGGER.info(
-                "Mount %s not correctly mounted after a reload. Trying a restart",
+                "Mount %s reload reported success but probe failed. Trying a restart",
                 self.name,
             )
-            await self._restart()
-
+        else:
+            _LOGGER.info(
+                "Mount %s reload did not complete (systemd result: %s). Trying a restart",
+                self.name,
+                result,
+            )
+        await self._restart()
         self._dismiss_failed_issue()
 
     def _dismiss_failed_issue(self) -> None:
@@ -473,7 +496,7 @@ class Mount(CoreSysAttributes, ABC):
     async def _restart(self) -> None:
         """Restart mount unit to re-mount."""
         try:
-            await self._run_systemd_job(
+            result = await self._run_systemd_job(
                 "restart_unit",
                 self.sys_dbus.systemd.restart_unit(self.unit_name, StartUnitMode.FAIL),
             )
@@ -491,9 +514,15 @@ class Mount(CoreSysAttributes, ABC):
         if unit := await self._update_unit():
             await self._update_state(unit)
 
-        if not await self.is_mounted():
+        # If systemd already reports the restart job as failed (or we
+        # timed out waiting for JobRemoved), don't bother probing — we
+        # know the mount isn't healthy and the probe would just add
+        # another 30-90s on a dead network share for no diagnostic gain.
+        if result != "done" or not await self.is_mounted():
             raise MountActivationError(
-                f"Restarting {self.name} did not succeed. Check host logs for errors from mount or systemd unit {self.unit_name} for details.",
+                f"Restarting {self.name} did not succeed (systemd result: {result}). "
+                f"Check host logs for errors from mount or systemd unit "
+                f"{self.unit_name} for details.",
                 _LOGGER.error,
             )
 

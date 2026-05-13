@@ -663,13 +663,13 @@ class Systemd(DBusServiceMock):
     @signal()
     def JobRemoved(  # noqa: PLR0913
         self,
-        id: "u",  # noqa: A002 -- signal arg names mirror systemd wire signature
+        job_id: "u",
         job: "o",
         unit: "s",
         result: "s",
     ) -> "uoss":
         """Emit JobRemoved signal with (id, job_path, unit_name, result)."""
-        return [id, job, unit, result]
+        return [job_id, job, unit, result]
 
     def _emit_job_removed(self, job_path: str, unit: str, result: str = "done") -> None:
         """Emit JobRemoved with a deterministic id placeholder."""
