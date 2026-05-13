@@ -1021,8 +1021,11 @@ def mock_aarch64_arch_supported(coresys: CoreSys) -> None:
 
 @pytest.fixture
 def mock_is_mount() -> MagicMock:
-    """Mock is_mount in mounts."""
-    with patch("supervisor.mounts.mount.Path.is_mount", return_value=True) as is_mount:
+    """Mock is_mount and the post-activation probe in mounts."""
+    with (
+        patch("supervisor.mounts.mount.Path.is_mount", return_value=True) as is_mount,
+        patch("supervisor.mounts.mount.os.statvfs", return_value=None),
+    ):
         yield is_mount
 
 

@@ -5,7 +5,9 @@ import asyncio
 from collections.abc import Callable
 from functools import cached_property
 import logging
+import os
 from pathlib import Path, PurePath
+import time
 
 from dbus_fast import Variant
 from voluptuous import Coerce
@@ -229,13 +231,12 @@ class Mount(CoreSysAttributes, ABC):
 
         await self._update_state(unit)
 
-        # If active, dismiss corresponding failed mount issue if found
-        if (mounted := await self.is_mounted()) and (
-            issue := self.sys_resolution.get_issue_if_present(self.failed_issue)
-        ):
-            self.sys_resolution.dismiss_issue(issue)
+        if not await self.is_mounted():
+            return False
 
-        return mounted
+        if issue := self.sys_resolution.get_issue_if_present(self.failed_issue):
+            self.sys_resolution.dismiss_issue(issue)
+        return True
 
     async def _update_state_await(
         self,
@@ -345,7 +346,19 @@ class Mount(CoreSysAttributes, ABC):
         self._state = None
 
     async def reload(self) -> None:
-        """Reload or restart mount unit to re-mount."""
+        """Verify the mount is reachable; reload/restart as needed.
+
+        `is_mounted()` is the source of truth here: for network mounts it
+        runs a statvfs probe that forces an RPC, so a passing return value
+        proves the share is live right now — systemd's "active/mounted"
+        state alone does not (CIFS reload is local-only — smb3_reconfigure
+        never contacts the server). The reload → restart escalation only
+        runs when the probe fails.
+        """
+        if await self.is_mounted():
+            self._dismiss_failed_issue()
+            return
+
         try:
             await self.sys_dbus.systemd.reload_unit(self.unit_name, StartUnitMode.FAIL)
         except DBusSystemdNoSuchUnit:
@@ -353,41 +366,47 @@ class Mount(CoreSysAttributes, ABC):
                 "Mount %s is not mounted, mounting instead of reloading", self.name
             )
             await self.mount()
+            return
         except DBusError as err:
             _LOGGER.error(
                 "Could not reload mount %s due to: %s. Trying a restart", self.name, err
             )
             await self._restart()
-        else:
-            if unit := await self._update_unit():
-                await self._update_state_await(unit)
+            self._dismiss_failed_issue()
+            return
 
-            # Safety net for #6827: with the layered timeouts above
-            # (RPC < TimeoutSec < state-await) the unit should always have
-            # left RELOADING by the time we get here. If it has not, the
-            # systemd-side cleanup did not complete in time; escalating to
-            # RestartUnit while a mount/umount helper is still pinned in the
-            # kernel is the destructive pattern that wedges PID 1, so refuse
-            # to escalate and surface the failure instead.
-            if self.state == UnitActiveState.RELOADING:
-                raise MountActivationError(
-                    f"Reloading {self.name} did not complete in time and the "
-                    f"unit is still in RELOADING. Refusing to escalate to a "
-                    f"restart while the mount helper may be pinned in the "
-                    f"kernel — this should not happen with the configured "
-                    f"unit timeout. Check host logs for the systemd unit "
-                    f"{self.unit_name} for details.",
-                    _LOGGER.critical,
-                )
+        if unit := await self._update_unit():
+            await self._update_state_await(unit)
 
-            if not await self.is_mounted():
-                _LOGGER.info(
-                    "Mount %s not correctly mounted after a reload. Trying a restart",
-                    self.name,
-                )
-                await self._restart()
+        # Safety net for #6827: with the layered timeouts above
+        # (RPC < TimeoutSec < state-await) the unit should always have
+        # left RELOADING by the time we get here. If it has not, the
+        # systemd-side cleanup did not complete in time; escalating to
+        # RestartUnit while a mount/umount helper is still pinned in the
+        # kernel is the destructive pattern that wedges PID 1, so refuse
+        # to escalate and surface the failure instead.
+        if self.state == UnitActiveState.RELOADING:
+            raise MountActivationError(
+                f"Reloading {self.name} did not complete in time and the "
+                f"unit is still in RELOADING. Refusing to escalate to a "
+                f"restart while the mount helper may be pinned in the "
+                f"kernel — this should not happen with the configured "
+                f"unit timeout. Check host logs for the systemd unit "
+                f"{self.unit_name} for details.",
+                _LOGGER.critical,
+            )
 
-        # If it is mounted now, dismiss corresponding issue if present
+        if not await self.is_mounted():
+            _LOGGER.info(
+                "Mount %s not correctly mounted after a reload. Trying a restart",
+                self.name,
+            )
+            await self._restart()
+
+        self._dismiss_failed_issue()
+
+    def _dismiss_failed_issue(self) -> None:
+        """Dismiss the failed-mount resolution issue if present."""
         if issue := self.sys_resolution.get_issue_if_present(self.failed_issue):
             self.sys_resolution.dismiss_issue(issue)
 
@@ -450,10 +469,43 @@ class NetworkMount(Mount, ABC):
         return options
 
     async def is_mounted(self) -> bool:
-        """Return true if successfully mounted and available."""
-        return self.state == UnitActiveState.ACTIVE and await self.sys_run_in_executor(
-            self.local_where.is_mount
+        """Return true if the mount is active and the server actually answers.
+
+        systemd's "active/mounted" state alone is not enough: it reflects
+        /proc/self/mountinfo, not server reachability. CIFS reload never
+        contacts the server (smb3_reconfigure is local-only), and even a
+        fresh mount can lose its session before we look. statvfs() forces
+        an RPC for both NFS (FSSTAT) and CIFS (QUERY_FS_INFO) — those
+        fields aren't cached client-side, so the kernel must either reach
+        the server or give up with ETIMEDOUT / EHOSTDOWN / ECONNABORTED.
+
+        Bounding is left to the per-protocol mount options
+        (NFS: softerr,timeo=100,retrans=2; CIFS: soft,echo_interval=10);
+        wrapping in an asyncio timeout would only orphan the executor
+        thread without unblocking the syscall.
+        """
+        if self.state != UnitActiveState.ACTIVE:
+            return False
+
+        local_where = self.local_where
+        _LOGGER.debug("Probing mount %s with statvfs(%s)", self.name, local_where)
+        start = time.monotonic()
+        try:
+            await self.sys_run_in_executor(os.statvfs, local_where)
+        except OSError as err:
+            _LOGGER.debug(
+                "Probe of mount %s failed after %.2fs: %s",
+                self.name,
+                time.monotonic() - start,
+                err,
+            )
+            return False
+        _LOGGER.debug(
+            "Probe of mount %s succeeded in %.2fs",
+            self.name,
+            time.monotonic() - start,
         )
+        return True
 
 
 class CIFSMount(NetworkMount):
@@ -501,7 +553,22 @@ class CIFSMount(NetworkMount):
     @property
     def options(self) -> list[str]:
         """Options to use to mount."""
-        options = super().options + ["noserverino"]
+        # soft + echo_interval=10 + retrans=0 give a ~30s per-operation budget
+        # before the kernel reports the server unreachable (3 × echo_interval
+        # since last server response). This roughly matches the NFS budget
+        # from `softerr,timeo=100,retrans=2` so the userspace probe behaves
+        # symmetrically across both protocols. On give-up the syscall
+        # returns EHOSTDOWN / ECONNABORTED rather than blocking forever,
+        # which is what makes the statvfs probe a reliable health check.
+        # `soft` is the kernel default but is set explicitly so the
+        # behavior is part of the recorded mount options rather than an
+        # implicit assumption.
+        options = super().options + [
+            "noserverino",
+            "soft",
+            "echo_interval=10",
+            "retrans=0",
+        ]
         if self.version:
             options.append(f"vers={self.version}")
 

@@ -1,8 +1,10 @@
 """Tests for mount manager."""
 
+import errno
 import json
 import os
 from pathlib import Path
+from unittest.mock import patch
 from unittest.util import unorderable_list_difference
 
 from dbus_fast import DBusError, ErrorType, Variant
@@ -119,7 +121,12 @@ async def test_load(
                 "mnt-data-supervisor-mounts-backup_test.mount",
                 "fail",
                 [
-                    ("Options", Variant("s", "noserverino,guest")),
+                    (
+                        "Options",
+                        Variant(
+                            "s", "noserverino,soft,echo_interval=10,retrans=0,guest"
+                        ),
+                    ),
                     ("Type", Variant("s", "cifs")),
                     ("Description", Variant("s", "Supervisor cifs mount: backup_test")),
                     ("What", Variant("s", "//backup.local/backups")),
@@ -418,20 +425,41 @@ async def test_update_mount(
     ]
 
 
-async def test_reload_mount(
+async def test_reload_mount_healthy_skips_systemd(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
     mount: Mount,
 ):
-    """Test reloading a mount."""
+    """A healthy mount (active + probe passes) skips the systemd reload."""
     systemd_service: SystemdService = all_dbus_services["systemd"]
     systemd_service.ReloadOrRestartUnit.calls.clear()
 
-    # Reload the mount
-    systemd_service.response_get_unit = [
-        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount"
-    ]
     await coresys.mounts.reload_mount(mount.name)
+
+    assert systemd_service.ReloadOrRestartUnit.calls == []
+
+
+async def test_reload_mount_probe_failure_triggers_systemd_reload(
+    coresys: CoreSys,
+    all_dbus_services: dict[str, DBusServiceMock],
+    mount: Mount,
+):
+    """A failed probe drives the systemd reload."""
+    systemd_service: SystemdService = all_dbus_services["systemd"]
+    systemd_service.ReloadOrRestartUnit.calls.clear()
+
+    systemd_service.response_get_unit = [
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+        "/org/freedesktop/systemd1/unit/tmp_2dyellow_2emount",
+    ]
+    with (
+        patch(
+            "supervisor.mounts.mount.os.statvfs",
+            side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+        ),
+        pytest.raises(MountActivationError),
+    ):
+        await coresys.mounts.reload_mount(mount.name)
 
     assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
     assert (

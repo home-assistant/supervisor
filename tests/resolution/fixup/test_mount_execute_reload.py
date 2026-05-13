@@ -1,6 +1,7 @@
 """Test fixup mount reload."""
 
-from unittest.mock import MagicMock
+import errno
+from unittest.mock import MagicMock, patch
 
 from supervisor.coresys import CoreSys
 from supervisor.mounts.mount import Mount
@@ -51,9 +52,11 @@ async def test_fixup(
     assert coresys.resolution.issues == []
     assert coresys.resolution.suggestions == []
     assert "test" in coresys.mounts
-    assert systemd_service.ReloadOrRestartUnit.calls == [
-        ("mnt-data-supervisor-mounts-test.mount", "fail")
-    ]
+    # Mount is reachable (probe passes via mock_is_mount); the fixup
+    # clears the issue without needing to touch systemd. A user invoking
+    # the fixup on a still-broken mount would fail the probe, exercising
+    # the reload->restart path covered by test_fixup_error_after_reload.
+    assert systemd_service.ReloadOrRestartUnit.calls == []
 
 
 async def test_fixup_error_after_reload(
@@ -84,12 +87,17 @@ async def test_fixup_error_after_reload(
         reference="test",
         suggestions=[SuggestionType.EXECUTE_RELOAD, SuggestionType.EXECUTE_REMOVE],
     )
-    mock_is_mount.return_value = False
-    # Fixup catches the MountError and re-raises ResolutionFixupError, which
-    # FixupBase.__call__ swallows to skip issue cleanup. Caller sees no error.
-    await mount_execute_reload()
+    # Probe (statvfs) fails — the mount stays unreachable through the
+    # reload -> restart cycle. Fixup catches MountError and re-raises
+    # ResolutionFixupError, which FixupBase.__call__ swallows to skip
+    # issue cleanup. Caller sees no error.
+    with patch(
+        "supervisor.mounts.mount.os.statvfs",
+        side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+    ):
+        await mount_execute_reload()
 
-    # Since is_mount is false, issue remains
+    # Probe never succeeds, issue remains.
     assert (
         Issue(IssueType.MOUNT_FAILED, ContextType.MOUNT, reference="test")
         in coresys.resolution.issues
