@@ -40,6 +40,25 @@ from .validate import MountData
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+
+def _probe_network_mount(path: Path) -> bool:
+    """Verify `path` is a live mount on a reachable server.
+
+    Run inside an executor — both syscalls share one thread and
+    benefit from the kernel's warm session state on a real mount.
+
+    Raises OSError (typically ETIMEDOUT / EHOSTDOWN / ECONNABORTED)
+    when the server is unreachable. Returns False when statvfs
+    succeeded but the path is not actually a mount point (the
+    "ghost mount" case where statvfs returns the underlying root
+    filesystem's stats). Returns True only when statvfs forced an
+    RPC that the server answered AND the path actually crosses a
+    filesystem boundary.
+    """
+    os.statvfs(path)
+    return path.stat().st_dev != path.parent.stat().st_dev
+
+
 # Three layered timeouts cooperate to keep the host alive when an NFS server
 # becomes unreachable while a `.mount` unit is being reloaded (see #6827):
 #
@@ -515,27 +534,40 @@ class NetworkMount(Mount, ABC):
     async def is_mounted(self) -> bool:
         """Return true if the mount is active and the server actually answers.
 
-        systemd's "active/mounted" state alone is not enough: it reflects
-        /proc/self/mountinfo, not server reachability. CIFS reload never
-        contacts the server (smb3_reconfigure is local-only), and even a
-        fresh mount can lose its session before we look. statvfs() forces
-        an RPC for both NFS (FSSTAT) and CIFS (QUERY_FS_INFO) — those
-        fields aren't cached client-side, so the kernel must either reach
-        the server or give up with ETIMEDOUT / EHOSTDOWN / ECONNABORTED.
+        Three checks compose the verdict:
 
-        Bounding is left to the per-protocol mount options
-        (NFS: softerr,timeo=100,retrans=2; CIFS: soft,echo_interval=10);
-        wrapping in an asyncio timeout would only orphan the executor
-        thread without unblocking the syscall.
+        1. systemd reports the unit ACTIVE — cheap, may be stale.
+        2. `os.statvfs()` forces an RPC for both NFS (FSSTAT) and CIFS
+           (QUERY_FS_INFO). Those per-filesystem fields aren't cached
+           client-side, so the kernel must reach the server or fail
+           with ETIMEDOUT / EHOSTDOWN / ECONNABORTED. We do this
+           first because on a dead server it fails fast within the
+           protocol budget (~30s, bounded by softerr,timeo=100,retrans=2
+           for NFS and soft,echo_interval=10 for CIFS) — and on a
+           ghost mount (path no longer mounted, e.g. after a failed
+           restart whose umount succeeded but mount step failed) it
+           returns the underlying root filesystem's stats without
+           touching the network.
+        3. A parent vs. path `st_dev` comparison distinguishes the
+           ghost-mount case from a real live mount: statvfs succeeds
+           for both, but only a real mount crosses a filesystem
+           boundary. These stat calls are cheap on success — the
+           attrs were just revalidated by the successful statvfs.
+
+        Both syscalls run in a single executor hop so they share one
+        thread and the kernel's warm session state. No asyncio
+        timeout — the kernel-side bound is authoritative.
         """
         if self.state != UnitActiveState.ACTIVE:
             return False
 
         local_where = self.local_where
-        _LOGGER.debug("Probing mount %s with statvfs(%s)", self.name, local_where)
+        _LOGGER.debug("Probing mount %s at %s", self.name, local_where)
         start = time.monotonic()
         try:
-            await self.sys_run_in_executor(os.statvfs, local_where)
+            is_real_mount = await self.sys_run_in_executor(
+                _probe_network_mount, local_where
+            )
         except OSError as err:
             _LOGGER.debug(
                 "Probe of mount %s failed after %.2fs: %s",
@@ -544,11 +576,16 @@ class NetworkMount(Mount, ABC):
                 err,
             )
             return False
-        _LOGGER.debug(
-            "Probe of mount %s succeeded in %.2fs",
-            self.name,
-            time.monotonic() - start,
-        )
+        elapsed = time.monotonic() - start
+        if not is_real_mount:
+            _LOGGER.debug(
+                "Mount %s reported active but %s is not a mount point (probe %.2fs)",
+                self.name,
+                local_where,
+                elapsed,
+            )
+            return False
+        _LOGGER.debug("Probe of mount %s succeeded in %.2fs", self.name, elapsed)
         return True
 
 

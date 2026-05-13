@@ -226,7 +226,7 @@ async def test_backup_to_down_mount_returns_400(
 
     # Simulate the mount being down: probe (statvfs) fails with EHOSTDOWN.
     with patch(
-        "supervisor.mounts.mount.os.statvfs",
+        "supervisor.mounts.mount._probe_network_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         resp = await api_client.post(

@@ -1021,12 +1021,18 @@ def mock_aarch64_arch_supported(coresys: CoreSys) -> None:
 
 @pytest.fixture
 def mock_is_mount() -> MagicMock:
-    """Mock is_mount and the post-activation probe in mounts."""
-    with (
-        patch("supervisor.mounts.mount.Path.is_mount", return_value=True) as is_mount,
-        patch("supervisor.mounts.mount.os.statvfs", return_value=None),
-    ):
-        yield is_mount
+    """Mock the network-mount probe to report a healthy mount.
+
+    Patches `_probe_network_mount` (the executor-side syscall combo
+    of statvfs + st_dev comparison) so existing tests don't need a
+    real filesystem mount to look healthy. Tests that simulate a
+    broken mount override with `side_effect=OSError(...)` for the
+    unreachable case or `return_value=False` for the ghost case.
+    """
+    with patch(
+        "supervisor.mounts.mount._probe_network_mount", return_value=True
+    ) as probe:
+        yield probe
 
 
 @pytest.fixture

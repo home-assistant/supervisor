@@ -585,8 +585,8 @@ async def test_reload_failure(
     # Probe fails after reload (server still unreachable) but succeeds
     # after restart — exercises the reload -> restart escalation path.
     with patch(
-        "supervisor.mounts.mount.os.statvfs",
-        side_effect=[OSError(errno.EHOSTDOWN, "Host is down"), None],
+        "supervisor.mounts.mount._probe_network_mount",
+        side_effect=[OSError(errno.EHOSTDOWN, "Host is down"), True],
     ):
         await mount.reload()
 
@@ -605,7 +605,7 @@ async def test_reload_failure(
     # reload -> restart escalation we're testing here.
     with (
         patch(
-            "supervisor.mounts.mount.os.statvfs",
+            "supervisor.mounts.mount._probe_network_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountError),
@@ -782,7 +782,7 @@ async def test_update_leaves_issue_if_down(
     assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
 
     with patch(
-        "supervisor.mounts.mount.os.statvfs",
+        "supervisor.mounts.mount._probe_network_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         assert (await mount.update()) is False
@@ -816,7 +816,7 @@ async def test_mount_fails_if_down(
 
     with (
         patch(
-            "supervisor.mounts.mount.os.statvfs",
+            "supervisor.mounts.mount._probe_network_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountActivationError),

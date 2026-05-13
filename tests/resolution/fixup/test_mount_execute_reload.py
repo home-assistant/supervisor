@@ -92,7 +92,7 @@ async def test_fixup_error_after_reload(
     # ResolutionFixupError, which FixupBase.__call__ swallows to skip
     # issue cleanup. Caller sees no error.
     with patch(
-        "supervisor.mounts.mount.os.statvfs",
+        "supervisor.mounts.mount._probe_network_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         await mount_execute_reload()

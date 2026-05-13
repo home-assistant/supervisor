@@ -393,7 +393,7 @@ async def test_api_reload_mount(
 
     # Probe failure forces the reload to actually go to systemd.
     with patch(
-        "supervisor.mounts.mount.os.statvfs",
+        "supervisor.mounts.mount._probe_network_mount",
         side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
     ):
         resp = await api_client.post(f"{prefix}/mounts/backup_test/reload")

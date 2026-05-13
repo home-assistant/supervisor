@@ -454,7 +454,7 @@ async def test_reload_mount_probe_failure_triggers_systemd_reload(
     ]
     with (
         patch(
-            "supervisor.mounts.mount.os.statvfs",
+            "supervisor.mounts.mount._probe_network_mount",
             side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
         ),
         pytest.raises(MountActivationError),
