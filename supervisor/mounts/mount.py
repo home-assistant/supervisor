@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 import asyncio
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from functools import cached_property
 import logging
 import os
@@ -243,7 +243,14 @@ class Mount(CoreSysAttributes, ABC):
         unit: SystemdUnit,
         expected_states: set[UnitActiveState] | None = None,
     ) -> None:
-        """Update state info about mount from dbus. Wait for one of expected_states to appear."""
+        """Update state info about mount from dbus. Wait for one of expected_states to appear.
+
+        Used for the initial `load()` observation where no systemd job is
+        in flight — we're just polling for the unit to settle out of any
+        transitional state. Job-dispatching paths (mount/unmount/reload/
+        restart) instead subscribe to JobRemoved before dispatching and
+        wait for that signal — see `_run_systemd_job`.
+        """
         if expected_states is None:
             expected_states = {
                 UnitActiveState.ACTIVE,
@@ -261,6 +268,39 @@ class Mount(CoreSysAttributes, ABC):
                 str(self.state).lower(),
                 UPDATE_STATE_TIMEOUT,
             )
+
+    async def _run_systemd_job(
+        self,
+        op_name: str,
+        dispatch: Awaitable[str],
+    ) -> str | None:
+        """Dispatch a systemd job and wait for its JobRemoved signal.
+
+        Subscribing before dispatching closes the race where a fast job
+        could complete (and emit JobRemoved) before we set up the signal
+        match. The returned result string is the systemd job outcome
+        ("done", "failed", "canceled", "timeout", "dependency", "skipped").
+
+        Returns None on timeout — callers should re-read state to decide
+        what to do next.
+        """
+        async with self.sys_dbus.systemd.job_removed() as jobs:
+            job_path = await dispatch
+            try:
+                async with asyncio.timeout(UPDATE_STATE_TIMEOUT):
+                    result = await jobs.wait_for_job(job_path)
+            except TimeoutError:
+                _LOGGER.warning(
+                    "Systemd %s job for mount %s did not complete within %d seconds",
+                    op_name,
+                    self.name,
+                    UPDATE_STATE_TIMEOUT,
+                )
+                return None
+        _LOGGER.debug(
+            "Systemd %s job for mount %s completed: %s", op_name, self.name, result
+        )
+        return result
 
     async def mount(self) -> None:
         """Mount using systemd."""
@@ -284,27 +324,25 @@ class Mount(CoreSysAttributes, ABC):
 
         await self.sys_run_in_executor(ensure_empty_folder)
 
-        try:
-            options = (
-                [(DBUS_ATTR_OPTIONS, Variant("s", ",".join(self.options)))]
-                if self.options
-                else []
-            )
-            if self.type != MountType.BIND:
-                options += [(DBUS_ATTR_TYPE, Variant("s", self.type))]
+        options = (
+            [(DBUS_ATTR_OPTIONS, Variant("s", ",".join(self.options)))]
+            if self.options
+            else []
+        )
+        if self.type != MountType.BIND:
+            options += [(DBUS_ATTR_TYPE, Variant("s", self.type))]
+        properties = options + [
+            (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
+            (DBUS_ATTR_WHAT, Variant("s", self.what)),
+            (DBUS_ATTR_TIMEOUT_USEC, Variant("t", MOUNT_UNIT_TIMEOUT_USEC)),
+        ]
 
-            await self.sys_dbus.systemd.start_transient_unit(
-                self.unit_name,
-                StartUnitMode.FAIL,
-                options
-                + [
-                    (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
-                    (DBUS_ATTR_WHAT, Variant("s", self.what)),
-                    (
-                        DBUS_ATTR_TIMEOUT_USEC,
-                        Variant("t", MOUNT_UNIT_TIMEOUT_USEC),
-                    ),
-                ],
+        try:
+            await self._run_systemd_job(
+                "start_transient_unit",
+                self.sys_dbus.systemd.start_transient_unit(
+                    self.unit_name, StartUnitMode.FAIL, properties
+                ),
             )
         except DBusError as err:
             raise MountError(
@@ -312,7 +350,7 @@ class Mount(CoreSysAttributes, ABC):
             ) from err
 
         if unit := await self._update_unit():
-            await self._update_state_await(unit)
+            await self._update_state(unit)
 
         if not await self.is_mounted():
             raise MountActivationError(
@@ -329,11 +367,11 @@ class Mount(CoreSysAttributes, ABC):
         await self._update_state(unit)
         try:
             if self.state != UnitActiveState.FAILED:
-                await self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL)
-
-            await self._update_state_await(
-                unit, {UnitActiveState.INACTIVE, UnitActiveState.FAILED}
-            )
+                await self._run_systemd_job(
+                    "stop_unit",
+                    self.sys_dbus.systemd.stop_unit(self.unit_name, StopUnitMode.FAIL),
+                )
+                await self._update_state(unit)
 
             if self.state == UnitActiveState.FAILED:
                 await self.sys_dbus.systemd.reset_failed_unit(self.unit_name)
@@ -360,7 +398,10 @@ class Mount(CoreSysAttributes, ABC):
             return
 
         try:
-            await self.sys_dbus.systemd.reload_unit(self.unit_name, StartUnitMode.FAIL)
+            await self._run_systemd_job(
+                "reload_or_restart_unit",
+                self.sys_dbus.systemd.reload_unit(self.unit_name, StartUnitMode.FAIL),
+            )
         except DBusSystemdNoSuchUnit:
             _LOGGER.info(
                 "Mount %s is not mounted, mounting instead of reloading", self.name
@@ -376,7 +417,7 @@ class Mount(CoreSysAttributes, ABC):
             return
 
         if unit := await self._update_unit():
-            await self._update_state_await(unit)
+            await self._update_state(unit)
 
         # Safety net for #6827: with the layered timeouts above
         # (RPC < TimeoutSec < state-await) the unit should always have
@@ -413,7 +454,10 @@ class Mount(CoreSysAttributes, ABC):
     async def _restart(self) -> None:
         """Restart mount unit to re-mount."""
         try:
-            await self.sys_dbus.systemd.restart_unit(self.unit_name, StartUnitMode.FAIL)
+            await self._run_systemd_job(
+                "restart_unit",
+                self.sys_dbus.systemd.restart_unit(self.unit_name, StartUnitMode.FAIL),
+            )
         except DBusSystemdNoSuchUnit:
             _LOGGER.info(
                 "Mount %s is not mounted, mounting instead of restarting", self.name
@@ -426,7 +470,7 @@ class Mount(CoreSysAttributes, ABC):
             ) from err
 
         if unit := await self._update_unit():
-            await self._update_state_await(unit)
+            await self._update_state(unit)
 
         if not await self.is_mounted():
             raise MountActivationError(

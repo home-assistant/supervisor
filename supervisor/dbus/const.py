@@ -50,6 +50,7 @@ DBUS_SIGNAL_NM_CONNECTION_ACTIVE_CHANGED = (
 )
 DBUS_SIGNAL_PROPERTIES_CHANGED = "org.freedesktop.DBus.Properties.PropertiesChanged"
 DBUS_SIGNAL_RAUC_INSTALLER_COMPLETED = "de.pengutronix.rauc.Installer.Completed"
+DBUS_SIGNAL_SYSTEMD_JOB_REMOVED = "org.freedesktop.systemd1.Manager.JobRemoved"
 
 DBUS_OBJECT_BASE = "/"
 DBUS_OBJECT_DNS = "/org/freedesktop/NetworkManager/DnsManager"

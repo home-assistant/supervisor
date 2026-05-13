@@ -392,6 +392,11 @@ async def test_load(
     ]
 
     # Load waits up to 30 seconds if it finds a unit in the activating state
+    # (the wait happens inside _update_state_await driven by PropertiesChanged).
+    # Once the state settles to FAILED, load triggers a reload, and the reload
+    # is driven to completion by the mock-emitted JobRemoved signal — which
+    # also flips active_state to "active" via mock_systemd_unit.
+    systemd_service.mock_systemd_unit = systemd_unit_service
     systemd_service.ReloadOrRestartUnit.calls.clear()
     systemd_unit_service.active_state = "activating"
     mount = Mount.from_dict(coresys, mount_data)
@@ -399,8 +404,6 @@ async def test_load(
     load_task = asyncio.create_task(mount.load())
     await asyncio.sleep(0.1)
     systemd_unit_service.emit_properties_changed({"ActiveState": "failed"})
-    await asyncio.sleep(0.1)
-    systemd_unit_service.emit_properties_changed({"ActiveState": "active"})
     await load_task
 
     assert mount.state == UnitActiveState.ACTIVE
@@ -490,16 +493,15 @@ async def test_mount_failure(
     assert len(systemd_service.StartTransientUnit.calls) == 1
     assert len(systemd_service.GetUnit.calls) == 1
 
-    # If state is 'activating', wait it out and raise error if it does not become 'active'
+    # When the post-dispatch state is not 'active' the mount call raises.
+    # With JobRemoved as the completion signal, supervisor trusts that the
+    # job is done by the time the signal fires — the systemd-side state
+    # await happens inside systemd, not in supervisor.
     systemd_service.StartTransientUnit.calls.clear()
     systemd_service.GetUnit.calls.clear()
-    systemd_unit_service.active_state = "activating"
-
-    load_task = asyncio.create_task(mount.mount())
-    await asyncio.sleep(0.1)
-    systemd_unit_service.emit_properties_changed({"ActiveState": "failed"})
+    systemd_unit_service.active_state = "failed"
     with pytest.raises(MountError):
-        await load_task
+        await mount.mount()
 
     assert mount.state == UnitActiveState.FAILED
     assert len(systemd_service.StartTransientUnit.calls) == 1
