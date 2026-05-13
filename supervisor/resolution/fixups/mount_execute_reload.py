@@ -3,7 +3,7 @@
 import logging
 
 from ...coresys import CoreSys
-from ...exceptions import MountNotFound
+from ...exceptions import MountError, MountNotFound, ResolutionFixupError
 from ..const import ContextType, IssueType, SuggestionType
 from .base import FixupBase
 
@@ -24,6 +24,11 @@ class FixupMountExecuteReload(FixupBase):
             await self.sys_mounts.reload_mount(reference)
         except MountNotFound:
             _LOGGER.warning("Can't find mount %s for fixup", reference)
+        except MountError as err:
+            # Leave the issue/suggestion in place so the user can try again
+            # once the underlying problem (e.g. unreachable server) is fixed.
+            _LOGGER.warning("Reload fixup for mount %s failed: %s", reference, err)
+            raise ResolutionFixupError() from err
 
     @property
     def suggestion(self) -> SuggestionType:
