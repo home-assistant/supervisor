@@ -758,7 +758,7 @@ def store_app(coresys: CoreSys, tmp_path, test_repository):
 
     coresys.apps.store[app_obj.slug] = app_obj
     coresys.store.data.apps[app_obj.slug] = SCHEMA_ADDON_SYSTEM(
-        load_json_fixture("add-on.json")
+        load_json_fixture("app.json")
     )
     coresys.store.data.apps[app_obj.slug]["location"] = tmp_path
     yield app_obj
