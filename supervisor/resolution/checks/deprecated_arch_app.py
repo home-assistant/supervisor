@@ -1,6 +1,6 @@
-"""Helpers to check for detached apps due to removal from repo."""
+"""Helpers to check for apps using deprecated compatibility entries."""
 
-from ...const import CoreState
+from ...const import AppStage, CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
@@ -8,18 +8,28 @@ from .base import CheckBase
 
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
-    return CheckDetachedAppRemoved(coresys)
+    return CheckDeprecatedArchApp(coresys)
 
 
-class CheckDetachedAppRemoved(CheckBase):
-    """CheckDetachedAppRemoved class for check."""
+class CheckDeprecatedArchApp(CheckBase):
+    """CheckDeprecatedArchApp class for check."""
+
+    @property
+    def slug(self) -> str:
+        """Return the check slug."""
+        return "deprecated_arch_addon"
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for app in self.sys_apps.installed:
-            if app.is_detached and app.repository in self.sys_store.repositories:
+            if app.stage == AppStage.DEPRECATED:
+                continue
+
+            if (app.has_deprecated_arch and not app.has_supported_arch) or (
+                app.has_deprecated_machine and not app.has_supported_machine
+            ):
                 self.sys_resolution.create_issue(
-                    IssueType.DETACHED_ADDON_REMOVED,
+                    IssueType.DEPRECATED_ARCH_ADDON,
                     ContextType.ADDON,
                     reference=app.slug,
                     suggestions=[SuggestionType.EXECUTE_REMOVE],
@@ -31,12 +41,19 @@ class CheckDetachedAppRemoved(CheckBase):
             return False
 
         app = self.sys_apps.get_local_only(reference)
-        return app is not None and app.is_detached
+        return (
+            app is not None
+            and app.stage != AppStage.DEPRECATED
+            and (
+                (app.has_deprecated_arch and not app.has_supported_arch)
+                or (app.has_deprecated_machine and not app.has_supported_machine)
+            )
+        )
 
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.DETACHED_ADDON_REMOVED
+        return IssueType.DEPRECATED_ARCH_ADDON
 
     @property
     def context(self) -> ContextType:
@@ -46,4 +63,4 @@ class CheckDetachedAppRemoved(CheckBase):
     @property
     def states(self) -> list[CoreState]:
         """Return a list of valid states when this check can run."""
-        return [CoreState.SETUP]
+        return [CoreState.SETUP, CoreState.RUNNING]

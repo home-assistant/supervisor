@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
-from supervisor.resolution.fixups.addon_execute_rebuild import FixupAppExecuteRebuild
+from supervisor.resolution.fixups.app_execute_rebuild import FixupAppExecuteRebuild
 from supervisor.resolution.fixups.core_execute_rebuild import FixupCoreExecuteRebuild
 from supervisor.resolution.fixups.plugin_execute_rebuild import (
     FixupPluginExecuteRebuild,

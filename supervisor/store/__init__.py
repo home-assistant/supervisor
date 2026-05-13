@@ -17,7 +17,7 @@ from ..exceptions import (
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..utils.common import FileConfiguration
-from .addon import AppStore
+from .app import AppStore
 from .const import FILE_HASSIO_STORE, BuiltinRepository
 from .data import StoreData
 from .repository import Repository

@@ -3,7 +3,7 @@
 from aiohttp.test_utils import TestClient
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import ATTR_SERVICES
 from supervisor.coresys import CoreSys
 

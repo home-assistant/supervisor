@@ -7,7 +7,7 @@ from aiohttp.hdrs import WWW_AUTHENTICATE
 from aiohttp.test_utils import TestClient
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantAPIError, HomeAssistantWSError
 from supervisor.homeassistant.api import HomeAssistantAPI

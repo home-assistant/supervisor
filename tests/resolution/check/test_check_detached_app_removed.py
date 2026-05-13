@@ -3,11 +3,11 @@
 from pathlib import Path
 from unittest.mock import PropertyMock, patch
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.config import CoreConfig
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.resolution.checks.detached_addon_removed import CheckDetachedAppRemoved
+from supervisor.resolution.checks.detached_app_removed import CheckDetachedAppRemoved
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 
 

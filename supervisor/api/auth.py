@@ -12,7 +12,7 @@ from aiohttp.web_exceptions import HTTPUnauthorized
 from multidict import MultiDictProxy
 import voluptuous as vol
 
-from ..addons.addon import App
+from ..apps.app import App
 from ..const import ATTR_NAME, ATTR_PASSWORD, ATTR_USERNAME, REQUEST_FROM
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIForbidden, AuthInvalidNonStringValueError

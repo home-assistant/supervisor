@@ -9,8 +9,8 @@ from unittest.mock import PropertyMock, patch
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.addons.addon import App
-from supervisor.addons.build import AppBuild
+from supervisor.apps.app import App
+from supervisor.apps.build import AppBuild
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import DOCKER_HUB, MountType
 from supervisor.exceptions import AppBuildDockerfileMissingError
@@ -77,7 +77,7 @@ async def test_dockerfile_evaluation(coresys: CoreSys, install_app_ssh: App):
 
     assert is_in_list(["--file", "Dockerfile"], args["command"])
     assert str(await coresys.run_in_executor(build.get_dockerfile)).endswith(
-        "fixtures/addons/local/ssh/Dockerfile"
+        "fixtures/apps/local/ssh/Dockerfile"
     )
     assert build.arch == "amd64"
 
@@ -105,7 +105,7 @@ async def test_dockerfile_evaluation_arch(coresys: CoreSys, install_app_ssh: App
 
     assert is_in_list(["--file", "Dockerfile.aarch64"], args["command"])
     assert str(await coresys.run_in_executor(build.get_dockerfile)).endswith(
-        "fixtures/addons/local/ssh/Dockerfile.aarch64"
+        "fixtures/apps/local/ssh/Dockerfile.aarch64"
     )
     assert build.arch == "aarch64"
 

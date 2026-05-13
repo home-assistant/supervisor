@@ -6,14 +6,14 @@ from unittest.mock import patch
 import aiodocker
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.coresys import CoreSys
-from supervisor.docker.addon import DockerApp
+from supervisor.docker.app import DockerApp
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
 from supervisor.exceptions import DockerError
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
-from supervisor.resolution.fixups.addon_execute_repair import FixupAppExecuteRepair
+from supervisor.resolution.fixups.app_execute_repair import FixupAppExecuteRepair
 
 
 async def test_fixup(docker: DockerAPI, coresys: CoreSys, install_app_ssh: App):

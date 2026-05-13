@@ -5,7 +5,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from ..addons.addon import App
+from ..apps.app import App
 from ..const import PROVIDE_SERVICE
 from ..coresys import CoreSys, CoreSysAttributes
 

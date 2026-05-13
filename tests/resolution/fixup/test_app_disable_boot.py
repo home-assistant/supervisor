@@ -1,12 +1,12 @@
 """Test fixup app disable boot."""
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import AppBoot
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import SuggestionType
-from supervisor.resolution.fixups.addon_disable_boot import FixupAppDisableBoot
+from supervisor.resolution.fixups.app_disable_boot import FixupAppDisableBoot
 
-from tests.addons.test_manager import BOOT_FAIL_ISSUE
+from tests.apps.test_manager import BOOT_FAIL_ISSUE
 
 
 async def test_fixup(coresys: CoreSys, install_app_ssh: App):

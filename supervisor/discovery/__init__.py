@@ -21,7 +21,7 @@ from ..utils.common import FileConfiguration
 from .validate import SCHEMA_DISCOVERY_CONFIG
 
 if TYPE_CHECKING:
-    from ..addons.addon import App
+    from ..apps.app import App
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

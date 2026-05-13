@@ -10,7 +10,7 @@ from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.addons.manager import App
+from supervisor.apps.manager import App
 from supervisor.const import BusEvent, CoreState, CpuArch
 from supervisor.coresys import CoreSys
 from supervisor.docker.const import ContainerState

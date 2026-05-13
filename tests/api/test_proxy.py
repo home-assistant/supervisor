@@ -14,8 +14,8 @@ from aiohttp.http_websocket import WSMessage, WSMsgType
 from aiohttp.test_utils import TestClient
 import pytest
 
-from supervisor.addons.addon import App
 from supervisor.api.proxy import APIProxy
+from supervisor.apps.app import App
 from supervisor.const import ATTR_ACCESS_TOKEN
 from supervisor.homeassistant.api import HomeAssistantAPI
 

@@ -14,13 +14,13 @@ from awesomeversion import AwesomeVersion
 import pytest
 from securetar import SecureTarArchive, SecureTarFile
 
-from supervisor.addons.addon import App
-from supervisor.addons.const import AppBackupMode
-from supervisor.addons.model import AppModel
+from supervisor.apps.app import App
+from supervisor.apps.const import AppBackupMode
+from supervisor.apps.model import AppModel
 from supervisor.config import CoreConfig
 from supervisor.const import ATTR_ADVANCED, AppBoot, AppState, BusEvent
 from supervisor.coresys import CoreSys
-from supervisor.docker.addon import DockerApp
+from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
 from supervisor.docker.manager import CommandReturn, DockerAPI
 from supervisor.docker.monitor import DockerContainerStateEvent
@@ -227,7 +227,7 @@ async def test_watchdog_port_conflict_does_not_retry(
         ) as start,
         patch.object(DockerApp, "current_state", return_value=ContainerState.FAILED),
         patch.object(DockerApp, "stop"),
-        patch("supervisor.addons.addon.async_capture_exception") as capture_exception,
+        patch("supervisor.apps.app.async_capture_exception") as capture_exception,
     ):
         caplog.clear()
         await _fire_test_event(
@@ -289,11 +289,11 @@ async def test_listener_attached_on_install(coresys: CoreSys):
     with (
         patch("pathlib.Path.is_dir", return_value=True),
         patch(
-            "supervisor.addons.addon.App.need_build",
+            "supervisor.apps.app.App.need_build",
             new=PropertyMock(return_value=False),
         ),
         patch(
-            "supervisor.addons.model.AppModel.with_ingress",
+            "supervisor.apps.model.AppModel.with_ingress",
             new=PropertyMock(return_value=False),
         ),
     ):
@@ -462,7 +462,7 @@ async def test_start_timeout(
 
     caplog.clear()
     with patch(
-        "supervisor.addons.addon.asyncio.wait_for", side_effect=asyncio.TimeoutError
+        "supervisor.apps.app.asyncio.wait_for", side_effect=asyncio.TimeoutError
     ):
         await start_task
 
@@ -908,9 +908,7 @@ async def test_app_pulse_error(
     coresys: CoreSys, install_app_example: App, caplog: pytest.LogCaptureFixture
 ):
     """Test error writing pulse config for app."""
-    with patch(
-        "supervisor.addons.addon.Path.write_text", side_effect=(err := OSError())
-    ):
+    with patch("supervisor.apps.app.Path.write_text", side_effect=(err := OSError())):
         err.errno = errno.EBUSY
         await install_app_example.write_pulse()
 
@@ -931,7 +929,7 @@ async def test_long_description_bad_message(coresys: CoreSys, install_app_exampl
     err = OSError()
     err.errno = errno.EBADMSG
     with (
-        patch("supervisor.addons.model.Path.exists", side_effect=err),
+        patch("supervisor.apps.model.Path.exists", side_effect=err),
         pytest.raises(AppFileReadError),
     ):
         await install_app_example.long_description()
@@ -948,7 +946,7 @@ async def test_long_description_other_oserror(
     err = OSError()
     err.errno = errno.EIO
     with (
-        patch("supervisor.addons.model.Path.exists", side_effect=err),
+        patch("supervisor.apps.model.Path.exists", side_effect=err),
         pytest.raises(AppFileReadError),
     ):
         await install_app_example.long_description()
@@ -964,7 +962,7 @@ async def test_refresh_path_cache_bad_message(
     err = OSError()
     err.errno = errno.EBADMSG
     with (
-        patch("supervisor.addons.model.Path.exists", side_effect=err),
+        patch("supervisor.apps.model.Path.exists", side_effect=err),
         pytest.raises(AppFileReadError),
     ):
         await install_app_example.refresh_path_cache()
@@ -1016,7 +1014,7 @@ async def test_paths_cache(coresys: CoreSys, install_app_ssh: App):
     assert not install_app_ssh.with_documentation
 
     with (
-        patch("supervisor.addons.addon.Path.exists", return_value=True),
+        patch("supervisor.apps.app.Path.exists", return_value=True),
         patch("supervisor.store.repository.RepositoryLocal.update", return_value=True),
     ):
         await coresys.store.reload(coresys.store.get("local"))

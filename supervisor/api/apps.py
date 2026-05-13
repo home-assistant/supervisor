@@ -9,8 +9,8 @@ from aiohttp import web
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.addon import App
-from ..addons.utils import rating_security
+from ..apps.app import App
+from ..apps.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
     ATTR_ADVANCED,

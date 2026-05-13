@@ -7,7 +7,7 @@ import tarfile
 import pytest
 from securetar import SecureTarFile
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys

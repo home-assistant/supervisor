@@ -12,9 +12,9 @@ from ..const import (
     FILE_HASSIO_ADDONS,
 )
 from ..coresys import CoreSys, CoreSysAttributes
-from ..store.addon import AppStore
+from ..store.app import AppStore
 from ..utils.common import FileConfiguration
-from .addon import App
+from .app import App
 from .validate import SCHEMA_ADDONS_FILE
 
 Config = dict[str, Any]

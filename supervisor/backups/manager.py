@@ -10,7 +10,7 @@ from pathlib import Path
 from shutil import copy
 from typing import cast
 
-from ..addons.addon import App
+from ..apps.app import App
 from ..const import (
     ATTR_DAYS_UNTIL_STALE,
     FILE_HASSIO_BACKUPS,

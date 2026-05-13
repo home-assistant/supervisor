@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 from supervisor.const import AppState, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import PwnedSecret
-from supervisor.resolution.checks.addon_pwned import CheckAppPwned
+from supervisor.resolution.checks.app_pwned import CheckAppPwned
 from supervisor.resolution.const import IssueType, SuggestionType
 
 
@@ -99,7 +99,7 @@ async def test_did_run(coresys: CoreSys):
     assert len(should_not_run) != 0
 
     with patch(
-        "supervisor.resolution.checks.addon_pwned.CheckAppPwned.run_check",
+        "supervisor.resolution.checks.app_pwned.CheckAppPwned.run_check",
         return_value=None,
     ) as check:
         for state in should_run:

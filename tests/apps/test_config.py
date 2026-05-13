@@ -3,15 +3,15 @@
 import pytest
 import voluptuous as vol
 
-from supervisor.addons import validate as vd
-from supervisor.addons.const import AppBackupMode
+from supervisor.apps import validate as vd
+from supervisor.apps.const import AppBackupMode
 
 from ..common import load_json_fixture
 
 
 def test_basic_config():
     """Validate basic config and check the default values."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     valid_config = vd.SCHEMA_ADDON_CONFIG(config)
 
@@ -32,7 +32,7 @@ def test_basic_config():
 
 def test_migration_startup():
     """Migrate Startup Type."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["startup"] = "before"
 
@@ -49,7 +49,7 @@ def test_migration_startup():
 
 def test_migration_auto_uart():
     """Migrate auto uart Type."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["auto_uart"] = True
 
@@ -61,7 +61,7 @@ def test_migration_auto_uart():
 
 def test_migration_devices():
     """Migrate devices Type."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["devices"] = ["test:test:rw", "bla"]
 
@@ -72,7 +72,7 @@ def test_migration_devices():
 
 def test_migration_tmpfs():
     """Migrate tmpfs Type."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["tmpfs"] = "test:test:rw"
 
@@ -83,7 +83,7 @@ def test_migration_tmpfs():
 
 def test_migration_backup():
     """Migrate snapshot to backup."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["snapshot"] = AppBackupMode.HOT
     config["snapshot_pre"] = "pre_command"
@@ -105,7 +105,7 @@ def test_migration_backup():
 
 def test_invalid_repository():
     """Validate basic config with invalid repositories."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["image"] = "-invalid-something"
     with pytest.raises(vol.Invalid):
@@ -124,7 +124,7 @@ def test_invalid_repository():
 
 def test_valid_repository():
     """Validate basic config with different valid repositories."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     custom_registry = "registry.gitlab.com/company/add-ons/core/test-example"
     config["image"] = custom_registry
@@ -134,7 +134,7 @@ def test_valid_repository():
 
 def test_valid_map():
     """Validate basic config with different valid maps."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["map"] = ["backup:rw", "ssl:ro", "config"]
     vd.SCHEMA_ADDON_CONFIG(config)
@@ -142,7 +142,7 @@ def test_valid_map():
 
 def test_malformed_map_entries():
     """Test that malformed map entries are handled gracefully (issue #6124)."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     # Test case 1: Empty dict in map (should be skipped with warning)
     config["map"] = [{}]
@@ -189,7 +189,7 @@ def test_valid_basic_build():
 
 def test_valid_legacy_arch_values_for_migration():
     """Validate legacy arch values are accepted for migration compatibility."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
     config["arch"] = ["armv7", "amd64"]
 
     assert vd.SCHEMA_ADDON_CONFIG(config)
@@ -205,7 +205,7 @@ def test_valid_legacy_build_from_keys_for_migration():
 
 def test_warn_legacy_arch_values(caplog: pytest.LogCaptureFixture):
     """Warn when deprecated architecture values are present."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
     config["arch"] = ["armv7", "amd64"]
 
     vd.SCHEMA_ADDON_CONFIG(config)
@@ -215,7 +215,7 @@ def test_warn_legacy_arch_values(caplog: pytest.LogCaptureFixture):
 
 def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
     """Warn when deprecated machine values are present."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
     config["machine"] = ["qemux86"]
 
     vd.SCHEMA_ADDON_CONFIG(config)
@@ -225,7 +225,7 @@ def test_warn_legacy_machine_values(caplog: pytest.LogCaptureFixture):
 
 def test_warn_advanced_deprecated(caplog: pytest.LogCaptureFixture):
     """Warn when deprecated advanced field is present."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
     config["advanced"] = True
 
     vd.SCHEMA_ADDON_CONFIG(config)
@@ -242,7 +242,7 @@ async def test_valid_manifest_build():
 
 def test_valid_machine():
     """Validate valid machine config."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["machine"] = [
         "intel-nuc",
@@ -315,7 +315,7 @@ def test_valid_machine():
 
 def test_invalid_machine():
     """Validate invalid machine config."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["machine"] = [
         "intel-nuc",
@@ -338,7 +338,7 @@ def test_invalid_machine():
 
 def test_watchdog_url():
     """Test Valid watchdog options."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     for test_options in (
         "tcp://[HOST]:[PORT:8123]",
@@ -351,7 +351,7 @@ def test_watchdog_url():
 
 def test_valid_slug():
     """Test valid and invalid app slugs."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     # All examples pulled from https://analytics.home-assistant.io/apps.json
     config["slug"] = "uptime-kuma"
@@ -384,7 +384,7 @@ def test_valid_slug():
 
 def test_valid_schema():
     """Test valid and invalid app slugs."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     # Basic types
     config["schema"] = {
@@ -478,7 +478,7 @@ def test_valid_schema():
 
 def test_ulimits_simple_format():
     """Test ulimits simple format validation."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["ulimits"] = {"nofile": 65535, "nproc": 32768, "memlock": 134217728}
 
@@ -490,7 +490,7 @@ def test_ulimits_simple_format():
 
 def test_ulimits_detailed_format():
     """Test ulimits detailed format validation."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     config["ulimits"] = {
         "nofile": {"soft": 20000, "hard": 40000},
@@ -508,7 +508,7 @@ def test_ulimits_detailed_format():
 
 def test_ulimits_empty_dict():
     """Test ulimits with empty dict (default)."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     valid_config = vd.SCHEMA_ADDON_CONFIG(config)
     assert valid_config["ulimits"] == {}
@@ -516,7 +516,7 @@ def test_ulimits_empty_dict():
 
 def test_ulimits_invalid_values():
     """Test ulimits with invalid values."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
 
     # Invalid string values
     config["ulimits"] = {"nofile": "invalid"}

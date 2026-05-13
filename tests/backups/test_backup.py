@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from securetar import AddFileError, InvalidPasswordError, SecureTarReadError
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.const import BackupType
 from supervisor.coresys import CoreSys

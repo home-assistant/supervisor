@@ -5,7 +5,7 @@ import logging
 import random
 import secrets
 
-from .addons.addon import App
+from .apps.app import App
 from .const import (
     ATTR_PORTS,
     ATTR_SESSION,

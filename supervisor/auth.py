@@ -5,7 +5,7 @@ import hashlib
 import logging
 from typing import Any, TypedDict, cast
 
-from .addons.addon import App
+from .apps.app import App
 from .const import ATTR_PASSWORD, ATTR_USERNAME, FILE_HASSIO_AUTH, HomeAssistantUser
 from .coresys import CoreSys, CoreSysAttributes
 from .exceptions import (

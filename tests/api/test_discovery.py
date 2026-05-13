@@ -6,7 +6,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 from aiohttp.test_utils import TestClient
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import AppState
 from supervisor.coresys import CoreSys
 from supervisor.discovery import Message

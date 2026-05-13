@@ -9,12 +9,12 @@ import aiodocker
 from aiodocker.containers import DockerContainer
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.coresys import CoreSys
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
-from supervisor.resolution.fixups.addon_execute_rebuild import FixupAppExecuteRebuild
+from supervisor.resolution.fixups.app_execute_rebuild import FixupAppExecuteRebuild
 
 
 def make_mock_container_get(

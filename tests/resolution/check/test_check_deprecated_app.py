@@ -2,10 +2,10 @@
 
 from unittest.mock import patch
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import AppStage, CoreState
 from supervisor.coresys import CoreSys
-from supervisor.resolution.checks.deprecated_addon import CheckDeprecatedApp
+from supervisor.resolution.checks.deprecated_app import CheckDeprecatedApp
 from supervisor.resolution.const import ContextType, IssueType
 
 

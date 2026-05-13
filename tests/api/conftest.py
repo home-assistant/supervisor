@@ -7,8 +7,8 @@ from aiohttp import web
 from aiohttp.test_utils import TestClient
 import pytest
 
-from supervisor.addons.addon import App
 from supervisor.api import RestAPI
+from supervisor.apps.app import App
 from supervisor.const import REQUEST_FROM, FeatureFlag
 from supervisor.coresys import CoreSys
 from supervisor.host.const import LogFormat, LogFormatter

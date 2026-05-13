@@ -5,7 +5,7 @@ from unittest.mock import PropertyMock, patch
 
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import (
     StoreError,
@@ -16,7 +16,7 @@ from supervisor.exceptions import (
 )
 from supervisor.resolution.const import SuggestionType
 from supervisor.store import StoreManager
-from supervisor.store.addon import AppStore
+from supervisor.store.app import AppStore
 from supervisor.store.const import BuiltinRepository
 from supervisor.store.repository import Repository
 
