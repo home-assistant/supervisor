@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import voluptuous as vol
 
-from supervisor.addons.options import AppOptions, UiOptions
+from supervisor.apps.options import AppOptions, UiOptions
 from supervisor.hardware.data import Device
 
 MOCK_ADDON_NAME = "Mock Add-on"

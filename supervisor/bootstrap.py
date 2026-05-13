@@ -12,8 +12,8 @@ import warnings
 
 from colorlog import ColoredFormatter
 
-from .addons.manager import AppManager
 from .api import RestAPI
+from .apps.manager import AppManager
 from .arch import CpuArchManager
 from .auth import Auth
 from .backups.manager import BackupManager

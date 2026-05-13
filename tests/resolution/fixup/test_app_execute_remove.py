@@ -2,11 +2,11 @@
 
 from unittest.mock import patch
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.coresys import CoreSys
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
-from supervisor.resolution.fixups.addon_execute_remove import FixupAppExecuteRemove
+from supervisor.resolution.fixups.app_execute_remove import FixupAppExecuteRemove
 
 
 async def test_fixup(coresys: CoreSys, install_app_ssh: App):

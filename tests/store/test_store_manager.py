@@ -8,14 +8,14 @@ from unittest.mock import PropertyMock, patch
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.backups.manager import BackupManager
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import AppNotSupportedError, StoreJobError
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.store import StoreManager
-from supervisor.store.addon import AppStore
+from supervisor.store.app import AppStore
 from supervisor.store.git import GitRepo
 from supervisor.store.repository import Repository
 
@@ -153,9 +153,7 @@ async def test_update_unavailable_app(
 ):
     """Test updating app when new version not available for system."""
     app_config = dict(
-        await coresys.run_in_executor(
-            load_yaml_fixture, "addons/local/ssh/config.yaml"
-        ),
+        await coresys.run_in_executor(load_yaml_fixture, "apps/local/ssh/config.yaml"),
         version=AwesomeVersion("10.0.0"),
         **config,
     )
@@ -212,9 +210,7 @@ async def test_install_unavailable_app(
 ):
     """Test updating app when new version not available for system."""
     app_config = dict(
-        await coresys.run_in_executor(
-            load_yaml_fixture, "addons/local/ssh/config.yaml"
-        ),
+        await coresys.run_in_executor(load_yaml_fixture, "apps/local/ssh/config.yaml"),
         version=AwesomeVersion("10.0.0"),
         **config,
     )

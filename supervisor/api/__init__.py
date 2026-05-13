@@ -8,12 +8,12 @@ from typing import Any
 
 from aiohttp import hdrs, web
 
-from ..addons.addon import App
+from ..apps.app import App
 from ..const import SUPERVISOR_DOCKER_NAME, AppState, FeatureFlag
 from ..coresys import CoreSys, CoreSysAttributes
 from ..exceptions import APIAppNotInstalled, HostNotSupportedError
 from ..utils.sentry import async_capture_exception
-from .addons import APIApps
+from .apps import APIApps
 from .audio import APIAudio
 from .auth import APIAuth
 from .backups import APIBackups

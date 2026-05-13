@@ -1,6 +1,6 @@
-"""Helpers to check for deprecated apps."""
+"""Helpers to check for detached apps due to removal from repo."""
 
-from ...const import AppStage, CoreState
+from ...const import CoreState
 from ...coresys import CoreSys
 from ..const import ContextType, IssueType, SuggestionType
 from .base import CheckBase
@@ -8,18 +8,23 @@ from .base import CheckBase
 
 def setup(coresys: CoreSys) -> CheckBase:
     """Check setup function."""
-    return CheckDeprecatedApp(coresys)
+    return CheckDetachedAppRemoved(coresys)
 
 
-class CheckDeprecatedApp(CheckBase):
-    """CheckDeprecatedApp class for check."""
+class CheckDetachedAppRemoved(CheckBase):
+    """CheckDetachedAppRemoved class for check."""
+
+    @property
+    def slug(self) -> str:
+        """Return the check slug."""
+        return "detached_addon_removed"
 
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for app in self.sys_apps.installed:
-            if app.stage == AppStage.DEPRECATED:
+            if app.is_detached and app.repository in self.sys_store.repositories:
                 self.sys_resolution.create_issue(
-                    IssueType.DEPRECATED_ADDON,
+                    IssueType.DETACHED_ADDON_REMOVED,
                     ContextType.ADDON,
                     reference=app.slug,
                     suggestions=[SuggestionType.EXECUTE_REMOVE],
@@ -31,12 +36,12 @@ class CheckDeprecatedApp(CheckBase):
             return False
 
         app = self.sys_apps.get_local_only(reference)
-        return app is not None and app.stage == AppStage.DEPRECATED
+        return app is not None and app.is_detached
 
     @property
     def issue(self) -> IssueType:
         """Return a IssueType enum."""
-        return IssueType.DEPRECATED_ADDON
+        return IssueType.DETACHED_ADDON_REMOVED
 
     @property
     def context(self) -> ContextType:

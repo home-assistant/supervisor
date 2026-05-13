@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
 from supervisor.resolution.evaluations.restart_policy import EvaluateRestartPolicy

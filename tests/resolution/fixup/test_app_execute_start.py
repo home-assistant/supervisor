@@ -4,16 +4,16 @@ from unittest.mock import patch
 
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import AppState
 from supervisor.coresys import CoreSys
-from supervisor.docker.addon import DockerApp
+from supervisor.docker.app import DockerApp
 from supervisor.exceptions import DockerError
 from supervisor.resolution.const import ContextType, SuggestionType
 from supervisor.resolution.data import Suggestion
-from supervisor.resolution.fixups.addon_execute_start import FixupAppExecuteStart
+from supervisor.resolution.fixups.app_execute_start import FixupAppExecuteStart
 
-from tests.addons.test_manager import BOOT_FAIL_ISSUE
+from tests.apps.test_manager import BOOT_FAIL_ISSUE
 
 EXECUTE_START_SUGGESTION = Suggestion(
     SuggestionType.EXECUTE_START, ContextType.ADDON, reference="local_ssh"

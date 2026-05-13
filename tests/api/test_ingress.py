@@ -8,7 +8,7 @@ from aiohttp import hdrs, web
 from aiohttp.test_utils import TestClient, TestServer
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.coresys import CoreSys
 
 

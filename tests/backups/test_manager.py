@@ -13,15 +13,15 @@ from awesomeversion import AwesomeVersion
 from dbus_fast import DBusError
 import pytest
 
-from supervisor.addons.addon import App
-from supervisor.addons.const import AppBackupMode
-from supervisor.addons.model import AppModel
+from supervisor.apps.app import App
+from supervisor.apps.const import AppBackupMode
+from supervisor.apps.model import AppModel
 from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.const import LOCATION_TYPE, BackupJobStage, BackupType
 from supervisor.backups.manager import BackupManager
 from supervisor.const import FOLDER_HOMEASSISTANT, FOLDER_SHARE, AppState, CoreState
 from supervisor.coresys import CoreSys
-from supervisor.docker.addon import DockerApp
+from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
 from supervisor.docker.homeassistant import DockerHomeAssistant
 from supervisor.docker.monitor import DockerContainerStateEvent
@@ -1143,7 +1143,7 @@ async def test_backup_progress(
             "backup_mode",
             new=PropertyMock(return_value=AppBackupMode.COLD),
         ),
-        patch("supervisor.addons.addon.asyncio.Event.wait"),
+        patch("supervisor.apps.app.asyncio.Event.wait"),
     ):
         full_backup: Backup = await coresys.backups.do_backup_full()
     await asyncio.sleep(0)
@@ -1263,7 +1263,7 @@ async def test_restore_progress(
     coresys.apps.local[store.slug] = App(coresys, store.slug)
 
     with (
-        patch("supervisor.addons.addon.asyncio.Event.wait"),
+        patch("supervisor.apps.app.asyncio.Event.wait"),
         patch.object(HomeAssistant, "restore"),
         patch.object(HomeAssistantCore, "update"),
         patch.object(AppModel, "_validate_availability"),

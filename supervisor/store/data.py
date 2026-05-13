@@ -9,7 +9,7 @@ from typing import Any
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_TRANSLATIONS
+from ..apps.validate import SCHEMA_ADDON_CONFIG, SCHEMA_ADDON_TRANSLATIONS
 from ..const import (
     ATTR_LOCATION,
     ATTR_REPOSITORY,

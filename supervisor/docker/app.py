@@ -14,8 +14,8 @@ import aiodocker
 from attr import evolve
 from awesomeversion import AwesomeVersion
 
-from ..addons.build import AppBuild
-from ..addons.const import MappingType
+from ..apps.build import AppBuild
+from ..apps.const import MappingType
 from ..bus import EventListener
 from ..const import (
     DOCKER_CPU_RUNTIME_ALLOCATION,
@@ -71,7 +71,7 @@ from .const import (
 from .interface import DockerInterface
 
 if TYPE_CHECKING:
-    from ..addons.addon import App
+    from ..apps.app import App
 
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

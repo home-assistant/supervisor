@@ -15,7 +15,7 @@ from aiohttp.web_exceptions import (
 from multidict import CIMultiDict, istr
 import voluptuous as vol
 
-from ..addons.addon import App
+from ..apps.app import App
 from ..const import (
     ATTR_ADMIN,
     ATTR_ENABLE,

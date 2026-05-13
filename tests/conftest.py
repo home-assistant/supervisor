@@ -26,9 +26,9 @@ import pytest
 from securetar import SecureTarArchive
 
 from supervisor import config as su_config
-from supervisor.addons.addon import App
-from supervisor.addons.validate import SCHEMA_ADDON_SYSTEM
 from supervisor.api import RestAPI
+from supervisor.apps.app import App
+from supervisor.apps.validate import SCHEMA_ADDON_SYSTEM
 from supervisor.backups.backup import Backup
 from supervisor.backups.const import BackupType
 from supervisor.backups.validate import ALL_FOLDERS
@@ -57,7 +57,7 @@ from supervisor.exceptions import HostLogError
 from supervisor.homeassistant.api import APIState
 from supervisor.host.logs import LogsControl
 from supervisor.os.manager import OSManager
-from supervisor.store.addon import AppStore
+from supervisor.store.app import AppStore
 from supervisor.store.repository import Repository
 from supervisor.utils.dt import utcnow
 
@@ -551,14 +551,12 @@ async def coresys(
 
     # Fix Paths
     su_config.ADDONS_CORE = Path(
-        Path(__file__).parent.joinpath("fixtures"), "addons/core"
+        Path(__file__).parent.joinpath("fixtures"), "apps/core"
     )
     su_config.ADDONS_LOCAL = Path(
-        Path(__file__).parent.joinpath("fixtures"), "addons/local"
+        Path(__file__).parent.joinpath("fixtures"), "apps/local"
     )
-    su_config.ADDONS_GIT = Path(
-        Path(__file__).parent.joinpath("fixtures"), "addons/git"
-    )
+    su_config.ADDONS_GIT = Path(Path(__file__).parent.joinpath("fixtures"), "apps/git")
     su_config.APPARMOR_DATA = Path(
         Path(__file__).parent.joinpath("fixtures"), "apparmor"
     )

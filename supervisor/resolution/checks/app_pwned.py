@@ -22,6 +22,11 @@ def setup(coresys: CoreSys) -> CheckBase:
 class CheckAppPwned(CheckBase):
     """CheckAppPwned class for check."""
 
+    @property
+    def slug(self) -> str:
+        """Return the check slug."""
+        return "addon_pwned"
+
     @Job(
         name="check_addon_pwned_run",
         conditions=[JobCondition.INTERNET_SYSTEM],

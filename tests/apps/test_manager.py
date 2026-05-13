@@ -10,12 +10,12 @@ from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.config import CoreConfig
 from supervisor.const import ATTR_INGRESS, AppBoot, AppStartup, AppState, BusEvent
 from supervisor.coresys import CoreSys
-from supervisor.docker.addon import DockerApp
+from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.manager import DockerAPI
@@ -34,7 +34,7 @@ from supervisor.resolution.const import (
     UnhealthyReason,
 )
 from supervisor.resolution.data import Issue, Suggestion
-from supervisor.store.addon import AppStore
+from supervisor.store.app import AppStore
 from supervisor.store.repository import RepositoryLocal
 from supervisor.utils import check_exception_chain
 from supervisor.utils.common import write_json_file
@@ -93,7 +93,7 @@ async def test_image_added_removed_on_update(coresys: CoreSys, install_app_ssh: 
     assert install_app_ssh.need_update is False
     with patch(
         "supervisor.store.data.read_json_or_yaml_file",
-        return_value=load_json_fixture("addon-config-add-image.json"),
+        return_value=load_json_fixture("app-config-add-image.json"),
     ):
         await coresys.store.data.update()
 
@@ -114,7 +114,7 @@ async def test_image_added_removed_on_update(coresys: CoreSys, install_app_ssh: 
     assert install_app_ssh.need_update is False
     with patch(
         "supervisor.store.data.read_json_or_yaml_file",
-        return_value=load_json_fixture("addon-config-remove-image.json"),
+        return_value=load_json_fixture("app-config-remove-image.json"),
     ):
         await coresys.store.data.update()
 
@@ -329,7 +329,7 @@ async def test_update(
     await install_app_ssh.load()
     with patch(
         "supervisor.store.data.read_json_or_yaml_file",
-        return_value=load_json_fixture("addon-config-add-image.json"),
+        return_value=load_json_fixture("app-config-add-image.json"),
     ):
         await coresys.store.data.update()
 
@@ -584,7 +584,7 @@ async def test_update_reloads_ingress_tokens(
     # Update store to version with ingress enabled
     with patch(
         "supervisor.store.data.read_json_or_yaml_file",
-        return_value=load_json_fixture("addon-config-add-image.json"),
+        return_value=load_json_fixture("app-config-add-image.json"),
     ):
         await coresys.store.data.update()
 

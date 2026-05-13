@@ -12,7 +12,7 @@ from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.backups.backup import Backup, BackupLocation
 from supervisor.backups.manager import BackupManager
 from supervisor.const import CoreState

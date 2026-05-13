@@ -4,7 +4,7 @@ from copy import deepcopy
 import logging
 from typing import Self
 
-from ..addons.model import AppModel, Data
+from ..apps.model import AppModel, Data
 from ..coresys import CoreSys
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)

@@ -5,7 +5,7 @@ from typing import Any
 
 import voluptuous as vol
 
-from ...addons.addon import App
+from ...apps.app import App
 from ...exceptions import ServiceAlreadyProvidedError, ServiceNotProvidedError
 from ...validate import migrate_addon_to_app, network_port
 from ..const import (

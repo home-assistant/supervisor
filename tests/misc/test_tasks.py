@@ -9,7 +9,7 @@ from aiodocker.containers import DockerContainer
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import ATTR_VERSION_TIMESTAMP, CoreState
 from supervisor.coresys import CoreSys
 from supervisor.exceptions import HomeAssistantError

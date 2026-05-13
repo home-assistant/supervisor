@@ -7,11 +7,11 @@ from typing import Any, cast
 from aiohttp import web
 import voluptuous as vol
 
-from ..addons.addon import App
-from ..addons.manager import AnyApp
-from ..addons.utils import rating_security
 from ..api.const import ATTR_SIGNED
 from ..api.utils import api_process, api_process_raw, api_validate
+from ..apps.app import App
+from ..apps.manager import AnyApp
+from ..apps.utils import rating_security
 from ..const import (
     ATTR_ADDONS,
     ATTR_ADVANCED,
@@ -56,7 +56,7 @@ from ..const import (
 from ..coresys import CoreSysAttributes
 from ..exceptions import APIError, APIForbidden, APINotFound, StoreAppNotFoundError
 from ..resolution.const import ContextType, SuggestionType
-from ..store.addon import AppStore
+from ..store.app import AppStore
 from ..store.repository import Repository
 from ..store.validate import validate_repository
 from .const import ATTR_BACKGROUND, CONTENT_TYPE_PNG, CONTENT_TYPE_TEXT

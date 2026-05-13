@@ -2,10 +2,10 @@
 
 from unittest.mock import patch
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import CoreState
 from supervisor.coresys import CoreSys
-from supervisor.resolution.checks.detached_addon_missing import CheckDetachedAppMissing
+from supervisor.resolution.checks.detached_app_missing import CheckDetachedAppMissing
 from supervisor.resolution.const import ContextType, IssueType
 
 

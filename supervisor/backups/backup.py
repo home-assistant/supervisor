@@ -28,7 +28,7 @@ from securetar import (
 import voluptuous as vol
 from voluptuous.humanize import humanize_error
 
-from ..addons.manager import App
+from ..apps.manager import App
 from ..const import (
     ATTR_ADDONS,
     ATTR_COMPRESSED,

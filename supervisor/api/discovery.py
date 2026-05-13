@@ -6,7 +6,7 @@ from typing import Any
 from aiohttp import web
 import voluptuous as vol
 
-from ..addons.addon import App
+from ..apps.app import App
 from ..const import (
     ATTR_ADDON,
     ATTR_APP,

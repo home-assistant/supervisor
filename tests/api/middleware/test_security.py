@@ -9,8 +9,8 @@ from aiohttp.test_utils import TestClient
 import pytest
 import urllib3
 
-from supervisor.addons.addon import App
 from supervisor.api import RestAPI
+from supervisor.apps.app import App
 from supervisor.const import ROLE_ALL, CoreState
 from supervisor.coresys import CoreSys
 

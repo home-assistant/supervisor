@@ -9,13 +9,13 @@ from aiohttp.test_utils import TestClient
 from awesomeversion import AwesomeVersion
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.arch import CpuArchManager
 from supervisor.backups.manager import BackupManager
 from supervisor.config import CoreConfig
 from supervisor.const import AppState, CoreState
 from supervisor.coresys import CoreSys
-from supervisor.docker.addon import DockerApp
+from supervisor.docker.app import DockerApp
 from supervisor.docker.const import ContainerState
 from supervisor.docker.interface import DockerInterface
 from supervisor.docker.monitor import DockerContainerStateEvent
@@ -24,7 +24,7 @@ from supervisor.homeassistant.const import WSEvent
 from supervisor.homeassistant.module import HomeAssistant
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
-from supervisor.store.addon import AppStore
+from supervisor.store.app import AppStore
 from supervisor.store.repository import Repository
 
 from tests.common import AsyncIterator, load_json_fixture
@@ -214,7 +214,7 @@ async def test_api_store_update_healthcheck(
     await install_app_ssh.load()
     with patch(
         "supervisor.store.data.read_json_or_yaml_file",
-        return_value=load_json_fixture("addon-config-add-image.json"),
+        return_value=load_json_fixture("app-config-add-image.json"),
     ):
         await coresys.store.data.update()
 

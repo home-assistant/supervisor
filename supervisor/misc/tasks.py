@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import logging
 from typing import cast
 
-from ..addons.const import APP_UPDATE_CONDITIONS
+from ..apps.const import APP_UPDATE_CONDITIONS
 from ..backups.const import LOCATION_CLOUD_BACKUP, LOCATION_TYPE
 from ..const import ATTR_TYPE, AppState
 from ..coresys import CoreSysAttributes

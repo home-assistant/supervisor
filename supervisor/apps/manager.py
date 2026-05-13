@@ -23,9 +23,9 @@ from ..jobs import ChildJobSyncFilter
 from ..jobs.const import JobConcurrency
 from ..jobs.decorator import Job, JobCondition
 from ..resolution.const import ContextType, IssueType, SuggestionType, UnhealthyReason
-from ..store.addon import AppStore
+from ..store.app import AppStore
 from ..utils.sentry import async_capture_exception
-from .addon import App
+from .app import App
 from .const import APP_UPDATE_CONDITIONS
 from .data import AppsData
 

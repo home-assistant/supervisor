@@ -1,6 +1,6 @@
 """Helper to check if docker config for container needs an update."""
 
-from ...addons.const import MappingType
+from ...apps.const import MappingType
 from ...const import CoreState
 from ...coresys import CoreSys
 from ...docker.const import PATH_MEDIA, PATH_SHARE, PropagationMode

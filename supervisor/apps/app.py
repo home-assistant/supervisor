@@ -58,7 +58,7 @@ from ..const import (
     BusEvent,
 )
 from ..coresys import CoreSys
-from ..docker.addon import DockerApp
+from ..docker.app import DockerApp
 from ..docker.const import ContainerState
 from ..docker.manager import ExecReturn
 from ..docker.monitor import DockerContainerStateEvent
@@ -91,7 +91,7 @@ from ..jobs.const import JobConcurrency, JobThrottle
 from ..jobs.decorator import Job
 from ..resolution.const import ContextType, IssueType, SuggestionType
 from ..resolution.data import Issue
-from ..store.addon import AppStore
+from ..store.app import AppStore
 from ..utils import check_port
 from ..utils.apparmor import adjust_profile
 from ..utils.dt import utc_from_timestamp

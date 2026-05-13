@@ -4,15 +4,15 @@ from unittest.mock import patch
 
 import pytest
 
-from supervisor.addons.addon import App
+from supervisor.apps.app import App
 from supervisor.const import AppState
 from supervisor.coresys import CoreSys
-from supervisor.docker.addon import DockerApp
+from supervisor.docker.app import DockerApp
 from supervisor.docker.interface import DockerInterface
 from supervisor.exceptions import DockerError
 from supervisor.resolution.const import ContextType, IssueType, SuggestionType
 from supervisor.resolution.data import Issue, Suggestion
-from supervisor.resolution.fixups.addon_execute_restart import FixupAppExecuteRestart
+from supervisor.resolution.fixups.app_execute_restart import FixupAppExecuteRestart
 
 from tests.const import TEST_ADDON_SLUG
 

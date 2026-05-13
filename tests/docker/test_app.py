@@ -10,14 +10,14 @@ from unittest.mock import AsyncMock, MagicMock, Mock, PropertyMock, patch
 import aiodocker
 import pytest
 
-from supervisor.addons import validate as vd
-from supervisor.addons.addon import App
-from supervisor.addons.model import Data
-from supervisor.addons.options import AppOptions
+from supervisor.apps import validate as vd
+from supervisor.apps.app import App
+from supervisor.apps.model import Data
+from supervisor.apps.options import AppOptions
 from supervisor.const import BusEvent
 from supervisor.coresys import CoreSys
 from supervisor.dbus.agent.cgroup import CGroup
-from supervisor.docker.addon import DockerApp
+from supervisor.docker.app import DockerApp
 from supervisor.docker.const import (
     DockerMount,
     MountBindOptions,
@@ -42,7 +42,7 @@ from tests.common import fire_bus_event
 def fixture_addonsdata_system() -> dict[str, Data]:
     """Mock AppsData.system."""
     with patch(
-        "supervisor.addons.data.AppsData.system", new_callable=PropertyMock
+        "supervisor.apps.data.AppsData.system", new_callable=PropertyMock
     ) as mock:
         yield mock
 
@@ -50,9 +50,7 @@ def fixture_addonsdata_system() -> dict[str, Data]:
 @pytest.fixture(name="addonsdata_user", autouse=True)
 def fixture_addonsdata_user() -> dict[str, Data]:
     """Mock AppsData.user."""
-    with patch(
-        "supervisor.addons.data.AppsData.user", new_callable=PropertyMock
-    ) as mock:
+    with patch("supervisor.apps.data.AppsData.user", new_callable=PropertyMock) as mock:
         mock.return_value = MagicMock()
         yield mock
 
@@ -78,7 +76,7 @@ def get_docker_app(
 @pytest.mark.usefixtures("path_extern")
 def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Dev and data volumes always included."""
-    docker_app = get_docker_app(coresys, addonsdata_system, "basic-addon-config.json")
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
 
     # Dev added as ro with bind-recursive=writable option
     assert DEV_MOUNT in docker_app.mounts
@@ -98,7 +96,7 @@ def test_base_volumes_included(coresys: CoreSys, addonsdata_system: dict[str, Da
 @pytest.mark.usefixtures("path_extern")
 def test_app_map_folder_defaults(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Validate defaults for mapped folders in apps."""
-    docker_app = get_docker_app(coresys, addonsdata_system, "basic-addon-config.json")
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
     # Config added and is marked rw
     assert (
         DockerMount(
@@ -154,7 +152,7 @@ def test_app_map_homeassistant_folder(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for app which maps homeassistant folder."""
-    config = load_json_fixture("addon-config-map-addon_config.json")
+    config = load_json_fixture("app-config-map-app_config.json")
     config["map"].append("homeassistant_config")
     docker_app = get_docker_app(coresys, addonsdata_system, config)
 
@@ -175,7 +173,7 @@ def test_app_map_app_configs_folder(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for app which maps app configs folder."""
-    config = load_json_fixture("addon-config-map-addon_config.json")
+    config = load_json_fixture("app-config-map-app_config.json")
     config["map"].append("all_addon_configs")
     docker_app = get_docker_app(coresys, addonsdata_system, config)
 
@@ -197,7 +195,7 @@ def test_app_map_app_config_folder(
 ):
     """Test mounts for app which maps its own config folder."""
     docker_app = get_docker_app(
-        coresys, addonsdata_system, "addon-config-map-addon_config.json"
+        coresys, addonsdata_system, "app-config-map-app_config.json"
     )
 
     # App config folder included
@@ -217,7 +215,7 @@ def test_app_map_app_config_folder_with_custom_target(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for app which maps its own config folder and sets target path."""
-    config = load_json_fixture("addon-config-map-addon_config.json")
+    config = load_json_fixture("app-config-map-app_config.json")
     config["map"].remove("addon_config")
     config["map"].append(
         {"type": "addon_config", "read_only": False, "path": "/custom/target/path"}
@@ -241,7 +239,7 @@ def test_app_map_data_folder_with_custom_target(
     coresys: CoreSys, addonsdata_system: dict[str, Data]
 ):
     """Test mounts for app which sets target path for data folder."""
-    config = load_json_fixture("addon-config-map-addon_config.json")
+    config = load_json_fixture("app-config-map-app_config.json")
     config["map"].append({"type": "data", "path": "/custom/data/path"})
     docker_app = get_docker_app(coresys, addonsdata_system, config)
 
@@ -260,7 +258,7 @@ def test_app_map_data_folder_with_custom_target(
 @pytest.mark.usefixtures("path_extern")
 def test_app_ignore_on_config_map(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Test mounts for app don't include app config or homeassistant when config included."""
-    config = load_json_fixture("basic-addon-config.json")
+    config = load_json_fixture("basic-app-config.json")
     config["map"].extend(["addon_config", "homeassistant_config"])
     docker_app = get_docker_app(coresys, addonsdata_system, config)
 
@@ -284,9 +282,7 @@ def test_app_ignore_on_config_map(coresys: CoreSys, addonsdata_system: dict[str,
 @pytest.mark.usefixtures("path_extern")
 def test_journald_app(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Validate volume for journald option."""
-    docker_app = get_docker_app(
-        coresys, addonsdata_system, "journald-addon-config.json"
-    )
+    docker_app = get_docker_app(coresys, addonsdata_system, "journald-app-config.json")
 
     assert (
         DockerMount(
@@ -311,7 +307,7 @@ def test_journald_app(coresys: CoreSys, addonsdata_system: dict[str, Data]):
 @pytest.mark.usefixtures("path_extern")
 def test_not_journald_app(coresys: CoreSys, addonsdata_system: dict[str, Data]):
     """Validate journald option defaults off."""
-    docker_app = get_docker_app(coresys, addonsdata_system, "basic-addon-config.json")
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
 
     assert "/var/log/journal" not in [mount.target for mount in docker_app.mounts]
 
@@ -325,7 +321,7 @@ async def test_app_run_docker_error(
     coresys.docker.containers.create.side_effect = aiodocker.DockerError(
         HTTPStatus.NOT_FOUND, {"message": "missing"}
     )
-    docker_app = get_docker_app(coresys, addonsdata_system, "basic-addon-config.json")
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
 
     with (
         patch.object(DockerApp, "stop"),
@@ -348,7 +344,7 @@ async def test_app_run_add_host_error(
 ):
     """Test error adding host when app is run."""
     await coresys.dbus.timedate.connect(coresys.dbus.bus)
-    docker_app = get_docker_app(coresys, addonsdata_system, "basic-addon-config.json")
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
 
     with (
         patch.object(DockerApp, "stop"),
@@ -366,7 +362,7 @@ async def test_app_stop_delete_host_error(
     coresys: CoreSys, addonsdata_system: dict[str, Data], capture_exception: Mock
 ):
     """Test error deleting host when app is stopped."""
-    docker_app = get_docker_app(coresys, addonsdata_system, "basic-addon-config.json")
+    docker_app = get_docker_app(coresys, addonsdata_system, "basic-app-config.json")
 
     with (
         patch.object(

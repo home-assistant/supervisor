@@ -112,5 +112,9 @@ async def test_dynamic_check_loader(coresys: CoreSys):
         coresys.resolution.check.load_modules()
         return get_valid_modules("checks")
 
+    loaded_module_names = {
+        obj.__class__.__module__.rsplit(".", maxsplit=1)[-1]
+        for obj in coresys.resolution.check._checks.values()
+    }
     for check in await coresys.run_in_executor(load_modules):
-        assert check in coresys.resolution.check._checks
+        assert check in loaded_module_names

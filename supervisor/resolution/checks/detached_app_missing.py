@@ -14,6 +14,11 @@ def setup(coresys: CoreSys) -> CheckBase:
 class CheckDetachedAppMissing(CheckBase):
     """CheckDetachedAppMissing class for check."""
 
+    @property
+    def slug(self) -> str:
+        """Return the check slug."""
+        return "detached_addon_missing"
+
     async def run_check(self) -> None:
         """Run check if not affected by issue."""
         for app in self.sys_apps.installed:

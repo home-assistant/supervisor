@@ -10,7 +10,7 @@ from urllib.parse import unquote
 from aiohttp.web import Request, StreamResponse, middleware
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPForbidden, HTTPUnauthorized
 
-from ...addons.const import RE_SLUG
+from ...apps.const import RE_SLUG
 from ...const import (
     REQUEST_FROM,
     ROLE_ADMIN,
