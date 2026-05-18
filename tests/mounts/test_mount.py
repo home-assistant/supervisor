@@ -60,7 +60,7 @@ async def test_cifs_mount(
 
     mount_data = {
         "name": "test",
-        "usage": "media",
+        "usage": "backup",
         "type": "cifs",
         "server": "test.local",
         "share": "camera",
@@ -75,7 +75,7 @@ async def test_cifs_mount(
     assert isinstance(mount, CIFSMount)
     assert mount.name == "test"
     assert mount.type == MountType.CIFS
-    assert mount.usage == MountUsage.MEDIA
+    assert mount.usage == MountUsage.BACKUP
     assert mount.port is None
     assert mount.state is None
     assert mount.unit is None
@@ -178,7 +178,7 @@ async def test_cifs_mount_read_only(
 
     mount_data = {
         "name": "test",
-        "usage": "media",
+        "usage": "backup",
         "type": "cifs",
         "server": "test.local",
         "share": "camera",
@@ -243,7 +243,7 @@ async def test_nfs_mount(
 
     mount_data = {
         "name": "test",
-        "usage": "media",
+        "usage": "backup",
         "type": "nfs",
         "server": "test.local",
         "path": "/media/camera",
@@ -255,7 +255,7 @@ async def test_nfs_mount(
     assert isinstance(mount, NFSMount)
     assert mount.name == "test"
     assert mount.type == MountType.NFS
-    assert mount.usage == MountUsage.MEDIA
+    assert mount.usage == MountUsage.BACKUP
     assert mount.port == 1234
     assert mount.state is None
     assert mount.unit is None
@@ -317,7 +317,7 @@ async def test_nfs_mount_read_only(
 
     mount_data = {
         "name": "test",
-        "usage": "media",
+        "usage": "backup",
         "type": "nfs",
         "server": "test.local",
         "path": "/media/camera",
@@ -379,7 +379,7 @@ async def test_load(
 
     mount_data = {
         "name": "test",
-        "usage": "media",
+        "usage": "backup",
         "type": "cifs",
         "server": "test.local",
         "share": "share",
@@ -444,37 +444,21 @@ async def test_load(
     assert systemd_service.StartTransientUnit.calls == []
     assert systemd_service.ReloadOrRestartUnit.calls == []
 
-    # Load restarts the unit if it finds it in a failed state
-    systemd_unit_service.active_state = ["failed", "active"]
-    mount = Mount.from_dict(coresys, mount_data)
-    await mount.load()
-
-    assert mount.state == UnitActiveState.ACTIVE
-    assert systemd_service.StartTransientUnit.calls == []
-    assert systemd_service.ReloadOrRestartUnit.calls == [
-        ("mnt-data-supervisor-mounts-test.mount", "fail")
-    ]
-
-    # Load waits up to 30 seconds if it finds a unit in the activating state
-    # (the wait happens inside _update_state_await driven by PropertiesChanged).
-    # Once the state settles to FAILED, load triggers a reload, and the reload
-    # is driven to completion by the mock-emitted JobRemoved signal — which
-    # also flips active_state to "active" via mock_systemd_unit.
-    systemd_service.mock_systemd_unit = systemd_unit_service
-    systemd_service.ReloadOrRestartUnit.calls.clear()
+    # Load waits up to 30 seconds if it finds a unit in the activating
+    # state — `_update_state_await` polls via PropertiesChanged until
+    # the unit settles. The kernel's autofs trigger handles activation
+    # from here on, so we don't reload/restart from `load()` anymore.
     systemd_unit_service.active_state = "activating"
     mount = Mount.from_dict(coresys, mount_data)
 
     load_task = asyncio.create_task(mount.load())
     await asyncio.sleep(0.1)
-    systemd_unit_service.emit_properties_changed({"ActiveState": "failed"})
+    systemd_unit_service.emit_properties_changed({"ActiveState": "active"})
     await load_task
 
     assert mount.state == UnitActiveState.ACTIVE
     assert systemd_service.StartTransientUnit.calls == []
-    assert systemd_service.ReloadOrRestartUnit.calls == [
-        ("mnt-data-supervisor-mounts-test.mount", "fail")
-    ]
+    assert systemd_service.ReloadOrRestartUnit.calls == []
 
 
 async def test_unmount(
@@ -492,7 +476,7 @@ async def test_unmount(
         coresys,
         {
             "name": "test",
-            "usage": "media",
+            "usage": "backup",
             "type": "cifs",
             "server": "test.local",
             "share": "share",
@@ -533,7 +517,7 @@ async def test_mount_failure(
         coresys,
         {
             "name": "test",
-            "usage": "media",
+            "usage": "backup",
             "type": "cifs",
             "server": "test.local",
             "share": "share",
@@ -549,30 +533,23 @@ async def test_mount_failure(
     assert len(systemd_service.StartTransientUnit.calls) == 1
     assert systemd_service.GetUnit.calls == []
 
-    # Raise error if state is not "active" after mount
+    # Raise error if the post-mount probe fails. Under autofs the
+    # systemd `.mount` is dormant until first access; the probe is
+    # what proves the share actually works. Probe failure surfaces
+    # as MountActivationError regardless of what systemd state says.
     systemd_service.StartTransientUnit.calls.clear()
     systemd_service.response_start_transient_unit = "/org/freedesktop/systemd1/job/7623"
-    systemd_unit_service.active_state = "failed"
-    with pytest.raises(MountError):
+    systemd_unit_service.active_state = "active"
+    with (
+        patch(
+            "supervisor.mounts.mount._probe_network_mount",
+            side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
+        ),
+        pytest.raises(MountActivationError),
+    ):
         await mount.mount()
 
-    assert mount.state == UnitActiveState.FAILED
     assert len(systemd_service.StartTransientUnit.calls) == 1
-    assert len(systemd_service.GetUnit.calls) == 1
-
-    # When the post-dispatch state is not 'active' the mount call raises.
-    # With JobRemoved as the completion signal, supervisor trusts that the
-    # job is done by the time the signal fires — the systemd-side state
-    # await happens inside systemd, not in supervisor.
-    systemd_service.StartTransientUnit.calls.clear()
-    systemd_service.GetUnit.calls.clear()
-    systemd_unit_service.active_state = "failed"
-    with pytest.raises(MountError):
-        await mount.mount()
-
-    assert mount.state == UnitActiveState.FAILED
-    assert len(systemd_service.StartTransientUnit.calls) == 1
-    assert len(systemd_service.GetUnit.calls) == 1
 
 
 async def test_unmount_failure(
@@ -586,7 +563,7 @@ async def test_unmount_failure(
         coresys,
         {
             "name": "test",
-            "usage": "media",
+            "usage": "backup",
             "type": "cifs",
             "server": "test.local",
             "share": "share",
@@ -609,147 +586,6 @@ async def test_unmount_failure(
     assert systemd_service.StopUnit.calls == []
 
 
-@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mock_is_mount")
-async def test_reload_failure(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock]
-):
-    """Test failure to reload."""
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_service.StartTransientUnit.calls.clear()
-    systemd_service.ReloadOrRestartUnit.calls.clear()
-    systemd_service.RestartUnit.calls.clear()
-    systemd_service.GetUnit.calls.clear()
-
-    mount = Mount.from_dict(
-        coresys,
-        {
-            "name": "test",
-            "usage": "media",
-            "type": "cifs",
-            "server": "test.local",
-            "share": "share",
-        },
-    )
-
-    # Raise error on ReloadOrRestartUnit and RestartUnit error
-    systemd_service.response_reload_or_restart_unit = ERROR_FAILURE
-    systemd_service.response_restart_unit = ERROR_FAILURE
-    with pytest.raises(MountError):
-        await mount.reload()
-
-    assert mount.state is None
-    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
-    assert len(systemd_service.RestartUnit.calls) == 1
-    assert systemd_service.GetUnit.calls == []
-    assert systemd_service.StartTransientUnit.calls == []
-
-    # RestartUnit if ReloadOrRestartUnit does not get it mounted
-    systemd_service.ReloadOrRestartUnit.calls.clear()
-    systemd_service.RestartUnit.calls.clear()
-    systemd_service.response_reload_or_restart_unit = (
-        "/org/freedesktop/systemd1/job/7623"
-    )
-    systemd_service.response_restart_unit = "/org/freedesktop/systemd1/job/7623"
-    # Probe fails after reload (server still unreachable) but succeeds
-    # after restart — exercises the reload -> restart escalation path.
-    with patch(
-        "supervisor.mounts.mount._probe_network_mount",
-        side_effect=[OSError(errno.EHOSTDOWN, "Host is down"), True],
-    ):
-        await mount.reload()
-
-    assert mount.state == UnitActiveState.ACTIVE
-    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
-    assert len(systemd_service.RestartUnit.calls) == 1
-    assert len(systemd_service.GetUnit.calls) == 2
-    assert systemd_service.StartTransientUnit.calls == []
-
-    # Raise error if state is not "active" after reload
-    systemd_service.ReloadOrRestartUnit.calls.clear()
-    systemd_service.RestartUnit.calls.clear()
-    systemd_service.GetUnit.calls.clear()
-    systemd_unit_service.active_state = "failed"
-    # Force the fast-path probe to fail so reload actually exercises the
-    # reload -> restart escalation we're testing here.
-    with (
-        patch(
-            "supervisor.mounts.mount._probe_network_mount",
-            side_effect=OSError(errno.EHOSTDOWN, "Host is down"),
-        ),
-        pytest.raises(MountError),
-    ):
-        await mount.reload()
-
-    assert mount.state == UnitActiveState.FAILED
-    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
-    assert len(systemd_service.RestartUnit.calls) == 1
-    assert len(systemd_service.GetUnit.calls) == 2
-    assert systemd_service.StartTransientUnit.calls == []
-
-    # If error is NoSuchUnit then don't raise just mount instead as its not mounted
-    systemd_service.ReloadOrRestartUnit.calls.clear()
-    systemd_service.GetUnit.calls.clear()
-    systemd_service.response_reload_or_restart_unit = ERROR_NO_UNIT
-    systemd_unit_service.active_state = "active"
-
-    await mount.reload()
-
-    assert mount.state == UnitActiveState.ACTIVE
-    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
-    assert len(systemd_service.StartTransientUnit.calls) == 1
-    assert len(systemd_service.GetUnit.calls) == 1
-
-
-@pytest.mark.usefixtures("tmp_supervisor_data", "path_extern", "mock_is_mount")
-async def test_reload_does_not_escalate_when_still_reloading(
-    coresys: CoreSys, all_dbus_services: dict[str, DBusServiceMock]
-):
-    """If the reload helper is still pinned (unit stays RELOADING), do not call RestartUnit.
-
-    Issuing RestartUnit while a mount/umount syscall is stuck in the kernel can
-    wedge PID 1 long enough for the hardware watchdog to reset the host. See
-    issue #6827.
-    """
-    systemd_service: SystemdService = all_dbus_services["systemd"]
-    systemd_unit_service: SystemdUnitService = all_dbus_services["systemd_unit"]
-    systemd_service.ReloadOrRestartUnit.calls.clear()
-    systemd_service.RestartUnit.calls.clear()
-    systemd_service.response_reload_or_restart_unit = (
-        "/org/freedesktop/systemd1/job/7624"
-    )
-    systemd_unit_service.active_state = "reloading"
-
-    mount = Mount.from_dict(
-        coresys,
-        {
-            "name": "test",
-            "usage": "media",
-            "type": "cifs",
-            "server": "test.local",
-            "share": "share",
-        },
-    )
-
-    # Simulate the state-await timing out without the unit leaving RELOADING:
-    # the helper is pinned in the kernel and systemd has not yet completed the
-    # reload job. The state-await is responsible for refreshing self._state in
-    # this case, so we mirror that here.
-    # pylint: disable=protected-access
-    async def _fake_update_state_await(self, unit, expected_states=None):
-        await self._update_state(unit)  # noqa: SLF001
-
-    with (
-        patch.object(Mount, "_update_state_await", _fake_update_state_await),
-        pytest.raises(MountActivationError),
-    ):
-        await mount.reload()
-
-    assert mount.state == UnitActiveState.RELOADING
-    assert len(systemd_service.ReloadOrRestartUnit.calls) == 1
-    assert systemd_service.RestartUnit.calls == []
-
-
 async def test_mount_local_where_invalid(
     coresys: CoreSys,
     all_dbus_services: dict[str, DBusServiceMock],
@@ -764,7 +600,7 @@ async def test_mount_local_where_invalid(
         coresys,
         {
             "name": "test",
-            "usage": "media",
+            "usage": "backup",
             "type": "cifs",
             "server": "test.local",
             "share": "share",
@@ -797,7 +633,7 @@ async def test_update_clears_issue(coresys: CoreSys, path_extern, mock_is_mount)
         coresys,
         {
             "name": "test",
-            "usage": "media",
+            "usage": "backup",
             "type": "cifs",
             "server": "test.local",
             "share": "share",
@@ -831,7 +667,7 @@ async def test_update_leaves_issue_if_down(
         coresys,
         {
             "name": "test",
-            "usage": "media",
+            "usage": "backup",
             "type": "cifs",
             "server": "test.local",
             "share": "share",
@@ -856,7 +692,8 @@ async def test_update_leaves_issue_if_down(
     ):
         assert (await mount.update()) is False
 
-    assert mount.state == UnitActiveState.ACTIVE
+    # The probe failure leaves the cached state at INACTIVE.
+    assert mount.state == UnitActiveState.INACTIVE
     assert mount.failed_issue in coresys.resolution.issues
     assert len(coresys.resolution.suggestions_for_issue(mount.failed_issue)) == 2
 
@@ -874,7 +711,7 @@ async def test_mount_fails_if_down(
 
     mount_data = {
         "name": "test",
-        "usage": "media",
+        "usage": "backup",
         "type": "nfs",
         "server": "test.local",
         "path": "/media/camera",
@@ -892,7 +729,10 @@ async def test_mount_fails_if_down(
     ):
         await mount.mount()
 
-    assert mount.state == UnitActiveState.ACTIVE
+    # Probe failure leaves the cached state at INACTIVE — the systemd
+    # unit may still be reported active by the mock but the supervisor
+    # knows the share isn't reachable.
+    assert mount.state == UnitActiveState.INACTIVE
     assert mount.local_where.exists()
     assert mount.local_where.is_dir()
 

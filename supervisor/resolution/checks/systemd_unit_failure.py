@@ -79,12 +79,11 @@ class CheckSystemdUnitFailure(CheckBase):
         if not failed_units:
             return
 
-        # Get managed mount unit names from mounts and bound_mounts
+        # Get managed mount and automount unit names from mounts
         managed_mounts = set()
         for mount in self.sys_mounts.mounts:
             managed_mounts.add(mount.unit_name)
-        for bound_mount in self.sys_mounts.bound_mounts:
-            managed_mounts.add(bound_mount.mount.unit_name)
+            managed_mounts.add(mount.automount_unit_name)
 
         for unit in failed_units:
             unit_name = unit[0]

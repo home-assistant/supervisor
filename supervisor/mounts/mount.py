@@ -34,6 +34,7 @@ from ..exceptions import (
     DBusSystemdNoSuchUnit,
     MountActivationError,
     MountError,
+    MountInvalidError,
     MountTargetNotDirectoryError,
     MountTargetNotEmptyError,
 )
@@ -52,6 +53,12 @@ def _probe_network_mount(path: Path) -> bool:
     Run inside an executor — both syscalls share one thread and
     benefit from the kernel's warm session state on a real mount.
 
+    Probes the path with a trailing `.` so the kernel applies
+    `LOOKUP_DIRECTORY` — this is what forces the autofs trigger to
+    activate the underlying .mount. Without the trailing dot the
+    statvfs would return autofs's local view and never reach the
+    server (see fs/namei.c:1432-1460).
+
     Raises OSError (typically ETIMEDOUT / EHOSTDOWN / ECONNABORTED)
     when the server is unreachable. Returns False when statvfs
     succeeded but the path is not actually a mount point (the
@@ -60,8 +67,9 @@ def _probe_network_mount(path: Path) -> bool:
     RPC that the server answered AND the path actually crosses a
     filesystem boundary.
     """
-    os.statvfs(path)
-    return path.stat().st_dev != path.parent.stat().st_dev
+    probe_path = path / "."
+    os.statvfs(probe_path)
+    return probe_path.stat().st_dev != path.parent.stat().st_dev
 
 
 # Three layered timeouts cooperate to keep the host alive when an NFS server
@@ -101,12 +109,6 @@ COERCE_MOUNT_USAGE: Callable[[str], MountUsage] = Coerce(MountUsage)
 class Mount(CoreSysAttributes, ABC):
     """A mount."""
 
-    # Whether `mount()` should also create a companion `.automount` unit
-    # via the aux parameter of StartTransientUnit. Network mounts opt in;
-    # bind mounts stay eagerly mounted since they have no server to wait
-    # on and lazy semantics would only add latency.
-    creates_automount: bool = False
-
     def __init__(self, coresys: CoreSys, data: MountData) -> None:
         """Initialize object."""
         super().__init__()
@@ -130,7 +132,7 @@ class Mount(CoreSysAttributes, ABC):
             return CIFSMount(coresys, data)
         if type_ == MountType.NFS:
             return NFSMount(coresys, data)
-        return BindMount(coresys, data)
+        raise MountInvalidError(f"Unsupported mount type: {type_}", _LOGGER.error)
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""
@@ -240,17 +242,26 @@ class Mount(CoreSysAttributes, ABC):
         return hash(self.name)
 
     async def load(self) -> None:
-        """Initialize object."""
-        # If there's no mount unit, mount it to make one
+        """Initialize object.
+
+        Transient units don't persist across host reboots, so on a fresh
+        supervisor start the unit is always missing and we create the
+        `.mount` + `.automount` pair. If a previous supervisor instance
+        is still around (e.g. supervisor-only restart on a long-running
+        host), the unit may already exist — we observe its state, then
+        run the probe so `mount.state` reflects actual reachability
+        rather than autofs's lazy-mount idle state.
+        """
         if not (unit := await self._update_unit()):
             await self.mount()
             return
 
         await self._update_state_await(unit)
-
-        # If mount is not available, try to reload it
-        if not await self.is_mounted():
-            await self.reload()
+        # Probe the existing mount to refresh state — the .mount unit
+        # may be inactive simply because nothing has touched the path
+        # since the last idle expiry. The probe both forces activation
+        # and surfaces server reachability.
+        await self.is_mounted()
 
     async def _update_state(self, unit: SystemdUnit) -> None:
         """Update mount unit state."""
@@ -384,9 +395,8 @@ class Mount(CoreSysAttributes, ABC):
             if self.options
             else []
         )
-        if self.type != MountType.BIND:
-            options += [(DBUS_ATTR_TYPE, Variant("s", self.type))]
         mount_properties = options + [
+            (DBUS_ATTR_TYPE, Variant("s", self.type)),
             (DBUS_ATTR_DESCRIPTION, Variant("s", self.description)),
             (DBUS_ATTR_WHAT, Variant("s", self.what)),
             (DBUS_ATTR_TIMEOUT_USEC, Variant("t", MOUNT_UNIT_TIMEOUT_USEC)),
@@ -396,24 +406,22 @@ class Mount(CoreSysAttributes, ABC):
             # out on their next op instead of hanging forever.
             (DBUS_ATTR_LAZY_UNMOUNT, Variant("b", True)),
         ]
-        aux = None
-        if self.creates_automount:
-            aux = [
-                (
-                    self.automount_unit_name,
-                    [
-                        (
-                            DBUS_ATTR_DESCRIPTION,
-                            Variant("s", f"{self.description} (automount)"),
-                        ),
-                        (DBUS_ATTR_WHERE, Variant("s", self.where.as_posix())),
-                        (
-                            DBUS_ATTR_TIMEOUT_IDLE_USEC,
-                            Variant("t", AUTOMOUNT_IDLE_TIMEOUT_USEC),
-                        ),
-                    ],
-                )
-            ]
+        aux = [
+            (
+                self.automount_unit_name,
+                [
+                    (
+                        DBUS_ATTR_DESCRIPTION,
+                        Variant("s", f"{self.description} (automount)"),
+                    ),
+                    (DBUS_ATTR_WHERE, Variant("s", self.where.as_posix())),
+                    (
+                        DBUS_ATTR_TIMEOUT_IDLE_USEC,
+                        Variant("t", AUTOMOUNT_IDLE_TIMEOUT_USEC),
+                    ),
+                ],
+            )
+        ]
 
         try:
             await self._run_systemd_job(
@@ -453,22 +461,20 @@ class Mount(CoreSysAttributes, ABC):
             return
 
         # Stop the .automount companion first so it can't re-trigger the
-        # underlying .mount during cleanup. The .automount may not exist
-        # (legacy units, or non-network mounts) — best-effort stop.
-        if self.creates_automount:
-            try:
-                await self._run_systemd_job(
-                    "stop_unit",
-                    self.sys_dbus.systemd.stop_unit(
-                        self.automount_unit_name, StopUnitMode.FAIL
-                    ),
-                )
-            except DBusSystemdNoSuchUnit:
-                pass
-            except DBusError as err:
-                _LOGGER.warning(
-                    "Could not stop automount unit for %s: %s", self.name, err
-                )
+        # underlying .mount during cleanup. Best-effort — if the
+        # .automount unit is gone (or refuses to stop), proceed to the
+        # .mount stop which remains authoritative.
+        try:
+            await self._run_systemd_job(
+                "stop_unit",
+                self.sys_dbus.systemd.stop_unit(
+                    self.automount_unit_name, StopUnitMode.FAIL
+                ),
+            )
+        except DBusSystemdNoSuchUnit:
+            pass
+        except DBusError as err:
+            _LOGGER.warning("Could not stop automount unit for %s: %s", self.name, err)
 
         await self._update_state(unit)
         try:
@@ -489,128 +495,14 @@ class Mount(CoreSysAttributes, ABC):
         self._unit = None
         self._state = None
 
-    async def reload(self) -> None:
-        """Verify the mount is reachable; reload/restart as needed.
-
-        `is_mounted()` is the source of truth here: for network mounts it
-        runs a statvfs probe that forces an RPC, so a passing return value
-        proves the share is live right now — systemd's "active/mounted"
-        state alone does not (CIFS reload is local-only — smb3_reconfigure
-        never contacts the server). The reload → restart escalation only
-        runs when the probe fails.
-        """
-        if await self.is_mounted():
-            self._dismiss_failed_issue()
-            return
-
-        try:
-            result = await self._run_systemd_job(
-                "reload_or_restart_unit",
-                self.sys_dbus.systemd.reload_unit(self.unit_name, StartUnitMode.FAIL),
-            )
-        except DBusSystemdNoSuchUnit:
-            _LOGGER.info(
-                "Mount %s is not mounted, mounting instead of reloading", self.name
-            )
-            await self.mount()
-            return
-        except DBusError as err:
-            _LOGGER.error(
-                "Could not reload mount %s due to: %s. Trying a restart", self.name, err
-            )
-            await self._restart()
-            self._dismiss_failed_issue()
-            return
-
-        if unit := await self._update_unit():
-            await self._update_state(unit)
-
-        # Safety net for #6827: with the layered timeouts above
-        # (RPC < TimeoutSec < state-await) the unit should always have
-        # left RELOADING by the time we get here. If it has not, the
-        # systemd-side cleanup did not complete in time; escalating to
-        # RestartUnit while a mount/umount helper is still pinned in the
-        # kernel is the destructive pattern that wedges PID 1, so refuse
-        # to escalate and surface the failure instead.
-        if self.state == UnitActiveState.RELOADING:
-            raise MountActivationError(
-                f"Reloading {self.name} did not complete in time and the "
-                f"unit is still in RELOADING. Refusing to escalate to a "
-                f"restart while the mount helper may be pinned in the "
-                f"kernel — this should not happen with the configured "
-                f"unit timeout. Check host logs for the systemd unit "
-                f"{self.unit_name} for details.",
-                _LOGGER.critical,
-            )
-
-        # When systemd already reports the reload as failed (or timed
-        # out so we never saw JobRemoved), skip the post-reload probe
-        # and escalate directly. The probe on a dead NFS share can
-        # take 90+ seconds in the kernel-side reconnect churn that
-        # follows a killed mount helper — and it would just confirm
-        # what we already know. For CIFS, smb3_reconfigure is
-        # local-only and always returns "done" even against a dead
-        # server, so we still need the probe in the success branch.
-        if result == "done":
-            if await self.is_mounted():
-                self._dismiss_failed_issue()
-                return
-            _LOGGER.info(
-                "Mount %s reload reported success but probe failed. Trying a restart",
-                self.name,
-            )
-        else:
-            _LOGGER.info(
-                "Mount %s reload did not complete (systemd result: %s). Trying a restart",
-                self.name,
-                result,
-            )
-        await self._restart()
-        self._dismiss_failed_issue()
-
-    def _dismiss_failed_issue(self) -> None:
+    def dismiss_failed_issue(self) -> None:
         """Dismiss the failed-mount resolution issue if present."""
         if issue := self.sys_resolution.get_issue_if_present(self.failed_issue):
             self.sys_resolution.dismiss_issue(issue)
 
-    async def _restart(self) -> None:
-        """Restart mount unit to re-mount."""
-        try:
-            result = await self._run_systemd_job(
-                "restart_unit",
-                self.sys_dbus.systemd.restart_unit(self.unit_name, StartUnitMode.FAIL),
-            )
-        except DBusSystemdNoSuchUnit:
-            _LOGGER.info(
-                "Mount %s is not mounted, mounting instead of restarting", self.name
-            )
-            await self.mount()
-            return
-        except DBusError as err:
-            raise MountError(
-                f"Could not restart mount {self.name} due to: {err!s}", _LOGGER.error
-            ) from err
-
-        if unit := await self._update_unit():
-            await self._update_state(unit)
-
-        # If systemd already reports the restart job as failed (or we
-        # timed out waiting for JobRemoved), don't bother probing — we
-        # know the mount isn't healthy and the probe would just add
-        # another 30-90s on a dead network share for no diagnostic gain.
-        if result != "done" or not await self.is_mounted():
-            raise MountActivationError(
-                f"Restarting {self.name} did not succeed (systemd result: {result}). "
-                f"Check host logs for errors from mount or systemd unit "
-                f"{self.unit_name} for details.",
-                _LOGGER.error,
-            )
-
 
 class NetworkMount(Mount, ABC):
     """A network mount."""
-
-    creates_automount: bool = True
 
     def to_dict(self, *, skip_secrets: bool = True) -> MountData:
         """Return dictionary representation."""
@@ -631,8 +523,21 @@ class NetworkMount(Mount, ABC):
 
     @property
     def where(self) -> PurePath:
-        """Where to mount."""
-        return self.sys_config.path_extern_mounts / self.name
+        """Where to mount.
+
+        Media and share mounts live directly under the container-facing
+        media/share dirs — containers see them via the parent-dir RSLAVE
+        bind and the autofs trigger sits inside the propagated
+        namespace. Backup mounts have no container-facing path; they
+        stay under path_extern_mounts/.
+        """
+        match self.usage:
+            case MountUsage.MEDIA:
+                return self.sys_config.path_extern_media / self.name
+            case MountUsage.SHARE:
+                return self.sys_config.path_extern_share / self.name
+            case _:
+                return self.sys_config.path_extern_mounts / self.name
 
     @property
     def options(self) -> list[str]:
@@ -643,35 +548,31 @@ class NetworkMount(Mount, ABC):
         return options
 
     async def is_mounted(self) -> bool:
-        """Return true if the mount is active and the server actually answers.
+        """Return true if the mount is reachable.
 
-        Three checks compose the verdict:
+        Under autofs the underlying `.mount` is dormant most of the
+        time — the kernel only activates it when something accesses
+        the path. So systemd state alone is meaningless for "is the
+        share usable"; we have to actually access the path. We do
+        that with a `statvfs("/path/.")` which:
 
-        1. systemd reports the unit ACTIVE — cheap, may be stale.
-        2. `os.statvfs()` forces an RPC for both NFS (FSSTAT) and CIFS
-           (QUERY_FS_INFO). Those per-filesystem fields aren't cached
-           client-side, so the kernel must reach the server or fail
-           with ETIMEDOUT / EHOSTDOWN / ECONNABORTED. We do this
-           first because on a dead server it fails fast within the
-           protocol budget (~30s, bounded by softerr,timeo=100,retrans=2
-           for NFS and soft,echo_interval=10 for CIFS) — and on a
-           ghost mount (path no longer mounted, e.g. after a failed
-           restart whose umount succeeded but mount step failed) it
-           returns the underlying root filesystem's stats without
-           touching the network.
-        3. A parent vs. path `st_dev` comparison distinguishes the
-           ghost-mount case from a real live mount: statvfs succeeds
-           for both, but only a real mount crosses a filesystem
-           boundary. These stat calls are cheap on success — the
-           attrs were just revalidated by the successful statvfs.
+        - Forces autofs to trigger the `.mount` (the trailing dot
+          applies `LOOKUP_DIRECTORY`).
+        - Forces an RPC for both NFS (FSSTAT) and CIFS
+          (QUERY_FS_INFO). Those per-filesystem fields aren't cached
+          client-side, so the kernel must reach the server or fail
+          with ETIMEDOUT / EHOSTDOWN / ECONNABORTED.
 
-        Both syscalls run in a single executor hop so they share one
-        thread and the kernel's warm session state. No asyncio
-        timeout — the kernel-side bound is authoritative.
+        After a successful probe we update `self._state` to ACTIVE
+        so the API surface reports "active" for healthy mounts,
+        regardless of whether the autofs idle expiry happens to have
+        the `.mount` momentarily inactive. A failed probe leaves
+        state as the API saw it (or sets it to INACTIVE).
+
+        No asyncio timeout — the kernel-side bound is authoritative,
+        and adding one would only orphan the executor thread on a
+        stuck syscall without unblocking it.
         """
-        if self.state != UnitActiveState.ACTIVE:
-            return False
-
         local_where = self.local_where
         _LOGGER.debug("Probing mount %s at %s", self.name, local_where)
         start = time.monotonic()
@@ -686,17 +587,20 @@ class NetworkMount(Mount, ABC):
                 time.monotonic() - start,
                 err,
             )
+            self._state = UnitActiveState.INACTIVE
             return False
         elapsed = time.monotonic() - start
         if not is_real_mount:
             _LOGGER.debug(
-                "Mount %s reported active but %s is not a mount point (probe %.2fs)",
+                "Probe of mount %s succeeded but %s is not a mount point (%.2fs)",
                 self.name,
                 local_where,
                 elapsed,
             )
+            self._state = UnitActiveState.INACTIVE
             return False
         _LOGGER.debug("Probe of mount %s succeeded in %.2fs", self.name, elapsed)
+        self._state = UnitActiveState.ACTIVE
         return True
 
 
@@ -825,67 +729,3 @@ class NFSMount(NetworkMount):
     def options(self) -> list[str]:
         """Options to use to mount."""
         return super().options + ["softerr", "timeo=100", "retrans=2"]
-
-
-class BindMount(Mount):
-    """A bind type mount."""
-
-    def __init__(
-        self, coresys: CoreSys, data: MountData, *, where: PurePath | None = None
-    ) -> None:
-        """Initialize object."""
-        if where and not where.is_relative_to(coresys.config.path_extern_supervisor):
-            raise ValueError("Path must be within Supervisor's host data directory!")
-
-        super().__init__(coresys, data)
-        self._where = where
-
-    @staticmethod
-    def create(
-        coresys: CoreSys,
-        name: str,
-        path: PurePath,
-        usage: MountUsage | None = None,
-        where: PurePath | None = None,
-        read_only: bool = False,
-    ) -> BindMount:
-        """Create a new bind mount instance."""
-        return BindMount(
-            coresys,
-            MountData(
-                name=name,
-                type=MountType.BIND,
-                path=path.as_posix(),
-                usage=usage and usage,
-                read_only=read_only,
-            ),
-            where=where,
-        )
-
-    def to_dict(self, *, skip_secrets: bool = True) -> MountData:
-        """Return dictionary representation."""
-        return MountData(path=self.path.as_posix(), **super().to_dict())
-
-    @property
-    def path(self) -> PurePath:
-        """Get path."""
-        return PurePath(self._data["path"])
-
-    @property
-    def what(self) -> str:
-        """What to mount."""
-        return self.path.as_posix()
-
-    @property
-    def where(self) -> PurePath:
-        """Where to mount."""
-        return (
-            self._where
-            if self._where
-            else self.sys_config.path_extern_mounts / self.name
-        )
-
-    @property
-    def options(self) -> list[str]:
-        """List of options to use to mount."""
-        return super().options + ["bind"]
